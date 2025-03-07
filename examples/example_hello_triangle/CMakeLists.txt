@@ -1,0 +1,3 @@
+add_executable(example_hello_triangle main.cpp)
+target_link_libraries(example_hello_triangle PRIVATE Vex)
+target_compile_definitions(example_hello_triangle PRIVATE EXAMPLE_HELLO_TRIANGLE=1)

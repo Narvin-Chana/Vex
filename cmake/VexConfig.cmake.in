@@ -1,0 +1,10 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/VexTargets.cmake")
+
+check_required_components(Vex)
+
+# To use Vex in another project just clone it as a submodule and then either manually build the .lib and add it to your Visual Studio solution or add the following to your CMakeLists.txt:
+# find_package(Vex REQUIRED)
+# add_executable(YOUR_PROJECT YOUR_MAIN.cpp)
+# target_link_libraries(YOUR_PROJECT PRIVATE Vex::Vex)
