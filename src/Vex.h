@@ -9,4 +9,4 @@ namespace vex
 
 bool func();
 
-}
+} // namespace vex

@@ -1,0 +1,7 @@
+---
+Checks: 'bugprone-*,clang-analyzer-*,cppcoreguidelines-*,modernize-*,performance-*'
+WarningsAsErrors: '*'
+CompileFlags:
+  Standard: c++23
+HeaderFilterRegex: '^${CMAKE_SOURCE_DIR}/*$'
+FormatStyle: file

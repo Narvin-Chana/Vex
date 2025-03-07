@@ -4,6 +4,7 @@ include(CMakePackageConfigHelpers)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if (CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     option(VEX_BUILD_EXAMPLES "Build the example programs" ON)
@@ -91,3 +92,65 @@ install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/VexConfigVersion.cmake"
     DESTINATION lib/cmake/Vex
 )
+
+# Clang Format and Clang Tidy Setup
+find_program(VCPKG_EXE vcpkg)
+if(NOT VCPKG_EXE)
+    message(STATUS "vcpkg not found. Consider installing it to manage dependencies.")
+    message(STATUS "Visit: https://github.com/microsoft/vcpkg")
+    message(STATUS "Then install clang tools with: vcpkg install clang:x64-windows")
+endif()
+
+find_program(CLANG_FORMAT_EXE clang-format)
+if(CLANG_FORMAT_EXE)
+    message(STATUS "Found clang-format: ${CLANG_FORMAT_EXE}")
+    
+    # Get all project source files
+    file(GLOB_RECURSE ALL_SOURCE_FILES 
+        ${CMAKE_SOURCE_DIR}/src/*.cpp
+        ${CMAKE_SOURCE_DIR}/src/*.h
+        ${CMAKE_SOURCE_DIR}/include/*.h
+    )
+    
+    # Remove any files you don't want to format
+    # list(FILTER ALL_SOURCE_FILES EXCLUDE REGEX "some/path/to/exclude")
+    
+    # Format target
+    add_custom_target(format
+        COMMAND ${CLANG_FORMAT_EXE} -i ${ALL_SOURCE_FILES}
+        COMMENT "Formatting source code with clang-format"
+        VERBATIM
+    )
+else()
+    message(STATUS "clang-format not found, format target will not be available")
+endif()
+
+find_program(CLANG_TIDY_EXE clang-tidy)
+if(CLANG_TIDY_EXE)
+    message(STATUS "Found clang-tidy: ${CLANG_TIDY_EXE}")
+
+    # Set up clang-tidy command
+    set(CMAKE_CXX_CLANG_TIDY 
+        ${CLANG_TIDY_EXE};
+    )
+
+    # Right now I've disabled clang-tidy, because it destroys performance, we could activate it as a CI action on github if we really want it.
+    #set_target_properties(Vex PROPERTIES
+    #   CXX_CLANG_TIDY "${CMAKE_CXX_CLANG_TIDY}"
+    #)
+
+    # Allow excluding certain targets from clang-tidy
+    function(exclude_from_clang_tidy target)
+        set_target_properties(${target} PROPERTIES
+            C_CLANG_TIDY ""
+            CXX_CLANG_TIDY ""
+        )
+    endfunction()
+    
+    # Exclude external libraries (otherwise clang-tidy will take ages to run)
+    exclude_from_clang_tidy(efsw)
+    exclude_from_clang_tidy(efsw-static)
+    exclude_from_clang_tidy(vex_efsw_headers)
+else()
+    message(STATUS "clang-tidy not found, static analysis integration will not be available")
+endif()

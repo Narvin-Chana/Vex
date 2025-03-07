@@ -2,6 +2,6 @@
 
 int main()
 {
-	std::cout << "aaaaa" << func();
-	// Do stuff
+    std::cout << "Hello... world?" << vex::func();
+    // TODO: make the world a triangle...
 }
