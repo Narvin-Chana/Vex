@@ -1,6 +1,6 @@
 # This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
 # See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
-name: Build Vex and Examples with CMake on Windows/Linux
+name: Build Vex and Examples
 
 on:
   push:
@@ -10,6 +10,54 @@ on:
   workflow_dispatch:  # Allows manual triggering from GitHub UI
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    name: clang-tidy
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install clang tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-tidy \
+          libvulkan-dev \
+          vulkan-validationlayers \
+          vulkan-tools \
+          libwayland-dev \
+          wayland-protocols \
+          libxkbcommon-dev \
+          libwayland-client0 \
+          libwayland-cursor0 \
+          libwayland-egl1 \
+          libwayland-server0 \
+          libxrandr-dev \
+          libxinerama-dev \
+          libxcursor-dev \
+          libxi-dev \
+          libxext-dev \
+          libgl1-mesa-dev \
+          extra-cmake-modules
+
+    - name: Get all source files
+      id: get-source-files
+      run: |
+        echo "source_files=$(find . -type f \( -name "*.cpp" -o -name "*.h" -o -name "*.hpp" -o -name "*.c" -o -name "*.cc" -o -name "*.cxx" \) | tr '\n' ' ')" >> $GITHUB_OUTPUT
+
+    - name: Configure CMake for compilation database
+      run: |
+        cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+    - name: Run clang-tidy
+      run: |
+        # Run clang-tidy with warnings as errors
+        TIDY_ERRORS=0
+        for file in ${{ steps.get-source-files.outputs.source_files }}; do
+            clang-tidy -p build $file || TIDY_ERRORS=$((TIDY_ERRORS+1))
+        done
+        if [ $TIDY_ERRORS -gt 0 ]; then
+            echo "clang-tidy found $TIDY_ERRORS issues that need to be fixed"
+            exit 1
+        fi
+
   build:
     runs-on: ${{ matrix.os }}
 
@@ -47,19 +95,43 @@ jobs:
           - os: ubuntu-latest
             c_compiler: cl
 
-    name: ${{ matrix.os }} ${{ matrix.extra_name }} ${{ matrix.build_type }}
+    name: ${{ matrix.os }} ${{ matrix.c_compiler }} ${{ matrix.build_type }}
 
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: recursive
 
-    - name: Install Linux Dependencies
-      # Install X11 development libraries for Linux
+    - name: Install Vulkan SDK (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: humbletim/setup-vulkan-sdk@523828e49cd4afabce369c39c7ee6543a2b7a735
+      with:
+        vulkan-query-version: latest
+        vulkan-components: Vulkan-Headers, Vulkan-Loader
+        vulkan-use-cache: true
+
+    - name: Install Vulkan SDK and Wayland (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev libgl1-mesa-dev
+        sudo apt-get install -y \
+          libvulkan-dev \
+          vulkan-validationlayers \
+          vulkan-tools \
+          libwayland-dev \
+          wayland-protocols \
+          libxkbcommon-dev \
+          libwayland-client0 \
+          libwayland-cursor0 \
+          libwayland-egl1 \
+          libwayland-server0 \
+          libxrandr-dev \
+          libxinerama-dev \
+          libxcursor-dev \
+          libxi-dev \
+          libxext-dev \
+          libgl1-mesa-dev \
+          extra-cmake-modules
 
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
@@ -95,9 +167,3 @@ jobs:
           cat ${{ steps.strings.outputs.build-output-dir }}/CMakeFiles/CMakeError.log
         fi
       shell: bash
-      
-    - name: Create Package
-      if: matrix.build_type == 'Release'
-      run: |
-        cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} --target package
-      continue-on-error: true  # Don't fail the build if packaging fails

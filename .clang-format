@@ -1,7 +1,7 @@
 # We use the Microsoft clang-format preset: https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/code-style-rule-options
 ---
 Language:        Cpp
-AccessModifierOffset: -2
+AccessModifierOffset: -4
 AlignAfterOpenBracket: Align
 AlignArrayOfStructures: None
 AlignConsecutiveAssignments:
@@ -60,11 +60,11 @@ AlignConsecutiveTableGenDefinitionColons:
   AlignFunctionPointers: false
   PadOperators:    false
 AlignEscapedNewlines: Right
-AlignOperands:   Align
+AlignOperands:   true
 AlignTrailingComments:
   Kind:            Always
   OverEmptyLines:  0
-AllowAllArgumentsOnNextLine: true
+AllowAllArgumentsOnNextLine: false
 AllowAllParametersOfDeclarationOnNextLine: true
 AllowBreakBeforeNoexceptSpecifier: Never
 AllowShortBlocksOnASingleLine: Never
@@ -80,11 +80,11 @@ AlwaysBreakAfterDefinitionReturnType: None
 AlwaysBreakBeforeMultilineStrings: false
 AttributeMacros:
   - __capability
-BinPackArguments: true
-BinPackParameters: true
+BinPackArguments: false
+BinPackParameters: false
 BitFieldColonSpacing: Both
 BraceWrapping:
-  AfterCaseLabel:  false
+  AfterCaseLabel:  true
   AfterClass:      true
   AfterControlStatement: Always
   AfterEnum:       true
@@ -93,11 +93,11 @@ BraceWrapping:
   AfterNamespace:  true
   AfterObjCDeclaration: true
   AfterStruct:     true
-  AfterUnion:      false
+  AfterUnion:      true
   BeforeCatch:     true
   BeforeElse:      true
-  BeforeLambdaBody: false
-  BeforeWhile:     false
+  BeforeLambdaBody: true
+  BeforeWhile:     true
   IndentBraces:    false
   SplitEmptyFunction: true
   SplitEmptyRecord: true
@@ -105,16 +105,16 @@ BraceWrapping:
 BreakAdjacentStringLiterals: true
 BreakAfterAttributes: Leave
 BreakAfterJavaFieldAnnotations: false
-BreakAfterReturnType: None
+BreakAfterReturnType: ExceptShortType
 BreakArrays:     true
 BreakBeforeBinaryOperators: None
 BreakBeforeConceptDeclarations: Always
 BreakBeforeBraces: Custom
 BreakBeforeInlineASMColon: OnlyMultiline
 BreakBeforeTernaryOperators: true
-BreakConstructorInitializers: BeforeColon
+BreakConstructorInitializers: BeforeComma
 BreakFunctionDefinitionParameters: false
-BreakInheritanceList: BeforeColon
+BreakInheritanceList: BeforeComma
 BreakStringLiterals: true
 BreakTemplateDeclarations: MultiLine
 ColumnLimit:     120
@@ -122,7 +122,7 @@ CommentPragmas:  '^ IWYU pragma:'
 CompactNamespaces: false
 ConstructorInitializerIndentWidth: 4
 ContinuationIndentWidth: 4
-Cpp11BracedListStyle: true
+Cpp11BracedListStyle: false
 DerivePointerAlignment: false
 DisableFormat:   false
 EmptyLineAfterAccessModifier: Never
@@ -137,6 +137,10 @@ IfMacros:
   - KJ_IF_MAYBE
 IncludeBlocks:   Preserve
 IncludeCategories:
+  - Regex:           '^<pch\.h>$'
+    Priority:        -10
+    SortPriority:    -10
+    CaseSensitive:   false
   - Regex:           '^"(llvm|llvm-c|clang|clang-c)/'
     Priority:        2
     SortPriority:    0
@@ -188,9 +192,11 @@ ObjCBlockIndentWidth: 2
 ObjCBreakBeforeNestedBlockParam: true
 ObjCSpaceAfterProperty: false
 ObjCSpaceBeforeProtocolList: true
-PackConstructorInitializers: BinPack
+PackConstructorInitializers: Never
 PenaltyBreakAssignment: 2
-PenaltyBreakBeforeFirstCallParameter: 19
+# This requires clang-format 20, currently VS ships clang-format 19
+# PenaltyBreakBeforeMemberAccess: 0
+PenaltyBreakBeforeFirstCallParameter: 0
 PenaltyBreakComment: 300
 PenaltyBreakFirstLessLess: 120
 PenaltyBreakOpenParenthesis: 0
@@ -200,7 +206,7 @@ PenaltyBreakTemplateDeclaration: 10
 PenaltyExcessCharacter: 1000000
 PenaltyIndentedWhitespace: 0
 PenaltyReturnTypeOnItsOwnLine: 1000
-PointerAlignment: Right
+PointerAlignment: Left
 PPIndentWidth:   -1
 QualifierAlignment: Leave
 ReferenceAlignment: Pointer

@@ -1,8 +1,11 @@
 #pragma once
 
-#include <iostream>
+#include <Types.h>
 
-#include <efsw/efsw.hpp>
+// -------------------------------------------
+// This code is just to test our CMake
+// -------------------------------------------
+#include <iostream>
 
 namespace vex
 {

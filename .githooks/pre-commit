@@ -1,0 +1,58 @@
+#!/bin/sh
+
+DEBUG_SCRIPT=0
+
+if [ $DEBUG_SCRIPT -eq 1 ]
+then
+    CLANG_FORMAT_VERSION = $(clang-format --version)
+    # Log directly to a file in the repository root
+    echo "Pre-commit hook started" > hook-debug.log
+    echo "Using clang-format: $CLANG_FORMAT_VERSION" >> hook-debug.log
+fi
+
+# Process each staged file directly
+git diff --cached --name-only --diff-filter=ACM | while read file; do
+    # Check if it's a C/C++ file using simple pattern matching
+    case "$file" in
+        *.c|*.cpp|*.h|*.hpp|*.cc|*.cxx)
+            if [ $DEBUG_SCRIPT -eq 1 ]
+            then
+                echo "Formatting: $file" >> hook-debug.log
+
+                # Create a copy of the file before formatting
+                cp "$file" "$file.before"
+            
+                # Run clang-format and capture its output
+                format_output=$(clang-format -i "$file" 2>&1)
+                format_status=$?
+            
+                # Log the clang-format output
+                echo "clang-format output: $format_output" >> hook-debug.log
+                echo "clang-format exit status: $format_status" >> hook-debug.log
+            
+                # Check if the file actually changed
+                if cmp -s "$file" "$file.before"; then
+                    echo "No changes made to $file" >> hook-debug.log
+                else
+                    echo "File $file was modified by clang-format" >> hook-debug.log
+                    # Show a diff of what changed
+                    diff -u "$file.before" "$file" >> hook-debug.log 2>&1
+                fi
+            
+                # Clean up the temporary copy
+                rm "$file.before"
+            else
+                clang-format -i "$file"
+            fi
+
+            # Add the formatted file back to the staging area
+            git add "$file"
+            ;;
+    esac
+done
+
+if [ $DEBUG_SCRIPT -eq 1 ]
+then
+    echo "Pre-commit hook completed" >> hook-debug.log
+fi
+exit 0
