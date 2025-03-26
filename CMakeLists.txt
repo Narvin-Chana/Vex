@@ -80,9 +80,9 @@ FetchContent_MakeAvailable(VulkanHpp)
 
 # Set static library output
 add_library(Vex STATIC 
-    src/Vex.cpp
+    
     src/Vex.h
- "src/GfxBackend.h" "src/GfxBackend.cpp" "src/Formats.h" "src/PlatformWindow.h" "src/Types.h")
+ "src/Vex/GfxBackend.h" "src/Vex/GfxBackend.cpp" "src/Vex/Formats.h" "src/Vex/PlatformWindow.h" "src/Vex/Types.h")
 
 target_include_directories(Vex PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
@@ -91,12 +91,16 @@ target_include_directories(Vex PUBLIC
 )
 
 # DX12 project files
-set(VEX_DX12_SOURCES
-)
+if (WIN32 AND VEX_ENABLE_DX12)
+    set(VEX_DX12_SOURCES
+    )
+endif()
 
 # Vulkan project files
-set(VEX_VULKAN_SOURCES
-)
+if (VEX_ENABLE_VULKAN AND Vulkan_FOUND)
+    set(VEX_VULKAN_SOURCES
+    )
+endif()
 
 # =========================================
 # REGISTER DEPENDENCIES
@@ -132,7 +136,9 @@ add_header_only_dependency(Vex efsw "${efsw_SOURCE_DIR}" "include" "efsw")
 if(WIN32 AND VEX_ENABLE_DX12)
     target_sources(Vex PRIVATE ${VEX_DX12_SOURCES})
     target_link_libraries(Vex PUBLIC d3d12.lib dxgi.lib)
-    target_compile_definitions(Vex PUBLIC VEX_DX12)
+    target_compile_definitions(Vex PUBLIC VEX_DX12=1)
+else()
+    target_compile_definitions(Vex PUBLIC VEX_DX12=0)
 endif()
 
 # Static linking to Vulkan
@@ -141,7 +147,9 @@ if(VEX_ENABLE_VULKAN AND Vulkan_FOUND)
     target_link_libraries(Vex PUBLIC Vulkan::Vulkan)
     # Make Vulkan-Hpp headers available
     add_header_only_dependency(Vex vulkanhpp "${vulkanhpp_SOURCE_DIR}" "include" "vulkan")
-    target_compile_definitions(Vex PUBLIC VEX_VULKAN)
+    target_compile_definitions(Vex PUBLIC VEX_VULKAN=1)
+else()
+    target_compile_definitions(Vex PUBLIC VEX_VULKAN=0)
 endif()
 
 # =========================================

@@ -4,7 +4,7 @@
 #include <wtypes.h>
 #endif
 
-#include <Types.h>
+#include <Vex/Types.h>
 
 namespace vex
 {
