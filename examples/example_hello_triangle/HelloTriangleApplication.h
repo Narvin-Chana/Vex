@@ -1,5 +1,10 @@
 #pragma once
 
+namespace vex
+{
+class GfxBackend;
+}
+
 class HelloTriangleApplication
 {
 public:
@@ -14,4 +19,5 @@ public:
 
 private:
     class GLFWwindow* window;
+    vex::GfxBackend* graphics;
 };
