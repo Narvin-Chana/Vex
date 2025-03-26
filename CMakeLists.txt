@@ -55,6 +55,16 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/SpartanJ/efsw.git
     GIT_TAG        1.4.1
 )
+# Completely override efsw's build options
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)  # Enable option() to override cached variables
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Force static libraries" FORCE)
+set(EFSW_SHARED OFF CACHE BOOL "Disable efsw shared library" FORCE)
+set(EFSW_STATIC ON CACHE BOOL "Enable efsw static library" FORCE)
+
+# Prevent any additional targets
+set(EFSW_BUILD_TEST OFF CACHE BOOL "Disable efsw tests" FORCE)
+set(EFSW_BUILD_SAMPLES OFF CACHE BOOL "Disable efsw samples" FORCE)
+
 FetchContent_MakeAvailable(efsw)
 
 # Fetch Vulkan-Hpp dependency
@@ -202,66 +212,3 @@ install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/VexConfigVersion.cmake"
     DESTINATION lib/cmake/Vex
 )
-
-# Clang Format and Clang Tidy Setup
-find_program(VCPKG_EXE vcpkg)
-if(NOT VCPKG_EXE)
-    message(STATUS "vcpkg not found. Consider installing it to manage dependencies.")
-    message(STATUS "Visit: https://github.com/microsoft/vcpkg")
-    message(STATUS "Then install clang tools with: vcpkg install clang:x64-windows")
-endif()
-
-message(STATUS "Searching for clang-format...")
-find_program(CLANG_FORMAT_EXE clang-format)
-if(CLANG_FORMAT_EXE)
-    message(STATUS "Found clang-format: ${CLANG_FORMAT_EXE}")
-    
-    # Get all project source files
-    file(GLOB_RECURSE ALL_SOURCE_FILES 
-        ${CMAKE_SOURCE_DIR}/src/*.cpp
-        ${CMAKE_SOURCE_DIR}/src/*.h
-        ${CMAKE_SOURCE_DIR}/include/*.h
-    )
-    
-    # Remove any files you don't want to format
-    # list(FILTER ALL_SOURCE_FILES EXCLUDE REGEX "some/path/to/exclude")
-    
-    # Format target
-    add_custom_target(format
-        COMMAND ${CLANG_FORMAT_EXE} -i ${ALL_SOURCE_FILES}
-        COMMENT "Formatting source code with clang-format"
-        VERBATIM
-    )
-else()
-    message(STATUS "clang-format not found, format target will not be available")
-endif()
-
-message(STATUS "Searching for clang-tidy...")
-find_program(CLANG_TIDY_EXE clang-tidy)
-if(CLANG_TIDY_EXE)
-    message(STATUS "Found clang-tidy: ${CLANG_TIDY_EXE}")
-
-    # Set up clang-tidy command
-    set(CMAKE_CXX_CLANG_TIDY 
-        ${CLANG_TIDY_EXE};
-    )
-
-    # Right now I've disabled clang-tidy, because it destroys performance, we could activate it as a CI action on github or pre-commit git hook if we really want it.
-    #set_target_properties(Vex PROPERTIES
-    #   CXX_CLANG_TIDY "${CMAKE_CXX_CLANG_TIDY}"
-    #)
-
-    # Allow excluding certain targets from clang-tidy
-    function(exclude_from_clang_tidy target)
-        set_target_properties(${target} PROPERTIES
-            C_CLANG_TIDY ""
-            CXX_CLANG_TIDY ""
-        )
-    endfunction()
-    
-    # Exclude external libraries (otherwise clang-tidy will take ages to run)
-    exclude_from_clang_tidy(efsw)
-    exclude_from_clang_tidy(efsw-static)
-else()
-    message(STATUS "clang-tidy not found, static analysis integration will not be available")
-endif()
