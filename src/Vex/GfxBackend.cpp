@@ -1,31 +1,21 @@
 #include "GfxBackend.h"
-#include <memory>
+
+#include <Vex/Logger.h>
 
 namespace vex
 {
-std::unique_ptr<GfxBackend> GGraphics = nullptr;
-
-GfxBackend* CreateGraphicsBackend(const BackendDescription& description)
+UniqueHandle<GfxBackend> CreateGraphicsBackend(const BackendDescription& description)
 {
-    if (GGraphics)
+    if (description.platformWindow.width == 0 || description.platformWindow.height == 0)
     {
-        // LOG fatal error
-        return nullptr;
+        VexLog(Fatal,
+               "Unable to create a window with width {} and height {}.",
+               description.platformWindow.width,
+               description.platformWindow.height);
+        return {};
     }
 
-    GGraphics = std::make_unique<GfxBackend>(description);
-    return GGraphics.get();
-}
-
-void DestroyGraphicsBackend(GfxBackend* backend)
-{
-    if (GGraphics.get() != backend)
-    {
-        // LOG fatal error
-        return;
-    }
-
-    GGraphics.reset();
+    return MakeUnique<GfxBackend>(description);
 }
 
 GfxBackend::GfxBackend(const BackendDescription& description)
