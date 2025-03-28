@@ -28,7 +28,8 @@ inline LogLevel GLogLevelFilter = Info;
 #define VEX_LOGGING_IOSTREAM (1 << 0)
 #define VEX_LOGGING_FILE (1 << 1)
 
-// TODO: Set this via CMake options, will be improved further in a logging specific MR.
+// TODO: Set this via CMake options? Or should be changeable via global func? Will be improved further in a logging
+// specific MR.
 #define VEX_LOGGING_TYPE (VEX_LOGGING_IOSTREAM | VEX_LOGGING_FILE)
 
 #if VEX_LOGGING_TYPE != 0

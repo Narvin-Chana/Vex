@@ -2,8 +2,6 @@
 
 // Defines platform agnostic debug macros such as assert or debug break.
 
-// TODO: will be improved in the future logging MR, should be passed in by CMake.
-#define VEX_DEBUG 1
 #if VEX_DEBUG
 
 #if defined(_WIN32)
