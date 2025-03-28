@@ -1,9 +1,6 @@
 #pragma once
 
-namespace vex
-{
-class GfxBackend;
-}
+#include <Vex.h>
 
 class HelloTriangleApplication
 {
@@ -12,12 +9,7 @@ public:
     ~HelloTriangleApplication();
     void Run();
 
-    HelloTriangleApplication(const HelloTriangleApplication&) = default;
-    HelloTriangleApplication& operator=(const HelloTriangleApplication&) = default;
-    HelloTriangleApplication(HelloTriangleApplication&&) = default;
-    HelloTriangleApplication& operator=(HelloTriangleApplication&&) = default;
-
 private:
     class GLFWwindow* window;
-    vex::GfxBackend* graphics;
+    vex::UniqueHandle<vex::GfxBackend> graphics;
 };

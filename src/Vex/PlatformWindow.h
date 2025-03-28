@@ -9,9 +9,9 @@
 namespace vex
 {
 
-#ifdef _WIN32
+#if defined(_WIN32)
 using PlatformWindowHandle = HWND;
-#elif __linux__
+#elif defined(__linux__)
 // TODO: FIGURE OUT THE HANDLE TYPE ON LINUX
 using PlatformWindowHandle = int;
 #endif
