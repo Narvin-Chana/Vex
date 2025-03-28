@@ -10,6 +10,16 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/GitHooks.cmake)
 
 # =========================================
+# Set configuration flags
+# Debug: Full debug symbols
+# Development: Optimizations with some debug symbols
+# Release: Fully optimized build without debug symbols
+# =========================================
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DVEX_DEBUG=1 -DVEX_DEVELOPMENT=0 -DVEX_SHIPPING=0")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -DVEX_DEBUG=0 -DVEX_DEVELOPMENT=1 -DVEX_SHIPPING=0")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DVEX_DEBUG=0 -DVEX_DEVELOPMENT=0 -DVEX_SHIPPING=1")
+
+# =========================================
 # Check for available graphics APIs
 # =========================================
 message(STATUS "Checking for available graphics APIs...")
