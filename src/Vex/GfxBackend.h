@@ -7,10 +7,17 @@
 namespace vex
 {
 
+enum class GraphicsAPI : u8
+{
+    DirectX12,
+    Vulkan
+};
+
 struct BackendDescription
 {
+    GraphicsAPI api;
     PlatformWindow platformWindow;
-    Format swapChainFormat;
+    TextureFormat swapChainFormat;
 };
 
 class GfxBackend

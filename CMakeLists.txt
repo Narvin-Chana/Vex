@@ -92,7 +92,7 @@ FetchContent_MakeAvailable(VulkanHpp)
 add_library(Vex STATIC 
     
     src/Vex.h
- "src/Vex/GfxBackend.h" "src/Vex/GfxBackend.cpp" "src/Vex/Formats.h" "src/Vex/PlatformWindow.h" "src/Vex/Types.h" "src/Vex/UniqueHandle.h" "src/Vex/Logger.h" "src/Vex/Debug.h")
+ "src/Vex/GfxBackend.h" "src/Vex/GfxBackend.cpp" "src/Vex/Formats.h" "src/Vex/PlatformWindow.h" "src/Vex/Types.h" "src/Vex/UniqueHandle.h" "src/Vex/Logger.h" "src/Vex/Debug.h" )
 
 target_include_directories(Vex PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
@@ -102,13 +102,13 @@ target_include_directories(Vex PUBLIC
 
 # DX12 project files
 if (WIN32 AND VEX_ENABLE_DX12)
-    set(VEX_DX12_SOURCES
+    set(VEX_DX12_SOURCES "src/DX12/Formats.h"
     )
 endif()
 
 # Vulkan project files
 if (VEX_ENABLE_VULKAN AND Vulkan_FOUND)
-    set(VEX_VULKAN_SOURCES
+    set(VEX_VULKAN_SOURCES "src/Vulkan/Formats.h"
     )
 endif()
 
