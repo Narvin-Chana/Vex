@@ -1,5 +1,0 @@
----
-Checks: 'bugprone-*,clang-analyzer-*,cppcoreguidelines-*,modernize-*,performance-*, -cppcoreguidelines-macro-usage, -modernize-use-trailing-return-type, -cppcoreguidelines-prefer-member-initializer, -bugprone-easily-swappable-parameters, -bugprone-exception-escape'
-WarningsAsErrors: '*'
-HeaderFilterRegex: '^${CMAKE_SOURCE_DIR}/(src|examples)/(?!.*_deps/).*$'
-FormatStyle: file
