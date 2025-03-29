@@ -102,6 +102,29 @@ jobs:
       with:
         submodules: recursive
 
+    # GitHub Action's ubuntu image has a GCC which does not support <print> (added in GCC 13).
+    - name: Install latest GCC
+      if: matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'gcc'
+      run: |
+        # Add the ubuntu-toolchain-r/test PPA which provides newer GCC versions
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        sudo apt-get update
+        
+        # Find the latest GCC version available
+        LATEST_GCC=$(apt-cache search 'gcc-[0-9]+' | grep -oP 'gcc-\K[0-9]+' | sort -rn | head -n1)
+        echo "Latest GCC version found: gcc-$LATEST_GCC"
+        
+        # Install the latest GCC version
+        sudo apt-get install -y gcc-$LATEST_GCC g++-$LATEST_GCC
+        
+        # Set the latest GCC as the default
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-$LATEST_GCC 100
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-$LATEST_GCC 100
+        
+        # Verify the version
+        gcc --version
+        g++ --version
+
     - name: Install Vulkan SDK (Windows)
       if: matrix.os == 'windows-latest'
       uses: humbletim/setup-vulkan-sdk@523828e49cd4afabce369c39c7ee6543a2b7a735
