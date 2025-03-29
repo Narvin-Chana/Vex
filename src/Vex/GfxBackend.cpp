@@ -8,10 +8,10 @@ UniqueHandle<GfxBackend> CreateGraphicsBackend(const BackendDescription& descrip
 {
     if (description.platformWindow.width == 0 || description.platformWindow.height == 0)
     {
-        VexLog(Fatal,
-               "Unable to create a window with width {} and height {}.",
-               description.platformWindow.width,
-               description.platformWindow.height);
+        VEX_LOG(Fatal,
+                "Unable to create a window with width {} and height {}.",
+                description.platformWindow.width,
+                description.platformWindow.height);
         return {};
     }
 
@@ -21,6 +21,10 @@ UniqueHandle<GfxBackend> CreateGraphicsBackend(const BackendDescription& descrip
 GfxBackend::GfxBackend(const BackendDescription& description)
     : description(description)
 {
+    VEX_LOG(Info,
+            "Created graphics backend with width {} and height {}.",
+            description.platformWindow.width,
+            description.platformWindow.height);
 }
 
 } // namespace vex
