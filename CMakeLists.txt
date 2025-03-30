@@ -89,10 +89,22 @@ FetchContent_MakeAvailable(VulkanHpp)
 # =========================================
 
 # Set static library output
-add_library(Vex STATIC 
-    
-    src/Vex.h
- "src/Vex/GfxBackend.h" "src/Vex/GfxBackend.cpp" "src/Vex/Formats.h" "src/Vex/PlatformWindow.h" "src/Vex/Types.h" "src/Vex/UniqueHandle.h" "src/Vex/Logger.h" "src/Vex/Logger.cpp" "src/Vex/Debug.h")
+add_library(Vex STATIC     
+    "src/Vex.h"
+    "src/Vex/GfxBackend.h" 
+    "src/Vex/GfxBackend.cpp" 
+    "src/Vex/Formats.h" 
+    "src/Vex/PlatformWindow.h" 
+    "src/Vex/Types.h" 
+    "src/Vex/UniqueHandle.h" 
+    "src/Vex/Logger.h" 
+    "src/Vex/Debug.h" 
+    "src/Vex/FeatureChecker.h" 
+    "src/Vex/FeatureChecker.cpp" 
+    "src/Vex/RHI.h"  
+    "src/Vex.cpp" 
+    "src/Vex/Logger.cpp"
+)
 
 target_include_directories(Vex PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
@@ -102,14 +114,22 @@ target_include_directories(Vex PUBLIC
 
 # DX12 project files
 if (WIN32 AND VEX_ENABLE_DX12)
-    set(VEX_DX12_SOURCES "src/DX12/Formats.h"
-    )
+    set(VEX_DX12_SOURCES 
+        "src/DX12/Formats.h" 
+        "src/DX12/DX12FeatureChecker.h"
+        "src/DX12/DX12FeatureChecker.cpp"
+        "src/DX12/DX12RHI.h"
+     "src/DX12/DX12RHI.cpp")
 endif()
 
 # Vulkan project files
 if (VEX_ENABLE_VULKAN AND Vulkan_FOUND)
-    set(VEX_VULKAN_SOURCES "src/Vulkan/Formats.h"
-    )
+    set(VEX_VULKAN_SOURCES
+        "src/Vulkan/Formats.h" 
+        "src/Vulkan/VkFeatureChecker.h"
+        "src/Vulkan/VkFeatureChecker.cpp"
+        "src/Vulkan/VkRHI.h"
+     "src/Vulkan/VkRHI.cpp")
 endif()
 
 # =========================================

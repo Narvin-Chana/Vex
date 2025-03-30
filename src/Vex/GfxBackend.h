@@ -7,15 +7,10 @@
 namespace vex
 {
 
-enum class GraphicsAPI : u8
-{
-    DirectX12,
-    Vulkan
-};
+struct RenderHardwareInterface;
 
 struct BackendDescription
 {
-    GraphicsAPI api;
     PlatformWindow platformWindow;
     TextureFormat swapChainFormat;
 };
@@ -23,12 +18,12 @@ struct BackendDescription
 class GfxBackend
 {
 public:
-    GfxBackend(const BackendDescription& description);
+    GfxBackend(UniqueHandle<RenderHardwareInterface>&& rhi, const BackendDescription& description);
+    ~GfxBackend();
 
 private:
+    UniqueHandle<RenderHardwareInterface> rhi;
     BackendDescription description;
 };
-
-UniqueHandle<GfxBackend> CreateGraphicsBackend(const BackendDescription& description);
 
 } // namespace vex

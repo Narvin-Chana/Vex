@@ -25,8 +25,8 @@ HelloTriangleApplication::HelloTriangleApplication()
     int platformWindow = -1;
 #endif
     graphics = vex::CreateGraphicsBackend(
-        { .api = vex::GraphicsAPI::Vulkan,
-          .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
+        vex::GraphicsAPI::Vulkan,
+        { .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
           .swapChainFormat = vex::TextureFormat::RGBA8_UNORM });
 }
 
