@@ -1,5 +1,8 @@
 #include "VkRHI.h"
 
+#include <ranges>
+#include <set>
+
 #include <Vex/Logger.h>
 #include <Vex/PlatformWindow.h>
 
@@ -143,9 +146,75 @@ std::vector<UniqueHandle<PhysicalDevice>> VkRHI::EnumeratePhysicalDevices()
     return physicalDevices;
 }
 
-void VkRHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
+void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
 {
-    // TODO: init device for the passed in physical device.
+    ::vk::PhysicalDevice physDevice = static_cast<VkPhysicalDevice*>(vexPhysicalDevice.get())->physicalDevice;
+
+    i32 graphicsQueueFamily = -1;
+    i32 computeQueueFamily = -1;
+    i32 copyQueueFamily = -1;
+
+    std::vector<::vk::QueueFamilyProperties> queueFamilies = physDevice.getQueueFamilyProperties();
+    for (const auto& [i, property] : queueFamilies | std::views::enumerate)
+    {
+        bool presentSupported = Sanitize(physDevice.getSurfaceSupportKHR(static_cast<uint32_t>(i), *surface));
+
+        if (graphicsQueueFamily == -1 && presentSupported && property.queueFlags & ::vk::QueueFlagBits::eGraphics)
+        {
+            graphicsQueueFamily = static_cast<i32>(i);
+        }
+        else if (computeQueueFamily == -1 && property.queueFlags & ::vk::QueueFlagBits::eCompute)
+        {
+            computeQueueFamily = static_cast<i32>(i);
+        }
+        else if (copyQueueFamily == -1 && property.queueFlags & ::vk::QueueFlagBits::eTransfer)
+        {
+            copyQueueFamily = static_cast<i32>(i);
+        }
+    }
+
+    std::set uniqueQueueFamilies{ graphicsQueueFamily, computeQueueFamily, copyQueueFamily };
+    uniqueQueueFamilies.erase(-1);
+
+    float queuePriority = 1.0f;
+    std::vector<::vk::DeviceQueueCreateInfo> queueCreateInfos;
+    for (uint32_t queueFamily : uniqueQueueFamilies)
+    {
+        ::vk::DeviceQueueCreateInfo queueCreateInfo{
+            .queueFamilyIndex = queueFamily,
+            .queueCount = 1,
+            .pQueuePriorities = &queuePriority,
+        };
+        queueCreateInfos.push_back(queueCreateInfo);
+    }
+
+    std::vector extensions = GetDefaultDeviceExtensions();
+
+    auto physDeviceFeatures = physDevice.getFeatures();
+
+    ::vk::DeviceCreateInfo deviceCreateInfo{ .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
+                                             .pQueueCreateInfos = queueCreateInfos.data(),
+                                             .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+                                             .ppEnabledExtensionNames = extensions.data(),
+                                             .pEnabledFeatures = &physDeviceFeatures };
+
+    device = Sanitize(physDevice.createDeviceUnique(deviceCreateInfo));
+
+    if (graphicsQueueFamily == -1)
+    {
+        VEX_LOG(Fatal, "Unable to create graphics queue on device!");
+    }
+    graphicsQueue = device->getQueue(graphicsQueueFamily, 0);
+
+    if (computeQueueFamily != -1)
+    {
+        computeQueue = device->getQueue(computeQueueFamily, 0);
+    }
+
+    if (copyQueueFamily != -1)
+    {
+        copyQueue = device->getQueue(copyQueueFamily, 0);
+    }
 }
 
 } // namespace vex::vk

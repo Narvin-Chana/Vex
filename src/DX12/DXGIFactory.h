@@ -11,7 +11,7 @@ class DXGIFactory
 public:
     static void InitializeDXGIFactory();
     // A nullptr adapter will create a device using the default adapter.
-    static ComPtr<ID3D12Device> CreateDevice(IDXGIAdapter* adapter, D3D_FEATURE_LEVEL minimumFeatureLevel);
+    static ComPtr<DX12Device> CreateDevice(IDXGIAdapter* adapter, D3D_FEATURE_LEVEL minimumFeatureLevel);
     static std::string GetDeviceAdapterName(const ComPtr<ID3D12Device>& device);
 
     static ComPtr<IDXGIFactory7> dxgiFactory;

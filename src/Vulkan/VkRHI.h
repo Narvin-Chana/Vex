@@ -26,6 +26,11 @@ private:
 
     ::vk::UniqueInstance instance;
     ::vk::UniqueSurfaceKHR surface;
+    ::vk::UniqueDevice device;
+
+    ::vk::Queue copyQueue;
+    ::vk::Queue graphicsQueue;
+    ::vk::Queue computeQueue;
 };
 
 } // namespace vex::vk

@@ -18,8 +18,19 @@
 #define VEX_DEBUG_BREAK() ((void)0)
 #endif
 
+#define VEX_ASSERT(cond, ...)                                                                                          \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if (!(cond))                                                                                                   \
+        {                                                                                                              \
+            VEX_DEBUG_BREAK();                                                                                         \
+        }                                                                                                              \
+    }                                                                                                                  \
+    while (0)
+
 #else
 
 #define VEX_DEBUG_BREAK()
+#define VEX_ASSERT(cond, ...)
 
 #endif

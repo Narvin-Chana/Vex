@@ -14,9 +14,9 @@ void DXGIFactory::InitializeDXGIFactory()
     chk << CreateDXGIFactory2(0, IID_PPV_ARGS(&dxgiFactory));
 }
 
-ComPtr<ID3D12Device> DXGIFactory::CreateDevice(IDXGIAdapter* adapter, D3D_FEATURE_LEVEL minimumFeatureLevel)
+ComPtr<DX12Device> DXGIFactory::CreateDevice(IDXGIAdapter* adapter, D3D_FEATURE_LEVEL minimumFeatureLevel)
 {
-    ComPtr<ID3D12Device10> device;
+    ComPtr<DX12Device> device;
     chkSoft << D3D12CreateDevice(adapter, minimumFeatureLevel, IID_PPV_ARGS(&device));
     return device;
 }

@@ -20,6 +20,15 @@ public:
 
     virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() override;
     virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) override;
+
+private:
+    bool enableGPUDebugLayer = false;
+
+    ComPtr<DX12Device> device;
+
+    ComPtr<ID3D12CommandQueue> copyQueue;
+    ComPtr<ID3D12CommandQueue> asyncComputeQueue;
+    ComPtr<ID3D12CommandQueue> graphicsQueue;
 };
 
 } // namespace vex::dx12

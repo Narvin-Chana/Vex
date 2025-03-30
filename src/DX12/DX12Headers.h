@@ -13,4 +13,6 @@ namespace vex::dx12
 template <class T>
 using ComPtr = Microsoft::WRL::ComPtr<T>;
 
-}
+using DX12Device = ID3D12Device14;
+
+} // namespace vex::dx12

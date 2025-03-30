@@ -3,13 +3,16 @@
 #include <Vex/Logger.h>
 #include <Vex/PlatformWindow.h>
 
+#include <DX12/DX12Debug.h>
 #include <DX12/DX12PhysicalDevice.h>
 #include <DX12/DXGIFactory.h>
+#include <DX12/HRChecker.h>
 
 namespace vex::dx12
 {
 
 DX12RHI::DX12RHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation)
+    : enableGPUDebugLayer(enableGPUDebugLayer)
 {
     HMODULE d3d12Module = GetModuleHandleA("D3D12Core.dll");
     if (d3d12Module)
@@ -23,9 +26,17 @@ DX12RHI::DX12RHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLa
     }
 
     DXGIFactory::InitializeDXGIFactory();
+
+    InitializeDebugLayer(enableGPUDebugLayer, enableGPUBasedValidation);
 }
 
-DX12RHI::~DX12RHI() = default;
+DX12RHI::~DX12RHI()
+{
+    if (enableGPUDebugLayer)
+    {
+        CleanupDebugMessageCallback(device);
+    }
+}
 
 std::vector<UniqueHandle<PhysicalDevice>> DX12RHI::EnumeratePhysicalDevices()
 {
@@ -38,10 +49,17 @@ std::vector<UniqueHandle<PhysicalDevice>> DX12RHI::EnumeratePhysicalDevices()
                                                                 DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
                                                                 IID_PPV_ARGS(&adapter)) != DXGI_ERROR_NOT_FOUND)
     {
-        if (ComPtr<ID3D12Device> device = DXGIFactory::CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_0))
+        ComPtr<ID3D12Device> device;
+        if (SUCCEEDED(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&device))) && device)
         {
-            physicalDevices.push_back(MakeUnique<DX12PhysicalDevice>(std::move(adapter), device));
-            adapter = nullptr;
+            // Make sure we can cast the device to our chosen dx12 device type.
+            ComPtr<DX12Device> minVersionDevice;
+            device.As(&minVersionDevice);
+            if (minVersionDevice)
+            {
+                physicalDevices.push_back(MakeUnique<DX12PhysicalDevice>(std::move(adapter), minVersionDevice));
+                adapter = nullptr;
+            }
         }
 
         adapterIndex++;
@@ -52,7 +70,39 @@ std::vector<UniqueHandle<PhysicalDevice>> DX12RHI::EnumeratePhysicalDevices()
 
 void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
 {
-    // TODO: init device for the passed in physical device.
+    device = DXGIFactory::CreateDevice(
+        static_cast<DX12PhysicalDevice*>(physicalDevice.get())->adapter.Get(),
+        DX12FeatureChecker::ConvertFeatureLevelToDX12FeatureLevel(physicalDevice->featureChecker->GetFeatureLevel()));
+    VEX_ASSERT(device.Get(), "D3D12 device creation must succeed");
+
+    if (enableGPUDebugLayer)
+    {
+        SetupDebugMessageCallback(device);
+    }
+
+    {
+        D3D12_COMMAND_QUEUE_DESC desc{ .Type = D3D12_COMMAND_LIST_TYPE_DIRECT,
+                                       .Priority = D3D12_COMMAND_QUEUE_PRIORITY_HIGH,
+                                       .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
+                                       .NodeMask = 0 };
+        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&graphicsQueue));
+    }
+
+    {
+        D3D12_COMMAND_QUEUE_DESC desc{ .Type = D3D12_COMMAND_LIST_TYPE_COMPUTE,
+                                       .Priority = D3D12_COMMAND_QUEUE_PRIORITY_HIGH,
+                                       .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
+                                       .NodeMask = 0 };
+        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&asyncComputeQueue));
+    }
+
+    {
+        D3D12_COMMAND_QUEUE_DESC desc{ .Type = D3D12_COMMAND_LIST_TYPE_COPY,
+                                       .Priority = D3D12_COMMAND_QUEUE_PRIORITY_HIGH,
+                                       .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
+                                       .NodeMask = 0 };
+        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&copyQueue));
+    }
 }
 
 } // namespace vex::dx12
