@@ -7,7 +7,7 @@ namespace vex::vk
 class VkFeatureChecker : public vex::FeatureChecker
 {
 public:
-    virtual ~VkFeatureChecker();
+    virtual ~VkFeatureChecker() override;
     virtual bool IsFeatureSupported(Feature feature) override;
     virtual FeatureLevel GetFeatureLevel() override;
     virtual ResourceBindingTier GetResourceBindingTier() override;
