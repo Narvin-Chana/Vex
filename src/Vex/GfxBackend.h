@@ -18,7 +18,7 @@ struct BackendDescription
 class GfxBackend
 {
 public:
-    GfxBackend(UniqueHandle<RenderHardwareInterface>&& rhi, const BackendDescription& description);
+    GfxBackend(UniqueHandle<RenderHardwareInterface>&& newRHI, const BackendDescription& description);
     ~GfxBackend();
 
 private:
