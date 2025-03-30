@@ -1,13 +1,15 @@
 #include "DX12RHI.h"
 
-#include <DX12/DXGIFactory.h>
 #include <Vex/Logger.h>
+#include <Vex/PlatformWindow.h>
+
+#include <DX12/DX12PhysicalDevice.h>
+#include <DX12/DXGIFactory.h>
 
 namespace vex::dx12
 {
 
-DX12RHI::DX12RHI(bool enableGPUDebugLayer, bool enableGPUBasedValidation)
-    : featureChecker(DXGIFactory::CreateDevice(nullptr))
+DX12RHI::DX12RHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation)
 {
     HMODULE d3d12Module = GetModuleHandleA("D3D12Core.dll");
     if (d3d12Module)
@@ -19,13 +21,45 @@ DX12RHI::DX12RHI(bool enableGPUDebugLayer, bool enableGPUBasedValidation)
                 "are correctly using the D3D12-Agility-SDK!",
                 std::string(path));
     }
+
+    DXGIFactory::InitializeDXGIFactory();
 }
 
 DX12RHI::~DX12RHI() = default;
 
-FeatureChecker& DX12RHI::GetFeatureChecker()
+std::vector<UniqueHandle<PhysicalDevice>> DX12RHI::EnumeratePhysicalDevices()
 {
-    return featureChecker;
+    std::vector<UniqueHandle<PhysicalDevice>> physicalDevices;
+
+    u32 adapterIndex = 0;
+    ComPtr<IDXGIAdapter4> adapter;
+
+    while (DXGIFactory::dxgiFactory->EnumAdapterByGpuPreference(adapterIndex,
+                                                                DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
+                                                                IID_PPV_ARGS(&adapter)) != DXGI_ERROR_NOT_FOUND)
+    {
+        DXGI_ADAPTER_DESC3 desc;
+        adapter->GetDesc3(&desc);
+
+        if (ComPtr<ID3D12Device> device = DXGIFactory::CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_0))
+        {
+            UniqueHandle<DX12PhysicalDevice> physicalDevice = MakeUnique<DX12PhysicalDevice>();
+            physicalDevice->deviceName = DXGIFactory::GetDeviceAdapterName(device);
+            physicalDevice->dedicatedVideoMemoryMB = static_cast<double>(desc.DedicatedVideoMemory) / (1024.0 * 1024.0);
+            physicalDevice->featureChecker = MakeUnique<DX12FeatureChecker>(device);
+            physicalDevice->adapter = adapter;
+            physicalDevices.push_back(std::move(physicalDevice));
+        }
+
+        adapterIndex++;
+    }
+
+    return physicalDevices;
+}
+
+void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
+{
+    // TODO: init device for the passed in physical device.
 }
 
 } // namespace vex::dx12

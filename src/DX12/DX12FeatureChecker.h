@@ -13,7 +13,6 @@ class DX12FeatureChecker : public vex::FeatureChecker
 public:
     DX12FeatureChecker(const ComPtr<ID3D12Device>& device);
     virtual ~DX12FeatureChecker();
-    virtual std::string_view GetPhysicalDeviceName() override;
     virtual bool IsFeatureSupported(Feature feature) override;
     virtual FeatureLevel GetFeatureLevel() override;
     virtual ResourceBindingTier GetResourceBindingTier() override;
@@ -21,7 +20,6 @@ public:
 
 private:
     // Cached feature support data (to avoid requerying the device).
-    std::string adapterName;
     D3D12_FEATURE_DATA_D3D12_OPTIONS options;
     D3D12_FEATURE_DATA_D3D12_OPTIONS1 options1;
     D3D12_FEATURE_DATA_D3D12_OPTIONS7 options7;

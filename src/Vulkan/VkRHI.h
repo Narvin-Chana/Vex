@@ -14,19 +14,18 @@ namespace vex::vk
 
 class VkRHI : public vex::RHI
 {
-    ::vk::UniqueInstance instance;
-    ::vk::UniqueSurfaceKHR surface;
-
 public:
     VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation);
     virtual ~VkRHI() override;
 
-    virtual FeatureChecker& GetFeatureChecker() override;
+    virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() override;
+    virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) override;
 
 private:
     void InitWindow(const PlatformWindowHandle& windowHandle);
 
-    VkFeatureChecker featureChecker;
+    ::vk::UniqueInstance instance;
+    ::vk::UniqueSurfaceKHR surface;
 };
 
 } // namespace vex::vk

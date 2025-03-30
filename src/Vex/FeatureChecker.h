@@ -1,9 +1,6 @@
 #pragma once
 
-#include <string_view>
-
 #include <Vex/Types.h>
-#include <Vex/UniqueHandle.h>
 
 namespace vex
 {
@@ -57,15 +54,10 @@ class FeatureChecker
 {
 public:
     virtual ~FeatureChecker() = default;
-    virtual std::string_view GetPhysicalDeviceName() = 0;
     virtual bool IsFeatureSupported(Feature feature) = 0;
     virtual FeatureLevel GetFeatureLevel() = 0;
     virtual ResourceBindingTier GetResourceBindingTier() = 0;
     virtual ShaderModel GetShaderModel() = 0;
-
-#if !VEX_SHIPPING
-    void DumpFeatureSupport();
-#endif
 };
 
 } // namespace vex

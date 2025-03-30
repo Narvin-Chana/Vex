@@ -131,9 +131,10 @@ add_library(Vex STATIC
     "src/Vex/Logger.cpp"
     "src/Vex/Debug.h" 
     "src/Vex/FeatureChecker.h" 
-    "src/Vex/FeatureChecker.cpp" 
     "src/Vex/RHI.h"  
- )
+    "src/Vex/PhysicalDevice.h"
+    "src/Vex/PhysicalDevice.cpp"
+)
 
 if (WIN32)
     target_sources(Vex PRIVATE
@@ -163,6 +164,7 @@ if (WIN32 AND VEX_ENABLE_DX12)
         "src/DX12/HRChecker.cpp"
         "src/DX12/DXGIFactory.h"
         "src/DX12/DXGIFactory.cpp"
+        "src/DX12/DX12PhysicalDevice.h"
     )
 endif()
 
@@ -180,6 +182,7 @@ if (VEX_ENABLE_VULKAN AND Vulkan_FOUND)
         "src/Vulkan/VkDebug.cpp"
         "src/Vulkan/VkErrorHandler.h"
         "src/Vulkan/VkErrorHandler.cpp"
+        "src/Vulkan/VkPhysicalDevice.h"
     )
 endif()
 
