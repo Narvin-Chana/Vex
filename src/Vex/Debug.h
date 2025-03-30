@@ -2,10 +2,12 @@
 
 // Defines platform agnostic debug macros such as assert or debug break.
 
-#if VEX_DEBUG
+#if !VEX_SHIPPING
 
 #if defined(_WIN32)
-#include <debugapi.h>
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
 #define VEX_DEBUG_BREAK() DebugBreak()
 #elif defined(__linux__)
 #include <signal.h>

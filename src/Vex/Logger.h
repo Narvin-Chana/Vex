@@ -1,7 +1,14 @@
 #pragma once
 
 #include <cstdlib>
+#include <filesystem>
+#include <format>
+#include <fstream>
+#include <optional>
 #include <print>
+#include <string>
+#include <string_view>
+#include <utility>
 
 #include <Vex/Debug.h>
 #include <Vex/Types.h>
@@ -9,7 +16,9 @@
 namespace vex
 {
 
-// TODO: Improvements to logger will be made in another MR. This is just to get something simple working.
+// Format the current system time
+std::string GetTimestampString();
+
 enum LogLevel : u8
 {
     Info,
@@ -18,36 +27,104 @@ enum LogLevel : u8
     Fatal
 };
 
-// Calls to log with a lower level than this will be ignored.
-inline LogLevel GLogLevelFilter = Info;
+constexpr inline std::string_view LogLevelToString(LogLevel logLevel)
+{
+    switch (logLevel)
+    {
+    case Info:
+        return "Info";
+    case Warning:
+        return "Warning";
+    case Error:
+        return "Error";
+    case Fatal:
+        return "Fatal";
+    default:
+        return "Invalid";
+    }
+
+    std::unreachable();
+}
+
+using LogDestinationFlagsType = u8;
+enum LogDestinationFlags : LogDestinationFlagsType
+{
+    None = 0,
+    Console = 1 << 0,
+    File = 1 << 1
+};
+
+struct Logger
+{
+    Logger();
+    ~Logger();
+
+    template <class... Args>
+    void Log(LogLevel level, std::format_string<Args...> formatMessage, Args&&... args)
+    {
+        std::string timeStampedFormatMessage = std::format("[{}][{}] {}",
+                                                           GetTimestampString(),
+                                                           LogLevelToString(level),
+                                                           std::format(formatMessage, std::forward<Args>(args)...));
+
+        if (destinationFlags & Console)
+        {
+            std::println("{}", timeStampedFormatMessage);
+        }
+
+        if (destinationFlags & File)
+        {
+            if (!logOutput)
+            {
+                OpenLogFile();
+            }
+            *logOutput << timeStampedFormatMessage << '\n';
+            // Frequent flush means that even on a crash, the log output will be present.
+            // This is obviously not great in terms of performance, but for logging this is acceptable.
+            logOutput->flush();
+        }
+    }
+
+    static LogLevel GetLogLevelFilter();
+    static std::filesystem::path GetLogFilePath();
+
+    static void SetLogLevelFilter(LogLevel newFilter);
+    // Change directory in which the log file we be created. Will not change the name of the output file.
+    static void SetLogFilePath(const std::filesystem::path& newLogFilePath);
+    static void SetLogDestination(LogDestinationFlagsType newDestinations);
+
+private:
+    void OpenLogFile();
+    void CloseLogFile();
+
+    // Closes the stream and renames the log file with the current timestamp.
+    void CommitTimestampedLogFile();
+
+    static constexpr const char* LogFileName = "vex";
+    static constexpr const char* LogFileFormat = ".log";
+    static constexpr const char* LogFileNameFormat = "vex.log";
+
+    // Calls to log with a lower level than this will be ignored.
+    LogLevel levelFilter = Info;
+    LogDestinationFlagsType destinationFlags = Console | File;
+
+    std::filesystem::path filePath = std::filesystem::current_path() / "logs" / LogFileNameFormat;
+    std::optional<std::ofstream> logOutput;
+};
+
+inline Logger GLogger;
 
 } // namespace vex
 
-#define VEX_LOGGING_NONE 0
-#define VEX_LOGGING_IOSTREAM (1 << 0)
-#define VEX_LOGGING_FILE (1 << 1)
-
-// TODO: Set this via CMake options? Or should be changeable via global func? Will be improved further in a logging
-// specific MR.
-#define VEX_LOGGING_TYPE (VEX_LOGGING_IOSTREAM | VEX_LOGGING_FILE)
-
-#if VEX_LOGGING_TYPE != 0
-
-// Doing logging like this instead of with a function allows for two things:
-//      1. DebugBreak will break in the actual code, avoiding us having to move up once in the stack to get the the
-//      actual code causing the error.
-//      2. std::print contains compile-time verification of the print arguments, this will avoid problems with
-//      formatting.
-#define VexLog(level, message, ...)                                                                                    \
-    if (level >= vex::GLogLevelFilter)                                                                                 \
+// Doing logging like this instead of with a function allows for DebugBreak to break in the actual code, avoiding us
+// having to move up once in the call stack to get to the the actual code causing the error.
+#define VEX_LOG(level, message, ...)                                                                                   \
+    if (level >= vex::Logger::GetLogLevelFilter())                                                                     \
     {                                                                                                                  \
-        std::print(message, __VA_ARGS__);                                                                              \
+        vex::GLogger.Log(level, message, __VA_ARGS__);                                                                 \
         if (level == Fatal) /* Fatal error! Must exit. */                                                              \
         {                                                                                                              \
             VEX_DEBUG_BREAK();                                                                                         \
             std::exit(1);                                                                                              \
         }                                                                                                              \
     }
-#else
-#define VexLog(level, message, ...)
-#endif
