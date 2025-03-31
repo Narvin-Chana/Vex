@@ -11,7 +11,7 @@ class VkRHI : public vex::RHI
 {
 public:
     virtual ~VkRHI() override;
-    virtual FeatureChecker& GetFeatureChecker();
+    virtual FeatureChecker& GetFeatureChecker() override;
 
 private:
     VkFeatureChecker featureChecker;
