@@ -10,6 +10,7 @@ namespace vex::dx12
 class DX12RHI : public vex::RHI
 {
 public:
+    DX12RHI();
     virtual ~DX12RHI() override;
     virtual FeatureChecker& GetFeatureChecker() override;
 

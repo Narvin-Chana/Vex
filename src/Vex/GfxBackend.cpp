@@ -17,11 +17,11 @@ GfxBackend::GfxBackend(UniqueHandle<RenderHardwareInterface>&& newRHI, const Bac
             description.platformWindow.height);
 
     // Option A:
-    VEX_LOG(Info, "Feature check: {}", rhi->GetFeatureChecker().IsFeatureSupported(Feature::Compute));
+    VEX_LOG(Info, "Feature check: {}", rhi->GetFeatureChecker().IsFeatureSupported(Feature::MeshShader));
 
     // Option B:
     // featureChecker = rhi->CreateFeatureChecker();
-    // featureChecker->IsFeatureSupported(Feature::Compute);
+    // featureChecker->IsFeatureSupported(Feature::MeshShader);
 }
 
 GfxBackend::~GfxBackend() = default;

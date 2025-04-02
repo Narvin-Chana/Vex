@@ -106,6 +106,15 @@ add_library(Vex STATIC
     "src/Vex/Logger.cpp"
 )
 
+if (WIN32)
+    target_sources(Vex PRIVATE
+        "src/Vex/Platform/Windows/WString.h"
+        "src/Vex/Platform/Windows/HResult.h"
+    )
+endif()
+
+# TODO: add linux platform sources
+
 target_include_directories(Vex PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
@@ -119,7 +128,13 @@ if (WIN32 AND VEX_ENABLE_DX12)
         "src/DX12/DX12FeatureChecker.h"
         "src/DX12/DX12FeatureChecker.cpp"
         "src/DX12/DX12RHI.h"
-     "src/DX12/DX12RHI.cpp")
+        "src/DX12/DX12RHI.cpp"
+        "src/DX12/DX12Types.h"
+        "src/DX12/HRChecker.h"
+        "src/DX12/HRChecker.cpp"
+        "src/DX12/DXGIFactory.h"
+        "src/DX12/DXGIFactory.cpp"
+    )
 endif()
 
 # Vulkan project files
@@ -129,7 +144,8 @@ if (VEX_ENABLE_VULKAN AND Vulkan_FOUND)
         "src/Vulkan/VkFeatureChecker.h"
         "src/Vulkan/VkFeatureChecker.cpp"
         "src/Vulkan/VkRHI.h"
-     "src/Vulkan/VkRHI.cpp")
+        "src/Vulkan/VkRHI.cpp"
+    )
 endif()
 
 # =========================================
