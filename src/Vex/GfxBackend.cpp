@@ -11,6 +11,8 @@ GfxBackend::GfxBackend(UniqueHandle<RenderHardwareInterface>&& newRHI, const Bac
     : rhi(std::move(newRHI))
     , description(description)
 {
+    rhi->InitWindow(description.platformWindow);
+
     VEX_LOG(Info,
             "Created graphics backend with width {} and height {}.",
             description.platformWindow.width,

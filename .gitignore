@@ -18,3 +18,5 @@ bld/
 # IDE cache
 .vs
 .idea
+
+cmake-build-*/

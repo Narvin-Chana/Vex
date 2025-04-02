@@ -4,6 +4,10 @@
 #if defined(_WIN32)
 #define GLFW_EXPOSE_NATIVE_WIN32
 #endif
+#include "DX12/DX12RHI.h"
+#include "DX12/DX12Types.h"
+#include "Vulkan/VkRHI.h"
+
 #include <GLFW/glfw3native.h>
 
 #include <Vex.h>
@@ -24,10 +28,24 @@ HelloTriangleApplication::HelloTriangleApplication()
     // TODO: FIGURE OUT THE HANDLE TYPE ON LINUX
     int platformWindow = -1;
 #endif
-    graphics = vex::CreateGraphicsBackend(
-        vex::GraphicsAPI::DirectX12,
-        { .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
-          .swapChainFormat = vex::TextureFormat::RGBA8_UNORM });
+
+    vex::UniqueHandle<vex::RHI> rhi{};
+#if 0
+    vex::vk::RHICreateInfo createInfo;
+    vex::u32 count;
+    const char** extensions = glfwGetRequiredInstanceExtensions(&count);
+    createInfo.additionnalExtensions.reserve(createInfo.additionnalExtensions.size() + count);
+    std::copy(extensions, extensions + count, std::back_inserter(createInfo.additionnalExtensions));
+    rhi = vex::MakeUnique<vex::vk::VkRHI>(createInfo);
+#else
+    rhi = vex::MakeUnique<vex::dx12::DX12RHI>();
+#endif
+
+    graphics = MakeUnique<vex::GfxBackend>(
+        std::move(rhi),
+        vex::BackendDescription{
+            .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
+            .swapChainFormat = vex::TextureFormat::RGBA8_UNORM });
 }
 
 HelloTriangleApplication::~HelloTriangleApplication()

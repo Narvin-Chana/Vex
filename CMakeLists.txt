@@ -145,6 +145,12 @@ if (VEX_ENABLE_VULKAN AND Vulkan_FOUND)
         "src/Vulkan/VkFeatureChecker.cpp"
         "src/Vulkan/VkRHI.h"
         "src/Vulkan/VkRHI.cpp"
+        "src/Vulkan/VkDevice.cpp"
+        "src/Vulkan/VkExtensions.cpp"
+        "src/Vulkan/VkDebug.h"
+        "src/Vulkan/VkDebug.cpp"
+        "src/Vulkan/VkErrorHandler.h"
+        "src/Vulkan/VkErrorHandler.cpp"
     )
 endif()
 
@@ -180,6 +186,7 @@ add_header_only_dependency(Vex efsw "${efsw_SOURCE_DIR}" "include" "efsw")
 
 # Static linking to DirectX 12
 if(WIN32 AND VEX_ENABLE_DX12)
+    message(STATUS "DX12 found!")
     target_sources(Vex PRIVATE ${VEX_DX12_SOURCES})
     target_link_libraries(Vex PUBLIC d3d12.lib dxgi.lib)
     target_compile_definitions(Vex PUBLIC VEX_DX12=1)
@@ -189,6 +196,7 @@ endif()
 
 # Static linking to Vulkan
 if(VEX_ENABLE_VULKAN AND Vulkan_FOUND)
+    message(STATUS "Vulkan found!")
     target_sources(Vex PRIVATE ${VEX_VULKAN_SOURCES})
     target_link_libraries(Vex PUBLIC Vulkan::Vulkan)
     # Make Vulkan-Hpp headers available

@@ -4,6 +4,11 @@
 
 #include <DX12/DX12FeatureChecker.h>
 
+namespace vex
+{
+struct PlatformWindow;
+}
+
 namespace vex::dx12
 {
 
@@ -12,6 +17,7 @@ class DX12RHI : public vex::RHI
 public:
     DX12RHI();
     virtual ~DX12RHI() override;
+    virtual void InitWindow(const PlatformWindow& window) override {};
     virtual FeatureChecker& GetFeatureChecker() override;
 
 private:

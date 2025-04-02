@@ -122,7 +122,7 @@ inline Logger GLogger;
     if (level >= vex::Logger::GetLogLevelFilter())                                                                     \
     {                                                                                                                  \
         vex::GLogger.Log(level, message, ##__VA_ARGS__);                                                               \
-        if (level == Fatal) /* Fatal error! Must exit. */                                                              \
+        if (level == vex::LogLevel::Fatal) /* Fatal error! Must exit. */                                               \
         {                                                                                                              \
             VEX_DEBUG_BREAK();                                                                                         \
             std::exit(1);                                                                                              \
