@@ -12,23 +12,48 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 namespace vex::vk
 {
 
+// Should be redone properly
+::vk::PhysicalDeviceProperties GetHighestApiVersionDevice()
+{
+    ::vk::ApplicationInfo appInfo{
+        .pApplicationName = "Vulkan App",
+        .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+        .pEngineName = "No Engine",
+        .engineVersion = VK_MAKE_VERSION(1, 0, 0),
+        .apiVersion = VK_API_VERSION_1_0,
+    };
+
+    // Create temporary instance to check device properties
+    ::vk::UniqueInstance instance = Sanitize(::vk::createInstanceUnique({
+        .pApplicationInfo = &appInfo,
+    }));
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
+
+    auto devices = Sanitize(instance->enumeratePhysicalDevices());
+
+    ::vk::PhysicalDeviceProperties bestDevice{};
+    for (auto dev : devices)
+    {
+        auto prop = dev.getProperties();
+        if (prop.apiVersion > bestDevice.apiVersion)
+        {
+            bestDevice = prop;
+        }
+    }
+
+    return bestDevice;
+}
+
 VkRHI::VkRHI(const RHICreateInfo& createInfo)
 {
     VULKAN_HPP_DEFAULT_DISPATCHER.init();
-
-    std::vector<const char*> defaultInstanceExtensions = GetDefaultInstanceExtensions();
-    std::ranges::copy(createInfo.additionnalExtensions, std::back_inserter(defaultInstanceExtensions));
-
-    std::vector<const char*> validationLayers = GetDefaultValidationLayers();
-    std::ranges::copy(createInfo.additionnalLayers, std::back_inserter(validationLayers));
-    validationLayers = FilterSupportedValidationLayers(validationLayers);
 
     ::vk::ApplicationInfo appInfo{
         .pApplicationName = "Vulkan App",
         .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
         .pEngineName = "No Engine",
         .engineVersion = VK_MAKE_VERSION(1, 0, 0),
-        .apiVersion = VK_API_VERSION_1_4,
+        .apiVersion = GetHighestApiVersionDevice().apiVersion,
     };
 
     ::vk::DebugUtilsMessengerCreateInfoEXT* debugCreateInfoPtr = nullptr;
@@ -43,6 +68,13 @@ VkRHI::VkRHI(const RHICreateInfo& createInfo)
     };
     debugCreateInfoPtr = &debugCreateInfo;
 #endif
+
+    std::vector<const char*> defaultInstanceExtensions = GetDefaultInstanceExtensions();
+    std::ranges::copy(createInfo.additionnalExtensions, std::back_inserter(defaultInstanceExtensions));
+
+    std::vector<const char*> validationLayers = GetDefaultValidationLayers();
+    std::ranges::copy(createInfo.additionnalLayers, std::back_inserter(validationLayers));
+    validationLayers = FilterSupportedValidationLayers(validationLayers);
 
     ::vk::InstanceCreateInfo instanceCI{
         .pNext = debugCreateInfoPtr,

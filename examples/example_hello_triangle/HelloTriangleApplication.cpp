@@ -4,9 +4,14 @@
 #if defined(_WIN32)
 #define GLFW_EXPOSE_NATIVE_WIN32
 #endif
+
+#if VEX_DX12
 #include "DX12/DX12RHI.h"
-#include "DX12/DX12Types.h"
+#endif
+
+#if VEX_VULKAN
 #include "Vulkan/VkRHI.h"
+#endif
 
 #include <GLFW/glfw3native.h>
 
@@ -31,14 +36,18 @@ HelloTriangleApplication::HelloTriangleApplication()
 
     vex::UniqueHandle<vex::RHI> rhi{};
 #if 0
+#if VEX_VULKAN
     vex::vk::RHICreateInfo createInfo;
     vex::u32 count;
     const char** extensions = glfwGetRequiredInstanceExtensions(&count);
     createInfo.additionnalExtensions.reserve(createInfo.additionnalExtensions.size() + count);
     std::copy(extensions, extensions + count, std::back_inserter(createInfo.additionnalExtensions));
     rhi = vex::MakeUnique<vex::vk::VkRHI>(createInfo);
+#endif
 #else
+#if VEX_DX12
     rhi = vex::MakeUnique<vex::dx12::DX12RHI>();
+#endif
 #endif
 
     graphics = MakeUnique<vex::GfxBackend>(
