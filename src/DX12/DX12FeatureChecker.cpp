@@ -58,6 +58,7 @@ static ShaderModel ConvertDX12ShaderModelToShaderModel(D3D_SHADER_MODEL shaderMo
     default:
         VEX_LOG(Fatal, "Unsupported shader model: {}.", magic_enum::enum_name(shaderModel));
     }
+    std::unreachable();
 }
 
 DX12FeatureChecker::DX12FeatureChecker(const ComPtr<ID3D12Device>& device)
