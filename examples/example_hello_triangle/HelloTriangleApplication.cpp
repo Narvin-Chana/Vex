@@ -35,7 +35,7 @@ HelloTriangleApplication::HelloTriangleApplication()
 #endif
 
     vex::UniqueHandle<vex::RHI> rhi{};
-#if 0
+#if 1
 #if VEX_VULKAN
     vex::vk::RHICreateInfo createInfo;
     vex::u32 count;

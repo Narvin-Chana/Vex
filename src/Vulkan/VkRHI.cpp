@@ -100,13 +100,24 @@ VkRHI::VkRHI(const RHICreateInfo& createInfo)
     instance = Sanitize(::vk::createInstanceUnique(instanceCI));
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
+
+    std::vector<::vk::PhysicalDevice> physicalDevices = Sanitize(instance->enumeratePhysicalDevices());
+    if (physicalDevices.empty())
+    {
+        VEX_LOG(Fatal, "No physical devices compatible with Vulkan were found!");
+    }
+    // TODO: smarter physical device selection, currently just take the first.
+    featureChecker = VkFeatureChecker(physicalDevices[0]);
+
+    ::vk::PhysicalDeviceProperties deviceProperties = physicalDevices[0].getProperties();
+    VEX_LOG(Info, "Selected Vulkan-compatible GPU: {}", deviceProperties.deviceName.data());
 }
 
 VkRHI::~VkRHI() = default;
 
 void VkRHI::InitWindow(const PlatformWindow& window)
 {
-#if _WIN32
+#if defined(_WIN32)
     ::vk::Win32SurfaceCreateInfoKHR createInfo{
         .hinstance = GetModuleHandle(nullptr),
         .hwnd = window.windowHandle,

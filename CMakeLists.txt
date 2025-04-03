@@ -86,11 +86,22 @@ FetchContent_Declare(
     GIT_TAG        v1.4.309
 )
 FetchContent_MakeAvailable(VulkanHpp)
+
+#Fetch magic_enum dependency
+message(STATUS "Fetching magic_enum...")
+include(FetchContent)
+FetchContent_Declare(
+    magic_enum
+    GIT_REPOSITORY https://github.com/Neargye/magic_enum.git
+    GIT_TAG v0.9.7
+)
+FetchContent_MakeAvailable(magic_enum)
 # =========================================
 
 # Set static library output
 add_library(Vex STATIC     
     "src/Vex.h"
+    "src/Vex.cpp" 
     "src/Vex/GfxBackend.h" 
     "src/Vex/GfxBackend.cpp" 
     "src/Vex/Formats.h" 
@@ -98,12 +109,11 @@ add_library(Vex STATIC
     "src/Vex/Types.h" 
     "src/Vex/UniqueHandle.h" 
     "src/Vex/Logger.h" 
+    "src/Vex/Logger.cpp"
     "src/Vex/Debug.h" 
     "src/Vex/FeatureChecker.h" 
     "src/Vex/FeatureChecker.cpp" 
     "src/Vex/RHI.h"  
-    "src/Vex.cpp" 
-    "src/Vex/Logger.cpp"
 )
 
 if (WIN32)
@@ -129,7 +139,7 @@ if (WIN32 AND VEX_ENABLE_DX12)
         "src/DX12/DX12FeatureChecker.cpp"
         "src/DX12/DX12RHI.h"
         "src/DX12/DX12RHI.cpp"
-        "src/DX12/DX12Types.h"
+        "src/DX12/DX12Headers.h"
         "src/DX12/HRChecker.h"
         "src/DX12/HRChecker.cpp"
         "src/DX12/DXGIFactory.h"
@@ -205,6 +215,9 @@ if(VEX_ENABLE_VULKAN AND Vulkan_FOUND)
 else()
     target_compile_definitions(Vex PUBLIC VEX_VULKAN=0)
 endif()
+
+# Static linking to magic_enum
+add_header_only_dependency(Vex magic_enum "${magic_enum_SOURCE_DIR}" "include" "magic_enum")
 
 # =========================================
 # INSTALLATION

@@ -1,7 +1,12 @@
 #include "DX12FeatureChecker.h"
 
-#include <DX12/HRChecker.h>
+#include <magic_enum/magic_enum.hpp>
+
 #include <Vex/Logger.h>
+
+#include <DX12/DX12Headers.h>
+#include <DX12/DXGIFactory.h>
+#include <DX12/HRChecker.h>
 
 namespace vex::dx12
 {
@@ -15,6 +20,8 @@ static FeatureLevel ConvertDX12FeatureLevelToFeatureLevel(D3D_FEATURE_LEVEL feat
     case D3D_FEATURE_LEVEL_12_2:
         return FeatureLevel::Level_12_2;
     default:
+        // Can't use magic_enum because D3D_FEATURE_LEVEL_x_x are VEEEERY high numbers and surpasses magic_enum's
+        // limits...
         VEX_LOG(Fatal, "Unsupported DX12 feature level.");
     }
     std::unreachable();
@@ -28,13 +35,35 @@ static ResourceBindingTier ConvertDX12ResourceBindingTierToResourceBindingTier(
     case D3D12_RESOURCE_BINDING_TIER_3:
         return ResourceBindingTier::ResourceTier3;
     default:
-        VEX_LOG(Fatal, "Unsupported DX12 resource binding tier.");
+        VEX_LOG(Fatal, "Unsupported DX12 resource binding tier: {}.", magic_enum::enum_name(resourceBindingTier));
     }
     std::unreachable();
 }
 
+static ShaderModel ConvertDX12ShaderModelToShaderModel(D3D_SHADER_MODEL shaderModel)
+{
+    switch (shaderModel)
+    {
+    case D3D_SHADER_MODEL_6_6:
+        return ShaderModel::SM_6_6;
+    case D3D_SHADER_MODEL_6_7:
+        return ShaderModel::SM_6_7;
+    // --------------------------------
+    // See TODO in vex::ShaderModel!
+    // --------------------------------
+    // case D3D_SHADER_MODEL_6_8:
+    //     return ShaderModel::SM_6_8;
+    // case D3D_SHADER_MODEL_6_9:
+    //     return ShaderModel::SM_6_9;
+    default:
+        VEX_LOG(Fatal, "Unsupported shader model: {}.", magic_enum::enum_name(shaderModel));
+    }
+}
+
 DX12FeatureChecker::DX12FeatureChecker(const ComPtr<ID3D12Device>& device)
 {
+    adapterName = DXGIFactory::GetDeviceAdapterName(device);
+
     // Try to get device5 interface (needed for ray tracing)
     rayTracingSupported = false;
     ComPtr<ID3D12Device5> device5;
@@ -64,6 +93,11 @@ DX12FeatureChecker::DX12FeatureChecker(const ComPtr<ID3D12Device>& device)
 
 DX12FeatureChecker::~DX12FeatureChecker() = default;
 
+std::string_view DX12FeatureChecker::GetPhysicalDeviceName()
+{
+    return adapterName;
+}
+
 bool DX12FeatureChecker::IsFeatureSupported(Feature feature)
 {
     switch (feature)
@@ -86,6 +120,11 @@ FeatureLevel DX12FeatureChecker::GetFeatureLevel()
 ResourceBindingTier DX12FeatureChecker::GetResourceBindingTier()
 {
     return ConvertDX12ResourceBindingTierToResourceBindingTier(options.ResourceBindingTier);
+}
+
+ShaderModel DX12FeatureChecker::GetShaderModel()
+{
+    return ConvertDX12ShaderModelToShaderModel(shaderModel.HighestShaderModel);
 }
 
 } // namespace vex::dx12
