@@ -40,8 +40,8 @@ HelloTriangleApplication::HelloTriangleApplication()
     vex::vk::RHICreateInfo createInfo;
     vex::u32 count;
     const char** extensions = glfwGetRequiredInstanceExtensions(&count);
-    createInfo.additionnalExtensions.reserve(createInfo.additionnalExtensions.size() + count);
-    std::copy(extensions, extensions + count, std::back_inserter(createInfo.additionnalExtensions));
+    createInfo.additionalExtensions.reserve(createInfo.additionalExtensions.size() + count);
+    std::copy(extensions, extensions + count, std::back_inserter(createInfo.additionalExtensions));
     rhi = vex::MakeUnique<vex::vk::VkRHI>(createInfo);
 #endif
 #else

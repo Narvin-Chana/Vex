@@ -124,7 +124,7 @@ target_include_directories(Vex PUBLIC
 # DX12 project files
 if (WIN32 AND VEX_ENABLE_DX12)
     set(VEX_DX12_SOURCES 
-        "src/DX12/Formats.h" 
+        "src/DX12/DX12Formats.h" 
         "src/DX12/DX12FeatureChecker.h"
         "src/DX12/DX12FeatureChecker.cpp"
         "src/DX12/DX12RHI.h"
@@ -140,7 +140,7 @@ endif()
 # Vulkan project files
 if (VEX_ENABLE_VULKAN AND Vulkan_FOUND)
     set(VEX_VULKAN_SOURCES
-        "src/Vulkan/Formats.h" 
+        "src/Vulkan/VkFormats.h" 
         "src/Vulkan/VkFeatureChecker.h"
         "src/Vulkan/VkFeatureChecker.cpp"
         "src/Vulkan/VkRHI.h"

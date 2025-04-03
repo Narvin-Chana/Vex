@@ -70,10 +70,10 @@ VkRHI::VkRHI(const RHICreateInfo& createInfo)
 #endif
 
     std::vector<const char*> defaultInstanceExtensions = GetDefaultInstanceExtensions();
-    std::ranges::copy(createInfo.additionnalExtensions, std::back_inserter(defaultInstanceExtensions));
+    std::ranges::copy(createInfo.additionalExtensions, std::back_inserter(defaultInstanceExtensions));
 
     std::vector<const char*> validationLayers = GetDefaultValidationLayers();
-    std::ranges::copy(createInfo.additionnalLayers, std::back_inserter(validationLayers));
+    std::ranges::copy(createInfo.additionalLayers, std::back_inserter(validationLayers));
     validationLayers = FilterSupportedValidationLayers(validationLayers);
 
     ::vk::InstanceCreateInfo instanceCI{

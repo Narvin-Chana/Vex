@@ -25,10 +25,6 @@ static ResourceBindingTier ConvertDX12ResourceBindingTierToResourceBindingTier(
 {
     switch (resourceBindingTier)
     {
-    case D3D12_RESOURCE_BINDING_TIER_1:
-        return ResourceBindingTier::ResourceTier1;
-    case D3D12_RESOURCE_BINDING_TIER_2:
-        return ResourceBindingTier::ResourceTier2;
     case D3D12_RESOURCE_BINDING_TIER_3:
         return ResourceBindingTier::ResourceTier3;
     default:

@@ -14,8 +14,8 @@ namespace vex::vk
 
 struct RHICreateInfo
 {
-    std::vector<const char*> additionnalExtensions;
-    std::vector<const char*> additionnalLayers;
+    std::vector<const char*> additionalExtensions;
+    std::vector<const char*> additionalLayers;
 };
 
 class VkRHI : public vex::RHI

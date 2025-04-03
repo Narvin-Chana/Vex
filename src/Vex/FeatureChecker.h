@@ -24,8 +24,9 @@ enum class FeatureLevel : u8
 
 enum class ResourceBindingTier : u8
 {
-    ResourceTier1,
-    ResourceTier2,
+    // Tiers lower than 3 are unsupported!
+    // ResourceTier1,
+    // ResourceTier2,
     ResourceTier3,
 };
 
