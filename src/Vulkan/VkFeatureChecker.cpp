@@ -17,7 +17,8 @@ VkFeatureChecker::VkFeatureChecker(const ::vk::PhysicalDevice& physicalDevice)
 
     if (deviceProperties.apiVersion < VK_API_VERSION_1_3)
     {
-        VEX_LOG(Fatal, "Physical device must support Vulkan 1.3.");
+        VEX_LOG(Error, "Physical device must support Vulkan 1.3. App may be unstable");
+        return;
     }
 
     // Get vk 1.3 features

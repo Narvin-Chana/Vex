@@ -106,6 +106,13 @@ VkRHI::VkRHI(const RHICreateInfo& createInfo)
     {
         VEX_LOG(Fatal, "No physical devices compatible with Vulkan were found!");
     }
+
+    VEX_LOG(Info, "Found {} devices", physicalDevices.size());
+    for (const auto& dev : physicalDevices)
+    {
+        VEX_LOG(Info, "\t{}", dev.getProperties().deviceName.data());
+    }
+
     // TODO: smarter physical device selection, currently just take the first.
     featureChecker = VkFeatureChecker(physicalDevices[0]);
 
@@ -123,11 +130,12 @@ void VkRHI::InitWindow(const PlatformWindow& window)
         .hwnd = window.windowHandle,
     };
     surface = Sanitize(instance->createWin32SurfaceKHRUnique(createInfo));
-#elif defined(linux)
+#elif defined(__linux__)
     ::vk::XlibSurfaceCreateInfoKHR createInfo{
-        // TODO: configure linux stuff
+        .dpy = window.windowHandle.display,
+        .window = window.windowHandle.window,
     };
-    surface = instance->createXlibSurfaceKHRUnique(createInfo);
+    surface = Sanitize(instance->createXlibSurfaceKHRUnique(createInfo));
 #endif
 }
 

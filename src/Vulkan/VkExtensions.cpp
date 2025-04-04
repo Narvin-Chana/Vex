@@ -15,6 +15,9 @@ std::vector<const char*> GetDefaultInstanceExtensions()
 #ifdef _DEBUG
         VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
 #endif
+#if defined(__linux__)
+        "VK_KHR_xlib_surface"
+#endif
     };
 }
 

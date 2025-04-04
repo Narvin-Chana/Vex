@@ -3,6 +3,8 @@
 #include <GLFW/glfw3.h>
 #if defined(_WIN32)
 #define GLFW_EXPOSE_NATIVE_WIN32
+#elif defined(__linux__)
+#define GLFW_EXPOSE_NATIVE_X11
 #endif
 
 #if VEX_DX12
@@ -19,6 +21,10 @@
 
 HelloTriangleApplication::HelloTriangleApplication()
 {
+#if defined(__linux__)
+    glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+#endif
+
     glfwInit();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -28,15 +34,17 @@ HelloTriangleApplication::HelloTriangleApplication()
     window = glfwCreateWindow(DefaultWidth, DefaultHeight, "HelloTriangle", nullptr, nullptr);
 
 #if defined(_WIN32)
-    HWND platformWindow = glfwGetWin32Window(window);
+    vex::PlatformWindowHandle platformWindow = glfwGetWin32Window(window);
 #elif defined(__linux__)
-    // TODO: FIGURE OUT THE HANDLE TYPE ON LINUX
-    int platformWindow = -1;
+    vex::PlatformWindowHandle platformWindow{
+        .window = glfwGetX11Window(window),
+        .display = glfwGetX11Display()
+    };
 #endif
 
     vex::UniqueHandle<vex::RHI> rhi{};
-#if 1
-#if VEX_VULKAN
+#define FORCE_VULKAN 1
+#if VEX_VULKAN or FORCE_VULKAN
     vex::vk::RHICreateInfo createInfo;
     vex::u32 count;
     const char** extensions = glfwGetRequiredInstanceExtensions(&count);
@@ -44,10 +52,8 @@ HelloTriangleApplication::HelloTriangleApplication()
     std::copy(extensions, extensions + count, std::back_inserter(createInfo.additionalExtensions));
     rhi = vex::MakeUnique<vex::vk::VkRHI>(createInfo);
 #endif
-#else
-#if VEX_DX12
+#if VEX_DX12 or not FORCE_VULKAN
     rhi = vex::MakeUnique<vex::dx12::DX12RHI>();
-#endif
 #endif
 
     graphics = MakeUnique<vex::GfxBackend>(
