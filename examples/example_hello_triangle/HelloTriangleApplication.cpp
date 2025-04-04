@@ -52,7 +52,7 @@ HelloTriangleApplication::HelloTriangleApplication()
     std::copy(extensions, extensions + count, std::back_inserter(createInfo.additionalExtensions));
     rhi = vex::MakeUnique<vex::vk::VkRHI>(createInfo);
 #endif
-#if VEX_DX12 or not FORCE_VULKAN
+#if VEX_DX12 and not FORCE_VULKAN
     rhi = vex::MakeUnique<vex::dx12::DX12RHI>();
 #endif
 

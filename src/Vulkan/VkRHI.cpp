@@ -58,7 +58,7 @@ VkRHI::VkRHI(const RHICreateInfo& createInfo)
 
     ::vk::DebugUtilsMessengerCreateInfoEXT* debugCreateInfoPtr = nullptr;
 
-#ifdef _DEBUG
+#ifdef VEX_DEBUG
     using Severity = ::vk::DebugUtilsMessageSeverityFlagBitsEXT;
     using MessageType = ::vk::DebugUtilsMessageTypeFlagBitsEXT;
     ::vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo{

@@ -17,7 +17,7 @@ VkFeatureChecker::VkFeatureChecker(const ::vk::PhysicalDevice& physicalDevice)
 
     if (deviceProperties.apiVersion < VK_API_VERSION_1_3)
     {
-        VEX_LOG(Error, "Physical device must support Vulkan 1.3. App may be unstable");
+        VEX_LOG(Warning, "Physical device must support Vulkan 1.3. App may be unstable");
         return;
     }
 
@@ -93,6 +93,7 @@ ResourceBindingTier VkFeatureChecker::GetResourceBindingTier()
     // Mappings of Vulkan to DX12-like resource binding tier.
     // Doing this allows us to have a similar amount of slots in shaders.
 
+    VEX_LOG(Fatal, "No resource binding tier matched this device: {}", GetPhysicalDeviceName());
     std::unreachable();
     //// Tier 2: Mid-range hardware
     // else if (limits.maxPerStageDescriptorSamplers >= 16 && limits.maxPerStageDescriptorUniformBuffers >= 12 &&
@@ -121,6 +122,7 @@ ShaderModel VkFeatureChecker::GetShaderModel()
         return vulkan13Features.dynamicRendering ? ShaderModel::SM_6_7 : ShaderModel::SM_6_6;
     }
 
+    VEX_LOG(Fatal, "Unable to find shader model for this version ({}.{})", majorVersion, minorVersion);
     std::unreachable();
 }
 

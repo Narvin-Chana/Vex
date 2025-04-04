@@ -39,6 +39,7 @@ enum class ResourceBindingTier : u8
 
 enum class ShaderModel : u8
 {
+    Invalid,
     // SM_6_0,
     // SM_6_1,
     // SM_6_2,
