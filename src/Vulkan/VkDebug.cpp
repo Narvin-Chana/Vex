@@ -5,10 +5,10 @@
 namespace vex::vk
 {
 
-VKAPI_ATTR VkBool32 VKAPI_CALL debugCallbackCpp(::vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-                                                ::vk::DebugUtilsMessageTypeFlagsEXT messageType,
-                                                const ::vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData,
-                                                void* pUserData)
+static VkBool32 debugCallbackCpp(::vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+                                 ::vk::DebugUtilsMessageTypeFlagsEXT messageType,
+                                 const ::vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData,
+                                 void* pUserData)
 {
     if (messageSeverity >= ::vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning)
     {
