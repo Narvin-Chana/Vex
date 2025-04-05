@@ -77,6 +77,30 @@ jobs:
         gcc --version
         g++ --version
 
+    # GitHub Action's ubuntu image has a clang which does not support <expected> (added in clang 16).
+    - name: Install latest Clang
+      if: matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'clang'
+      run: |
+        # Add the LLVM repository for newer Clang versions
+        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+        sudo add-apt-repository "deb http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs) main" -y
+        sudo apt-get update
+        
+        # Find the latest Clang version available
+        LATEST_CLANG=$(apt-cache search 'clang-[0-9]+' | grep -oP 'clang-\K[0-9]+' | sort -rn | head -n1)
+        echo "Latest Clang version found: clang-$LATEST_CLANG"
+        
+        # Install the latest Clang version
+        sudo apt-get install -y clang-$LATEST_CLANG libc++-$LATEST_CLANG-dev libc++abi-$LATEST_CLANG-dev
+        
+        # Set the latest Clang as the default
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-$LATEST_CLANG 100
+        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-$LATEST_CLANG 100
+        
+        # Verify the version
+        clang --version
+        clang++ --version
+
     - name: Install Vulkan SDK (Windows)
       if: matrix.os == 'windows-latest'
       uses: humbletim/setup-vulkan-sdk@523828e49cd4afabce369c39c7ee6543a2b7a735
