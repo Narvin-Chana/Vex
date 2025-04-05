@@ -1,21 +1,34 @@
-﻿#include "Vex/Logger.h"
-#include "VkDebug.h"
+﻿#include "VkDebug.h"
+
+#include <Vex/Logger.h>
 
 namespace vex::vk
 {
 
-VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-                                             ::vk::DebugUtilsMessageTypeFlagsEXT messageType,
-                                             const ::vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData,
-                                             void* pUserData)
+VKAPI_ATTR VkBool32 VKAPI_CALL debugCallbackCpp(::vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+                                                ::vk::DebugUtilsMessageTypeFlagsEXT messageType,
+                                                const ::vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData,
+                                                void* pUserData)
 {
-
-    if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+    if (messageSeverity >= ::vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning)
     {
-        VEX_LOG(vex::LogLevel::Info, "Validation layer: {}", pCallbackData->pMessage);
+        VEX_LOG(vex::LogLevel::Info, "validation layer: {}", pCallbackData->pMessage);
     }
 
     return VK_FALSE;
+}
+
+// GCC does not compile with the VulkanHpp types in this signature.
+// This is a quick fix.
+VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+                                             VkDebugUtilsMessageTypeFlagsEXT messageType,
+                                             const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+                                             void* pUserData)
+{
+    return debugCallbackCpp(static_cast<::vk::DebugUtilsMessageSeverityFlagBitsEXT>(messageSeverity),
+                            static_cast<::vk::DebugUtilsMessageTypeFlagsEXT>(messageType),
+                            reinterpret_cast<const ::vk::DebugUtilsMessengerCallbackDataEXT*>(pCallbackData),
+                            pUserData);
 }
 
 } // namespace vex::vk

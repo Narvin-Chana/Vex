@@ -148,6 +148,7 @@ jobs:
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DVEX_BUILD_EXAMPLES=ON
+        ${{ matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'clang' && '-DCMAKE_CXX_FLAGS="-stdlib=libc++ -std=c++23"' || '' }}
         -S ${{ github.workspace }}
 
     - name: Build

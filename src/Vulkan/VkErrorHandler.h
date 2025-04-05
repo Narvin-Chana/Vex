@@ -1,9 +1,11 @@
 ﻿#pragma once
-#include "Vex/Logger.h"
-#include "VkHeaders.h"
 
 #include <expected>
 #include <source_location>
+
+#include <Vex/Logger.h>
+
+#include "VkHeaders.h"
 
 namespace vex::vk
 {
