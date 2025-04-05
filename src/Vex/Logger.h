@@ -46,16 +46,16 @@ constexpr inline std::string_view LogLevelToString(LogLevel logLevel)
     std::unreachable();
 }
 
-using LogDestinationFlagsType = u8;
-enum LogDestinationFlags : LogDestinationFlagsType
-{
-    None = 0,
-    Console = 1 << 0,
-    File = 1 << 1
-};
-
 struct Logger
 {
+    using DestinationFlagsType = u8;
+    enum DestinationFlags : DestinationFlagsType
+    {
+        None = 0,
+        Console = 1 << 0,
+        File = 1 << 1
+    };
+
     Logger();
     ~Logger();
 
@@ -91,7 +91,7 @@ struct Logger
     static void SetLogLevelFilter(LogLevel newFilter);
     // Change directory in which the log file we be created. Will not change the name of the output file.
     static void SetLogFilePath(const std::filesystem::path& newLogFilePath);
-    static void SetLogDestination(LogDestinationFlagsType newDestinations);
+    static void SetLogDestination(DestinationFlagsType newDestinations);
 
 private:
     void OpenLogFile();
@@ -106,7 +106,7 @@ private:
 
     // Calls to log with a lower level than this will be ignored.
     LogLevel levelFilter = Info;
-    LogDestinationFlagsType destinationFlags = Console | File;
+    DestinationFlagsType destinationFlags = Console | File;
 
     std::filesystem::path filePath = std::filesystem::current_path() / "logs" / LogFileNameFormat;
     std::optional<std::ofstream> logOutput;

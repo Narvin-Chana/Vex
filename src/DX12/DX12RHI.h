@@ -15,9 +15,8 @@ namespace vex::dx12
 class DX12RHI : public vex::RHI
 {
 public:
-    DX12RHI();
+    DX12RHI(bool enableGPUDebugLayer, bool enableGPUBasedValidation);
     virtual ~DX12RHI() override;
-    virtual void InitWindow(const PlatformWindow& window) override {};
     virtual FeatureChecker& GetFeatureChecker() override;
 
 private:

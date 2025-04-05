@@ -34,33 +34,24 @@ HelloTriangleApplication::HelloTriangleApplication()
     window = glfwCreateWindow(DefaultWidth, DefaultHeight, "HelloTriangle", nullptr, nullptr);
 
 #if defined(_WIN32)
-    vex::PlatformWindowHandle platformWindow = glfwGetWin32Window(window);
+    vex::PlatformWindowHandle platformWindow = { .window = glfwGetWin32Window(window) };
 #elif defined(__linux__)
-    vex::PlatformWindowHandle platformWindow{
-        .window = glfwGetX11Window(window),
-        .display = glfwGetX11Display()
-    };
+    vex::PlatformWindowHandle platformWindow{ .window = glfwGetX11Window(window), .display = glfwGetX11Display() };
 #endif
 
-    vex::UniqueHandle<vex::RHI> rhi{};
 #define FORCE_VULKAN 1
-#if VEX_VULKAN or FORCE_VULKAN
-    vex::vk::RHICreateInfo createInfo;
-    vex::u32 count;
-    const char** extensions = glfwGetRequiredInstanceExtensions(&count);
-    createInfo.additionalExtensions.reserve(createInfo.additionalExtensions.size() + count);
-    std::copy(extensions, extensions + count, std::back_inserter(createInfo.additionalExtensions));
-    rhi = vex::MakeUnique<vex::vk::VkRHI>(createInfo);
-#endif
-#if VEX_DX12 and not FORCE_VULKAN
-    rhi = vex::MakeUnique<vex::dx12::DX12RHI>();
-#endif
 
-    graphics = MakeUnique<vex::GfxBackend>(
-        std::move(rhi),
+    graphics = CreateGraphicsBackend(
+#if VEX_VULKAN and FORCE_VULKAN
+        vex::GraphicsAPI::Vulkan,
+#else // VEX_DX12 and not FORCE_VULKAN
+        vex::GraphicsAPI::DirectX12,
+#endif
         vex::BackendDescription{
             .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
-            .swapChainFormat = vex::TextureFormat::RGBA8_UNORM });
+            .swapChainFormat = vex::TextureFormat::RGBA8_UNORM,
+            .enableGPUDebugLayer = !VEX_SHIPPING,
+            .enableGPUBasedValidation = !VEX_SHIPPING });
 }
 
 HelloTriangleApplication::~HelloTriangleApplication()

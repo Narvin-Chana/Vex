@@ -13,6 +13,8 @@ struct BackendDescription
 {
     PlatformWindow platformWindow;
     TextureFormat swapChainFormat;
+    bool enableGPUDebugLayer = true;
+    bool enableGPUBasedValidation = true;
 };
 
 class GfxBackend

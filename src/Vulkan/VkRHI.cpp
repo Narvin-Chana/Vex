@@ -44,7 +44,7 @@ namespace vex::vk
     return bestDevice;
 }
 
-VkRHI::VkRHI(const RHICreateInfo& createInfo)
+VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation)
 {
     VULKAN_HPP_DEFAULT_DISPATCHER.init();
 
@@ -58,22 +58,21 @@ VkRHI::VkRHI(const RHICreateInfo& createInfo)
 
     ::vk::DebugUtilsMessengerCreateInfoEXT* debugCreateInfoPtr = nullptr;
 
-#ifdef VEX_DEBUG
-    using Severity = ::vk::DebugUtilsMessageSeverityFlagBitsEXT;
-    using MessageType = ::vk::DebugUtilsMessageTypeFlagBitsEXT;
-    ::vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo{
-        .messageSeverity = Severity::eVerbose | Severity::eWarning | Severity::eError,
-        .messageType = MessageType::eGeneral | MessageType::eValidation | MessageType::ePerformance,
-        .pfnUserCallback = debugCallback,
-    };
-    debugCreateInfoPtr = &debugCreateInfo;
-#endif
+    if (enableGPUDebugLayer)
+    {
+        using Severity = ::vk::DebugUtilsMessageSeverityFlagBitsEXT;
+        using MessageType = ::vk::DebugUtilsMessageTypeFlagBitsEXT;
+        ::vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo{
+            .messageSeverity = Severity::eVerbose | Severity::eWarning | Severity::eError,
+            .messageType = MessageType::eGeneral | MessageType::eValidation | MessageType::ePerformance,
+            .pfnUserCallback = debugCallback,
+        };
+        debugCreateInfoPtr = &debugCreateInfo;
+    }
 
-    std::vector<const char*> defaultInstanceExtensions = GetDefaultInstanceExtensions();
-    std::ranges::copy(createInfo.additionalExtensions, std::back_inserter(defaultInstanceExtensions));
+    std::vector<const char*> requiredInstanceExtensions = GetRequiredInstanceExtensions(enableGPUDebugLayer);
 
-    std::vector<const char*> validationLayers = GetDefaultValidationLayers();
-    std::ranges::copy(createInfo.additionalLayers, std::back_inserter(validationLayers));
+    std::vector<const char*> validationLayers = GetDefaultValidationLayers(enableGPUBasedValidation);
     validationLayers = FilterSupportedValidationLayers(validationLayers);
 
     ::vk::InstanceCreateInfo instanceCI{
@@ -81,8 +80,8 @@ VkRHI::VkRHI(const RHICreateInfo& createInfo)
         .pApplicationInfo = &appInfo,
         .enabledLayerCount = static_cast<uint32_t>(validationLayers.size()),
         .ppEnabledLayerNames = validationLayers.data(),
-        .enabledExtensionCount = static_cast<uint32_t>(defaultInstanceExtensions.size()),
-        .ppEnabledExtensionNames = defaultInstanceExtensions.data(),
+        .enabledExtensionCount = static_cast<uint32_t>(requiredInstanceExtensions.size()),
+        .ppEnabledExtensionNames = requiredInstanceExtensions.data(),
     };
 
     VEX_LOG(Info, "Create VK instances with layers:")
@@ -92,7 +91,7 @@ VkRHI::VkRHI(const RHICreateInfo& createInfo)
     }
 
     VEX_LOG(Info, "Create VK instances with extensions:")
-    for (auto instanceExtension : defaultInstanceExtensions)
+    for (auto instanceExtension : requiredInstanceExtensions)
     {
         VEX_LOG(Info, "\t{}", instanceExtension);
     }
@@ -113,27 +112,29 @@ VkRHI::VkRHI(const RHICreateInfo& createInfo)
         VEX_LOG(Info, "\t{}", dev.getProperties().deviceName.data());
     }
 
-    // TODO: smarter physical device selection, currently just take the first.
+    // TODO: smarter physical device selection, currently just takes the first.
     featureChecker = VkFeatureChecker(physicalDevices[0]);
 
     ::vk::PhysicalDeviceProperties deviceProperties = physicalDevices[0].getProperties();
     VEX_LOG(Info, "Selected Vulkan-compatible GPU: {}", deviceProperties.deviceName.data());
+
+    InitWindow(windowHandle);
 }
 
 VkRHI::~VkRHI() = default;
 
-void VkRHI::InitWindow(const PlatformWindow& window)
+void VkRHI::InitWindow(const PlatformWindowHandle& windowHandle)
 {
 #if defined(_WIN32)
     ::vk::Win32SurfaceCreateInfoKHR createInfo{
         .hinstance = GetModuleHandle(nullptr),
-        .hwnd = window.windowHandle,
+        .hwnd = windowHandle.window,
     };
     surface = Sanitize(instance->createWin32SurfaceKHRUnique(createInfo));
 #elif defined(__linux__)
     ::vk::XlibSurfaceCreateInfoKHR createInfo{
-        .dpy = window.windowHandle.display,
-        .window = window.windowHandle.window,
+        .dpy = windowHandle.display,
+        .window = windowHandle.window,
     };
     surface = Sanitize(instance->createXlibSurfaceKHRUnique(createInfo));
 #endif

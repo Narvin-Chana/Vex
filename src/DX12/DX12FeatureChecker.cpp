@@ -15,6 +15,8 @@ static FeatureLevel ConvertDX12FeatureLevelToFeatureLevel(D3D_FEATURE_LEVEL feat
 {
     switch (featureLevel)
     {
+    case D3D_FEATURE_LEVEL_12_0:
+        return FeatureLevel::Level_12_0;
     case D3D_FEATURE_LEVEL_12_1:
         return FeatureLevel::Level_12_1;
     case D3D_FEATURE_LEVEL_12_2:
@@ -44,17 +46,26 @@ static ShaderModel ConvertDX12ShaderModelToShaderModel(D3D_SHADER_MODEL shaderMo
 {
     switch (shaderModel)
     {
+    case D3D_SHADER_MODEL_6_0:
+        return ShaderModel::SM_6_0;
+    case D3D_SHADER_MODEL_6_1:
+        return ShaderModel::SM_6_1;
+    case D3D_SHADER_MODEL_6_2:
+        return ShaderModel::SM_6_2;
+    case D3D_SHADER_MODEL_6_3:
+        return ShaderModel::SM_6_3;
+    case D3D_SHADER_MODEL_6_4:
+        return ShaderModel::SM_6_4;
+    case D3D_SHADER_MODEL_6_5:
+        return ShaderModel::SM_6_5;
     case D3D_SHADER_MODEL_6_6:
         return ShaderModel::SM_6_6;
     case D3D_SHADER_MODEL_6_7:
         return ShaderModel::SM_6_7;
-    // --------------------------------
-    // See TODO in vex::ShaderModel!
-    // --------------------------------
-    // case D3D_SHADER_MODEL_6_8:
-    //     return ShaderModel::SM_6_8;
-    // case D3D_SHADER_MODEL_6_9:
-    //     return ShaderModel::SM_6_9;
+    case D3D_SHADER_MODEL_6_8:
+        return ShaderModel::SM_6_8;
+    case D3D_SHADER_MODEL_6_9:
+        return ShaderModel::SM_6_9;
     default:
         VEX_LOG(Fatal, "Unsupported shader model: {}.", magic_enum::enum_name(shaderModel));
     }

@@ -13,14 +13,15 @@
 namespace vex
 {
 
+struct PlatformWindowHandle
+{
 #if defined(_WIN32)
-using PlatformWindowHandle = HWND;
+    HWND window;
 #elif defined(__linux__)
-struct PlatformWindowHandle{
     Window window;
     Display* display;
-};
 #endif
+};
 
 struct PlatformWindow
 {

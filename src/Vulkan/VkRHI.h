@@ -6,17 +6,11 @@
 
 namespace vex
 {
-struct PlatformWindow;
+struct PlatformWindowHandle;
 }
 
 namespace vex::vk
 {
-
-struct RHICreateInfo
-{
-    std::vector<const char*> additionalExtensions;
-    std::vector<const char*> additionalLayers;
-};
 
 class VkRHI : public vex::RHI
 {
@@ -24,13 +18,14 @@ class VkRHI : public vex::RHI
     ::vk::UniqueSurfaceKHR surface;
 
 public:
-    VkRHI(const RHICreateInfo& createInfo = {});
+    VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation);
     virtual ~VkRHI() override;
 
-    virtual void InitWindow(const PlatformWindow& window) override;
     virtual FeatureChecker& GetFeatureChecker() override;
 
 private:
+    void InitWindow(const PlatformWindowHandle& windowHandle);
+
     VkFeatureChecker featureChecker;
 };
 

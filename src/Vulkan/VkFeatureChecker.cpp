@@ -60,19 +60,28 @@ bool VkFeatureChecker::IsFeatureSupported(Feature feature)
 
 FeatureLevel VkFeatureChecker::GetFeatureLevel()
 {
-    // Map Vulkan version to feature level
-    uint32_t majorVersion = VK_API_VERSION_MAJOR(deviceProperties.apiVersion);
-    uint32_t minorVersion = VK_API_VERSION_MINOR(deviceProperties.apiVersion);
+    bool supportsLevel12_2 =
+        // Vulkan 1.3 features that correspond to FL 12_2 requirements
+        vulkan13Features.synchronization2 && vulkan13Features.dynamicRendering;
 
-    // Map Vulkan 1.3 to Feature Level 12_2
-    if (majorVersion > 1 || (majorVersion == 1 && minorVersion >= 3))
+    bool supportsLevel12_1 =
+        // Vulkan 1.2 features that correspond to FL 12_1 requirements
+        vulkan12Features.bufferDeviceAddress && vulkan12Features.descriptorIndexing &&
+        vulkan12Features.shaderSampledImageArrayNonUniformIndexing;
+
+    // Return highest supported feature level
+    if (supportsLevel12_2)
     {
         return FeatureLevel::Level_12_2;
     }
-
-    // Could do the same sort of mapping, vk 1.2 and lower to FeatureLevel 12_1.
-    // This is once we support vk <= 1.2.
-    return FeatureLevel::Level_12_1;
+    else if (supportsLevel12_1)
+    {
+        return FeatureLevel::Level_12_1;
+    }
+    else
+    {
+        return FeatureLevel::Level_12_0;
+    }
 }
 
 ResourceBindingTier VkFeatureChecker::GetResourceBindingTier()
@@ -89,24 +98,18 @@ ResourceBindingTier VkFeatureChecker::GetResourceBindingTier()
     {
         return ResourceBindingTier::ResourceTier3;
     }
-
-    // Mappings of Vulkan to DX12-like resource binding tier.
-    // Doing this allows us to have a similar amount of slots in shaders.
-
-    VEX_LOG(Fatal, "No resource binding tier matched this device: {}", GetPhysicalDeviceName());
-    std::unreachable();
-    //// Tier 2: Mid-range hardware
-    // else if (limits.maxPerStageDescriptorSamplers >= 16 && limits.maxPerStageDescriptorUniformBuffers >= 12 &&
-    //          limits.maxPerStageDescriptorStorageBuffers >= 16 && limits.maxPerStageDescriptorSampledImages >= 64 &&
-    //          limits.maxPerStageDescriptorStorageImages >= 8)
-    //{
-    //     return ResourceBindingTier::ResourceTier2;
-    // }
-    //// Tier 1: Basic hardware
-    // else
-    //{
-    //     return ResourceBindingTier::ResourceTier1;
-    // }
+    // Tier 2: Mid-range hardware
+    else if (limits.maxPerStageDescriptorSamplers >= 16 && limits.maxPerStageDescriptorUniformBuffers >= 12 &&
+             limits.maxPerStageDescriptorStorageBuffers >= 16 && limits.maxPerStageDescriptorSampledImages >= 64 &&
+             limits.maxPerStageDescriptorStorageImages >= 8)
+    {
+        return ResourceBindingTier::ResourceTier2;
+    }
+    // Tier 1: Basic hardware
+    else
+    {
+        return ResourceBindingTier::ResourceTier1;
+    }
 }
 
 ShaderModel VkFeatureChecker::GetShaderModel()
@@ -115,15 +118,52 @@ ShaderModel VkFeatureChecker::GetShaderModel()
     uint32_t majorVersion = VK_API_VERSION_MAJOR(deviceProperties.apiVersion);
     uint32_t minorVersion = VK_API_VERSION_MINOR(deviceProperties.apiVersion);
 
-    // Map Vulkan 1.3 to Feature Level 12_2
-    if (majorVersion > 1 || (majorVersion == 1 && minorVersion >= 3))
+    // Start with base level based on Vulkan version
+    ShaderModel maxShaderModel = ShaderModel::SM_6_0;
+
+    // Vulkan 1.1 supports SM 6.0
+    if (majorVersion > 1 || (majorVersion == 1 && minorVersion >= 1))
     {
-        // Dynamic rendering is only supported with vk 1.3 and SM_6_7!
-        return vulkan13Features.dynamicRendering ? ShaderModel::SM_6_7 : ShaderModel::SM_6_6;
+        maxShaderModel = ShaderModel::SM_6_0;
     }
 
-    VEX_LOG(Fatal, "Unable to find shader model for this version ({}.{})", majorVersion, minorVersion);
-    std::unreachable();
+    // Vulkan 1.2 supports SM 6.2 (with extensions)
+    if (majorVersion > 1 || (majorVersion == 1 && minorVersion >= 2))
+    {
+        maxShaderModel = ShaderModel::SM_6_2;
+
+        // SM 6.4 with buffer device address
+        if (vulkan12Features.bufferDeviceAddress)
+        {
+            maxShaderModel = ShaderModel::SM_6_4;
+        }
+
+        // SM 6.5 with ray tracing support
+        if (IsFeatureSupported(Feature::RayTracing))
+        {
+            maxShaderModel = ShaderModel::SM_6_5;
+        }
+    }
+
+    // Vulkan 1.3 adds support for SM 6.6
+    if (majorVersion > 1 || (majorVersion == 1 && minorVersion >= 3))
+    {
+        maxShaderModel = ShaderModel::SM_6_6;
+
+        // SM 6.7 with dynamic rendering
+        if (vulkan13Features.dynamicRendering)
+        {
+            maxShaderModel = ShaderModel::SM_6_7;
+        }
+    }
+
+    // Vulkan mesh shader extension requires SM 6.8
+    if (IsFeatureSupported(Feature::MeshShader))
+    {
+        maxShaderModel = ShaderModel::SM_6_8;
+    }
+
+    return maxShaderModel;
 }
 
 } // namespace vex::vk

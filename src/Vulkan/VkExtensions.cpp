@@ -1,33 +1,56 @@
 ﻿#include "VkExtensions.h"
-#include "Vex/Logger.h"
-#include "VkHeaders.h"
 
 #include <ranges>
 #include <unordered_set>
+
 #include <vulkan/vulkan_core.h>
+
+#include <Vex/Logger.h>
+#include <Vex/PlatformWindow.h>
+
+#include "VkHeaders.h"
 
 namespace vex::vk
 {
 
-std::vector<const char*> GetDefaultInstanceExtensions()
+std::vector<const char*> GetRequiredInstanceExtensions(bool enableGPUDebugLayer)
 {
-    return {
-#ifdef VEX_DEBUG
-        VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+    std::vector<const char*> extensions;
+
+    // Required for any windowed application
+    extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+
+    // Add validation/debug layer
+    if (enableGPUDebugLayer)
+    {
+        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    }
+
+    // Platform-specific surface extensions
+#if defined(_WIN32)
+    extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+#elif defined(__linux__)
+#if defined(VK_USE_PLATFORM_XLIB_KHR)
+    extensions.push_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
 #endif
-#if defined(__linux__)
-        "VK_KHR_xlib_surface"
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+    extensions.push_back(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
 #endif
-    };
+#endif
+
+    return extensions;
 }
 
-std::vector<const char*> GetDefaultValidationLayers()
+std::vector<const char*> GetDefaultValidationLayers(bool enableGPUBasedValidation)
 {
-    return {
-#ifdef VEX_DEBUG
-        "VK_LAYER_KHRONOS_validation",
-#endif
-    };
+    std::vector<const char*> validationLayers;
+
+    if (enableGPUBasedValidation)
+    {
+        validationLayers.push_back("VK_LAYER_KHRONOS_validation");
+    }
+
+    return validationLayers;
 }
 
 std::vector<const char*> GetDefaultDeviceExtensions()

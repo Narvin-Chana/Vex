@@ -9,6 +9,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Will correctly install our custom githook to run clang-format on staged files when committing
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/GitHooks.cmake)
 
+# Store the root directory of Vex
+set(VEX_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+# Make VEX_ROOT_DIR available to downstream projects that use this library
+set(VEX_ROOT_DIR "${VEX_ROOT_DIR}" CACHE INTERNAL "Path to Vex's library root directory")
+
 # =========================================
 # Set configuration flags
 # Debug: Full debug symbols
@@ -51,15 +56,17 @@ message(STATUS "Available graphics backends: ${VEX_AVAILABLE_BACKENDS}")
 # Make sure we have at least one backend
 list(LENGTH VEX_AVAILABLE_BACKENDS NUM_BACKENDS)
 if(NUM_BACKENDS EQUAL 0)
-    message(WARNING "No graphics backends available. Some functionality may be limited.")
+    message(ERROR "No graphics backends available. Some functionality may be limited.")
 endif()
 
 # =========================================
 # DEPENDENCIES FETCHING
 # =========================================
+# Dependencies fetching uses the FetchContent module
+include(FetchContent)
+
 # Fetch efsw dependency
 message(STATUS "Fetching efsw...")
-include(FetchContent)
 FetchContent_Declare(
     efsw
     GIT_REPOSITORY https://github.com/SpartanJ/efsw.git
@@ -87,7 +94,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(VulkanHpp)
 
-#Fetch magic_enum dependency
+# Fetch magic_enum dependency
 message(STATUS "Fetching magic_enum...")
 include(FetchContent)
 FetchContent_Declare(
@@ -96,6 +103,18 @@ FetchContent_Declare(
     GIT_TAG v0.9.7
 )
 FetchContent_MakeAvailable(magic_enum)
+
+# Fetch DX12 Agility SDK
+if (WIN32 AND VEX_ENABLE_DX12)
+    message(STATUS "Fetching DX12 Agility SDK...")
+    set(DX_AGILITY_SDK_VERSION "615")
+    FetchContent_Declare(
+        DirectX-Headers
+        GIT_REPOSITORY https://github.com/microsoft/DirectX-Headers.git
+        GIT_TAG v1.${DX_AGILITY_SDK_VERSION}.0
+    )
+    FetchContent_MakeAvailable(DirectX-Headers)
+endif()
 # =========================================
 
 # Set static library output
@@ -114,7 +133,7 @@ add_library(Vex STATIC
     "src/Vex/FeatureChecker.h" 
     "src/Vex/FeatureChecker.cpp" 
     "src/Vex/RHI.h"  
-)
+ )
 
 if (WIN32)
     target_sources(Vex PRIVATE
@@ -134,12 +153,12 @@ target_include_directories(Vex PUBLIC
 # DX12 project files
 if (WIN32 AND VEX_ENABLE_DX12)
     set(VEX_DX12_SOURCES 
+        "src/DX12/DX12Headers.h"
         "src/DX12/DX12Formats.h" 
         "src/DX12/DX12FeatureChecker.h"
         "src/DX12/DX12FeatureChecker.cpp"
         "src/DX12/DX12RHI.h"
         "src/DX12/DX12RHI.cpp"
-        "src/DX12/DX12Headers.h"
         "src/DX12/HRChecker.h"
         "src/DX12/HRChecker.cpp"
         "src/DX12/DXGIFactory.h"
@@ -197,12 +216,53 @@ add_header_only_dependency(Vex efsw "${efsw_SOURCE_DIR}" "include" "efsw")
 # Static linking to DirectX 12
 if(WIN32 AND VEX_ENABLE_DX12)
     message(STATUS "DX12 found!")
-    target_sources(Vex PRIVATE ${VEX_DX12_SOURCES})
+
+    # DirectX Agility SDK headers
+    add_header_only_dependency(Vex DirectX-Headers "${DirectX-Headers_SOURCE_DIR}" "include" "directx")
+
     target_link_libraries(Vex PUBLIC d3d12.lib dxgi.lib)
+    target_sources(Vex PRIVATE ${VEX_DX12_SOURCES})
+    # Vex DX12 definition
     target_compile_definitions(Vex PUBLIC VEX_DX12=1)
 else()
     target_compile_definitions(Vex PUBLIC VEX_DX12=0)
 endif()
+
+function(vex_setup_d3d12_agility_runtime TARGET)
+    if (WIN32 AND VEX_ENABLE_DX12)
+        set(VEX_D3D12_AGILITY_SOURCE_SDK_DIR "${VEX_ROOT_DIR}/external/d3d12-agility-sdk/bin")
+
+        if(NOT EXISTS "${VEX_D3D12_AGILITY_SOURCE_SDK_DIR}/D3D12Core.dll")
+            message(ERROR "Missing D3D12Core.dll in Agility SDK directory: ${VEX_D3D12_AGILITY_SOURCE_SDK_DIR}.")
+            return()
+        endif()
+
+        target_compile_definitions(Vex PRIVATE 
+            DIRECTX_AGILITY_SDK_VERSION=${DX_AGILITY_SDK_VERSION}
+            D3D12_AGILITY_SDK_ENABLED
+        )
+
+        target_compile_definitions(${TARGET} PRIVATE 
+            DIRECTX_AGILITY_SDK_VERSION=${DX_AGILITY_SDK_VERSION}
+            D3D12_AGILITY_SDK_ENABLED
+        )
+
+        target_sources(${TARGET} PRIVATE
+            "${VEX_ROOT_DIR}/src/DX12/DX12AgilitySDK.cpp"
+        )
+
+        add_custom_command(TARGET ${TARGET} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${TARGET}>/D3D12"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${VEX_D3D12_AGILITY_SOURCE_SDK_DIR}/D3D12Core.dll"
+                "${VEX_D3D12_AGILITY_SOURCE_SDK_DIR}/d3d12SDKLayers.dll"
+                "$<TARGET_FILE_DIR:${TARGET}>/D3D12"
+            COMMENT "Copying Agility SDK's DLLs to output directory : $<TARGET_FILE_DIR:${TARGET}>/D3D12..."
+        )
+
+        message(STATUS "D3D12 Agility SDK will be deployed with ${TARGET}")
+    endif()
+endfunction()
 
 # Static linking to Vulkan
 if(VEX_ENABLE_VULKAN AND Vulkan_FOUND)

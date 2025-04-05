@@ -27,12 +27,17 @@ UniqueHandle<GfxBackend> CreateGraphicsBackend(GraphicsAPI api, const BackendDes
     {
 #if VEX_DX12
     case GraphicsAPI::DirectX12:
-        backend = MakeUnique<GfxBackend>(MakeUnique<vex::dx12::DX12RHI>(), description);
+        backend = MakeUnique<GfxBackend>(
+            MakeUnique<vex::dx12::DX12RHI>(description.enableGPUDebugLayer, description.enableGPUBasedValidation),
+            description);
         break;
 #endif
 #if VEX_VULKAN
     case GraphicsAPI::Vulkan:
-        backend = MakeUnique<GfxBackend>(MakeUnique<vex::vk::VkRHI>(), description);
+        backend = MakeUnique<GfxBackend>(MakeUnique<vex::vk::VkRHI>(description.platformWindow.windowHandle,
+                                                                    description.enableGPUDebugLayer,
+                                                                    description.enableGPUBasedValidation),
+                                         description);
         break;
 #endif
     default:
