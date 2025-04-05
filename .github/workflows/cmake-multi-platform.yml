@@ -78,24 +78,30 @@ jobs:
         g++ --version
 
     # GitHub Action's ubuntu image has a clang which does not support <expected> (added in clang 16).
-    - name: Install latest Clang
+    # Use of libc++ requires clang 19 minimum.
+    - name: Install Clang 19
       if: matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'clang'
       run: |
-        # Add the LLVM repository for newer Clang versions
+        # Add the LLVM repository for Clang 19
         wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-        sudo add-apt-repository "deb http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs) main" -y
+        
+        # Add specific repository for LLVM 19
+        UBUNTU_CODENAME=$(lsb_release -cs)
+        sudo bash -c "cat > /etc/apt/sources.list.d/llvm-19.list << EOF
+        deb http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-19 main
+        deb-src http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-19 main
+        EOF"
+        
         sudo apt-get update
         
-        # Find the latest Clang version available
-        LATEST_CLANG=$(apt-cache search 'clang-[0-9]+' | grep -oP 'clang-\K[0-9]+' | sort -rn | head -n1)
-        echo "Latest Clang version found: clang-$LATEST_CLANG"
+        # Install Clang 19 and associated libraries
+        sudo apt-get install -y clang-19 \
+          libc++-19-dev \
+          libc++abi-19-dev
         
-        # Install the latest Clang version
-        sudo apt-get install -y clang-$LATEST_CLANG libc++-$LATEST_CLANG-dev libc++abi-$LATEST_CLANG-dev
-        
-        # Set the latest Clang as the default
-        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-$LATEST_CLANG 100
-        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-$LATEST_CLANG 100
+        # Set Clang 19 as the default
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-19 100
+        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-19 100
         
         # Verify the version
         clang --version
