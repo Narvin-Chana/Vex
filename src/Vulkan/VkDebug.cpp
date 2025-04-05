@@ -1,18 +1,18 @@
-﻿#include "VkDebug.h"
-#include "Vex/Logger.h"
+﻿#include "Vex/Logger.h"
+#include "VkDebug.h"
 
 namespace vex::vk
 {
 
-VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(::vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                                              ::vk::DebugUtilsMessageTypeFlagsEXT messageType,
                                              const ::vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData,
                                              void* pUserData)
 {
 
-    if (messageSeverity >= ::vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning)
+    if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
     {
-        VEX_LOG(vex::LogLevel::Info, "validation layer: {}", pCallbackData->pMessage);
+        VEX_LOG(vex::LogLevel::Info, "Validation layer: {}", pCallbackData->pMessage);
     }
 
     return VK_FALSE;
