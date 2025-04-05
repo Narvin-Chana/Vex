@@ -48,7 +48,7 @@ void Logger::SetLogFilePath(const std::filesystem::path& newLogFilePath)
     }
 }
 
-void Logger::SetLogDestination(LogDestinationFlagsType newDestinations)
+void Logger::SetLogDestination(DestinationFlagsType newDestinations)
 {
     GLogger.destinationFlags = newDestinations;
 }
