@@ -65,7 +65,7 @@ jobs:
         # Find the latest GCC version available
         LATEST_GCC=$(apt-cache search 'gcc-[0-9]+' | grep -oP 'gcc-\K[0-9]+' | sort -rn | head -n1)
         echo "Latest GCC version found: gcc-$LATEST_GCC"
-        LATEST_GCC=14.1
+        
         # Install the latest GCC version
         sudo apt-get install -y gcc-$LATEST_GCC g++-$LATEST_GCC
         
