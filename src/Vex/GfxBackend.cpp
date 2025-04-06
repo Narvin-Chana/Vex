@@ -1,5 +1,7 @@
 #include "GfxBackend.h"
 
+#include <algorithm>
+
 #include <Vex/FeatureChecker.h>
 #include <Vex/Logger.h>
 #include <Vex/RHI.h>
