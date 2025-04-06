@@ -77,6 +77,36 @@ jobs:
         gcc --version
         g++ --version
 
+    # GitHub Action's ubuntu image has a clang which does not support <expected> (added in clang 16).
+    # Use of libc++ requires clang 19 minimum.
+    - name: Install Clang 19
+      if: matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'clang'
+      run: |
+        # Add the LLVM repository for Clang 19
+        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+        
+        # Add specific repository for LLVM 19
+        UBUNTU_CODENAME=$(lsb_release -cs)
+        sudo bash -c "cat > /etc/apt/sources.list.d/llvm-19.list << EOF
+        deb http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-19 main
+        deb-src http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-19 main
+        EOF"
+        
+        sudo apt-get update
+        
+        # Install Clang 19 and associated libraries
+        sudo apt-get install -y clang-19 \
+          libc++-19-dev \
+          libc++abi-19-dev
+        
+        # Set Clang 19 as the default
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-19 100
+        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-19 100
+        
+        # Verify the version
+        clang --version
+        clang++ --version
+
     - name: Install Vulkan SDK (Windows)
       if: matrix.os == 'windows-latest'
       uses: humbletim/setup-vulkan-sdk@523828e49cd4afabce369c39c7ee6543a2b7a735
@@ -88,11 +118,18 @@ jobs:
     - name: Install Vulkan SDK and Wayland (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
-        sudo apt-get update
+        # Add the LunarG repository
+        wget -qO - https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo apt-key add -
+        sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list https://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
+        sudo apt update
+    
+        # Install just the essential components needed for building
         sudo apt-get install -y \
-          libvulkan-dev \
-          vulkan-validationlayers \
-          vulkan-tools \
+          vulkan-headers \
+          libvulkan-dev
+    
+        # Install Wayland dependencies
+        sudo apt-get install -y \
           libwayland-dev \
           wayland-protocols \
           libxkbcommon-dev \
@@ -124,6 +161,7 @@ jobs:
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DVEX_BUILD_EXAMPLES=ON
+        ${{ matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'clang' && '-DCMAKE_CXX_FLAGS="-stdlib=libc++ -std=c++23"' || '' }}
         -S ${{ github.workspace }}
 
     - name: Build

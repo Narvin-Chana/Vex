@@ -32,8 +32,12 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
     # Only create the example if there are source files.
     if (EXAMPLE_SOURCES)
         add_executable(${EXAMPLE_NAME} ${EXAMPLE_SOURCES})
+
+        # Setup the d3d12 agility sdk
+        vex_setup_d3d12_agility_runtime(${EXAMPLE_NAME})
+
         target_link_libraries(${EXAMPLE_NAME} PRIVATE ${EXAMPLES_COMMON_LIBS})
-        target_include_directories(${EXAMPLE_NAME} PRIVATE "${EXAMPLE_DIR}" "${CMAKE_SOURCE_DIR}/src")
+        target_include_directories(${EXAMPLE_NAME} PRIVATE "${EXAMPLE_DIR}" "${CMAKE_SOURCE_DIR}/src")        
     endif()
   endif()
 endforeach()

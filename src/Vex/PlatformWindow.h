@@ -1,7 +1,11 @@
 #pragma once
 
-#ifdef _WIN32
+#if defined(_WIN32)
 #include <wtypes.h>
+#elif defined(__linux__)
+#include <X11/X.h>
+#include <X11/Xlib.h>
+#undef None
 #endif
 
 #include <Vex/Types.h>
@@ -9,12 +13,15 @@
 namespace vex
 {
 
+struct PlatformWindowHandle
+{
 #if defined(_WIN32)
-using PlatformWindowHandle = HWND;
+    HWND window;
 #elif defined(__linux__)
-// TODO: FIGURE OUT THE HANDLE TYPE ON LINUX
-using PlatformWindowHandle = int;
+    Window window;
+    Display* display;
 #endif
+};
 
 struct PlatformWindow
 {
