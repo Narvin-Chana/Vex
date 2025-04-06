@@ -165,6 +165,7 @@ if (WIN32 AND VEX_ENABLE_DX12)
         "src/DX12/DXGIFactory.h"
         "src/DX12/DXGIFactory.cpp"
         "src/DX12/DX12PhysicalDevice.h"
+        "src/DX12/DX12PhysicalDevice.cpp"
     )
 endif()
 
@@ -183,6 +184,7 @@ if (VEX_ENABLE_VULKAN AND Vulkan_FOUND)
         "src/Vulkan/VkErrorHandler.h"
         "src/Vulkan/VkErrorHandler.cpp"
         "src/Vulkan/VkPhysicalDevice.h"
+        "src/Vulkan/VkPhysicalDevice.cpp"
     )
 endif()
 

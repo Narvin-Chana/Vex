@@ -9,6 +9,9 @@ namespace vex::vk
 
 struct VkPhysicalDevice : public PhysicalDevice
 {
+    VkPhysicalDevice(const ::vk::PhysicalDevice& dev);
+    static double GetDeviceVRAMSize(const ::vk::PhysicalDevice& physicalDevice);
+
     ::vk::PhysicalDevice physicalDevice;
 };
 

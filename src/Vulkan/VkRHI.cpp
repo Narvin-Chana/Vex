@@ -46,25 +46,6 @@ static ::vk::PhysicalDeviceProperties GetHighestApiVersionDevice()
     return bestDevice;
 }
 
-static double GetDeviceVRAMSize(const ::vk::PhysicalDevice& physicalDevice)
-{
-    ::vk::PhysicalDeviceMemoryProperties memoryProperties = physicalDevice.getMemoryProperties();
-
-    double totalDeviceLocalMemoryMB = 0;
-    for (uint32_t i = 0; i < memoryProperties.memoryHeapCount; ++i)
-    {
-        if (memoryProperties.memoryHeaps[i].flags & ::vk::MemoryHeapFlagBits::eDeviceLocal)
-        {
-            // Device local implies its VRAM memory
-            VkDeviceSize heapSize = memoryProperties.memoryHeaps[i].size;
-
-            // Convert to a more readable format (MB)
-            totalDeviceLocalMemoryMB += static_cast<double>(heapSize) / (1024.0 * 1024.0);
-        }
-    }
-    return totalDeviceLocalMemoryMB;
-}
-
 VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation)
 {
     VULKAN_HPP_DEFAULT_DISPATCHER.init();
@@ -153,14 +134,10 @@ std::vector<UniqueHandle<PhysicalDevice>> VkRHI::EnumeratePhysicalDevices()
         VEX_LOG(Fatal, "No physical devices compatible with Vulkan were found!");
     }
 
+    physicalDevices.reserve(vkPhysicalDevices.size());
     for (const ::vk::PhysicalDevice& dev : vkPhysicalDevices)
     {
-        UniqueHandle<vex::vk::VkPhysicalDevice> device = MakeUnique<vex::vk::VkPhysicalDevice>();
-        device->deviceName = dev.getProperties().deviceName.data();
-        device->dedicatedVideoMemoryMB = GetDeviceVRAMSize(dev);
-        device->featureChecker = MakeUnique<VkFeatureChecker>(dev);
-        device->physicalDevice = dev;
-        physicalDevices.push_back(std::move(device));
+        physicalDevices.push_back(MakeUnique<vex::vk::VkPhysicalDevice>(dev));
     }
 
     return physicalDevices;

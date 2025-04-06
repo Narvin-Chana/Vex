@@ -38,17 +38,10 @@ std::vector<UniqueHandle<PhysicalDevice>> DX12RHI::EnumeratePhysicalDevices()
                                                                 DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
                                                                 IID_PPV_ARGS(&adapter)) != DXGI_ERROR_NOT_FOUND)
     {
-        DXGI_ADAPTER_DESC3 desc;
-        adapter->GetDesc3(&desc);
-
         if (ComPtr<ID3D12Device> device = DXGIFactory::CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_0))
         {
-            UniqueHandle<DX12PhysicalDevice> physicalDevice = MakeUnique<DX12PhysicalDevice>();
-            physicalDevice->deviceName = DXGIFactory::GetDeviceAdapterName(device);
-            physicalDevice->dedicatedVideoMemoryMB = static_cast<double>(desc.DedicatedVideoMemory) / (1024.0 * 1024.0);
-            physicalDevice->featureChecker = MakeUnique<DX12FeatureChecker>(device);
-            physicalDevice->adapter = adapter;
-            physicalDevices.push_back(std::move(physicalDevice));
+            physicalDevices.push_back(MakeUnique<DX12PhysicalDevice>(std::move(adapter), device));
+            adapter = nullptr;
         }
 
         adapterIndex++;
