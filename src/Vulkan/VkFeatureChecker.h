@@ -19,7 +19,6 @@ public:
     VkFeatureChecker() = default;
     VkFeatureChecker(const ::vk::PhysicalDevice& physicalDevice);
     virtual ~VkFeatureChecker() override;
-    virtual std::string_view GetPhysicalDeviceName() override;
     virtual bool IsFeatureSupported(Feature feature) override;
     virtual FeatureLevel GetFeatureLevel() override;
     virtual ResourceBindingTier GetResourceBindingTier() override;

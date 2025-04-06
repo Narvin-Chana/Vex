@@ -1,5 +1,9 @@
 #pragma once
 
+#include <vector>
+
+#include <Vex/PhysicalDevice.h>
+
 namespace vex
 {
 
@@ -9,7 +13,8 @@ class FeatureChecker;
 struct RenderHardwareInterface
 {
     virtual ~RenderHardwareInterface() = default;
-    virtual FeatureChecker& GetFeatureChecker() = 0;
+    virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() = 0;
+    virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) = 0;
 };
 
 using RHI = RenderHardwareInterface;

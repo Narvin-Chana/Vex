@@ -74,8 +74,6 @@ static ShaderModel ConvertDX12ShaderModelToShaderModel(D3D_SHADER_MODEL shaderMo
 
 DX12FeatureChecker::DX12FeatureChecker(const ComPtr<ID3D12Device>& device)
 {
-    adapterName = DXGIFactory::GetDeviceAdapterName(device);
-
     // Try to get device5 interface (needed for ray tracing)
     rayTracingSupported = false;
     ComPtr<ID3D12Device5> device5;
@@ -104,11 +102,6 @@ DX12FeatureChecker::DX12FeatureChecker(const ComPtr<ID3D12Device>& device)
 }
 
 DX12FeatureChecker::~DX12FeatureChecker() = default;
-
-std::string_view DX12FeatureChecker::GetPhysicalDeviceName()
-{
-    return adapterName;
-}
 
 bool DX12FeatureChecker::IsFeatureSupported(Feature feature)
 {

@@ -1,11 +1,13 @@
 #include "VkRHI.h"
 
-#include "Vex/Logger.h"
-#include "Vex/PlatformWindow.h"
+#include <Vex/Logger.h>
+#include <Vex/PlatformWindow.h>
+
 #include "VkDebug.h"
 #include "VkErrorHandler.h"
 #include "VkExtensions.h"
 #include "VkHeaders.h"
+#include "VkPhysicalDevice.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -13,7 +15,7 @@ namespace vex::vk
 {
 
 // Should be redone properly
-::vk::PhysicalDeviceProperties GetHighestApiVersionDevice()
+static ::vk::PhysicalDeviceProperties GetHighestApiVersionDevice()
 {
     ::vk::ApplicationInfo appInfo{
         .pApplicationName = "Vulkan App",
@@ -65,7 +67,7 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
         ::vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo{
             .messageSeverity = Severity::eVerbose | Severity::eWarning | Severity::eError,
             .messageType = MessageType::eGeneral | MessageType::eValidation | MessageType::ePerformance,
-            .pfnUserCallback = reinterpret_cast<::vk::PFN_DebugUtilsMessengerCallbackEXT>(debugCallback),
+            .pfnUserCallback = debugCallback,
         };
         debugCreateInfoPtr = &debugCreateInfo;
     }
@@ -100,24 +102,6 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
 
-    std::vector<::vk::PhysicalDevice> physicalDevices = Sanitize(instance->enumeratePhysicalDevices());
-    if (physicalDevices.empty())
-    {
-        VEX_LOG(Fatal, "No physical devices compatible with Vulkan were found!");
-    }
-
-    VEX_LOG(Info, "Found {} devices", physicalDevices.size());
-    for (const auto& dev : physicalDevices)
-    {
-        VEX_LOG(Info, "\t{}", dev.getProperties().deviceName.data());
-    }
-
-    // TODO: smarter physical device selection, currently just takes the first.
-    featureChecker = VkFeatureChecker(physicalDevices[0]);
-
-    ::vk::PhysicalDeviceProperties deviceProperties = physicalDevices[0].getProperties();
-    VEX_LOG(Info, "Selected Vulkan-compatible GPU: {}", deviceProperties.deviceName.data());
-
     InitWindow(windowHandle);
 }
 
@@ -140,9 +124,28 @@ void VkRHI::InitWindow(const PlatformWindowHandle& windowHandle)
 #endif
 }
 
-FeatureChecker& VkRHI::GetFeatureChecker()
+std::vector<UniqueHandle<PhysicalDevice>> VkRHI::EnumeratePhysicalDevices()
 {
-    return featureChecker;
+    std::vector<UniqueHandle<PhysicalDevice>> physicalDevices;
+
+    std::vector<::vk::PhysicalDevice> vkPhysicalDevices = Sanitize(instance->enumeratePhysicalDevices());
+    if (vkPhysicalDevices.empty())
+    {
+        VEX_LOG(Fatal, "No physical devices compatible with Vulkan were found!");
+    }
+
+    physicalDevices.reserve(vkPhysicalDevices.size());
+    for (const ::vk::PhysicalDevice& dev : vkPhysicalDevices)
+    {
+        physicalDevices.push_back(MakeUnique<vex::vk::VkPhysicalDevice>(dev));
+    }
+
+    return physicalDevices;
+}
+
+void VkRHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
+{
+    // TODO: init device for the passed in physical device.
 }
 
 } // namespace vex::vk

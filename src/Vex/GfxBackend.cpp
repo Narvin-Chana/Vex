@@ -1,5 +1,7 @@
 #include "GfxBackend.h"
 
+#include <algorithm>
+
 #include <Vex/FeatureChecker.h>
 #include <Vex/Logger.h>
 #include <Vex/RHI.h>
@@ -27,9 +29,20 @@ GfxBackend::GfxBackend(UniqueHandle<RenderHardwareInterface>&& newRHI, const Bac
     }
     VEX_LOG(Info, "Running Vex in {}", vexTargetName);
 
+    auto physicalDevices = rhi->EnumeratePhysicalDevices();
+    if (physicalDevices.empty())
+    {
+        VEX_LOG(Fatal, "The underlying graphics API was unable to find atleast one physical device.");
+    }
+
+    // Obtain the best physical device.
+    std::sort(physicalDevices.begin(), physicalDevices.end(), [](const auto& l, const auto& r) { return *l > *r; });
 #if !VEX_SHIPPING
-    rhi->GetFeatureChecker().DumpFeatureSupport();
+    physicalDevices[0]->DumpPhysicalDeviceInfo();
 #endif
+
+    // Initializes RHI which includes creating logicial device and swapchain
+    rhi->Init(physicalDevices[0]);
 
     VEX_LOG(Info,
             "Created graphics backend with width {} and height {}.",

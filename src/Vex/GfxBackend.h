@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Vex/Formats.h>
+#include <Vex/PhysicalDevice.h>
 #include <Vex/PlatformWindow.h>
 #include <Vex/UniqueHandle.h>
 

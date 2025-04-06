@@ -7,11 +7,17 @@
 namespace vex::dx12
 {
 
-ComPtr<ID3D12Device> DXGIFactory::CreateDevice(IDXGIAdapter* adapter)
+ComPtr<IDXGIFactory7> DXGIFactory::dxgiFactory;
+
+void DXGIFactory::InitializeDXGIFactory()
+{
+    chk << CreateDXGIFactory2(0, IID_PPV_ARGS(&dxgiFactory));
+}
+
+ComPtr<ID3D12Device> DXGIFactory::CreateDevice(IDXGIAdapter* adapter, D3D_FEATURE_LEVEL minimumFeatureLevel)
 {
     ComPtr<ID3D12Device10> device;
-    // TODO: convert feature level from FeatureChecker::MinimumFeatureLevel to D3D12_FEATURE_LEVEL
-    chk << D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&device));
+    chkSoft << D3D12CreateDevice(adapter, minimumFeatureLevel, IID_PPV_ARGS(&device));
     return device;
 }
 
@@ -24,13 +30,6 @@ std::string DXGIFactory::GetDeviceAdapterName(const ComPtr<ID3D12Device>& device
 
     // First, we need to get the LUID (Locally Unique Identifier) of the adapter
     LUID adapterLuid = device->GetAdapterLuid();
-
-    // Create a DXGI factory
-    ComPtr<IDXGIFactory4> dxgiFactory;
-    if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(&dxgiFactory))))
-    {
-        return "Error creating DXGI Factory";
-    }
 
     // Enumerate adapters to find the one matching our LUID
     ComPtr<IDXGIAdapter1> adapter;

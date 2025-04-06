@@ -6,7 +6,7 @@
 
 namespace vex
 {
-struct PlatformWindow;
+struct PlatformWindowHandle;
 }
 
 namespace vex::dx12
@@ -15,12 +15,11 @@ namespace vex::dx12
 class DX12RHI : public vex::RHI
 {
 public:
-    DX12RHI(bool enableGPUDebugLayer, bool enableGPUBasedValidation);
+    DX12RHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation);
     virtual ~DX12RHI() override;
-    virtual FeatureChecker& GetFeatureChecker() override;
 
-private:
-    DX12FeatureChecker featureChecker;
+    virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() override;
+    virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) override;
 };
 
 } // namespace vex::dx12

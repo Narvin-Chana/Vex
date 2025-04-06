@@ -39,11 +39,6 @@ VkFeatureChecker::VkFeatureChecker(const ::vk::PhysicalDevice& physicalDevice)
 
 VkFeatureChecker::~VkFeatureChecker() = default;
 
-std::string_view VkFeatureChecker::GetPhysicalDeviceName()
-{
-    return deviceProperties.deviceName.data();
-}
-
 bool VkFeatureChecker::IsFeatureSupported(Feature feature)
 {
     switch (feature)
