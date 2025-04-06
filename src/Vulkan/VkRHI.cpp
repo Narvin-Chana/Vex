@@ -65,7 +65,7 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
         ::vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo{
             .messageSeverity = Severity::eVerbose | Severity::eWarning | Severity::eError,
             .messageType = MessageType::eGeneral | MessageType::eValidation | MessageType::ePerformance,
-            .pfnUserCallback = debugCallback,
+            .pfnUserCallback = reinterpret_cast<::vk::PFN_DebugUtilsMessengerCallbackEXT>(debugCallback),
         };
         debugCreateInfoPtr = &debugCreateInfo;
     }
