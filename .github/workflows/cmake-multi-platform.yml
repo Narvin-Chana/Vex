@@ -123,16 +123,12 @@ jobs:
         sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list https://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
         sudo apt update
     
-        # Install just the essential components we need to avoid dependency issues
-        # Avoid installing the complete vulkan-sdk meta-package
+        # Install just the essential components needed for building
         sudo apt-get install -y \
           vulkan-headers \
-          libvulkan-dev \
-          vulkan-tools \
-          vulkan-validationlayers \
-          shaderc    
-
-        # Also install the required Wayland dependencies
+          libvulkan-dev
+    
+        # Install Wayland dependencies
         sudo apt-get install -y \
           libwayland-dev \
           wayland-protocols \
@@ -148,9 +144,6 @@ jobs:
           libxext-dev \
           libgl1-mesa-dev \
           extra-cmake-modules
-    
-        # Verify installation
-        vulkaninfo --summary
 
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
