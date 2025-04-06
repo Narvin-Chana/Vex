@@ -118,11 +118,20 @@ jobs:
     - name: Install Vulkan SDK and Wayland (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
-        sudo apt-get update
+        # Download and install the latest Vulkan SDK using the official LunarG installer
+        wget -qO - https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo apt-key add -
+        sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list https://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
+        sudo apt update
+    
+        # Find the latest version available
+        LATEST_VERSION=$(apt-cache madison vulkan-sdk | head -n 1 | awk '{print $3}' | cut -d'-' -f1)
+        echo "Latest Vulkan SDK version: $LATEST_VERSION"
+    
+        # Install the SDK and required components
+        sudo apt install -y vulkan-sdk vulkan-headers vulkan-validationlayers
+    
+        # Also install the required Wayland dependencies
         sudo apt-get install -y \
-          libvulkan-dev \
-          vulkan-validationlayers \
-          vulkan-tools \
           libwayland-dev \
           wayland-protocols \
           libxkbcommon-dev \
@@ -137,6 +146,9 @@ jobs:
           libxext-dev \
           libgl1-mesa-dev \
           extra-cmake-modules
+    
+        # Verify installation
+        vulkaninfo --summary
 
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
