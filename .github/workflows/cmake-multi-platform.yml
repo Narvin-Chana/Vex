@@ -118,18 +118,20 @@ jobs:
     - name: Install Vulkan SDK and Wayland (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
-        # Download and install the latest Vulkan SDK using the official LunarG installer
+        # Add the LunarG repository
         wget -qO - https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo apt-key add -
         sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list https://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
         sudo apt update
     
-        # Find the latest version available
-        LATEST_VERSION=$(apt-cache madison vulkan-sdk | head -n 1 | awk '{print $3}' | cut -d'-' -f1)
-        echo "Latest Vulkan SDK version: $LATEST_VERSION"
-    
-        # Install the SDK and required components
-        sudo apt install -y vulkan-sdk vulkan-headers vulkan-validationlayers
-    
+        # Install just the essential components we need to avoid dependency issues
+        # Avoid installing the complete vulkan-sdk meta-package
+        sudo apt-get install -y \
+          vulkan-headers \
+          libvulkan-dev \
+          vulkan-tools \
+          vulkan-validationlayers \
+          shaderc    
+
         # Also install the required Wayland dependencies
         sudo apt-get install -y \
           libwayland-dev \
