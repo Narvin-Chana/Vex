@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Vex/RHI.h>
+#include <Vex/RHI/RHI.h>
 #include <Vulkan/VkFeatureChecker.h>
 #include <Vulkan/VkHeaders.h>
 
@@ -20,6 +20,33 @@ public:
 
     virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() override;
     virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) override;
+
+    virtual UniqueHandle<RHICommandPool> CreateCommandPool() override
+    {
+        // TODO: implement
+        return nullptr;
+    }
+
+    virtual void ExecuteCommandList(RHICommandList& commandList) override
+    {
+        // TODO: implement
+    }
+
+    virtual UniqueHandle<RHIFence> CreateFence(u32 numFenceIndices) override
+    {
+        // TODO: implement
+        return nullptr;
+    }
+
+    virtual void SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) override
+    {
+        // TODO: implement
+    }
+
+    virtual void WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) override
+    {
+        // TODO: implement
+    }
 
 private:
     void InitWindow(const PlatformWindowHandle& windowHandle);

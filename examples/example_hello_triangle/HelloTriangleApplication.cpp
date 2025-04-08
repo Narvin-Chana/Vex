@@ -39,7 +39,7 @@ HelloTriangleApplication::HelloTriangleApplication()
     vex::PlatformWindowHandle platformWindow{ .window = glfwGetX11Window(window), .display = glfwGetX11Display() };
 #endif
 
-#define FORCE_VULKAN 1
+#define FORCE_VULKAN 0
 
     graphics = CreateGraphicsBackend(
 #if VEX_VULKAN and FORCE_VULKAN
@@ -65,5 +65,11 @@ void HelloTriangleApplication::Run()
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
+
+        graphics->StartFrame();
+
+        // TODO: Draw triangle
+
+        graphics->EndFrame();
     }
 }
