@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <Vex/Debug.h>
+#include <Vex/EnumFlags.h>
 #include <Vex/Types.h>
 
 namespace vex
@@ -46,16 +47,16 @@ constexpr inline std::string_view LogLevelToString(LogLevel logLevel)
     std::unreachable();
 }
 
+/* clang-format off */
+BEGIN_VEX_ENUM_FLAGS(LogDestination, u8)
+    None = 0, 
+    Console = 1 << 0, 
+    File = 1 << 1,
+END_VEX_ENUM_FLAGS();
+/* clang-format on */
+
 struct Logger
 {
-    using DestinationFlagsType = u8;
-    enum DestinationFlags : DestinationFlagsType
-    {
-        None = 0,
-        Console = 1 << 0,
-        File = 1 << 1
-    };
-
     Logger();
     ~Logger();
 
@@ -67,12 +68,12 @@ struct Logger
                                                            LogLevelToString(level),
                                                            std::format(formatMessage, std::forward<Args>(args)...));
 
-        if (destinationFlags & Console)
+        if (destinationFlags & LogDestination::Console)
         {
             std::println("{}", timeStampedFormatMessage);
         }
 
-        if (destinationFlags & File)
+        if (destinationFlags & LogDestination::File)
         {
             if (!logOutput)
             {
@@ -91,7 +92,7 @@ struct Logger
     static void SetLogLevelFilter(LogLevel newFilter);
     // Change directory in which the log file we be created. Will not change the name of the output file.
     static void SetLogFilePath(const std::filesystem::path& newLogFilePath);
-    static void SetLogDestination(DestinationFlagsType newDestinations);
+    static void SetLogDestination(LogDestination::Flags newDestinations);
 
 private:
     void OpenLogFile();
@@ -106,7 +107,7 @@ private:
 
     // Calls to log with a lower level than this will be ignored.
     LogLevel levelFilter = Info;
-    DestinationFlagsType destinationFlags = Console | File;
+    LogDestination::Flags destinationFlags = LogDestination::Console | LogDestination::File;
 
     std::filesystem::path filePath = std::filesystem::current_path() / "logs" / LogFileNameFormat;
     std::optional<std::ofstream> logOutput;

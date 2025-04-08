@@ -134,7 +134,8 @@ add_library(Vex STATIC
     "src/Vex/RHI.h"  
     "src/Vex/PhysicalDevice.h"
     "src/Vex/PhysicalDevice.cpp"
-)
+    "src/Vex/EnumFlags.h"
+ )
 
 if (WIN32)
     target_sources(Vex PRIVATE
@@ -166,6 +167,8 @@ if (WIN32 AND VEX_ENABLE_DX12)
         "src/DX12/DXGIFactory.cpp"
         "src/DX12/DX12PhysicalDevice.h"
         "src/DX12/DX12PhysicalDevice.cpp"
+        "src/DX12/DX12Debug.h"
+        "src/DX12/DX12Debug.cpp"
     )
 endif()
 

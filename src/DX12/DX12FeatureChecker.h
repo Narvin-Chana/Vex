@@ -18,6 +18,12 @@ public:
     virtual ResourceBindingTier GetResourceBindingTier() override;
     virtual ShaderModel GetShaderModel() override;
 
+    static FeatureLevel ConvertDX12FeatureLevelToFeatureLevel(D3D_FEATURE_LEVEL featureLevel);
+    static D3D_FEATURE_LEVEL ConvertFeatureLevelToDX12FeatureLevel(FeatureLevel featureLevel);
+    static ResourceBindingTier ConvertDX12ResourceBindingTierToResourceBindingTier(
+        D3D12_RESOURCE_BINDING_TIER resourceBindingTier);
+    static ShaderModel ConvertDX12ShaderModelToShaderModel(D3D_SHADER_MODEL shaderModel);
+
 private:
     // Cached feature support data (to avoid requerying the device).
     D3D12_FEATURE_DATA_D3D12_OPTIONS options;
