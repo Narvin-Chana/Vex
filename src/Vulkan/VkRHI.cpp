@@ -3,13 +3,13 @@
 #include <ranges>
 #include <set>
 
-#include <Vex/Logger.h>
-#include <Vex/PlatformWindow.h>
 #include "VkDebug.h"
 #include "VkErrorHandler.h"
 #include "VkExtensions.h"
 #include "VkHeaders.h"
 #include "VkPhysicalDevice.h"
+#include <Vex/Logger.h>
+#include <Vex/PlatformWindow.h>
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -120,7 +120,7 @@ std::vector<UniqueHandle<PhysicalDevice>> VkRHI::EnumeratePhysicalDevices()
 {
     std::vector<UniqueHandle<PhysicalDevice>> physicalDevices;
 
-    std::vector<::vk::PhysicalDevice> vkPhysicalDevices = Sanitize(instance->enumeratePhysicalDevices());
+    std::vector<::vk::PhysicalDevice> vkPhysicalDevices = CHECK <<= instance->enumeratePhysicalDevices();
     if (vkPhysicalDevices.empty())
     {
         VEX_LOG(Fatal, "No physical devices compatible with Vulkan were found!");
@@ -147,7 +147,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     u32 i = 0;
     for (const auto& property : queueFamilies)
     {
-        bool presentSupported = Sanitize(physDevice.getSurfaceSupportKHR(static_cast<uint32_t>(i), *surface));
+        bool presentSupported = CHECK <<= physDevice.getSurfaceSupportKHR(static_cast<uint32_t>(i), *surface);
 
         if (graphicsQueueFamily == -1 && presentSupported && property.queueFlags & ::vk::QueueFlagBits::eGraphics)
         {
@@ -190,7 +190,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
                                              .ppEnabledExtensionNames = extensions.data(),
                                              .pEnabledFeatures = &physDeviceFeatures };
 
-    device = Sanitize(physDevice.createDeviceUnique(deviceCreateInfo));
+    device = CHECK <<= physDevice.createDeviceUnique(deviceCreateInfo);
 
     if (graphicsQueueFamily == -1)
     {
