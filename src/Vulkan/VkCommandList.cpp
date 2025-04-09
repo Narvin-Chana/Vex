@@ -22,10 +22,10 @@ void VkCommandList::Open()
         return;
     }
 
-    (void)commandBuffer->reset();
+    CHECK << commandBuffer->reset();
 
     ::vk::CommandBufferBeginInfo beginInfo{};
-    (void)commandBuffer->begin(beginInfo);
+    CHECK << commandBuffer->begin(beginInfo);
 
     isOpen = true;
 }
@@ -38,7 +38,7 @@ void VkCommandList::Close()
         return;
     }
 
-    (void)commandBuffer->end();
+    CHECK << commandBuffer->end();
 
     isOpen = false;
 }

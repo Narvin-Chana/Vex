@@ -12,11 +12,12 @@ RHICommandList* VkCommandPool::CreateCommandList(CommandQueueType queueType)
 {
     ::vk::UniqueCommandPool& commandPool = commandPoolPerQueueType[std::to_underlying(queueType)];
 
-    ::vk::UniqueCommandBuffer newBuffer = std::move(Sanitize(device.allocateCommandBuffersUnique({
+    auto allocatedBuffers = CHECK <<= device.allocateCommandBuffersUnique({
         .commandPool = *commandPool,
         .level = ::vk::CommandBufferLevel::ePrimary,
         .commandBufferCount = 1,
-    }))[0]);
+    });
+    ::vk::UniqueCommandBuffer newBuffer = std::move(allocatedBuffers[0]);
 
     auto cmdList = MakeUnique<VkCommandList>(std::move(newBuffer), queueType);
     auto cmdListPtr = cmdList.get();
@@ -51,10 +52,10 @@ VkCommandPool::VkCommandPool(::vk::Device device,
 {
     for (u8 i = 0; i < CommandQueueTypes::Count; ++i)
     {
-        commandPoolPerQueueType[i] = Sanitize(device.createCommandPoolUnique({
+        commandPoolPerQueueType[i] = CHECK <<= device.createCommandPoolUnique({
             .flags = ::vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
             .queueFamilyIndex = commandQueues[i].family,
-        }));
+        });
     }
 }
 

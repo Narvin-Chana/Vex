@@ -13,15 +13,15 @@ VkFence::VkFence(u32 numFenceIndices, ::vk::Device device)
                                            .initialValue = GetFenceValue(0) };
     ++GetFenceValue(0);
 
-    fence = Sanitize(device.createSemaphoreUnique(::vk::SemaphoreCreateInfo{
+    fence = CHECK <<= device.createSemaphoreUnique(::vk::SemaphoreCreateInfo{
         .pNext = &type,
-    }));
+    });
 }
 
 u64 VkFence::GetCompletedFenceValue()
 {
     u64 value;
-    (void)device.getSemaphoreCounterValue(*fence, &value);
+    CHECK << device.getSemaphoreCounterValue(*fence, &value);
     return value;
 }
 
@@ -31,7 +31,7 @@ void VkFence::WaitCPU_Internal(u32 index)
                                          .pSemaphores = &*fence,
                                          .pValues = &GetFenceValue(index) };
 
-    (void)device.waitSemaphoresKHR(&waitInfo, std::numeric_limits<u64>::max());
+    CHECK << device.waitSemaphoresKHR(&waitInfo, std::numeric_limits<u64>::max());
 }
 
 } // namespace vex::vk

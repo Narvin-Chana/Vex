@@ -243,7 +243,7 @@ void VkRHI::ExecuteCommandList(RHICommandList& commandList)
         .commandBufferCount = 1,
         .pCommandBuffers = &*cmdList.commandBuffer,
     };
-    (void)commandQueues[cmdList.GetType()].queue.submit(submitInfo);
+    CHECK << commandQueues[cmdList.GetType()].queue.submit(submitInfo);
 }
 
 UniqueHandle<RHIFence> VkRHI::CreateFence(u32 numFenceIndices)
@@ -264,7 +264,7 @@ void VkRHI::SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIn
         .pSignalSemaphores = &*vkFence.fence,
     };
 
-    (void)commandQueues[queueType].queue.submit(submit);
+    CHECK << commandQueues[queueType].queue.submit(submit);
 }
 
 void VkRHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
@@ -280,7 +280,7 @@ void VkRHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceInde
     submit.pWaitSemaphores = &*vkFence.fence;
     submit.waitSemaphoreCount = 1;
 
-    (void)commandQueues[queueType].queue.submit(submit);
+    CHECK << commandQueues[queueType].queue.submit(submit);
 }
 
 } // namespace vex::vk
