@@ -22,6 +22,8 @@ void VkCommandList::Open()
         return;
     }
 
+    (void)commandBuffer->reset();
+
     ::vk::CommandBufferBeginInfo beginInfo{};
     (void)commandBuffer->begin(beginInfo);
 
@@ -52,7 +54,7 @@ void VkCommandList::SetViewport(float x, float y, float width, float height, flo
         .maxDepth = maxDepth,
     };
 
-    assert(commandBuffer);
+    VEX_ASSERT(commandBuffer, "CommandBuffer must exist to set viewport");
     commandBuffer->setViewport(0, 1, &viewport);
 }
 
@@ -63,7 +65,7 @@ void VkCommandList::SetScissor(i32 x, i32 y, u32 width, u32 height)
         .extent = { .width = width, .height = height },
     };
 
-    assert(commandBuffer);
+    VEX_ASSERT(commandBuffer, "CommandBuffer must exist to set scissor");
     commandBuffer->setScissor(0, 1, &scissor);
 }
 

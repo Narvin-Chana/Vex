@@ -32,6 +32,7 @@ set(VEX_AVAILABLE_BACKENDS "")
 
 # Check for DirectX 12 (Windows only)
 if(WIN32)
+    add_compile_definitions(NOMINMAX)
     option(VEX_ENABLE_DX12 "Enable DirectX 12 backend if available" ON)
     if(VEX_ENABLE_DX12)
         list(APPEND VEX_AVAILABLE_BACKENDS "DirectX12")
@@ -140,6 +141,8 @@ add_library(Vex STATIC
     "src/Vex/RHI/RHIFence.h"
     "src/Vex/RHI/RHIFence.cpp"
     "src/Vex/FrameResource.h"
+        src/Vulkan/Synchro/VkFence.cpp
+        src/Vulkan/Synchro/VkFence.h
 )
 
 if (WIN32)

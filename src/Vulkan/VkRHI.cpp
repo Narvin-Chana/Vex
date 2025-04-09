@@ -8,6 +8,7 @@
 #include <Vex/RHI/RHICommandPool.h>
 #include <Vex/RHI/RHIFence.h>
 
+#include "Synchro/VkFence.h"
 #include "VkCommandPool.h"
 #include "VkCommandQueue.h"
 #include "VkDebug.h"
@@ -191,7 +192,11 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
 
     auto physDeviceFeatures = physDevice.getFeatures();
 
-    ::vk::DeviceCreateInfo deviceCreateInfo{ .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
+    ::vk::PhysicalDeviceVulkan12Features features;
+    features.timelineSemaphore = true;
+
+    ::vk::DeviceCreateInfo deviceCreateInfo{ .pNext = &features,
+                                             .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
                                              .pQueueCreateInfos = queueCreateInfos.data(),
                                              .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
                                              .ppEnabledExtensionNames = extensions.data(),
@@ -231,32 +236,51 @@ UniqueHandle<RHICommandPool> VkRHI::CreateCommandPool()
 
 void VkRHI::ExecuteCommandList(RHICommandList& commandList)
 {
-    VkCommandList& cmdList = reinterpret_cast<VkCommandList&>(commandList);
+    auto& cmdList = reinterpret_cast<VkCommandList&>(commandList);
 
-    // TODO: make sure right semaphores are configured
     ::vk::SubmitInfo submitInfo{
-        .waitSemaphoreCount = 0,
-        .pWaitSemaphores = nullptr,
-        .pWaitDstStageMask = 0,
+        .pWaitDstStageMask = 0, // find out what this needs
         .commandBufferCount = 1,
         .pCommandBuffers = &*cmdList.commandBuffer,
-        .signalSemaphoreCount = 0,
-        .pSignalSemaphores = nullptr,
     };
     (void)commandQueues[cmdList.GetType()].queue.submit(submitInfo);
 }
 
 UniqueHandle<RHIFence> VkRHI::CreateFence(u32 numFenceIndices)
 {
-    return UniqueHandle<RHIFence>();
+    return MakeUnique<VkFence>(numFenceIndices, *device);
 }
 
 void VkRHI::SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
 {
+    auto& vkFence = reinterpret_cast<VkFence&>(fence);
+
+    ::vk::TimelineSemaphoreSubmitInfoKHR timelineInfo{ .signalSemaphoreValueCount = 1,
+                                                       .pSignalSemaphoreValues = &fence.GetFenceValue(fenceIndex) };
+
+    ::vk::SubmitInfo submit{
+        .pNext = &timelineInfo,
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores = &*vkFence.fence,
+    };
+
+    (void)commandQueues[queueType].queue.submit(submit);
 }
 
 void VkRHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
 {
+    auto& vkFence = reinterpret_cast<VkFence&>(fence);
+
+    VkTimelineSemaphoreSubmitInfoKHR timelineInfo;
+    timelineInfo.signalSemaphoreValueCount = 1;
+    timelineInfo.pSignalSemaphoreValues = &fence.GetFenceValue(fenceIndex);
+
+    ::vk::SubmitInfo submit;
+    submit.pNext = &timelineInfo;
+    submit.pWaitSemaphores = &*vkFence.fence;
+    submit.waitSemaphoreCount = 1;
+
+    (void)commandQueues[queueType].queue.submit(submit);
 }
 
 } // namespace vex::vk

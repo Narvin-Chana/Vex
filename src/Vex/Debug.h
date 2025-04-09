@@ -6,7 +6,6 @@
 
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
 #include <windows.h>
 #define VEX_DEBUG_BREAK() DebugBreak()
 #elif defined(__linux__)
