@@ -8,6 +8,8 @@
 #include <Vex/RHI/RHICommandPool.h>
 #include <Vex/RHI/RHIFence.h>
 
+#include "VkCommandPool.h"
+#include "VkCommandQueue.h"
 #include "VkDebug.h"
 #include "VkErrorHandler.h"
 #include "VkExtensions.h"
@@ -197,30 +199,51 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
 
     device = CHECK <<= physDevice.createDeviceUnique(deviceCreateInfo);
 
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(*device);
+
     if (graphicsQueueFamily == -1)
     {
         VEX_LOG(Fatal, "Unable to create graphics queue on device!");
     }
-    graphicsQueue = device->getQueue(graphicsQueueFamily, 0);
+    commandQueues[CommandQueueTypes::Graphics] = VkCommandQueue{ CommandQueueTypes::Graphics,
+                                                                 static_cast<u32>(graphicsQueueFamily),
+                                                                 device->getQueue(graphicsQueueFamily, 0) };
 
     if (computeQueueFamily != -1)
     {
-        computeQueue = device->getQueue(computeQueueFamily, 0);
+        commandQueues[CommandQueueTypes::Compute] = VkCommandQueue{ CommandQueueTypes::Compute,
+                                                                    static_cast<u32>(computeQueueFamily),
+                                                                    device->getQueue(computeQueueFamily, 0) };
     }
 
     if (copyQueueFamily != -1)
     {
-        copyQueue = device->getQueue(copyQueueFamily, 0);
+        commandQueues[CommandQueueTypes::Copy] = VkCommandQueue{ CommandQueueTypes::Copy,
+                                                                 static_cast<u32>(copyQueueFamily),
+                                                                 device->getQueue(copyQueueFamily, 0) };
     }
 }
 
 UniqueHandle<RHICommandPool> VkRHI::CreateCommandPool()
 {
-    return UniqueHandle<RHICommandPool>();
+    return MakeUnique<VkCommandPool>(*device, commandQueues);
 }
 
 void VkRHI::ExecuteCommandList(RHICommandList& commandList)
 {
+    VkCommandList& cmdList = reinterpret_cast<VkCommandList&>(commandList);
+
+    // TODO: make sure right semaphores are configured
+    ::vk::SubmitInfo submitInfo{
+        .waitSemaphoreCount = 0,
+        .pWaitSemaphores = nullptr,
+        .pWaitDstStageMask = 0,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &*cmdList.commandBuffer,
+        .signalSemaphoreCount = 0,
+        .pSignalSemaphores = nullptr,
+    };
+    (void)commandQueues[cmdList.GetType()].queue.submit(submitInfo);
 }
 
 UniqueHandle<RHIFence> VkRHI::CreateFence(u32 numFenceIndices)

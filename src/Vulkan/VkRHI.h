@@ -1,5 +1,7 @@
 #pragma once
 
+#include "VkCommandQueue.h"
+
 #include <Vex/RHI/RHI.h>
 #include <Vulkan/VkFeatureChecker.h>
 #include <Vulkan/VkHeaders.h>
@@ -36,9 +38,7 @@ private:
     ::vk::UniqueSurfaceKHR surface;
     ::vk::UniqueDevice device;
 
-    ::vk::Queue copyQueue;
-    ::vk::Queue graphicsQueue;
-    ::vk::Queue computeQueue;
+    std::array<VkCommandQueue, CommandQueueTypes::Count> commandQueues;
 };
 
 } // namespace vex::vk

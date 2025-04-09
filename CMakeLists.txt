@@ -135,7 +135,12 @@ add_library(Vex STATIC
     "src/Vex/PhysicalDevice.h"
     "src/Vex/PhysicalDevice.cpp"
     "src/Vex/EnumFlags.h"
-  "src/Vex/RHI/RHICommandList.h" "src/Vex/RHI/RHICommandPool.h" "src/Vex/RHI/RHIFence.h" "src/Vex/RHI/RHIFence.cpp"   "src/Vex/FrameResource.h")
+    "src/Vex/RHI/RHICommandList.h"
+    "src/Vex/RHI/RHICommandPool.h"
+    "src/Vex/RHI/RHIFence.h"
+    "src/Vex/RHI/RHIFence.cpp"
+    "src/Vex/FrameResource.h"
+)
 
 if (WIN32)
     target_sources(Vex PRIVATE
@@ -190,6 +195,12 @@ if (VEX_ENABLE_VULKAN AND Vulkan_FOUND)
         "src/Vulkan/VkErrorHandler.cpp"
         "src/Vulkan/VkPhysicalDevice.h"
         "src/Vulkan/VkPhysicalDevice.cpp"
+        "src/Vulkan/VkCommandPool.cpp"
+        "src/Vulkan/VkCommandPool.h"
+        "src/Vulkan/VkCommandQueue.cpp"
+        "src/Vulkan/VkCommandQueue.h"
+        "src/Vulkan/VkCommandList.cpp"
+        "src/Vulkan/VkCommandList.h"
     )
 endif()
 
