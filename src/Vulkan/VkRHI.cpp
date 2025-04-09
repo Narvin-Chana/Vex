@@ -3,6 +3,11 @@
 #include <ranges>
 #include <set>
 
+#include <Vex/Logger.h>
+#include <Vex/PlatformWindow.h>
+#include <Vex/RHI/RHICommandPool.h>
+#include <Vex/RHI/RHIFence.h>
+
 #include "VkDebug.h"
 #include "VkErrorHandler.h"
 #include "VkExtensions.h"
@@ -207,6 +212,28 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     {
         copyQueue = device->getQueue(copyQueueFamily, 0);
     }
+}
+
+UniqueHandle<RHICommandPool> VkRHI::CreateCommandPool()
+{
+    return UniqueHandle<RHICommandPool>();
+}
+
+void VkRHI::ExecuteCommandList(RHICommandList& commandList)
+{
+}
+
+UniqueHandle<RHIFence> VkRHI::CreateFence(u32 numFenceIndices)
+{
+    return UniqueHandle<RHIFence>();
+}
+
+void VkRHI::SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
+{
+}
+
+void VkRHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
+{
 }
 
 } // namespace vex::vk
