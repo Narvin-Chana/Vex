@@ -65,5 +65,11 @@ void HelloTriangleApplication::Run()
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
+
+        graphics->StartFrame();
+
+        // TODO: Draw triangle
+
+        graphics->EndFrame();
     }
 }

@@ -3,7 +3,9 @@
 #include <Vex/Logger.h>
 #include <Vex/PlatformWindow.h>
 
+#include <DX12/DX12CommandPool.h>
 #include <DX12/DX12Debug.h>
+#include <DX12/DX12Fence.h>
 #include <DX12/DX12PhysicalDevice.h>
 #include <DX12/DXGIFactory.h>
 #include <DX12/HRChecker.h>
@@ -85,7 +87,7 @@ void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
                                        .Priority = D3D12_COMMAND_QUEUE_PRIORITY_HIGH,
                                        .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
                                        .NodeMask = 0 };
-        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&graphicsQueue));
+        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetQueue(CommandQueueType::Graphics)));
     }
 
     {
@@ -93,7 +95,7 @@ void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
                                        .Priority = D3D12_COMMAND_QUEUE_PRIORITY_HIGH,
                                        .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
                                        .NodeMask = 0 };
-        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&asyncComputeQueue));
+        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetQueue(CommandQueueType::Compute)));
     }
 
     {
@@ -101,8 +103,39 @@ void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
                                        .Priority = D3D12_COMMAND_QUEUE_PRIORITY_HIGH,
                                        .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
                                        .NodeMask = 0 };
-        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&copyQueue));
+        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetQueue(CommandQueueType::Copy)));
     }
+}
+
+UniqueHandle<RHICommandPool> DX12RHI::CreateCommandPool()
+{
+    return MakeUnique<DX12CommandPool>(device);
+}
+
+void DX12RHI::ExecuteCommandList(RHICommandList& commandList)
+{
+    ID3D12CommandList* p = static_cast<DX12CommandList&>(commandList).commandList.Get();
+    queues[commandList.GetType()]->ExecuteCommandLists(1, &p);
+}
+
+UniqueHandle<RHIFence> DX12RHI::CreateFence(u32 numFenceIndices)
+{
+    return MakeUnique<DX12Fence>(numFenceIndices, device);
+}
+
+void DX12RHI::SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
+{
+    chk << GetQueue(queueType)->Signal(static_cast<DX12Fence&>(fence).fence.Get(), fence.GetFenceValue(fenceIndex));
+}
+
+void DX12RHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
+{
+    chk << GetQueue(queueType)->Wait(static_cast<DX12Fence&>(fence).fence.Get(), fence.GetFenceValue(fenceIndex));
+}
+
+ComPtr<ID3D12CommandQueue>& DX12RHI::GetQueue(CommandQueueType queueType)
+{
+    return queues[std::to_underlying(queueType)];
 }
 
 } // namespace vex::dx12

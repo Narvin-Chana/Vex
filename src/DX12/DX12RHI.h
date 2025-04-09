@@ -1,6 +1,8 @@
 #pragma once
 
-#include <Vex/RHI.h>
+#include <array>
+
+#include <Vex/RHI/RHI.h>
 
 #include <DX12/DX12FeatureChecker.h>
 
@@ -21,14 +23,22 @@ public:
     virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() override;
     virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) override;
 
+    virtual UniqueHandle<RHICommandPool> CreateCommandPool() override;
+
+    virtual void ExecuteCommandList(RHICommandList& commandList) override;
+
+    virtual UniqueHandle<RHIFence> CreateFence(u32 numFenceIndices) override;
+    virtual void SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) override;
+    virtual void WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) override;
+
 private:
+    ComPtr<ID3D12CommandQueue>& GetQueue(CommandQueueType queueType);
+
     bool enableGPUDebugLayer = false;
 
     ComPtr<DX12Device> device;
 
-    ComPtr<ID3D12CommandQueue> copyQueue;
-    ComPtr<ID3D12CommandQueue> asyncComputeQueue;
-    ComPtr<ID3D12CommandQueue> graphicsQueue;
+    std::array<ComPtr<ID3D12CommandQueue>, CommandQueueTypes::Count> queues;
 };
 
 } // namespace vex::dx12
