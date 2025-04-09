@@ -19,17 +19,25 @@ public:
 
     virtual ~RHIFence() = default;
     virtual u64 GetCompletedFenceValue() = 0;
-    // CPU-side wait for the fence to be signaled by the GPU (this operation blocks the CPU)
-    virtual void WaitCPU(u32 index) = 0;
-    void ConditionalWaitCPUAndIncrementNextFenceIndex(u32 currentIndex, u32 nextIndex)
+    // CPU-side wait for the index to be signaled by the GPU (this operation blocks the CPU)
+    void WaitCPU(u32 index)
     {
         // Only wait if the current completed fence value is lower than the desired value.
-        if (GetCompletedFenceValue() < GetFenceValue(nextIndex))
+        if (GetCompletedFenceValue() < GetFenceValue(index))
         {
-            WaitCPU(nextIndex);
+            WaitCPU_Internal(index);
         }
+    }
+    // CPU-side wait for the next index to be signaled by the GPU (this operation blocks the CPU), also sets the
+    // nextIndex's value to be the currentIndex's value plus one.
+    void WaitCPUAndIncrementNextFenceIndex(u32 currentIndex, u32 nextIndex)
+    {
+        WaitCPU(nextIndex);
         GetFenceValue(nextIndex) = GetFenceValue(currentIndex) + 1;
     }
+
+protected:
+    virtual void WaitCPU_Internal(u32 index) = 0;
 
 private:
     std::vector<u64> fenceValues;

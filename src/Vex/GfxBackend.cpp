@@ -127,7 +127,7 @@ void GfxBackend::EndFrame()
     // Wait for the fences nextFrameIndex value for all queue fences.
     for (auto queueType : magic_enum::enum_values<CommandQueueType>())
     {
-        queueFrameFences[queueType]->ConditionalWaitCPUAndIncrementNextFenceIndex(currentFrameIndex, nextFrameIndex);
+        queueFrameFences[queueType]->WaitCPUAndIncrementNextFenceIndex(currentFrameIndex, nextFrameIndex);
     }
 
     currentFrameIndex = nextFrameIndex;
@@ -151,7 +151,7 @@ void GfxBackend::FlushGPU()
     // Wait for the currentFrameIndex we just signaled to be done for all queue fences.
     for (auto queueType : magic_enum::enum_values<CommandQueueType>())
     {
-        queueFrameFences[queueType]->ConditionalWaitCPUAndIncrementNextFenceIndex(currentFrameIndex, nextFrameIndex);
+        queueFrameFences[queueType]->WaitCPUAndIncrementNextFenceIndex(currentFrameIndex, nextFrameIndex);
     }
 
     // The GPU should now be in an idle state.

@@ -19,7 +19,7 @@ DX12Fence::DX12Fence(u32 numFenceIndices, ComPtr<DX12Device>& device)
     }
 }
 
-void DX12Fence::WaitCPU(u32 index)
+void DX12Fence::WaitCPU_Internal(u32 index)
 {
     chk << fence->SetEventOnCompletion(GetFenceValue(index), fenceEvent);
     WaitForSingleObjectEx(fenceEvent, INFINITE, FALSE);

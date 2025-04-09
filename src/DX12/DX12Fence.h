@@ -14,11 +14,12 @@ public:
 
     virtual ~DX12Fence() = default;
     virtual u64 GetCompletedFenceValue() override;
-    virtual void WaitCPU(u32 index) override;
 
     ComPtr<ID3D12Fence1> fence;
 
 private:
+    virtual void WaitCPU_Internal(u32 index) override;
+
     HANDLE fenceEvent;
 };
 
