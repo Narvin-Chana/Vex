@@ -155,8 +155,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     i32 copyQueueFamily = -1;
 
     std::vector<::vk::QueueFamilyProperties> queueFamilies = physDevice.getQueueFamilyProperties();
-    u32 i = 0;
-    for (const auto& property : queueFamilies)
+    for (const auto [i, property] : queueFamilies | std::views::enumerate)
     {
         bool presentSupported = Sanitize(physDevice.getSurfaceSupportKHR(static_cast<uint32_t>(i), *surface));
 
@@ -172,8 +171,6 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
         {
             copyQueueFamily = static_cast<i32>(i);
         }
-
-        ++i;
     }
 
     std::set uniqueQueueFamilies{ graphicsQueueFamily, computeQueueFamily, copyQueueFamily };
