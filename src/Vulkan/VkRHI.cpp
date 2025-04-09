@@ -3,14 +3,13 @@
 #include <ranges>
 #include <set>
 
-#include <Vex/Logger.h>
-#include <Vex/PlatformWindow.h>
-
 #include "VkDebug.h"
 #include "VkErrorHandler.h"
 #include "VkExtensions.h"
 #include "VkHeaders.h"
 #include "VkPhysicalDevice.h"
+#include <Vex/Logger.h>
+#include <Vex/PlatformWindow.h>
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -20,21 +19,11 @@ namespace vex::vk
 // Should be redone properly
 static ::vk::PhysicalDeviceProperties GetHighestApiVersionDevice()
 {
-    ::vk::ApplicationInfo appInfo{
-        .pApplicationName = "Vulkan App",
-        .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
-        .pEngineName = "No Engine",
-        .engineVersion = VK_MAKE_VERSION(1, 0, 0),
-        .apiVersion = VK_API_VERSION_1_0,
-    };
-
     // Create temporary instance to check device properties
-    ::vk::UniqueInstance instance = Sanitize(::vk::createInstanceUnique({
-        .pApplicationInfo = &appInfo,
-    }));
+    ::vk::UniqueInstance instance = CHECK <<= ::vk::createInstanceUnique({});
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
 
-    auto devices = Sanitize(instance->enumeratePhysicalDevices());
+    auto devices = CHECK <<= instance->enumeratePhysicalDevices();
 
     ::vk::PhysicalDeviceProperties bestDevice{};
     for (auto dev : devices)
@@ -101,7 +90,7 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
         VEX_LOG(Info, "\t{}", instanceExtension);
     }
 
-    instance = Sanitize(::vk::createInstanceUnique(instanceCI));
+    instance = CHECK <<= ::vk::createInstanceUnique(instanceCI);
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
 
@@ -117,13 +106,13 @@ void VkRHI::InitWindow(const PlatformWindowHandle& windowHandle)
         .hinstance = GetModuleHandle(nullptr),
         .hwnd = windowHandle.window,
     };
-    surface = Sanitize(instance->createWin32SurfaceKHRUnique(createInfo));
+    surface = CHECK <<= instance->createWin32SurfaceKHRUnique(createInfo);
 #elif defined(__linux__)
     ::vk::XlibSurfaceCreateInfoKHR createInfo{
         .dpy = windowHandle.display,
         .window = windowHandle.window,
     };
-    surface = Sanitize(instance->createXlibSurfaceKHRUnique(createInfo));
+    surface = CHECK <<= instance->createXlibSurfaceKHRUnique(createInfo);
 #endif
 }
 
@@ -131,7 +120,7 @@ std::vector<UniqueHandle<PhysicalDevice>> VkRHI::EnumeratePhysicalDevices()
 {
     std::vector<UniqueHandle<PhysicalDevice>> physicalDevices;
 
-    std::vector<::vk::PhysicalDevice> vkPhysicalDevices = Sanitize(instance->enumeratePhysicalDevices());
+    std::vector<::vk::PhysicalDevice> vkPhysicalDevices = CHECK <<= instance->enumeratePhysicalDevices();
     if (vkPhysicalDevices.empty())
     {
         VEX_LOG(Fatal, "No physical devices compatible with Vulkan were found!");
@@ -158,7 +147,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     u32 i = 0;
     for (const auto& property : queueFamilies)
     {
-        bool presentSupported = Sanitize(physDevice.getSurfaceSupportKHR(static_cast<uint32_t>(i), *surface));
+        bool presentSupported = CHECK <<= physDevice.getSurfaceSupportKHR(static_cast<uint32_t>(i), *surface);
 
         if (graphicsQueueFamily == -1 && presentSupported && property.queueFlags & ::vk::QueueFlagBits::eGraphics)
         {
@@ -201,7 +190,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
                                              .ppEnabledExtensionNames = extensions.data(),
                                              .pEnabledFeatures = &physDeviceFeatures };
 
-    device = Sanitize(physDevice.createDeviceUnique(deviceCreateInfo));
+    device = CHECK <<= physDevice.createDeviceUnique(deviceCreateInfo);
 
     if (graphicsQueueFamily == -1)
     {

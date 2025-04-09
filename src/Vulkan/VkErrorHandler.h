@@ -10,123 +10,92 @@
 namespace vex::vk
 {
 
+inline std::string FormatLocation(const std::source_location& loc)
+{
+    return std::format("{}:{}", loc.file_name(), loc.line());
+}
+
 template <class T>
 std::expected<void, std::string> Validate(const ::vk::ResultValue<T>& val, std::source_location loc)
 {
     if (val.result != ::vk::Result::eSuccess)
     {
-        return std::unexpected(std::format("Result {} encoutered in {} at line {}",
-                                           ::vk::to_string(val.result),
-                                           loc.file_name(),
-                                           loc.line()));
+        return std::unexpected(
+            std::format("Result {} encoutered in {}", ::vk::to_string(val.result), FormatLocation(loc)));
     }
 
     return {};
 }
 
 template <class T>
-T&& Sanitize(::vk::ResultValue<T>&& val, std::source_location loc = std::source_location::current())
+void SanitizeOrCrash(const ::vk::ResultValue<T>& val, std::source_location loc)
 {
-    if (std::string errorsString = Validate(val, std::move(loc)).error_or({}); !errorsString.empty())
-    {
-        VEX_LOG(Error, "{}", errorsString);
+    Validate(val, std::move(loc))
+        .transform_error(
+            [](const std::string& msg)
+            {
+                VEX_LOG(Fatal, "Validation failed: {}", msg);
+                return msg;
+            });
+}
+
+template <bool>
+struct Sanitizer
+{
+    std::source_location loc = std::source_location::current();
+};
+
+#define CHECK                                                                                                          \
+    Sanitizer<true>                                                                                                    \
+    {                                                                                                                  \
     }
+
+template <class T, bool b>
+void operator>>(const ::vk::ResultValue<T>& val, Sanitizer<b>&& san)
+{
+    val << san;
+}
+
+template <class T>
+void operator<<(Sanitizer<true>&& san, const ::vk::ResultValue<T>& val)
+{
+    SanitizeOrCrash(val, std::move(san.loc));
+}
+
+template <class T>
+T operator<<=(Sanitizer<true>&& s, ::vk::ResultValue<T>&& val)
+{
+    SanitizeOrCrash(val, std::move(s.loc));
     return std::move(val.value);
 }
-//
-// struct Wrapper
-// {
-//     struct Inner
-//     {
-//         virtual ~Inner() = default;
-//         virtual ::vk::Result GetResult() = 0;
-//     };
-//
-//     template<class T>
-//     struct InnerImpl : Inner
-//     {
-//         ::vk::ResultValue<T> lib;
-//         virtual ::vk::Result GetResult()
-//         {
-//             return lib.result;
-//         }
-//     };
-//
-//     template<class T>
-//     Wrapper(::vk::ResultValue<T> res, std::source_location loc = std::source_location::current())
-//         : inner{std::make_unique<InnerImpl>(std::move(res))}
-//     , loc{std::move(loc)}
-//     {}
-//
-//     template<class T>
-//     operator T()
-//     {
-//         return std::move(reinterpret_cast<InnerImpl<T>>(inner.get()).lib.value);
-//     }
-//
-//     std::unique_ptr<Inner> inner;
-//     std::source_location loc;
-// };
-//
-// inline struct Checker{} chk;
-//
-// template<class T>
-// void func(Checker, Wrapper wrapper)
-// {
-//     // do some stuff with wrapper
-// }
 
-//
-// struct CheckerToken{};
-//
-// template<class T>
-// void operator>>(const VkResultValue<T>& val, CheckerToken, std::source_location loc =
-// std::source_location::current())
-// {
-//     Validate(val, loc);
-// }
-//
-// template<class T>
-// void operator<<(CheckerToken, const VkResultValue<T>& val, std::source_location loc =
-// std::source_location::current())
-// {
-//     Validate(val, loc);
-// }
-//
-// struct CheckerTokenSoft{};
-//
-// template<class T>
-// std::expected<void, std::string> operator>>(const VkResultValue<T>& val, CheckerTokenSoft, std::source_location loc =
-// std::source_location::current())
-// {
-//     return Validate(val, loc);;
-// }
-//
-// template<class T>
-// std::expected<void, std::string> operator<<(CheckerTokenSoft, const VkResultValue<T>& val, std::source_location loc =
-// std::source_location::current())
-// {
-//     return Validate(val, loc);;
-// }
-//
-// inline CheckerToken chk;
-// inline CheckerTokenSoft chkSoft;
-//
-// template<std::convertible_to<bool> T>
-// T&& operator<<=(CheckerToken, T&& t)
-// {
-//     assert(t);
-//     return std::forward<T>(t);
-// }
-//
-// template<class T>
-// T&& operator<<=(CheckerToken, VkResultValue<T>&& val, std::source_location loc = std::source_location::current())
-// {
-//     if (std::string errorsString = Validate(val, loc).error_or({}); !errorsString.empty())
-//     {
-//         VEX_LOG(Error, "{}", errorsString);
-//     }
-//     return std::move(val.result.value);
-// }
+template <std::convertible_to<bool> T, bool b>
+T operator<<=(Sanitizer<b>&& s, T&& t)
+{
+    if (!t)
+    {
+        VEX_LOG(b ? Fatal : Error, "Condition failed at: {}", FormatLocation(s.loc));
+    }
+
+    return std::forward<T>(t);
+}
+
+#define CHECK_SOFT                                                                                                     \
+    Sanitizer<false>                                                                                                   \
+    {                                                                                                                  \
+    }
+
+template <class T>
+std::expected<T, std::string> operator<<=(Sanitizer<false>&& s, ::vk::ResultValue<T>&& val)
+{
+    return Validate(val, std::move(s.loc))
+        .and_then([&] { return std::expected<T, std::string>(std::move(val.value)); });
+}
+
+template <class T>
+std::expected<void, std::string> operator<<(Sanitizer<false>&& san, const ::vk::ResultValue<T>& val)
+{
+    return Validate(val, std::move(san.loc));
+}
 
 } // namespace vex::vk

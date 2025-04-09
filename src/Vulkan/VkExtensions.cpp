@@ -62,7 +62,7 @@ std::vector<const char*> GetDefaultDeviceExtensions()
 
 std::vector<const char*> FilterSupportedValidationLayers(const std::vector<const char*>& layers)
 {
-    uint32_t layerCount;
+    uint32_t layerCount{};
     assert(::vk::enumerateInstanceLayerProperties(&layerCount, nullptr) == ::vk::Result::eSuccess);
 
     std::vector<::vk::LayerProperties> availableLayers(layerCount);
