@@ -1,9 +1,10 @@
 ﻿#include "VkCommandPool.h"
 
+#include <magic_enum/magic_enum.hpp>
+
 #include "VkCommandList.h"
 #include "VkCommandQueue.h"
 #include "VkErrorHandler.h"
-#include "magic_enum/magic_enum.hpp"
 
 namespace vex::vk
 {
@@ -12,7 +13,7 @@ RHICommandList* VkCommandPool::CreateCommandList(CommandQueueType queueType)
 {
     ::vk::UniqueCommandPool& commandPool = commandPoolPerQueueType[std::to_underlying(queueType)];
 
-    auto allocatedBuffers = CHECK <<= device.allocateCommandBuffersUnique({
+    auto allocatedBuffers = VEX_VK_CHECK <<= device.allocateCommandBuffersUnique({
         .commandPool = *commandPool,
         .level = ::vk::CommandBufferLevel::ePrimary,
         .commandBufferCount = 1,
@@ -52,7 +53,7 @@ VkCommandPool::VkCommandPool(::vk::Device device,
 {
     for (u8 i = 0; i < CommandQueueTypes::Count; ++i)
     {
-        commandPoolPerQueueType[i] = CHECK <<= device.createCommandPoolUnique({
+        commandPoolPerQueueType[i] = VEX_VK_CHECK <<= device.createCommandPoolUnique({
             .flags = ::vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
             .queueFamilyIndex = commandQueues[i].family,
         });

@@ -42,7 +42,7 @@ struct Sanitizer
     std::source_location loc = std::source_location::current();
 };
 
-#define CHECK                                                                                                          \
+#define VEX_VK_CHECK                                                                                                   \
     Sanitizer<true>                                                                                                    \
     {                                                                                                                  \
     }

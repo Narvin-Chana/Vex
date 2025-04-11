@@ -1,8 +1,4 @@
-﻿//
-// Created by Abarr on 2025-04-08.
-//
-
-#include "VkCommandList.h"
+﻿#include "VkCommandList.h"
 
 #include "VkErrorHandler.h"
 
@@ -22,10 +18,10 @@ void VkCommandList::Open()
         return;
     }
 
-    CHECK << commandBuffer->reset();
+    VEX_VK_CHECK << commandBuffer->reset();
 
     ::vk::CommandBufferBeginInfo beginInfo{};
-    CHECK << commandBuffer->begin(beginInfo);
+    VEX_VK_CHECK << commandBuffer->begin(beginInfo);
 
     isOpen = true;
 }
@@ -38,7 +34,7 @@ void VkCommandList::Close()
         return;
     }
 
-    CHECK << commandBuffer->end();
+    VEX_VK_CHECK << commandBuffer->end();
 
     isOpen = false;
 }
@@ -60,9 +56,10 @@ void VkCommandList::SetViewport(float x, float y, float width, float height, flo
 
 void VkCommandList::SetScissor(i32 x, i32 y, u32 width, u32 height)
 {
+    // Special behavior to match behavior of DX12 and other APIs
     ::vk::Rect2D scissor{
-        .offset = { .x = x, .y = y },
-        .extent = { .width = width, .height = height },
+        .offset = { .x = x, .y = y + static_cast<i32>(height) },
+        .extent = { .width = width, .height = -height },
     };
 
     VEX_ASSERT(commandBuffer, "CommandBuffer must exist to set scissor");

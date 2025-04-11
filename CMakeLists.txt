@@ -141,8 +141,7 @@ add_library(Vex STATIC
     "src/Vex/RHI/RHIFence.h"
     "src/Vex/RHI/RHIFence.cpp"
     "src/Vex/FrameResource.h"
-        src/Vulkan/Synchro/VkFence.cpp
-        src/Vulkan/Synchro/VkFence.h
+
 )
 
 if (WIN32)
@@ -204,6 +203,8 @@ if (VEX_ENABLE_VULKAN AND Vulkan_FOUND)
         "src/Vulkan/VkCommandQueue.h"
         "src/Vulkan/VkCommandList.cpp"
         "src/Vulkan/VkCommandList.h"
+        "src/Vulkan/Synchro/VkFence.cpp"
+        "src/Vulkan/Synchro/VkFence.h"
     )
 endif()
 

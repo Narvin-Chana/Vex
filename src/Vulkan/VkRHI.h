@@ -1,10 +1,9 @@
 #pragma once
 
-#include "VkCommandQueue.h"
-
 #include <Vex/RHI/RHI.h>
-#include <Vulkan/VkFeatureChecker.h>
-#include <Vulkan/VkHeaders.h>
+
+#include "VkCommandQueue.h"
+#include "VkHeaders.h"
 
 namespace vex
 {

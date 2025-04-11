@@ -28,10 +28,10 @@ namespace vex::vk
 static ::vk::PhysicalDeviceProperties GetHighestApiVersionDevice()
 {
     // Create temporary instance to check device properties
-    ::vk::UniqueInstance instance = CHECK <<= ::vk::createInstanceUnique({});
+    ::vk::UniqueInstance instance = VEX_VK_CHECK <<= ::vk::createInstanceUnique({});
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
 
-    auto devices = CHECK <<= instance->enumeratePhysicalDevices();
+    auto devices = VEX_VK_CHECK <<= instance->enumeratePhysicalDevices();
 
     ::vk::PhysicalDeviceProperties bestDevice{};
     for (auto dev : devices)
@@ -98,7 +98,7 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
         VEX_LOG(Info, "\t{}", instanceExtension);
     }
 
-    instance = CHECK <<= ::vk::createInstanceUnique(instanceCI);
+    instance = VEX_VK_CHECK <<= ::vk::createInstanceUnique(instanceCI);
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
 
@@ -114,13 +114,13 @@ void VkRHI::InitWindow(const PlatformWindowHandle& windowHandle)
         .hinstance = GetModuleHandle(nullptr),
         .hwnd = windowHandle.window,
     };
-    surface = CHECK <<= instance->createWin32SurfaceKHRUnique(createInfo);
+    surface = VEX_VK_CHECK <<= instance->createWin32SurfaceKHRUnique(createInfo);
 #elif defined(__linux__)
     ::vk::XlibSurfaceCreateInfoKHR createInfo{
         .dpy = windowHandle.display,
         .window = windowHandle.window,
     };
-    surface = CHECK <<= instance->createXlibSurfaceKHRUnique(createInfo);
+    surface = VEX_VK_CHECK <<= instance->createXlibSurfaceKHRUnique(createInfo);
 #endif
 }
 
@@ -128,7 +128,7 @@ std::vector<UniqueHandle<PhysicalDevice>> VkRHI::EnumeratePhysicalDevices()
 {
     std::vector<UniqueHandle<PhysicalDevice>> physicalDevices;
 
-    std::vector<::vk::PhysicalDevice> vkPhysicalDevices = CHECK <<= instance->enumeratePhysicalDevices();
+    std::vector<::vk::PhysicalDevice> vkPhysicalDevices = VEX_VK_CHECK <<= instance->enumeratePhysicalDevices();
     if (vkPhysicalDevices.empty())
     {
         VEX_LOG(Fatal, "No physical devices compatible with Vulkan were found!");
@@ -155,7 +155,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     u32 i = 0;
     for (const auto& property : queueFamilies)
     {
-        bool presentSupported = CHECK <<= physDevice.getSurfaceSupportKHR(static_cast<uint32_t>(i), *surface);
+        bool presentSupported = VEX_VK_CHECK <<= physDevice.getSurfaceSupportKHR(static_cast<uint32_t>(i), *surface);
 
         if (graphicsQueueFamily == -1 && presentSupported && property.queueFlags & ::vk::QueueFlagBits::eGraphics)
         {
@@ -202,7 +202,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
                                              .ppEnabledExtensionNames = extensions.data(),
                                              .pEnabledFeatures = &physDeviceFeatures };
 
-    device = CHECK <<= physDevice.createDeviceUnique(deviceCreateInfo);
+    device = VEX_VK_CHECK <<= physDevice.createDeviceUnique(deviceCreateInfo);
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*device);
 
@@ -239,11 +239,10 @@ void VkRHI::ExecuteCommandList(RHICommandList& commandList)
     auto& cmdList = reinterpret_cast<VkCommandList&>(commandList);
 
     ::vk::SubmitInfo submitInfo{
-        .pWaitDstStageMask = 0, // find out what this needs
         .commandBufferCount = 1,
         .pCommandBuffers = &*cmdList.commandBuffer,
     };
-    CHECK << commandQueues[cmdList.GetType()].queue.submit(submitInfo);
+    VEX_VK_CHECK << commandQueues[cmdList.GetType()].queue.submit(submitInfo);
 }
 
 UniqueHandle<RHIFence> VkRHI::CreateFence(u32 numFenceIndices)
@@ -264,7 +263,7 @@ void VkRHI::SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIn
         .pSignalSemaphores = &*vkFence.fence,
     };
 
-    CHECK << commandQueues[queueType].queue.submit(submit);
+    VEX_VK_CHECK << commandQueues[queueType].queue.submit(submit);
 }
 
 void VkRHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
@@ -280,7 +279,7 @@ void VkRHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceInde
     submit.pWaitSemaphores = &*vkFence.fence;
     submit.waitSemaphoreCount = 1;
 
-    CHECK << commandQueues[queueType].queue.submit(submit);
+    VEX_VK_CHECK << commandQueues[queueType].queue.submit(submit);
 }
 
 } // namespace vex::vk
