@@ -32,6 +32,7 @@ set(VEX_AVAILABLE_BACKENDS "")
 
 # Check for DirectX 12 (Windows only)
 if(WIN32)
+    add_compile_definitions(NOMINMAX)
     option(VEX_ENABLE_DX12 "Enable DirectX 12 backend if available" ON)
     if(VEX_ENABLE_DX12)
         list(APPEND VEX_AVAILABLE_BACKENDS "DirectX12")
@@ -131,11 +132,17 @@ add_library(Vex STATIC
     "src/Vex/Logger.cpp"
     "src/Vex/Debug.h" 
     "src/Vex/FeatureChecker.h" 
-    "src/Vex/RHI.h"  
+    "src/Vex/RHI/RHI.h"  
     "src/Vex/PhysicalDevice.h"
     "src/Vex/PhysicalDevice.cpp"
     "src/Vex/EnumFlags.h"
- )
+    "src/Vex/RHI/RHICommandList.h"
+    "src/Vex/RHI/RHICommandPool.h"
+    "src/Vex/RHI/RHIFence.h"
+    "src/Vex/RHI/RHIFence.cpp"
+    "src/Vex/FrameResource.h"
+
+)
 
 if (WIN32)
     target_sources(Vex PRIVATE
@@ -169,7 +176,10 @@ if (WIN32 AND VEX_ENABLE_DX12)
         "src/DX12/DX12PhysicalDevice.cpp"
         "src/DX12/DX12Debug.h"
         "src/DX12/DX12Debug.cpp"
-    )
+        "src/DX12/DX12Fence.h"
+        "src/DX12/DX12Fence.cpp"
+        "src/DX12/DX12CommandPool.h"
+     "src/DX12/DX12CommandPool.cpp" "src/DX12/DX12CommandList.h" "src/DX12/DX12CommandList.cpp")
 endif()
 
 # Vulkan project files
@@ -180,7 +190,6 @@ if (VEX_ENABLE_VULKAN AND Vulkan_FOUND)
         "src/Vulkan/VkFeatureChecker.cpp"
         "src/Vulkan/VkRHI.h"
         "src/Vulkan/VkRHI.cpp"
-        "src/Vulkan/VkDevice.cpp"
         "src/Vulkan/VkExtensions.cpp"
         "src/Vulkan/VkDebug.h"
         "src/Vulkan/VkDebug.cpp"
@@ -188,6 +197,14 @@ if (VEX_ENABLE_VULKAN AND Vulkan_FOUND)
         "src/Vulkan/VkErrorHandler.cpp"
         "src/Vulkan/VkPhysicalDevice.h"
         "src/Vulkan/VkPhysicalDevice.cpp"
+        "src/Vulkan/VkCommandPool.cpp"
+        "src/Vulkan/VkCommandPool.h"
+        "src/Vulkan/VkCommandQueue.cpp"
+        "src/Vulkan/VkCommandQueue.h"
+        "src/Vulkan/VkCommandList.cpp"
+        "src/Vulkan/VkCommandList.h"
+        "src/Vulkan/Synchro/VkFence.cpp"
+        "src/Vulkan/Synchro/VkFence.h"
     )
 endif()
 

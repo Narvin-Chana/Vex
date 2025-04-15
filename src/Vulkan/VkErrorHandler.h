@@ -15,22 +15,19 @@ inline std::string FormatLocation(const std::source_location& loc)
     return std::format("{}:{}", loc.file_name(), loc.line());
 }
 
-template <class T>
-std::expected<void, std::string> Validate(const ::vk::ResultValue<T>& val, std::source_location loc)
+inline std::expected<void, std::string> Validate(const ::vk::Result& result, std::source_location loc)
 {
-    if (val.result != ::vk::Result::eSuccess)
+    if (result != ::vk::Result::eSuccess)
     {
-        return std::unexpected(
-            std::format("Result {} encoutered in {}", ::vk::to_string(val.result), FormatLocation(loc)));
+        return std::unexpected(std::format("Result {} encoutered in {}", ::vk::to_string(result), FormatLocation(loc)));
     }
 
     return {};
 }
 
-template <class T>
-void SanitizeOrCrash(const ::vk::ResultValue<T>& val, std::source_location loc)
+inline void SanitizeOrCrash(const ::vk::Result& result, std::source_location loc)
 {
-    Validate(val, std::move(loc))
+    Validate(result, std::move(loc))
         .transform_error(
             [](const std::string& msg)
             {
@@ -39,13 +36,13 @@ void SanitizeOrCrash(const ::vk::ResultValue<T>& val, std::source_location loc)
             });
 }
 
-template <bool>
+template <bool ShouldCrash>
 struct Sanitizer
 {
     std::source_location loc = std::source_location::current();
 };
 
-#define CHECK                                                                                                          \
+#define VEX_VK_CHECK                                                                                                   \
     Sanitizer<true>                                                                                                    \
     {                                                                                                                  \
     }
@@ -59,13 +56,23 @@ void operator>>(const ::vk::ResultValue<T>& val, Sanitizer<b>&& san)
 template <class T>
 void operator<<(Sanitizer<true>&& san, const ::vk::ResultValue<T>& val)
 {
-    SanitizeOrCrash(val, std::move(san.loc));
+    SanitizeOrCrash(val.result, std::move(san.loc));
+}
+
+inline void operator<<(Sanitizer<true>&& san, ::vk::Result result)
+{
+    SanitizeOrCrash(result, std::move(san.loc));
+}
+
+inline std::expected<void, std::string> operator<<(Sanitizer<false>&& san, ::vk::Result result)
+{
+    return Validate(result, std::move(san.loc));
 }
 
 template <class T>
 T operator<<=(Sanitizer<true>&& s, ::vk::ResultValue<T>&& val)
 {
-    SanitizeOrCrash(val, std::move(s.loc));
+    SanitizeOrCrash(val.result, std::move(s.loc));
     return std::move(val.value);
 }
 
@@ -88,14 +95,14 @@ T operator<<=(Sanitizer<b>&& s, T&& t)
 template <class T>
 std::expected<T, std::string> operator<<=(Sanitizer<false>&& s, ::vk::ResultValue<T>&& val)
 {
-    return Validate(val, std::move(s.loc))
+    return Validate(val.result, std::move(s.loc))
         .and_then([&] { return std::expected<T, std::string>(std::move(val.value)); });
 }
 
 template <class T>
 std::expected<void, std::string> operator<<(Sanitizer<false>&& san, const ::vk::ResultValue<T>& val)
 {
-    return Validate(val, std::move(san.loc));
+    return Validate(val.result, std::move(san.loc));
 }
 
 } // namespace vex::vk
