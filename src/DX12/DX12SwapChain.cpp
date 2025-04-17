@@ -72,6 +72,11 @@ void DX12SwapChain::SetVSync(bool enableVSync)
     description.useVSync = enableVSync;
 }
 
+bool DX12SwapChain::NeedsFlushForVSyncToggle()
+{
+    return false;
+}
+
 RHITexture* DX12SwapChain::GetBackBuffer(u8 backBufferIndex)
 {
     return backBuffers[backBufferIndex].get();

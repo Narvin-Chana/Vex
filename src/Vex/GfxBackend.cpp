@@ -168,7 +168,10 @@ void GfxBackend::FlushGPU()
 
 void GfxBackend::SetVSync(bool useVSync)
 {
-    FlushGPU();
+    if (swapChain->NeedsFlushForVSyncToggle())
+    {
+        FlushGPU();
+    }
     swapChain->SetVSync(useVSync);
 }
 

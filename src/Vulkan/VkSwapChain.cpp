@@ -15,6 +15,11 @@ void VkSwapChain::SetVSync(bool enableVSync)
 {
 }
 
+bool VkSwapChain::NeedsFlushForVSyncToggle()
+{
+    return true;
+}
+
 RHITexture* VkSwapChain::GetBackBuffer(u8 backBufferIndex)
 {
     return nullptr;

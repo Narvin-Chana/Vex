@@ -26,6 +26,7 @@ public:
 
     // Could lead to recreating the swapchain (eg: for Vulkan).
     virtual void SetVSync(bool enableVSync) = 0;
+    virtual bool NeedsFlushForVSyncToggle() = 0;
 
     virtual RHITexture* GetBackBuffer(u8 backBufferIndex) = 0;
 };
