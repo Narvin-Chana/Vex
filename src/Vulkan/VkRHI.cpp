@@ -229,6 +229,12 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     }
 }
 
+UniqueHandle<RHISwapChain> VkRHI::CreateSwapChain(const SwapChainDescription& description,
+                                                  const PlatformWindow& platformWindow)
+{
+    return nullptr;
+}
+
 UniqueHandle<RHICommandPool> VkRHI::CreateCommandPool()
 {
     return MakeUnique<VkCommandPool>(*device, commandQueues);

@@ -80,4 +80,6 @@ enum class TextureFormat : u8
     UNKNOWN,
 };
 
+bool IsFormatSRGB(TextureFormat format);
+
 } // namespace vex

@@ -141,8 +141,14 @@ add_library(Vex STATIC
     "src/Vex/RHI/RHIFence.h"
     "src/Vex/RHI/RHIFence.cpp"
     "src/Vex/FrameResource.h"
-
-)
+    "src/Vex/RHI/RHISwapChain.h"
+    "src/Vex/RHI/RHITexture.h"
+    "src/Vex/Formats.cpp"
+    "src/Vex/RHI/RHIBuffer.h"
+    "src/Vex/Texture.h"
+    "src/Vex/Buffer.h"
+    "src/Vex/CommandQueueType.h"
+ "src/Vex/RHI/RHIFwd.h")
 
 if (WIN32)
     target_sources(Vex PRIVATE
@@ -179,7 +185,14 @@ if (WIN32 AND VEX_ENABLE_DX12)
         "src/DX12/DX12Fence.h"
         "src/DX12/DX12Fence.cpp"
         "src/DX12/DX12CommandPool.h"
-     "src/DX12/DX12CommandPool.cpp" "src/DX12/DX12CommandList.h" "src/DX12/DX12CommandList.cpp")
+        "src/DX12/DX12CommandPool.cpp"
+        "src/DX12/DX12CommandList.h"
+        "src/DX12/DX12CommandList.cpp"
+        "src/DX12/DX12SwapChain.h"
+        "src/DX12/DX12SwapChain.cpp"
+        "src/DX12/DX12Texture.h"
+        "src/DX12/DX12Texture.cpp"
+    )
 endif()
 
 # Vulkan project files
@@ -205,6 +218,8 @@ if (VEX_ENABLE_VULKAN AND Vulkan_FOUND)
         "src/Vulkan/VkCommandList.h"
         "src/Vulkan/Synchro/VkFence.cpp"
         "src/Vulkan/Synchro/VkFence.h"
+        "src/Vulkan/VkSwapChain.h"
+        "src/Vulkan/VkSwapChain.cpp"
     )
 endif()
 

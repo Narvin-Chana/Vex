@@ -2,22 +2,21 @@
 
 #include <array>
 
+#include <Vex/CommandQueueType.h>
 #include <Vex/Formats.h>
 #include <Vex/FrameResource.h>
-#include <Vex/PhysicalDevice.h>
 #include <Vex/PlatformWindow.h>
-#include <Vex/RHI/RHI.h>
+#include <Vex/RHI/RHIFwd.h>
 #include <Vex/UniqueHandle.h>
 
 namespace vex
 {
 
-class RHIFence;
-
 struct BackendDescription
 {
     PlatformWindow platformWindow;
     TextureFormat swapChainFormat;
+    bool useVSync = false;
     FrameBuffering frameBuffering = FrameBuffering::Triple;
     bool enableGPUDebugLayer = true;
     bool enableGPUBasedValidation = true;
@@ -26,7 +25,7 @@ struct BackendDescription
 class GfxBackend
 {
 public:
-    GfxBackend(UniqueHandle<RenderHardwareInterface>&& newRHI, const BackendDescription& description);
+    GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& description);
     ~GfxBackend();
 
     void StartFrame();
@@ -35,6 +34,8 @@ public:
     // Flushes all current GPU commands.
     void FlushGPU();
 
+    void SetVSync(bool useVSync);
+
 private:
     // Index of the current frame, possible values depends on buffering:
     //  {0} if single buffering
@@ -42,7 +43,7 @@ private:
     //  {0, 1, 2} if triple buffering
     u8 currentFrameIndex = 0;
 
-    UniqueHandle<RenderHardwareInterface> rhi;
+    UniqueHandle<RHI> rhi;
 
     BackendDescription description;
 
@@ -54,6 +55,8 @@ private:
     std::array<UniqueHandle<RHIFence>, CommandQueueTypes::Count> queueFrameFences;
 
     FrameResource<UniqueHandle<RHICommandPool>> commandPools;
+
+    UniqueHandle<RHISwapChain> swapChain;
 };
 
 } // namespace vex
