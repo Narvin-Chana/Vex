@@ -11,7 +11,7 @@ namespace vex
 
 // Determines how many frames should be in flight at once.
 // More frames in flight means less GPU starvation, but also more input latency.
-enum class FrameBuffering
+enum class FrameBuffering : u8
 {
     // One frame in flight at once
     Single = 1,

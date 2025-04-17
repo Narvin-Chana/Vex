@@ -7,6 +7,7 @@
 #include <DX12/DX12Debug.h>
 #include <DX12/DX12Fence.h>
 #include <DX12/DX12PhysicalDevice.h>
+#include <DX12/DX12SwapChain.h>
 #include <DX12/DXGIFactory.h>
 #include <DX12/HRChecker.h>
 
@@ -105,6 +106,12 @@ void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
                                        .NodeMask = 0 };
         chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetQueue(CommandQueueType::Copy)));
     }
+}
+
+UniqueHandle<RHISwapChain> DX12RHI::CreateSwapChain(const SwapChainDescription& description,
+                                                    const PlatformWindow& platformWindow)
+{
+    return MakeUnique<DX12SwapChain>(device, description, GetQueue(CommandQueueType::Graphics), platformWindow);
 }
 
 UniqueHandle<RHICommandPool> DX12RHI::CreateCommandPool()

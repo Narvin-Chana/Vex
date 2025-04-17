@@ -6,15 +6,17 @@
 
 #include <Vex/FeatureChecker.h>
 #include <Vex/Logger.h>
+#include <Vex/PhysicalDevice.h>
 #include <Vex/RHI/RHI.h>
 #include <Vex/RHI/RHICommandList.h>
 #include <Vex/RHI/RHICommandPool.h>
 #include <Vex/RHI/RHIFence.h>
+#include <Vex/RHI/RHISwapChain.h>
 
 namespace vex
 {
 
-GfxBackend::GfxBackend(UniqueHandle<RenderHardwareInterface>&& newRHI, const BackendDescription& description)
+GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& description)
     : rhi(std::move(newRHI))
     , description(description)
     , commandPools(description.frameBuffering)
@@ -64,6 +66,11 @@ GfxBackend::GfxBackend(UniqueHandle<RenderHardwareInterface>&& newRHI, const Bac
     {
         commandPools.Get(std::to_underlying(frameIndex) - 1) = rhi->CreateCommandPool();
     }
+
+    swapChain = rhi->CreateSwapChain({ .format = description.swapChainFormat,
+                                       .frameBuffering = description.frameBuffering,
+                                       .useVSync = description.useVSync },
+                                     description.platformWindow);
 }
 
 GfxBackend::~GfxBackend()
@@ -114,7 +121,7 @@ void GfxBackend::StartFrame()
 
 void GfxBackend::EndFrame()
 {
-    // TODO: present the swapchain here
+    swapChain->Present();
 
     // Signal all queue fences.
     for (auto queueType : magic_enum::enum_values<CommandQueueType>())
@@ -157,6 +164,15 @@ void GfxBackend::FlushGPU()
     // The GPU should now be in an idle state.
     // Increment
     currentFrameIndex = nextFrameIndex;
+}
+
+void GfxBackend::SetVSync(bool useVSync)
+{
+    if (swapChain->NeedsFlushForVSyncToggle())
+    {
+        FlushGPU();
+    }
+    swapChain->SetVSync(useVSync);
 }
 
 } // namespace vex

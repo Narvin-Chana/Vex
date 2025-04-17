@@ -49,4 +49,18 @@ std::string DXGIFactory::GetDeviceAdapterName(const ComPtr<ID3D12Device>& device
     return "Adapter Not Found";
 }
 
+ComPtr<IDXGISwapChain4> DXGIFactory::CreateSwapChain(const DXGI_SWAP_CHAIN_DESC1& desc,
+                                                     const ComPtr<ID3D12CommandQueue>& commandQueue,
+                                                     HWND hwnd)
+{
+    ComPtr<IDXGISwapChain4> swapChain;
+    chk << dxgiFactory->CreateSwapChainForHwnd(commandQueue.Get(),
+                                               hwnd,
+                                               &desc,
+                                               nullptr,
+                                               nullptr,
+                                               reinterpret_cast<IDXGISwapChain1**>(swapChain.GetAddressOf()));
+    return swapChain;
+}
+
 } // namespace vex::dx12
