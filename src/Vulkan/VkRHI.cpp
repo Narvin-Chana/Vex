@@ -16,8 +16,7 @@
 #include "VkExtensions.h"
 #include "VkHeaders.h"
 #include "VkPhysicalDevice.h"
-#include <Vex/Logger.h>
-#include <Vex/PlatformWindow.h>
+#include "VkSwapChain.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -232,7 +231,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
 UniqueHandle<RHISwapChain> VkRHI::CreateSwapChain(const SwapChainDescription& description,
                                                   const PlatformWindow& platformWindow)
 {
-    return nullptr;
+    return MakeUnique<VkSwapChain>();
 }
 
 UniqueHandle<RHICommandPool> VkRHI::CreateCommandPool()
