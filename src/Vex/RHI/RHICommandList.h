@@ -5,6 +5,7 @@
 #include <utility>
 
 #include <Vex/RHI/RHI.h>
+#include <Vex/RHI/RHITexture.h>
 #include <Vex/Types.h>
 
 namespace vex
@@ -41,6 +42,10 @@ public:
                                     std::span<RHIBufferBinding> buffers,
                                     RHIDescriptorPool& descriptorPool) = 0;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool) = 0;
+
+    virtual void Transition(RHITexture& texture, RHITextureState::Flags newState) = 0;
+    // Ideal for batching multiple resource transitions together.
+    virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs) = 0;
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount) = 0;
 

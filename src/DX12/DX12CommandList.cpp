@@ -7,6 +7,7 @@
 #include <DX12/DX12Formats.h>
 #include <DX12/DX12PipelineState.h>
 #include <DX12/DX12ResourceLayout.h>
+#include <DX12/DX12States.h>
 #include <DX12/DX12Texture.h>
 #include <DX12/HRChecker.h>
 
@@ -270,22 +271,6 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
         // TODO: implement buffers!
     }
 
-    // TODO: handle resource states (I've created a trello for this)
-    static bool isFirstPass = true;
-    if (isFirstPass)
-    {
-        ID3D12Resource* srcNative = reinterpret_cast<DX12Texture&>(*textures[0].texture).GetRawTexture();
-
-        D3D12_RESOURCE_BARRIER uavToSource =
-            CD3DX12_RESOURCE_BARRIER::Transition(srcNative,
-                                                 D3D12_RESOURCE_STATE_COMMON,
-                                                 D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        D3D12_RESOURCE_BARRIER firstBarriers[] = { uavToSource };
-        commandList->ResourceBarrier(1, firstBarriers);
-
-        isFirstPass = false;
-    }
-
     // Now we can bind the bindless textures as constants in our root constants!
     // TODO: figure out how this interacts with local root constants, there should be a way to get the first slot we can
     // write bindless indices to (that is after local constants). For now we just default to slot 0, and suppose that no
@@ -315,6 +300,52 @@ void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool)
         reinterpret_cast<DX12DescriptorPool&>(descriptorPool).gpuHeap.GetRawDescriptorHeap().GetAddressOf());
 }
 
+void DX12CommandList::Transition(RHITexture& texture, RHITextureState::Flags newState)
+{
+    // Nothing to do if the states are already equal.
+    if (texture.GetCurrentState() == newState)
+    {
+        return;
+    }
+
+    DX12Texture& dxTexture = reinterpret_cast<DX12Texture&>(texture);
+    D3D12_RESOURCE_STATES currentDX12State = RHITextureStateToDX12State(texture.GetCurrentState());
+    D3D12_RESOURCE_STATES newDX12State = RHITextureStateToDX12State(newState);
+    D3D12_RESOURCE_BARRIER resourceBarrier =
+        CD3DX12_RESOURCE_BARRIER::Transition(dxTexture.GetRawTexture(), currentDX12State, newDX12State);
+
+    texture.SetCurrentState(newState);
+
+    commandList->ResourceBarrier(1, &resourceBarrier);
+}
+
+void DX12CommandList::Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs)
+{
+    std::vector<D3D12_RESOURCE_BARRIER> transitionBarriers;
+    transitionBarriers.reserve(textureNewStatePairs.size());
+    for (auto& [texture, newState] : textureNewStatePairs)
+    {
+        D3D12_RESOURCE_STATES currentDX12State = RHITextureStateToDX12State(texture.GetCurrentState());
+        D3D12_RESOURCE_STATES newDX12State = RHITextureStateToDX12State(newState);
+        if (newDX12State == currentDX12State)
+        {
+            continue;
+        }
+        DX12Texture& dxTexture = reinterpret_cast<DX12Texture&>(texture);
+        D3D12_RESOURCE_BARRIER resourceBarrier =
+            CD3DX12_RESOURCE_BARRIER::Transition(dxTexture.GetRawTexture(), currentDX12State, newDX12State);
+
+        texture.SetCurrentState(newState);
+
+        transitionBarriers.push_back(std::move(resourceBarrier));
+    }
+
+    if (!transitionBarriers.empty())
+    {
+        commandList->ResourceBarrier(transitionBarriers.size(), transitionBarriers.data());
+    }
+}
+
 void DX12CommandList::Dispatch(const std::array<u32, 3>& groupCount)
 {
     switch (type)
@@ -330,50 +361,15 @@ void DX12CommandList::Dispatch(const std::array<u32, 3>& groupCount)
 
 void DX12CommandList::Copy(RHITexture& src, RHITexture& dst)
 {
-    // TODO: handle resource states (I've created a trello for this)
-
+    VEX_ASSERT(src.GetDescription().width == dst.GetDescription().width &&
+                   src.GetDescription().height == dst.GetDescription().height &&
+                   src.GetDescription().depthOrArraySize == dst.GetDescription().depthOrArraySize &&
+                   src.GetDescription().mips == dst.GetDescription().mips &&
+                   src.GetDescription().format == dst.GetDescription().format,
+               "The two textures must be compatible in order to Copy to be useable.");
     ID3D12Resource* srcNative = reinterpret_cast<DX12Texture&>(src).GetRawTexture();
     ID3D12Resource* dstNative = reinterpret_cast<DX12Texture&>(dst).GetRawTexture();
-
-    // TEMP
-    static bool isFirstPass = true;
-    D3D12_RESOURCE_BARRIER uavToSource = CD3DX12_RESOURCE_BARRIER::Transition(srcNative,
-                                                                              D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-                                                                              D3D12_RESOURCE_STATE_COPY_SOURCE);
-    if (isFirstPass)
-    {
-        D3D12_RESOURCE_BARRIER backbufferToDest = CD3DX12_RESOURCE_BARRIER::Transition(dstNative,
-                                                                                       D3D12_RESOURCE_STATE_PRESENT,
-                                                                                       D3D12_RESOURCE_STATE_COPY_DEST);
-        D3D12_RESOURCE_BARRIER firstBarriers[] = { uavToSource, backbufferToDest };
-        commandList->ResourceBarrier(1, firstBarriers);
-
-        isFirstPass = false;
-    }
-    else
-    {
-        D3D12_RESOURCE_BARRIER backbufferToDest = CD3DX12_RESOURCE_BARRIER::Transition(dstNative,
-                                                                                       D3D12_RESOURCE_STATE_PRESENT,
-                                                                                       D3D12_RESOURCE_STATE_COPY_DEST);
-        D3D12_RESOURCE_BARRIER firstBarriers[] = { uavToSource, backbufferToDest };
-        commandList->ResourceBarrier(2, firstBarriers);
-    }
-
     commandList->CopyResource(dstNative, srcNative);
-
-    // TEMP
-    {
-        D3D12_RESOURCE_BARRIER sourceToUAV =
-            CD3DX12_RESOURCE_BARRIER::Transition(srcNative,
-                                                 D3D12_RESOURCE_STATE_COPY_SOURCE,
-                                                 D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        D3D12_RESOURCE_BARRIER backbufferToPresent =
-            CD3DX12_RESOURCE_BARRIER::Transition(dstNative,
-                                                 D3D12_RESOURCE_STATE_COPY_DEST,
-                                                 D3D12_RESOURCE_STATE_PRESENT);
-        D3D12_RESOURCE_BARRIER finalBarriers[] = { sourceToUAV, backbufferToPresent };
-        commandList->ResourceBarrier(2, finalBarriers);
-    }
 }
 
 CommandQueueType DX12CommandList::GetType() const

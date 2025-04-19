@@ -105,6 +105,16 @@ void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool)
     VEX_NOT_YET_IMPLEMENTED();
 }
 
+void VkCommandList::Transition(RHITexture& texture, RHITextureState::Flags newState)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
+void VkCommandList::Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
 void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount)
 {
     VEX_NOT_YET_IMPLEMENTED();
