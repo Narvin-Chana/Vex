@@ -260,7 +260,7 @@ if(WIN32 AND VEX_ENABLE_DX12)
     # DirectX Agility SDK headers
     add_header_only_dependency(Vex DirectX-Headers "${DirectX-Headers_SOURCE_DIR}" "include" "directx")
 
-    target_link_libraries(Vex PUBLIC d3d12.lib dxgi.lib)
+    target_link_libraries(Vex PUBLIC d3d12.lib dxgi.lib dxguid.lib)
     target_sources(Vex PRIVATE ${VEX_DX12_SOURCES})
     # Vex DX12 definition
     target_compile_definitions(Vex PUBLIC VEX_DX12=1)
