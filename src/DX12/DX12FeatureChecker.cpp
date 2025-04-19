@@ -42,7 +42,7 @@ DX12FeatureChecker::DX12FeatureChecker(const ComPtr<ID3D12Device>& device)
 
 DX12FeatureChecker::~DX12FeatureChecker() = default;
 
-bool DX12FeatureChecker::IsFeatureSupported(Feature feature)
+bool DX12FeatureChecker::IsFeatureSupported(Feature feature) const
 {
     switch (feature)
     {
@@ -56,19 +56,25 @@ bool DX12FeatureChecker::IsFeatureSupported(Feature feature)
     }
 }
 
-FeatureLevel DX12FeatureChecker::GetFeatureLevel()
+FeatureLevel DX12FeatureChecker::GetFeatureLevel() const
 {
     return ConvertDX12FeatureLevelToFeatureLevel(featureLevels.MaxSupportedFeatureLevel);
 }
 
-ResourceBindingTier DX12FeatureChecker::GetResourceBindingTier()
+ResourceBindingTier DX12FeatureChecker::GetResourceBindingTier() const
 {
     return ConvertDX12ResourceBindingTierToResourceBindingTier(options.ResourceBindingTier);
 }
 
-ShaderModel DX12FeatureChecker::GetShaderModel()
+ShaderModel DX12FeatureChecker::GetShaderModel() const
 {
     return ConvertDX12ShaderModelToShaderModel(shaderModel.HighestShaderModel);
+}
+
+u32 DX12FeatureChecker::GetMaxRootSignatureDWORDSize() const
+{
+    // 64 DWORDS is the hard-coded DX12 limit for root signatures.
+    return 64;
 }
 
 FeatureLevel DX12FeatureChecker::ConvertDX12FeatureLevelToFeatureLevel(D3D_FEATURE_LEVEL featureLevel)

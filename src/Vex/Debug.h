@@ -27,9 +27,12 @@
     }                                                                                                                  \
     while (0)
 
+#define VEX_NOT_YET_IMPLEMENTED() VEX_ASSERT(false, "Not yet implemented...")
+
 #else
 
 #define VEX_DEBUG_BREAK()
 #define VEX_ASSERT(cond, ...)
+#define VEX_NOT_YET_IMPLEMENTED()
 
 #endif

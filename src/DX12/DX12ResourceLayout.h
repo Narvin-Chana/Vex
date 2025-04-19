@@ -1,0 +1,35 @@
+#pragma once
+
+#include <Vex/RHI/RHIResourceLayout.h>
+#include <Vex/Types.h>
+
+#include <DX12/DX12FeatureChecker.h>
+#include <DX12/DX12Headers.h>
+
+namespace vex::dx12
+{
+
+class DX12ResourceLayout : public RHIResourceLayout
+{
+public:
+    DX12ResourceLayout(ComPtr<DX12Device>& device, const DX12FeatureChecker& featureChecker);
+
+    virtual bool ValidateGlobalConstant(const GlobalConstant& globalConstant) const override;
+    virtual u32 GetMaxLocalConstantSize() const override;
+
+    ComPtr<ID3D12RootSignature>& GetRootSignature();
+
+    // TEMP STUFF FOR TRIANGLE DRAWING
+    ComPtr<ID3D12DescriptorHeap> descriptorHeap;
+    ComPtr<ID3D12Resource> uavTexture;
+    // END OF TEMP STUFF FOR TRIANGLE DRAWING
+
+private:
+    void CompileRootSignature();
+
+    ComPtr<DX12Device> device;
+    const DX12FeatureChecker& featureChecker;
+    ComPtr<ID3D12RootSignature> rootSignature;
+};
+
+} // namespace vex::dx12

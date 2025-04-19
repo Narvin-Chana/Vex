@@ -87,7 +87,6 @@ FetchContent_MakeAvailable(efsw)
 
 # Fetch Vulkan-Hpp dependency
 message(STATUS "Fetching VulkanHpp...")
-include(FetchContent)
 FetchContent_Declare(
     VulkanHpp
     GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Hpp.git
@@ -97,13 +96,40 @@ FetchContent_MakeAvailable(VulkanHpp)
 
 # Fetch magic_enum dependency
 message(STATUS "Fetching magic_enum...")
-include(FetchContent)
 FetchContent_Declare(
     magic_enum
     GIT_REPOSITORY https://github.com/Neargye/magic_enum.git
     GIT_TAG v0.9.7
 )
 FetchContent_MakeAvailable(magic_enum)
+
+# Fetch Dx shader compiler (used for compiling hlsl to bytecode)
+# Used with DX12 and Vulkan
+message(STATUS "Fetching DirectX Shader Compiler...")
+if (WIN32)
+    # Windows-specific setup
+    FetchContent_Declare(
+        dxc
+        URL https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2502/dxc_2025_02_20.zip
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+    FetchContent_MakeAvailable(dxc)
+
+    # Get PDBs and copy to directory only if in release
+    FetchContent_Declare(
+        dxc
+        URL https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2502/pdb_2025_02_20.zip
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+    FetchContent_MakeAvailable(dxc)
+    
+    # Verify the expected structure exists
+    if(NOT EXISTS "${dxc_SOURCE_DIR}/inc/dxcapi.h")
+        message(FATAL_ERROR "DXC download does not have the expected directory structure. Cannot find dxcapi.h in ${dxc_SOURCE_DIR}/inc/")
+    endif()
+else()
+    
+endif()
 
 # Fetch DX12 Agility SDK
 if (WIN32 AND VEX_ENABLE_DX12)
@@ -149,6 +175,21 @@ add_library(Vex STATIC
     "src/Vex/Buffer.h"
     "src/Vex/CommandQueueType.h"
     "src/Vex/RHI/RHIFwd.h"
+    "src/Vex/CommandContext.h"
+    "src/Vex/CommandContext.cpp"
+    "src/Vex/ShaderKey.h"
+    "src/Vex/Bindings.h"
+    "src/Vex/RHI/RHIPipelineState.h"
+    "src/Vex/PipelineStateCache.h"
+    "src/Vex/PipelineStateCache.cpp"
+    "src/Vex/RHI/RHIShader.h"
+    "src/Vex/ShaderCompiler.h"
+    "src/Vex/ShaderCompiler.cpp"
+    "src/Vex/Hash.h"
+    "src/Vex/RHI/RHIResourceLayout.h"
+    "src/Vex/RHI/RHIResourceLayout.cpp"
+    "src/Vex/Containers/FreeList.h"
+    "src/Vex/Handle.h"
 )
 
 if (WIN32)
@@ -193,6 +234,12 @@ if (WIN32 AND VEX_ENABLE_DX12)
         "src/DX12/DX12SwapChain.cpp"
         "src/DX12/DX12Texture.h"
         "src/DX12/DX12Texture.cpp"
+        "src/DX12/DX12PipelineState.h"
+        "src/DX12/DX12PipelineState.cpp"
+        "src/DX12/DX12Shader.h"
+        "src/DX12/DX12Shader.cpp"
+        "src/DX12/DX12ResourceLayout.h"
+        "src/DX12/DX12ResourceLayout.cpp"
     )
 endif()
 
@@ -221,8 +268,14 @@ if (VEX_ENABLE_VULKAN AND Vulkan_FOUND)
         "src/Vulkan/Synchro/VkFence.h"
         "src/Vulkan/VkSwapChain.h"
         "src/Vulkan/VkSwapChain.cpp"
-        "src/Vulkan/VkTexture.cpp"
+        "src/Vulkan/VkShader.h"
+        "src/Vulkan/VkShader.cpp"
+        "src/Vulkan/VkPipelineState.h"
+        "src/Vulkan/VkPipelineState.cpp"
+        "src/Vulkan/VkResourceLayout.h"
+        "src/Vulkan/VkResourceLayout.cpp"
         "src/Vulkan/VkTexture.h"
+        "src/Vulkan/VkTexture.cpp"
         "src/Vulkan/VkGPUContext.h"
         "src/Vulkan/VkMemory.h"
     )
@@ -323,6 +376,16 @@ endif()
 
 # Static linking to magic_enum
 add_header_only_dependency(Vex magic_enum "${magic_enum_SOURCE_DIR}" "include" "magic_enum")
+
+# Static linking to dxc
+if (WIN32)
+    add_header_only_dependency(Vex dxc "${dxc_SOURCE_DIR}" "inc" "dxc")
+    
+    set(DXC_LIB_DIR "${dxc_SOURCE_DIR}/lib/x64" CACHE INTERNAL "Path to DXC libraries")
+    target_link_libraries(Vex PUBLIC "${DXC_LIB_DIR}/dxcompiler.lib" "${DXC_LIB_DIR}/dxil.lib")
+else()
+    # TODO: add linux linking
+endif()
 
 # =========================================
 # INSTALLATION

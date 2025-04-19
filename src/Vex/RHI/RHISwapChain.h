@@ -30,7 +30,7 @@ public:
     virtual void SetVSync(bool enableVSync) = 0;
     virtual bool NeedsFlushForVSyncToggle() = 0;
 
-    virtual RHITexture* GetBackBuffer(u8 backBufferIndex) = 0;
+    virtual UniqueHandle<RHITexture> CreateBackBuffer(u8 backBufferIndex) = 0;
 };
 
 } // namespace vex
