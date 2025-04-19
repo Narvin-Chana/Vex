@@ -62,10 +62,7 @@ GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& des
         queueFrameFences[queueType] = rhi->CreateFence(std::to_underlying(description.frameBuffering));
     }
 
-    for (auto frameIndex : magic_enum::enum_values<FrameBuffering>())
-    {
-        commandPools.Get(std::to_underlying(frameIndex) - 1) = rhi->CreateCommandPool();
-    }
+    commandPools.ForEach([this](UniqueHandle<RHICommandPool>& el) { el = rhi->CreateCommandPool(); });
 
     swapChain = rhi->CreateSwapChain({ .format = description.swapChainFormat,
                                        .frameBuffering = description.frameBuffering,
@@ -161,11 +158,8 @@ void GfxBackend::FlushGPU()
         queueFrameFences[queueType]->WaitCPUAndIncrementNextFenceIndex(currentFrameIndex, nextFrameIndex);
     }
 
-    for (i32 frameIndex = 0; frameIndex < std::to_underlying(description.frameBuffering); ++frameIndex)
-    {
-        // Release the memory occupied by the command lists that are done.
-        commandPools.Get(frameIndex)->ReclaimAllCommandListMemory();
-    }
+    // Release the memory occupied by the command lists that are done.
+    commandPools.ForEach([](auto& el) { el->ReclaimAllCommandListMemory(); });
 
     // The GPU should now be in an idle state.
     // Increment currentFrameIndex
