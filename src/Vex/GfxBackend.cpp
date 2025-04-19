@@ -17,7 +17,9 @@ namespace vex
 {
 
 GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& description)
-    : rhi(std::move(newRHI))
+    : width(description.platformWindow.width)
+    , height(description.platformWindow.height)
+    , rhi(std::move(newRHI))
     , description(description)
     , commandPools(description.frameBuffering)
 {
@@ -161,8 +163,14 @@ void GfxBackend::FlushGPU()
         queueFrameFences[queueType]->WaitCPUAndIncrementNextFenceIndex(currentFrameIndex, nextFrameIndex);
     }
 
+    for (i32 frameIndex = 0; frameIndex < std::to_underlying(description.frameBuffering); ++frameIndex)
+    {
+        // Release the memory occupied by the command lists that are done.
+        commandPools.Get(frameIndex)->ReclaimAllCommandListMemory();
+    }
+
     // The GPU should now be in an idle state.
-    // Increment
+    // Increment currentFrameIndex
     currentFrameIndex = nextFrameIndex;
 }
 
@@ -173,6 +181,18 @@ void GfxBackend::SetVSync(bool useVSync)
         FlushGPU();
     }
     swapChain->SetVSync(useVSync);
+}
+
+void GfxBackend::OnWindowResized(u32 newWidth, u32 newHeight)
+{
+    // Do not resize if any of the dimensions is 0, or if the resize gives us the same window size as we have currently.
+    if (newWidth == 0 || newHeight == 0 || (newWidth == width && newHeight == height))
+    {
+        return;
+    }
+
+    FlushGPU();
+    swapChain->Resize(newWidth, newHeight);
 }
 
 } // namespace vex

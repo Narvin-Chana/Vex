@@ -36,7 +36,11 @@ public:
 
     void SetVSync(bool useVSync);
 
+    void OnWindowResized(u32 newWidth, u32 newHeight);
+
 private:
+    u32 width, height;
+
     // Index of the current frame, possible values depends on buffering:
     //  {0} if single buffering
     //  {0, 1} if double buffering

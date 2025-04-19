@@ -2,14 +2,14 @@
 
 #include <Vex.h>
 
-class HelloTriangleApplication
+#include "../ExampleApplication.h"
+
+class GLFWwindow;
+
+class HelloTriangleApplication : public ExampleApplication
 {
 public:
     HelloTriangleApplication();
-    ~HelloTriangleApplication();
+    virtual ~HelloTriangleApplication() override;
     void Run();
-
-private:
-    class GLFWwindow* window;
-    vex::UniqueHandle<vex::GfxBackend> graphics;
 };
