@@ -102,18 +102,27 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     //              bindless index.
 
     // Collect all underlying RHI textures.
+    i32 totalSize = reads.size() + writes.size();
+
     std::vector<RHITextureBinding> rhiTextureBindings;
-    rhiTextureBindings.reserve(reads.size() + writes.size());
+    rhiTextureBindings.reserve(totalSize);
     std::vector<RHIBufferBinding> rhiBufferBindings;
-    rhiBufferBindings.reserve(reads.size() + writes.size());
-    auto CollectResources = [this, &rhiTextureBindings, &rhiBufferBindings](std::span<const ResourceBinding> resources,
-                                                                            ResourceUsage::Type usage)
+    rhiBufferBindings.reserve(totalSize);
+
+    std::vector<std::pair<RHITexture&, RHITextureState::Flags>> textureStateTransitions;
+    textureStateTransitions.reserve(totalSize);
+
+    auto CollectResources = [this, &rhiTextureBindings, &rhiBufferBindings, &textureStateTransitions](
+                                std::span<const ResourceBinding> resources,
+                                ResourceUsage::Type usage,
+                                RHITextureState::Flags state)
     {
         for (const auto& binding : resources)
         {
             if (binding.IsTexture())
             {
                 auto& texture = backend->GetRHITexture(binding.texture.handle);
+                textureStateTransitions.emplace_back(texture, state);
                 rhiTextureBindings.emplace_back(binding, usage, &texture);
             }
 
@@ -124,8 +133,11 @@ void CommandContext::Dispatch(const ShaderKey& shader,
             }
         }
     };
-    CollectResources(reads, ResourceUsage::Read);
-    CollectResources(writes, ResourceUsage::UnorderedAccess);
+    CollectResources(reads, ResourceUsage::Read, RHITextureState::ShaderResource);
+    CollectResources(writes, ResourceUsage::UnorderedAccess, RHITextureState::UnorderedAccess);
+
+    // Transition our resources to the correct states.
+    cmdList->Transition(textureStateTransitions);
 
     // Transforms ResourceBinding into platform specific views, then binds them to the shader (preferably bindlessly).
     cmdList->SetLayoutResources(resourceLayout, rhiTextureBindings, rhiBufferBindings, *backend->descriptorPool);
@@ -145,7 +157,14 @@ void CommandContext::Dispatch(const ShaderKey& shader,
 
 void CommandContext::Copy(const Texture& source, const Texture& destination)
 {
-    cmdList->Copy(backend->GetRHITexture(source.handle), backend->GetRHITexture(destination.handle));
+    RHITexture& sourceRHI = backend->GetRHITexture(source.handle);
+    RHITexture& destinationRHI = backend->GetRHITexture(destination.handle);
+    std::array<std::pair<RHITexture&, RHITextureState::Flags>, 2> transitions{
+        std::pair<RHITexture&, RHITextureState::Flags>{ sourceRHI, RHITextureState::CopySource },
+        std::pair<RHITexture&, RHITextureState::Flags>{ destinationRHI, RHITextureState::CopyDest }
+    };
+    cmdList->Transition(transitions);
+    cmdList->Copy(sourceRHI, destinationRHI);
 }
 
 } // namespace vex

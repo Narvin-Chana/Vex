@@ -69,6 +69,21 @@ void HelloTriangleApplication::Run()
             ctx.Copy(workingTexture, graphics->GetCurrentBackBuffer());
         }
 
+        // Test for texture deletion
+        {
+            graphics->DestroyTexture(
+                graphics->CreateTexture({ .name = "Working Texture",
+                                          .type = vex::TextureType::Texture2D,
+                                          .width = DefaultWidth,
+                                          .height = DefaultHeight,
+                                          .depthOrArraySize = 1,
+                                          .mips = 1,
+                                          .format = vex::TextureFormat::RGBA8_UNORM,
+                                          .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess,
+                                          .clearValue{ .enabled = false } },
+                                        vex::ResourceLifetime::Static));
+        }
+
         graphics->EndFrame();
     }
 }
