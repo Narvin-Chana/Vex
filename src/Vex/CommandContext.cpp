@@ -146,6 +146,10 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     // TODO: If we would want to add the shader code-gen to fill-in bindless resources automatically, we'd also have to
     // pass in the reads, writes and constants here.
     auto pipelineState = backend->GetPipelineStateCache().GetComputePipelineState({ .computeShader = shader });
+    if (!pipelineState)
+    {
+        return;
+    }
     cmdList->SetPipelineState(*pipelineState);
 
     // Validate dispatch (vs platform/api constraints)

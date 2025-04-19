@@ -25,6 +25,7 @@ namespace vex
 GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& description)
     : rhi(std::move(newRHI))
     , description(description)
+    , resourceCleanup(static_cast<i8>(description.frameBuffering))
     , commandPools(description.frameBuffering)
     , backBuffers(std::to_underlying(description.frameBuffering))
     , textureRegistry(DefaultRegistrySize)
@@ -69,7 +70,10 @@ GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& des
             description.platformWindow.width,
             description.platformWindow.height);
 
-    psCache = PipelineStateCache(rhi.get(), *physicalDevice->featureChecker);
+    psCache = PipelineStateCache(rhi.get(),
+                                 *physicalDevice->featureChecker,
+                                 &resourceCleanup,
+                                 description.enableShaderDebugging);
 
     for (auto queueType : magic_enum::enum_values<CommandQueueType>())
     {
@@ -96,49 +100,12 @@ GfxBackend::~GfxBackend()
 
 void GfxBackend::StartFrame()
 {
-    // Forces a GPU flush on the third frame, to make sure everything works correctly :).
-    static bool b = true;
-    if (b && currentFrameIndex == 2)
-    {
-        FlushGPU();
-        b = false;
-    }
-
-    VEX_LOG(Info, "Started Frame: {}", currentFrameIndex);
-
     swapChain->AcquireNextBackbuffer(currentFrameIndex);
-
-    // Test code creates two command lists on the graphics queue and one on compute.
-    // They are opened then closed, then executed. Once the GPU is done with them the underlying memory is returned to
-    // the pool.
-    {
-        auto cmdList = GetCurrentCommandPool().CreateCommandList(CommandQueueType::Graphics);
-        cmdList->Open();
-        cmdList->Close();
-
-        rhi->ExecuteCommandList(*cmdList);
-    }
-
-    {
-        auto cmdList = GetCurrentCommandPool().CreateCommandList(CommandQueueType::Compute);
-        cmdList->Open();
-        cmdList->Close();
-
-        rhi->ExecuteCommandList(*cmdList);
-    }
-
-    {
-        auto cmdList = GetCurrentCommandPool().CreateCommandList(CommandQueueType::Graphics);
-        cmdList->Open();
-        cmdList->Close();
-
-        rhi->ExecuteCommandList(*cmdList);
-    }
 }
 
-void GfxBackend::EndFrame()
+void GfxBackend::EndFrame(bool isFullscreenMode)
 {
-    swapChain->Present();
+    swapChain->Present(isFullscreenMode);
 
     // Signal all queue fences.
     for (auto queueType : magic_enum::enum_values<CommandQueueType>())
@@ -200,8 +167,7 @@ Texture GfxBackend::CreateTexture(TextureDescription description, ResourceLifeti
 
 void GfxBackend::DestroyTexture(Texture texture)
 {
-    resourceCleanup.CleanupResource(std::move(textureRegistry[texture.handle]),
-                                    std::to_underlying(description.frameBuffering));
+    resourceCleanup.CleanupResource(std::move(textureRegistry[texture.handle]));
     textureRegistry.FreeElement(texture.handle);
 }
 
@@ -267,6 +233,16 @@ Texture GfxBackend::GetCurrentBackBuffer()
     return backBuffers[currentFrameIndex];
 }
 
+void GfxBackend::RecompileAllShaders()
+{
+    psCache.GetShaderCache().MarkAllShadersDirty();
+}
+
+void GfxBackend::RecompileChangedShaders()
+{
+    psCache.GetShaderCache().MarkAllStaleShadersDirty();
+}
+
 PipelineStateCache& GfxBackend::GetPipelineStateCache()
 {
     return psCache;
@@ -297,6 +273,10 @@ void GfxBackend::CreateBackBuffers()
         backBuffers[backBufferIndex] =
             Texture{ .handle = textureRegistry.AllocateElement(std::move(rhiTexture)), .description = rhiDesc };
     }
+
+    // Recreating the backbuffers means resetting the current frame index to 0 (as if we've just started the application
+    // from scratch).
+    currentFrameIndex = 0;
 }
 
 } // namespace vex

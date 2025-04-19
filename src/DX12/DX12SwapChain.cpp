@@ -51,11 +51,13 @@ DX12SwapChain::~DX12SwapChain() = default;
 
 void DX12SwapChain::AcquireNextBackbuffer(u8 frameIndex)
 {
+    // Nothing to do, DX12 makes the next backbuffer available directly (as long as fences are correctly handled).
 }
 
-void DX12SwapChain::Present()
+void DX12SwapChain::Present(bool isFullscreenMode)
 {
-    chk << swapChain->Present(description.useVSync, !description.useVSync ? DXGI_PRESENT_ALLOW_TEARING : 0);
+    chk << swapChain->Present(description.useVSync,
+                              (!description.useVSync && !isFullscreenMode) ? DXGI_PRESENT_ALLOW_TEARING : 0);
 }
 
 void DX12SwapChain::Resize(u32 width, u32 height)

@@ -11,6 +11,8 @@ class HelloTriangleApplication : public ExampleApplication
 public:
     HelloTriangleApplication();
     virtual ~HelloTriangleApplication() override;
+    virtual void HandleKeyInput(int key, int scancode, int action, int mods) override;
+
     void Run();
 
 protected:

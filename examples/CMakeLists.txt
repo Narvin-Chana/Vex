@@ -37,7 +37,7 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
         vex_setup_d3d12_agility_runtime(${EXAMPLE_NAME})
 
         target_link_libraries(${EXAMPLE_NAME} PRIVATE ${EXAMPLES_COMMON_LIBS})
-        target_include_directories(${EXAMPLE_NAME} PRIVATE "${EXAMPLE_DIR}" "${CMAKE_SOURCE_DIR}/src")        
+        target_include_directories(${EXAMPLE_NAME} PRIVATE "${EXAMPLE_DIR}" "${CMAKE_SOURCE_DIR}/src")
     endif()
   endif()
 endforeach()

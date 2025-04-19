@@ -6,13 +6,21 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Will correctly install our custom githook to run clang-format on staged files when committing
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/GitHooks.cmake)
-
 # Store the root directory of Vex
 set(VEX_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 # Make VEX_ROOT_DIR available to downstream projects that use this library
 set(VEX_ROOT_DIR "${VEX_ROOT_DIR}" CACHE INTERNAL "Path to Vex's library root directory")
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+# CMake Helpers
+include(VexHelpers)
+
+# Will correctly install our custom githook to run clang-format on staged files when committing
+include(GitHooks)
+
+# Contains all logic to fetch and include DXC
+include(VexDXC)
 
 # =========================================
 # Set configuration flags
@@ -191,6 +199,10 @@ add_library(Vex STATIC
     "src/Vex/RHI/RHIBindings.h"
     "src/Vex/Containers/ResourceCleanup.h"
     "src/Vex/Containers/ResourceCleanup.cpp"
+    "src/Vex/ShaderCompiler.h"
+    "src/Vex/ShaderCompiler.cpp"
+    "src/Vex/Platform/Platform.h"
+    "src/Vex/Formattable.h"
 )
 
 if (WIN32)
@@ -200,7 +212,11 @@ if (WIN32)
     )
 endif()
 
-# TODO: add linux platform sources
+if (LINUX)
+    target_sources(Vex PRIVATE
+        "src/Vex/Platform/Linux/WString.h"
+    )
+endif()
 
 target_include_directories(Vex PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
@@ -294,59 +310,8 @@ endif()
 # =========================================
 message(STATUS "Setting up Vex headers...")
 
-# Function to create and link header-only libraries
-function(add_header_only_dependency TARGET DEP_NAME SOURCE_DIR INCLUDE_PATH INSTALL_PATH)
-    if(NOT EXISTS "${SOURCE_DIR}")
-        message(STATUS WARNING " Source directory does not exist: ${SOURCE_DIR}")
-        return()
-    endif()
-
-    set(FULL_INCLUDE_PATH "${SOURCE_DIR}/${INCLUDE_PATH}")
-    
-    # Debug: Check if include path exists
-    if(NOT EXISTS "${FULL_INCLUDE_PATH}")
-        message(STATUS WARNING " Include path does not exist: ${FULL_INCLUDE_PATH}")
-        return()
-    endif()
-
-    # Find all header files
-    file(GLOB_RECURSE HEADER_FILES 
-        "${FULL_INCLUDE_PATH}/*.h"
-        "${FULL_INCLUDE_PATH}/*.hpp"
-        "${FULL_INCLUDE_PATH}/*.hxx"
-        "${FULL_INCLUDE_PATH}/*.inl"
-    )
-    
-    if(HEADER_FILES)
-        message(STATUS "Found header files:")
-        foreach(HEADER ${HEADER_FILES})
-            # Show relative path from the include directory
-            file(RELATIVE_PATH REL_PATH "${FULL_INCLUDE_PATH}" "${HEADER}")
-            message(STATUS "  - ${REL_PATH}")
-        endforeach()
-    else()
-        message(WARNING "No header files found in: ${FULL_INCLUDE_PATH}")
-    endif()
-
-    # Create interface library for the headers
-    add_library(${TARGET}_${DEP_NAME}_headers INTERFACE)
-    
-    # Set include directories
-    target_include_directories(${TARGET}_${DEP_NAME}_headers INTERFACE
-        $<BUILD_INTERFACE:${SOURCE_DIR}/${INCLUDE_PATH}>
-        $<INSTALL_INTERFACE:include/${INSTALL_PATH}>
-    )
-    
-    # Link to main target
-    target_link_libraries(${TARGET} PUBLIC ${TARGET}_${DEP_NAME}_headers)
-    
-    # Add to the list of targets to install
-    set_property(GLOBAL APPEND PROPERTY HEADER_DEPS_TO_INSTALL ${TARGET}_${DEP_NAME}_headers)
-    
-    # Register header install path for later
-    set_property(GLOBAL APPEND PROPERTY HEADER_DIRS_TO_INSTALL 
-                "${SOURCE_DIR}/${INCLUDE_PATH}" "include/${INSTALL_PATH}")
-endfunction()
+# Static linking with DXC.
+build_with_dxc(Vex)
 
 # Static linking to efsw
 add_header_only_dependency(Vex efsw "${efsw_SOURCE_DIR}" "include" "efsw")
@@ -408,7 +373,7 @@ if(VEX_ENABLE_VULKAN)
     target_sources(Vex PRIVATE ${VEX_VULKAN_SOURCES})
     target_link_libraries(Vex PUBLIC Vulkan::Vulkan)
     # Make Vulkan-Hpp headers available
-    add_header_only_dependency(Vex vulkanhpp "${vulkanhpp_SOURCE_DIR}" "include" "vulkan")
+    add_header_only_dependency(Vex vulkanhpp "${vulkanhpp_SOURCE_DIR}" "vulkan" "vulkan")
     target_compile_definitions(Vex PUBLIC VEX_VULKAN=1)
 else()
     target_compile_definitions(Vex PUBLIC VEX_VULKAN=0)

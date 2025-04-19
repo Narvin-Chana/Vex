@@ -23,14 +23,16 @@ class DX12ComputePipelineState : public RHIComputePipelineState
 {
 public:
     DX12ComputePipelineState(const ComPtr<DX12Device>& device, const Key& key);
+
     virtual ~DX12ComputePipelineState() override;
 
     virtual void Compile(const RHIShader& computeShader, RHIResourceLayout& resourceLayout) override;
+    virtual void Cleanup(ResourceCleanup& resourceCleanup) override;
 
     ComPtr<ID3D12PipelineState> computePSO;
 
 private:
-    ComPtr<ID3D12Device> device;
+    ComPtr<DX12Device> device;
 };
 
 } // namespace vex::dx12

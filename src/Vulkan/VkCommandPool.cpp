@@ -32,10 +32,12 @@ RHICommandList* VkCommandPool::CreateCommandList(CommandQueueType queueType)
 
 void VkCommandPool::ReclaimCommandListMemory(CommandQueueType queueType)
 {
+#if 0
     VEX_LOG(Info,
             "Reclaimed {} command list(s) for \"{}\" type",
             allocatedCommandBuffers[std::to_underlying(queueType)].size(),
             magic_enum::enum_name(queueType));
+#endif
     allocatedCommandBuffers[std::to_underlying(queueType)].clear();
 }
 

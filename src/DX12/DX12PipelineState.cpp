@@ -1,6 +1,9 @@
 #include "DX12PipelineState.h"
 
+#include <Vex/Containers/ResourceCleanup.h>
+#include <Vex/RHI/RHIBuffer.h>
 #include <Vex/RHI/RHIShader.h>
+#include <Vex/RHI/RHITexture.h>
 
 #include <DX12/DX12ResourceLayout.h>
 #include <DX12/HRChecker.h>
@@ -50,9 +53,6 @@ DX12ComputePipelineState::~DX12ComputePipelineState() = default;
 
 void DX12ComputePipelineState::Compile(const RHIShader& computeShader, RHIResourceLayout& resourceLayout)
 {
-    // TODO: if the PSO is being recompiled while in flight (very likely), this will crash!
-    // Should add a way to make outdated resources persist for a complete GPU buffer cycle to avoid this!
-
     auto blob = computeShader.GetBlob();
     D3D12_COMPUTE_PIPELINE_STATE_DESC desc{
         .pRootSignature = reinterpret_cast<DX12ResourceLayout&>(resourceLayout).GetRootSignature().Get(),
@@ -61,6 +61,14 @@ void DX12ComputePipelineState::Compile(const RHIShader& computeShader, RHIResour
         .Flags = D3D12_PIPELINE_STATE_FLAG_NONE,
     };
     chk << device->CreateComputePipelineState(&desc, IID_PPV_ARGS(&computePSO));
+}
+
+void DX12ComputePipelineState::Cleanup(ResourceCleanup& resourceCleanup)
+{
+    // Simple swap and move
+    auto cleanupPSO = MakeUnique<DX12ComputePipelineState>(device, key);
+    std::swap(cleanupPSO->computePSO, computePSO);
+    resourceCleanup.CleanupResource(std::move(cleanupPSO));
 }
 
 } // namespace vex::dx12
