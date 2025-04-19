@@ -2,8 +2,10 @@
 
 #include <unordered_map>
 
+#include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/RHI/RHIFwd.h>
 #include <Vex/RHI/RHIPipelineState.h>
+#include <Vex/ShaderCompiler.h>
 #include <Vex/UniqueHandle.h>
 
 namespace vex
@@ -16,7 +18,10 @@ class PipelineStateCache
 {
 public:
     PipelineStateCache() = default;
-    PipelineStateCache(RHI* rhi, const FeatureChecker& featureChecker);
+    PipelineStateCache(RHI* rhi,
+                       const FeatureChecker& featureChecker,
+                       ResourceCleanup* resourceCleanup,
+                       bool enableShaderDebugging);
     ~PipelineStateCache();
 
     PipelineStateCache(const PipelineStateCache&) = delete;
@@ -30,17 +35,17 @@ public:
     const RHIGraphicsPipelineState* GetGraphicsPipelineState(const RHIGraphicsPipelineState::Key& key);
     const RHIComputePipelineState* GetComputePipelineState(const RHIComputePipelineState::Key& key);
 
-    const RHIShader* GetShader(const ShaderKey& key);
+    ShaderCache& GetShaderCache();
 
 private:
     RHI* rhi;
 
-    UniqueHandle<RHIResourceLayout> resourceLayout;
+    ResourceCleanup* resourceCleanup;
 
+    ShaderCache shaderCache;
+    UniqueHandle<RHIResourceLayout> resourceLayout;
     std::unordered_map<RHIGraphicsPipelineState::Key, UniqueHandle<RHIGraphicsPipelineState>> graphicsPSCache;
     std::unordered_map<RHIComputePipelineState::Key, UniqueHandle<RHIComputePipelineState>> computePSCache;
-
-    std::unordered_map<ShaderKey, UniqueHandle<RHIShader>> shaderCache;
 };
 
 } // namespace vex
