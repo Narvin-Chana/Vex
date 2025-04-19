@@ -13,16 +13,12 @@ class DX12ResourceLayout : public RHIResourceLayout
 {
 public:
     DX12ResourceLayout(ComPtr<DX12Device>& device, const DX12FeatureChecker& featureChecker);
+    virtual ~DX12ResourceLayout() override;
 
     virtual bool ValidateGlobalConstant(const GlobalConstant& globalConstant) const override;
     virtual u32 GetMaxLocalConstantSize() const override;
 
     ComPtr<ID3D12RootSignature>& GetRootSignature();
-
-    // TEMP STUFF FOR TRIANGLE DRAWING
-    ComPtr<ID3D12DescriptorHeap> descriptorHeap;
-    ComPtr<ID3D12Resource> uavTexture;
-    // END OF TEMP STUFF FOR TRIANGLE DRAWING
 
 private:
     void CompileRootSignature();

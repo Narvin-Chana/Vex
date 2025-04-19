@@ -27,10 +27,15 @@ public:
     virtual void SetLayout(RHIResourceLayout& layout) override;
     virtual void SetLayoutLocalConstants(const RHIResourceLayout& layout,
                                          std::span<const ConstantBinding> constants) override;
+    virtual void SetLayoutResources(const RHIResourceLayout& layout,
+                                           std::span<RHITextureBinding> textures,
+                                           std::span<RHIBufferBinding> buffers,
+                                           RHIDescriptorPool& descriptorPool) override;
+    virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool) override;
 
-    virtual void Dispatch(const std::array<u32, 3>& groupCount,
-                          RHIResourceLayout& layout,
-                          RHITexture& backbuffer) override;
+    virtual void Dispatch(const std::array<u32, 3>& groupCount) override;
+
+    virtual void Copy(RHITexture& src, RHITexture& dst) override;
 
     virtual CommandQueueType GetType() const override;
 

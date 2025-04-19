@@ -5,8 +5,6 @@
 #include <Vex/ShaderKey.h>
 #include <Vex/Types.h>
 
-class IDxcBlob;
-
 namespace vex
 {
 

@@ -82,4 +82,6 @@ enum class TextureFormat : u8
 
 bool IsFormatSRGB(TextureFormat format);
 
+bool FormatHasSRGBEquivalent(TextureFormat format);
+
 } // namespace vex

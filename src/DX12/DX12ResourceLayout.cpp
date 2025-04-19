@@ -16,6 +16,8 @@ DX12ResourceLayout::DX12ResourceLayout(ComPtr<DX12Device>& device, const DX12Fea
 {
 }
 
+DX12ResourceLayout::~DX12ResourceLayout() = default;
+
 bool DX12ResourceLayout::ValidateGlobalConstant(const GlobalConstant& globalConstant) const
 {
     if (!RHIResourceLayout::ValidateGlobalConstant(globalConstant))
@@ -33,8 +35,7 @@ u32 DX12ResourceLayout::GetMaxLocalConstantSize() const
     // Each global constant descriptor takes up 2 DWORDs in the root signature (as root descriptor).
     // There is the option of using a descriptor table for constants to reduce their size, but adding a level of
     // indirection, this is probably not needed thanks to bindless existing nowadays!
-    // TODO: final -2 is just to add a UAV descriptor slot!
-    return std::max<u32>(0, (featureChecker.GetMaxRootSignatureDWORDSize() - 2 * globalConstants.size() - 2)) *
+    return std::max<u32>(0, (featureChecker.GetMaxRootSignatureDWORDSize() - 2 * globalConstants.size())) *
            sizeof(DWORD);
 }
 
@@ -56,65 +57,9 @@ void DX12ResourceLayout::CompileRootSignature()
     std::vector<CD3DX12_ROOT_PARAMETER> rootParameters;
     rootParameters.reserve(1 + globalConstants.size());
 
-    // UAV temp for triangle drawing
-    {
-        D3D12_RESOURCE_DESC resourceDesc{};
-        resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        resourceDesc.Width = 1280;
-        resourceDesc.Height = 600;
-        resourceDesc.DepthOrArraySize = 1;
-        resourceDesc.MipLevels = 1;
-        resourceDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        resourceDesc.SampleDesc.Count = 1;
-        resourceDesc.SampleDesc.Quality = 0;
-        resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-        resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-        resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-        static const D3D12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-
-        chk << device->CreateCommittedResource(&heapProps,
-                                               D3D12_HEAP_FLAG_NONE,
-                                               &resourceDesc,
-                                               D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-                                               nullptr,
-                                               IID_PPV_ARGS(&uavTexture));
-
-        D3D12_DESCRIPTOR_HEAP_DESC heapDesc{
-            .Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-            .NumDescriptors = 1,
-            .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
-            .NodeMask = 0,
-        };
-        chk << device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&descriptorHeap));
-        heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-
-        ComPtr<ID3D12DescriptorHeap> heapCPU;
-        chk << device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&heapCPU));
-
-        device->CreateUnorderedAccessView(uavTexture.Get(),
-                                          nullptr,
-                                          nullptr,
-                                          heapCPU->GetCPUDescriptorHandleForHeapStart());
-
-        device->CopyDescriptorsSimple(1,
-                                      descriptorHeap->GetCPUDescriptorHandleForHeapStart(),
-                                      heapCPU->GetCPUDescriptorHandleForHeapStart(),
-                                      D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-        CD3DX12_DESCRIPTOR_RANGE uavRange;
-        uavRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, // Range type is UAV
-                      1,                               // Number of descriptors (just 1)
-                      0,                               // Base shader register (u0)
-                      0);                              // Register space (space0)
-        CD3DX12_ROOT_PARAMETER uavParameter;
-        uavParameter.InitAsDescriptorTable(1, &uavRange);
-        rootParameters.push_back(std::move(uavParameter));
-    }
-
     CD3DX12_ROOT_PARAMETER rootConstants;
     // Root constants are always bound at the beginning of the root parameters (in slot & space 0).
-    rootConstants.InitAsConstants(rootSignatureDWORDCount, 2, 0);
+    rootConstants.InitAsConstants(rootSignatureDWORDCount, 0, 0);
     rootParameters.push_back(std::move(rootConstants));
 
     // TODO: consider descriptor tables?
@@ -130,16 +75,16 @@ void DX12ResourceLayout::CompileRootSignature()
 
     // TODO: add static samplers!
 
-    CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc = CD3DX12_ROOT_SIGNATURE_DESC(
-        static_cast<u32>(rootParameters.size()),
-        rootParameters.data(),
-        0,
-        nullptr,
-        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT /*|
-                                                                     // Uncomment to activate bindless descriptor heaps!
-            (ResourceDescriptorHeap) D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED |
-            D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED*/
-    );
+    CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc =
+        CD3DX12_ROOT_SIGNATURE_DESC(static_cast<u32>(rootParameters.size()),
+                                    rootParameters.data(),
+                                    0,
+                                    nullptr,
+                                    D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+                                        D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED 
+            // Evaluate the usefulness of bindless samplers, static samplers seem to be easier to map to how Vulkan works.
+            /* |
+                                        D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED*/);
 
     ComPtr<ID3DBlob> signature;
     ComPtr<ID3DBlob> error;
