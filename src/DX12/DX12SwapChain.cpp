@@ -62,6 +62,7 @@ void DX12SwapChain::Resize(u32 width, u32 height)
     chk << swapChain->ResizeBuffers(GetBackBufferCount(description.frameBuffering),
                                     width,
                                     height,
+                                    // DXGI_FORMAT_UNKNOWN keeps the previous format
                                     DXGI_FORMAT_UNKNOWN,
                                     DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING);
     ExtractBackBuffers();
