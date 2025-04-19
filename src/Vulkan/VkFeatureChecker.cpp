@@ -39,7 +39,7 @@ VkFeatureChecker::VkFeatureChecker(const ::vk::PhysicalDevice& physicalDevice)
 
 VkFeatureChecker::~VkFeatureChecker() = default;
 
-bool VkFeatureChecker::IsFeatureSupported(Feature feature)
+bool VkFeatureChecker::IsFeatureSupported(Feature feature) const
 {
     switch (feature)
     {
@@ -53,7 +53,7 @@ bool VkFeatureChecker::IsFeatureSupported(Feature feature)
     std::unreachable();
 }
 
-FeatureLevel VkFeatureChecker::GetFeatureLevel()
+FeatureLevel VkFeatureChecker::GetFeatureLevel() const
 {
     bool supportsLevel12_2 =
         // Vulkan 1.3 features that correspond to FL 12_2 requirements
@@ -79,7 +79,7 @@ FeatureLevel VkFeatureChecker::GetFeatureLevel()
     }
 }
 
-ResourceBindingTier VkFeatureChecker::GetResourceBindingTier()
+ResourceBindingTier VkFeatureChecker::GetResourceBindingTier() const
 {
     // Determine resource binding tier based on device limits
     const ::vk::PhysicalDeviceLimits& limits = deviceProperties.limits;
@@ -107,7 +107,7 @@ ResourceBindingTier VkFeatureChecker::GetResourceBindingTier()
     }
 }
 
-ShaderModel VkFeatureChecker::GetShaderModel()
+ShaderModel VkFeatureChecker::GetShaderModel() const
 {
     // Map Vulkan version to feature level
     uint32_t majorVersion = VK_API_VERSION_MAJOR(deviceProperties.apiVersion);

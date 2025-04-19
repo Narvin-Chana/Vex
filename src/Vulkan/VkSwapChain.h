@@ -14,7 +14,7 @@ public:
     virtual void SetVSync(bool enableVSync) override;
     virtual bool NeedsFlushForVSyncToggle() override;
 
-    virtual RHITexture* GetBackBuffer(u8 backBufferIndex) override;
+    virtual UniqueHandle<RHITexture> CreateBackBuffer(u8 backBufferIndex) override;
 };
 
 } // namespace vex::vk

@@ -54,10 +54,10 @@ class FeatureChecker
 {
 public:
     virtual ~FeatureChecker() = default;
-    virtual bool IsFeatureSupported(Feature feature) = 0;
-    virtual FeatureLevel GetFeatureLevel() = 0;
-    virtual ResourceBindingTier GetResourceBindingTier() = 0;
-    virtual ShaderModel GetShaderModel() = 0;
+    virtual bool IsFeatureSupported(Feature feature) const = 0;
+    virtual FeatureLevel GetFeatureLevel() const = 0;
+    virtual ResourceBindingTier GetResourceBindingTier() const = 0;
+    virtual ShaderModel GetShaderModel() const = 0;
 };
 
 } // namespace vex

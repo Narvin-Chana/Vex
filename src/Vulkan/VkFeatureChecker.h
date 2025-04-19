@@ -19,10 +19,10 @@ public:
     VkFeatureChecker() = default;
     VkFeatureChecker(const ::vk::PhysicalDevice& physicalDevice);
     virtual ~VkFeatureChecker() override;
-    virtual bool IsFeatureSupported(Feature feature) override;
-    virtual FeatureLevel GetFeatureLevel() override;
-    virtual ResourceBindingTier GetResourceBindingTier() override;
-    virtual ShaderModel GetShaderModel() override;
+    virtual bool IsFeatureSupported(Feature feature) const override;
+    virtual FeatureLevel GetFeatureLevel() const override;
+    virtual ResourceBindingTier GetResourceBindingTier() const override;
+    virtual ShaderModel GetShaderModel() const override;
 
 private:
     ::vk::PhysicalDeviceProperties deviceProperties;

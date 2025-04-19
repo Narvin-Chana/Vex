@@ -46,6 +46,14 @@ void HelloTriangleApplication::Run()
         graphics->StartFrame();
 
         // TODO: Draw triangle
+        {
+            auto ctx = graphics->BeginCommandContext(vex::CommandQueueType::Graphics);
+            ctx.Dispatch({ .entryPoint = "CSMain", .type = vex::ShaderType::ComputeShader },
+                         {},
+                         {},
+                         {},
+                         { static_cast<uint32_t>(width) / 8, static_cast<uint32_t>(height) / 8, 1 });
+        }
 
         graphics->EndFrame();
     }
