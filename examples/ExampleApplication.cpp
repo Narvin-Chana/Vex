@@ -102,6 +102,4 @@ void ExampleApplication::ToggleFullscreen()
                              0);
         windowMode = Windowed;
     }
-
-    // TODO: Force a resize?
 }
