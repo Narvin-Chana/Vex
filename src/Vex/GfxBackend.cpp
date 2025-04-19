@@ -17,9 +17,7 @@ namespace vex
 {
 
 GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& description)
-    : width(description.platformWindow.width)
-    , height(description.platformWindow.height)
-    , rhi(std::move(newRHI))
+    : rhi(std::move(newRHI))
     , description(description)
     , commandPools(description.frameBuffering)
 {
@@ -186,13 +184,16 @@ void GfxBackend::SetVSync(bool useVSync)
 void GfxBackend::OnWindowResized(u32 newWidth, u32 newHeight)
 {
     // Do not resize if any of the dimensions is 0, or if the resize gives us the same window size as we have currently.
-    if (newWidth == 0 || newHeight == 0 || (newWidth == width && newHeight == height))
+    if (newWidth == 0 || newHeight == 0 ||
+        (newWidth == description.platformWindow.width && newHeight == description.platformWindow.height))
     {
         return;
     }
 
     FlushGPU();
     swapChain->Resize(newWidth, newHeight);
+    description.platformWindow.width = newWidth;
+    description.platformWindow.height = newHeight;
 }
 
 } // namespace vex
