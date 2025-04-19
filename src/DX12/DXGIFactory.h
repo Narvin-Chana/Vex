@@ -14,6 +14,10 @@ public:
     static ComPtr<DX12Device> CreateDevice(IDXGIAdapter* adapter, D3D_FEATURE_LEVEL minimumFeatureLevel);
     static std::string GetDeviceAdapterName(const ComPtr<ID3D12Device>& device);
 
+    static ComPtr<IDXGISwapChain4> CreateSwapChain(const DXGI_SWAP_CHAIN_DESC1& desc,
+                                                   const ComPtr<ID3D12CommandQueue>& commandQueue,
+                                                   HWND hwnd);
+
     static ComPtr<IDXGIFactory7> dxgiFactory;
 };
 
