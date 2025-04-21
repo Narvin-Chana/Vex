@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include <Vex.h>
 
 class GLFWwindow;
@@ -7,7 +9,7 @@ class GLFWwindow;
 class ExampleApplication
 {
 public:
-    ExampleApplication();
+    ExampleApplication(const std::string& windowName);
     virtual ~ExampleApplication();
 
 protected:

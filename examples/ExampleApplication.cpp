@@ -14,7 +14,7 @@
 #include <Vex.h>
 #include <Vex/Logger.h>
 
-ExampleApplication::ExampleApplication()
+ExampleApplication::ExampleApplication(const std::string& windowName)
 {
 #if defined(__linux__)
     glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
@@ -28,7 +28,7 @@ ExampleApplication::ExampleApplication()
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
-    window = glfwCreateWindow(DefaultWidth, DefaultHeight, "ExampleApplication", nullptr, nullptr);
+    window = glfwCreateWindow(DefaultWidth, DefaultHeight, windowName.c_str(), nullptr, nullptr);
 
     width = DefaultWidth;
     height = DefaultHeight;
@@ -36,25 +36,27 @@ ExampleApplication::ExampleApplication()
     windowedInfo = { .width = DefaultWidth, .height = DefaultHeight };
     glfwGetWindowPos(window, &windowedInfo.x, &windowedInfo.y);
 
-    static std::function<void(GLFWwindow*, int, int)> ResizeCallback = [this](auto* w, auto width, auto height)
-    { this->OnResize(w, width, height); };
+    // Store the 'this' pointer for callbacks
+    glfwSetWindowUserPointer(window, this);
 
-    // Set static callback that uses the function object
-    glfwSetWindowSizeCallback(window, [](GLFWwindow* w, int width, int height) { ResizeCallback(w, width, height); });
-
-    static std::function<void(GLFWwindow*, int, int, int, int)> ToggleFullscreenCallback =
-        [this](auto* w, auto key, auto scancode, auto action, auto mods)
-    {
-        // Alt+Enter to toggle fullscreen
-        if (key == GLFW_KEY_ENTER && action == GLFW_PRESS && (mods & GLFW_MOD_ALT))
-        {
-            this->ToggleFullscreen();
-        }
-    };
+    glfwSetWindowSizeCallback(window,
+                              [](GLFWwindow* w, int width, int height)
+                              {
+                                  auto* self = static_cast<ExampleApplication*>(glfwGetWindowUserPointer(w));
+                                  self->OnResize(w, width, height);
+                              });
 
     glfwSetKeyCallback(window,
                        [](GLFWwindow* w, int key, int scancode, int action, int mods)
-                       { ToggleFullscreenCallback(w, key, scancode, action, mods); });
+                       {
+                           auto* self = static_cast<ExampleApplication*>(glfwGetWindowUserPointer(w));
+
+                           // Alt+Enter to toggle fullscreen
+                           if (key == GLFW_KEY_ENTER && action == GLFW_PRESS && (mods & GLFW_MOD_ALT))
+                           {
+                               self->ToggleFullscreen();
+                           }
+                       });
 }
 
 ExampleApplication::~ExampleApplication()

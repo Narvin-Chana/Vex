@@ -10,6 +10,7 @@
 #include <GLFW/glfw3native.h>
 
 HelloTriangleApplication::HelloTriangleApplication()
+    : ExampleApplication("HelloTriangleApplication")
 {
 #if defined(_WIN32)
     vex::PlatformWindowHandle platformWindow = { .window = glfwGetWin32Window(window) };
