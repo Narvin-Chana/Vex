@@ -148,7 +148,8 @@ add_library(Vex STATIC
     "src/Vex/Texture.h"
     "src/Vex/Buffer.h"
     "src/Vex/CommandQueueType.h"
- "src/Vex/RHI/RHIFwd.h")
+    "src/Vex/RHI/RHIFwd.h"
+)
 
 if (WIN32)
     target_sources(Vex PRIVATE
@@ -220,6 +221,10 @@ if (VEX_ENABLE_VULKAN AND Vulkan_FOUND)
         "src/Vulkan/Synchro/VkFence.h"
         "src/Vulkan/VkSwapChain.h"
         "src/Vulkan/VkSwapChain.cpp"
+        "src/Vulkan/VkTexture.cpp"
+        "src/Vulkan/VkTexture.h"
+        "src/Vulkan/VkGPUContext.h"
+        "src/Vulkan/VkMemory.h"
     )
 endif()
 

@@ -88,6 +88,8 @@ void GfxBackend::StartFrame()
 
     VEX_LOG(Info, "Started Frame: {}", currentFrameIndex);
 
+    swapChain->AcquireNextBackbuffer(currentFrameIndex);
+
     // Test code creates two command lists on the graphics queue and one on compute.
     // They are opened then closed, then executed. Once the GPU is done with them the underlying memory is returned to
     // the pool.

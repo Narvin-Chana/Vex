@@ -144,7 +144,7 @@ std::vector<UniqueHandle<PhysicalDevice>> VkRHI::EnumeratePhysicalDevices()
 
 void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
 {
-    ::vk::PhysicalDevice physDevice = static_cast<VkPhysicalDevice*>(vexPhysicalDevice.get())->physicalDevice;
+    physDevice = static_cast<VkPhysicalDevice*>(vexPhysicalDevice.get())->physicalDevice;
 
     i32 graphicsQueueFamily = -1;
     i32 computeQueueFamily = -1;
@@ -205,33 +205,51 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*device);
 
+    auto createSemaphore = [&]
+    {
+        ::vk::SemaphoreTypeCreateInfoKHR type{ .semaphoreType = ::vk::SemaphoreType::eTimeline, .initialValue = 0 };
+
+        return VEX_VK_CHECK <<= device->createSemaphoreUnique(::vk::SemaphoreCreateInfo{
+                   .pNext = &type,
+               });
+    };
+
     if (graphicsQueueFamily == -1)
     {
         VEX_LOG(Fatal, "Unable to create graphics queue on device!");
     }
     commandQueues[CommandQueueTypes::Graphics] = VkCommandQueue{ CommandQueueTypes::Graphics,
                                                                  static_cast<u32>(graphicsQueueFamily),
-                                                                 device->getQueue(graphicsQueueFamily, 0) };
+                                                                 device->getQueue(graphicsQueueFamily, 0),
+                                                                 0,
+                                                                 createSemaphore() };
 
     if (computeQueueFamily != -1)
     {
         commandQueues[CommandQueueTypes::Compute] = VkCommandQueue{ CommandQueueTypes::Compute,
                                                                     static_cast<u32>(computeQueueFamily),
-                                                                    device->getQueue(computeQueueFamily, 0) };
+                                                                    device->getQueue(computeQueueFamily, 0),
+                                                                    0,
+                                                                    createSemaphore() };
     }
 
     if (copyQueueFamily != -1)
     {
         commandQueues[CommandQueueTypes::Copy] = VkCommandQueue{ CommandQueueTypes::Copy,
                                                                  static_cast<u32>(copyQueueFamily),
-                                                                 device->getQueue(copyQueueFamily, 0) };
+                                                                 device->getQueue(copyQueueFamily, 0),
+                                                                 0,
+                                                                 createSemaphore() };
     }
+
+    // Initializes values for the first time
+    GetGPUContext();
 }
 
 UniqueHandle<RHISwapChain> VkRHI::CreateSwapChain(const SwapChainDescription& description,
                                                   const PlatformWindow& platformWindow)
 {
-    return MakeUnique<VkSwapChain>();
+    return MakeUnique<VkSwapChain>(GetGPUContext(), description, platformWindow);
 }
 
 UniqueHandle<RHICommandPool> VkRHI::CreateCommandPool()
@@ -243,11 +261,31 @@ void VkRHI::ExecuteCommandList(RHICommandList& commandList)
 {
     auto& cmdList = reinterpret_cast<VkCommandList&>(commandList);
 
-    ::vk::SubmitInfo submitInfo{
-        .commandBufferCount = 1,
-        .pCommandBuffers = &*cmdList.commandBuffer,
+    auto& cmdQueue = commandQueues[cmdList.GetType()];
+
+    ::vk::CommandBufferSubmitInfoKHR cmdBuffreInfo{
+        .commandBuffer = *cmdList.commandBuffer,
+        .deviceMask = 0,
     };
-    VEX_VK_CHECK << commandQueues[cmdList.GetType()].queue.submit(submitInfo);
+
+    ::vk::SemaphoreSubmitInfo semWaitInfo{
+        .semaphore = *cmdQueue.waitSemaphore,
+        .value = cmdQueue.waitValue,
+    };
+
+    ::vk::SemaphoreSubmitInfo semSignalInfo{
+        .semaphore = *cmdQueue.waitSemaphore,
+        .value = cmdQueue.waitValue + 1,
+    };
+
+    ::vk::SubmitInfo2KHR submitInfo{ .waitSemaphoreInfoCount = 1,
+                                     .pWaitSemaphoreInfos = &semWaitInfo,
+                                     .commandBufferInfoCount = 1,
+                                     .pCommandBufferInfos = &cmdBuffreInfo,
+                                     .signalSemaphoreInfoCount = 1,
+                                     .pSignalSemaphoreInfos = &semSignalInfo };
+
+    VEX_VK_CHECK << cmdQueue.queue.submit2KHR(submitInfo);
 }
 
 UniqueHandle<RHIFence> VkRHI::CreateFence(u32 numFenceIndices)
@@ -285,6 +323,11 @@ void VkRHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceInde
     submit.waitSemaphoreCount = 1;
 
     VEX_VK_CHECK << commandQueues[queueType].queue.submit(submit);
+}
+VkGPUContext& VkRHI::GetGPUContext()
+{
+    static VkGPUContext ctx{ *device, physDevice, *surface, commandQueues[CommandQueueType::Graphics] };
+    return ctx;
 }
 
 } // namespace vex::vk
