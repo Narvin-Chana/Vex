@@ -62,10 +62,7 @@ GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& des
         queueFrameFences[queueType] = rhi->CreateFence(std::to_underlying(description.frameBuffering));
     }
 
-    for (auto frameIndex : magic_enum::enum_values<FrameBuffering>())
-    {
-        commandPools.Get(std::to_underlying(frameIndex) - 1) = rhi->CreateCommandPool();
-    }
+    commandPools.ForEach([this](UniqueHandle<RHICommandPool>& el) { el = rhi->CreateCommandPool(); });
 
     swapChain = rhi->CreateSwapChain({ .format = description.swapChainFormat,
                                        .frameBuffering = description.frameBuffering,
@@ -161,8 +158,11 @@ void GfxBackend::FlushGPU()
         queueFrameFences[queueType]->WaitCPUAndIncrementNextFenceIndex(currentFrameIndex, nextFrameIndex);
     }
 
+    // Release the memory occupied by the command lists that are done.
+    commandPools.ForEach([](auto& el) { el->ReclaimAllCommandListMemory(); });
+
     // The GPU should now be in an idle state.
-    // Increment
+    // Increment currentFrameIndex
     currentFrameIndex = nextFrameIndex;
 }
 
@@ -173,6 +173,21 @@ void GfxBackend::SetVSync(bool useVSync)
         FlushGPU();
     }
     swapChain->SetVSync(useVSync);
+}
+
+void GfxBackend::OnWindowResized(u32 newWidth, u32 newHeight)
+{
+    // Do not resize if any of the dimensions is 0, or if the resize gives us the same window size as we have currently.
+    if (newWidth == 0 || newHeight == 0 ||
+        (newWidth == description.platformWindow.width && newHeight == description.platformWindow.height))
+    {
+        return;
+    }
+
+    FlushGPU();
+    swapChain->Resize(newWidth, newHeight);
+    description.platformWindow.width = newWidth;
+    description.platformWindow.height = newHeight;
 }
 
 } // namespace vex

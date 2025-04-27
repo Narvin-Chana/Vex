@@ -41,7 +41,7 @@ DX12SwapChain::DX12SwapChain(const ComPtr<DX12Device>& device,
         .Scaling = DXGI_SCALING_STRETCH,
         .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
         .AlphaMode = DXGI_ALPHA_MODE_IGNORE,
-        .Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING,
+        .Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING,
     };
     swapChain = DXGIFactory::CreateSwapChain(nativeSwapChainDesc, commandQueue, platformWindow.windowHandle.window);
     ExtractBackBuffers();
@@ -62,7 +62,8 @@ void DX12SwapChain::Resize(u32 width, u32 height)
     chk << swapChain->ResizeBuffers(GetBackBufferCount(description.frameBuffering),
                                     width,
                                     height,
-                                    TextureFormatToDXGI(description.format),
+                                    // DXGI_FORMAT_UNKNOWN keeps the previous format
+                                    DXGI_FORMAT_UNKNOWN,
                                     DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING);
     ExtractBackBuffers();
 }

@@ -37,6 +37,12 @@ DX12RHI::~DX12RHI()
 {
     if (enableGPUDebugLayer)
     {
+        // Output all live (potentially leaked) objects to the debug console
+        ComPtr<IDXGIDebug1> dxgiDebug = nullptr;
+        chk << DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug));
+        dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL,
+                                     DXGI_DEBUG_RLO_FLAGS(DXGI_DEBUG_RLO_DETAIL | DXGI_DEBUG_RLO_IGNORE_INTERNAL));
+
         CleanupDebugMessageCallback(device);
     }
 }

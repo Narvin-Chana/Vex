@@ -5,6 +5,7 @@
 #include <directx/dxgicommon.h>
 #include <directx/dxgiformat.h>
 #include <dxgi1_6.h>
+#include <dxgidebug.h>
 #include <wrl/client.h>
 
 namespace vex::dx12

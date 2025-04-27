@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -41,6 +42,22 @@ public:
     const T& Get(u32 frameIndex) const
     {
         return resource[frameIndex];
+    }
+
+    void ForEach(std::function<void(T&)> func)
+    {
+        for (auto& el : resource)
+        {
+            func(el);
+        }
+    }
+
+    void ForEach(std::function<void(const T&)> func) const
+    {
+        for (const auto& el : resource)
+        {
+            func(el);
+        }
     }
 
 private:
