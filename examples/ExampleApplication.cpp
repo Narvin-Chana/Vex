@@ -14,7 +14,7 @@
 #include <Vex.h>
 #include <Vex/Logger.h>
 
-ExampleApplication::ExampleApplication(const std::string& windowName)
+ExampleApplication::ExampleApplication(std::string_view windowName)
 {
 #if defined(__linux__)
     glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
@@ -28,7 +28,7 @@ ExampleApplication::ExampleApplication(const std::string& windowName)
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
-    window = glfwCreateWindow(DefaultWidth, DefaultHeight, windowName.c_str(), nullptr, nullptr);
+    window = glfwCreateWindow(DefaultWidth, DefaultHeight, std::string(windowName).c_str(), nullptr, nullptr);
 
     width = DefaultWidth;
     height = DefaultHeight;

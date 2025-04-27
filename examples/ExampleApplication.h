@@ -1,6 +1,6 @@
 #pragma once
 
-#include <string>
+#include <string_view>
 
 #include <Vex.h>
 
@@ -9,7 +9,7 @@ class GLFWwindow;
 class ExampleApplication
 {
 public:
-    ExampleApplication(const std::string& windowName);
+    ExampleApplication(std::string_view windowName);
     virtual ~ExampleApplication();
 
 protected:
