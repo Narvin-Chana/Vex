@@ -44,17 +44,17 @@ void VkTexture::CreateImage(VkGPUContext& ctx)
     switch (description.type)
     {
     case TextureType::Texture2D:
-        createInfo.extent = { description.width, description.height };
+        createInfo.extent = ::vk::Extent3D{ description.width, description.height };
         createInfo.arrayLayers = description.depthOrArraySize;
         createInfo.imageType = ::vk::ImageType::e2D;
         break;
     case TextureType::TextureCube:
-        createInfo.extent = { description.width, description.height };
+        createInfo.extent = ::vk::Extent3D{ description.width, description.height };
         createInfo.imageType = ::vk::ImageType::e2D;
         createInfo.arrayLayers = 6;
         break;
     case TextureType::Texture3D:
-        createInfo.extent = { description.width, description.height, description.depthOrArraySize };
+        createInfo.extent = ::vk::Extent3D{ description.width, description.height, description.depthOrArraySize };
         createInfo.imageType = ::vk::ImageType::e3D;
         break;
     default:;
@@ -67,7 +67,7 @@ void VkTexture::CreateImage(VkGPUContext& ctx)
     // memory allocation should be done elsewhere in a central place
     ::vk::MemoryAllocateInfo allocateInfo{
         .allocationSize = imageMemoryReq.size,
-        .memoryTypeIndex = getBestMemoryType(ctx.physDevice,
+        .memoryTypeIndex = GetBestMemoryType(ctx.physDevice,
                                              imageMemoryReq.memoryTypeBits,
                                              ::vk::MemoryPropertyFlagBits::eDeviceLocal),
     };

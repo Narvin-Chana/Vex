@@ -4,10 +4,8 @@
 
 namespace vex::vk
 {
+
 struct VkCommandQueue;
-}
-namespace vex::vk
-{
 
 struct VkGPUContext
 {

@@ -11,6 +11,7 @@ namespace vex
 class RHICommandList;
 struct PlatformWindow;
 } // namespace vex
+
 namespace vex::vk
 {
 
