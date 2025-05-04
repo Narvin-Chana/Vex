@@ -7,6 +7,7 @@
 
 namespace vex
 {
+class RHICommandList;
 
 class RHITexture;
 
@@ -21,6 +22,7 @@ class RHISwapChain
 {
 public:
     virtual ~RHISwapChain() = default;
+    virtual void AcquireNextBackbuffer(u8 frameIndex) = 0;
     virtual void Present() = 0;
     virtual void Resize(u32 width, u32 height) = 0;
 

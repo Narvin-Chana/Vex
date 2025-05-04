@@ -3,6 +3,7 @@
 #include <Vex/RHI/RHI.h>
 
 #include "VkCommandQueue.h"
+#include "VkGPUContext.h"
 #include "VkHeaders.h"
 
 namespace vex
@@ -34,11 +35,13 @@ public:
     virtual void WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) override;
 
 private:
+    VkGPUContext& GetGPUContext();
     void InitWindow(const PlatformWindowHandle& windowHandle);
 
     ::vk::UniqueInstance instance;
     ::vk::UniqueSurfaceKHR surface;
     ::vk::UniqueDevice device;
+    ::vk::PhysicalDevice physDevice;
 
     std::array<VkCommandQueue, CommandQueueTypes::Count> commandQueues;
 };

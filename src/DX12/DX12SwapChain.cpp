@@ -51,6 +51,10 @@ DX12SwapChain::~DX12SwapChain()
 {
 }
 
+void DX12SwapChain::AcquireNextBackbuffer(u8 frameIndex)
+{
+}
+
 void DX12SwapChain::Present()
 {
     chk << swapChain->Present(description.useVSync, !description.useVSync ? DXGI_PRESENT_ALLOW_TEARING : 0);

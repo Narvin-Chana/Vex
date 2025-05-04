@@ -27,145 +27,146 @@ constexpr inline bool IsSpecialFormat(VkFormat format)
 }
 
 // Convert from TextureFormat to VkFormat
-constexpr inline VkFormat TextureFormatToVulkan(TextureFormat format)
+constexpr inline ::vk::Format TextureFormatToVulkan(TextureFormat format)
 {
+    using enum ::vk::Format;
     switch (format)
     {
     // Standard formats
     case TextureFormat::R8_UNORM:
-        return VK_FORMAT_R8_UNORM;
+        return eR8Unorm;
     case TextureFormat::R8_SNORM:
-        return VK_FORMAT_R8_SNORM;
+        return eR8Snorm;
     case TextureFormat::R8_UINT:
-        return VK_FORMAT_R8_UINT;
+        return eR8Uint;
     case TextureFormat::R8_SINT:
-        return VK_FORMAT_R8_SINT;
+        return eR8Sint;
     case TextureFormat::RG8_UNORM:
-        return VK_FORMAT_R8G8_UNORM;
+        return eR8G8Unorm;
     case TextureFormat::RG8_SNORM:
-        return VK_FORMAT_R8G8_SNORM;
+        return eR8G8Snorm;
     case TextureFormat::RG8_UINT:
-        return VK_FORMAT_R8G8_UINT;
+        return eR8G8Uint;
     case TextureFormat::RG8_SINT:
-        return VK_FORMAT_R8G8_SINT;
+        return eR8G8Sint;
     case TextureFormat::RGBA8_UNORM:
-        return VK_FORMAT_R8G8B8A8_UNORM;
+        return eR8G8B8A8Unorm;
     case TextureFormat::RGBA8_UNORM_SRGB:
-        return VK_FORMAT_R8G8B8A8_SRGB;
+        return eR8G8B8A8Srgb;
     case TextureFormat::RGBA8_SNORM:
-        return VK_FORMAT_R8G8B8A8_SNORM;
+        return eR8G8B8A8Snorm;
     case TextureFormat::RGBA8_UINT:
-        return VK_FORMAT_R8G8B8A8_UINT;
+        return eR8G8B8A8Uint;
     case TextureFormat::RGBA8_SINT:
-        return VK_FORMAT_R8G8B8A8_SINT;
+        return eR8G8B8A8Sint;
     case TextureFormat::BGRA8_UNORM:
-        return VK_FORMAT_B8G8R8A8_UNORM;
+        return eB8G8R8A8Unorm;
     case TextureFormat::BGRA8_UNORM_SRGB:
-        return VK_FORMAT_B8G8R8A8_SRGB;
+        return eB8G8R8A8Srgb;
 
     // 16-bit formats
     case TextureFormat::R16_UINT:
-        return VK_FORMAT_R16_UINT;
+        return eR16Uint;
     case TextureFormat::R16_SINT:
-        return VK_FORMAT_R16_SINT;
+        return eR16Sint;
     case TextureFormat::R16_FLOAT:
-        return VK_FORMAT_R16_SFLOAT;
+        return eR16Sfloat;
     case TextureFormat::RG16_UINT:
-        return VK_FORMAT_R16G16_UINT;
+        return eR16G16Uint;
     case TextureFormat::RG16_SINT:
-        return VK_FORMAT_R16G16_SINT;
+        return eR16G16Sint;
     case TextureFormat::RG16_FLOAT:
-        return VK_FORMAT_R16G16_SFLOAT;
+        return eR16G16Sfloat;
     case TextureFormat::RGBA16_UINT:
-        return VK_FORMAT_R16G16B16A16_UINT;
+        return eR16G16B16A16Uint;
     case TextureFormat::RGBA16_SINT:
-        return VK_FORMAT_R16G16B16A16_SINT;
+        return eR16G16B16A16Sint;
     case TextureFormat::RGBA16_FLOAT:
-        return VK_FORMAT_R16G16B16A16_SFLOAT;
+        return eR16G16B16A16Sfloat;
 
     // 32-bit formats
     case TextureFormat::R32_UINT:
-        return VK_FORMAT_R32_UINT;
+        return eR32Uint;
     case TextureFormat::R32_SINT:
-        return VK_FORMAT_R32_SINT;
+        return eR32Sint;
     case TextureFormat::R32_FLOAT:
-        return VK_FORMAT_R32_SFLOAT;
+        return eR32Sfloat;
     case TextureFormat::RG32_UINT:
-        return VK_FORMAT_R32G32_UINT;
+        return eR32G32Uint;
     case TextureFormat::RG32_SINT:
-        return VK_FORMAT_R32G32_SINT;
+        return eR32G32Sint;
     case TextureFormat::RG32_FLOAT:
-        return VK_FORMAT_R32G32_SFLOAT;
+        return eR32G32Sfloat;
     case TextureFormat::RGB32_UINT:
-        return VK_FORMAT_R32G32B32_UINT;
+        return eR32G32B32Uint;
     case TextureFormat::RGB32_SINT:
-        return VK_FORMAT_R32G32B32_SINT;
+        return eR32G32B32Sint;
     case TextureFormat::RGB32_FLOAT:
-        return VK_FORMAT_R32G32B32_SFLOAT;
+        return eR32G32B32Sfloat;
     case TextureFormat::RGBA32_UINT:
-        return VK_FORMAT_R32G32B32A32_UINT;
+        return eR32G32B32A32Uint;
     case TextureFormat::RGBA32_SINT:
-        return VK_FORMAT_R32G32B32A32_SINT;
+        return eR32G32B32A32Sint;
     case TextureFormat::RGBA32_FLOAT:
-        return VK_FORMAT_R32G32B32A32_SFLOAT;
+        return eR32G32B32A32Sfloat;
 
     // Packed formats
     case TextureFormat::RGB10A2_UNORM:
-        return VK_FORMAT_A2R10G10B10_UNORM_PACK32; // Note format difference
+        return eA2R10G10B10UnormPack32; // Note format difference
     case TextureFormat::RGB10A2_UINT:
-        return VK_FORMAT_A2R10G10B10_UINT_PACK32; // Note format difference
+        return eA2R10G10B10UintPack32; // Note format difference
     case TextureFormat::RG11B10_FLOAT:
-        return VK_FORMAT_B10G11R11_UFLOAT_PACK32; // Note format difference
+        return eB10G11R11UfloatPack32; // Note format difference
 
     // Depth/stencil formats
     case TextureFormat::D16_UNORM:
-        return VK_FORMAT_D16_UNORM;
+        return eD16Unorm;
     case TextureFormat::D24_UNORM_S8_UINT:
-        return VK_FORMAT_D24_UNORM_S8_UINT;
+        return eD24UnormS8Uint;
     case TextureFormat::D32_FLOAT:
-        return VK_FORMAT_D32_SFLOAT;
+        return eD32Sfloat;
     case TextureFormat::D32_FLOAT_S8_UINT:
-        return VK_FORMAT_D32_SFLOAT_S8_UINT;
+        return eD32SfloatS8Uint;
 
     // BC compressed formats
     case TextureFormat::BC1_UNORM:
-        return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+        return eBc1RgbaUnormBlock;
     case TextureFormat::BC1_UNORM_SRGB:
-        return VK_FORMAT_BC1_RGBA_SRGB_BLOCK;
+        return eBc1RgbaSrgbBlock;
     case TextureFormat::BC2_UNORM:
-        return VK_FORMAT_BC2_UNORM_BLOCK;
+        return eBc2UnormBlock;
     case TextureFormat::BC2_UNORM_SRGB:
-        return VK_FORMAT_BC2_SRGB_BLOCK;
+        return eBc2SrgbBlock;
     case TextureFormat::BC3_UNORM:
-        return VK_FORMAT_BC3_UNORM_BLOCK;
+        return eBc3UnormBlock;
     case TextureFormat::BC3_UNORM_SRGB:
-        return VK_FORMAT_BC3_SRGB_BLOCK;
+        return eBc3SrgbBlock;
     case TextureFormat::BC4_UNORM:
-        return VK_FORMAT_BC4_UNORM_BLOCK;
+        return eBc4UnormBlock;
     case TextureFormat::BC4_SNORM:
-        return VK_FORMAT_BC4_SNORM_BLOCK;
+        return eBc4SnormBlock;
     case TextureFormat::BC5_UNORM:
-        return VK_FORMAT_BC5_UNORM_BLOCK;
+        return eBc5UnormBlock;
     case TextureFormat::BC5_SNORM:
-        return VK_FORMAT_BC5_SNORM_BLOCK;
+        return eBc5SnormBlock;
     case TextureFormat::BC6H_UF16:
-        return VK_FORMAT_BC6H_UFLOAT_BLOCK;
+        return eBc6HUfloatBlock;
     case TextureFormat::BC6H_SF16:
-        return VK_FORMAT_BC6H_SFLOAT_BLOCK;
+        return eBc6HSfloatBlock;
     case TextureFormat::BC7_UNORM:
-        return VK_FORMAT_BC7_UNORM_BLOCK;
+        return eBc7UnormBlock;
     case TextureFormat::BC7_UNORM_SRGB:
-        return VK_FORMAT_BC7_SRGB_BLOCK;
+        return eBc7SrgbBlock;
 
     default:
-        return VK_FORMAT_UNDEFINED;
+        return eUndefined;
     }
 }
 
 // Convert from VkFormat to TextureFormat
-constexpr inline TextureFormat VulkanToTextureFormat(VkFormat format)
+constexpr inline TextureFormat VulkanToTextureFormat(::vk::Format format)
 {
-    switch (format)
+    switch (static_cast<VkFormat>(format))
     {
     // Standard formats
     case VK_FORMAT_R8_UNORM:
