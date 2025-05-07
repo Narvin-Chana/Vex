@@ -108,23 +108,12 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
 {
     auto globalRootSignature = reinterpret_cast<DX12ResourceLayout&>(layout).GetRootSignature().Get();
 
-    // TEMP
-    commandList->SetDescriptorHeaps(1, reinterpret_cast<DX12ResourceLayout&>(layout).descriptorHeap.GetAddressOf());
-
     switch (type)
     {
     case CommandQueueType::Graphics:
         commandList->SetGraphicsRootSignature(globalRootSignature);
-        // TEMP
-        commandList->SetGraphicsRootDescriptorTable(
-            0,
-            reinterpret_cast<DX12ResourceLayout&>(layout).descriptorHeap->GetGPUDescriptorHandleForHeapStart());
     case CommandQueueType::Compute:
         commandList->SetComputeRootSignature(globalRootSignature);
-        // TEMP
-        commandList->SetComputeRootDescriptorTable(
-            0,
-            reinterpret_cast<DX12ResourceLayout&>(layout).descriptorHeap->GetGPUDescriptorHandleForHeapStart());
     case CommandQueueType::Copy:
     default:
         break;
@@ -180,13 +169,13 @@ void DX12CommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout,
     {
         // TODO: start at 2 is because of the temp UAV for hello triangle.
     case CommandQueueType::Graphics:
-        commandList->SetGraphicsRoot32BitConstants(2, finalSize, dataToUpload.data(), 0);
+        commandList->SetGraphicsRoot32BitConstants(0, finalSize, dataToUpload.data(), 0);
         commandList->SetGraphicsRoot32BitConstants(finalSize + 1,
                                                    DivideAndRoundUp(padding.size(), sizeof(DWORD)),
                                                    padding.data(),
                                                    0);
     case CommandQueueType::Compute:
-        commandList->SetComputeRoot32BitConstants(2, finalSize, dataToUpload.data(), 0);
+        commandList->SetComputeRoot32BitConstants(0, finalSize, dataToUpload.data(), 0);
         commandList->SetComputeRoot32BitConstants(finalSize + 1,
                                                   DivideAndRoundUp(padding.size(), sizeof(DWORD)),
                                                   padding.data(),
@@ -195,6 +184,21 @@ void DX12CommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout,
     default:
         break;
     }
+}
+
+void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
+                                         std::span<std::pair<ResourceBinding, RHITexture*>> textures,
+                                         std::span<std::pair<ResourceBinding, RHIBuffer*>> buffers,
+                                         RHIDescriptorPool& descriptorPool)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
+void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool)
+{
+    commandList->SetDescriptorHeaps(
+        1,
+        reinterpret_cast<DX12DescriptorPool&>(descriptorPool).gpuHeap.GetRawDescriptorHeap().GetAddressOf());
 }
 
 void DX12CommandList::Dispatch(const std::array<u32, 3>& groupCount, RHIResourceLayout& layout, RHITexture& backbuffer)
@@ -208,30 +212,54 @@ void DX12CommandList::Dispatch(const std::array<u32, 3>& groupCount, RHIResource
     default:
         break;
     }
+}
 
-    // TEMP CODE to copy the UAV to the backbuffer.
-    ID3D12Resource* bb = reinterpret_cast<DX12Texture&>(backbuffer).GetRawTexture();
-    ID3D12Resource* uavTexture = reinterpret_cast<const DX12ResourceLayout&>(layout).uavTexture.Get();
+void DX12CommandList::Copy(RHITexture& src, RHITexture& dst)
+{
+    // TODO: handle resource states
 
+    ID3D12Resource* srcNative = reinterpret_cast<DX12Texture&>(src).GetRawTexture();
+    ID3D12Resource* dstNative = reinterpret_cast<DX12Texture&>(dst).GetRawTexture();
+
+    // TEMP
+    static bool isFirstPass = true;
+    if (isFirstPass)
     {
-        D3D12_RESOURCE_BARRIER uavToSource = CD3DX12_RESOURCE_BARRIER::Transition(uavTexture,
+        D3D12_RESOURCE_BARRIER uavToSource = CD3DX12_RESOURCE_BARRIER::Transition(srcNative,
+                                                                                  D3D12_RESOURCE_STATE_COMMON,
+                                                                                  D3D12_RESOURCE_STATE_COPY_SOURCE);
+        D3D12_RESOURCE_BARRIER backbufferToDest = CD3DX12_RESOURCE_BARRIER::Transition(dstNative,
+                                                                                       D3D12_RESOURCE_STATE_PRESENT,
+                                                                                       D3D12_RESOURCE_STATE_COPY_DEST);
+        D3D12_RESOURCE_BARRIER firstBarriers[] = { uavToSource, backbufferToDest };
+        commandList->ResourceBarrier(2, firstBarriers);
+
+        isFirstPass = false;
+    }
+    else
+    {
+        D3D12_RESOURCE_BARRIER uavToSource = CD3DX12_RESOURCE_BARRIER::Transition(srcNative,
                                                                                   D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
                                                                                   D3D12_RESOURCE_STATE_COPY_SOURCE);
-        D3D12_RESOURCE_BARRIER backbufferToDest =
-            CD3DX12_RESOURCE_BARRIER::Transition(bb, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_DEST);
+        D3D12_RESOURCE_BARRIER backbufferToDest = CD3DX12_RESOURCE_BARRIER::Transition(dstNative,
+                                                                                       D3D12_RESOURCE_STATE_PRESENT,
+                                                                                       D3D12_RESOURCE_STATE_COPY_DEST);
         D3D12_RESOURCE_BARRIER firstBarriers[] = { uavToSource, backbufferToDest };
         commandList->ResourceBarrier(2, firstBarriers);
     }
 
-    commandList->CopyResource(bb, uavTexture);
+    commandList->CopyResource(dstNative, srcNative);
 
+    // TEMP
     {
         D3D12_RESOURCE_BARRIER sourceToUAV =
-            CD3DX12_RESOURCE_BARRIER::Transition(uavTexture,
+            CD3DX12_RESOURCE_BARRIER::Transition(srcNative,
                                                  D3D12_RESOURCE_STATE_COPY_SOURCE,
                                                  D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         D3D12_RESOURCE_BARRIER backbufferToPresent =
-            CD3DX12_RESOURCE_BARRIER::Transition(bb, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT);
+            CD3DX12_RESOURCE_BARRIER::Transition(dstNative,
+                                                 D3D12_RESOURCE_STATE_COPY_DEST,
+                                                 D3D12_RESOURCE_STATE_PRESENT);
         D3D12_RESOURCE_BARRIER finalBarriers[] = { sourceToUAV, backbufferToPresent };
         commandList->ResourceBarrier(2, finalBarriers);
     }

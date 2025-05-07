@@ -279,4 +279,46 @@ constexpr inline TextureFormat DXGIToTextureFormat(DXGI_FORMAT format)
     }
 }
 
+constexpr inline DXGI_FORMAT GetTypelessFormatForSRGBCompatibleDX12Format(DXGI_FORMAT format)
+{
+    switch (format)
+    {
+    case DXGI_FORMAT_R8G8B8A8_UNORM:
+        return DXGI_FORMAT_R8G8B8A8_TYPELESS;
+    case DXGI_FORMAT_B8G8R8A8_UNORM:
+        return DXGI_FORMAT_B8G8R8A8_TYPELESS;
+    case DXGI_FORMAT_BC1_UNORM:
+        return DXGI_FORMAT_BC1_TYPELESS;
+    case DXGI_FORMAT_BC2_UNORM:
+        return DXGI_FORMAT_BC2_TYPELESS;
+    case DXGI_FORMAT_BC3_UNORM:
+        return DXGI_FORMAT_BC3_TYPELESS;
+    case DXGI_FORMAT_BC7_UNORM:
+        return DXGI_FORMAT_BC7_TYPELESS;
+    default:
+        return DXGI_FORMAT_UNKNOWN;
+    }
+}
+
+constexpr inline DXGI_FORMAT GetSRGBFormatForSRGBCompatibleDX12Format(DXGI_FORMAT format)
+{
+    switch (format)
+    {
+    case DXGI_FORMAT_R8G8B8A8_UNORM:
+        return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    case DXGI_FORMAT_B8G8R8A8_UNORM:
+        return DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+    case DXGI_FORMAT_BC1_UNORM:
+        return DXGI_FORMAT_BC1_UNORM_SRGB;
+    case DXGI_FORMAT_BC2_UNORM:
+        return DXGI_FORMAT_BC2_UNORM_SRGB;
+    case DXGI_FORMAT_BC3_UNORM:
+        return DXGI_FORMAT_BC3_UNORM_SRGB;
+    case DXGI_FORMAT_BC7_UNORM:
+        return DXGI_FORMAT_BC7_UNORM_SRGB;
+    default:
+        return DXGI_FORMAT_UNKNOWN;
+    }
+}
+
 } // namespace vex::dx12

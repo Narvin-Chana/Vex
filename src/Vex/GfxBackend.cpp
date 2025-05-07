@@ -12,6 +12,7 @@
 #include <Vex/RHI/RHIBuffer.h>
 #include <Vex/RHI/RHICommandList.h>
 #include <Vex/RHI/RHICommandPool.h>
+#include <Vex/RHI/RHIDescriptorPool.h>
 #include <Vex/RHI/RHIFence.h>
 #include <Vex/RHI/RHIResourceLayout.h>
 #include <Vex/RHI/RHIShader.h>
@@ -26,8 +27,8 @@ GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& des
     , description(description)
     , commandPools(description.frameBuffering)
     , backBuffers(std::to_underlying(description.frameBuffering))
-    , textureRegistry(1024)
-    , bufferRegistry(1024)
+    , textureRegistry(DefaultRegistrySize)
+    , bufferRegistry(DefaultRegistrySize)
 {
     VEX_LOG(Info, "Graphics API Support:\n\tDX12: {} Vulkan: {}", VEX_DX12, VEX_VULKAN);
     std::string vexTargetName;
@@ -76,6 +77,8 @@ GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& des
     }
 
     commandPools.ForEach([this](UniqueHandle<RHICommandPool>& el) { el = rhi->CreateCommandPool(); });
+
+    descriptorPool = rhi->CreateDescriptorPool();
 
     swapChain = rhi->CreateSwapChain({ .format = description.swapChainFormat,
                                        .frameBuffering = description.frameBuffering,
@@ -155,7 +158,7 @@ void GfxBackend::EndFrame()
     GetCurrentCommandPool()->ReclaimAllCommandListMemory();
 }
 
-CommandContext GfxBackend::BeginCommandContext(CommandQueueType queueType)
+CommandContext GfxBackend::BeginScopedCommandContext(CommandQueueType queueType)
 {
     return CommandContext(this, GetCurrentCommandPool()->CreateCommandList(queueType));
 }
@@ -166,8 +169,15 @@ void GfxBackend::EndCommandContext(RHICommandList& cmdList)
     rhi->ExecuteCommandList(cmdList);
 }
 
-Texture GfxBackend::CreateTexture(TextureDescription description)
+Texture GfxBackend::CreateTexture(TextureDescription description, ResourceLifetime lifetime)
 {
+    if (lifetime == ResourceLifetime::Dynamic)
+    {
+        // TODO: handle dynamic resources, includes specifying that the resource when bound should use dynamic bindless
+        // indices and self-cleanup of the RHITexture should occur after the current frame ends.
+        VEX_NOT_YET_IMPLEMENTED();
+    }
+
     return Texture{ .handle = textureRegistry.AllocateElement(rhi->CreateTexture(description)),
                     .description = std::move(description) };
 }
@@ -236,19 +246,19 @@ PipelineStateCache& GfxBackend::GetPipelineStateCache()
     return psCache;
 }
 
-UniqueHandle<RHICommandPool>& GfxBackend::GetCurrentCommandPool()
+RHICommandPool& GfxBackend::GetCurrentCommandPool()
 {
-    return commandPools.Get(currentFrameIndex);
+    return *commandPools.Get(currentFrameIndex);
 }
 
-UniqueHandle<RHITexture>& GfxBackend::GetRHITexture(TextureHandle textureHandle)
+RHITexture& GfxBackend::GetRHITexture(TextureHandle textureHandle)
 {
-    return textureRegistry[textureHandle];
+    return *textureRegistry[textureHandle];
 }
 
-UniqueHandle<RHIBuffer>& GfxBackend::GetRHIBuffer(BufferHandle bufferHandle)
+RHIBuffer& GfxBackend::GetRHIBuffer(BufferHandle bufferHandle)
 {
-    return bufferRegistry[bufferHandle];
+    return *bufferRegistry[bufferHandle];
 }
 
 void GfxBackend::CreateBackBuffers()

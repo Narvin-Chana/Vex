@@ -31,6 +31,17 @@ HelloTriangleApplication::HelloTriangleApplication()
             .swapChainFormat = vex::TextureFormat::RGBA8_UNORM,
             .enableGPUDebugLayer = !VEX_SHIPPING,
             .enableGPUBasedValidation = !VEX_SHIPPING });
+
+    workingTexture = graphics->CreateTexture({ .name = "Working Texture",
+                                               .type = vex::TextureType::Texture2D,
+                                               .width = DefaultWidth,
+                                               .height = DefaultHeight,
+                                               .depthOrArraySize = 1,
+                                               .mips = 1,
+                                               .format = vex::TextureFormat::RGBA8_UNORM,
+                                               .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess,
+                                               .clearValue{ .enabled = false } },
+                                             vex::ResourceLifetime::Static);
 }
 
 HelloTriangleApplication::~HelloTriangleApplication()
@@ -45,14 +56,14 @@ void HelloTriangleApplication::Run()
 
         graphics->StartFrame();
 
-        // TODO: Draw triangle
         {
-            auto ctx = graphics->BeginCommandContext(vex::CommandQueueType::Graphics);
+            auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
             ctx.Dispatch({ .entryPoint = "CSMain", .type = vex::ShaderType::ComputeShader },
                          {},
                          {},
-                         {},
+                         { { vex::ResourceBinding{ .texture = workingTexture } } },
                          { static_cast<uint32_t>(width) / 8, static_cast<uint32_t>(height) / 8, 1 });
+            ctx.Copy(workingTexture, graphics->GetCurrentBackBuffer());
         }
 
         graphics->EndFrame();

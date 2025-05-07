@@ -12,4 +12,7 @@ public:
     HelloTriangleApplication();
     virtual ~HelloTriangleApplication() override;
     void Run();
+
+private:
+    vex::Texture workingTexture;
 };

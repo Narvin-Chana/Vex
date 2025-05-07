@@ -179,6 +179,7 @@ add_library(Vex STATIC
     "src/Vex/CommandContext.cpp"
     "src/Vex/ShaderKey.h"
     "src/Vex/Bindings.h"
+    "src/Vex/Bindings.cpp"
     "src/Vex/RHI/RHIPipelineState.h"
     "src/Vex/PipelineStateCache.h"
     "src/Vex/PipelineStateCache.cpp"
@@ -190,6 +191,8 @@ add_library(Vex STATIC
     "src/Vex/RHI/RHIResourceLayout.cpp"
     "src/Vex/Containers/FreeList.h"
     "src/Vex/Handle.h"
+    "src/Vex/RHI/RHIDescriptorPool.h"
+    "src/Vex/Resource.h"
 )
 
 if (WIN32)
@@ -240,6 +243,10 @@ if (WIN32 AND VEX_ENABLE_DX12)
         "src/DX12/DX12Shader.cpp"
         "src/DX12/DX12ResourceLayout.h"
         "src/DX12/DX12ResourceLayout.cpp"
+        "src/DX12/DX12DescriptorHeap.h"
+        "src/DX12/DX12DescriptorPool.h"
+        "src/DX12/DX12DescriptorPool.cpp"
+        "src/DX12/DX12Views.h"
     )
 endif()
 
@@ -274,7 +281,10 @@ if (VEX_ENABLE_VULKAN AND Vulkan_FOUND)
         "src/Vulkan/VkPipelineState.cpp"
         "src/Vulkan/VkResourceLayout.h"
         "src/Vulkan/VkResourceLayout.cpp"
-     "src/Vulkan/VkTexture.h")
+        "src/Vulkan/VkTexture.h"
+        "src/Vulkan/VkDescriptorPool.h"
+        "src/Vulkan/VkDescriptorPool.cpp"
+    )
 endif()
 
 # =========================================

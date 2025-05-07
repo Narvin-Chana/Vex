@@ -12,6 +12,7 @@
 #include "VkCommandPool.h"
 #include "VkCommandQueue.h"
 #include "VkDebug.h"
+#include "VkDescriptorPool.h"
 #include "VkErrorHandler.h"
 #include "VkExtensions.h"
 #include "VkFeatureChecker.h"
@@ -269,6 +270,12 @@ UniqueHandle<RHITexture> VkRHI::CreateTexture(const TextureDescription& descript
 {
     VEX_NOT_YET_IMPLEMENTED();
     return MakeUnique<VkTexture>();
+}
+
+UniqueHandle<RHIDescriptorPool> VkRHI::CreateDescriptorPool()
+{
+    VEX_NOT_YET_IMPLEMENTED();
+    return MakeUnique<VkDescriptorPool>(*device);
 }
 
 void VkRHI::ExecuteCommandList(RHICommandList& commandList)

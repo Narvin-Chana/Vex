@@ -31,8 +31,15 @@ public:
     virtual void SetLayout(RHIResourceLayout& layout) = 0;
     virtual void SetLayoutLocalConstants(const RHIResourceLayout& layout,
                                          std::span<const ConstantBinding> constants) = 0;
+    virtual void SetLayoutResources(const RHIResourceLayout& layout,
+                                    std::span<std::pair<ResourceBinding, RHITexture*>> textures,
+                                    std::span<std::pair<ResourceBinding, RHIBuffer*>> buffers,
+                                    RHIDescriptorPool& descriptorPool) = 0;
+    virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool) = 0;
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount, RHIResourceLayout& layout, RHITexture& backbuffer) = 0;
+
+    virtual void Copy(RHITexture& src, RHITexture& dst) = 0;
 
     virtual CommandQueueType GetType() const = 0;
 };

@@ -88,7 +88,25 @@ void VkCommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout, std
     VEX_NOT_YET_IMPLEMENTED();
 }
 
+void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
+                                       std::span<std::pair<ResourceBinding, RHITexture*>> textures,
+                                       std::span<std::pair<ResourceBinding, RHIBuffer*>> buffers,
+                                       RHIDescriptorPool& descriptorPool)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
+void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
 void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount, RHIResourceLayout& layout, RHITexture& backbuffer)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
+void VkCommandList::Copy(RHITexture& src, RHITexture& dst)
 {
     VEX_NOT_YET_IMPLEMENTED();
 }
