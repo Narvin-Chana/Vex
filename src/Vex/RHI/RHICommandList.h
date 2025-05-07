@@ -37,7 +37,7 @@ public:
                                     RHIDescriptorPool& descriptorPool) = 0;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool) = 0;
 
-    virtual void Dispatch(const std::array<u32, 3>& groupCount, RHIResourceLayout& layout, RHITexture& backbuffer) = 0;
+    virtual void Dispatch(const std::array<u32, 3>& groupCount) = 0;
 
     virtual void Copy(RHITexture& src, RHITexture& dst) = 0;
 

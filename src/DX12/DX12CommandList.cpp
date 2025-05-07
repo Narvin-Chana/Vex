@@ -201,7 +201,7 @@ void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool)
         reinterpret_cast<DX12DescriptorPool&>(descriptorPool).gpuHeap.GetRawDescriptorHeap().GetAddressOf());
 }
 
-void DX12CommandList::Dispatch(const std::array<u32, 3>& groupCount, RHIResourceLayout& layout, RHITexture& backbuffer)
+void DX12CommandList::Dispatch(const std::array<u32, 3>& groupCount)
 {
     switch (type)
     {

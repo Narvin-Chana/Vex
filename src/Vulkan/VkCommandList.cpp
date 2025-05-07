@@ -101,7 +101,7 @@ void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool)
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount, RHIResourceLayout& layout, RHITexture& backbuffer)
+void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount)
 {
     VEX_NOT_YET_IMPLEMENTED();
 }

@@ -131,9 +131,7 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     // Perform dispatch
     // TEMP: second and third parameters are just to copy our dispatch result to the backbuffer...
     // Obviously should be removed once we have a functional Copy method.
-    cmdList->Dispatch(groupCount,
-                      backend->GetPipelineStateCache().GetResourceLayout(),
-                      backend->GetRHITexture(backend->GetCurrentBackBuffer().handle));
+    cmdList->Dispatch(groupCount);
 }
 
 void CommandContext::Copy(const Texture& source, const Texture& destination)

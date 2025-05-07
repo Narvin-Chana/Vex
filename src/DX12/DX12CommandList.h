@@ -36,9 +36,7 @@ public:
                                     RHIDescriptorPool& descriptorPool) override;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool) override;
 
-    virtual void Dispatch(const std::array<u32, 3>& groupCount,
-                          RHIResourceLayout& layout,
-                          RHITexture& backbuffer) override;
+    virtual void Dispatch(const std::array<u32, 3>& groupCount) override;
 
     virtual void Copy(RHITexture& src, RHITexture& dst) override;
 

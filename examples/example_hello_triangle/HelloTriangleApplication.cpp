@@ -58,11 +58,14 @@ void HelloTriangleApplication::Run()
 
         {
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
-            ctx.Dispatch({ .entryPoint = "CSMain", .type = vex::ShaderType::ComputeShader },
-                         {},
-                         {},
-                         { { vex::ResourceBinding{ .texture = workingTexture } } },
-                         { static_cast<uint32_t>(width) / 8, static_cast<uint32_t>(height) / 8, 1 });
+            ctx.Dispatch(
+                { .path = "RANDOM_PATH_BLA_BLA_FOR NOW THIS ISN'T USED ANYWAYS\nTODO: IMPLEMENT SHADER COMPILATION",
+                  .entryPoint = "CSMain",
+                  .type = vex::ShaderType::ComputeShader },
+                {},
+                {},
+                { { vex::ResourceBinding{ .name = "OutputTexture", .texture = workingTexture } } },
+                { static_cast<uint32_t>(width) / 8, static_cast<uint32_t>(height) / 8, 1 });
             ctx.Copy(workingTexture, graphics->GetCurrentBackBuffer());
         }
 
