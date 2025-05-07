@@ -36,6 +36,7 @@ public:
 private:
     static u8 GetBackBufferCount(FrameBuffering frameBuffering);
 
+    ComPtr<DX12Device> device;
     SwapChainDescription description;
     ComPtr<IDXGISwapChain4> swapChain;
 };

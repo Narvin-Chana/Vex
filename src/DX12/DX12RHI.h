@@ -37,6 +37,8 @@ public:
 
     virtual UniqueHandle<RHITexture> CreateTexture(const TextureDescription& description) override;
 
+    virtual UniqueHandle<RHIDescriptorPool> CreateDescriptorPool() override;
+
     virtual void ExecuteCommandList(RHICommandList& commandList) override;
 
     virtual UniqueHandle<RHIFence> CreateFence(u32 numFenceIndices) override;

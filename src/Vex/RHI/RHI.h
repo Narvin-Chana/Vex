@@ -39,6 +39,8 @@ struct RenderHardwareInterface
 
     virtual UniqueHandle<RHITexture> CreateTexture(const TextureDescription& description) = 0;
 
+    virtual UniqueHandle<RHIDescriptorPool> CreateDescriptorPool() = 0;
+
     virtual void ExecuteCommandList(RHICommandList& commandList) = 0;
 
     virtual UniqueHandle<RHIFence> CreateFence(u32 numFenceIndices) = 0;
