@@ -28,6 +28,15 @@ public:
 
     virtual UniqueHandle<RHICommandPool> CreateCommandPool() override;
 
+    virtual UniqueHandle<RHIShader> CreateShader(const ShaderKey& key) override;
+    virtual UniqueHandle<RHIGraphicsPipelineState> CreateGraphicsPipelineState(
+        const GraphicsPipelineStateKey& key) override;
+    virtual UniqueHandle<RHIComputePipelineState> CreateComputePipelineState(
+        const ComputePipelineStateKey& key) override;
+    virtual UniqueHandle<RHIResourceLayout> CreateResourceLayout(const FeatureChecker& featureChecker) override;
+
+    virtual UniqueHandle<RHITexture> CreateTexture(const TextureDescription& description) override;
+
     virtual void ExecuteCommandList(RHICommandList& commandList) override;
 
     virtual UniqueHandle<RHIFence> CreateFence(u32 numFenceIndices) override;

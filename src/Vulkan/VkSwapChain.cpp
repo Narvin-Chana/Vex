@@ -8,6 +8,8 @@
 #include "VkGPUContext.h"
 #include "VkHeaders.h"
 
+#include "VkTexture.h"
+
 namespace vex::vk
 {
 
@@ -173,7 +175,7 @@ bool VkSwapChain::NeedsFlushForVSyncToggle()
     return true;
 }
 
-RHITexture* VkSwapChain::GetBackBuffer(u8 backBufferIndex)
+UniqueHandle<RHITexture> VkSwapChain::CreateBackBuffer(u8 backBufferIndex)
 {
     return backbufferImages[backBufferIndex].get();
 }

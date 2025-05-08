@@ -44,12 +44,9 @@ DX12SwapChain::DX12SwapChain(const ComPtr<DX12Device>& device,
         .Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING,
     };
     swapChain = DXGIFactory::CreateSwapChain(nativeSwapChainDesc, commandQueue, platformWindow.windowHandle.window);
-    ExtractBackBuffers();
 }
 
-DX12SwapChain::~DX12SwapChain()
-{
-}
+DX12SwapChain::~DX12SwapChain() = default;
 
 void DX12SwapChain::AcquireNextBackbuffer(u8 frameIndex)
 {
@@ -62,14 +59,12 @@ void DX12SwapChain::Present()
 
 void DX12SwapChain::Resize(u32 width, u32 height)
 {
-    backBuffers.clear();
     chk << swapChain->ResizeBuffers(GetBackBufferCount(description.frameBuffering),
                                     width,
                                     height,
                                     // DXGI_FORMAT_UNKNOWN keeps the previous format
                                     DXGI_FORMAT_UNKNOWN,
                                     DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING);
-    ExtractBackBuffers();
 }
 
 void DX12SwapChain::SetVSync(bool enableVSync)
@@ -82,19 +77,12 @@ bool DX12SwapChain::NeedsFlushForVSyncToggle()
     return false;
 }
 
-RHITexture* DX12SwapChain::GetBackBuffer(u8 backBufferIndex)
+UniqueHandle<RHITexture> DX12SwapChain::CreateBackBuffer(u8 backBufferIndex)
 {
-    return backBuffers[backBufferIndex].get();
-}
+    ComPtr<ID3D12Resource> backBuffer;
+    chk << swapChain->GetBuffer(backBufferIndex, IID_PPV_ARGS(&backBuffer));
 
-void DX12SwapChain::ExtractBackBuffers()
-{
-    for (u32 backBufferIndex = 0; backBufferIndex < GetBackBufferCount(description.frameBuffering); ++backBufferIndex)
-    {
-        ComPtr<ID3D12Resource> backBuffer;
-        chk << swapChain->GetBuffer(backBufferIndex, IID_PPV_ARGS(&backBuffer));
-        backBuffers.emplace_back(new DX12Texture(std::format("BackBuffer_{}", backBufferIndex), backBuffer));
-    }
+    return MakeUnique<DX12Texture>(std::format("BackBuffer_{}", backBufferIndex), backBuffer);
 }
 
 u8 DX12SwapChain::GetBackBufferCount(FrameBuffering frameBuffering)
