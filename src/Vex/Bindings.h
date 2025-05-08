@@ -51,12 +51,12 @@ struct ResourceBinding
     TextureBinding::Flags textureFlags;
 
     u32 mipBias = 0;
-    // -1 means to use every mip.
-    u32 mipCount = -1;
+    // 0 means to use every mip.
+    u32 mipCount = 0;
 
     u32 startSlice = 0;
-    // -1 means to use every slice.
-    u32 sliceCount = -1;
+    // 0 means to use every slice.
+    u32 sliceCount = 0;
 
     bool IsBuffer() const
     {

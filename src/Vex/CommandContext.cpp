@@ -98,7 +98,7 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     std::vector<std::pair<ResourceBinding, RHIBuffer*>> rhiBufferBindings;
     rhiBufferBindings.reserve(reads.size() + writes.size());
     auto CollectResources =
-        [backend = backend, rhiTextureBindings, rhiBufferBindings](std::span<const ResourceBinding> resources) mutable
+        [backend = backend, &rhiTextureBindings, &rhiBufferBindings](std::span<const ResourceBinding> resources) mutable
     {
         for (const auto& binding : resources)
         {

@@ -10,6 +10,8 @@ DX12DescriptorPool::DX12DescriptorPool(ComPtr<DX12Device>& device)
 {
 }
 
+DX12DescriptorPool::~DX12DescriptorPool() = default;
+
 BindlessHandle DX12DescriptorPool::AllocateStaticDescriptor(const RHITexture& texture)
 {
     std::scoped_lock lock{ mutex };

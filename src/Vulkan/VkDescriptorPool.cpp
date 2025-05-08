@@ -16,6 +16,8 @@ VkDescriptorPool::VkDescriptorPool(::vk::Device device)
     VEX_NOT_YET_IMPLEMENTED();
 }
 
+VkDescriptorPool::~VkDescriptorPool() = default;
+
 BindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHITexture& texture)
 {
     VEX_NOT_YET_IMPLEMENTED();

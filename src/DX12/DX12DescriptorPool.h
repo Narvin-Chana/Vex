@@ -14,6 +14,7 @@ class DX12DescriptorPool : public RHIDescriptorPool
 {
 public:
     DX12DescriptorPool(ComPtr<DX12Device>& device);
+    virtual ~DX12DescriptorPool() override;
 
     virtual BindlessHandle AllocateStaticDescriptor(const RHITexture& texture) override;
     virtual BindlessHandle AllocateStaticDescriptor(const RHIBuffer& buffer) override;

@@ -40,8 +40,9 @@ struct TextureDescription
 {
     std::string name;
     TextureType type;
-    u32 width, height, depthOrArraySize;
-    u16 mips;
+    u32 width, height, depthOrArraySize = 1;
+    // mips = 0 indicates that you want max mips
+    u16 mips = 1;
     TextureFormat format;
     ResourceUsage::Flags usage = ResourceUsage::Read;
     TextureClearValue clearValue;

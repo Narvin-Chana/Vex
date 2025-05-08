@@ -110,7 +110,7 @@ void GfxBackend::StartFrame()
     // They are opened then closed, then executed. Once the GPU is done with them the underlying memory is returned to
     // the pool.
     {
-        auto cmdList = GetCurrentCommandPool()->CreateCommandList(CommandQueueType::Graphics);
+        auto cmdList = GetCurrentCommandPool().CreateCommandList(CommandQueueType::Graphics);
         cmdList->Open();
         cmdList->Close();
 
@@ -118,7 +118,7 @@ void GfxBackend::StartFrame()
     }
 
     {
-        auto cmdList = GetCurrentCommandPool()->CreateCommandList(CommandQueueType::Compute);
+        auto cmdList = GetCurrentCommandPool().CreateCommandList(CommandQueueType::Compute);
         cmdList->Open();
         cmdList->Close();
 
@@ -126,7 +126,7 @@ void GfxBackend::StartFrame()
     }
 
     {
-        auto cmdList = GetCurrentCommandPool()->CreateCommandList(CommandQueueType::Graphics);
+        auto cmdList = GetCurrentCommandPool().CreateCommandList(CommandQueueType::Graphics);
         cmdList->Open();
         cmdList->Close();
 
@@ -155,12 +155,12 @@ void GfxBackend::EndFrame()
     currentFrameIndex = nextFrameIndex;
 
     // Release the memory occupied by the command lists that are done.
-    GetCurrentCommandPool()->ReclaimAllCommandListMemory();
+    GetCurrentCommandPool().ReclaimAllCommandListMemory();
 }
 
 CommandContext GfxBackend::BeginScopedCommandContext(CommandQueueType queueType)
 {
-    return CommandContext(this, GetCurrentCommandPool()->CreateCommandList(queueType));
+    return CommandContext(this, GetCurrentCommandPool().CreateCommandList(queueType));
 }
 
 void GfxBackend::EndCommandContext(RHICommandList& cmdList)
@@ -178,7 +178,8 @@ Texture GfxBackend::CreateTexture(TextureDescription description, ResourceLifeti
         VEX_NOT_YET_IMPLEMENTED();
     }
 
-    return Texture{ .handle = textureRegistry.AllocateElement(rhi->CreateTexture(description)),
+    auto rhiTexture = rhi->CreateTexture(description);
+    return Texture{ .handle = textureRegistry.AllocateElement(std::move(rhiTexture)),
                     .description = std::move(description) };
 }
 

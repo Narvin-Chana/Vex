@@ -2,8 +2,8 @@
 
 #include <Vex/Containers/FreeList.h>
 #include <Vex/Handle.h>
-#include <Vex/RHI/RHIFwd.h>
 #include <Vex/Resource.h>
+#include <Vex/RHI/RHIFwd.h>
 
 namespace vex
 {
@@ -17,7 +17,7 @@ static constexpr BindlessHandle GInvalidBindlessHandle;
 class RHIDescriptorPool
 {
 public:
-    virtual ~RHIDescriptorPool() = 0;
+    virtual ~RHIDescriptorPool() = default;
     virtual BindlessHandle AllocateStaticDescriptor(const RHITexture& texture) = 0;
     virtual BindlessHandle AllocateStaticDescriptor(const RHIBuffer& buffer) = 0;
     virtual void FreeStaticDescriptor(BindlessHandle handle) = 0;

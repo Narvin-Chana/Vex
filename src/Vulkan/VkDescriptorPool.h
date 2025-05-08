@@ -11,6 +11,8 @@ class VkDescriptorPool : public RHIDescriptorPool
 {
 public:
     VkDescriptorPool(::vk::Device device);
+    virtual ~VkDescriptorPool() override;
+
     virtual BindlessHandle AllocateStaticDescriptor(const RHITexture& texture) override;
     virtual BindlessHandle AllocateStaticDescriptor(const RHIBuffer& buffer) override;
     virtual void FreeStaticDescriptor(BindlessHandle handle) override;

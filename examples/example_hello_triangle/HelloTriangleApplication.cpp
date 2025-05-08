@@ -57,7 +57,7 @@ void HelloTriangleApplication::Run()
         graphics->StartFrame();
 
         {
-            auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
+            auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Compute);
             ctx.Dispatch(
                 { .path = "RANDOM_PATH_BLA_BLA_FOR NOW THIS ISN'T USED ANYWAYS\nTODO: IMPLEMENT SHADER COMPILATION",
                   .entryPoint = "CSMain",
