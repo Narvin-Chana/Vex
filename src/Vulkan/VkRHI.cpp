@@ -286,7 +286,7 @@ UniqueHandle<RHIResourceLayout> VkRHI::CreateResourceLayout(const FeatureChecker
 UniqueHandle<RHITexture> VkRHI::CreateTexture(const TextureDescription& description)
 {
     VEX_NOT_YET_IMPLEMENTED();
-    return MakeUnique<VkTexture>();
+    return MakeUnique<VkTexture>(GetGPUContext(), TextureDescription(description));
 }
 
 void VkRHI::ExecuteCommandList(RHICommandList& commandList)

@@ -103,34 +103,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(magic_enum)
 
-# Fetch Dx shader compiler (used for compiling hlsl to bytecode)
-# Used with DX12 and Vulkan
-message(STATUS "Fetching DirectX Shader Compiler...")
-if (WIN32)
-    # Windows-specific setup
-    FetchContent_Declare(
-        dxc
-        URL https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2502/dxc_2025_02_20.zip
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    )
-    FetchContent_MakeAvailable(dxc)
-
-    # Get PDBs and copy to directory only if in release
-    FetchContent_Declare(
-        dxc
-        URL https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2502/pdb_2025_02_20.zip
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    )
-    FetchContent_MakeAvailable(dxc)
-    
-    # Verify the expected structure exists
-    if(NOT EXISTS "${dxc_SOURCE_DIR}/inc/dxcapi.h")
-        message(FATAL_ERROR "DXC download does not have the expected directory structure. Cannot find dxcapi.h in ${dxc_SOURCE_DIR}/inc/")
-    endif()
-else()
-    
-endif()
-
 # Fetch DX12 Agility SDK
 if (WIN32 AND VEX_ENABLE_DX12)
     message(STATUS "Fetching DX12 Agility SDK...")
@@ -376,16 +348,6 @@ endif()
 
 # Static linking to magic_enum
 add_header_only_dependency(Vex magic_enum "${magic_enum_SOURCE_DIR}" "include" "magic_enum")
-
-# Static linking to dxc
-if (WIN32)
-    add_header_only_dependency(Vex dxc "${dxc_SOURCE_DIR}" "inc" "dxc")
-    
-    set(DXC_LIB_DIR "${dxc_SOURCE_DIR}/lib/x64" CACHE INTERNAL "Path to DXC libraries")
-    target_link_libraries(Vex PUBLIC "${DXC_LIB_DIR}/dxcompiler.lib" "${DXC_LIB_DIR}/dxil.lib")
-else()
-    # TODO: add linux linking
-endif()
 
 # =========================================
 # INSTALLATION
