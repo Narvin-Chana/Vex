@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include <Vex/Bindings.h>
 #include <Vex/RHI/RHICommandList.h>
 
 #include "VkHeaders.h"

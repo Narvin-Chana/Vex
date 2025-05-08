@@ -1,6 +1,8 @@
 #pragma once
 
+#include <array>
 #include <span>
+#include <utility>
 
 #include <Vex/RHI/RHI.h>
 #include <Vex/Types.h>
@@ -8,6 +10,7 @@
 namespace vex
 {
 struct ConstantBinding;
+struct ResourceBinding;
 class RHITexture;
 class RHIBuffer;
 

@@ -129,8 +129,6 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     // backend->ValidateDispatch(groupCount);
 
     // Perform dispatch
-    // TEMP: second and third parameters are just to copy our dispatch result to the backbuffer...
-    // Obviously should be removed once we have a functional Copy method.
     cmdList->Dispatch(groupCount);
 }
 

@@ -15,19 +15,21 @@ DX12DescriptorPool::~DX12DescriptorPool() = default;
 BindlessHandle DX12DescriptorPool::AllocateStaticDescriptor(const RHITexture& texture)
 {
     std::scoped_lock lock{ mutex };
+    VEX_NOT_YET_IMPLEMENTED();
     return BindlessHandle();
 }
 
 BindlessHandle DX12DescriptorPool::AllocateStaticDescriptor(const RHIBuffer& buffer)
 {
     std::scoped_lock lock{ mutex };
-
+    VEX_NOT_YET_IMPLEMENTED();
     return BindlessHandle();
 }
 
 void DX12DescriptorPool::FreeStaticDescriptor(BindlessHandle handle)
 {
     std::scoped_lock lock{ mutex };
+    VEX_NOT_YET_IMPLEMENTED();
 }
 
 BindlessHandle DX12DescriptorPool::AllocateDynamicDescriptor(const RHITexture& texture)

@@ -148,7 +148,7 @@ void DX12CommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout,
 
     auto DivideAndRoundUp = [](u32 x, u32 y) { return (x + y - 1) / y; };
 
-    // Data is stored in the form of 32bit chunks, so there is still a change our local data is too fat to fit in root
+    // Data is stored in the form of 32bit chunks, so there is still a chance our local data is too fat to fit in root
     // constant storage.
     u32 finalSize = DivideAndRoundUp(localConstantsByteSize, sizeof(DWORD));
     if (finalSize > globalRootSignature.GetMaxLocalConstantSize())
@@ -162,12 +162,12 @@ void DX12CommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout,
         return;
     }
 
+    // Padding to fill out the unused local constants space.
     std::vector<u8> padding =
         std::vector<u8>((globalRootSignature.GetMaxLocalConstantSize() - finalSize) * sizeof(DWORD));
 
     switch (type)
     {
-        // TODO: start at 2 is because of the temp UAV for hello triangle.
     case CommandQueueType::Graphics:
         commandList->SetGraphicsRoot32BitConstants(0, finalSize, dataToUpload.data(), 0);
         commandList->SetGraphicsRoot32BitConstants(finalSize + 1,
