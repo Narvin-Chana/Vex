@@ -217,6 +217,10 @@ void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
     swapchain = VEX_VK_CHECK <<= ctx.device.createSwapchainKHRUnique(swapChainCreateInfo);
 
     auto newImages = VEX_VK_CHECK <<= ctx.device.getSwapchainImagesKHR(*swapchain);
+    if (newImages.size() != swapChainCreateInfo.minImageCount)
+    {
+        VEX_LOG(Warning, "Swapchain returned more images than requested for. This might cause instabilities");
+    }
 
     presentSemaphore.resize(newImages.size());
     for (size_t i = 0; i < newImages.size(); ++i)
