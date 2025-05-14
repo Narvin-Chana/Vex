@@ -177,7 +177,19 @@ bool VkSwapChain::NeedsFlushForVSyncToggle()
 
 UniqueHandle<RHITexture> VkSwapChain::CreateBackBuffer(u8 backBufferIndex)
 {
-    return backbufferImages[backBufferIndex].get();
+    auto backbufferImages = VEX_VK_CHECK <<= ctx.device.getSwapchainImagesKHR(*swapchain);
+
+    TextureDescription desc{
+        .name = std::format("backbuffer_{}", backBufferIndex),
+        .type = TextureType::Texture2D,
+        .width = width,
+        .height = height,
+        .depthOrArraySize = 1,
+        .mips = 1,
+        .format = VulkanToTextureFormat(surfaceFormat.format),
+    };
+
+    return MakeUnique<VkBackbufferTexture>(std::move(desc), backbufferImages[backBufferIndex]);
 }
 
 void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
@@ -206,34 +218,9 @@ void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
 
     auto newImages = VEX_VK_CHECK <<= ctx.device.getSwapchainImagesKHR(*swapchain);
 
-    backbufferImages.resize(newImages.size());
     presentSemaphore.resize(newImages.size());
-    backbufferViews.resize(newImages.size());
     for (size_t i = 0; i < newImages.size(); ++i)
     {
-        TextureDescription desc{
-            .name = std::format("backbuffer_{}", i),
-            .type = TextureType::Texture2D,
-            .width = width,
-            .height = height,
-            .depthOrArraySize = 1,
-            .mips = 1,
-            .format = VulkanToTextureFormat(surfaceFormat.format),
-        };
-        backbufferImages[i] = MakeUnique<VkBackbufferTexture>(std::move(desc), newImages[i]);
-
-        ::vk::ImageViewCreateInfo viewCreate{ .image = backbufferImages[i]->image,
-                                              .viewType = ::vk::ImageViewType::e2D,
-                                              .format = surfaceFormat.format,
-                                              .subresourceRange = {
-                                                  .aspectMask = ::vk::ImageAspectFlagBits::eColor,
-                                                  .baseMipLevel = 0,
-                                                  .levelCount = 1,
-                                                  .baseArrayLayer = 0,
-                                                  .layerCount = 1,
-                                              } };
-        backbufferViews[i] = VEX_VK_CHECK <<= ctx.device.createImageViewUnique(viewCreate);
-
         presentSemaphore[i] = VEX_VK_CHECK <<= ctx.device.createSemaphoreUnique({});
     }
 }

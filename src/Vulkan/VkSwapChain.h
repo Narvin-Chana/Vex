@@ -52,8 +52,6 @@ private:
     SwapChainDescription description;
 
     ::vk::UniqueSwapchainKHR swapchain;
-    std::vector<UniqueHandle<VkBackbufferTexture>> backbufferImages;
-    std::vector<::vk::UniqueImageView> backbufferViews;
     std::vector<::vk::UniqueSemaphore> presentSemaphore;
 
     std::vector<::vk::UniqueSemaphore> backbufferAcquisition;
