@@ -3,19 +3,23 @@
 #include <vector>
 
 #include <Vex/CommandQueueType.h>
+#include <Vex/Containers/FreeList.h>
+#include <Vex/Texture.h>
 #include <Vex/Types.h>
 #include <Vex/UniqueHandle.h>
+
+#include <Vex/RHI/RHIFwd.h>
 
 namespace vex
 {
 
 struct PhysicalDevice;
-class RHICommandPool;
-class RHICommandList;
-class RHIFence;
-class RHISwapChain;
+struct ShaderKey;
+class GraphicsPipelineStateKey;
+class ComputePipelineStateKey;
 struct SwapChainDescription;
 struct PlatformWindow;
+class FeatureChecker;
 
 struct RenderHardwareInterface
 {
@@ -27,6 +31,13 @@ struct RenderHardwareInterface
                                                        const PlatformWindow& platformWindow) = 0;
 
     virtual UniqueHandle<RHICommandPool> CreateCommandPool() = 0;
+
+    virtual UniqueHandle<RHIShader> CreateShader(const ShaderKey& key) = 0;
+    virtual UniqueHandle<RHIGraphicsPipelineState> CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key) = 0;
+    virtual UniqueHandle<RHIComputePipelineState> CreateComputePipelineState(const ComputePipelineStateKey& key) = 0;
+    virtual UniqueHandle<RHIResourceLayout> CreateResourceLayout(const FeatureChecker& featureChecker) = 0;
+
+    virtual UniqueHandle<RHITexture> CreateTexture(const TextureDescription& description) = 0;
 
     virtual void ExecuteCommandList(RHICommandList& commandList) = 0;
 

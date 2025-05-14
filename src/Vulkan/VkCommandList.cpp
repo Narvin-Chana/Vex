@@ -1,5 +1,7 @@
 ﻿#include "VkCommandList.h"
 
+#include <Vex/Bindings.h>
+
 #include "VkErrorHandler.h"
 
 namespace vex::vk
@@ -64,6 +66,31 @@ void VkCommandList::SetScissor(i32 x, i32 y, u32 width, u32 height)
 
     VEX_ASSERT(commandBuffer, "CommandBuffer must exist to set scissor");
     commandBuffer->setScissor(0, 1, &scissor);
+}
+
+void VkCommandList::SetPipelineState(const RHIGraphicsPipelineState& graphicsPipelineState)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
+void VkCommandList::SetPipelineState(const RHIComputePipelineState& computePipelineState)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
+void VkCommandList::SetLayout(RHIResourceLayout& layout)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
+void VkCommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout, std::span<const ConstantBinding> constants)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
+void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount, RHIResourceLayout& layout, RHITexture& backbuffer)
+{
+    VEX_NOT_YET_IMPLEMENTED();
 }
 
 CommandQueueType VkCommandList::GetType() const

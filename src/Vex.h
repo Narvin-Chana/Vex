@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Vex/Bindings.h>
+#include <Vex/CommandContext.h>
 #include <Vex/FeatureChecker.h>
 #include <Vex/GfxBackend.h>
 

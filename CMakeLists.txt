@@ -87,7 +87,6 @@ FetchContent_MakeAvailable(efsw)
 
 # Fetch Vulkan-Hpp dependency
 message(STATUS "Fetching VulkanHpp...")
-include(FetchContent)
 FetchContent_Declare(
     VulkanHpp
     GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Hpp.git
@@ -97,7 +96,6 @@ FetchContent_MakeAvailable(VulkanHpp)
 
 # Fetch magic_enum dependency
 message(STATUS "Fetching magic_enum...")
-include(FetchContent)
 FetchContent_Declare(
     magic_enum
     GIT_REPOSITORY https://github.com/Neargye/magic_enum.git
@@ -149,6 +147,21 @@ add_library(Vex STATIC
     "src/Vex/Buffer.h"
     "src/Vex/CommandQueueType.h"
     "src/Vex/RHI/RHIFwd.h"
+    "src/Vex/CommandContext.h"
+    "src/Vex/CommandContext.cpp"
+    "src/Vex/ShaderKey.h"
+    "src/Vex/Bindings.h"
+    "src/Vex/RHI/RHIPipelineState.h"
+    "src/Vex/PipelineStateCache.h"
+    "src/Vex/PipelineStateCache.cpp"
+    "src/Vex/RHI/RHIShader.h"
+    "src/Vex/ShaderCompiler.h"
+    "src/Vex/ShaderCompiler.cpp"
+    "src/Vex/Hash.h"
+    "src/Vex/RHI/RHIResourceLayout.h"
+    "src/Vex/RHI/RHIResourceLayout.cpp"
+    "src/Vex/Containers/FreeList.h"
+    "src/Vex/Handle.h"
 )
 
 if (WIN32)
@@ -193,6 +206,12 @@ if (WIN32 AND VEX_ENABLE_DX12)
         "src/DX12/DX12SwapChain.cpp"
         "src/DX12/DX12Texture.h"
         "src/DX12/DX12Texture.cpp"
+        "src/DX12/DX12PipelineState.h"
+        "src/DX12/DX12PipelineState.cpp"
+        "src/DX12/DX12Shader.h"
+        "src/DX12/DX12Shader.cpp"
+        "src/DX12/DX12ResourceLayout.h"
+        "src/DX12/DX12ResourceLayout.cpp"
     )
 endif()
 
@@ -221,8 +240,14 @@ if (VEX_ENABLE_VULKAN AND Vulkan_FOUND)
         "src/Vulkan/Synchro/VkFence.h"
         "src/Vulkan/VkSwapChain.h"
         "src/Vulkan/VkSwapChain.cpp"
-        "src/Vulkan/VkTexture.cpp"
+        "src/Vulkan/VkShader.h"
+        "src/Vulkan/VkShader.cpp"
+        "src/Vulkan/VkPipelineState.h"
+        "src/Vulkan/VkPipelineState.cpp"
+        "src/Vulkan/VkResourceLayout.h"
+        "src/Vulkan/VkResourceLayout.cpp"
         "src/Vulkan/VkTexture.h"
+        "src/Vulkan/VkTexture.cpp"
         "src/Vulkan/VkGPUContext.h"
         "src/Vulkan/VkMemory.h"
     )

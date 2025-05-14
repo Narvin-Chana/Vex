@@ -13,10 +13,12 @@ class DX12FeatureChecker : public vex::FeatureChecker
 public:
     DX12FeatureChecker(const ComPtr<ID3D12Device>& device);
     virtual ~DX12FeatureChecker();
-    virtual bool IsFeatureSupported(Feature feature) override;
-    virtual FeatureLevel GetFeatureLevel() override;
-    virtual ResourceBindingTier GetResourceBindingTier() override;
-    virtual ShaderModel GetShaderModel() override;
+    virtual bool IsFeatureSupported(Feature feature) const override;
+    virtual FeatureLevel GetFeatureLevel() const override;
+    virtual ResourceBindingTier GetResourceBindingTier() const override;
+    virtual ShaderModel GetShaderModel() const override;
+
+    u32 GetMaxRootSignatureDWORDSize() const;
 
     static FeatureLevel ConvertDX12FeatureLevelToFeatureLevel(D3D_FEATURE_LEVEL featureLevel);
     static D3D_FEATURE_LEVEL ConvertFeatureLevelToDX12FeatureLevel(FeatureLevel featureLevel);

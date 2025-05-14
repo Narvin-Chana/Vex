@@ -31,16 +31,13 @@ public:
     virtual void SetVSync(bool enableVSync) override;
     virtual bool NeedsFlushForVSyncToggle() override;
 
-    virtual RHITexture* GetBackBuffer(u8 backBufferIndex) override;
+    virtual UniqueHandle<RHITexture> CreateBackBuffer(u8 backBufferIndex) override;
 
 private:
-    void ExtractBackBuffers();
     static u8 GetBackBufferCount(FrameBuffering frameBuffering);
 
     SwapChainDescription description;
     ComPtr<IDXGISwapChain4> swapChain;
-    // Voluntarily does not have a custom deleter, backbuffers resize/destroy will happen after a flush.
-    std::vector<UniqueHandle<RHITexture>> backBuffers;
 };
 
 } // namespace vex::dx12

@@ -40,7 +40,7 @@ public:
     virtual void SetVSync(bool enableVSync) override;
     virtual bool NeedsFlushForVSyncToggle() override;
 
-    virtual RHITexture* GetBackBuffer(u8 backBufferIndex) override;
+    virtual UniqueHandle<RHITexture> CreateBackBuffer(u8 backBufferIndex) override;
 
 private:
     void InitSwapchainResource(u32 width, u32 height);
@@ -52,8 +52,6 @@ private:
     SwapChainDescription description;
 
     ::vk::UniqueSwapchainKHR swapchain;
-    std::vector<UniqueHandle<VkBackbufferTexture>> backbufferImages;
-    std::vector<::vk::UniqueImageView> backbufferViews;
     std::vector<::vk::UniqueSemaphore> presentSemaphore;
 
     std::vector<::vk::UniqueSemaphore> backbufferAcquisition;

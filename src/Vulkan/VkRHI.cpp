@@ -14,9 +14,14 @@
 #include "VkDebug.h"
 #include "VkErrorHandler.h"
 #include "VkExtensions.h"
+#include "VkFeatureChecker.h"
 #include "VkHeaders.h"
 #include "VkPhysicalDevice.h"
+#include "VkPipelineState.h"
+#include "VkResourceLayout.h"
+#include "VkShader.h"
 #include "VkSwapChain.h"
+#include "VkTexture.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -255,6 +260,33 @@ UniqueHandle<RHISwapChain> VkRHI::CreateSwapChain(const SwapChainDescription& de
 UniqueHandle<RHICommandPool> VkRHI::CreateCommandPool()
 {
     return MakeUnique<VkCommandPool>(*device, commandQueues);
+}
+
+UniqueHandle<RHIShader> VkRHI::CreateShader(const ShaderKey& key)
+{
+    return MakeUnique<VkShader>(key);
+}
+
+UniqueHandle<RHIGraphicsPipelineState> VkRHI::CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key)
+{
+    return MakeUnique<VkGraphicsPipelineState>(key);
+}
+
+UniqueHandle<RHIComputePipelineState> VkRHI::CreateComputePipelineState(const ComputePipelineStateKey& key)
+{
+    return MakeUnique<VkComputePipelineState>(key);
+}
+
+UniqueHandle<RHIResourceLayout> VkRHI::CreateResourceLayout(const FeatureChecker& featureChecker)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+    return MakeUnique<VkResourceLayout>(/*device, reinterpret_cast<const VkFeatureChecker&>(featureChecker)*/);
+}
+
+UniqueHandle<RHITexture> VkRHI::CreateTexture(const TextureDescription& description)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+    return MakeUnique<VkTexture>(GetGPUContext(), TextureDescription(description));
 }
 
 void VkRHI::ExecuteCommandList(RHICommandList& commandList)

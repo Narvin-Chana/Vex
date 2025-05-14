@@ -7,7 +7,11 @@
 #include <DX12/DX12Debug.h>
 #include <DX12/DX12Fence.h>
 #include <DX12/DX12PhysicalDevice.h>
+#include <DX12/DX12PipelineState.h>
+#include <DX12/DX12ResourceLayout.h>
+#include <DX12/DX12Shader.h>
 #include <DX12/DX12SwapChain.h>
+#include <DX12/DX12Texture.h>
 #include <DX12/DXGIFactory.h>
 #include <DX12/HRChecker.h>
 
@@ -123,6 +127,31 @@ UniqueHandle<RHISwapChain> DX12RHI::CreateSwapChain(const SwapChainDescription& 
 UniqueHandle<RHICommandPool> DX12RHI::CreateCommandPool()
 {
     return MakeUnique<DX12CommandPool>(device);
+}
+
+UniqueHandle<RHIShader> DX12RHI::CreateShader(const ShaderKey& key)
+{
+    return MakeUnique<DX12Shader>(key);
+}
+
+UniqueHandle<RHIGraphicsPipelineState> DX12RHI::CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key)
+{
+    return MakeUnique<DX12GraphicsPipelineState>(key);
+}
+
+UniqueHandle<RHIComputePipelineState> DX12RHI::CreateComputePipelineState(const ComputePipelineStateKey& key)
+{
+    return MakeUnique<DX12ComputePipelineState>(device, key);
+}
+
+UniqueHandle<RHIResourceLayout> DX12RHI::CreateResourceLayout(const FeatureChecker& featureChecker)
+{
+    return MakeUnique<DX12ResourceLayout>(device, reinterpret_cast<const DX12FeatureChecker&>(featureChecker));
+}
+
+UniqueHandle<RHITexture> DX12RHI::CreateTexture(const TextureDescription& description)
+{
+    return MakeUnique<DX12Texture>(device, description);
 }
 
 void DX12RHI::ExecuteCommandList(RHICommandList& commandList)
