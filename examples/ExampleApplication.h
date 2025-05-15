@@ -15,7 +15,7 @@ public:
 protected:
     static constexpr int32_t DefaultWidth = 1280, DefaultHeight = 600;
 
-    void OnResize(GLFWwindow* window, uint32_t width, uint32_t height);
+    virtual void OnResize(GLFWwindow* window, uint32_t width, uint32_t height);
     void ToggleFullscreen();
 
     enum WindowMode
