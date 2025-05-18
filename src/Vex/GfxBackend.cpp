@@ -167,6 +167,16 @@ CommandContext GfxBackend::BeginScopedCommandContext(CommandQueueType queueType)
 
 void GfxBackend::EndCommandContext(RHICommandList& cmdList)
 {
+    // Force all backbuffers back to the present mode, this is because they could have been manipulated during the
+    // context's execution and thus changed state. There might be a better way to handle this....
+    std::vector<std::pair<RHITexture&, RHITextureState::Flags>> transitions;
+    transitions.reserve(backBuffers.size());
+    for (auto& bb : backBuffers)
+    {
+        transitions.emplace_back(GetRHITexture(bb.handle), RHITextureState::Present);
+    }
+    cmdList.Transition(transitions);
+
     cmdList.Close();
     rhi->ExecuteCommandList(cmdList);
 }

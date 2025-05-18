@@ -28,10 +28,13 @@ public:
     virtual void SetLayoutLocalConstants(const RHIResourceLayout& layout,
                                          std::span<const ConstantBinding> constants) override;
     virtual void SetLayoutResources(const RHIResourceLayout& layout,
-                                           std::span<RHITextureBinding> textures,
-                                           std::span<RHIBufferBinding> buffers,
-                                           RHIDescriptorPool& descriptorPool) override;
+                                    std::span<RHITextureBinding> textures,
+                                    std::span<RHIBufferBinding> buffers,
+                                    RHIDescriptorPool& descriptorPool) override;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool) override;
+
+    virtual void Transition(RHITexture& texture, RHITextureState::Flags newState) override;
+    virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs) override;
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount) override;
 
