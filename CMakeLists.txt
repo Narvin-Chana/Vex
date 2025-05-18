@@ -163,7 +163,10 @@ add_library(Vex STATIC
     "src/Vex/Handle.h"
     "src/Vex/RHI/RHIDescriptorPool.h"
     "src/Vex/Resource.h"
- "src/Vex/RHI/RHIBindings.h")
+    "src/Vex/RHI/RHIBindings.h"
+    "src/Vex/Containers/ResourceCleanup.h"
+    "src/Vex/Containers/ResourceCleanup.cpp"
+)
 
 if (WIN32)
     target_sources(Vex PRIVATE
@@ -216,7 +219,9 @@ if (WIN32 AND VEX_ENABLE_DX12)
         "src/DX12/DX12DescriptorHeap.h"
         "src/DX12/DX12DescriptorPool.h"
         "src/DX12/DX12DescriptorPool.cpp"
-     "src/DX12/DX12States.h" "src/DX12/DX12States.cpp")
+        "src/DX12/DX12States.h"
+        "src/DX12/DX12States.cpp"
+    )
 endif()
 
 # Vulkan project files

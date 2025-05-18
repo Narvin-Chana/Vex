@@ -1,16 +1,18 @@
 #pragma once
 
 #include <array>
+#include <vector>
 
 #include <Vex/Buffer.h>
 #include <Vex/CommandQueueType.h>
 #include <Vex/Containers/FreeList.h>
+#include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/Formats.h>
 #include <Vex/FrameResource.h>
 #include <Vex/PipelineStateCache.h>
 #include <Vex/PlatformWindow.h>
-#include <Vex/RHI/RHIFwd.h>
 #include <Vex/Resource.h>
+#include <Vex/RHI/RHIFwd.h>
 #include <Vex/Texture.h>
 #include <Vex/UniqueHandle.h>
 
@@ -43,6 +45,7 @@ public:
     CommandContext BeginScopedCommandContext(CommandQueueType queueType);
 
     Texture CreateTexture(TextureDescription description, ResourceLifetime lifetime);
+    void DestroyTexture(Texture texture);
 
     // Flushes all current GPU commands.
     void FlushGPU();
@@ -76,6 +79,8 @@ private:
     BackendDescription description;
 
     PipelineStateCache psCache;
+
+    ResourceCleanup resourceCleanup;
 
     // =================================================
     //  RHI RESOURCES (should be destroyed before rhi)

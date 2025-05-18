@@ -156,6 +156,9 @@ void GfxBackend::EndFrame()
 
     currentFrameIndex = nextFrameIndex;
 
+    // Flush all resources that were queued up for deletion.
+    resourceCleanup.FlushResources(1);
+
     // Release the memory occupied by the command lists that are done.
     GetCurrentCommandPool().ReclaimAllCommandListMemory();
 }
@@ -195,6 +198,13 @@ Texture GfxBackend::CreateTexture(TextureDescription description, ResourceLifeti
                     .description = std::move(description) };
 }
 
+void GfxBackend::DestroyTexture(Texture texture)
+{
+    resourceCleanup.CleanupResource(std::move(textureRegistry[texture.handle]),
+                                    std::to_underlying(description.frameBuffering));
+    textureRegistry.FreeElement(texture.handle);
+}
+
 void GfxBackend::FlushGPU()
 {
     for (auto queueType : magic_enum::enum_values<CommandQueueType>())
@@ -210,6 +220,9 @@ void GfxBackend::FlushGPU()
     {
         queueFrameFences[queueType]->WaitCPU(currentFrameIndex);
     }
+
+    // Release all stale resource now that the GPU is done with them.
+    resourceCleanup.FlushResources(std::to_underlying(description.frameBuffering));
 
     // Release the memory occupied by the command lists that are done.
     commandPools.ForEach([](auto& el) { el->ReclaimAllCommandListMemory(); });
