@@ -31,12 +31,15 @@ message(STATUS "Checking for available graphics APIs...")
 set(VEX_AVAILABLE_BACKENDS "")
 
 # Check for DirectX 12 (Windows only)
+option(VEX_ENABLE_DX12 "Enable DirectX 12 backend if available" ON)
 if(WIN32)
     add_compile_definitions(NOMINMAX)
-    option(VEX_ENABLE_DX12 "Enable DirectX 12 backend if available" ON)
-    if(VEX_ENABLE_DX12)
+    if (VEX_ENABLE_DX12)
         list(APPEND VEX_AVAILABLE_BACKENDS "DirectX12")
     endif()
+else()
+    message(STATUS "DirectX SDK not supported on platforms other than WIN32.")
+    set(VEX_ENABLE_DX12 OFF)
 endif()
 
 # Check for Vulkan
