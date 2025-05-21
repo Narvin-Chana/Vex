@@ -113,9 +113,7 @@ jobs:
         sudo apt-get update
         
         # Install Clang 19 and associated libraries
-        sudo apt-get install -y clang-19 \
-          libc++-19-dev \
-          libc++abi-19-dev
+        sudo apt-get install -y clang-19
         
         # Set Clang 19 as the default
         sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-19 100
@@ -179,7 +177,6 @@ jobs:
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DVEX_BUILD_EXAMPLES=ON
-        ${{ matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'clang' && '-DCMAKE_CXX_FLAGS="-stdlib=libc++ -std=c++23"' || '' }}
         ${{ matrix.graphics_api == 'directx' && '-DVEX_ENABLE_VULKAN=OFF -DVEX_ENABLE_DIRECTX=ON' || '' }}
         ${{ matrix.graphics_api == 'vulkan' && '-DVEX_ENABLE_VULKAN=ON -DVEX_ENABLE_DIRECTX=OFF' || '' }}
         ${{ matrix.graphics_api == 'vulkan_directx' && '-DVEX_ENABLE_VULKAN=ON -DVEX_ENABLE_DIRECTX=ON' || '' }}
