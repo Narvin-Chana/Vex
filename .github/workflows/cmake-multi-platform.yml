@@ -119,7 +119,9 @@ jobs:
         # Set Clang 19 as the default
         sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-19 100
         sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-19 100
-        
+        sudo update-alternatives --set clang /usr/bin/clang-19
+        sudo update-alternatives --set clang++ /usr/bin/clang++-19
+
         # Verify the version
         clang --version
         clang++ --version
