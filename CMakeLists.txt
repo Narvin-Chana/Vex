@@ -88,14 +88,16 @@ set(EFSW_BUILD_SAMPLES OFF CACHE BOOL "Disable efsw samples" FORCE)
 
 FetchContent_MakeAvailable(efsw)
 
-# Fetch Vulkan-Hpp dependency
-message(STATUS "Fetching VulkanHpp...")
-FetchContent_Declare(
-    VulkanHpp
-    GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Hpp.git
-    GIT_TAG        v1.4.309
-)
-FetchContent_MakeAvailable(VulkanHpp)
+if (VEX_ENABLE_VULKAN)
+    # Fetch Vulkan-Hpp dependency
+    message(STATUS "Fetching VulkanHpp...")
+    FetchContent_Declare(
+        VulkanHpp
+        GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Hpp.git
+        GIT_TAG        v1.4.309
+    )
+    FetchContent_MakeAvailable(VulkanHpp)
+endif()
 
 # Fetch magic_enum dependency
 message(STATUS "Fetching magic_enum...")
@@ -287,7 +289,7 @@ endfunction()
 add_header_only_dependency(Vex efsw "${efsw_SOURCE_DIR}" "include" "efsw")
 
 # Static linking to DirectX 12
-if(WIN32 AND VEX_ENABLE_DX12)
+if (VEX_ENABLE_DX12)
     message(STATUS "DX12 found!")
 
     # DirectX Agility SDK headers
@@ -302,7 +304,7 @@ else()
 endif()
 
 function(vex_setup_d3d12_agility_runtime TARGET)
-    if (WIN32 AND VEX_ENABLE_DX12)
+    if (VEX_ENABLE_DX12)
         set(VEX_D3D12_AGILITY_SOURCE_SDK_DIR "${VEX_ROOT_DIR}/external/d3d12-agility-sdk/bin")
 
         if(NOT EXISTS "${VEX_D3D12_AGILITY_SOURCE_SDK_DIR}/D3D12Core.dll")
@@ -338,7 +340,7 @@ function(vex_setup_d3d12_agility_runtime TARGET)
 endfunction()
 
 # Static linking to Vulkan
-if(VEX_ENABLE_VULKAN AND Vulkan_FOUND)
+if(VEX_ENABLE_VULKAN)
     message(STATUS "Vulkan found!")
     target_sources(Vex PRIVATE ${VEX_VULKAN_SOURCES})
     target_link_libraries(Vex PUBLIC Vulkan::Vulkan)
