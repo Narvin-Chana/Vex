@@ -26,7 +26,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         build_type: [Debug, Release]
         c_compiler: [gcc, clang, cl]
-        graphics_api: [vulkan, directx, vulkan_directx]
+        graphics_api: [vulkan, directx12, vulkan_directx12]
         include:
           - os: windows-latest
             c_compiler: cl
@@ -48,18 +48,18 @@ jobs:
             c_compiler: cl
           # Remove DirectX-only configurations from Linux (not supported)
           - os: ubuntu-latest
-            graphics_api: directx
+            graphics_api: directx12
           # Remove Vulkan+DirectX configurations from Linux (DirectX not available)
           - os: ubuntu-latest
-            graphics_api: vulkan_directx
+            graphics_api: vulkan_directx12
           # Reduce the number of different jobs by limiting the directx-only / vulkan only builds to release targets
           - build_type: Debug
-            graphics_api: directx
+            graphics_api: directx12
           - build_type: Debug
             graphics_api: vulkan
           - os: windows-latest
             c_compiler: clang
-            graphics_api: directx
+            graphics_api: directx12
           - os: windows-latest
             c_compiler: clang
             graphics_api: vulkan
@@ -127,7 +127,7 @@ jobs:
         clang++ --version
 
     - name: Install Vulkan SDK (Windows)
-      if: matrix.os == 'windows-latest' && (matrix.graphics_api == 'vulkan' || matrix.graphics_api == 'vulkan_directx')
+      if: matrix.os == 'windows-latest' && (matrix.graphics_api == 'vulkan' || matrix.graphics_api == 'vulkan_directx12')
       uses: humbletim/setup-vulkan-sdk@523828e49cd4afabce369c39c7ee6543a2b7a735
       with:
         vulkan-query-version: latest
@@ -180,9 +180,9 @@ jobs:
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DVEX_BUILD_EXAMPLES=ON
-        ${{ matrix.graphics_api == 'directx' && '-DVEX_ENABLE_VULKAN=OFF -DVEX_ENABLE_DIRECTX=ON' || '' }}
-        ${{ matrix.graphics_api == 'vulkan' && '-DVEX_ENABLE_VULKAN=ON -DVEX_ENABLE_DIRECTX=OFF' || '' }}
-        ${{ matrix.graphics_api == 'vulkan_directx' && '-DVEX_ENABLE_VULKAN=ON -DVEX_ENABLE_DIRECTX=ON' || '' }}
+        ${{ matrix.graphics_api == 'directx12' && '-DVEX_ENABLE_VULKAN=OFF -DVEX_ENABLE_DX12=ON' || '' }}
+        ${{ matrix.graphics_api == 'vulkan' && '-DVEX_ENABLE_VULKAN=ON -DVEX_ENABLE_DX12=OFF' || '' }}
+        ${{ matrix.graphics_api == 'vulkan_directx12' && '-DVEX_ENABLE_VULKAN=ON -DVEX_ENABLE_DX12=ON' || '' }}
         -S ${{ github.workspace }}
 
     - name: Build
