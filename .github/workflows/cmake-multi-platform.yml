@@ -52,6 +52,18 @@ jobs:
           # Remove Vulkan+DirectX configurations from Linux (DirectX not available)
           - os: ubuntu-latest
             graphics_api: vulkan_directx
+          # Reduce the number of different jobs by limiting the directx-only / vulkan only builds to release targets
+          - build_type: Debug
+            graphics_api: directx
+          - build_type: Debug
+            graphics_api: vulkan
+          - os: windows-latest
+            c_compiler: clang
+            graphics_api: directx
+          - os: windows-latest
+            c_compiler: clang
+            graphics_api: vulkan
+
 
     name: ${{ matrix.os }} ${{ matrix.c_compiler }} ${{ matrix.build_type }} ${{ matrix.graphics_api }}
 
