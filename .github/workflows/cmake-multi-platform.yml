@@ -73,8 +73,9 @@ jobs:
         submodules: recursive
 
     # GitHub Action's ubuntu image has a GCC which does not support <print> (added in GCC 13).
+    # We need the latest version of GCC for both compilation with GCC and Clang since we use libstdc++.
     - name: Install latest GCC
-      if: matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'gcc'
+      if: matrix.os == 'ubuntu-latest'
       run: |
         # Add the ubuntu-toolchain-r/test PPA which provides newer GCC versions
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
