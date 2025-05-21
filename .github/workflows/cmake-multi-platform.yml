@@ -178,7 +178,7 @@ jobs:
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        ${{ matrix.os != 'windows-latest' && format('-DCMAKE_BUILD_TYPE={0}', matrix.build_type) || '' }}
         -DVEX_BUILD_EXAMPLES=ON
         ${{ matrix.graphics_api == 'directx12' && '-DVEX_ENABLE_VULKAN=OFF -DVEX_ENABLE_DX12=ON' || '' }}
         ${{ matrix.graphics_api == 'vulkan' && '-DVEX_ENABLE_VULKAN=ON -DVEX_ENABLE_DX12=OFF' || '' }}
