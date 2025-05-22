@@ -22,4 +22,21 @@ bool IsFormatSRGB(TextureFormat format)
     std::unreachable();
 }
 
+bool FormatHasSRGBEquivalent(TextureFormat format)
+{
+    switch (format)
+    {
+    case TextureFormat::BC1_UNORM:
+    case TextureFormat::BC2_UNORM:
+    case TextureFormat::BC3_UNORM:
+    case TextureFormat::BC7_UNORM:
+    case TextureFormat::BGRA8_UNORM:
+    case TextureFormat::RGBA8_UNORM:
+        return true;
+    default:
+        return false;
+    }
+    std::unreachable();
+}
+
 } // namespace vex

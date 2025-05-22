@@ -15,7 +15,8 @@ DX12SwapChain::DX12SwapChain(const ComPtr<DX12Device>& device,
                              SwapChainDescription desc,
                              const ComPtr<ID3D12CommandQueue>& commandQueue,
                              const PlatformWindow& platformWindow)
-    : description(std::move(desc))
+    : device{ device }
+    , description(std::move(desc))
 {
     auto ValidateFlipModelSupportedFormats = [](DXGI_FORMAT format)
     {
@@ -82,7 +83,7 @@ UniqueHandle<RHITexture> DX12SwapChain::CreateBackBuffer(u8 backBufferIndex)
     ComPtr<ID3D12Resource> backBuffer;
     chk << swapChain->GetBuffer(backBufferIndex, IID_PPV_ARGS(&backBuffer));
 
-    return MakeUnique<DX12Texture>(std::format("BackBuffer_{}", backBufferIndex), backBuffer);
+    return MakeUnique<DX12Texture>(device, std::format("BackBuffer_{}", backBufferIndex), backBuffer);
 }
 
 u8 DX12SwapChain::GetBackBufferCount(FrameBuffering frameBuffering)

@@ -15,6 +15,11 @@ struct BufferDescription
     u32 size;
 };
 
+struct BufferView
+{
+    // TODO: implement buffers
+};
+
 // Strongly defined type represents a buffer.
 // We use a struct (instead of a typedef/using) to enforce compile-time correctness of handles.
 struct BufferHandle : public Handle<BufferHandle>
