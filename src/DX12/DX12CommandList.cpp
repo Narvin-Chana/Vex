@@ -126,6 +126,9 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
 void DX12CommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout,
                                               std::span<const ConstantBinding> constants)
 {
+    const auto& dxResourceLayout = reinterpret_cast<const DX12ResourceLayout&>(layout);
+    u32 rootSignatureDWORDCount = dxResourceLayout.GetMaxLocalConstantSize() / sizeof(DWORD);
+
     u32 localConstantsByteSize = 0;
     // Compute total size of constants (and make sure the constants fit in local constants).
     for (const auto& binding : constants)
@@ -133,7 +136,6 @@ void DX12CommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout,
         localConstantsByteSize += binding.size;
     }
 
-    const auto& dxResourceLayout = reinterpret_cast<const DX12ResourceLayout&>(layout);
     if (localConstantsByteSize > dxResourceLayout.GetMaxLocalConstantSize())
     {
         VEX_LOG(Fatal,
@@ -153,35 +155,27 @@ void DX12CommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout,
 
     // Data is stored in the form of 32bit chunks, so there is still a chance our local data is too fat to fit in root
     // constant storage.
-    u32 finalSize = DivideAndRoundUp(localConstantsByteSize, sizeof(DWORD));
-    if (finalSize > dxResourceLayout.GetMaxLocalConstantSize())
+    u32 finalByteSize = DivideAndRoundUp(localConstantsByteSize, sizeof(DWORD));
+    if (finalByteSize > dxResourceLayout.GetMaxLocalConstantSize())
     {
         VEX_LOG(Fatal,
                 "Unable to bind local constants, you have surpassed the limit DX12 allows for in root signatures.");
     }
 
-    if (finalSize == 0)
+    if (finalByteSize == 0)
     {
         return;
     }
 
     // Padding to fill out the unused local constants space.
-    std::vector<u8> padding = std::vector<u8>((dxResourceLayout.GetMaxLocalConstantSize() - finalSize) * sizeof(DWORD));
+    dataToUpload.resize(rootSignatureDWORDCount);
 
     switch (type)
     {
     case CommandQueueType::Graphics:
-        commandList->SetGraphicsRoot32BitConstants(0, finalSize, dataToUpload.data(), 0);
-        commandList->SetGraphicsRoot32BitConstants(finalSize + 1,
-                                                   DivideAndRoundUp(padding.size(), sizeof(DWORD)),
-                                                   padding.data(),
-                                                   0);
+        commandList->SetGraphicsRoot32BitConstants(0, rootSignatureDWORDCount, dataToUpload.data(), 0);
     case CommandQueueType::Compute:
-        commandList->SetComputeRoot32BitConstants(0, finalSize, dataToUpload.data(), 0);
-        commandList->SetComputeRoot32BitConstants(finalSize + 1,
-                                                  DivideAndRoundUp(padding.size(), sizeof(DWORD)),
-                                                  padding.data(),
-                                                  0);
+        commandList->SetComputeRoot32BitConstants(0, rootSignatureDWORDCount, dataToUpload.data(), 0);
     case CommandQueueType::Copy:
     default:
         break;

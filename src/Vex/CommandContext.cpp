@@ -45,6 +45,13 @@ void CommandContext::Dispatch(const ShaderKey& shader,
 
     RHIResourceLayout& resourceLayout = backend->GetPipelineStateCache().GetResourceLayout();
 
+    // Currently constants are not handled correctly, this will come with the implementation of buffers (includes
+    // constant buffers).
+    if (!constants.empty())
+    {
+        VEX_NOT_YET_IMPLEMENTED();
+    }
+
     // TODO: About resource binding logic!
     //
     // Currently constants and bindless indices are both bound as push/root constants, this could cause problems in DX12
