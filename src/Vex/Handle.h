@@ -11,6 +11,12 @@ struct Handle
     // 255).
     u32 value = ~0U;
 
+    static Derived CreateHandle(u32 index, u8 generation)
+    {
+        Derived handle;
+        handle.SetHandle(index, generation);
+        return handle;
+    }
     void SetHandle(u32 index, u8 generation)
     {
         value = 0;
@@ -25,17 +31,9 @@ struct Handle
     {
         return value >> 24;
     }
-    void IncrementGeneration()
-    {
-        value += 0x01000000;
-    }
     bool operator==(Handle<Derived> other) const
     {
         return value == other.value;
-    }
-    std::strong_ordering operator<=>(Handle<Derived> other) const
-    {
-        return GetIndex() <=> other.GetIndex();
     }
 };
 

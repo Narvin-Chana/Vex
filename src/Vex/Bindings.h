@@ -1,5 +1,7 @@
 #pragma once
 
+#include <span>
+
 #include <Vex/Buffer.h>
 #include <Vex/EnumFlags.h>
 #include <Vex/Texture.h>
@@ -31,20 +33,30 @@ END_VEX_ENUM_FLAGS();
 // Flags for a texture binding.
 BEGIN_VEX_ENUM_FLAGS(TextureBinding, u8)
     None,
-    Read_SRGB,
+    SRGB,
 END_VEX_ENUM_FLAGS();
 
 // clang-format on
 
 struct ResourceBinding
 {
-    u32 slot;
+    // Name of the resource used inside the shader.
+    // eg: VEX_RESOURCE(Texture2D<float3>, MyName);
+    std::string name;
 
     Buffer buffer;
     BufferBinding::Flags bufferFlags;
 
     Texture texture;
     TextureBinding::Flags textureFlags;
+
+    u32 mipBias = 0;
+    // 0 means to use every mip.
+    u32 mipCount = 0;
+
+    u32 startSlice = 0;
+    // 0 means to use every slice.
+    u32 sliceCount = 0;
 
     bool IsBuffer() const
     {
@@ -54,5 +66,9 @@ struct ResourceBinding
     {
         return texture.handle != GInvalidTextureHandle;
     }
+
+    static void ValidateResourceBindings(std::span<const ResourceBinding> bindings,
+                                         ResourceUsage::Flags validUsageFlags);
 };
+
 } // namespace vex
