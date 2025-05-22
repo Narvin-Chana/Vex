@@ -90,7 +90,7 @@ std::expected<IDxcBlob*, std::string> ShaderCompiler::CompileShader(RHIShader& s
 
     // Generate reflection info
 
-    //
+    // Determine how to pass error info/retry info to the client user.
 
     return std::unexpected("");
 }
