@@ -4,6 +4,7 @@
 
 #include <Vex/RHI/RHIFwd.h>
 #include <Vex/RHI/RHIPipelineState.h>
+#include <Vex/ShaderCompiler.h>
 #include <Vex/UniqueHandle.h>
 
 namespace vex
