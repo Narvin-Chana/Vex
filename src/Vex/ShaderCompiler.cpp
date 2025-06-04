@@ -340,7 +340,7 @@ void ShaderCache::MarkAllShadersDirty()
 
 void ShaderCache::MarkAllStaleShadersDirty()
 {
-    for (auto& [key, shader] : shaderCache)
+    for (auto& shader : shaderCache | std::views::values)
     {
         if (auto [isShaderStale, newShaderHash] = IsShaderStale(*shader); isShaderStale)
         {
