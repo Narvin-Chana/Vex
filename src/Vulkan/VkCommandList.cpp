@@ -1,6 +1,7 @@
 ﻿#include "VkCommandList.h"
 
 #include <Vex/Bindings.h>
+#include <Vex/RHI/RHIBindings.h>
 
 #include "VkErrorHandler.h"
 
@@ -88,7 +89,25 @@ void VkCommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout, std
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount, RHIResourceLayout& layout, RHITexture& backbuffer)
+void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
+                                       std::span<RHITextureBinding> textures,
+                                       std::span<RHIBufferBinding> buffers,
+                                       RHIDescriptorPool& descriptorPool)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
+void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
+void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
+void VkCommandList::Copy(RHITexture& src, RHITexture& dst)
 {
     VEX_NOT_YET_IMPLEMENTED();
 }

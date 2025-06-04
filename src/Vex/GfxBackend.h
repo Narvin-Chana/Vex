@@ -10,6 +10,7 @@
 #include <Vex/PipelineStateCache.h>
 #include <Vex/PlatformWindow.h>
 #include <Vex/RHI/RHIFwd.h>
+#include <Vex/Resource.h>
 #include <Vex/Texture.h>
 #include <Vex/UniqueHandle.h>
 
@@ -39,10 +40,9 @@ public:
     void StartFrame();
     void EndFrame();
 
-    CommandContext BeginCommandContext(CommandQueueType queueType);
-    void EndCommandContext(RHICommandList& cmdList);
+    CommandContext BeginScopedCommandContext(CommandQueueType queueType);
 
-    Texture CreateTexture(TextureDescription description);
+    Texture CreateTexture(TextureDescription description, ResourceLifetime lifetime);
 
     // Flushes all current GPU commands.
     void FlushGPU();
@@ -54,11 +54,13 @@ public:
     Texture GetCurrentBackBuffer();
 
 private:
-    PipelineStateCache& GetPipelineStateCache();
-    UniqueHandle<RHICommandPool>& GetCurrentCommandPool();
+    void EndCommandContext(RHICommandList& cmdList);
 
-    UniqueHandle<RHITexture>& GetRHITexture(TextureHandle textureHandle);
-    UniqueHandle<RHIBuffer>& GetRHIBuffer(BufferHandle bufferHandle);
+    PipelineStateCache& GetPipelineStateCache();
+    RHICommandPool& GetCurrentCommandPool();
+
+    RHITexture& GetRHITexture(TextureHandle textureHandle);
+    RHIBuffer& GetRHIBuffer(BufferHandle bufferHandle);
 
     void CreateBackBuffers();
 
@@ -84,12 +86,17 @@ private:
 
     FrameResource<UniqueHandle<RHICommandPool>> commandPools;
 
+    // Used for allocating/freeing bindless descriptors for resources.
+    UniqueHandle<RHIDescriptorPool> descriptorPool;
+
     UniqueHandle<RHISwapChain> swapChain;
     std::vector<Texture> backBuffers;
 
     // Converts from the Handle to the actual underlying RHI resource.
     FreeList<UniqueHandle<RHITexture>, TextureHandle> textureRegistry;
     FreeList<UniqueHandle<RHIBuffer>, BufferHandle> bufferRegistry;
+
+    inline static constexpr u32 DefaultRegistrySize = 1024;
 
     friend class CommandContext;
 };

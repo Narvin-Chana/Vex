@@ -5,6 +5,7 @@
 
 #include <DX12/DX12CommandPool.h>
 #include <DX12/DX12Debug.h>
+#include <DX12/DX12DescriptorPool.h>
 #include <DX12/DX12Fence.h>
 #include <DX12/DX12PhysicalDevice.h>
 #include <DX12/DX12PipelineState.h>
@@ -152,6 +153,11 @@ UniqueHandle<RHIResourceLayout> DX12RHI::CreateResourceLayout(const FeatureCheck
 UniqueHandle<RHITexture> DX12RHI::CreateTexture(const TextureDescription& description)
 {
     return MakeUnique<DX12Texture>(device, description);
+}
+
+UniqueHandle<RHIDescriptorPool> DX12RHI::CreateDescriptorPool()
+{
+    return MakeUnique<DX12DescriptorPool>(device);
 }
 
 void DX12RHI::ExecuteCommandList(RHICommandList& commandList)

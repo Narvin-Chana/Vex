@@ -31,6 +31,17 @@ HelloTriangleApplication::HelloTriangleApplication()
             .swapChainFormat = vex::TextureFormat::RGBA8_UNORM,
             .enableGPUDebugLayer = !VEX_SHIPPING,
             .enableGPUBasedValidation = !VEX_SHIPPING });
+
+    workingTexture = graphics->CreateTexture({ .name = "Working Texture",
+                                               .type = vex::TextureType::Texture2D,
+                                               .width = DefaultWidth,
+                                               .height = DefaultHeight,
+                                               .depthOrArraySize = 1,
+                                               .mips = 1,
+                                               .format = vex::TextureFormat::RGBA8_UNORM,
+                                               .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess,
+                                               .clearValue{ .enabled = false } },
+                                             vex::ResourceLifetime::Static);
 }
 
 HelloTriangleApplication::~HelloTriangleApplication()
@@ -45,16 +56,28 @@ void HelloTriangleApplication::Run()
 
         graphics->StartFrame();
 
-        // TODO: Draw triangle
         {
-            auto ctx = graphics->BeginCommandContext(vex::CommandQueueType::Graphics);
-            ctx.Dispatch({ .entryPoint = "CSMain", .type = vex::ShaderType::ComputeShader },
-                         {},
-                         {},
-                         {},
-                         { static_cast<uint32_t>(width) / 8, static_cast<uint32_t>(height) / 8, 1 });
+            auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
+            ctx.Dispatch(
+                { .path = "RANDOM_PATH_BLA_BLA_FOR NOW THIS ISN'T USED ANYWAYS\nTODO: IMPLEMENT SHADER COMPILATION",
+                  .entryPoint = "CSMain",
+                  .type = vex::ShaderType::ComputeShader },
+                {},
+                {},
+                { { vex::ResourceBinding{ .name = "OutputTexture", .texture = workingTexture } } },
+                { static_cast<uint32_t>(width) / 8, static_cast<uint32_t>(height) / 8, 1 });
+            ctx.Copy(workingTexture, graphics->GetCurrentBackBuffer());
         }
 
         graphics->EndFrame();
     }
+}
+
+void HelloTriangleApplication::OnResize(GLFWwindow* window, uint32_t width, uint32_t height)
+{
+    // TODO: destroy working texture
+
+    ExampleApplication::OnResize(window, width, height);
+
+    // TODO: create working texture
 }
