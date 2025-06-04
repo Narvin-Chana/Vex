@@ -5,6 +5,7 @@
 #include <utility>
 
 #include <Vex/RHI/RHI.h>
+#include <Vex/RHI/RHITexture.h>
 #include <Vex/Types.h>
 
 namespace vex
@@ -37,10 +38,14 @@ public:
     virtual void SetLayoutLocalConstants(const RHIResourceLayout& layout,
                                          std::span<const ConstantBinding> constants) = 0;
     virtual void SetLayoutResources(const RHIResourceLayout& layout,
-                                           std::span<RHITextureBinding> textures,
-                                           std::span<RHIBufferBinding> buffers,
-                                           RHIDescriptorPool& descriptorPool) = 0;
+                                    std::span<RHITextureBinding> textures,
+                                    std::span<RHIBufferBinding> buffers,
+                                    RHIDescriptorPool& descriptorPool) = 0;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool) = 0;
+
+    virtual void Transition(RHITexture& texture, RHITextureState::Flags newState) = 0;
+    // Ideal for batching multiple resource transitions together.
+    virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs) = 0;
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount) = 0;
 
