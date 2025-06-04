@@ -8,6 +8,8 @@
 namespace vex
 {
 
+class ResourceCleanup;
+
 struct GraphicsPipelineStateKey
 {
     ShaderKey vertexShader;
@@ -53,6 +55,7 @@ public:
     }
     virtual ~RHIComputePipelineState() = default;
     virtual void Compile(const RHIShader& computeShader, RHIResourceLayout& resourceLayout) = 0;
+    virtual void Cleanup(ResourceCleanup& resourceCleanup) = 0;
 
     Key key;
     u32 rootSignatureVersion = 0;

@@ -26,7 +26,6 @@ RHICommandList* DX12CommandPool::CreateCommandList(CommandQueueType queueType)
         // Reserve available command list.
         cmdList = std::move(GetAvailableCommandLists(queueType).back());
         GetAvailableCommandLists(queueType).pop_back();
-        VEX_LOG(Info, "GetCmdList for queue {}", magic_enum::enum_name(queueType));
     }
     else
     {
@@ -46,10 +45,12 @@ void DX12CommandPool::ReclaimCommandListMemory(CommandQueueType queueType)
     if (GetOccupiedCommandLists(queueType).size())
     {
         std::size_t availableCmdListSize = GetAvailableCommandLists(queueType).size();
+#if 0
         VEX_LOG(Info,
                 "Reclaimed {} cmd lists for queue {}",
                 GetOccupiedCommandLists(queueType).size(),
                 magic_enum::enum_name(queueType));
+#endif
         GetAvailableCommandLists(queueType).resize(availableCmdListSize + GetOccupiedCommandLists(queueType).size());
         std::move(GetOccupiedCommandLists(queueType).begin(),
                   GetOccupiedCommandLists(queueType).end(),

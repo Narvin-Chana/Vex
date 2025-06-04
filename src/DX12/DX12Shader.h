@@ -9,8 +9,6 @@ class DX12Shader : public RHIShader
 {
 public:
     DX12Shader(const ShaderKey& key);
-
-    virtual std::span<const u8> GetBlob() const override;
 };
 
 // Raw byte-code for a simple compute shader that has just one RWTexture2D<float4> in which we draw a triangle.

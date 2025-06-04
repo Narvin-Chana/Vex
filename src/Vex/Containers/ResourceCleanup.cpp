@@ -1,7 +1,21 @@
 #include "ResourceCleanup.h"
 
+#include <Vex/RHI/RHIBuffer.h>
+#include <Vex/RHI/RHIPipelineState.h>
+#include <Vex/RHI/RHITexture.h>
+
 namespace vex
 {
+
+ResourceCleanup::ResourceCleanup(i8 bufferingCount)
+    : defaultLifespan(bufferingCount)
+{
+}
+
+void ResourceCleanup::CleanupResource(CleanupVariant resource)
+{
+    resourcesInFlight.emplace_back(std::move(resource), defaultLifespan);
+}
 
 void ResourceCleanup::CleanupResource(CleanupVariant resource, i8 lifespan)
 {

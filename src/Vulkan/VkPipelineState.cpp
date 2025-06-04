@@ -1,5 +1,6 @@
 #include "VkPipelineState.h"
 
+#include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/Debug.h>
 
 namespace vex::vk
@@ -23,6 +24,11 @@ VkComputePipelineState::VkComputePipelineState(const Key& key)
 }
 
 void VkComputePipelineState::Compile(const RHIShader& computeShader, RHIResourceLayout& resourceLayout)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
+void VkComputePipelineState::Cleanup(ResourceCleanup& resourceCleanup)
 {
     VEX_NOT_YET_IMPLEMENTED();
 }

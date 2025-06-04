@@ -1,0 +1,44 @@
+include(FetchContent)
+
+# Choose URLs based on platform
+if(WIN32)
+    set(DXC_RELEASE_URL "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2502/dxc_2025_02_20.zip")
+elseif(UNIX AND NOT APPLE)
+    set(DXC_RELEASE_URL "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2502/linux_dxc_2025_02_20.x86_64.tar.gz")
+else()
+    message(FATAL_ERROR "Unsupported platform for DXC binaries")
+endif()
+
+message(STATUS "Fetching dxc...")
+FetchContent_Declare(
+    dxc
+    URL ${DXC_RELEASE_URL}
+)
+FetchContent_MakeAvailable(dxc)
+
+# Create imported target for dxc
+if(WIN32)
+    set(DXC_HEADERS_INCLUDE_NAME "inc")
+    set(DXC_STATIC_LIB "${dxc_SOURCE_DIR}/lib/x64/dxcompiler.lib")
+    set(DXC_SHARED_LIB "${dxc_SOURCE_DIR}/bin/x64/dxcompiler.dll")
+elseif(UNIX)
+    set(DXC_HEADERS_INCLUDE_NAME "include")
+    set(DXC_SHARED_LIB "${dxc_SOURCE_DIR}/libdxcompiler.so")
+endif()
+
+function(build_with_dxc target)
+    if(WIN32)
+        message(STATUS "Statically linked with DXC: ${DXC_STATIC_LIB}")
+        target_link_libraries(${target} PRIVATE "${DXC_STATIC_LIB}")
+    endif()
+    message(STATUS "Installing DXC headers: ${dxc_SOURCE_DIR}/${DXC_HEADERS_INCLUDE_NAME}")
+    add_header_only_dependency(${target} dxc "${dxc_SOURCE_DIR}" "${DXC_HEADERS_INCLUDE_NAME}" "dxc")
+endfunction()
+
+# add_header_only_dependency(Vex DirectX-Headers "${DirectX-Headers_SOURCE_DIR}" "include" "directx")
+
+# Expose function for your static lib to link DXC easily
+function(link_with_dxc target)
+    message(STATUS "Linked ${target} with DirectXCompiler.")
+    target_link_libraries(${target} PRIVATE "${DXC_SHARED_LIB}")
+endfunction()
