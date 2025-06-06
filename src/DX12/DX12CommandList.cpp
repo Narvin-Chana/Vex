@@ -174,7 +174,7 @@ void DX12CommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout,
     // Compute total size of constants (and make sure the constants fit in local constants).
     for (const auto& binding : constants)
     {
-        localConstantsByteSize += binding.size;
+        localConstantsByteSize += static_cast<u32>(binding.size);
     }
 
     if (localConstantsByteSize > dxResourceLayout.GetMaxLocalConstantSize())
@@ -293,9 +293,15 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
     switch (type)
     {
     case CommandQueueType::Graphics:
-        commandList->SetGraphicsRoot32BitConstants(0, bindlessHandles.size(), bindlessHandles.data(), 0);
+        commandList->SetGraphicsRoot32BitConstants(0,
+                                                   static_cast<u32>(bindlessHandles.size()),
+                                                   bindlessHandles.data(),
+                                                   0);
     case CommandQueueType::Compute:
-        commandList->SetComputeRoot32BitConstants(0, bindlessHandles.size(), bindlessHandles.data(), 0);
+        commandList->SetComputeRoot32BitConstants(0,
+                                                  static_cast<u32>(bindlessHandles.size()),
+                                                  bindlessHandles.data(),
+                                                  0);
     case CommandQueueType::Copy:
     default:
         break;

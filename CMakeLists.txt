@@ -110,14 +110,34 @@ FetchContent_MakeAvailable(magic_enum)
 
 # Fetch DX12 Agility SDK
 if (WIN32 AND VEX_ENABLE_DX12)
-    message(STATUS "Fetching DX12 Agility SDK...")
-    set(DX_AGILITY_SDK_VERSION "615")
-    FetchContent_Declare(
-        DirectX-Headers
-        GIT_REPOSITORY https://github.com/microsoft/DirectX-Headers.git
-        GIT_TAG v1.${DX_AGILITY_SDK_VERSION}.0
-    )
-    FetchContent_MakeAvailable(DirectX-Headers)
+    set(DX_AGILITY_VERSION "616")
+    set(AGILITY_SDK_DIR "${CMAKE_BINARY_DIR}/DirectX-AgilitySDK")
+    set(AGILITY_SDK_NUPKG "${CMAKE_BINARY_DIR}/agility_sdk.nupkg")
+    
+    # Download the NuGet package if not already downloaded
+    if(NOT EXISTS "${AGILITY_SDK_DIR}/build")
+        message(STATUS "Downloading DX12 Agility SDK 1.${DX_AGILITY_VERSION}.0...")
+        
+        file(DOWNLOAD 
+            "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.${DX_AGILITY_VERSION}.0"
+            "${AGILITY_SDK_NUPKG}"
+        )
+        
+        # NuGet packages are ZIP files with different extension
+        file(ARCHIVE_EXTRACT 
+            INPUT "${AGILITY_SDK_NUPKG}"
+            DESTINATION "${AGILITY_SDK_DIR}"
+        )
+        
+        message(STATUS "DirectX Agility SDK extracted to: ${AGILITY_SDK_DIR}")
+        
+        # Clean up the downloaded package
+        file(REMOVE "${AGILITY_SDK_NUPKG}")
+    endif()
+    
+    # Set the variables for use in functions
+    set(DX_AGILITY_SDK_VERSION ${DX_AGILITY_VERSION} CACHE STRING "DirectX Agility SDK Version" FORCE)
+    set(DX_AGILITY_SDK_SOURCE_DIR "${AGILITY_SDK_DIR}/build/native" CACHE PATH "DirectX Agility SDK Source Directory" FORCE)
 endif()
 # =========================================
 
@@ -271,6 +291,38 @@ message(STATUS "Setting up Vex headers...")
 
 # Function to create and link header-only libraries
 function(add_header_only_dependency TARGET DEP_NAME SOURCE_DIR INCLUDE_PATH INSTALL_PATH)
+    if(NOT EXISTS "${SOURCE_DIR}")
+        message(STATUS WARNING " Source directory does not exist: ${SOURCE_DIR}")
+        return()
+    endif()
+
+    set(FULL_INCLUDE_PATH "${SOURCE_DIR}/${INCLUDE_PATH}")
+    
+    # Debug: Check if include path exists
+    if(NOT EXISTS "${FULL_INCLUDE_PATH}")
+        message(STATUS WARNING " Include path does not exist: ${FULL_INCLUDE_PATH}")
+        return()
+    endif()
+
+    # Find all header files
+    file(GLOB_RECURSE HEADER_FILES 
+        "${FULL_INCLUDE_PATH}/*.h"
+        "${FULL_INCLUDE_PATH}/*.hpp"
+        "${FULL_INCLUDE_PATH}/*.hxx"
+        "${FULL_INCLUDE_PATH}/*.inl"
+    )
+    
+    if(HEADER_FILES)
+        message(STATUS "Found header files:")
+        foreach(HEADER ${HEADER_FILES})
+            # Show relative path from the include directory
+            file(RELATIVE_PATH REL_PATH "${FULL_INCLUDE_PATH}" "${HEADER}")
+            message(STATUS "  - ${REL_PATH}")
+        endforeach()
+    else()
+        message(WARNING "No header files found in: ${FULL_INCLUDE_PATH}")
+    endif()
+
     # Create interface library for the headers
     add_library(${TARGET}_${DEP_NAME}_headers INTERFACE)
     
@@ -299,7 +351,7 @@ if (VEX_ENABLE_DX12)
     message(STATUS "DX12 found!")
 
     # DirectX Agility SDK headers
-    add_header_only_dependency(Vex DirectX-Headers "${DirectX-Headers_SOURCE_DIR}" "include" "directx")
+    add_header_only_dependency(Vex DirectXAgilitySDK "${DX_AGILITY_SDK_SOURCE_DIR}" "include" "directx")
 
     target_link_libraries(Vex PUBLIC d3d12.lib dxgi.lib dxguid.lib)
     target_sources(Vex PRIVATE ${VEX_DX12_SOURCES})
@@ -311,10 +363,10 @@ endif()
 
 function(vex_setup_d3d12_agility_runtime TARGET)
     if (VEX_ENABLE_DX12)
-        set(VEX_D3D12_AGILITY_SOURCE_SDK_DIR "${VEX_ROOT_DIR}/external/d3d12-agility-sdk/bin")
+        set(VEX_D3D12_AGILITY_SOURCE_SDK_DIR "${DX_AGILITY_SDK_SOURCE_DIR}/bin/x64")
 
         if(NOT EXISTS "${VEX_D3D12_AGILITY_SOURCE_SDK_DIR}/D3D12Core.dll")
-            message(ERROR "Missing D3D12Core.dll in Agility SDK directory: ${VEX_D3D12_AGILITY_SOURCE_SDK_DIR}.")
+            message(STATUS ERROR " Missing D3D12Core.dll in Agility SDK directory: ${VEX_D3D12_AGILITY_SOURCE_SDK_DIR}.")
             return()
         endif()
 
@@ -341,7 +393,7 @@ function(vex_setup_d3d12_agility_runtime TARGET)
             COMMENT "Copying Agility SDK's DLLs to output directory : $<TARGET_FILE_DIR:${TARGET}>/D3D12..."
         )
 
-        message(STATUS "D3D12 Agility SDK will be deployed with ${TARGET}")
+        message(STATUS "D3D12 Agility SDK 1.${DX_AGILITY_SDK_VERSION}.0 will be deployed with ${TARGET}")
     endif()
 endfunction()
 

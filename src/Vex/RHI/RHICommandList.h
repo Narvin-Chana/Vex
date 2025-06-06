@@ -11,8 +11,8 @@ namespace vex
 {
 struct ConstantBinding;
 struct ResourceBinding;
-struct RHITexture;
-struct RHIBuffer;
+class RHITexture;
+class RHIBuffer;
 struct RHITextureBinding;
 struct RHIBufferBinding;
 
@@ -37,9 +37,9 @@ public:
     virtual void SetLayoutLocalConstants(const RHIResourceLayout& layout,
                                          std::span<const ConstantBinding> constants) = 0;
     virtual void SetLayoutResources(const RHIResourceLayout& layout,
-                                           std::span<RHITextureBinding> textures,
-                                           std::span<RHIBufferBinding> buffers,
-                                           RHIDescriptorPool& descriptorPool) = 0;
+                                    std::span<RHITextureBinding> textures,
+                                    std::span<RHIBufferBinding> buffers,
+                                    RHIDescriptorPool& descriptorPool) = 0;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool) = 0;
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount) = 0;

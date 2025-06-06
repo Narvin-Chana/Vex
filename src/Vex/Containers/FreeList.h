@@ -14,13 +14,13 @@ namespace vex
 // Simple index allocator
 struct FreeListAllocator
 {
-    FreeListAllocator(size_t size = 0)
+    FreeListAllocator(u32 size = 0)
         : size{ size }
     {
         freeIndices.reserve(size);
-        for (i32 i = size - 1; i > 0; --i)
+        for (u32 i = 0; i < size; ++i)
         {
-            freeIndices.push_back(static_cast<u32>(i));
+            freeIndices.push_back(size - 1 - i);
         }
     }
 
@@ -37,14 +37,14 @@ struct FreeListAllocator
         std::ranges::sort(freeIndices, std::greater{});
     }
 
-    void Resize(size_t newSize)
+    void Resize(u32 newSize)
     {
         if (newSize == size)
         {
             return;
         }
 
-        size_t indicesPreviousSize = freeIndices.size();
+        u32 indicesPreviousSize = static_cast<u32>(freeIndices.size());
 
         // We only support resizing up!
         freeIndices.resize(indicesPreviousSize + newSize - size);
@@ -64,7 +64,7 @@ struct FreeListAllocator
         size = newSize;
     }
 
-    size_t size;
+    u32 size;
     std::vector<u32> freeIndices;
 };
 
@@ -75,7 +75,7 @@ template <class T, class HandleT>
 class FreeList
 {
 public:
-    FreeList(size_t size = 0)
+    FreeList(u32 size = 0)
         : values(size)
         , generations(size)
         , allocator(size)
@@ -103,7 +103,7 @@ public:
     {
         if (allocator.freeIndices.empty())
         {
-            Resize(values.size() * 2);
+            Resize(static_cast<u32>(values.size()) * 2);
         }
 
         u32 index = allocator.Allocate();
@@ -121,7 +121,7 @@ public:
     }
 
 private:
-    void Resize(size_t size)
+    void Resize(u32 size)
     {
         allocator.Resize(size);
         values.resize(size);

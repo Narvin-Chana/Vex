@@ -15,8 +15,8 @@ namespace vex
 
 struct PhysicalDevice;
 struct ShaderKey;
-class GraphicsPipelineStateKey;
-class ComputePipelineStateKey;
+struct GraphicsPipelineStateKey;
+struct ComputePipelineStateKey;
 struct SwapChainDescription;
 struct PlatformWindow;
 class FeatureChecker;

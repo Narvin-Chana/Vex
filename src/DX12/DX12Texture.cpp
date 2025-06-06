@@ -263,7 +263,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
         VEX_LOG(Fatal, "Vex DX12 RHI does not support 1D textures.");
         return;
     }
-    description.width = nativeDesc.Width;
+    description.width = static_cast<u32>(nativeDesc.Width);
     description.height = nativeDesc.Height;
     description.depthOrArraySize = static_cast<u32>(nativeDesc.DepthOrArraySize);
     description.mips = nativeDesc.MipLevels;
