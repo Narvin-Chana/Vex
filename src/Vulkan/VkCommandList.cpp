@@ -44,11 +44,15 @@ void VkCommandList::Close()
 
 void VkCommandList::SetViewport(float x, float y, float width, float height, float minDepth, float maxDepth)
 {
+    // Manipulation to match behavior of DX12 and other APIs (this allows for hlsl shader code to work the same across
+    // different apis).
+    // This consists of moving the (x=0, y=0) point from the bottom-left (vk convention) to the top-left (dx, metal and
+    // console convention).
     ::vk::Viewport viewport{
         .x = x,
-        .y = y,
+        .y = y + height,
         .width = width,
-        .height = height,
+        .height = -height,
         .minDepth = minDepth,
         .maxDepth = maxDepth,
     };
@@ -59,10 +63,9 @@ void VkCommandList::SetViewport(float x, float y, float width, float height, flo
 
 void VkCommandList::SetScissor(i32 x, i32 y, u32 width, u32 height)
 {
-    // Special behavior to match behavior of DX12 and other APIs
     ::vk::Rect2D scissor{
-        .offset = { .x = x, .y = y + static_cast<i32>(height) },
-        .extent = { .width = width, .height = -height },
+        .offset = { .x = x, .y = y },
+        .extent = { .width = width, .height = height },
     };
 
     VEX_ASSERT(commandBuffer, "CommandBuffer must exist to set scissor");
