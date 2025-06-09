@@ -50,6 +50,7 @@ class DX12Texture : public RHITexture
 {
 public:
     DX12Texture(ComPtr<DX12Device>& device, const TextureDescription& description);
+    // Takes ownership of the passed in texture.
     DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID3D12Resource> rawTex);
     virtual ~DX12Texture() override;
 

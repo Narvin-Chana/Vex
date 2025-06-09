@@ -1,10 +1,12 @@
 #pragma once
 
 #include <array>
+#include <vector>
 
 #include <Vex/Buffer.h>
 #include <Vex/CommandQueueType.h>
 #include <Vex/Containers/FreeList.h>
+#include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/Formats.h>
 #include <Vex/FrameResource.h>
 #include <Vex/PipelineStateCache.h>
@@ -42,7 +44,11 @@ public:
 
     CommandContext BeginScopedCommandContext(CommandQueueType queueType);
 
+    // Creates a new texture, the handle passed back should be kept.
     Texture CreateTexture(TextureDescription description, ResourceLifetime lifetime);
+    // Destroys a texture, the handle passed in must be the one obtained from calling CreateTexture earlier.
+    // Once destroyed the handle passed in is invalid and should no longer be used.
+    void DestroyTexture(Texture texture);
 
     // Flushes all current GPU commands.
     void FlushGPU();
@@ -76,6 +82,8 @@ private:
     BackendDescription description;
 
     PipelineStateCache psCache;
+
+    ResourceCleanup resourceCleanup;
 
     // =================================================
     //  RHI RESOURCES (should be destroyed before rhi)
