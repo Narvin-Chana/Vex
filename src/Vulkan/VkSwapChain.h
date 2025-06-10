@@ -34,7 +34,7 @@ public:
     VkSwapChain(VkGPUContext& ctx, const SwapChainDescription& description, const PlatformWindow& platformWindow);
 
     virtual void AcquireNextBackbuffer(u8 frameIndex) override;
-    virtual void Present() override;
+    virtual void Present(bool isFullscreenMode) override;
     virtual void Resize(u32 width, u32 height) override;
 
     virtual void SetVSync(bool enableVSync) override;

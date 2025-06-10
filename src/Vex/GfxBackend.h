@@ -29,8 +29,10 @@ struct BackendDescription
     TextureFormat swapChainFormat;
     bool useVSync = false;
     FrameBuffering frameBuffering = FrameBuffering::Triple;
-    bool enableGPUDebugLayer = true;
-    bool enableGPUBasedValidation = true;
+    bool enableGPUDebugLayer = !VEX_SHIPPING;
+    bool enableGPUBasedValidation = !VEX_SHIPPING;
+    // Enables shader hot reloading and includes debug symbols in shaders for graphics debugging purposes.
+    bool enableShaderDebugging = !VEX_SHIPPING;
 };
 
 class GfxBackend
@@ -40,7 +42,7 @@ public:
     ~GfxBackend();
 
     void StartFrame();
-    void EndFrame();
+    void EndFrame(bool isFullscreenMode);
 
     CommandContext BeginScopedCommandContext(CommandQueueType queueType);
 
@@ -58,6 +60,12 @@ public:
     void OnWindowResized(u32 newWidth, u32 newHeight);
 
     Texture GetCurrentBackBuffer();
+
+    // Recompiles all shader which have changed since the last compilation. Useful for shader development and
+    // hot-reloading. You generally want to avoid calling this too often if your application has many shaders.
+    void RecompileChangedShaders();
+    // Recompiles all shaders, could cause a big hitch depending on how many shaders your application uses.
+    void RecompileAllShaders();
 
 private:
     void EndCommandContext(RHICommandList& cmdList);
