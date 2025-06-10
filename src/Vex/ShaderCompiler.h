@@ -10,6 +10,7 @@
 #include <wrl/client.h>
 
 #include <Unknwn.h>
+#include <dxcapi.h>
 
 namespace vex
 {
@@ -19,7 +20,8 @@ using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 #elif defined(__linux__)
 // DXC exposes an adapter for non-windows platforms.
-#include <WinAdapter.h>
+#include <dxc/WinAdapter.h>
+#include <dxc/dxcapi.h>
 
 namespace vex
 {
@@ -28,8 +30,6 @@ using ComPtr = CComPtr<T>;
 }
 
 #endif
-
-#include <dxcapi.h>
 
 #include <Vex/RHI/RHIFwd.h>
 #include <Vex/ShaderKey.h>
