@@ -12,6 +12,7 @@ namespace vex
 
 namespace ShaderCompiler_Internal
 {
+
 static std::vector<DxcDefine> ConvertDefinesToDxcDefine(const std::vector<ShaderDefine>& defines)
 {
     std::vector<DxcDefine> dxcDefines;
@@ -26,6 +27,16 @@ static std::vector<DxcDefine> ConvertDefinesToDxcDefine(const std::vector<Shader
 
 static std::wstring GetTargetFromShaderType(ShaderType type)
 {
+    // TODO(https://trello.com/c/JjGISzqs): Make this use the FeatureChecker, which would allow us to use the highest
+    // target supported.
+    if (type == ShaderType::VertexShader)
+    {
+        return L"vs_6_6";
+    }
+    if (type == ShaderType::PixelShader)
+    {
+        return L"ps_6_6";
+    }
     if (type == ShaderType::ComputeShader)
     {
         return L"cs_6_6";
@@ -57,8 +68,6 @@ CompilerUtil::CompilerUtil()
 
 CompilerUtil::~CompilerUtil() = default;
 
-thread_local CompilerUtil GCompilerUtil;
-
 ShaderCache::ShaderCache(RHI* rhi, bool enableShaderDebugging)
     : rhi(rhi)
     , debugShaders(enableShaderDebugging)
@@ -66,6 +75,8 @@ ShaderCache::ShaderCache(RHI* rhi, bool enableShaderDebugging)
 }
 
 ShaderCache::~ShaderCache() = default;
+
+thread_local CompilerUtil ShaderCache::GCompilerUtil;
 
 ComPtr<IDxcResult> ShaderCache::GetPreprocessedShader(const RHIShader& shader,
                                                       const ComPtr<IDxcBlobEncoding>& shaderBlobUTF8) const
@@ -340,13 +351,20 @@ void ShaderCache::MarkAllShadersDirty()
 
 void ShaderCache::MarkAllStaleShadersDirty()
 {
+    u32 numStaleShaders = 0;
     for (auto& shader : shaderCache | std::views::values)
     {
         if (auto [isShaderStale, newShaderHash] = IsShaderStale(*shader); isShaderStale)
         {
             shader->hash = newShaderHash;
             shader->MarkDirty();
+            numStaleShaders++;
         }
+    }
+
+    if (numStaleShaders > 0)
+    {
+        VEX_LOG(Info, "Marked {} shaders for recompilation...", numStaleShaders);
     }
 }
 

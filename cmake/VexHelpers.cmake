@@ -2,6 +2,38 @@
 
 # Function to create and link header-only libraries
 function(add_header_only_dependency TARGET DEP_NAME SOURCE_DIR INCLUDE_PATH INSTALL_PATH)
+    if(NOT EXISTS "${SOURCE_DIR}")
+        message(STATUS WARNING " Source directory does not exist: ${SOURCE_DIR}")
+        return()
+    endif()
+
+    set(FULL_INCLUDE_PATH "${SOURCE_DIR}/${INCLUDE_PATH}")
+    
+    # Debug: Check if include path exists
+    if(NOT EXISTS "${FULL_INCLUDE_PATH}")
+        message(STATUS WARNING " Include path does not exist: ${FULL_INCLUDE_PATH}")
+        return()
+    endif()
+
+    # Find all header files
+    file(GLOB_RECURSE HEADER_FILES 
+        "${FULL_INCLUDE_PATH}/*.h"
+        "${FULL_INCLUDE_PATH}/*.hpp"
+        "${FULL_INCLUDE_PATH}/*.hxx"
+        "${FULL_INCLUDE_PATH}/*.inl"
+    )
+    
+    if(HEADER_FILES)
+        message(STATUS "Found header files:")
+        foreach(HEADER ${HEADER_FILES})
+            # Show relative path from the include directory
+            file(RELATIVE_PATH REL_PATH "${FULL_INCLUDE_PATH}" "${HEADER}")
+            message(STATUS "  - ${REL_PATH}")
+        endforeach()
+    else()
+        message(WARNING "No header files found in: ${FULL_INCLUDE_PATH}")
+    endif()
+
     # Create interface library for the headers
     add_library(${TARGET}_${DEP_NAME}_headers INTERFACE)
     
@@ -10,28 +42,7 @@ function(add_header_only_dependency TARGET DEP_NAME SOURCE_DIR INCLUDE_PATH INST
         $<BUILD_INTERFACE:${SOURCE_DIR}/${INCLUDE_PATH}>
         $<INSTALL_INTERFACE:include/${INSTALL_PATH}>
     )
-
-    set(DEBUG_OUTPUT_HEADER_ONLY_DEP_FOUND_FILES TRUE)
-
-    if(DEBUG_OUTPUT_HEADER_ONLY_DEP_FOUND_FILES)
-        # List all header files found in the include path
-        set(FULL_INCLUDE_PATH "${SOURCE_DIR}/${INCLUDE_PATH}")
-        file(GLOB_RECURSE HEADER_FILES
-            RELATIVE "${FULL_INCLUDE_PATH}"
-            "${FULL_INCLUDE_PATH}/**.h"
-            "${FULL_INCLUDE_PATH}/**.hpp"
-        )
-
-        if(HEADER_FILES)
-            message(STATUS "[${DEP_NAME}] Found headers in ${FULL_INCLUDE_PATH}:")
-            foreach(header ${HEADER_FILES})
-                message(STATUS "  - ${header}")
-            endforeach()
-        else()
-            message(WARNING "[${DEP_NAME}] No headers found in ${FULL_INCLUDE_PATH}")
-        endif()
-    endif()
-
+    
     # Link to main target
     target_link_libraries(${TARGET} PUBLIC ${TARGET}_${DEP_NAME}_headers)
     

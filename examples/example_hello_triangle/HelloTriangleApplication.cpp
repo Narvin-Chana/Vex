@@ -65,8 +65,6 @@ void HelloTriangleApplication::Run()
     {
         glfwPollEvents();
 
-        graphics->RecompileChangedShaders();
-
         graphics->StartFrame();
 
         {

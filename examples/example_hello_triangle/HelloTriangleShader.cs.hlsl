@@ -38,6 +38,6 @@ void CSMain(uint3 dtid : SV_DispatchThreadID)
     }
     else
     {
-        OutputTexture[dtid.xy] = float4(0.1f, 0.1f, 0.1f, 1.0f);
+        OutputTexture[dtid.xy] = float4(0.2f, 0.2f, 0.2f, 1.0f);
     }
 }
