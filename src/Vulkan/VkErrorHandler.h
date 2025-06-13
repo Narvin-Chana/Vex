@@ -27,13 +27,10 @@ inline std::expected<void, std::string> Validate(const ::vk::Result& result, std
 
 inline void SanitizeOrCrash(const ::vk::Result& result, std::source_location loc)
 {
-    Validate(result, std::move(loc))
-        .transform_error(
-            [](const std::string& msg)
-            {
-                VEX_LOG(Fatal, "Validation failed: {}", msg);
-                return msg;
-            });
+    if (auto exp = Validate(result, std::move(loc)); !exp.has_value())
+    {
+        VEX_LOG(Fatal, "Validation failed: {}", exp.error());
+    }
 }
 
 template <bool ShouldCrash>

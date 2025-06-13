@@ -20,7 +20,7 @@ struct ConstantBinding
     }
 
     void* data;
-    size_t size;
+    u32 size;
 };
 
 // clang-format off

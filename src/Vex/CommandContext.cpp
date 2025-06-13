@@ -16,8 +16,10 @@ CommandContext::CommandContext(GfxBackend* backend, RHICommandList* cmdList)
     , cmdList(cmdList)
 {
     cmdList->Open();
-    cmdList->SetDescriptorPool(*backend->descriptorPool);
-    cmdList->SetLayout(backend->GetPipelineStateCache().GetResourceLayout());
+    // TODO: To be discussed
+    RHIResourceLayout& resLayout = backend->GetPipelineStateCache().GetResourceLayout();
+    cmdList->SetDescriptorPool(*backend->descriptorPool, resLayout);
+    cmdList->SetLayout(resLayout);
 }
 
 CommandContext::~CommandContext()

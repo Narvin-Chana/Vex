@@ -2,6 +2,8 @@
 
 #include <Vex/RHI/RHIPipelineState.h>
 
+#include "VkHeaders.h"
+
 namespace vex::vk
 {
 
@@ -16,9 +18,14 @@ public:
 
 class VkComputePipelineState : public RHIComputePipelineState
 {
+    ::vk::PipelineCache PSOCache;
+    ::vk::Device device;
+
 public:
-    VkComputePipelineState(const Key& key);
+    VkComputePipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache);
     virtual void Compile(const RHIShader& computeShader, RHIResourceLayout& resourceLayout) override;
+
+    ::vk::UniquePipeline computePipeline;
 };
 
 } // namespace vex::vk

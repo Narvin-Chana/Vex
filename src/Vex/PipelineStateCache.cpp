@@ -7,9 +7,11 @@
 namespace vex
 {
 
-PipelineStateCache::PipelineStateCache(RHI* rhi, const FeatureChecker& featureChecker)
+PipelineStateCache::PipelineStateCache(RHI* rhi,
+                                       RHIDescriptorPool& descriptorPool,
+                                       const FeatureChecker& featureChecker)
     : rhi(rhi)
-    , resourceLayout(rhi->CreateResourceLayout(featureChecker))
+    , resourceLayout(rhi->CreateResourceLayout(featureChecker, descriptorPool))
 {
 }
 

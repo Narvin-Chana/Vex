@@ -33,7 +33,7 @@ public:
                                     std::span<RHITextureBinding> textures,
                                     std::span<RHIBufferBinding> buffers,
                                     RHIDescriptorPool& descriptorPool) override;
-    virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool) override;
+    virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) override;
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount) override;
 

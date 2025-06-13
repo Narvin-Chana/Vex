@@ -1,7 +1,5 @@
 #pragma once
 
-#include <string>
-
 #include <Vex/FeatureChecker.h>
 
 #include "VkHeaders.h"
@@ -23,6 +21,10 @@ public:
     virtual FeatureLevel GetFeatureLevel() const override;
     virtual ResourceBindingTier GetResourceBindingTier() const override;
     virtual ShaderModel GetShaderModel() const override;
+    static u32 GetMaxPushConstantSize()
+    {
+        return 128;
+    };
 
 private:
     ::vk::PhysicalDeviceProperties deviceProperties;
@@ -31,5 +33,6 @@ private:
     ::vk::PhysicalDeviceVulkan13Features vulkan13Features;
     ::vk::PhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures;
     ::vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingFeatures;
+    ::vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures;
 };
 } // namespace vex::vk

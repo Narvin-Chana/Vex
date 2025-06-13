@@ -69,8 +69,6 @@ GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& des
             description.platformWindow.width,
             description.platformWindow.height);
 
-    psCache = PipelineStateCache(rhi.get(), *physicalDevice->featureChecker);
-
     for (auto queueType : magic_enum::enum_values<CommandQueueType>())
     {
         queueFrameFences[queueType] = rhi->CreateFence(std::to_underlying(description.frameBuffering));
@@ -79,6 +77,8 @@ GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& des
     commandPools.ForEach([this](UniqueHandle<RHICommandPool>& el) { el = rhi->CreateCommandPool(); });
 
     descriptorPool = rhi->CreateDescriptorPool();
+
+    psCache = PipelineStateCache(rhi.get(), *descriptorPool, *physicalDevice->featureChecker);
 
     swapChain = rhi->CreateSwapChain({ .format = description.swapChainFormat,
                                        .frameBuffering = description.frameBuffering,
@@ -162,7 +162,7 @@ void GfxBackend::EndFrame()
 
 CommandContext GfxBackend::BeginScopedCommandContext(CommandQueueType queueType)
 {
-    return CommandContext(this, GetCurrentCommandPool().CreateCommandList(queueType));
+    return { this, GetCurrentCommandPool().CreateCommandList(queueType) };
 }
 
 void GfxBackend::EndCommandContext(RHICommandList& cmdList)
