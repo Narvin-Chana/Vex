@@ -113,7 +113,7 @@ void VkSwapChain::AcquireNextBackbuffer(u8 frameIndex)
 
     ::vk::SemaphoreSubmitInfo semSignalInfo{
         .semaphore = *cmdQueue.waitSemaphore,
-        .value = cmdQueue.waitValue + 1,
+        .value = ++cmdQueue.waitValue,
     };
 
     ::vk::SubmitInfo2KHR submitInfo{ .waitSemaphoreInfoCount = 1,

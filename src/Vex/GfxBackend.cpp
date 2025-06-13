@@ -84,6 +84,8 @@ GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& des
 
     descriptorPool = rhi->CreateDescriptorPool();
 
+    psCache = PipelineStateCache(rhi.get(), *descriptorPool, *physicalDevice->featureChecker);
+
     swapChain = rhi->CreateSwapChain({ .format = description.swapChainFormat,
                                        .frameBuffering = description.frameBuffering,
                                        .useVSync = description.useVSync },
@@ -132,7 +134,7 @@ void GfxBackend::EndFrame(bool isFullscreenMode)
 
 CommandContext GfxBackend::BeginScopedCommandContext(CommandQueueType queueType)
 {
-    return CommandContext(this, GetCurrentCommandPool().CreateCommandList(queueType));
+    return { this, GetCurrentCommandPool().CreateCommandList(queueType) };
 }
 
 void GfxBackend::EndCommandContext(RHICommandList& cmdList)

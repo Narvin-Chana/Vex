@@ -18,7 +18,7 @@ HelloTriangleApplication::HelloTriangleApplication()
     vex::PlatformWindowHandle platformWindow{ .window = glfwGetX11Window(window), .display = glfwGetX11Display() };
 #endif
 
-#define FORCE_VULKAN 0
+#define FORCE_VULKAN 1
 
     graphics = CreateGraphicsBackend(
 #if VEX_VULKAN and FORCE_VULKAN

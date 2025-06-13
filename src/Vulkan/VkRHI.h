@@ -33,7 +33,8 @@ public:
         const GraphicsPipelineStateKey& key) override;
     virtual UniqueHandle<RHIComputePipelineState> CreateComputePipelineState(
         const ComputePipelineStateKey& key) override;
-    virtual UniqueHandle<RHIResourceLayout> CreateResourceLayout(const FeatureChecker& featureChecker) override;
+    virtual UniqueHandle<RHIResourceLayout> CreateResourceLayout(const FeatureChecker& featureChecker,
+                                                                 RHIDescriptorPool& descriptorPool) override;
 
     virtual UniqueHandle<RHITexture> CreateTexture(const TextureDescription& description) override;
 
@@ -53,6 +54,7 @@ private:
     ::vk::UniqueSurfaceKHR surface;
     ::vk::UniqueDevice device;
     ::vk::PhysicalDevice physDevice;
+    ::vk::UniquePipelineCache PSOCache;
 
     std::array<VkCommandQueue, CommandQueueTypes::Count> commandQueues;
 };

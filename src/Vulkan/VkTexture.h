@@ -27,10 +27,22 @@ public:
     // ...
     VkTexture(VkGPUContext& ctx, TextureDescription&& description);
 
+    ::vk::Image GetResource()
+    {
+        return *image;
+    };
+    [[nodiscard]] ::vk::ImageLayout GetLayout() const
+    {
+        return imageLayout;
+    };
+
 private:
     void CreateImage(VkGPUContext& ctx);
     ::vk::UniqueImage image;
     ::vk::UniqueDeviceMemory memory;
+    ::vk::ImageLayout imageLayout = ::vk::ImageLayout::eUndefined;
+
+    friend class VkCommandList;
 };
 
 } // namespace vex::vk

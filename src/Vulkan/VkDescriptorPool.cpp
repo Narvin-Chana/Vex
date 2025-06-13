@@ -1,27 +1,101 @@
 #include "VkDescriptorPool.h"
 
+#include "Vex/UniqueHandle.h"
+#include "VkErrorHandler.h"
+
 #include <Vex/Debug.h>
 
 namespace vex::vk
 {
 
+static constexpr u32 BindlessMaxDescriptorPerType = 1000;
+static constexpr ::vk::DescriptorImageInfo NullDescriptorImageInfo{ .sampler = nullptr,
+                                                                    .imageView = nullptr,
+                                                                    .imageLayout = ::vk::ImageLayout::eUndefined };
+
+static constexpr ::vk::DescriptorBufferInfo NullDescriptorBufferInfo{ .buffer = nullptr, .offset = 0, .range = 0 };
+
 VkDescriptorPool::VkDescriptorPool(::vk::Device device)
+    : device{ device }
 {
-    // Initialize descriptor pool at a certain (large) default size.
-    // For now we should ignore resizing as it is a big hassle and instead allocate an arbitrarily large pool.
-    //
+    std::array poolSize{ ::vk::DescriptorPoolSize{ .type = ::vk::DescriptorType::eUniformBuffer,
+                                                   .descriptorCount = BindlessMaxDescriptorPerType },
+                         ::vk::DescriptorPoolSize{ .type = ::vk::DescriptorType::eCombinedImageSampler,
+                                                   .descriptorCount = BindlessMaxDescriptorPerType },
+                         ::vk::DescriptorPoolSize{ .type = ::vk::DescriptorType::eStorageBuffer,
+                                                   .descriptorCount = BindlessMaxDescriptorPerType } };
+
+    ::vk::DescriptorPoolCreateInfo descriptorPoolInfo{
+        .flags = ::vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind,
+        .maxSets = 1,
+        .poolSizeCount = static_cast<uint32_t>(poolSize.size()),
+        .pPoolSizes = poolSize.data(),
+    };
+
+    descriptorPool = VEX_VK_CHECK <<= device.createDescriptorPoolUnique(descriptorPoolInfo);
+
+    // Inspired from https://dev.to/gasim/implementing-bindless-design-in-vulkan-34no
+    std::array<::vk::DescriptorSetLayoutBinding, 3> bindings{};
+    std::array<::vk::DescriptorBindingFlags, 3> flags{};
+    static constexpr std::array types{
+        ::vk::DescriptorType::eUniformBuffer,
+        ::vk::DescriptorType::eStorageBuffer,
+        ::vk::DescriptorType::eCombinedImageSampler,
+    };
+
+    for (uint32_t i = 0; i < 3; ++i)
+    {
+        bindings[i].binding = i;
+        bindings[i].descriptorType = types[i];
+        bindings[i].descriptorCount = BindlessMaxDescriptorPerType;
+        bindings[i].stageFlags = ::vk::ShaderStageFlagBits::eAll;
+        flags[i] = ::vk::DescriptorBindingFlagBits::ePartiallyBound | ::vk::DescriptorBindingFlagBits::eUpdateAfterBind;
+    }
+
+    ::vk::DescriptorSetLayoutBindingFlagsCreateInfo bindingFlags{};
+    bindingFlags.pBindingFlags = flags.data();
+    bindingFlags.bindingCount = 3;
+
+    ::vk::DescriptorSetLayoutCreateInfo createInfo{};
+    createInfo.bindingCount = 3;
+    createInfo.pBindings = bindings.data();
+    createInfo.flags = ::vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool;
+    createInfo.pNext = &bindingFlags;
+
+    // Create layout
+    bindlessLayout = VEX_VK_CHECK <<= device.createDescriptorSetLayoutUnique(createInfo);
+
+    ::vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo{
+        .descriptorPool = *descriptorPool,
+        .descriptorSetCount = 1,
+        .pSetLayouts = &*bindlessLayout,
+    };
+
+    std::vector<::vk::UniqueDescriptorSet> descSets = VEX_VK_CHECK <<=
+        device.allocateDescriptorSetsUnique(descriptorSetAllocateInfo);
+
+    bindlessSet = std::move(descSets[0]);
+
+    for (int i = 0; i < 3; i++)
+    {
+        bindlessAllocations[i].generations.resize(BindlessMaxDescriptorPerType);
+        bindlessAllocations[i].handles = FreeListAllocator(BindlessMaxDescriptorPerType);
+    }
+
     // The pool should be split into two sections, one for static descriptors (aka resources that we load in once
     // at startup or for streaming and reuse thereafter) and one section for dynamic descriptors (for resources that
     // are created and destroyed during the same frame, eg: temporary buffers).
-    VEX_NOT_YET_IMPLEMENTED();
 }
 
 VkDescriptorPool::~VkDescriptorPool() = default;
 
 BindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHITexture& texture)
 {
-    VEX_NOT_YET_IMPLEMENTED();
-    return BindlessHandle();
+    BindlessAllocation& alloc = bindlessAllocations[std::to_underlying(BindlessHandle::Type::Texture)];
+
+    u32 index = alloc.handles.Allocate();
+
+    return BindlessHandle::CreateHandle(index, alloc.generations[index], BindlessHandle::Type::Texture);
 }
 
 BindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHIBuffer& buffer)
@@ -32,7 +106,44 @@ BindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHIBuffer& buffe
 
 void VkDescriptorPool::FreeStaticDescriptor(BindlessHandle handle)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    ::vk::DescriptorType type{};
+    const ::vk::DescriptorImageInfo* imageInfo{};
+    const ::vk::DescriptorBufferInfo* bufferInfo{};
+    switch (handle.type)
+    {
+    case BindlessHandle::Type::Texture:
+        type = ::vk::DescriptorType::eCombinedImageSampler;
+        imageInfo = &NullDescriptorImageInfo;
+        break;
+    case BindlessHandle::Type::StorageBuffer:
+        type = ::vk::DescriptorType::eStorageBuffer;
+        bufferInfo = &NullDescriptorBufferInfo;
+        break;
+    case BindlessHandle::Type::UniformBuffer:
+        type = ::vk::DescriptorType::eUniformBuffer;
+        bufferInfo = &NullDescriptorBufferInfo;
+        break;
+    default:
+
+        VEX_ASSERT(false, "Bindless handle type not supported");
+    }
+
+    const u32 index = handle.GetIndex();
+
+    const ::vk::WriteDescriptorSet NullWriteDescriptorSet{ .dstSet = *bindlessSet,
+                                                           .dstBinding = index,
+                                                           .dstArrayElement = 0, // check if this makes sense?
+                                                           .descriptorCount = 1,
+                                                           .descriptorType = type,
+                                                           .pImageInfo = imageInfo,
+                                                           .pBufferInfo = bufferInfo,
+                                                           .pTexelBufferView = nullptr };
+
+    device.updateDescriptorSets(1, &NullWriteDescriptorSet, 0, nullptr);
+
+    auto& [generations, handles] = bindlessAllocations[std::to_underlying(handle.type)];
+    generations[index]++;
+    handles.Deallocate(index);
 }
 
 BindlessHandle VkDescriptorPool::AllocateDynamicDescriptor(const RHITexture& texture)
@@ -54,8 +165,8 @@ void VkDescriptorPool::FreeDynamicDescriptor(BindlessHandle handle)
 
 bool VkDescriptorPool::IsValid(BindlessHandle handle)
 {
-    VEX_NOT_YET_IMPLEMENTED();
-    return false;
+    return handle.GetGeneration() ==
+           bindlessAllocations[std::to_underlying(handle.type)].generations[handle.GetIndex()];
 }
 
 } // namespace vex::vk

@@ -33,7 +33,7 @@ public:
                                     std::span<RHITextureBinding> textures,
                                     std::span<RHIBufferBinding> buffers,
                                     RHIDescriptorPool& descriptorPool) override;
-    virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool) override;
+    virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) override;
 
     virtual void Transition(RHITexture& texture, RHITextureState::Flags newState) override;
     virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs) override;

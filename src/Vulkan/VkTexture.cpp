@@ -38,18 +38,19 @@ void VkTexture::CreateImage(VkGPUContext& ctx)
     createInfo.format = TextureFormatToVulkan(description.format);
     createInfo.sharingMode = ::vk::SharingMode::eExclusive;
     createInfo.tiling = ::vk::ImageTiling::eOptimal;
-    createInfo.initialLayout = ::vk::ImageLayout::eUndefined;
+    createInfo.initialLayout = GetLayout();
     createInfo.mipLevels = description.mips;
     createInfo.samples = ::vk::SampleCountFlagBits::e1;
+
     switch (description.type)
     {
     case TextureType::Texture2D:
-        createInfo.extent = ::vk::Extent3D{ description.width, description.height };
+        createInfo.extent = ::vk::Extent3D{ description.width, description.height, 1 };
         createInfo.arrayLayers = description.depthOrArraySize;
         createInfo.imageType = ::vk::ImageType::e2D;
         break;
     case TextureType::TextureCube:
-        createInfo.extent = ::vk::Extent3D{ description.width, description.height };
+        createInfo.extent = ::vk::Extent3D{ description.width, description.height, 1 };
         createInfo.imageType = ::vk::ImageType::e2D;
         createInfo.arrayLayers = 6;
         break;
@@ -59,6 +60,25 @@ void VkTexture::CreateImage(VkGPUContext& ctx)
         break;
     default:;
     }
+
+    if (description.usage & ResourceUsage::DepthStencil)
+    {
+        createInfo.usage |= ::vk::ImageUsageFlagBits::eDepthStencilAttachment;
+    }
+    if (description.usage & ResourceUsage::Read)
+    {
+        createInfo.usage |= ::vk::ImageUsageFlagBits::eSampled;
+    }
+    if (description.usage & ResourceUsage::UnorderedAccess)
+    {
+        createInfo.usage |= ::vk::ImageUsageFlagBits::eStorage;
+    }
+    if (description.usage & ResourceUsage::RenderTarget)
+    {
+        createInfo.usage |= ::vk::ImageUsageFlagBits::eColorAttachment;
+    }
+    createInfo.usage |= ::vk::ImageUsageFlagBits::eTransferDst;
+    createInfo.usage |= ::vk::ImageUsageFlagBits::eTransferSrc;
 
     image = VEX_VK_CHECK <<= ctx.device.createImageUnique(createInfo);
 

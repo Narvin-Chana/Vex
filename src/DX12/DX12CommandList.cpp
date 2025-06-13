@@ -293,7 +293,7 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
     }
 }
 
-void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool)
+void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)
 {
     commandList->SetDescriptorHeaps(
         1,

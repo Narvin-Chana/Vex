@@ -24,9 +24,20 @@ public:
     virtual bool IsValid(BindlessHandle handle) override;
 
 private:
-    ::vk::DescriptorPool descriptorPool;
-    ::vk::DescriptorSet bindlessSet; // Single global set for bindless resources
-    ::vk::DescriptorSetLayout bindlessLayout;
+    ::vk::Device device;
+    ::vk::UniqueDescriptorPool descriptorPool;
+    ::vk::UniqueDescriptorSet bindlessSet; // Single global set for bindless resources
+    ::vk::UniqueDescriptorSetLayout bindlessLayout;
+
+    struct BindlessAllocation
+    {
+        std::vector<u8> generations;
+        FreeListAllocator handles;
+    };
+    std::array<BindlessAllocation, 3> bindlessAllocations;
+
+    friend class VkCommandList;
+    friend class VkResourceLayout;
 };
 
 } // namespace vex::vk
