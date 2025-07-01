@@ -194,7 +194,11 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader)
     HRESULT compilationHR = GCompilerUtil.compiler->Compile(&shaderSource,
                                                             compilerArgs->GetArguments(),
                                                             compilerArgs->GetCount(),
+#if defined(_WIN32)
                                                             GCompilerUtil.defaultIncludeHandler.Get(),
+#elif defined(__linux__)
+                                                            GCompilerUtil.defaultIncludeHandler.get(),
+#endif
                                                             IID_PPV_ARGS(&shaderCompilationResults));
 
     ComPtr<IDxcBlobUtf8> errors = nullptr;
