@@ -36,6 +36,10 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
         # Setup the d3d12 agility sdk
         vex_setup_d3d12_agility_runtime(${EXAMPLE_NAME})
 
+        if(UNIX)
+            link_with_dxc(${EXAMPLE_NAME})
+        endif()
+
         target_link_libraries(${EXAMPLE_NAME} PRIVATE ${EXAMPLES_COMMON_LIBS})
         target_include_directories(${EXAMPLE_NAME} PRIVATE "${EXAMPLE_DIR}" "${CMAKE_SOURCE_DIR}/src")
     endif()

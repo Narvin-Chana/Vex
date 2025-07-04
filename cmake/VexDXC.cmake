@@ -31,17 +31,18 @@ function(build_with_dxc target)
         message(STATUS "Statically linked with DXC: ${DXC_STATIC_LIB}")
         target_link_libraries(${target} PRIVATE "${DXC_STATIC_LIB}")
     elseif(UNIX)
-        message(STATUS "Dynamically linked with DXC: ${DXC_STATIC_LIB}")
-        target_link_libraries(${target} PRIVATE "${DXC_SHARED_LIB}")
     endif()
     message(STATUS "Installing DXC headers: ${dxc_SOURCE_DIR}/${DXC_HEADERS_INCLUDE_NAME}")
     add_header_only_dependency(${target} dxc "${dxc_SOURCE_DIR}" "${DXC_HEADERS_INCLUDE_NAME}" "dxc")
 endfunction()
 
-# add_header_only_dependency(Vex DirectX-Headers "${DirectX-Headers_SOURCE_DIR}" "include" "directx")
-
-# Expose function for your static lib to link DXC easily
 function(link_with_dxc target)
     message(STATUS "Linked ${target} with DirectXCompiler.")
     target_link_libraries(${target} PRIVATE "${DXC_SHARED_LIB}")
+    if(UNIX)
+        set_target_properties(${target} PROPERTIES
+            INSTALL_RPATH "${dxc_SOURCE_DIR}"
+            BUILD_WITH_INSTALL_RPATH TRUE
+        )
+    endif()
 endfunction()
