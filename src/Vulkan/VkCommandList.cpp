@@ -186,7 +186,7 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
     commandBuffer->pushConstants(*vkResourceLayout.pipelineLayout,
                                  stageFlags,
                                  0,
-                                 bindlessHandles.size(),
+                                 bindlessHandles.size() * sizeof(BindlessHandle),
                                  bindlessHandles.data());
 }
 
@@ -220,14 +220,59 @@ void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIReso
     }
 }
 
-void VkCommandList::Transition(RHITexture& texture, RHITextureState::Flags newState)
+::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITextureState::Flags flags)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    ::vk::ImageLayout prevLayout = texture.GetLayout();
+    // TODO: Move this outside of here as it should be done before
+    ::vk::ImageLayout targetLayout =
+        prevLayout == ::vk::ImageLayout::eUndefined ? ::vk::ImageLayout::eGeneral : prevLayout;
+
+    return {
+        // not the best stage mask. Should be more precise for better sync
+        .srcStageMask = ::vk::PipelineStageFlagBits2::eAllCommands,
+        .srcAccessMask = TextureUtil::TextureStateFlagToAccessMask(texture.GetCurrentState()),
+        .dstStageMask = ::vk::PipelineStageFlagBits2::eAllCommands,
+        .dstAccessMask = TextureUtil::TextureStateFlagToAccessMask(flags),
+        .oldLayout = prevLayout,
+        .newLayout = targetLayout,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = texture.GetResource(),
+        .subresourceRange = {
+            .aspectMask = ::vk::ImageAspectFlagBits::eColor,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+    };
 }
 
+void VkCommandList::Transition(RHITexture& texture, RHITextureState::Flags newState)
+{
+    auto& vkTexture = reinterpret_cast<VkTexture&>(texture);
+    auto memBarrier = GetMemoryBarrierFrom(vkTexture, newState);
+
+    ::vk::DependencyInfo deps{ .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &memBarrier };
+
+    commandBuffer->pipelineBarrier2(deps);
+}
+
+// we only transfer access here and not layout
 void VkCommandList::Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    std::vector<::vk::ImageMemoryBarrier2> barriers;
+
+    for (auto& [rhiTexture, flags] : textureNewStatePairs)
+    {
+        auto& vkTexture = reinterpret_cast<VkTexture&>(rhiTexture);
+        barriers.push_back(GetMemoryBarrierFrom(vkTexture, flags));
+    }
+
+    ::vk::DependencyInfo deps{ .imageMemoryBarrierCount = static_cast<u32>(barriers.size()),
+                               .pImageMemoryBarriers = barriers.data() };
+
+    commandBuffer->pipelineBarrier2(deps);
 }
 
 void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount)

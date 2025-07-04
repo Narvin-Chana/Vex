@@ -35,6 +35,11 @@ VEX_MAKE_HASHABLE(vex::vk::VkTextureViewDesc,
 );
 // clang-format on
 
+namespace vex::TextureUtil
+{
+::vk::AccessFlags2 TextureStateFlagToAccessMask(RHITextureState::Flags flags);
+}
+
 namespace vex::vk
 {
 struct VkGPUContext;

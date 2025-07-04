@@ -184,3 +184,51 @@ void VkTexture::CreateImage(VkGPUContext& ctx)
 }
 
 } // namespace vex::vk
+
+namespace vex::TextureUtil
+{
+
+::vk::AccessFlags2 TextureStateFlagToAccessMask(RHITextureState::Flags flags)
+{
+    using namespace RHITextureState;
+
+    ::vk::AccessFlags2 bits;
+    if (flags & RenderTarget)
+    {
+        bits |= ::vk::AccessFlagBits2::eShaderWrite;
+    }
+
+    if (flags & ShaderResource)
+    {
+        bits |= ::vk::AccessFlagBits2::eShaderRead;
+    }
+
+    if (flags & UnorderedAccess)
+    {
+        bits |= ::vk::AccessFlagBits2::eShaderWrite | ::vk::AccessFlagBits2::eShaderRead;
+    }
+
+    if (flags & DepthWrite)
+    {
+        bits |= ::vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
+    }
+
+    if (flags & DepthRead)
+    {
+        bits |= ::vk::AccessFlagBits2::eDepthStencilAttachmentRead;
+    }
+
+    if (flags & CopySource)
+    {
+        bits |= ::vk::AccessFlagBits2::eTransferRead;
+    }
+
+    if (flags & CopyDest)
+    {
+        bits |= ::vk::AccessFlagBits2::eTransferWrite;
+    }
+
+    return bits;
+}
+
+} // namespace vex::TextureUtil

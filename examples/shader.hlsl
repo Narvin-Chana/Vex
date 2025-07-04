@@ -5,7 +5,7 @@ struct Constants
 };
 ConstantBuffer<Constants> CB : register(b0);
 
-RWTexture2D<float4> g_texture2d[];
+RWTexture2D<float4> g_texture2d[] : register(u3);
 //static RWTexture2D<float4> OutputTexture = ResourceDescriptorHeap[CB.outputBindlessIndex];
 
 // Simple function to check if a point is inside a triangle
