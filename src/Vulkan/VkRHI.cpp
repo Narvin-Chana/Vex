@@ -270,7 +270,7 @@ UniqueHandle<RHISwapChain> VkRHI::CreateSwapChain(const SwapChainDescription& de
 
 UniqueHandle<RHICommandPool> VkRHI::CreateCommandPool()
 {
-    return MakeUnique<VkCommandPool>(*device, commandQueues);
+    return MakeUnique<VkCommandPool>(GetGPUContext(), commandQueues);
 }
 
 UniqueHandle<RHIShader> VkRHI::CreateShader(const ShaderKey& key)

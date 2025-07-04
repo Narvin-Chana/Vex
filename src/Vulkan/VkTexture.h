@@ -8,8 +8,6 @@
 
 namespace vex::vk
 {
-struct VkGPUContext;
-struct VkDescriptorPool;
 
 struct VkTextureViewDesc
 {
@@ -24,8 +22,10 @@ struct VkTextureViewDesc
     bool operator==(const VkTextureViewDesc&) const = default;
 };
 
+} // namespace vex::vk
+
 // clang-format off
-VEX_MAKE_HASHABLE(VkTextureViewDesc,
+VEX_MAKE_HASHABLE(vex::vk::VkTextureViewDesc,
     VEX_HASH_COMBINE_ENUM(seed, obj.viewType);
     VEX_HASH_COMBINE_ENUM(seed, obj.format);
     VEX_HASH_COMBINE(seed, obj.mipBias);
@@ -34,6 +34,11 @@ VEX_MAKE_HASHABLE(VkTextureViewDesc,
     VEX_HASH_COMBINE(seed, obj.sliceCount);
 );
 // clang-format on
+
+namespace vex::vk
+{
+struct VkGPUContext;
+struct VkDescriptorPool;
 
 class VkBackbufferTexture : public RHITexture
 {

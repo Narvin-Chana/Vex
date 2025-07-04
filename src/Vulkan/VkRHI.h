@@ -5,7 +5,6 @@
 #include "VkCommandQueue.h"
 #include "VkGPUContext.h"
 #include "VkHeaders.h"
-#include "VkTexture.h"
 
 namespace vex
 {
