@@ -19,6 +19,7 @@ using ComPtr = Microsoft::WRL::ComPtr<T>;
 }
 
 #elif defined(__linux__)
+#define __EMULATE_UUID 1
 // DXC exposes an adapter for non-windows platforms.
 #include <dxc/WinAdapter.h>
 #include <dxc/dxcapi.h>
