@@ -2,11 +2,38 @@
 
 #include <Vex/RHI/RHITexture.h>
 
+#include "Vex/Hash.h"
+#include "Vex/RHI/RHIDescriptorPool.h"
 #include "VkHeaders.h"
 
 namespace vex::vk
 {
 struct VkGPUContext;
+struct VkDescriptorPool;
+
+struct VkTextureViewDesc
+{
+    TextureViewType viewType = TextureViewType::Texture2D;
+    TextureFormat format = TextureFormat::UNKNOWN;
+
+    u32 mipBias = 0;
+    u32 mipCount = 1;
+    u32 startSlice = 0;
+    u32 sliceCount = 1;
+
+    bool operator==(const VkTextureViewDesc&) const = default;
+};
+
+// clang-format off
+VEX_MAKE_HASHABLE(VkTextureViewDesc,
+    VEX_HASH_COMBINE_ENUM(seed, obj.viewType);
+    VEX_HASH_COMBINE_ENUM(seed, obj.format);
+    VEX_HASH_COMBINE(seed, obj.mipBias);
+    VEX_HASH_COMBINE(seed, obj.mipCount);
+    VEX_HASH_COMBINE(seed, obj.startSlice);
+    VEX_HASH_COMBINE(seed, obj.sliceCount);
+);
+// clang-format on
 
 class VkBackbufferTexture : public RHITexture
 {
@@ -27,6 +54,10 @@ public:
     // ...
     VkTexture(VkGPUContext& ctx, TextureDescription&& description);
 
+    BindlessHandle GetOrCreateBindlessView(VkGPUContext& device,
+                                           const VkTextureViewDesc& view,
+                                           VkDescriptorPool& descriptorPool);
+
     ::vk::Image GetResource()
     {
         return *image;
@@ -41,6 +72,13 @@ private:
     ::vk::UniqueImage image;
     ::vk::UniqueDeviceMemory memory;
     ::vk::ImageLayout imageLayout = ::vk::ImageLayout::eUndefined;
+
+    struct CacheEntry
+    {
+        BindlessHandle handle = GInvalidBindlessHandle;
+        ::vk::UniqueImageView view;
+    };
+    std::unordered_map<VkTextureViewDesc, CacheEntry> cache;
 
     friend class VkCommandList;
 };

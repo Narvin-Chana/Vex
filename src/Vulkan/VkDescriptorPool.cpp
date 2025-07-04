@@ -2,12 +2,12 @@
 
 #include "Vex/UniqueHandle.h"
 #include "VkErrorHandler.h"
+#include "VkGPUContext.h"
 
 #include <Vex/Debug.h>
 
 namespace vex::vk
 {
-
 static constexpr u32 BindlessMaxDescriptorPerType = 1000;
 static constexpr ::vk::DescriptorImageInfo NullDescriptorImageInfo{ .sampler = nullptr,
                                                                     .imageView = nullptr,
@@ -167,6 +167,30 @@ bool VkDescriptorPool::IsValid(BindlessHandle handle)
 {
     return handle.GetGeneration() ==
            bindlessAllocations[std::to_underlying(handle.type)].generations[handle.GetIndex()];
+}
+
+void VkDescriptorPool::UpdateDescriptor(VkGPUContext& ctx,
+                                        BindlessHandle targetDescriptor,
+                                        ::vk::DescriptorImageInfo createInfo)
+{
+    const ::vk::WriteDescriptorSet writeSet{
+        .dstSet = *bindlessSet,
+        .dstBinding = targetDescriptor.value,
+        .descriptorCount = 1,
+        .descriptorType = ::vk::DescriptorType::eCombinedImageSampler,
+        .pImageInfo = &createInfo,
+    };
+
+    ctx.device.updateDescriptorSets(1, &writeSet, 0, nullptr);
+}
+
+VkDescriptorPool::BindlessAllocation& VkDescriptorPool::GetAllocation(BindlessHandle::Type type)
+{
+    return bindlessAllocations[std::to_underlying(type)];
+}
+VkDescriptorPool::BindlessAllocation& VkDescriptorPool::GetAllocation(BindlessHandle handle)
+{
+    return GetAllocation(handle.type);
 }
 
 } // namespace vex::vk

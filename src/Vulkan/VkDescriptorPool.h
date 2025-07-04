@@ -6,6 +6,7 @@
 
 namespace vex::vk
 {
+struct VkGPUContext;
 
 class VkDescriptorPool : public RHIDescriptorPool
 {
@@ -23,6 +24,8 @@ public:
 
     virtual bool IsValid(BindlessHandle handle) override;
 
+    void UpdateDescriptor(VkGPUContext& ctx, BindlessHandle targetDescriptor, ::vk::DescriptorImageInfo createInfo);
+
 private:
     ::vk::Device device;
     ::vk::UniqueDescriptorPool descriptorPool;
@@ -35,6 +38,8 @@ private:
         FreeListAllocator handles;
     };
     std::array<BindlessAllocation, 3> bindlessAllocations;
+    BindlessAllocation& GetAllocation(BindlessHandle::Type handle);
+    BindlessAllocation& GetAllocation(BindlessHandle handle);
 
     friend class VkCommandList;
     friend class VkResourceLayout;

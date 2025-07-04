@@ -1,5 +1,7 @@
 ﻿#include "VkTexture.h"
 
+#include "VkCommandPool.h"
+#include "VkDescriptorPool.h"
 #include "VkErrorHandler.h"
 #include "VkFormats.h"
 #include "VkGPUContext.h"
@@ -7,6 +9,60 @@
 
 namespace vex::vk
 {
+
+::vk::ImageViewType TextureTypeToVulkan(TextureViewType type)
+{
+    switch (type)
+    {
+    case TextureViewType::Texture2D:
+        return ::vk::ImageViewType::e2D;
+        break;
+    case TextureViewType::Texture2DArray:
+        return ::vk::ImageViewType::e2DArray;
+        break;
+    case TextureViewType::TextureCube:
+        return ::vk::ImageViewType::eCube;
+        break;
+    case TextureViewType::TextureCubeArray:
+        return ::vk::ImageViewType::eCubeArray;
+        break;
+    case TextureViewType::Texture3D:
+        return ::vk::ImageViewType::e3D;
+        break;
+    default:
+        VEX_ASSERT(false);
+    }
+    std::unreachable();
+}
+
+::vk::Sampler GetOrCreateAnisotropicSamplers(VkGPUContext& ctx)
+{
+    static ::vk::UniqueSampler sampler = [&]()
+    {
+        auto properties = ctx.physDevice.getProperties();
+
+        ::vk::SamplerCreateInfo samplerCreate{
+            .magFilter = ::vk::Filter::eLinear,
+            .minFilter = ::vk::Filter::eLinear,
+            .mipmapMode = ::vk::SamplerMipmapMode::eLinear,
+            .addressModeU = ::vk::SamplerAddressMode::eRepeat,
+            .addressModeV = ::vk::SamplerAddressMode::eRepeat,
+            .addressModeW = ::vk::SamplerAddressMode::eRepeat,
+            .mipLodBias = 0,
+            .anisotropyEnable = ::vk::True,
+            .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
+            .compareEnable = ::vk::False,
+            .compareOp = ::vk::CompareOp::eAlways,
+            .minLod = 0,
+            .maxLod = 0,
+            .borderColor = ::vk::BorderColor::eIntOpaqueBlack,
+            .unnormalizedCoordinates = ::vk::False,
+        };
+
+        return VEX_VK_CHECK <<= ctx.device.createSamplerUnique(samplerCreate);
+    }();
+    return *sampler;
+}
 
 VkBackbufferTexture::VkBackbufferTexture(TextureDescription&& inDescription, ::vk::Image backbufferImage)
     : image{ backbufferImage }
@@ -30,6 +86,38 @@ VkTexture::VkTexture(VkGPUContext& ctx, TextureDescription&& inDescription)
 {
     description = std::move(inDescription);
     CreateImage(ctx);
+}
+
+BindlessHandle VkTexture::GetOrCreateBindlessView(VkGPUContext& ctx,
+                                                  const VkTextureViewDesc& view,
+                                                  VkDescriptorPool& descriptorPool)
+{
+    if (auto it = cache.find(view); it != cache.end() && descriptorPool.IsValid(it->second.handle))
+    {
+        return it->second.handle;
+    }
+
+    ::vk::ImageViewCreateInfo viewCreate{ .image = *image,
+                                          .viewType = TextureTypeToVulkan(view.viewType),
+                                          .format = TextureFormatToVulkan(view.format),
+                                          .subresourceRange = {
+                                              .aspectMask = ::vk::ImageAspectFlagBits::eColor,
+                                              .baseMipLevel = view.mipBias,
+                                              .levelCount = view.mipCount,
+                                              .baseArrayLayer = view.startSlice,
+                                              .layerCount = view.sliceCount,
+                                          } };
+    ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx.device.createImageViewUnique(viewCreate);
+    BindlessHandle handle = descriptorPool.AllocateStaticDescriptor(*this);
+
+    descriptorPool.UpdateDescriptor(ctx,
+                                    handle,
+                                    ::vk::DescriptorImageInfo{ .sampler = GetOrCreateAnisotropicSamplers(ctx),
+                                                               .imageView = *imageView,
+                                                               .imageLayout = GetLayout() });
+    cache[view] = { .handle = handle, .view = std::move(imageView) };
+
+    return handle;
 }
 
 void VkTexture::CreateImage(VkGPUContext& ctx)

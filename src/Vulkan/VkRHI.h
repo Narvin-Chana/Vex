@@ -5,6 +5,7 @@
 #include "VkCommandQueue.h"
 #include "VkGPUContext.h"
 #include "VkHeaders.h"
+#include "VkTexture.h"
 
 namespace vex
 {
@@ -14,7 +15,7 @@ struct PlatformWindowHandle;
 namespace vex::vk
 {
 
-class VkRHI : public vex::RHI
+class VkRHI : public RHI
 {
 public:
     VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation);

@@ -80,6 +80,8 @@ enum class TextureFormat : u8
     UNKNOWN,
 };
 
+TextureFormat GetSRGEquivalentFormat(TextureFormat format);
+
 bool IsFormatSRGB(TextureFormat format);
 
 bool FormatHasSRGBEquivalent(TextureFormat format);

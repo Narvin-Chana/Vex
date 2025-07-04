@@ -5,6 +5,7 @@
 #include "VkCommandList.h"
 #include "VkCommandQueue.h"
 #include "VkErrorHandler.h"
+#include "VkGPUContext.h"
 
 namespace vex::vk
 {
@@ -13,14 +14,14 @@ RHICommandList* VkCommandPool::CreateCommandList(CommandQueueType queueType)
 {
     ::vk::UniqueCommandPool& commandPool = commandPoolPerQueueType[std::to_underlying(queueType)];
 
-    auto allocatedBuffers = VEX_VK_CHECK <<= device.allocateCommandBuffersUnique({
+    auto allocatedBuffers = VEX_VK_CHECK <<= ctx.device.allocateCommandBuffersUnique({
         .commandPool = *commandPool,
         .level = ::vk::CommandBufferLevel::ePrimary,
         .commandBufferCount = 1,
     });
     ::vk::UniqueCommandBuffer newBuffer = std::move(allocatedBuffers[0]);
 
-    auto cmdList = MakeUnique<VkCommandList>(std::move(newBuffer), queueType);
+    auto cmdList = MakeUnique<VkCommandList>(ctx, std::move(newBuffer), queueType);
     auto cmdListPtr = cmdList.get();
 
     allocatedCommandBuffers[std::to_underlying(queueType)].push_back(std::move(cmdList));
@@ -49,13 +50,13 @@ void VkCommandPool::ReclaimAllCommandListMemory()
     }
 }
 
-VkCommandPool::VkCommandPool(::vk::Device device,
+VkCommandPool::VkCommandPool(VkGPUContext& ctx,
                              const std::array<VkCommandQueue, CommandQueueTypes::Count>& commandQueues)
-    : device{ device }
+    : ctx{ ctx }
 {
     for (u8 i = 0; i < CommandQueueTypes::Count; ++i)
     {
-        commandPoolPerQueueType[i] = VEX_VK_CHECK <<= device.createCommandPoolUnique({
+        commandPoolPerQueueType[i] = VEX_VK_CHECK <<= ctx.device.createCommandPoolUnique({
             .flags = ::vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
             .queueFamilyIndex = commandQueues[i].family,
         });

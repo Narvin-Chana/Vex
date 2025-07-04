@@ -106,7 +106,7 @@ void VkCommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout, std
                                       [](u32 acc, const ConstantBinding& binding) { return acc + binding.size; });
 
     VEX_ASSERT(total <= pushConstantData.size(),
-               "Unable to bind local constants, you have surpassed the limit DX12 allows for in root signatures.");
+               "Unable to bind local constants, you have surpassed the limit Vulkan allows for in root signatures.");
 
     u8 currentIndex = 0;
     for (const auto& binding : constants)
@@ -140,7 +140,52 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
                                        std::span<RHIBufferBinding> buffers,
                                        RHIDescriptorPool& descriptorPool)
 {
-    // VEX_NOT_YET_IMPLEMENTED();
+    auto& vkResourceLayout = reinterpret_cast<const VkResourceLayout&>(layout);
+    auto& vkDescriptorPool = reinterpret_cast<VkDescriptorPool&>(descriptorPool);
+
+    std::vector<BindlessHandle> bindlessHandles;
+    bindlessHandles.reserve(textures.size() + buffers.size());
+
+    for (auto& [binding, usage, rhiTexture] : textures)
+    {
+        auto dxTexture = reinterpret_cast<VkTexture*>(rhiTexture);
+
+        if (usage == ResourceUsage::Read || usage == ResourceUsage::UnorderedAccess)
+        {
+            bindlessHandles.push_back(dxTexture->GetOrCreateBindlessView(
+                ctx,
+                VkTextureViewDesc{
+                    .viewType = TextureUtil::GetTextureViewType(binding),
+                    .format = TextureUtil::GetTextureFormat(binding),
+                    .mipBias = binding.mipBias,
+                    .mipCount = (binding.mipCount == 0) ? rhiTexture->GetDescription().mips : binding.mipCount,
+                    .startSlice = binding.startSlice,
+                    .sliceCount =
+                        (binding.sliceCount == 0) ? rhiTexture->GetDescription().depthOrArraySize : binding.sliceCount,
+
+                },
+                vkDescriptorPool));
+        }
+    }
+
+    ::vk::ShaderStageFlags stageFlags;
+    switch (type)
+    {
+    case CommandQueueTypes::Compute:
+        stageFlags = ::vk::ShaderStageFlagBits::eCompute;
+        break;
+    case CommandQueueTypes::Graphics:
+        stageFlags = ::vk::ShaderStageFlagBits::eAllGraphics;
+        break;
+    default:
+        VEX_ASSERT(false, "Operation not supported on this queue type");
+    }
+
+    commandBuffer->pushConstants(*vkResourceLayout.pipelineLayout,
+                                 stageFlags,
+                                 0,
+                                 bindlessHandles.size(),
+                                 bindlessHandles.data());
 }
 
 void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)
@@ -323,8 +368,9 @@ CommandQueueType VkCommandList::GetType() const
     return type;
 }
 
-VkCommandList::VkCommandList(::vk::UniqueCommandBuffer&& commandBuffer, CommandQueueType type)
-    : commandBuffer{ std::move(commandBuffer) }
+VkCommandList::VkCommandList(VkGPUContext& ctx, ::vk::UniqueCommandBuffer&& commandBuffer, CommandQueueType type)
+    : ctx{ ctx }
+    , commandBuffer{ std::move(commandBuffer) }
     , type{ type }
 {
 }

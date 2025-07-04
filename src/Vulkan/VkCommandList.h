@@ -6,13 +6,14 @@
 
 namespace vex::vk
 {
+struct VkGPUContext;
 
 class VkTexture;
 
 class VkCommandList : public RHICommandList
 {
 public:
-    VkCommandList(::vk::UniqueCommandBuffer&& commandBuffer, CommandQueueType type);
+    VkCommandList(VkGPUContext& ctx, ::vk::UniqueCommandBuffer&& commandBuffer, CommandQueueType type);
 
     virtual bool IsOpen() const override;
 
@@ -48,6 +49,7 @@ public:
     virtual CommandQueueType GetType() const override;
 
 private:
+    VkGPUContext& ctx;
     ::vk::UniqueCommandBuffer commandBuffer;
     CommandQueueType type;
     bool isOpen = false;

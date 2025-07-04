@@ -121,28 +121,28 @@ if (WIN32 AND VEX_ENABLE_DX12)
     set(DX_AGILITY_VERSION "616")
     set(AGILITY_SDK_DIR "${CMAKE_BINARY_DIR}/DirectX-AgilitySDK")
     set(AGILITY_SDK_NUPKG "${CMAKE_BINARY_DIR}/agility_sdk.nupkg")
-    
+
     # Download the NuGet package if not already downloaded
     if(NOT EXISTS "${AGILITY_SDK_DIR}/build")
         message(STATUS "Downloading DX12 Agility SDK 1.${DX_AGILITY_VERSION}.0...")
-        
-        file(DOWNLOAD 
+
+        file(DOWNLOAD
             "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.${DX_AGILITY_VERSION}.0"
             "${AGILITY_SDK_NUPKG}"
         )
-        
+
         # NuGet packages are ZIP files with different extension
-        file(ARCHIVE_EXTRACT 
+        file(ARCHIVE_EXTRACT
             INPUT "${AGILITY_SDK_NUPKG}"
             DESTINATION "${AGILITY_SDK_DIR}"
         )
-        
+
         message(STATUS "DirectX Agility SDK extracted to: ${AGILITY_SDK_DIR}")
-        
+
         # Clean up the downloaded package
         file(REMOVE "${AGILITY_SDK_NUPKG}")
     endif()
-    
+
     # Set the variables for use in functions
     set(DX_AGILITY_SDK_VERSION ${DX_AGILITY_VERSION} CACHE STRING "DirectX Agility SDK Version" FORCE)
     set(DX_AGILITY_SDK_SOURCE_DIR "${AGILITY_SDK_DIR}/build/native" CACHE PATH "DirectX Agility SDK Source Directory" FORCE)
@@ -177,6 +177,7 @@ add_library(Vex STATIC
     "src/Vex/Formats.cpp"
     "src/Vex/RHI/RHIBuffer.h"
     "src/Vex/Texture.h"
+    "src/Vex/Texture.cpp"
     "src/Vex/Buffer.h"
     "src/Vex/CommandQueueType.h"
     "src/Vex/RHI/RHIFwd.h"
@@ -311,7 +312,7 @@ endif()
 message(STATUS "Setting up Vex headers...")
 
 # Static linking with DXC.
-build_with_dxc(Vex)
+        build_with_dxc(Vex)
 
 # Static linking to efsw
 add_header_only_dependency(Vex efsw "${efsw_SOURCE_DIR}" "include" "efsw")

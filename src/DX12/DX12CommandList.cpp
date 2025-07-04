@@ -14,47 +14,6 @@
 namespace vex::dx12
 {
 
-namespace CommandList_Internal
-{
-
-static TextureViewType GetTextureViewType(const ResourceBinding& binding)
-{
-    switch (binding.texture.description.type)
-    {
-    case TextureType::Texture2D:
-        return (binding.texture.description.depthOrArraySize > 1) ? TextureViewType::Texture2DArray
-                                                                  : TextureViewType::Texture2D;
-    case TextureType::TextureCube:
-        return (binding.texture.description.depthOrArraySize > 1) ? TextureViewType::TextureCubeArray
-                                                                  : TextureViewType::TextureCube;
-    case TextureType::Texture3D:
-        return TextureViewType::Texture3D;
-    default:
-        VEX_LOG(Fatal, "Unrecognized texture type...");
-    }
-    std::unreachable();
-}
-
-static DXGI_FORMAT GetTextureFormat(const ResourceBinding& binding)
-{
-    if (!IsFormatSRGB(binding.texture.description.format) &&
-        !FormatHasSRGBEquivalent(binding.texture.description.format))
-    {
-        return DXGI_FORMAT_UNKNOWN;
-    }
-
-    DXGI_FORMAT nativeFormat = TextureFormatToDXGI(binding.texture.description.format);
-
-    if (binding.textureFlags & TextureBinding::SRGB)
-    {
-        return GetSRGBFormatForSRGBCompatibleDX12Format(nativeFormat);
-    }
-
-    return nativeFormat;
-}
-
-} // namespace CommandList_Internal
-
 DX12CommandList::DX12CommandList(const ComPtr<DX12Device>& device, CommandQueueType type)
     : device{ device }
     , type{ type }
@@ -229,9 +188,6 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
                                          std::span<RHIBufferBinding> buffers,
                                          RHIDescriptorPool& descriptorPool)
 {
-    using namespace CommandList_Internal;
-
-    const auto& dxResourceLayout = reinterpret_cast<const DX12ResourceLayout&>(layout);
     auto& dxDescriptorPool = reinterpret_cast<DX12DescriptorPool&>(descriptorPool);
 
     std::vector<BindlessHandle> bindlessHandles;
@@ -248,8 +204,8 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
                 device,
                 DX12TextureView{
                     .type = usage,
-                    .dimension = GetTextureViewType(binding),
-                    .format = GetTextureFormat(binding),
+                    .dimension = TextureUtil::GetTextureViewType(binding),
+                    .format = TextureFormatToDXGI(TextureUtil::GetTextureFormat(binding)),
                     .mipBias = binding.mipBias,
                     .mipCount = (binding.mipCount == 0) ? rhiTexture->GetDescription().mips : binding.mipCount,
                     .startSlice = binding.startSlice,
