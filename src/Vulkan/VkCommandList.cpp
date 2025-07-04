@@ -165,6 +165,8 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
 
                 },
                 vkDescriptorPool));
+
+            // Transition(*dxTexture, ::vk::ImageLayout::eGeneral);
         }
     }
 

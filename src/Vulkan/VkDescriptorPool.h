@@ -27,6 +27,13 @@ public:
     void UpdateDescriptor(VkGPUContext& ctx, BindlessHandle targetDescriptor, ::vk::DescriptorImageInfo createInfo);
 
 private:
+    static constexpr std::array DescriptorTypes{
+        ::vk::DescriptorType::eCombinedImageSampler,
+        ::vk::DescriptorType::eUniformBuffer,
+        ::vk::DescriptorType::eStorageBuffer,
+        ::vk::DescriptorType::eStorageImage,
+    };
+
     ::vk::Device device;
     ::vk::UniqueDescriptorPool descriptorPool;
     ::vk::UniqueDescriptorSet bindlessSet; // Single global set for bindless resources
@@ -37,7 +44,7 @@ private:
         std::vector<u8> generations;
         FreeListAllocator handles;
     };
-    std::array<BindlessAllocation, 3> bindlessAllocations;
+    std::array<BindlessAllocation, DescriptorTypes.size()> bindlessAllocations;
     BindlessAllocation& GetAllocation(BindlessHandle::Type handle);
     BindlessAllocation& GetAllocation(BindlessHandle handle);
 

@@ -203,10 +203,12 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     features12.pNext = &features13;
     features12.timelineSemaphore = true;
     features12.descriptorIndexing = true;
+    features12.runtimeDescriptorArray = true;
     features12.descriptorBindingPartiallyBound = true;
     features12.descriptorBindingUniformBufferUpdateAfterBind = true;
     features12.descriptorBindingStorageBufferUpdateAfterBind = true;
     features12.descriptorBindingSampledImageUpdateAfterBind = true;
+    features12.descriptorBindingStorageImageUpdateAfterBind = true;
 
     ::vk::DeviceCreateInfo deviceCreateInfo{ .pNext = &features12,
                                              .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),

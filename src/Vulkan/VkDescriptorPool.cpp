@@ -35,18 +35,13 @@ VkDescriptorPool::VkDescriptorPool(::vk::Device device)
     descriptorPool = VEX_VK_CHECK <<= device.createDescriptorPoolUnique(descriptorPoolInfo);
 
     // Inspired from https://dev.to/gasim/implementing-bindless-design-in-vulkan-34no
-    std::array<::vk::DescriptorSetLayoutBinding, 3> bindings{};
-    std::array<::vk::DescriptorBindingFlags, 3> flags{};
-    static constexpr std::array types{
-        ::vk::DescriptorType::eUniformBuffer,
-        ::vk::DescriptorType::eStorageBuffer,
-        ::vk::DescriptorType::eCombinedImageSampler,
-    };
+    std::array<::vk::DescriptorSetLayoutBinding, DescriptorTypes.size()> bindings{};
+    std::array<::vk::DescriptorBindingFlags, DescriptorTypes.size()> flags{};
 
-    for (uint32_t i = 0; i < 3; ++i)
+    for (uint32_t i = 0; i < DescriptorTypes.size(); ++i)
     {
         bindings[i].binding = i;
-        bindings[i].descriptorType = types[i];
+        bindings[i].descriptorType = DescriptorTypes[i];
         bindings[i].descriptorCount = BindlessMaxDescriptorPerType;
         bindings[i].stageFlags = ::vk::ShaderStageFlagBits::eAll;
         flags[i] = ::vk::DescriptorBindingFlagBits::ePartiallyBound | ::vk::DescriptorBindingFlagBits::eUpdateAfterBind;
@@ -54,10 +49,10 @@ VkDescriptorPool::VkDescriptorPool(::vk::Device device)
 
     ::vk::DescriptorSetLayoutBindingFlagsCreateInfo bindingFlags{};
     bindingFlags.pBindingFlags = flags.data();
-    bindingFlags.bindingCount = 3;
+    bindingFlags.bindingCount = DescriptorTypes.size();
 
     ::vk::DescriptorSetLayoutCreateInfo createInfo{};
-    createInfo.bindingCount = 3;
+    createInfo.bindingCount = DescriptorTypes.size();
     createInfo.pBindings = bindings.data();
     createInfo.flags = ::vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool;
     createInfo.pNext = &bindingFlags;
@@ -76,7 +71,7 @@ VkDescriptorPool::VkDescriptorPool(::vk::Device device)
 
     bindlessSet = std::move(descSets[0]);
 
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < DescriptorTypes.size(); i++)
     {
         bindlessAllocations[i].generations.resize(BindlessMaxDescriptorPerType);
         bindlessAllocations[i].handles = FreeListAllocator(BindlessMaxDescriptorPerType);
@@ -175,9 +170,10 @@ void VkDescriptorPool::UpdateDescriptor(VkGPUContext& ctx,
 {
     const ::vk::WriteDescriptorSet writeSet{
         .dstSet = *bindlessSet,
-        .dstBinding = targetDescriptor.value,
+        .dstBinding = 3,
+        .dstArrayElement = targetDescriptor.value,
         .descriptorCount = 1,
-        .descriptorType = ::vk::DescriptorType::eCombinedImageSampler,
+        .descriptorType = ::vk::DescriptorType::eStorageImage,
         .pImageInfo = &createInfo,
     };
 
