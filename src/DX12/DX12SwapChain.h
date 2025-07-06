@@ -25,7 +25,7 @@ public:
                   const PlatformWindow& platformWindow);
     virtual ~DX12SwapChain() override;
     virtual void AcquireNextBackbuffer(u8 frameIndex) override;
-    virtual void Present() override;
+    virtual void Present(bool isFullscreenMode) override;
     virtual void Resize(u32 width, u32 height) override;
 
     virtual void SetVSync(bool enableVSync) override;

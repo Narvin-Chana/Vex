@@ -8,9 +8,4 @@ DX12Shader::DX12Shader(const ShaderKey& key)
 {
 }
 
-std::span<const u8> DX12Shader::GetBlob() const
-{
-    return std::span<const u8>(TriangleComputeShader);
-}
-
 } // namespace vex::dx12

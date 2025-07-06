@@ -102,7 +102,7 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     //              bindless index.
 
     // Collect all underlying RHI textures.
-    i32 totalSize = reads.size() + writes.size();
+    i32 totalSize = static_cast<i32>(reads.size() + writes.size());
 
     std::vector<RHITextureBinding> rhiTextureBindings;
     rhiTextureBindings.reserve(totalSize);
@@ -146,6 +146,10 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     // TODO: If we would want to add the shader code-gen to fill-in bindless resources automatically, we'd also have to
     // pass in the reads, writes and constants here.
     auto pipelineState = backend->GetPipelineStateCache().GetComputePipelineState({ .computeShader = shader });
+    if (!pipelineState)
+    {
+        return;
+    }
     cmdList->SetPipelineState(*pipelineState);
 
     // Validate dispatch (vs platform/api constraints)

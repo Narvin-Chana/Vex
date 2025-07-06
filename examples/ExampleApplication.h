@@ -12,6 +12,8 @@ public:
     ExampleApplication(std::string_view windowName);
     virtual ~ExampleApplication();
 
+    virtual void HandleKeyInput(int key, int scancode, int action, int mods) = 0;
+
 protected:
     static constexpr int32_t DefaultWidth = 1280, DefaultHeight = 600;
 

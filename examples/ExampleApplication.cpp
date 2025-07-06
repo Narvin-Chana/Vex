@@ -48,14 +48,16 @@ ExampleApplication::ExampleApplication(std::string_view windowName)
 
     glfwSetKeyCallback(window,
                        [](GLFWwindow* w, int key, int scancode, int action, int mods)
-    {
+                       {
                            auto* self = static_cast<ExampleApplication*>(glfwGetWindowUserPointer(w));
 
-        // Alt+Enter to toggle fullscreen
-        if (key == GLFW_KEY_ENTER && action == GLFW_PRESS && (mods & GLFW_MOD_ALT))
-        {
+                           // Alt+Enter to toggle fullscreen
+                           if (key == GLFW_KEY_ENTER && action == GLFW_PRESS && (mods & GLFW_MOD_ALT))
+                           {
                                self->ToggleFullscreen();
-        }
+                           }
+
+                           self->HandleKeyInput(key, scancode, action, mods);
                        });
 }
 

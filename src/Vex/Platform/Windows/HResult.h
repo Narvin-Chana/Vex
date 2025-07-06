@@ -4,8 +4,6 @@
 
 #include <comdef.h>
 
-#include <Vex/Platform/Windows/WString.h>
-
 namespace vex
 {
 

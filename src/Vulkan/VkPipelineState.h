@@ -19,6 +19,7 @@ class VkComputePipelineState : public RHIComputePipelineState
 public:
     VkComputePipelineState(const Key& key);
     virtual void Compile(const RHIShader& computeShader, RHIResourceLayout& resourceLayout) override;
+    virtual void Cleanup(ResourceCleanup& resourceCleanup) override;
 };
 
 } // namespace vex::vk

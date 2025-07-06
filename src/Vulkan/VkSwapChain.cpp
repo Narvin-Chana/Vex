@@ -124,7 +124,7 @@ void VkSwapChain::AcquireNextBackbuffer(u8 frameIndex)
     VEX_VK_CHECK << cmdQueue.queue.submit2KHR(submitInfo);
 }
 
-void VkSwapChain::Present()
+void VkSwapChain::Present(bool isFullscreenMode)
 {
     auto& cmdQueue = ctx.graphicsPresentQueue;
 

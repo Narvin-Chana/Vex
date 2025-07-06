@@ -69,8 +69,8 @@ bool RHIResourceLayout::ValidateGlobalConstant(const GlobalConstant& globalConst
 }
 
 ScopedGlobalConstantHandle::ScopedGlobalConstantHandle(RHIResourceLayout& globalLayout, std::string name)
-    : globalLayout{ globalLayout }
-    , name{ std::move(name) }
+    : name{ std::move(name) }
+    , globalLayout{ globalLayout }
 {
 }
 

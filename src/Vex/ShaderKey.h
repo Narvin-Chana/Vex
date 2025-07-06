@@ -5,6 +5,9 @@
 #include <tuple>
 #include <vector>
 
+#include <magic_enum/magic_enum.hpp>
+
+#include <Vex/Formattable.h>
 #include <Vex/Hash.h>
 
 namespace vex
@@ -47,3 +50,12 @@ VEX_MAKE_HASHABLE(vex::ShaderKey,
     );
 );
 // clang-format on
+
+VEX_FORMATTABLE(vex::ShaderDefine, "ShaderDefine(\"{}\", \"{}\")", obj.name, obj.value);
+
+VEX_FORMATTABLE(vex::ShaderKey,
+                "ShaderKey(\n\tPath: \"{}\"\n\tEntry Point: \"{}\"\n\tType: {}\n\tDefines: {})",
+                obj.path.string(),
+                obj.entryPoint,
+                std::string(magic_enum::enum_name(obj.type)),
+                obj.defines);
