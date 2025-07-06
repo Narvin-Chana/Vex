@@ -89,7 +89,8 @@ ComPtr<IDxcResult> ShaderCache::GetPreprocessedShader(const RHIShader& shader,
                          .Encoding = CP_UTF8 };
 
     ComPtr<IDxcResult> result;
-    if (HRESULT hr = GCompilerUtil.compiler->Compile(&buffer, args.data(), args.size(), nullptr, IID_PPV_ARGS(&result));
+    if (HRESULT hr = GCompilerUtil.compiler
+                         ->Compile(&buffer, args.data(), static_cast<u32>(args.size()), nullptr, IID_PPV_ARGS(&result));
         FAILED(hr))
     {
         return nullptr;
@@ -180,7 +181,7 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader)
             StringToWString(shader.key.entryPoint).c_str(),
             ShaderCompiler_Internal::GetTargetFromShaderType(shader.key.type).c_str(),
             args.data(),
-            args.size(),
+            static_cast<u32>(args.size()),
             defines.data(),
             static_cast<u32>(defines.size()),
             &compilerArgs);

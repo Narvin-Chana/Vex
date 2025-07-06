@@ -102,7 +102,7 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     //              bindless index.
 
     // Collect all underlying RHI textures.
-    i32 totalSize = reads.size() + writes.size();
+    i32 totalSize = static_cast<i32>(reads.size() + writes.size());
 
     std::vector<RHITextureBinding> rhiTextureBindings;
     rhiTextureBindings.reserve(totalSize);
