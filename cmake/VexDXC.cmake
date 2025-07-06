@@ -23,7 +23,7 @@ if(WIN32)
     set(DXC_SHARED_LIB "${dxc_SOURCE_DIR}/bin/x64/dxcompiler.dll")
 elseif(UNIX)
     set(DXC_HEADERS_INCLUDE_NAME "include")
-    set(DXC_SHARED_LIB "${dxc_SOURCE_DIR}/libdxcompiler.so")
+    set(DXC_SHARED_LIB "${dxc_SOURCE_DIR}/./lib/libdxcompiler.so")
 endif()
 
 function(build_with_dxc target)
