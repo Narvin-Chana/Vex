@@ -1,11 +1,15 @@
 #include "ShaderCompiler.h"
 
+#include <istream>
 #include <ranges>
+#include <string>
 
 #include <Vex/Logger.h>
 #include <Vex/Platform/Platform.h>
 #include <Vex/RHI/RHI.h>
 #include <Vex/RHI/RHIShader.h>
+#include <Vex/ShaderGen.h>
+#include <Vex/ShaderResourceContext.h>
 
 namespace vex
 {
@@ -132,7 +136,8 @@ std::optional<std::size_t> ShaderCache::GetShaderHash(const RHIShader& shader) c
     return std::nullopt;
 }
 
-std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader)
+std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
+                                                            const ShaderResourceContext& resourceContext)
 {
     // Generate the hash if this is the first time we've compiled this shader.
     if (shader.version == 0)
@@ -145,8 +150,38 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader)
         shader.hash = *newHash;
     }
 
+    std::stringstream buffer;
+    {
+        std::ifstream shaderFile{ shader.key.path.c_str() };
+        buffer << shaderFile.rdbuf();
+    }
+
+    // Auto-generate shader constants bindings.
+    std::string shaderFileStr = "struct zzzZZZ___GeneratedConstants\n{";
+    for (std::string& name : resourceContext.GenerateShaderBindings())
+    {
+        // Remove spaces, we suppose that the user will not use any tabs or other cursed characters.
+        std::replace(name.begin(), name.end(), ' ', '_');
+        shaderFileStr.append(std::format("uint {}_bindlessIndex;", name));
+    }
+
+    // For now we suppose that the register b0 is used for the generated constants buffer (since local constants aren't
+    // yet supported).
+    shaderFileStr.append("};\nConstantBuffer<zzzZZZ___GeneratedConstants> zzzZZZ___GeneratedConstantsCB: "
+                         "register(b0);");
+
+    // VEX_GLOBAL_RESOURCE and VEX_RESOURCE is how users will access resources, include macros that generate these.
+    shaderFileStr.append(ShaderGenMacros);
+
+    // Append the actual shader file contents to the str.
+    shaderFileStr.append(buffer.str());
+
     ComPtr<IDxcBlobEncoding> shaderBlob;
-    if (HRESULT hr = GCompilerUtil.utils->LoadFile(shader.key.path.wstring().c_str(), nullptr, &shaderBlob); FAILED(hr))
+    if (HRESULT hr = GCompilerUtil.utils->CreateBlobFromPinned(shaderFileStr.c_str(),
+                                                               shaderFileStr.size(),
+                                                               CP_UTF8,
+                                                               &shaderBlob);
+        FAILED(hr))
     {
         return std::unexpected("Failed to load shader from filesystem.");
     }
@@ -220,7 +255,7 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader)
     shader.blob.resize(shaderBytecode->GetBufferSize());
     std::memcpy(shader.blob.data(), shaderBytecode->GetBufferPointer(), shader.blob.size() * sizeof(u8));
 
-    // Reflection blob, to be implemented later on.
+    // TODO: Reflection blob, to be implemented later on.
     {
         // ComPtr<IDxcBlob> reflectionBlob;
         // HRESULT reflectionResult =
@@ -271,7 +306,7 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader)
     return {};
 }
 
-RHIShader* ShaderCache::GetShader(const ShaderKey& key)
+RHIShader* ShaderCache::GetShader(const ShaderKey& key, const ShaderResourceContext& resourceContext)
 {
     RHIShader* shaderPtr;
     if (shaderCache.contains(key))
@@ -287,7 +322,7 @@ RHIShader* ShaderCache::GetShader(const ShaderKey& key)
 
     if (shaderPtr->NeedsRecompile())
     {
-        auto result = CompileShader(*shaderPtr);
+        auto result = CompileShader(*shaderPtr, resourceContext);
         // Currently this is just spat out to cout, however a future task (separate MR) will be to determine how to pass
         // error info/retry info to the client user programatically.
         //
