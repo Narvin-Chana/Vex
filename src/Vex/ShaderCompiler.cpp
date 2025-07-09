@@ -171,7 +171,7 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
     shaderFileStr.append("};\nConstantBuffer<zzzZZZ___GeneratedConstants> zzzZZZ___GeneratedConstantsCB: "
                          "register(b0);");
 
-    // VEX_GLOBAL_RESOURCE and VEX_RESOURCE is how users will access resources.
+    // VEX_GLOBAL_RESOURCE and VEX_RESOURCE is how users will access resources, include macros that generate these.
     shaderFileStr.append(ShaderGenMacros);
 
     // Append the actual shader file contents to the str.

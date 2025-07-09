@@ -14,7 +14,8 @@ struct ShaderResourceContext
     std::span<RHITextureBinding> textures;
     std::span<RHIBufferBinding> buffers;
 
-    // The nth dword after which the root/push constants contain bindless indices (instead of local constants).
+    // TODO(https://trello.com/c/1eAuiBIJ): The nth dword after which the root/push constants contain bindless indices
+    // (instead of local constants), for now unused and not filled in.
     u32 rootConstantBindlessSectionStartIndex = 0;
 
     std::vector<std::string> GenerateShaderBindings() const;
