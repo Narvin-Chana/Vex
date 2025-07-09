@@ -26,7 +26,8 @@ RHIResourceLayout& PipelineStateCache::GetResourceLayout()
     return *resourceLayout;
 }
 
-const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(const RHIGraphicsPipelineState::Key& key)
+const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
+    const RHIGraphicsPipelineState::Key& key, const ShaderResourceContext& resourceContext)
 {
     RHIGraphicsPipelineState* ps;
     if (graphicsPSCache.contains(key))
@@ -39,8 +40,8 @@ const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(con
         ps = graphicsPSCache[key].get();
     }
 
-    auto vertexShader = shaderCache.GetShader(ps->key.vertexShader);
-    auto pixelShader = shaderCache.GetShader(ps->key.pixelShader);
+    auto vertexShader = shaderCache.GetShader(ps->key.vertexShader, resourceContext);
+    auto pixelShader = shaderCache.GetShader(ps->key.pixelShader, resourceContext);
 
     if (!vertexShader || !pixelShader)
     {
@@ -60,7 +61,8 @@ const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(con
     return ps;
 }
 
-const RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const RHIComputePipelineState::Key& key)
+const RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const RHIComputePipelineState::Key& key,
+                                                                           const ShaderResourceContext& resourceContext)
 {
     RHIComputePipelineState* ps;
     if (computePSCache.contains(key))
@@ -73,7 +75,7 @@ const RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const
         ps = computePSCache[key].get();
     }
 
-    auto shader = shaderCache.GetShader(ps->key.computeShader);
+    auto shader = shaderCache.GetShader(ps->key.computeShader, resourceContext);
     if (!shader->IsValid())
     {
         return nullptr;
