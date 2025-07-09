@@ -203,6 +203,8 @@ add_library(Vex STATIC
     "src/Vex/ShaderCompiler.cpp"
     "src/Vex/Platform/Platform.h"
     "src/Vex/Formattable.h"
+    "src/Vex/ShaderResourceContext.h"
+    "src/Vex/ShaderResourceContext.cpp"
 )
 
 if (WIN32)
