@@ -20,7 +20,7 @@ void PhysicalDevice::DumpPhysicalDeviceInfo()
         "\tShader model: {}\n"
         "\tAdvanced Features:\n"
         "\t\tMesh Shaders: {}\n"
-        "\t\tRayTracing: {}\n",
+        "\t\tRayTracing: {}\n"
         "\t\tBindlessResources: {}",
         deviceName,
         dedicatedVideoMemoryMB,
