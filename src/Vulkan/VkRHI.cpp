@@ -397,7 +397,7 @@ void VkRHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceInde
     VEX_VK_CHECK << commandQueues[queueType].queue.submit(submit);
 }
 
-void VkRHI::ModifyShaderCompilerEnvironment(std::vector<LPCWSTR>& args, std::vector<ShaderDefine>& defines)
+void VkRHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args, std::vector<ShaderDefine>& defines)
 {
     args.push_back(L"-spirv");
     defines.emplace_back(L"VEX_VULKAN", L"");

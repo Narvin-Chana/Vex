@@ -13,10 +13,11 @@ struct BindlessHandle : public Handle<BindlessHandle>
     enum class Type : i8
     {
         None = -1,
-        Texture = 0,
-        UniformBuffer = 1,
-        StorageBuffer = 2,
+        UniformBuffer = 0,
+        StorageBuffer = 1,
+        Texture = 2,
         StorageImage = 3,
+        Num = 4
     } type = Type::None;
 
     static BindlessHandle CreateHandle(u32 index, u8 generation, Type type)

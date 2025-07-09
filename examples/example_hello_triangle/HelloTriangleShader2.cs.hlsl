@@ -5,7 +5,7 @@ struct Constants
 {
     uint outputBindlessIndex;
 };
-ConstantBuffer<Constants> CB : register(b1);
+ConstantBuffer<Constants> CB : register(b0);
 
 // Simple function to check if a point is inside a triangle
 bool IsInsideTriangle(float2 p, float2 v0, float2 v1, float2 v2)

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Platform/Windows/WString.h"
+#include "Platform/Platform.h"
 
 #include <format>
 #include <vector>

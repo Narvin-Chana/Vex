@@ -312,7 +312,7 @@ endif()
 message(STATUS "Setting up Vex headers...")
 
 # Static linking with DXC.
-        build_with_dxc(Vex)
+build_with_dxc(Vex)
 
 # Static linking to efsw
 add_header_only_dependency(Vex efsw "${efsw_SOURCE_DIR}" "include" "efsw")

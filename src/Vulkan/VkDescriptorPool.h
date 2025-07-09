@@ -28,9 +28,9 @@ public:
 
 private:
     static constexpr std::array DescriptorTypes{
-        ::vk::DescriptorType::eSampledImage,
         ::vk::DescriptorType::eUniformBuffer,
         ::vk::DescriptorType::eStorageBuffer,
+        ::vk::DescriptorType::eSampledImage,
         ::vk::DescriptorType::eStorageImage,
     };
 

@@ -37,7 +37,7 @@ TextureFormat GetTextureFormat(const ResourceBinding& binding)
 
     if (binding.textureFlags & TextureBinding::SRGB)
     {
-        return GetSRGEquivalentFormat(binding.texture.description.format);
+        return GetSRGBEquivalentFormat(binding.texture.description.format);
     }
 
     return binding.texture.description.format;

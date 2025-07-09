@@ -5,7 +5,7 @@ struct Constants
 {
     uint outputBindlessIndex;
 };
-ConstantBuffer<Constants> CB : register(b1);
+ConstantBuffer<Constants> CB : register(b0);
 
 // Sourced from IQuilez SDF functions
 float dot2(float2 v) { return dot(v, v); }

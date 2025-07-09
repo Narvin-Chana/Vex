@@ -49,7 +49,8 @@ struct RenderHardwareInterface
     virtual void SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) = 0;
     virtual void WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) = 0;
 
-    virtual void ModifyShaderCompilerEnvironment(std::vector<LPCWSTR>& args, std::vector<ShaderDefine>& defines) = 0;
+    virtual void ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
+                                                 std::vector<ShaderDefine>& defines) = 0;
 };
 
 using RHI = RenderHardwareInterface;
