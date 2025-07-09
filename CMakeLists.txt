@@ -205,6 +205,7 @@ add_library(Vex STATIC
     "src/Vex/Formattable.h"
     "src/Vex/ShaderResourceContext.h"
     "src/Vex/ShaderResourceContext.cpp"
+    "src/Vex/ShaderGen.h"
 )
 
 if (WIN32)

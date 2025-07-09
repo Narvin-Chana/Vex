@@ -8,6 +8,7 @@
 #include <Vex/Platform/Platform.h>
 #include <Vex/RHI/RHI.h>
 #include <Vex/RHI/RHIShader.h>
+#include <Vex/ShaderGen.h>
 #include <Vex/ShaderResourceContext.h>
 
 namespace vex
@@ -150,20 +151,30 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
         shader.hash = *newHash;
     }
 
-    std::ifstream shaderFile{ shader.key.path.c_str() };
     std::stringstream buffer;
-    buffer << shaderFile.rdbuf();
+    {
+        std::ifstream shaderFile{ shader.key.path.c_str() };
+        buffer << shaderFile.rdbuf();
+    }
 
+    // Auto-generate shader constants bindings.
     std::string shaderFileStr = "struct zzzZZZ___GeneratedConstants\n{";
-    auto names = resourceContext.GenerateShaderBindings();
-    for (auto& name : names)
+    for (std::string& name : resourceContext.GenerateShaderBindings())
     {
         // Remove spaces, we suppose that the user will not use any tabs or other cursed characters.
         std::replace(name.begin(), name.end(), ' ', '_');
         shaderFileStr.append(std::format("uint {}_bindlessIndex;", name));
     }
+
+    // For now we suppose that the register b0 is used for the generated constants buffer (since local constants aren't
+    // yet supported).
     shaderFileStr.append("};\nConstantBuffer<zzzZZZ___GeneratedConstants> zzzZZZ___GeneratedConstantsCB: "
                          "register(b0);");
+
+    // VEX_GLOBAL_RESOURCE and VEX_RESOURCE is how users will access resources.
+    shaderFileStr.append(ShaderGenMacros);
+
+    // Append the actual shader file contents to the str.
     shaderFileStr.append(buffer.str());
 
     ComPtr<IDxcBlobEncoding> shaderBlob;
@@ -245,7 +256,7 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
     shader.blob.resize(shaderBytecode->GetBufferSize());
     std::memcpy(shader.blob.data(), shaderBytecode->GetBufferPointer(), shader.blob.size() * sizeof(u8));
 
-    // Reflection blob, to be implemented later on.
+    // TODO: Reflection blob, to be implemented later on.
     {
         ComPtr<IDxcBlob> reflectionBlob;
         HRESULT reflectionResult =
