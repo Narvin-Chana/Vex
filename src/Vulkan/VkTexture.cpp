@@ -34,35 +34,35 @@ namespace vex::vk
     }
     std::unreachable();
 }
-
-::vk::Sampler GetOrCreateAnisotropicSamplers(VkGPUContext& ctx)
-{
-    static ::vk::UniqueSampler sampler = [&]()
-    {
-        auto properties = ctx.physDevice.getProperties();
-
-        ::vk::SamplerCreateInfo samplerCreate{
-            .magFilter = ::vk::Filter::eLinear,
-            .minFilter = ::vk::Filter::eLinear,
-            .mipmapMode = ::vk::SamplerMipmapMode::eLinear,
-            .addressModeU = ::vk::SamplerAddressMode::eRepeat,
-            .addressModeV = ::vk::SamplerAddressMode::eRepeat,
-            .addressModeW = ::vk::SamplerAddressMode::eRepeat,
-            .mipLodBias = 0,
-            .anisotropyEnable = ::vk::True,
-            .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
-            .compareEnable = ::vk::False,
-            .compareOp = ::vk::CompareOp::eAlways,
-            .minLod = 0,
-            .maxLod = 0,
-            .borderColor = ::vk::BorderColor::eIntOpaqueBlack,
-            .unnormalizedCoordinates = ::vk::False,
-        };
-
-        return VEX_VK_CHECK <<= ctx.device.createSamplerUnique(samplerCreate);
-    }();
-    return *sampler;
-}
+//
+// ::vk::Sampler GetOrCreateAnisotropicSamplers(VkGPUContext& ctx)
+// {
+//     static ::vk::UniqueSampler sampler = [&]()
+//     {
+//         auto properties = ctx.physDevice.getProperties();
+//
+//         ::vk::SamplerCreateInfo samplerCreate{
+//             .magFilter = ::vk::Filter::eLinear,
+//             .minFilter = ::vk::Filter::eLinear,
+//             .mipmapMode = ::vk::SamplerMipmapMode::eLinear,
+//             .addressModeU = ::vk::SamplerAddressMode::eRepeat,
+//             .addressModeV = ::vk::SamplerAddressMode::eRepeat,
+//             .addressModeW = ::vk::SamplerAddressMode::eRepeat,
+//             .mipLodBias = 0,
+//             .anisotropyEnable = ::vk::True,
+//             .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
+//             .compareEnable = ::vk::False,
+//             .compareOp = ::vk::CompareOp::eAlways,
+//             .minLod = 0,
+//             .maxLod = 0,
+//             .borderColor = ::vk::BorderColor::eIntOpaqueBlack,
+//             .unnormalizedCoordinates = ::vk::False,
+//         };
+//
+//         return VEX_VK_CHECK <<= ctx.device.createSamplerUnique(samplerCreate);
+//     }();
+//     return *sampler;
+// }
 
 VkBackbufferTexture::VkBackbufferTexture(TextureDescription&& inDescription, ::vk::Image backbufferImage)
     : image{ backbufferImage }
@@ -97,24 +97,25 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(VkGPUContext& ctx,
         return it->second.handle;
     }
 
-    ::vk::ImageViewCreateInfo viewCreate{ .image = GetResource(),
-                                          .viewType = TextureTypeToVulkan(view.viewType),
-                                          .format = TextureFormatToVulkan(view.format),
-                                          .subresourceRange = {
-                                              .aspectMask = ::vk::ImageAspectFlagBits::eColor,
-                                              .baseMipLevel = view.mipBias,
-                                              .levelCount = view.mipCount,
-                                              .baseArrayLayer = view.startSlice,
-                                              .layerCount = view.sliceCount,
-                                          } };
-    ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx.device.createImageViewUnique(viewCreate);
-    BindlessHandle handle = descriptorPool.AllocateStaticDescriptor(*this);
+    const ::vk::ImageViewCreateInfo viewCreate{ .image = GetResource(),
+                                                .viewType = TextureTypeToVulkan(view.viewType),
+                                                .format = TextureFormatToVulkan(view.format),
+                                                .subresourceRange = {
+                                                    .aspectMask = ::vk::ImageAspectFlagBits::eColor,
+                                                    .baseMipLevel = view.mipBias,
+                                                    .levelCount = view.mipCount,
+                                                    .baseArrayLayer = view.startSlice,
+                                                    .layerCount = view.sliceCount,
+                                                } };
 
-    descriptorPool.UpdateDescriptor(ctx,
-                                    handle,
-                                    ::vk::DescriptorImageInfo{ .sampler = GetOrCreateAnisotropicSamplers(ctx),
-                                                               .imageView = *imageView,
-                                                               .imageLayout = GetLayout() });
+    ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx.device.createImageViewUnique(viewCreate);
+    const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor(*this);
+
+    descriptorPool.UpdateDescriptor(
+        ctx,
+        handle,
+        ::vk::DescriptorImageInfo{ .sampler = nullptr, .imageView = *imageView, .imageLayout = GetLayout() });
+
     cache[view] = { .handle = handle, .view = std::move(imageView) };
 
     return handle;
@@ -225,49 +226,6 @@ namespace vex::TextureUtil
         VEX_ASSERT(false, "Flag to layout conversion not supported");
     };
     return ::vk::ImageLayout::eUndefined;
-}
-
-::vk::AccessFlags2 TextureStateFlagToAccessMask(RHITextureState::Flags flags)
-{
-    using namespace RHITextureState;
-
-    ::vk::AccessFlags2 bits;
-    if (flags & RenderTarget)
-    {
-        bits |= ::vk::AccessFlagBits2::eShaderWrite;
-    }
-
-    if (flags & ShaderResource)
-    {
-        bits |= ::vk::AccessFlagBits2::eShaderRead;
-    }
-
-    if (flags & UnorderedAccess)
-    {
-        bits |= ::vk::AccessFlagBits2::eShaderWrite | ::vk::AccessFlagBits2::eShaderRead;
-    }
-
-    if (flags & DepthWrite)
-    {
-        bits |= ::vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
-    }
-
-    if (flags & DepthRead)
-    {
-        bits |= ::vk::AccessFlagBits2::eDepthStencilAttachmentRead;
-    }
-
-    if (flags & CopySource)
-    {
-        bits |= ::vk::AccessFlagBits2::eTransferRead;
-    }
-
-    if (flags & CopyDest)
-    {
-        bits |= ::vk::AccessFlagBits2::eTransferWrite;
-    }
-
-    return bits;
 }
 
 } // namespace vex::TextureUtil

@@ -26,19 +26,17 @@ RHICommandList* VkCommandPool::CreateCommandList(CommandQueueType queueType)
 
     allocatedCommandBuffers[std::to_underlying(queueType)].push_back(std::move(cmdList));
 
-    VEX_LOG(Info, "Created a command list for \"{}\" type", magic_enum::enum_name(queueType));
+    VEX_LOG(Verbose, "Created a command list for \"{}\" type", magic_enum::enum_name(queueType));
 
     return cmdListPtr;
 }
 
 void VkCommandPool::ReclaimCommandListMemory(CommandQueueType queueType)
 {
-#if 0
-    VEX_LOG(Info,
+    VEX_LOG(Verbose,
             "Reclaimed {} command list(s) for \"{}\" type",
             allocatedCommandBuffers[std::to_underlying(queueType)].size(),
             magic_enum::enum_name(queueType));
-#endif
     allocatedCommandBuffers[std::to_underlying(queueType)].clear();
 }
 

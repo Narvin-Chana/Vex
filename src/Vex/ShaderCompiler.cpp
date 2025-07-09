@@ -19,8 +19,7 @@ static std::vector<DxcDefine> ConvertDefinesToDxcDefine(const std::vector<Shader
     dxcDefines.reserve(defines.size());
     for (auto& d : defines)
     {
-        dxcDefines.emplace_back(
-            DxcDefine{ .Name = StringToWString(d.name).c_str(), .Value = StringToWString(d.value).c_str() });
+        dxcDefines.emplace_back(DxcDefine{ .Name = d.name.c_str(), .Value = d.value.c_str() });
     }
     return dxcDefines;
 }
@@ -159,7 +158,7 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader)
 
     std::vector<LPCWSTR> args;
 
-    rhi->AddAdditionnalShaderCompilerArguments(args);
+    rhi->ModifyShaderCompilerEnvironment(args, shader.key.defines);
 
     if (debugShaders)
     {

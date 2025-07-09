@@ -37,7 +37,6 @@ VEX_MAKE_HASHABLE(vex::vk::VkTextureViewDesc,
 
 namespace vex::TextureUtil
 {
-::vk::AccessFlags2 TextureStateFlagToAccessMask(RHITextureState::Flags flags);
 ::vk::ImageLayout TextureStateFlagToImageLayout(RHITextureState::Flags flags);
 } // namespace vex::TextureUtil
 

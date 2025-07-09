@@ -15,7 +15,8 @@ struct BindlessHandle : public Handle<BindlessHandle>
         None = -1,
         Texture = 0,
         UniformBuffer = 1,
-        StorageBuffer = 2
+        StorageBuffer = 2,
+        StorageImage = 3,
     } type = Type::None;
 
     static BindlessHandle CreateHandle(u32 index, u8 generation, Type type)

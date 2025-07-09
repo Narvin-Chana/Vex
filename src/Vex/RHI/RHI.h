@@ -13,6 +13,7 @@
 namespace vex
 {
 
+struct ShaderDefine;
 struct PhysicalDevice;
 struct ShaderKey;
 struct GraphicsPipelineStateKey;
@@ -48,7 +49,7 @@ struct RenderHardwareInterface
     virtual void SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) = 0;
     virtual void WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) = 0;
 
-    virtual void AddAdditionnalShaderCompilerArguments(std::vector<LPCWSTR>& args) = 0;
+    virtual void ModifyShaderCompilerEnvironment(std::vector<LPCWSTR>& args, std::vector<ShaderDefine>& defines) = 0;
 };
 
 using RHI = RenderHardwareInterface;

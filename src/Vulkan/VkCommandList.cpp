@@ -48,6 +48,21 @@ void VkCommandList::Close()
     isOpen = false;
 }
 
+::vk::PipelineBindPoint CommandQueueTypeToPipelineBindPoint(CommandQueueType type)
+{
+    switch (type)
+    {
+    case CommandQueueTypes::Compute:
+        return ::vk::PipelineBindPoint::eCompute;
+    // TODO: distinguish properly compute bind points from queue type. Cant bind a Compute PSO on a graphics bindpoint
+    case CommandQueueTypes::Graphics:
+        return ::vk::PipelineBindPoint::eCompute;
+    default:
+        VEX_ASSERT("No bind point found for command queues");
+    }
+    std::unreachable();
+}
+
 void VkCommandList::SetViewport(float x, float y, float width, float height, float minDepth, float maxDepth)
 {
     // Manipulation to match behavior of DX12 and other APIs (this allows for hlsl shader code to work the same across
@@ -86,7 +101,7 @@ void VkCommandList::SetPipelineState(const RHIGraphicsPipelineState& graphicsPip
 void VkCommandList::SetPipelineState(const RHIComputePipelineState& computePipelineState)
 {
     auto& vkPSO = reinterpret_cast<const VkComputePipelineState&>(computePipelineState);
-    commandBuffer->bindPipeline(::vk::PipelineBindPoint::eCompute, *vkPSO.computePipeline);
+    commandBuffer->bindPipeline(CommandQueueTypeToPipelineBindPoint(type), *vkPSO.computePipeline);
 }
 
 void VkCommandList::SetLayout(RHIResourceLayout& layout)
@@ -195,29 +210,13 @@ void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIReso
     auto& descPool = reinterpret_cast<VkDescriptorPool&>(descriptorPool);
     auto& vkLayout = reinterpret_cast<const VkResourceLayout&>(resourceLayout);
 
-    std::optional<::vk::PipelineBindPoint> pipelineBindPoint;
-    switch (type)
-    {
-    case CommandQueueType::Compute:
-        pipelineBindPoint = ::vk::PipelineBindPoint::eCompute;
-        break;
-    case CommandQueueType::Graphics:
-        pipelineBindPoint = ::vk::PipelineBindPoint::eGraphics;
-        break;
-    default:
-        pipelineBindPoint = {};
-    }
-
-    if (pipelineBindPoint)
-    {
-        commandBuffer->bindDescriptorSets(*pipelineBindPoint,
-                                          *vkLayout.pipelineLayout,
-                                          0,
-                                          1,
-                                          &*descPool.bindlessSet,
-                                          0,
-                                          nullptr);
-    }
+    commandBuffer->bindDescriptorSets(CommandQueueTypeToPipelineBindPoint(type),
+                                      *vkLayout.pipelineLayout,
+                                      0,
+                                      1,
+                                      &*descPool.bindlessSet,
+                                      0,
+                                      nullptr);
 }
 
 // This only changes the access mask of the texture

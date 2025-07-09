@@ -71,14 +71,14 @@ void HelloTriangleApplication::Run()
 
         {
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
-            ctx.Dispatch(
-                { .path = std::filesystem::current_path().parent_path().parent_path() / "examples" / "shader.hlsl",
-                  .entryPoint = "CSMain",
-                  .type = vex::ShaderType::ComputeShader },
-                {},
-                {},
-                { { vex::ResourceBinding{ .name = "OutputTexture", .texture = workingTexture } } },
-                { static_cast<uint32_t>(width) / 8, static_cast<uint32_t>(height) / 8, 1 });
+            ctx.Dispatch({ .path = std::filesystem::current_path().parent_path().parent_path() / "examples" /
+                                   "example_hello_triangle" / "HelloTriangleShader.cs.hlsl",
+                           .entryPoint = "CSMain",
+                           .type = vex::ShaderType::ComputeShader },
+                         {},
+                         {},
+                         { { vex::ResourceBinding{ .name = "OutputTexture", .texture = workingTexture } } },
+                         { static_cast<uint32_t>(width) / 8, static_cast<uint32_t>(height) / 8, 1 });
             ctx.Copy(workingTexture, graphics->GetCurrentBackBuffer());
         }
 

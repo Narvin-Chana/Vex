@@ -203,6 +203,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     features12.pNext = &features13;
     features12.timelineSemaphore = true;
     features12.descriptorIndexing = true;
+
     features12.runtimeDescriptorArray = true;
     features12.descriptorBindingPartiallyBound = true;
     features12.descriptorBindingUniformBufferUpdateAfterBind = true;
@@ -396,9 +397,10 @@ void VkRHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceInde
     VEX_VK_CHECK << commandQueues[queueType].queue.submit(submit);
 }
 
-void VkRHI::AddAdditionnalShaderCompilerArguments(std::vector<LPCWSTR>& args)
+void VkRHI::ModifyShaderCompilerEnvironment(std::vector<LPCWSTR>& args, std::vector<ShaderDefine>& defines)
 {
     args.push_back(L"-spirv");
+    defines.emplace_back(L"VEX_VULKAN", L"");
 }
 
 VkGPUContext& VkRHI::GetGPUContext()
