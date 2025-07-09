@@ -300,7 +300,27 @@ UniqueHandle<RHIResourceLayout> VkRHI::CreateResourceLayout(const FeatureChecker
 
 UniqueHandle<RHITexture> VkRHI::CreateTexture(const TextureDescription& description)
 {
-    return MakeUnique<VkTexture>(GetGPUContext(), TextureDescription(description));
+    UniqueHandle<VkImageTexture> texture = MakeUnique<VkImageTexture>(GetGPUContext(), TextureDescription(description));
+
+    auto commandPool = CreateCommandPool();
+    auto& vkCmdList = reinterpret_cast<VkCommandList&>(*commandPool->CreateCommandList(CommandQueueTypes::Compute));
+    vkCmdList.Open();
+
+    vkCmdList.Transition(*texture, RHITextureState::UnorderedAccess);
+
+    vkCmdList.Close();
+
+    const auto& graphicsQueue = commandQueues[CommandQueueTypes::Compute];
+
+    ::vk::SubmitInfo submitInfo{ .commandBufferCount = 1, .pCommandBuffers = &*vkCmdList.commandBuffer };
+    VEX_VK_CHECK << graphicsQueue.queue.submit(1, &submitInfo, nullptr);
+
+    // This shouldn't be needed i think
+    // TODO: Find a way to make sure this isn't needed. It screams otherwise because the commandlist is supposedly in
+    // use
+    VEX_VK_CHECK << graphicsQueue.queue.waitIdle();
+
+    return texture;
 }
 
 UniqueHandle<RHIDescriptorPool> VkRHI::CreateDescriptorPool()
@@ -375,6 +395,12 @@ void VkRHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceInde
 
     VEX_VK_CHECK << commandQueues[queueType].queue.submit(submit);
 }
+
+void VkRHI::AddAdditionnalShaderCompilerArguments(std::vector<LPCWSTR>& args)
+{
+    args.push_back(L"-spirv");
+}
+
 VkGPUContext& VkRHI::GetGPUContext()
 {
     static VkGPUContext ctx{ *device, physDevice, *surface, commandQueues[CommandQueueType::Graphics] };

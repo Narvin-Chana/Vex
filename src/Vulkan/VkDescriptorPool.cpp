@@ -18,12 +18,13 @@ static constexpr ::vk::DescriptorBufferInfo NullDescriptorBufferInfo{ .buffer = 
 VkDescriptorPool::VkDescriptorPool(::vk::Device device)
     : device{ device }
 {
-    std::array poolSize{ ::vk::DescriptorPoolSize{ .type = ::vk::DescriptorType::eUniformBuffer,
-                                                   .descriptorCount = BindlessMaxDescriptorPerType },
-                         ::vk::DescriptorPoolSize{ .type = ::vk::DescriptorType::eCombinedImageSampler,
-                                                   .descriptorCount = BindlessMaxDescriptorPerType },
-                         ::vk::DescriptorPoolSize{ .type = ::vk::DescriptorType::eStorageBuffer,
-                                                   .descriptorCount = BindlessMaxDescriptorPerType } };
+    std::vector<::vk::DescriptorPoolSize> poolSize;
+    poolSize.reserve(DescriptorTypes.size());
+    std::ranges::transform(
+        DescriptorTypes,
+        std::back_inserter(poolSize),
+        [](auto type)
+        { return ::vk::DescriptorPoolSize{ .type = type, .descriptorCount = BindlessMaxDescriptorPerType }; });
 
     ::vk::DescriptorPoolCreateInfo descriptorPoolInfo{
         .flags = ::vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind,

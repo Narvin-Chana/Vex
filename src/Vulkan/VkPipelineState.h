@@ -7,8 +7,6 @@
 namespace vex::vk
 {
 
-class ResourceCleanup;
-
 class VkGraphicsPipelineState : public RHIGraphicsPipelineState
 {
 public:

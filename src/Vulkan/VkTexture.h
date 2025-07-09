@@ -38,50 +38,27 @@ VEX_MAKE_HASHABLE(vex::vk::VkTextureViewDesc,
 namespace vex::TextureUtil
 {
 ::vk::AccessFlags2 TextureStateFlagToAccessMask(RHITextureState::Flags flags);
-}
+::vk::ImageLayout TextureStateFlagToImageLayout(RHITextureState::Flags flags);
+} // namespace vex::TextureUtil
 
 namespace vex::vk
 {
 struct VkGPUContext;
 struct VkDescriptorPool;
 
-class VkBackbufferTexture : public RHITexture
+class VkTexture : public RHITexture
 {
 public:
-    VkBackbufferTexture(TextureDescription&& description, ::vk::Image backbufferImage);
-
-    ::vk::Image image;
-};
-
-class VkTexture final : public RHITexture
-{
-public:
-    // Takes ownership of the image
-    VkTexture(const TextureDescription& description, ::vk::UniqueImage rawImage);
-    VkTexture(TextureDescription&& description, ::vk::UniqueImage rawImage);
-
-    // Creates a new image
-    // ...
-    VkTexture(VkGPUContext& ctx, TextureDescription&& description);
+    virtual ::vk::Image GetResource() = 0;
 
     BindlessHandle GetOrCreateBindlessView(VkGPUContext& device,
                                            const VkTextureViewDesc& view,
                                            VkDescriptorPool& descriptorPool);
 
-    ::vk::Image GetResource()
-    {
-        return *image;
-    };
     [[nodiscard]] ::vk::ImageLayout GetLayout() const
     {
-        return imageLayout;
-    };
-
-private:
-    void CreateImage(VkGPUContext& ctx);
-    ::vk::UniqueImage image;
-    ::vk::UniqueDeviceMemory memory;
-    ::vk::ImageLayout imageLayout = ::vk::ImageLayout::eUndefined;
+        return TextureUtil::TextureStateFlagToImageLayout(GetCurrentState());
+    }
 
     struct CacheEntry
     {
@@ -89,6 +66,40 @@ private:
         ::vk::UniqueImageView view;
     };
     std::unordered_map<VkTextureViewDesc, CacheEntry> cache;
+};
+
+class VkBackbufferTexture : public VkTexture
+{
+public:
+    VkBackbufferTexture(TextureDescription&& description, ::vk::Image backbufferImage);
+
+    virtual ::vk::Image GetResource() override
+    {
+        return image;
+    }
+
+    ::vk::Image image;
+};
+
+class VkImageTexture : public VkTexture
+{
+public:
+    // Takes ownership of the image
+    VkImageTexture(const TextureDescription& description, ::vk::UniqueImage rawImage);
+    VkImageTexture(TextureDescription&& description, ::vk::UniqueImage rawImage);
+
+    // Creates a new image from the description
+    VkImageTexture(VkGPUContext& ctx, TextureDescription&& description);
+
+    virtual ::vk::Image GetResource() override
+    {
+        return *image;
+    };
+
+private:
+    void CreateImage(VkGPUContext& ctx);
+    ::vk::UniqueImage image;
+    ::vk::UniqueDeviceMemory memory;
 
     friend class VkCommandList;
 };

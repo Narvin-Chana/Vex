@@ -70,19 +70,19 @@ VkBackbufferTexture::VkBackbufferTexture(TextureDescription&& inDescription, ::v
     description = std::move(inDescription);
 }
 
-VkTexture::VkTexture(const TextureDescription& inDescription, ::vk::UniqueImage rawImage)
+VkImageTexture::VkImageTexture(const TextureDescription& inDescription, ::vk::UniqueImage rawImage)
     : image{ std::move(rawImage) }
 {
     description = inDescription;
 }
 
-VkTexture::VkTexture(TextureDescription&& inDescription, ::vk::UniqueImage rawImage)
+VkImageTexture::VkImageTexture(TextureDescription&& inDescription, ::vk::UniqueImage rawImage)
     : image{ std::move(rawImage) }
 {
     description = std::move(inDescription);
 }
 
-VkTexture::VkTexture(VkGPUContext& ctx, TextureDescription&& inDescription)
+VkImageTexture::VkImageTexture(VkGPUContext& ctx, TextureDescription&& inDescription)
 {
     description = std::move(inDescription);
     CreateImage(ctx);
@@ -97,7 +97,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(VkGPUContext& ctx,
         return it->second.handle;
     }
 
-    ::vk::ImageViewCreateInfo viewCreate{ .image = *image,
+    ::vk::ImageViewCreateInfo viewCreate{ .image = GetResource(),
                                           .viewType = TextureTypeToVulkan(view.viewType),
                                           .format = TextureFormatToVulkan(view.format),
                                           .subresourceRange = {
@@ -120,7 +120,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(VkGPUContext& ctx,
     return handle;
 }
 
-void VkTexture::CreateImage(VkGPUContext& ctx)
+void VkImageTexture::CreateImage(VkGPUContext& ctx)
 {
     ::vk::ImageCreateInfo createInfo{};
     createInfo.format = TextureFormatToVulkan(description.format);
@@ -187,6 +187,45 @@ void VkTexture::CreateImage(VkGPUContext& ctx)
 
 namespace vex::TextureUtil
 {
+
+::vk::ImageLayout TextureStateFlagToImageLayout(RHITextureState::Flags flags)
+{
+    using namespace RHITextureState;
+
+    switch (flags)
+    {
+    case Common:
+        return ::vk::ImageLayout::eUndefined;
+        break;
+    case RenderTarget:
+        return ::vk::ImageLayout::eColorAttachmentOptimal;
+        break;
+    case UnorderedAccess:
+        return ::vk::ImageLayout::eGeneral;
+        break;
+    case ShaderResource:
+        return ::vk::ImageLayout::eShaderReadOnlyOptimal;
+        break;
+    case DepthRead:
+        return ::vk::ImageLayout::eDepthReadOnlyOptimal;
+        break;
+    case DepthWrite:
+        return ::vk::ImageLayout::eDepthAttachmentOptimal;
+        break;
+    case CopySource:
+        return ::vk::ImageLayout::eTransferSrcOptimal;
+        break;
+    case CopyDest:
+        return ::vk::ImageLayout::eTransferDstOptimal;
+        break;
+    case Present:
+        return ::vk::ImageLayout::ePresentSrcKHR;
+        break;
+    default:
+        VEX_ASSERT(false, "Flag to layout conversion not supported");
+    };
+    return ::vk::ImageLayout::eUndefined;
+}
 
 ::vk::AccessFlags2 TextureStateFlagToAccessMask(RHITextureState::Flags flags)
 {

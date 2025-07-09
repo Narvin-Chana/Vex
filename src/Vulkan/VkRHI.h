@@ -45,6 +45,7 @@ public:
     virtual UniqueHandle<RHIFence> CreateFence(u32 numFenceIndices) override;
     virtual void SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) override;
     virtual void WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) override;
+    virtual void AddAdditionnalShaderCompilerArguments(std::vector<LPCWSTR>& args) override;
 
 private:
     VkGPUContext& GetGPUContext();

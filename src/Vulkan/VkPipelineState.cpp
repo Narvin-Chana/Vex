@@ -5,6 +5,9 @@
 
 #include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/Debug.h>
+#include <Vex/RHI/RHIBuffer.h>
+#include <Vex/RHI/RHIShader.h>
+#include <Vex/RHI/RHITexture.h>
 
 namespace vex::vk
 {
@@ -55,7 +58,9 @@ void VkComputePipelineState::Compile(const RHIShader& computeShader, RHIResource
 
 void VkComputePipelineState::Cleanup(ResourceCleanup& resourceCleanup)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    auto cleanupPSO = MakeUnique<VkComputePipelineState>(key, device, PSOCache);
+    std::swap(cleanupPSO->computePipeline, computePipeline);
+    resourceCleanup.CleanupResource(std::move(cleanupPSO));
 }
 
 } // namespace vex::vk

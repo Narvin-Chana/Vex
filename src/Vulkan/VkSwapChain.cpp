@@ -203,7 +203,9 @@ void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
                                                       .imageColorSpace = surfaceFormat.colorSpace,
                                                       .imageExtent = extent,
                                                       .imageArrayLayers = 1,
-                                                      .imageUsage = ::vk::ImageUsageFlagBits::eColorAttachment,
+                                                      .imageUsage = ::vk::ImageUsageFlagBits::eColorAttachment |
+                                                                    ::vk::ImageUsageFlagBits::eTransferDst |
+                                                                    ::vk::ImageUsageFlagBits::eTransferSrc,
                                                       .imageSharingMode = ::vk::SharingMode::eExclusive,
                                                       .queueFamilyIndexCount = 0,
                                                       .pQueueFamilyIndices = nullptr,

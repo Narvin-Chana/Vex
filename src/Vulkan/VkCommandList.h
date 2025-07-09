@@ -43,9 +43,6 @@ public:
 
     virtual void Copy(RHITexture& src, RHITexture& dst) override;
 
-    // TODO: move this to RHI interface
-    void Transition(VkTexture& src, ::vk::ImageLayout targetLayout);
-
     virtual CommandQueueType GetType() const override;
 
 private:

@@ -47,6 +47,8 @@ struct RenderHardwareInterface
     virtual UniqueHandle<RHIFence> CreateFence(u32 numFenceIndices) = 0;
     virtual void SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) = 0;
     virtual void WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) = 0;
+
+    virtual void AddAdditionnalShaderCompilerArguments(std::vector<LPCWSTR>& args) = 0;
 };
 
 using RHI = RenderHardwareInterface;

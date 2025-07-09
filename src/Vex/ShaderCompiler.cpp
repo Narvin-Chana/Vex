@@ -157,9 +157,9 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader)
     shaderSource.Size = shaderBlob->GetBufferSize();
     shaderSource.Encoding = DXC_CP_ACP; // Assume BOM says UTF8 or UTF16 or this is ANSI text.
 
-    std::vector<LPCWSTR> args = {
-        L"-Qstrip_reflect",
-    };
+    std::vector<LPCWSTR> args;
+
+    rhi->AddAdditionnalShaderCompilerArguments(args);
 
     if (debugShaders)
     {
@@ -223,18 +223,18 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader)
 
     // Reflection blob, to be implemented later on.
     {
-        ComPtr<IDxcBlob> reflectionBlob;
-        HRESULT reflectionResult =
-            shaderCompilationResults->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(&reflectionBlob), nullptr);
-        if (FAILED(reflectionResult))
-        {
-            return std::unexpected("Unable to get the shader reflection blob after compilation.");
-        }
-
-        DxcBuffer reflectionBuffer;
-        reflectionBuffer.Encoding = DXC_CP_ACP;
-        reflectionBuffer.Ptr = reflectionBlob->GetBufferPointer();
-        reflectionBuffer.Size = reflectionBlob->GetBufferSize();
+        // ComPtr<IDxcBlob> reflectionBlob;
+        // HRESULT reflectionResult =
+        //     shaderCompilationResults->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(&reflectionBlob), nullptr);
+        // if (FAILED(reflectionResult))
+        // {
+        //     return std::unexpected("Unable to get the shader reflection blob after compilation.");
+        // }
+        //
+        // DxcBuffer reflectionBuffer;
+        // reflectionBuffer.Encoding = DXC_CP_ACP;
+        // reflectionBuffer.Ptr = reflectionBlob->GetBufferPointer();
+        // reflectionBuffer.Size = reflectionBlob->GetBufferSize();
 
         // ComPtr<ID3D12ShaderReflection> reflectionData;
         // chk << compilerUtil.utils->CreateReflection(&reflectionBuffer, IID_PPV_ARGS(&reflectionData));

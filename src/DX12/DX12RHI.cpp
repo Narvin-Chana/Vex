@@ -181,6 +181,10 @@ void DX12RHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIn
 {
     chk << GetQueue(queueType)->Wait(static_cast<DX12Fence&>(fence).fence.Get(), fence.GetFenceValue(fenceIndex));
 }
+void DX12RHI::AddAdditionnalShaderCompilerArguments(std::vector<LPCWSTR>& args)
+{
+    args.push_back(L"-Qstrip_reflect");
+}
 
 ComPtr<ID3D12CommandQueue>& DX12RHI::GetQueue(CommandQueueType queueType)
 {

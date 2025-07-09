@@ -5,6 +5,8 @@ struct Constants
 };
 ConstantBuffer<Constants> CB : register(b0);
 
+
+RWStructuredBuffer<float4> g_buffer[] : register(u0);
 RWTexture2D<float4> g_texture2d[] : register(u3);
 //static RWTexture2D<float4> OutputTexture = ResourceDescriptorHeap[CB.outputBindlessIndex];
 
