@@ -184,7 +184,7 @@ void DX12RHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIn
 void DX12RHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args, std::vector<ShaderDefine>& defines)
 {
     args.push_back(L"-Qstrip_reflect");
-    defines.emplace_back(L"VEX_DX12", L"1");
+    defines.emplace_back(L"VEX_DX12");
 }
 
 ComPtr<ID3D12CommandQueue>& DX12RHI::GetQueue(CommandQueueType queueType)

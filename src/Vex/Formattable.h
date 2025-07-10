@@ -24,7 +24,7 @@
 
 // Generic formatter for std::vector<T> where T is formattable
 template <typename T>
-struct std::formatter<std::vector<T>>
+struct ::std::formatter<std::vector<T>>
 {
     constexpr auto parse(std::format_parse_context& ctx)
     {

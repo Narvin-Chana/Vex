@@ -22,7 +22,7 @@
 // Macro to generate hash function for a struct or class
 #define VEX_MAKE_HASHABLE(type, fields)                                                                                \
     template <>                                                                                                        \
-    struct std::hash<type>                                                                                             \
+    struct ::std::hash<type>                                                                                           \
     {                                                                                                                  \
         size_t operator()(const type& obj) const                                                                       \
         {                                                                                                              \
