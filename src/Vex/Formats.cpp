@@ -5,7 +5,7 @@
 namespace vex
 {
 
-// Returns SRGB equivalent format. If not found returns unkown
+// Returns SRGB equivalent format. If not found returns unknown
 TextureFormat GetSRGBEquivalentFormat(TextureFormat format)
 {
     using enum TextureFormat;
