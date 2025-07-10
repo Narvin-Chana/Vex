@@ -58,7 +58,7 @@ void VkCommandList::Close()
     case CommandQueueTypes::Graphics:
         return ::vk::PipelineBindPoint::eCompute;
     default:
-        VEX_ASSERT("No bind point found for command queues");
+        VEX_LOG(Fatal, "No bind point found for command queues");
     }
     std::unreachable();
 }
@@ -163,11 +163,11 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
 
     for (auto& [binding, usage, rhiTexture] : textures)
     {
-        auto dxTexture = reinterpret_cast<VkTexture*>(rhiTexture);
+        auto vkTexture = reinterpret_cast<VkTexture*>(rhiTexture);
 
         if (usage == ResourceUsage::Read || usage == ResourceUsage::UnorderedAccess)
         {
-            bindlessHandles.push_back(dxTexture->GetOrCreateBindlessView(
+            bindlessHandles.push_back(vkTexture->GetOrCreateBindlessView(
                 ctx,
                 VkTextureViewDesc{
                     .viewType = TextureUtil::GetTextureViewType(binding),
@@ -180,8 +180,6 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
 
                 },
                 vkDescriptorPool));
-
-            // Transition(*dxTexture, ::vk::ImageLayout::eGeneral);
         }
     }
 
@@ -192,7 +190,7 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
         stageFlags = ::vk::ShaderStageFlagBits::eCompute;
         break;
     case CommandQueueTypes::Graphics:
-        stageFlags = ::vk::ShaderStageFlagBits::eAllGraphics;
+        stageFlags = ::vk::ShaderStageFlagBits::eAllGraphics | ::vk::ShaderStageFlagBits::eCompute;
         break;
     default:
         VEX_ASSERT(false, "Operation not supported on this queue type");
@@ -307,7 +305,6 @@ void VkCommandList::Transition(RHITexture& texture, RHITextureState::Flags newSt
     texture.SetCurrentState(newState);
 }
 
-// we only transfer access here and not layout
 void VkCommandList::Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs)
 {
     std::vector<::vk::ImageMemoryBarrier2> barriers;
