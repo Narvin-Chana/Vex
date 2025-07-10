@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Vex/Logger.h"
 
 #include <array>
 #include <span>
