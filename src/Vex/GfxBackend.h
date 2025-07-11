@@ -11,8 +11,8 @@
 #include <Vex/FrameResource.h>
 #include <Vex/PipelineStateCache.h>
 #include <Vex/PlatformWindow.h>
-#include <Vex/RHI/RHIFwd.h>
 #include <Vex/Resource.h>
+#include <Vex/RHI/RHIFwd.h>
 #include <Vex/Texture.h>
 #include <Vex/UniqueHandle.h>
 
@@ -50,7 +50,7 @@ public:
     Texture CreateTexture(TextureDescription description, ResourceLifetime lifetime);
     // Destroys a texture, the handle passed in must be the one obtained from calling CreateTexture earlier.
     // Once destroyed the handle passed in is invalid and should no longer be used.
-    void DestroyTexture(Texture texture);
+    void DestroyTexture(const Texture& texture);
 
     // Flushes all current GPU commands.
     void FlushGPU();

@@ -14,6 +14,11 @@ VkBackbufferTexture::VkBackbufferTexture(TextureDescription&& inDescription, ::v
     description = std::move(inDescription);
 }
 
+void VkBackbufferTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
 VkTexture::VkTexture(const TextureDescription& inDescription, ::vk::UniqueImage rawImage)
     : image{ std::move(rawImage) }
 {
@@ -30,6 +35,11 @@ VkTexture::VkTexture(VkGPUContext& ctx, TextureDescription&& inDescription)
 {
     description = std::move(inDescription);
     CreateImage(ctx);
+}
+
+void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
+{
+    VEX_NOT_YET_IMPLEMENTED();
 }
 
 void VkTexture::CreateImage(VkGPUContext& ctx)

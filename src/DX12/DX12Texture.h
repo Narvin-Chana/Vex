@@ -53,6 +53,7 @@ public:
     // Takes ownership of the passed in texture.
     DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID3D12Resource> rawTex);
     virtual ~DX12Texture() override;
+    virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
 
     ID3D12Resource* GetRawTexture()
     {
