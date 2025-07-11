@@ -10,21 +10,28 @@
 
 namespace vex::dx12
 {
+
+struct BindlessHandle : Handle<BindlessHandle>
+{
+};
+
+static constexpr BindlessHandle GInvalidBindlessHandle;
+
 class DX12DescriptorPool : public RHIDescriptorPool
 {
 public:
     DX12DescriptorPool(ComPtr<DX12Device>& device);
     virtual ~DX12DescriptorPool() override;
 
-    virtual BindlessHandle AllocateStaticDescriptor(const RHITexture& texture) override;
-    virtual BindlessHandle AllocateStaticDescriptor(const RHIBuffer& buffer) override;
-    virtual void FreeStaticDescriptor(BindlessHandle handle) override;
+    BindlessHandle AllocateStaticDescriptor(const RHITexture& texture);
+    BindlessHandle AllocateStaticDescriptor(const RHIBuffer& buffer);
+    void FreeStaticDescriptor(BindlessHandle handle);
 
-    virtual BindlessHandle AllocateDynamicDescriptor(const RHITexture& texture) override;
-    virtual BindlessHandle AllocateDynamicDescriptor(const RHIBuffer& buffer) override;
-    virtual void FreeDynamicDescriptor(BindlessHandle handle) override;
+    BindlessHandle AllocateDynamicDescriptor(const RHITexture& texture);
+    BindlessHandle AllocateDynamicDescriptor(const RHIBuffer& buffer);
+    void FreeDynamicDescriptor(BindlessHandle handle);
 
-    virtual bool IsValid(BindlessHandle handle) override;
+    bool IsValid(BindlessHandle handle);
 
     void CopyDescriptor(ComPtr<DX12Device>& device, BindlessHandle handle, CD3DX12_CPU_DESCRIPTOR_HANDLE descriptor);
     CD3DX12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptor(BindlessHandle handle);

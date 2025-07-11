@@ -13,7 +13,8 @@ VkResourceLayout::VkResourceLayout(::vk::Device device,
                                    const VkFeatureChecker& featureChecker)
     : featureChecker{ featureChecker }
 {
-    ::vk::PushConstantRange range{ .stageFlags = ::vk::ShaderStageFlagBits::eAllGraphics,
+    ::vk::PushConstantRange range{ .stageFlags =
+                                       ::vk::ShaderStageFlagBits::eAllGraphics | ::vk::ShaderStageFlagBits::eCompute,
                                    .offset = 0,
                                    .size = VkResourceLayout::GetMaxLocalConstantSize() };
 

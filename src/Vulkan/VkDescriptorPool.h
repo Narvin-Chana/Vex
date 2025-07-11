@@ -11,23 +11,37 @@ namespace vex::vk
 {
 struct VkGPUContext;
 
+struct VkBindlessHandle : Handle<VkBindlessHandle>
+{
+    ::vk::DescriptorType type = static_cast<::vk::DescriptorType>(~0);
+
+    static HandleType CreateHandle(u32 index, u8 generation, ::vk::DescriptorType type)
+    {
+        HandleType handle = Handle::CreateHandle(index, generation);
+        handle.type = type;
+        return handle;
+    }
+};
+
+static constexpr VkBindlessHandle GInvalidVkBindlessHandle;
+
 class VkDescriptorPool : public RHIDescriptorPool
 {
 public:
     VkDescriptorPool(::vk::Device device);
     virtual ~VkDescriptorPool() override;
 
-    virtual BindlessHandle AllocateStaticDescriptor(const RHITexture& texture) override;
-    virtual BindlessHandle AllocateStaticDescriptor(const RHIBuffer& buffer) override;
-    virtual void FreeStaticDescriptor(BindlessHandle handle) override;
+    VkBindlessHandle AllocateStaticDescriptor(const RHITexture& texture);
+    VkBindlessHandle AllocateStaticDescriptor(const RHIBuffer& buffer);
+    void FreeStaticDescriptor(VkBindlessHandle handle);
 
-    virtual BindlessHandle AllocateDynamicDescriptor(const RHITexture& texture) override;
-    virtual BindlessHandle AllocateDynamicDescriptor(const RHIBuffer& buffer) override;
-    virtual void FreeDynamicDescriptor(BindlessHandle handle) override;
+    VkBindlessHandle AllocateDynamicDescriptor(const RHITexture& texture);
+    VkBindlessHandle AllocateDynamicDescriptor(const RHIBuffer& buffer);
+    void FreeDynamicDescriptor(VkBindlessHandle handle);
 
-    virtual bool IsValid(BindlessHandle handle) override;
+    bool IsValid(VkBindlessHandle handle);
 
-    void UpdateDescriptor(VkGPUContext& ctx, BindlessHandle targetDescriptor, ::vk::DescriptorImageInfo createInfo);
+    void UpdateDescriptor(VkGPUContext& ctx, VkBindlessHandle targetDescriptor, ::vk::DescriptorImageInfo createInfo);
 
 private:
     static constexpr std::array DescriptorTypes{
@@ -42,8 +56,6 @@ private:
     ::vk::UniqueDescriptorSet bindlessSet; // Single global set for bindless resources
     ::vk::UniqueDescriptorSetLayout bindlessLayout;
 
-    std::unordered_map<BindlessHandle, ::vk::DescriptorType> handleDescriptorTypes;
-
     struct BindlessAllocation
     {
         std::vector<u8> generations;
@@ -51,12 +63,12 @@ private:
     };
     std::array<BindlessAllocation, DescriptorTypes.size()> bindlessAllocations;
 
-    BindlessAllocation& GetAllocation(BindlessHandle handle);
+    BindlessAllocation& GetAllocation(VkBindlessHandle handle);
     BindlessAllocation& GetAllocation(::vk::DescriptorType type);
 
-    ::vk::DescriptorType GetDescriptorTypeFromHandle(BindlessHandle handle);
+    ::vk::DescriptorType GetDescriptorTypeFromHandle(VkBindlessHandle handle);
     u8 GetDescriptorTypeBinding(::vk::DescriptorType type);
-    u8 GetDescriptorTypeBinding(BindlessHandle handle);
+    u8 GetDescriptorTypeBinding(VkBindlessHandle handle);
 
     friend class VkCommandList;
     friend class VkResourceLayout;

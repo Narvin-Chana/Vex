@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include "VkDescriptorPool.h"
+
 #include <Vex/RHI/RHITexture.h>
 
 #include "Vex/Hash.h"
@@ -50,9 +52,9 @@ class VkTexture : public RHITexture
 public:
     virtual ::vk::Image GetResource() = 0;
 
-    BindlessHandle GetOrCreateBindlessView(VkGPUContext& device,
-                                           const VkTextureViewDesc& view,
-                                           VkDescriptorPool& descriptorPool);
+    VkBindlessHandle GetOrCreateBindlessView(VkGPUContext& device,
+                                             const VkTextureViewDesc& view,
+                                             VkDescriptorPool& descriptorPool);
 
     [[nodiscard]] ::vk::ImageLayout GetLayout() const
     {
@@ -61,7 +63,7 @@ public:
 
     struct CacheEntry
     {
-        BindlessHandle handle = GInvalidBindlessHandle;
+        VkBindlessHandle handle = GInvalidVkBindlessHandle;
         ::vk::UniqueImageView view;
     };
     std::unordered_map<VkTextureViewDesc, CacheEntry> cache;

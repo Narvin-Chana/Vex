@@ -48,21 +48,6 @@ void VkCommandList::Close()
     isOpen = false;
 }
 
-::vk::PipelineBindPoint CommandQueueTypeToPipelineBindPoint(CommandQueueType type)
-{
-    switch (type)
-    {
-    case CommandQueueTypes::Compute:
-        return ::vk::PipelineBindPoint::eCompute;
-    // TODO: distinguish properly compute bind points from queue type. Cant bind a Compute PSO on a graphics bindpoint
-    case CommandQueueTypes::Graphics:
-        return ::vk::PipelineBindPoint::eCompute;
-    default:
-        VEX_LOG(Fatal, "No bind point found for command queues");
-    }
-    std::unreachable();
-}
-
 void VkCommandList::SetViewport(float x, float y, float width, float height, float minDepth, float maxDepth)
 {
     // Manipulation to match behavior of DX12 and other APIs (this allows for hlsl shader code to work the same across
@@ -101,7 +86,7 @@ void VkCommandList::SetPipelineState(const RHIGraphicsPipelineState& graphicsPip
 void VkCommandList::SetPipelineState(const RHIComputePipelineState& computePipelineState)
 {
     auto& vkPSO = reinterpret_cast<const VkComputePipelineState&>(computePipelineState);
-    commandBuffer->bindPipeline(CommandQueueTypeToPipelineBindPoint(type), *vkPSO.computePipeline);
+    commandBuffer->bindPipeline(::vk::PipelineBindPoint::eCompute, *vkPSO.computePipeline);
 }
 
 void VkCommandList::SetLayout(RHIResourceLayout& layout)
@@ -133,11 +118,10 @@ void VkCommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout, std
     ::vk::ShaderStageFlags stageFlags;
     switch (type)
     {
-    case CommandQueueTypes::Compute:
-        stageFlags = ::vk::ShaderStageFlagBits::eCompute;
-        break;
     case CommandQueueTypes::Graphics:
-        stageFlags = ::vk::ShaderStageFlagBits::eAllGraphics;
+        stageFlags |= ::vk::ShaderStageFlagBits::eAllGraphics;
+    case CommandQueueTypes::Compute:
+        stageFlags |= ::vk::ShaderStageFlagBits::eCompute;
         break;
     default:
         VEX_ASSERT(false, "Operation not supported on this queue type");
@@ -158,7 +142,7 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
     auto& vkResourceLayout = reinterpret_cast<const VkResourceLayout&>(layout);
     auto& vkDescriptorPool = reinterpret_cast<VkDescriptorPool&>(descriptorPool);
 
-    std::vector<BindlessHandle> bindlessHandles;
+    std::vector<VkBindlessHandle> bindlessHandles;
     bindlessHandles.reserve(textures.size() + buffers.size());
 
     for (auto& [binding, usage, rhiTexture] : textures)
@@ -186,11 +170,10 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
     ::vk::ShaderStageFlags stageFlags;
     switch (type)
     {
-    case CommandQueueTypes::Compute:
-        stageFlags = ::vk::ShaderStageFlagBits::eCompute;
-        break;
     case CommandQueueTypes::Graphics:
-        stageFlags = ::vk::ShaderStageFlagBits::eAllGraphics;
+        stageFlags |= ::vk::ShaderStageFlagBits::eAllGraphics;
+    case CommandQueueTypes::Compute:
+        stageFlags |= ::vk::ShaderStageFlagBits::eCompute;
         break;
     default:
         VEX_ASSERT(false, "Operation not supported on this queue type");
@@ -199,7 +182,7 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
     commandBuffer->pushConstants(*vkResourceLayout.pipelineLayout,
                                  stageFlags,
                                  0,
-                                 bindlessHandles.size() * sizeof(BindlessHandle),
+                                 bindlessHandles.size() * sizeof(VkBindlessHandle),
                                  bindlessHandles.data());
 }
 
@@ -208,7 +191,14 @@ void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIReso
     auto& descPool = reinterpret_cast<VkDescriptorPool&>(descriptorPool);
     auto& vkLayout = reinterpret_cast<const VkResourceLayout&>(resourceLayout);
 
-    commandBuffer->bindDescriptorSets(CommandQueueTypeToPipelineBindPoint(type),
+    commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eCompute,
+                                      *vkLayout.pipelineLayout,
+                                      0,
+                                      1,
+                                      &*descPool.bindlessSet,
+                                      0,
+                                      nullptr);
+    commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eGraphics,
                                       *vkLayout.pipelineLayout,
                                       0,
                                       1,
@@ -344,12 +334,6 @@ void VkCommandList::Copy(RHITexture& src, RHITexture& dst)
     VEX_ASSERT(srcDesc.height <= dstDesc.height);
     VEX_ASSERT(srcDesc.type == dstDesc.type);
 
-    const RHITextureState::Flags prevSrcLayout = vkSrc.GetCurrentState();
-    const RHITextureState::Flags prevDstLayout = vkDst.GetCurrentState();
-
-    Transition(vkSrc, RHITextureState::CopySource);
-    Transition(vkDst, RHITextureState::CopyDest);
-
     std::vector<::vk::ImageCopy> copyRegions{};
 
     u32 width = srcDesc.width;
@@ -383,9 +367,6 @@ void VkCommandList::Copy(RHITexture& src, RHITexture& dst)
                              ::vk::ImageLayout::eTransferDstOptimal,
                              static_cast<u32>(copyRegions.size()),
                              copyRegions.data());
-
-    Transition(vkSrc, prevSrcLayout);
-    Transition(vkDst, prevDstLayout);
 }
 
 CommandQueueType VkCommandList::GetType() const

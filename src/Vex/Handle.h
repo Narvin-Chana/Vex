@@ -44,4 +44,13 @@ struct Handle
 
 } // namespace vex
 
-VEX_MAKE_HASHABLE(vex::Handle<>, VEX_HASH_COMBINE(seed, obj.value););
+template <class T>
+struct std::hash<vex::Handle<T>>
+{
+    size_t operator()(const vex::Handle<T>& obj) const
+    {
+        size_t seed = 0;
+        VEX_HASH_COMBINE(seed, obj.value);
+        return seed;
+    }
+};

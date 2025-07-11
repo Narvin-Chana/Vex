@@ -87,7 +87,7 @@ VkDescriptorPool::VkDescriptorPool(::vk::Device device)
 
 VkDescriptorPool::~VkDescriptorPool() = default;
 
-BindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHITexture& texture)
+VkBindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHITexture& texture)
 {
     auto type = texture.GetCurrentState() == RHITextureState::UnorderedAccess ? ::vk::DescriptorType::eStorageImage
                                                                               : ::vk::DescriptorType::eSampledImage;
@@ -96,18 +96,16 @@ BindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHITexture& text
 
     u32 index = alloc.handles.Allocate();
 
-    BindlessHandle handle = BindlessHandle::CreateHandle(index, alloc.generations[index]);
-    handleDescriptorTypes.insert({ handle, type });
-    return handle;
+    return VkBindlessHandle::CreateHandle(index, alloc.generations[index], type);
 }
 
-BindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHIBuffer& buffer)
+VkBindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHIBuffer& buffer)
 {
     VEX_NOT_YET_IMPLEMENTED();
-    return BindlessHandle();
+    return VkBindlessHandle();
 }
 
-void VkDescriptorPool::FreeStaticDescriptor(BindlessHandle handle)
+void VkDescriptorPool::FreeStaticDescriptor(VkBindlessHandle handle)
 {
     const ::vk::DescriptorType type = GetDescriptorTypeFromHandle(handle);
     const ::vk::DescriptorImageInfo* imageInfo{};
@@ -143,39 +141,38 @@ void VkDescriptorPool::FreeStaticDescriptor(BindlessHandle handle)
     auto& [generations, handles] = GetAllocation(handle);
     generations[index]++;
     handles.Deallocate(index);
-    handleDescriptorTypes.erase(handle);
 }
 
-BindlessHandle VkDescriptorPool::AllocateDynamicDescriptor(const RHITexture& texture)
+VkBindlessHandle VkDescriptorPool::AllocateDynamicDescriptor(const RHITexture& texture)
 {
     VEX_NOT_YET_IMPLEMENTED();
-    return BindlessHandle();
+    return VkBindlessHandle();
 }
 
-BindlessHandle VkDescriptorPool::AllocateDynamicDescriptor(const RHIBuffer& buffer)
+VkBindlessHandle VkDescriptorPool::AllocateDynamicDescriptor(const RHIBuffer& buffer)
 {
     VEX_NOT_YET_IMPLEMENTED();
-    return BindlessHandle();
+    return VkBindlessHandle();
 }
 
-void VkDescriptorPool::FreeDynamicDescriptor(BindlessHandle handle)
+void VkDescriptorPool::FreeDynamicDescriptor(VkBindlessHandle handle)
 {
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-bool VkDescriptorPool::IsValid(BindlessHandle handle)
+bool VkDescriptorPool::IsValid(VkBindlessHandle handle)
 {
     return handle.GetGeneration() == GetAllocation(handle).generations[handle.GetIndex()];
 }
 
-u8 VkDescriptorPool::GetDescriptorTypeBinding(BindlessHandle handle)
+u8 VkDescriptorPool::GetDescriptorTypeBinding(VkBindlessHandle handle)
 {
     auto handleType = GetDescriptorTypeFromHandle(handle);
     return GetDescriptorTypeBinding(handleType);
 }
 
 void VkDescriptorPool::UpdateDescriptor(VkGPUContext& ctx,
-                                        BindlessHandle targetDescriptor,
+                                        VkBindlessHandle targetDescriptor,
                                         ::vk::DescriptorImageInfo createInfo)
 {
     auto descType = GetDescriptorTypeFromHandle(targetDescriptor);
@@ -191,7 +188,7 @@ void VkDescriptorPool::UpdateDescriptor(VkGPUContext& ctx,
     ctx.device.updateDescriptorSets(1, &writeSet, 0, nullptr);
 }
 
-VkDescriptorPool::BindlessAllocation& VkDescriptorPool::GetAllocation(BindlessHandle handle)
+VkDescriptorPool::BindlessAllocation& VkDescriptorPool::GetAllocation(VkBindlessHandle handle)
 {
     return bindlessAllocations[GetDescriptorTypeBinding(handle)];
 }
@@ -201,11 +198,9 @@ VkDescriptorPool::BindlessAllocation& VkDescriptorPool::GetAllocation(::vk::Desc
     return bindlessAllocations[GetDescriptorTypeBinding(type)];
 }
 
-::vk::DescriptorType VkDescriptorPool::GetDescriptorTypeFromHandle(BindlessHandle handle)
+::vk::DescriptorType VkDescriptorPool::GetDescriptorTypeFromHandle(VkBindlessHandle handle)
 {
-    const auto descType = handleDescriptorTypes.find(handle);
-    VEX_ASSERT(descType != handleDescriptorTypes.end());
-    return descType->second;
+    return handle.type;
 }
 u8 VkDescriptorPool::GetDescriptorTypeBinding(::vk::DescriptorType type)
 {
