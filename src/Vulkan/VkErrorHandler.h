@@ -15,7 +15,7 @@ inline std::string FormatLocation(const std::source_location& loc)
     return std::format("{}:{}", loc.file_name(), loc.line());
 }
 
-inline std::expected<void, std::string> Validate(const ::vk::Result& result, std::source_location loc)
+inline std::expected<void, std::string> Validate(const ::vk::Result& result, const std::source_location& loc)
 {
     if (result != ::vk::Result::eSuccess)
     {
@@ -25,15 +25,12 @@ inline std::expected<void, std::string> Validate(const ::vk::Result& result, std
     return {};
 }
 
-inline void SanitizeOrCrash(const ::vk::Result& result, std::source_location loc)
+inline void SanitizeOrCrash(const ::vk::Result& result, const std::source_location& loc)
 {
-    Validate(result, std::move(loc))
-        .transform_error(
-            [](const std::string& msg)
-            {
-                VEX_LOG(Fatal, "Validation failed: {}", msg);
-                return msg;
-            });
+    if (auto res = Validate(result, loc); !res.has_value())
+    {
+        VEX_LOG(Fatal, "Validation failed: {}", res.error());
+    }
 }
 
 template <bool ShouldCrash>
