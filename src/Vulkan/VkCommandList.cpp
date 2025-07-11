@@ -190,7 +190,7 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
         stageFlags = ::vk::ShaderStageFlagBits::eCompute;
         break;
     case CommandQueueTypes::Graphics:
-        stageFlags = ::vk::ShaderStageFlagBits::eAllGraphics | ::vk::ShaderStageFlagBits::eCompute;
+        stageFlags = ::vk::ShaderStageFlagBits::eAllGraphics;
         break;
     default:
         VEX_ASSERT(false, "Operation not supported on this queue type");

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_map>
+
 #include <Vex/RHI/RHIDescriptorPool.h>
 
 #include "VkHeaders.h"
@@ -39,14 +41,21 @@ private:
     ::vk::UniqueDescriptorSet bindlessSet; // Single global set for bindless resources
     ::vk::UniqueDescriptorSetLayout bindlessLayout;
 
+    std::unordered_map<BindlessHandle, ::vk::DescriptorType> handleDescriptorTypes;
+
     struct BindlessAllocation
     {
         std::vector<u8> generations;
         FreeListAllocator handles;
     };
     std::array<BindlessAllocation, DescriptorTypes.size()> bindlessAllocations;
-    BindlessAllocation& GetAllocation(BindlessHandle::Type handle);
+
     BindlessAllocation& GetAllocation(BindlessHandle handle);
+    BindlessAllocation& GetAllocation(::vk::DescriptorType type);
+
+    ::vk::DescriptorType GetDescriptorTypeFromHandle(BindlessHandle handle);
+    u8 GetDescriptorTypeBinding(::vk::DescriptorType type);
+    u8 GetDescriptorTypeBinding(BindlessHandle handle);
 
     friend class VkCommandList;
     friend class VkResourceLayout;

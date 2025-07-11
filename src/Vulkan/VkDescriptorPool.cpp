@@ -87,38 +87,18 @@ VkDescriptorPool::VkDescriptorPool(::vk::Device device)
 
 VkDescriptorPool::~VkDescriptorPool() = default;
 
-BindlessHandle::Type GetBindlessHandleTypeFromTexture(const RHITexture& texture)
-{
-    return texture.GetCurrentState() == RHITextureState::UnorderedAccess ? BindlessHandle::Type::StorageImage
-                                                                         : BindlessHandle::Type::Texture;
-}
-
-::vk::DescriptorType BindlessHandleTypeToDescriptorType(BindlessHandle::Type type)
-{
-    switch (type)
-    {
-    case BindlessHandle::Type::StorageBuffer:
-        return ::vk::DescriptorType::eStorageBuffer;
-    case BindlessHandle::Type::StorageImage:
-        return ::vk::DescriptorType::eStorageImage;
-    case BindlessHandle::Type::Texture:
-        return ::vk::DescriptorType::eSampledImage;
-    case BindlessHandle::Type::UniformBuffer:
-        return ::vk::DescriptorType::eUniformBuffer;
-    default:
-        VEX_ASSERT(false, "No mapping from BindlessHandle type to Descriptor type on this value");
-    }
-    std::unreachable();
-}
-
 BindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHITexture& texture)
 {
-    BindlessHandle::Type handleType = GetBindlessHandleTypeFromTexture(texture);
-    BindlessAllocation& alloc = bindlessAllocations[std::to_underlying(handleType)];
+    auto type = texture.GetCurrentState() == RHITextureState::UnorderedAccess ? ::vk::DescriptorType::eStorageImage
+                                                                              : ::vk::DescriptorType::eSampledImage;
+
+    BindlessAllocation& alloc = bindlessAllocations[GetDescriptorTypeBinding(type)];
 
     u32 index = alloc.handles.Allocate();
 
-    return BindlessHandle::CreateHandle(index, alloc.generations[index], handleType);
+    BindlessHandle handle = BindlessHandle::CreateHandle(index, alloc.generations[index]);
+    handleDescriptorTypes.insert({ handle, type });
+    return handle;
 }
 
 BindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHIBuffer& buffer)
@@ -129,25 +109,18 @@ BindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHIBuffer& buffe
 
 void VkDescriptorPool::FreeStaticDescriptor(BindlessHandle handle)
 {
-    ::vk::DescriptorType type{};
+    const ::vk::DescriptorType type = GetDescriptorTypeFromHandle(handle);
     const ::vk::DescriptorImageInfo* imageInfo{};
     const ::vk::DescriptorBufferInfo* bufferInfo{};
-    switch (handle.type)
+
+    switch (type)
     {
-    case BindlessHandle::Type::Texture:
-        type = ::vk::DescriptorType::eSampledImage;
+    case ::vk::DescriptorType::eSampledImage:
+    case ::vk::DescriptorType::eStorageImage:
         imageInfo = &NullDescriptorImageInfo;
         break;
-    case BindlessHandle::Type::StorageImage:
-        type = ::vk::DescriptorType::eStorageImage;
-        imageInfo = &NullDescriptorImageInfo;
-        break;
-    case BindlessHandle::Type::StorageBuffer:
-        type = ::vk::DescriptorType::eStorageBuffer;
-        bufferInfo = &NullDescriptorBufferInfo;
-        break;
-    case BindlessHandle::Type::UniformBuffer:
-        type = ::vk::DescriptorType::eUniformBuffer;
+    case ::vk::DescriptorType::eStorageBuffer:
+    case ::vk::DescriptorType::eUniformBuffer:
         bufferInfo = &NullDescriptorBufferInfo;
         break;
     default:
@@ -157,8 +130,7 @@ void VkDescriptorPool::FreeStaticDescriptor(BindlessHandle handle)
     const u32 index = handle.GetIndex();
 
     const ::vk::WriteDescriptorSet NullWriteDescriptorSet{ .dstSet = *bindlessSet,
-                                                           .dstBinding =
-                                                               static_cast<u32>(std::to_underlying(handle.type)),
+                                                           .dstBinding = GetDescriptorTypeBinding(type),
                                                            .dstArrayElement = index,
                                                            .descriptorCount = 1,
                                                            .descriptorType = type,
@@ -168,9 +140,10 @@ void VkDescriptorPool::FreeStaticDescriptor(BindlessHandle handle)
 
     device.updateDescriptorSets(1, &NullWriteDescriptorSet, 0, nullptr);
 
-    auto& [generations, handles] = bindlessAllocations[std::to_underlying(handle.type)];
+    auto& [generations, handles] = GetAllocation(handle);
     generations[index]++;
     handles.Deallocate(index);
+    handleDescriptorTypes.erase(handle);
 }
 
 BindlessHandle VkDescriptorPool::AllocateDynamicDescriptor(const RHITexture& texture)
@@ -192,33 +165,58 @@ void VkDescriptorPool::FreeDynamicDescriptor(BindlessHandle handle)
 
 bool VkDescriptorPool::IsValid(BindlessHandle handle)
 {
-    return handle.GetGeneration() ==
-           bindlessAllocations[std::to_underlying(handle.type)].generations[handle.GetIndex()];
+    return handle.GetGeneration() == GetAllocation(handle).generations[handle.GetIndex()];
+}
+
+u8 VkDescriptorPool::GetDescriptorTypeBinding(BindlessHandle handle)
+{
+    auto handleType = GetDescriptorTypeFromHandle(handle);
+    return GetDescriptorTypeBinding(handleType);
 }
 
 void VkDescriptorPool::UpdateDescriptor(VkGPUContext& ctx,
                                         BindlessHandle targetDescriptor,
                                         ::vk::DescriptorImageInfo createInfo)
 {
+    auto descType = GetDescriptorTypeFromHandle(targetDescriptor);
     const ::vk::WriteDescriptorSet writeSet{
         .dstSet = *bindlessSet,
-        .dstBinding = static_cast<u32>(std::to_underlying(targetDescriptor.type)),
+        .dstBinding = GetDescriptorTypeBinding(descType),
         .dstArrayElement = targetDescriptor.GetIndex(),
         .descriptorCount = 1,
-        .descriptorType = BindlessHandleTypeToDescriptorType(targetDescriptor.type),
+        .descriptorType = descType,
         .pImageInfo = &createInfo,
     };
 
     ctx.device.updateDescriptorSets(1, &writeSet, 0, nullptr);
 }
 
-VkDescriptorPool::BindlessAllocation& VkDescriptorPool::GetAllocation(BindlessHandle::Type type)
-{
-    return bindlessAllocations[std::to_underlying(type)];
-}
 VkDescriptorPool::BindlessAllocation& VkDescriptorPool::GetAllocation(BindlessHandle handle)
 {
-    return GetAllocation(handle.type);
+    return bindlessAllocations[GetDescriptorTypeBinding(handle)];
+}
+
+VkDescriptorPool::BindlessAllocation& VkDescriptorPool::GetAllocation(::vk::DescriptorType type)
+{
+    return bindlessAllocations[GetDescriptorTypeBinding(type)];
+}
+
+::vk::DescriptorType VkDescriptorPool::GetDescriptorTypeFromHandle(BindlessHandle handle)
+{
+    const auto descType = handleDescriptorTypes.find(handle);
+    VEX_ASSERT(descType != handleDescriptorTypes.end());
+    return descType->second;
+}
+u8 VkDescriptorPool::GetDescriptorTypeBinding(::vk::DescriptorType type)
+{
+    for (int i = 0; i < DescriptorTypes.size(); ++i)
+    {
+        if (DescriptorTypes[i] == type)
+            return i;
+    }
+
+    VEX_LOG(Fatal, "Bindless handle not found in metadata");
+    std::unreachable();
 }
 
 } // namespace vex::vk

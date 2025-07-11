@@ -34,7 +34,7 @@ BindlessHandle DX12DescriptorPool::AllocateStaticDescriptor(const RHITexture& te
     u32 index = allocator.Allocate();
     // A bindless handle is initially created without any descriptor in the slot.
     // We suppose that this will then be filled in the the user of the BindlessHandle.
-    return BindlessHandle::CreateHandle(index, generations[index], BindlessHandle::Type::Texture);
+    return BindlessHandle::CreateHandle(index, generations[index]);
 }
 
 BindlessHandle DX12DescriptorPool::AllocateStaticDescriptor(const RHIBuffer& buffer)

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Vex/Hash.h"
+
 #include <Vex/Containers/FreeList.h>
 #include <Vex/Handle.h>
 #include <Vex/RHI/RHIFwd.h>
@@ -8,25 +10,7 @@
 namespace vex
 {
 
-struct BindlessHandle : public Handle<BindlessHandle>
-{
-    enum class Type : i8
-    {
-        None = -1,
-        UniformBuffer = 0,
-        StorageBuffer = 1,
-        Texture = 2,
-        StorageImage = 3,
-        Num = 4
-    } type = Type::None;
-
-    static BindlessHandle CreateHandle(u32 index, u8 generation, Type type)
-    {
-        BindlessHandle handle = Handle::CreateHandle(index, generation);
-        handle.type = type;
-        return handle;
-    }
-};
+using BindlessHandle = Handle<>;
 
 static constexpr BindlessHandle GInvalidBindlessHandle;
 
