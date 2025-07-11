@@ -2,6 +2,7 @@
 
 #include <unordered_map>
 
+#include <Vex/Containers/FreeList.h>
 #include <Vex/RHI/RHIDescriptorPool.h>
 
 #include "VkHeaders.h"

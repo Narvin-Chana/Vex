@@ -2,15 +2,15 @@
 
 #include "Vex/Hash.h"
 
-#include <Vex/Containers/FreeList.h>
 #include <Vex/Handle.h>
 #include <Vex/RHI/RHIFwd.h>
-#include <Vex/Resource.h>
 
 namespace vex
 {
 
-using BindlessHandle = Handle<>;
+struct BindlessHandle : Handle<BindlessHandle>
+{
+};
 
 static constexpr BindlessHandle GInvalidBindlessHandle;
 
@@ -32,3 +32,5 @@ public:
 };
 
 } // namespace vex
+
+VEX_MAKE_HASHABLE(vex::BindlessHandle, VEX_HASH_COMBINE(seed, obj.value););
