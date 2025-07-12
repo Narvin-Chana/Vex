@@ -3,6 +3,7 @@
 #include <mutex>
 
 #include <Vex/Containers/FreeList.h>
+#include <Vex/Handle.h>
 #include <Vex/RHI/RHIDescriptorPool.h>
 
 #include <DX12/DX12DescriptorHeap.h>

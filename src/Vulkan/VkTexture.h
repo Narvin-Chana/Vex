@@ -45,16 +45,16 @@ namespace vex::TextureUtil
 namespace vex::vk
 {
 struct VkGPUContext;
-struct VkDescriptorPool;
+class VkDescriptorPool;
 
 class VkTexture : public RHITexture
 {
 public:
     virtual ::vk::Image GetResource() = 0;
 
-    VkBindlessHandle GetOrCreateBindlessView(VkGPUContext& device,
-                                             const VkTextureViewDesc& view,
-                                             VkDescriptorPool& descriptorPool);
+    BindlessHandle GetOrCreateBindlessView(VkGPUContext& device,
+                                           const VkTextureViewDesc& view,
+                                           VkDescriptorPool& descriptorPool);
 
     [[nodiscard]] ::vk::ImageLayout GetLayout() const
     {
@@ -63,7 +63,7 @@ public:
 
     struct CacheEntry
     {
-        VkBindlessHandle handle = GInvalidVkBindlessHandle;
+        BindlessHandle handle = GInvalidBindlessHandle;
         ::vk::UniqueImageView view;
     };
     std::unordered_map<VkTextureViewDesc, CacheEntry> cache;

@@ -142,8 +142,8 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
     auto& vkResourceLayout = reinterpret_cast<const VkResourceLayout&>(layout);
     auto& vkDescriptorPool = reinterpret_cast<VkDescriptorPool&>(descriptorPool);
 
-    std::vector<VkBindlessHandle> bindlessHandles;
-    bindlessHandles.reserve(textures.size() + buffers.size());
+    std::vector<u32> bindlessHandleIndices;
+    bindlessHandleIndices.reserve(textures.size() + buffers.size());
 
     for (auto& [binding, usage, rhiTexture] : textures)
     {
@@ -151,7 +151,7 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
 
         if (usage == ResourceUsage::Read || usage == ResourceUsage::UnorderedAccess)
         {
-            bindlessHandles.push_back(vkTexture->GetOrCreateBindlessView(
+            const BindlessHandle handle = vkTexture->GetOrCreateBindlessView(
                 ctx,
                 VkTextureViewDesc{
                     .viewType = TextureUtil::GetTextureViewType(binding),
@@ -161,9 +161,9 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
                     .startSlice = binding.startSlice,
                     .sliceCount =
                         (binding.sliceCount == 0) ? rhiTexture->GetDescription().depthOrArraySize : binding.sliceCount,
-
                 },
-                vkDescriptorPool));
+                vkDescriptorPool);
+            bindlessHandleIndices.push_back(handle.GetIndex());
         }
     }
 
@@ -182,14 +182,14 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
     commandBuffer->pushConstants(*vkResourceLayout.pipelineLayout,
                                  stageFlags,
                                  0,
-                                 bindlessHandles.size() * sizeof(VkBindlessHandle),
-                                 bindlessHandles.data());
+                                 bindlessHandleIndices.size() * sizeof(u32),
+                                 bindlessHandleIndices.data());
 }
 
 void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)
 {
     auto& descPool = reinterpret_cast<VkDescriptorPool&>(descriptorPool);
-    auto& vkLayout = reinterpret_cast<const VkResourceLayout&>(resourceLayout);
+    auto& vkLayout = reinterpret_cast<VkResourceLayout&>(resourceLayout);
 
     commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eCompute,
                                       *vkLayout.pipelineLayout,

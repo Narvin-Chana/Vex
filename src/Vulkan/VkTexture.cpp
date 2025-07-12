@@ -88,9 +88,9 @@ VkImageTexture::VkImageTexture(VkGPUContext& ctx, TextureDescription&& inDescrip
     CreateImage(ctx);
 }
 
-VkBindlessHandle VkTexture::GetOrCreateBindlessView(VkGPUContext& ctx,
-                                                    const VkTextureViewDesc& view,
-                                                    VkDescriptorPool& descriptorPool)
+BindlessHandle VkTexture::GetOrCreateBindlessView(VkGPUContext& ctx,
+                                                  const VkTextureViewDesc& view,
+                                                  VkDescriptorPool& descriptorPool)
 {
     if (auto it = cache.find(view); it != cache.end() && descriptorPool.IsValid(it->second.handle))
     {
@@ -109,7 +109,7 @@ VkBindlessHandle VkTexture::GetOrCreateBindlessView(VkGPUContext& ctx,
                                                 } };
 
     ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx.device.createImageViewUnique(viewCreate);
-    const VkBindlessHandle handle = descriptorPool.AllocateStaticDescriptor(*this);
+    const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor(*this);
 
     descriptorPool.UpdateDescriptor(
         ctx,

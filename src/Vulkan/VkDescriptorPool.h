@@ -5,25 +5,26 @@
 #include <Vex/Containers/FreeList.h>
 #include <Vex/RHI/RHIDescriptorPool.h>
 
+#include "Vex/Handle.h"
 #include "VkHeaders.h"
 
 namespace vex::vk
 {
 struct VkGPUContext;
 
-struct VkBindlessHandle : Handle<VkBindlessHandle>
+struct BindlessHandle : Handle<BindlessHandle>
 {
     ::vk::DescriptorType type = static_cast<::vk::DescriptorType>(~0);
 
-    static HandleType CreateHandle(u32 index, u8 generation, ::vk::DescriptorType type)
+    static BindlessHandle CreateHandle(u32 index, u8 generation, ::vk::DescriptorType type)
     {
-        HandleType handle = Handle::CreateHandle(index, generation);
+        BindlessHandle handle = Handle::CreateHandle(index, generation);
         handle.type = type;
         return handle;
     }
 };
 
-static constexpr VkBindlessHandle GInvalidVkBindlessHandle;
+static constexpr BindlessHandle GInvalidBindlessHandle;
 
 class VkDescriptorPool : public RHIDescriptorPool
 {
@@ -31,17 +32,17 @@ public:
     VkDescriptorPool(::vk::Device device);
     virtual ~VkDescriptorPool() override;
 
-    VkBindlessHandle AllocateStaticDescriptor(const RHITexture& texture);
-    VkBindlessHandle AllocateStaticDescriptor(const RHIBuffer& buffer);
-    void FreeStaticDescriptor(VkBindlessHandle handle);
+    BindlessHandle AllocateStaticDescriptor(const RHITexture& texture);
+    BindlessHandle AllocateStaticDescriptor(const RHIBuffer& buffer);
+    void FreeStaticDescriptor(BindlessHandle handle);
 
-    VkBindlessHandle AllocateDynamicDescriptor(const RHITexture& texture);
-    VkBindlessHandle AllocateDynamicDescriptor(const RHIBuffer& buffer);
-    void FreeDynamicDescriptor(VkBindlessHandle handle);
+    BindlessHandle AllocateDynamicDescriptor(const RHITexture& texture);
+    BindlessHandle AllocateDynamicDescriptor(const RHIBuffer& buffer);
+    void FreeDynamicDescriptor(BindlessHandle handle);
 
-    bool IsValid(VkBindlessHandle handle);
+    bool IsValid(BindlessHandle handle);
 
-    void UpdateDescriptor(VkGPUContext& ctx, VkBindlessHandle targetDescriptor, ::vk::DescriptorImageInfo createInfo);
+    void UpdateDescriptor(VkGPUContext& ctx, BindlessHandle targetDescriptor, ::vk::DescriptorImageInfo createInfo);
 
 private:
     static constexpr std::array DescriptorTypes{
@@ -63,12 +64,12 @@ private:
     };
     std::array<BindlessAllocation, DescriptorTypes.size()> bindlessAllocations;
 
-    BindlessAllocation& GetAllocation(VkBindlessHandle handle);
+    BindlessAllocation& GetAllocation(BindlessHandle handle);
     BindlessAllocation& GetAllocation(::vk::DescriptorType type);
 
-    ::vk::DescriptorType GetDescriptorTypeFromHandle(VkBindlessHandle handle);
+    ::vk::DescriptorType GetDescriptorTypeFromHandle(BindlessHandle handle);
     u8 GetDescriptorTypeBinding(::vk::DescriptorType type);
-    u8 GetDescriptorTypeBinding(VkBindlessHandle handle);
+    u8 GetDescriptorTypeBinding(BindlessHandle handle);
 
     friend class VkCommandList;
     friend class VkResourceLayout;

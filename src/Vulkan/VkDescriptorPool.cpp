@@ -87,7 +87,7 @@ VkDescriptorPool::VkDescriptorPool(::vk::Device device)
 
 VkDescriptorPool::~VkDescriptorPool() = default;
 
-VkBindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHITexture& texture)
+BindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHITexture& texture)
 {
     auto type = texture.GetCurrentState() == RHITextureState::UnorderedAccess ? ::vk::DescriptorType::eStorageImage
                                                                               : ::vk::DescriptorType::eSampledImage;
@@ -96,16 +96,16 @@ VkBindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHITexture& te
 
     u32 index = alloc.handles.Allocate();
 
-    return VkBindlessHandle::CreateHandle(index, alloc.generations[index], type);
+    return BindlessHandle::CreateHandle(index, alloc.generations[index], type);
 }
 
-VkBindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHIBuffer& buffer)
+BindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHIBuffer& buffer)
 {
     VEX_NOT_YET_IMPLEMENTED();
-    return VkBindlessHandle();
+    return BindlessHandle();
 }
 
-void VkDescriptorPool::FreeStaticDescriptor(VkBindlessHandle handle)
+void VkDescriptorPool::FreeStaticDescriptor(BindlessHandle handle)
 {
     const ::vk::DescriptorType type = GetDescriptorTypeFromHandle(handle);
     const ::vk::DescriptorImageInfo* imageInfo{};
@@ -143,36 +143,36 @@ void VkDescriptorPool::FreeStaticDescriptor(VkBindlessHandle handle)
     handles.Deallocate(index);
 }
 
-VkBindlessHandle VkDescriptorPool::AllocateDynamicDescriptor(const RHITexture& texture)
+BindlessHandle VkDescriptorPool::AllocateDynamicDescriptor(const RHITexture& texture)
 {
     VEX_NOT_YET_IMPLEMENTED();
-    return VkBindlessHandle();
+    return BindlessHandle();
 }
 
-VkBindlessHandle VkDescriptorPool::AllocateDynamicDescriptor(const RHIBuffer& buffer)
+BindlessHandle VkDescriptorPool::AllocateDynamicDescriptor(const RHIBuffer& buffer)
 {
     VEX_NOT_YET_IMPLEMENTED();
-    return VkBindlessHandle();
+    return BindlessHandle();
 }
 
-void VkDescriptorPool::FreeDynamicDescriptor(VkBindlessHandle handle)
+void VkDescriptorPool::FreeDynamicDescriptor(BindlessHandle handle)
 {
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-bool VkDescriptorPool::IsValid(VkBindlessHandle handle)
+bool VkDescriptorPool::IsValid(BindlessHandle handle)
 {
     return handle.GetGeneration() == GetAllocation(handle).generations[handle.GetIndex()];
 }
 
-u8 VkDescriptorPool::GetDescriptorTypeBinding(VkBindlessHandle handle)
+u8 VkDescriptorPool::GetDescriptorTypeBinding(BindlessHandle handle)
 {
     auto handleType = GetDescriptorTypeFromHandle(handle);
     return GetDescriptorTypeBinding(handleType);
 }
 
 void VkDescriptorPool::UpdateDescriptor(VkGPUContext& ctx,
-                                        VkBindlessHandle targetDescriptor,
+                                        BindlessHandle targetDescriptor,
                                         ::vk::DescriptorImageInfo createInfo)
 {
     auto descType = GetDescriptorTypeFromHandle(targetDescriptor);
@@ -188,7 +188,7 @@ void VkDescriptorPool::UpdateDescriptor(VkGPUContext& ctx,
     ctx.device.updateDescriptorSets(1, &writeSet, 0, nullptr);
 }
 
-VkDescriptorPool::BindlessAllocation& VkDescriptorPool::GetAllocation(VkBindlessHandle handle)
+VkDescriptorPool::BindlessAllocation& VkDescriptorPool::GetAllocation(BindlessHandle handle)
 {
     return bindlessAllocations[GetDescriptorTypeBinding(handle)];
 }
@@ -198,7 +198,7 @@ VkDescriptorPool::BindlessAllocation& VkDescriptorPool::GetAllocation(::vk::Desc
     return bindlessAllocations[GetDescriptorTypeBinding(type)];
 }
 
-::vk::DescriptorType VkDescriptorPool::GetDescriptorTypeFromHandle(VkBindlessHandle handle)
+::vk::DescriptorType VkDescriptorPool::GetDescriptorTypeFromHandle(BindlessHandle handle)
 {
     return handle.type;
 }
