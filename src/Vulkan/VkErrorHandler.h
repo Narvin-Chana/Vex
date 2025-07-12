@@ -15,7 +15,7 @@ inline std::string FormatLocation(const std::source_location& loc)
     return std::format("{}:{}", loc.file_name(), loc.line());
 }
 
-inline std::expected<void, std::string> Validate(const ::vk::Result& result, std::source_location loc)
+inline std::expected<void, std::string> Validate(const ::vk::Result& result, const std::source_location& loc)
 {
     if (result != ::vk::Result::eSuccess)
     {
@@ -25,7 +25,7 @@ inline std::expected<void, std::string> Validate(const ::vk::Result& result, std
     return {};
 }
 
-inline void SanitizeOrCrash(const ::vk::Result& result, std::source_location loc)
+inline void SanitizeOrCrash(const ::vk::Result& result, const std::source_location& loc)
 {
     if (auto exp = Validate(result, std::move(loc)); !exp.has_value())
     {

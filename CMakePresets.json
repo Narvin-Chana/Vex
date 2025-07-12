@@ -1,0 +1,80 @@
+﻿{
+  "version": 4,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "installDir": "${sourceDir}/out/install/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "YES",
+        "FETCHCONTENT_BASE_DIR": "${sourceDir}/out/_deps"
+      }
+    },
+    {
+      "name": "x64-MSVC-Base",
+      "hidden": true,
+      "inherits": "base",
+      "environment": {
+        "VSCMD_ARG_TGT_ARCH": "x64"
+      }
+    },
+    {
+      "name": "x64-Clang-Base",
+      "hidden": true,
+      "inherits": "base",
+      "environment": {
+        "CC": "clang",
+        "CXX": "clang++"
+      }
+    },
+    {
+      "name": "x64-MSVC-Debug",
+      "inherits": "x64-MSVC-Base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "x64-MSVC-Development",
+      "inherits": "x64-MSVC-Base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "x64-MSVC-Shipping",
+      "inherits": "x64-MSVC-Base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "x64-Clang-Debug",
+      "inherits": "x64-Clang-Base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "x64-Clang-Development",
+      "inherits": "x64-Clang-Base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "x64-Clang-Shipping",
+      "inherits": "x64-Clang-Base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ]
+}
