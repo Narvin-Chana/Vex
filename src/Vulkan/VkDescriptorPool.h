@@ -1,11 +1,30 @@
 #pragma once
 
+#include <unordered_map>
+
+#include <Vex/Containers/FreeList.h>
 #include <Vex/RHI/RHIDescriptorPool.h>
 
+#include "Vex/Handle.h"
 #include "VkHeaders.h"
 
 namespace vex::vk
 {
+struct VkGPUContext;
+
+struct BindlessHandle : Handle<BindlessHandle>
+{
+    ::vk::DescriptorType type = static_cast<::vk::DescriptorType>(~0);
+
+    static BindlessHandle CreateHandle(u32 index, u8 generation, ::vk::DescriptorType type)
+    {
+        BindlessHandle handle = Handle::CreateHandle(index, generation);
+        handle.type = type;
+        return handle;
+    }
+};
+
+static constexpr BindlessHandle GInvalidBindlessHandle;
 
 class VkDescriptorPool : public RHIDescriptorPool
 {
@@ -13,20 +32,47 @@ public:
     VkDescriptorPool(::vk::Device device);
     virtual ~VkDescriptorPool() override;
 
-    virtual BindlessHandle AllocateStaticDescriptor(const RHITexture& texture) override;
-    virtual BindlessHandle AllocateStaticDescriptor(const RHIBuffer& buffer) override;
-    virtual void FreeStaticDescriptor(BindlessHandle handle) override;
+    BindlessHandle AllocateStaticDescriptor(const RHITexture& texture);
+    BindlessHandle AllocateStaticDescriptor(const RHIBuffer& buffer);
+    void FreeStaticDescriptor(BindlessHandle handle);
 
-    virtual BindlessHandle AllocateDynamicDescriptor(const RHITexture& texture) override;
-    virtual BindlessHandle AllocateDynamicDescriptor(const RHIBuffer& buffer) override;
-    virtual void FreeDynamicDescriptor(BindlessHandle handle) override;
+    BindlessHandle AllocateDynamicDescriptor(const RHITexture& texture);
+    BindlessHandle AllocateDynamicDescriptor(const RHIBuffer& buffer);
+    void FreeDynamicDescriptor(BindlessHandle handle);
 
-    virtual bool IsValid(BindlessHandle handle) override;
+    bool IsValid(BindlessHandle handle);
+
+    void UpdateDescriptor(VkGPUContext& ctx, BindlessHandle targetDescriptor, ::vk::DescriptorImageInfo createInfo);
 
 private:
-    ::vk::DescriptorPool descriptorPool;
-    ::vk::DescriptorSet bindlessSet; // Single global set for bindless resources
-    ::vk::DescriptorSetLayout bindlessLayout;
+    static constexpr std::array DescriptorTypes{
+        ::vk::DescriptorType::eUniformBuffer,
+        ::vk::DescriptorType::eStorageBuffer,
+        ::vk::DescriptorType::eSampledImage,
+        ::vk::DescriptorType::eStorageImage,
+    };
+
+    ::vk::Device device;
+    ::vk::UniqueDescriptorPool descriptorPool;
+    ::vk::UniqueDescriptorSet bindlessSet; // Single global set for bindless resources
+    ::vk::UniqueDescriptorSetLayout bindlessLayout;
+
+    struct BindlessAllocation
+    {
+        std::vector<u8> generations;
+        FreeListAllocator handles;
+    };
+    std::array<BindlessAllocation, DescriptorTypes.size()> bindlessAllocations;
+
+    BindlessAllocation& GetAllocation(BindlessHandle handle);
+    BindlessAllocation& GetAllocation(::vk::DescriptorType type);
+
+    ::vk::DescriptorType GetDescriptorTypeFromHandle(BindlessHandle handle);
+    u8 GetDescriptorTypeBinding(::vk::DescriptorType type);
+    u8 GetDescriptorTypeBinding(BindlessHandle handle);
+
+    friend class VkCommandList;
+    friend class VkResourceLayout;
 };
 
 } // namespace vex::vk

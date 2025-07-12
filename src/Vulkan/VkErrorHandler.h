@@ -27,9 +27,9 @@ inline std::expected<void, std::string> Validate(const ::vk::Result& result, con
 
 inline void SanitizeOrCrash(const ::vk::Result& result, const std::source_location& loc)
 {
-    if (auto res = Validate(result, loc); !res.has_value())
+    if (auto exp = Validate(result, std::move(loc)); !exp.has_value())
     {
-        VEX_LOG(Fatal, "Validation failed: {}", res.error());
+        VEX_LOG(Fatal, "Validation failed: {}", exp.error());
     }
 }
 

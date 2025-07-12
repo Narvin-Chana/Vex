@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Platform/Platform.h"
+
 #include <format>
 #include <vector>
 
@@ -46,5 +48,21 @@ struct std::formatter<std::vector<T>>
 
         *out++ = ']';
         return out;
+    }
+};
+
+// This could be elsewehere
+template <>
+struct std::formatter<std::wstring>
+{
+    constexpr auto parse(std::format_parse_context& ctx)
+    {
+        return ctx.begin();
+    }
+
+    auto format(const std::wstring& obj, std::format_context& ctx) const
+    {
+        auto converted = vex::WStringToString(obj);
+        return std::format_to(ctx.out(), "{}", converted);
     }
 };

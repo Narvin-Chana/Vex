@@ -23,8 +23,8 @@ enum class ShaderType
 
 struct ShaderDefine
 {
-    std::string name;
-    std::string value;
+    std::wstring name;
+    std::wstring value;
     bool operator==(const ShaderDefine& other) const = default;
 };
 

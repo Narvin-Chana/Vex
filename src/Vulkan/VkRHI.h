@@ -14,7 +14,7 @@ struct PlatformWindowHandle;
 namespace vex::vk
 {
 
-class VkRHI : public vex::RHI
+class VkRHI : public RHI
 {
 public:
     VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation);
@@ -33,7 +33,8 @@ public:
         const GraphicsPipelineStateKey& key) override;
     virtual UniqueHandle<RHIComputePipelineState> CreateComputePipelineState(
         const ComputePipelineStateKey& key) override;
-    virtual UniqueHandle<RHIResourceLayout> CreateResourceLayout(const FeatureChecker& featureChecker) override;
+    virtual UniqueHandle<RHIResourceLayout> CreateResourceLayout(const FeatureChecker& featureChecker,
+                                                                 RHIDescriptorPool& descriptorPool) override;
 
     virtual UniqueHandle<RHITexture> CreateTexture(const TextureDescription& description) override;
 
@@ -44,6 +45,8 @@ public:
     virtual UniqueHandle<RHIFence> CreateFence(u32 numFenceIndices) override;
     virtual void SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) override;
     virtual void WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) override;
+    virtual void ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
+                                                 std::vector<ShaderDefine>& defines) override;
 
 private:
     VkGPUContext& GetGPUContext();
@@ -53,6 +56,7 @@ private:
     ::vk::UniqueSurfaceKHR surface;
     ::vk::UniqueDevice device;
     ::vk::PhysicalDevice physDevice;
+    ::vk::UniquePipelineCache PSOCache;
 
     std::array<VkCommandQueue, CommandQueueTypes::Count> commandQueues;
 };

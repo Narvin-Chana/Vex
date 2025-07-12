@@ -145,7 +145,8 @@ UniqueHandle<RHIComputePipelineState> DX12RHI::CreateComputePipelineState(const 
     return MakeUnique<DX12ComputePipelineState>(device, key);
 }
 
-UniqueHandle<RHIResourceLayout> DX12RHI::CreateResourceLayout(const FeatureChecker& featureChecker)
+UniqueHandle<RHIResourceLayout> DX12RHI::CreateResourceLayout(const FeatureChecker& featureChecker,
+                                                              RHIDescriptorPool& descriptorPool)
 {
     return MakeUnique<DX12ResourceLayout>(device, reinterpret_cast<const DX12FeatureChecker&>(featureChecker));
 }
@@ -179,6 +180,11 @@ void DX12RHI::SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fence
 void DX12RHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
 {
     chk << GetQueue(queueType)->Wait(static_cast<DX12Fence&>(fence).fence.Get(), fence.GetFenceValue(fenceIndex));
+}
+void DX12RHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args, std::vector<ShaderDefine>& defines)
+{
+    args.push_back(L"-Qstrip_reflect");
+    defines.emplace_back(L"VEX_DX12");
 }
 
 ComPtr<ID3D12CommandQueue>& DX12RHI::GetQueue(CommandQueueType queueType)

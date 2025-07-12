@@ -11,7 +11,7 @@ namespace vex::vk
 class VkCommandPool : public RHICommandPool
 {
 public:
-    VkCommandPool(::vk::Device device, const std::array<VkCommandQueue, CommandQueueTypes::Count>& commandQueues);
+    VkCommandPool(VkGPUContext& ctx, const std::array<VkCommandQueue, CommandQueueTypes::Count>& commandQueues);
 
     virtual RHICommandList* CreateCommandList(CommandQueueType queueType) override;
     virtual void ReclaimCommandListMemory(CommandQueueType queueType) override;
@@ -20,6 +20,6 @@ public:
 private:
     std::array<::vk::UniqueCommandPool, CommandQueueTypes::Count> commandPoolPerQueueType;
     std::array<std::vector<UniqueHandle<VkCommandList>>, CommandQueueTypes::Count> allocatedCommandBuffers{};
-    ::vk::Device device;
+    VkGPUContext& ctx;
 };
 } // namespace vex::vk

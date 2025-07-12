@@ -22,6 +22,7 @@ std::string GetTimestampString();
 
 enum LogLevel : u8
 {
+    Verbose,
     Info,
     Warning,
     Error,
@@ -32,6 +33,8 @@ constexpr inline std::string_view LogLevelToString(LogLevel logLevel)
 {
     switch (logLevel)
     {
+    case Verbose:
+        return "Verbose";
     case Info:
         return "Info";
     case Warning:
@@ -43,8 +46,6 @@ constexpr inline std::string_view LogLevelToString(LogLevel logLevel)
     default:
         return "Invalid";
     }
-
-    std::unreachable();
 }
 
 /* clang-format off */

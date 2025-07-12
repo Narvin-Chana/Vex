@@ -14,17 +14,22 @@ void PhysicalDevice::DumpPhysicalDeviceInfo()
 {
     VEX_LOG(
         Info,
-        "Dumping feature checker support for physical device:\n\tDevice name: {}\n\tDedicated video memory (MB): "
-        "{}\n\tMax "
-        "feature level: {}\n\tResource binding tier: {}\n\tShader model: {}\n\tAdvanced Features:\n\t\tMesh Shaders: "
-        "{}\n\t\tRayTracing: {}",
+        "Dumping feature checker support for physical device:\n\tDevice name: {}\n\tDedicated video memory (MB): {}\n"
+        "\tMax feature level: {}\n"
+        "\tResource binding tier: {}\n"
+        "\tShader model: {}\n"
+        "\tAdvanced Features:\n"
+        "\t\tMesh Shaders: {}\n"
+        "\t\tRayTracing: {}\n"
+        "\t\tBindlessResources: {}",
         deviceName,
         dedicatedVideoMemoryMB,
         magic_enum::enum_name(featureChecker->GetFeatureLevel()),
         magic_enum::enum_name(featureChecker->GetResourceBindingTier()),
         magic_enum::enum_name(featureChecker->GetShaderModel()),
         featureChecker->IsFeatureSupported(Feature::MeshShader),
-        featureChecker->IsFeatureSupported(Feature::RayTracing));
+        featureChecker->IsFeatureSupported(Feature::RayTracing),
+        featureChecker->IsFeatureSupported(Feature::BindlessResources));
 }
 #endif
 

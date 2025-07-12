@@ -12,7 +12,6 @@ VkFeatureChecker::VkFeatureChecker(const ::vk::PhysicalDevice& physicalDevice)
 
     // Get vk 1.2 features
     ::vk::PhysicalDeviceFeatures2 features2_vk12;
-    features2_vk12.setPNext(&vulkan12Features);
     physicalDevice.getFeatures2(&features2_vk12);
 
     if (deviceProperties.apiVersion < VK_API_VERSION_1_3)
@@ -35,6 +34,11 @@ VkFeatureChecker::VkFeatureChecker(const ::vk::PhysicalDevice& physicalDevice)
     ::vk::PhysicalDeviceFeatures2 rayTracingFeatures2;
     rayTracingFeatures2.setPNext(&rayTracingFeatures);
     physicalDevice.getFeatures2(&rayTracingFeatures2);
+
+    // Get ray tracing features
+    ::vk::PhysicalDeviceFeatures2 descriptorIndexingFeatures2;
+    descriptorIndexingFeatures2.setPNext(&descriptorIndexingFeatures);
+    physicalDevice.getFeatures2(&descriptorIndexingFeatures2);
 }
 
 VkFeatureChecker::~VkFeatureChecker() = default;
@@ -47,6 +51,13 @@ bool VkFeatureChecker::IsFeatureSupported(Feature feature) const
         return meshShaderFeatures.meshShader && meshShaderFeatures.taskShader;
     case Feature::RayTracing:
         return rayTracingFeatures.rayTracingPipeline;
+    case Feature::BindlessResources:
+        return descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing &&
+               descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind &&
+               descriptorIndexingFeatures.shaderUniformBufferArrayNonUniformIndexing &&
+               descriptorIndexingFeatures.descriptorBindingUniformBufferUpdateAfterBind &&
+               descriptorIndexingFeatures.shaderStorageBufferArrayNonUniformIndexing &&
+               descriptorIndexingFeatures.descriptorBindingStorageBufferUpdateAfterBind;
     default:
         return false;
     }
