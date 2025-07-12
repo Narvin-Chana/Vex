@@ -7,18 +7,16 @@
 
 namespace vex
 {
-template <class Derived = void>
+template <class Derived>
 struct Handle
 {
-    using HandleType = std::conditional_t<std::is_void_v<Derived>, Handle, Derived>;
-
     // First 24 bits indicate handle index (max of 16'777'215), following 8 bits indicate the generation (max of
     // 255).
     u32 value = ~0U;
 
-    static HandleType CreateHandle(u32 index, u8 generation)
+    static Derived CreateHandle(u32 index, u8 generation)
     {
-        HandleType handle;
+        Derived handle;
         handle.SetHandle(index, generation);
         return handle;
     }
