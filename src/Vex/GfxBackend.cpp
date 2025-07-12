@@ -129,6 +129,9 @@ void GfxBackend::EndFrame(bool isFullscreenMode)
 
     // Release the memory occupied by the command lists that are done.
     GetCurrentCommandPool().ReclaimAllCommandListMemory();
+
+    // Send all shader errors to the user.
+    psCache.GetShaderCache().FlushCompilationErrors();
 }
 
 CommandContext GfxBackend::BeginScopedCommandContext(CommandQueueType queueType)
@@ -236,12 +239,38 @@ Texture GfxBackend::GetCurrentBackBuffer()
 
 void GfxBackend::RecompileAllShaders()
 {
-    psCache.GetShaderCache().MarkAllShadersDirty();
+    if (description.enableShaderDebugging)
+    {
+        psCache.GetShaderCache().MarkAllShadersDirty();
+    }
+    else
+    {
+        VEX_LOG(Warning, "Cannot recompile shaders when not in shader debug mode.");
+    }
+}
+
+void GfxBackend::SetShaderCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback)
+{
+    if (description.enableShaderDebugging)
+    {
+        psCache.GetShaderCache().SetCompilationErrorsCallback(callback);
+    }
+    else
+    {
+        VEX_LOG(Warning, "Cannot subscribe to shader errors when not in shader debug mode.");
+    }
 }
 
 void GfxBackend::RecompileChangedShaders()
 {
-    psCache.GetShaderCache().MarkAllStaleShadersDirty();
+    if (description.enableShaderDebugging)
+    {
+        psCache.GetShaderCache().MarkAllStaleShadersDirty();
+    }
+    else
+    {
+        VEX_LOG(Warning, "Cannot recompile changed shaders when not in shader debug mode.");
+    }
 }
 
 PipelineStateCache& GfxBackend::GetPipelineStateCache()

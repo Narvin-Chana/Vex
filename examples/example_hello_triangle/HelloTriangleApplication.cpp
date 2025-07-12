@@ -9,6 +9,8 @@
 
 #include <GLFW/glfw3native.h>
 
+#include <Vex/Logger.h>
+
 HelloTriangleApplication::HelloTriangleApplication()
     : ExampleApplication("HelloTriangleApplication")
 {
@@ -42,6 +44,40 @@ HelloTriangleApplication::HelloTriangleApplication()
                                                .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess,
                                                .clearValue{ .enabled = false } },
                                              vex::ResourceLifetime::Static);
+
+#if defined(_WIN32)
+    // Suggestion of an intrusive (à la Unreal) way to display errors.
+    // The handling of shader compilation errors is user choice.
+    graphics->SetShaderCompilationErrorsCallback(
+        [window = window](const std::vector<std::pair<vex::ShaderKey, std::string>>& errors) -> bool
+        {
+            if (!errors.empty())
+            {
+                std::string totalErrorMessage = "Error compiling shader(s):\n";
+                for (auto& [key, err] : errors)
+                {
+                    totalErrorMessage.append(std::format("Shader: {} - Error: {}\n", key, err));
+                }
+                totalErrorMessage.append("\nDo you want to retry?");
+
+                vex::i32 result = MessageBox(NULL,
+                                             totalErrorMessage.c_str(),
+                                             "Shader Compilation Error",
+                                             MB_ICONERROR | MB_YESNO | MB_DEFBUTTON2);
+                if (result == IDYES)
+                {
+                    return true;
+                }
+                else if (result == IDNO)
+                {
+                    VEX_LOG(vex::Error, "Unable to continue with shader errors. Closing application.");
+                    glfwSetWindowShouldClose(window, true);
+                }
+            }
+
+            return false;
+        });
+#endif
 }
 
 HelloTriangleApplication::~HelloTriangleApplication()

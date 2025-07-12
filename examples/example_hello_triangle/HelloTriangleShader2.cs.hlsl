@@ -13,15 +13,14 @@ bool IsInsideTriangle(float2 p, float2 v0, float2 v1, float2 v2)
     float2 e0 = v1 - v0;
     float2 e1 = v2 - v1;
     float2 e2 = v0 - v2;
-    
+
     float2 p0 = p - v0;
     float2 p1 = p - v1;
     float2 p2 = p - v2;
-    
+
     float c0 = p0.x * e0.y - p0.y * e0.x;
     float c1 = p1.x * e1.y - p1.y * e1.x;
     float c2 = p2.x * e2.y - p2.y * e2.x;
-    
     return (c0 >= 0 && c1 >= 0 && c2 >= 0) || (c0 <= 0 && c1 <= 0 && c2 <= 0);
 }
 
