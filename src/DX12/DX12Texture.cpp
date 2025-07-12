@@ -303,6 +303,7 @@ void DX12Texture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
             descriptorPool.FreeStaticDescriptor(bindlessHandle);
         }
     }
+    cache.clear();
 }
 
 CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(ComPtr<DX12Device>& device, DX12TextureView view)
