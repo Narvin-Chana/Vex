@@ -21,7 +21,7 @@ public:
 
     void CleanupResource(CleanupVariant resource);
     void CleanupResource(CleanupVariant resource, i8 lifespan);
-    void FlushResources(i8 flushCount);
+    void FlushResources(i8 flushCount, RHIDescriptorPool& descriptorPool);
 
 private:
     i8 defaultLifespan;

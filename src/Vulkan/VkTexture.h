@@ -12,6 +12,7 @@ class VkBackbufferTexture : public RHITexture
 {
 public:
     VkBackbufferTexture(TextureDescription&& description, ::vk::Image backbufferImage);
+    virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
 
     ::vk::Image image;
 };
@@ -26,6 +27,7 @@ public:
     // Creates a new image
     // ...
     VkTexture(VkGPUContext& ctx, TextureDescription&& description);
+    virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
 
 private:
     void CreateImage(VkGPUContext& ctx);

@@ -23,10 +23,13 @@ END_VEX_ENUM_FLAGS();
 
 // clang-format on
 
+class RHIDescriptorPool;
+
 class RHITexture
 {
 public:
     virtual ~RHITexture() = default;
+    virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
 
     const TextureDescription& GetDescription() const
     {

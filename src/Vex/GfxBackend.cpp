@@ -124,7 +124,7 @@ void GfxBackend::EndFrame(bool isFullscreenMode)
     currentFrameIndex = nextFrameIndex;
 
     // Flush all resources that were queued up for deletion.
-    resourceCleanup.FlushResources(1);
+    resourceCleanup.FlushResources(1, *descriptorPool);
 
     // Release the memory occupied by the command lists that are done.
     GetCurrentCommandPool().ReclaimAllCommandListMemory();
@@ -165,7 +165,7 @@ Texture GfxBackend::CreateTexture(TextureDescription description, ResourceLifeti
                     .description = std::move(description) };
 }
 
-void GfxBackend::DestroyTexture(Texture texture)
+void GfxBackend::DestroyTexture(const Texture& texture)
 {
     resourceCleanup.CleanupResource(std::move(textureRegistry[texture.handle]));
     textureRegistry.FreeElement(texture.handle);
@@ -188,7 +188,7 @@ void GfxBackend::FlushGPU()
     }
 
     // Release all stale resource now that the GPU is done with them.
-    resourceCleanup.FlushResources(std::to_underlying(description.frameBuffering));
+    resourceCleanup.FlushResources(std::to_underlying(description.frameBuffering), *descriptorPool);
 
     // Release the memory occupied by the command lists that are done.
     commandPools.ForEach([](auto& el) { el->ReclaimAllCommandListMemory(); });
