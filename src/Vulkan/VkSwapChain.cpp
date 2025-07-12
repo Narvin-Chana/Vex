@@ -113,7 +113,7 @@ void VkSwapChain::AcquireNextBackbuffer(u8 frameIndex)
 
     ::vk::SemaphoreSubmitInfo semSignalInfo{
         .semaphore = *cmdQueue.waitSemaphore,
-        .value = cmdQueue.waitValue + 1,
+        .value = ++cmdQueue.waitValue,
     };
 
     ::vk::SubmitInfo2KHR submitInfo{ .waitSemaphoreInfoCount = 1,
@@ -203,7 +203,9 @@ void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
                                                       .imageColorSpace = surfaceFormat.colorSpace,
                                                       .imageExtent = extent,
                                                       .imageArrayLayers = 1,
-                                                      .imageUsage = ::vk::ImageUsageFlagBits::eColorAttachment,
+                                                      .imageUsage = ::vk::ImageUsageFlagBits::eColorAttachment |
+                                                                    ::vk::ImageUsageFlagBits::eTransferDst |
+                                                                    ::vk::ImageUsageFlagBits::eTransferSrc,
                                                       .imageSharingMode = ::vk::SharingMode::eExclusive,
                                                       .queueFamilyIndexCount = 0,
                                                       .pQueueFamilyIndices = nullptr,

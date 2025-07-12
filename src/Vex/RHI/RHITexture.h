@@ -33,7 +33,7 @@ public:
         return description;
     }
 
-    RHITextureState::Flags GetCurrentState() const
+    [[nodiscard]] RHITextureState::Flags GetCurrentState() const
     {
         return currentState;
     }

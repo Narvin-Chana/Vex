@@ -1,5 +1,8 @@
 #pragma once
 
+#include <type_traits>
+
+#include <Vex/Hash.h>
 #include <Vex/Types.h>
 
 namespace vex
@@ -31,10 +34,21 @@ struct Handle
     {
         return value >> 24;
     }
-    bool operator==(Handle<Derived> other) const
+    bool operator==(Handle other) const
     {
         return value == other.value;
     }
 };
 
 } // namespace vex
+
+template <class T>
+struct std::hash<vex::Handle<T>>
+{
+    size_t operator()(const vex::Handle<T>& obj) const
+    {
+        size_t seed = 0;
+        VEX_HASH_COMBINE(seed, obj.value);
+        return seed;
+    }
+};

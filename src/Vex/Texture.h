@@ -28,6 +28,14 @@ enum class TextureViewType
     Texture3D,
 };
 
+struct ResourceBinding;
+
+namespace TextureUtil
+{
+TextureViewType GetTextureViewType(const ResourceBinding& binding);
+TextureFormat GetTextureFormat(const ResourceBinding& binding);
+} // namespace TextureUtil
+
 struct TextureClearValue
 {
     bool enabled = false;

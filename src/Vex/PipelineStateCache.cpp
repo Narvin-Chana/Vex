@@ -9,13 +9,14 @@ namespace vex
 {
 
 PipelineStateCache::PipelineStateCache(RHI* rhi,
+                                       RHIDescriptorPool& descriptorPool,
                                        const FeatureChecker& featureChecker,
                                        ResourceCleanup* resourceCleanup,
                                        bool enableShaderDebugging)
     : rhi(rhi)
     , resourceCleanup(resourceCleanup)
     , shaderCache(rhi, enableShaderDebugging)
-    , resourceLayout(rhi->CreateResourceLayout(featureChecker))
+    , resourceLayout(rhi->CreateResourceLayout(featureChecker, descriptorPool))
 {
 }
 

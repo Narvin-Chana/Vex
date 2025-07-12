@@ -13,6 +13,7 @@
 namespace vex
 {
 
+struct ShaderDefine;
 struct PhysicalDevice;
 struct ShaderKey;
 struct GraphicsPipelineStateKey;
@@ -35,7 +36,8 @@ struct RenderHardwareInterface
     virtual UniqueHandle<RHIShader> CreateShader(const ShaderKey& key) = 0;
     virtual UniqueHandle<RHIGraphicsPipelineState> CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key) = 0;
     virtual UniqueHandle<RHIComputePipelineState> CreateComputePipelineState(const ComputePipelineStateKey& key) = 0;
-    virtual UniqueHandle<RHIResourceLayout> CreateResourceLayout(const FeatureChecker& featureChecker) = 0;
+    virtual UniqueHandle<RHIResourceLayout> CreateResourceLayout(const FeatureChecker& featureChecker,
+                                                                 RHIDescriptorPool& descriptorPool) = 0;
 
     virtual UniqueHandle<RHITexture> CreateTexture(const TextureDescription& description) = 0;
 
@@ -46,6 +48,9 @@ struct RenderHardwareInterface
     virtual UniqueHandle<RHIFence> CreateFence(u32 numFenceIndices) = 0;
     virtual void SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) = 0;
     virtual void WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) = 0;
+
+    virtual void ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
+                                                 std::vector<ShaderDefine>& defines) = 0;
 };
 
 using RHI = RenderHardwareInterface;

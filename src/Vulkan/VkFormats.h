@@ -27,7 +27,7 @@ constexpr inline bool IsSpecialFormat(VkFormat format)
 }
 
 // Convert from TextureFormat to VkFormat
-constexpr inline ::vk::Format TextureFormatToVulkan(TextureFormat format)
+constexpr ::vk::Format TextureFormatToVulkan(TextureFormat format)
 {
     using enum ::vk::Format;
     switch (format)

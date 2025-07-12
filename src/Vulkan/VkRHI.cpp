@@ -15,7 +15,6 @@
 #include "VkDescriptorPool.h"
 #include "VkErrorHandler.h"
 #include "VkExtensions.h"
-#include "VkFeatureChecker.h"
 #include "VkHeaders.h"
 #include "VkPhysicalDevice.h"
 #include "VkPipelineState.h"
@@ -197,10 +196,22 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
 
     auto physDeviceFeatures = physDevice.getFeatures();
 
-    ::vk::PhysicalDeviceVulkan12Features features;
-    features.timelineSemaphore = true;
+    ::vk::PhysicalDeviceVulkan13Features features13;
+    features13.synchronization2 = true;
 
-    ::vk::DeviceCreateInfo deviceCreateInfo{ .pNext = &features,
+    ::vk::PhysicalDeviceVulkan12Features features12;
+    features12.pNext = &features13;
+    features12.timelineSemaphore = true;
+    features12.descriptorIndexing = true;
+
+    features12.runtimeDescriptorArray = true;
+    features12.descriptorBindingPartiallyBound = true;
+    features12.descriptorBindingUniformBufferUpdateAfterBind = true;
+    features12.descriptorBindingStorageBufferUpdateAfterBind = true;
+    features12.descriptorBindingSampledImageUpdateAfterBind = true;
+    features12.descriptorBindingStorageImageUpdateAfterBind = true;
+
+    ::vk::DeviceCreateInfo deviceCreateInfo{ .pNext = &features12,
                                              .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
                                              .pQueueCreateInfos = queueCreateInfos.data(),
                                              .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
@@ -248,6 +259,8 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
                                                                  createSemaphore() };
     }
 
+    PSOCache = VEX_VK_CHECK <<= device->createPipelineCacheUnique({});
+
     // Initializes values for the first time
     GetGPUContext();
 }
@@ -260,7 +273,7 @@ UniqueHandle<RHISwapChain> VkRHI::CreateSwapChain(const SwapChainDescription& de
 
 UniqueHandle<RHICommandPool> VkRHI::CreateCommandPool()
 {
-    return MakeUnique<VkCommandPool>(*device, commandQueues);
+    return MakeUnique<VkCommandPool>(GetGPUContext(), commandQueues);
 }
 
 UniqueHandle<RHIShader> VkRHI::CreateShader(const ShaderKey& key)
@@ -275,24 +288,24 @@ UniqueHandle<RHIGraphicsPipelineState> VkRHI::CreateGraphicsPipelineState(const 
 
 UniqueHandle<RHIComputePipelineState> VkRHI::CreateComputePipelineState(const ComputePipelineStateKey& key)
 {
-    return MakeUnique<VkComputePipelineState>(key);
+    return MakeUnique<VkComputePipelineState>(key, *device, *PSOCache);
 }
 
-UniqueHandle<RHIResourceLayout> VkRHI::CreateResourceLayout(const FeatureChecker& featureChecker)
+UniqueHandle<RHIResourceLayout> VkRHI::CreateResourceLayout(const FeatureChecker& featureChecker,
+                                                            RHIDescriptorPool& descriptorPool)
 {
-    VEX_NOT_YET_IMPLEMENTED();
-    return MakeUnique<VkResourceLayout>(/*device, reinterpret_cast<const VkFeatureChecker&>(featureChecker)*/);
+    return MakeUnique<VkResourceLayout>(*device,
+                                        reinterpret_cast<const VkDescriptorPool&>(descriptorPool),
+                                        reinterpret_cast<const VkFeatureChecker&>(featureChecker));
 }
 
 UniqueHandle<RHITexture> VkRHI::CreateTexture(const TextureDescription& description)
 {
-    VEX_NOT_YET_IMPLEMENTED();
-    return MakeUnique<VkTexture>(GetGPUContext(), TextureDescription(description));
+    return MakeUnique<VkImageTexture>(GetGPUContext(), TextureDescription(description));
 }
 
 UniqueHandle<RHIDescriptorPool> VkRHI::CreateDescriptorPool()
 {
-    VEX_NOT_YET_IMPLEMENTED();
     return MakeUnique<VkDescriptorPool>(*device);
 }
 
@@ -314,7 +327,7 @@ void VkRHI::ExecuteCommandList(RHICommandList& commandList)
 
     ::vk::SemaphoreSubmitInfo semSignalInfo{
         .semaphore = *cmdQueue.waitSemaphore,
-        .value = cmdQueue.waitValue + 1,
+        .value = ++cmdQueue.waitValue,
     };
 
     ::vk::SubmitInfo2KHR submitInfo{ .waitSemaphoreInfoCount = 1,
@@ -363,6 +376,13 @@ void VkRHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceInde
 
     VEX_VK_CHECK << commandQueues[queueType].queue.submit(submit);
 }
+
+void VkRHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args, std::vector<ShaderDefine>& defines)
+{
+    args.push_back(L"-spirv");
+    defines.emplace_back(L"VEX_VULKAN");
+}
+
 VkGPUContext& VkRHI::GetGPUContext()
 {
     static VkGPUContext ctx{ *device, physDevice, *surface, commandQueues[CommandQueueType::Graphics] };

@@ -6,11 +6,14 @@
 
 namespace vex::vk
 {
+struct VkGPUContext;
+
+class VkTexture;
 
 class VkCommandList : public RHICommandList
 {
 public:
-    VkCommandList(::vk::UniqueCommandBuffer&& commandBuffer, CommandQueueType type);
+    VkCommandList(VkGPUContext& ctx, ::vk::UniqueCommandBuffer&& commandBuffer, CommandQueueType type);
 
     virtual bool IsOpen() const override;
 
@@ -31,7 +34,7 @@ public:
                                     std::span<RHITextureBinding> textures,
                                     std::span<RHIBufferBinding> buffers,
                                     RHIDescriptorPool& descriptorPool) override;
-    virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool) override;
+    virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) override;
 
     virtual void Transition(RHITexture& texture, RHITextureState::Flags newState) override;
     virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs) override;
@@ -43,6 +46,7 @@ public:
     virtual CommandQueueType GetType() const override;
 
 private:
+    VkGPUContext& ctx;
     ::vk::UniqueCommandBuffer commandBuffer;
     CommandQueueType type;
     bool isOpen = false;

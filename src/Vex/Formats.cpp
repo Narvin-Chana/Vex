@@ -5,6 +5,29 @@
 namespace vex
 {
 
+// Returns SRGB equivalent format. If not found returns unknown
+TextureFormat GetSRGBEquivalentFormat(TextureFormat format)
+{
+    using enum TextureFormat;
+    switch (format)
+    {
+    case RGBA8_UNORM:
+        return RGBA8_UNORM_SRGB;
+    case BGRA8_UNORM:
+        return BGRA8_UNORM_SRGB;
+    case BC1_UNORM:
+        return BC1_UNORM_SRGB;
+    case BC2_UNORM:
+        return BC2_UNORM_SRGB;
+    case BC3_UNORM:
+        return BC3_UNORM_SRGB;
+    case BC7_UNORM:
+        return BC7_UNORM_SRGB;
+    default:
+        return UNKNOWN;
+    }
+}
+
 bool IsFormatSRGB(TextureFormat format)
 {
     switch (format)

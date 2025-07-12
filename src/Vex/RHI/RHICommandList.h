@@ -1,5 +1,6 @@
 #pragma once
 
+
 #include <array>
 #include <span>
 #include <utility>
@@ -41,7 +42,7 @@ public:
                                     std::span<RHITextureBinding> textures,
                                     std::span<RHIBufferBinding> buffers,
                                     RHIDescriptorPool& descriptorPool) = 0;
-    virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool) = 0;
+    virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) = 0;
 
     virtual void Transition(RHITexture& texture, RHITextureState::Flags newState) = 0;
     // Ideal for batching multiple resource transitions together.

@@ -51,6 +51,8 @@ bool DX12FeatureChecker::IsFeatureSupported(Feature feature) const
         return options7.MeshShaderTier >= MinimumMeshShaderTier;
     case Feature::RayTracing:
         return rayTracingSupported;
+    case Feature::BindlessResources:
+        return shaderModel.HighestShaderModel >= D3D_SHADER_MODEL_6_6;
     default:
         return false;
     }
