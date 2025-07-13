@@ -96,24 +96,14 @@ void VkCommandList::SetLayout(RHIResourceLayout& layout)
 
 void VkCommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout, std::span<const ConstantBinding> constants)
 {
-    auto& vkLayout = reinterpret_cast<const VkResourceLayout&>(layout);
-
-    std::vector<u8> pushConstantData(layout.GetMaxLocalConstantSize());
-
-    const u32 total = std::accumulate(constants.begin(),
-                                      constants.end(),
-                                      0u,
-                                      [](u32 acc, const ConstantBinding& binding) { return acc + binding.size; });
-
-    VEX_ASSERT(total <= pushConstantData.size(),
-               "Unable to bind local constants, you have surpassed the limit Vulkan allows for in root signatures.");
-
-    u8 currentIndex = 0;
-    for (const auto& binding : constants)
+    if (constants.empty())
     {
-        std::uninitialized_copy_n(static_cast<u8*>(binding.data), binding.size, &pushConstantData[currentIndex]);
-        currentIndex += binding.size;
+        return;
     }
+
+    auto constantData = ConstantBinding::ConcatConstantBindings(constants, layout.GetMaxLocalConstantSize());
+
+    auto& vkLayout = reinterpret_cast<const VkResourceLayout&>(layout);
 
     ::vk::ShaderStageFlags stageFlags;
     switch (type)
@@ -129,9 +119,9 @@ void VkCommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout, std
 
     commandBuffer->pushConstants(*vkLayout.pipelineLayout,
                                  stageFlags,
-                                 0,
-                                 pushConstantData.size(),
-                                 pushConstantData.data());
+                                 0, // Local constants start at 0
+                                 constantData.size(),
+                                 constantData.data());
 }
 
 void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
@@ -139,6 +129,11 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
                                        std::span<RHIBufferBinding> buffers,
                                        RHIDescriptorPool& descriptorPool)
 {
+    if (textures.empty())
+    {
+        return;
+    }
+
     auto& vkResourceLayout = reinterpret_cast<const VkResourceLayout&>(layout);
     auto& vkDescriptorPool = reinterpret_cast<VkDescriptorPool&>(descriptorPool);
 
@@ -181,7 +176,7 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
 
     commandBuffer->pushConstants(*vkResourceLayout.pipelineLayout,
                                  stageFlags,
-                                 0,
+                                 layout.GetLocalConstantsOffset(), // Bindless indices start after local constants
                                  bindlessHandleIndices.size() * sizeof(u32),
                                  bindlessHandleIndices.data());
 }

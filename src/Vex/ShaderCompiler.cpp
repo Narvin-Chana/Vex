@@ -158,7 +158,9 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader)
 
     std::vector<LPCWSTR> args;
 
-    rhi->ModifyShaderCompilerEnvironment(args, shader.key.defines);
+    std::vector<ShaderDefine> shaderDefines = shader.key.defines;
+
+    rhi->ModifyShaderCompilerEnvironment(args, shaderDefines);
 
     if (debugShaders)
     {
@@ -173,7 +175,7 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader)
 
     FillInAdditionalIncludeDirectories(args);
 
-    std::vector<DxcDefine> defines = ShaderCompiler_Internal::ConvertDefinesToDxcDefine(shader.key.defines);
+    std::vector<DxcDefine> defines = ShaderCompiler_Internal::ConvertDefinesToDxcDefine(shaderDefines);
     ComPtr<IDxcCompilerArgs> compilerArgs;
     if (HRESULT hr = GCompilerUtil.utils->BuildArguments(
             shader.key.path.wstring().c_str(),

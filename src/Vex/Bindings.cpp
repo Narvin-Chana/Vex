@@ -1,11 +1,38 @@
 #include "Bindings.h"
 
 #include <magic_enum/magic_enum.hpp>
+#include <numeric>
 
 #include <Vex/Logger.h>
 
 namespace vex
 {
+
+std::vector<u8> ConstantBinding::ConcatConstantBindings(std::span<const ConstantBinding> constantBindings,
+                                                        u32 maxBufferSize)
+{
+    const u32 total = std::accumulate(constantBindings.begin(),
+                                      constantBindings.end(),
+                                      0u,
+                                      [](u32 acc, const ConstantBinding& binding) { return acc + binding.size; });
+
+    VEX_ASSERT(total <= maxBufferSize,
+               "Unable to create local constants buffer, you have surpassed the limit allowed for.");
+
+    std::vector<u8> constantDataBuffer;
+    constantDataBuffer.resize(total);
+
+    u8 currentIndex = 0;
+    for (const auto& binding : constantBindings)
+    {
+        std::uninitialized_copy_n(static_cast<const u8*>(binding.data),
+                                  binding.size,
+                                  &constantDataBuffer[currentIndex]);
+        currentIndex += binding.size;
+    }
+
+    return constantDataBuffer;
+}
 
 void ResourceBinding::ValidateResourceBindings(std::span<const ResourceBinding> bindings,
                                                ResourceUsage::Flags validUsageFlags)

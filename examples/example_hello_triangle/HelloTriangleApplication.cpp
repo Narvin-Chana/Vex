@@ -7,6 +7,8 @@
 #define GLFW_EXPOSE_NATIVE_X11
 #endif
 
+#include "Vex/ResourceBindingSet.h"
+
 #include <GLFW/glfw3native.h>
 
 HelloTriangleApplication::HelloTriangleApplication()
@@ -42,6 +44,16 @@ HelloTriangleApplication::HelloTriangleApplication()
                                                .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess,
                                                .clearValue{ .enabled = false } },
                                              vex::ResourceLifetime::Static);
+    workingTexture2 = graphics->CreateTexture({ .name = "Working Texture 2",
+                                                .type = vex::TextureType::Texture2D,
+                                                .width = DefaultWidth,
+                                                .height = DefaultHeight,
+                                                .depthOrArraySize = 1,
+                                                .mips = 1,
+                                                .format = vex::TextureFormat::RGBA8_UNORM,
+                                                .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess,
+                                                .clearValue{ .enabled = false } },
+                                              vex::ResourceLifetime::Static);
 }
 
 HelloTriangleApplication::~HelloTriangleApplication()
@@ -65,29 +77,38 @@ void HelloTriangleApplication::Run()
     {
         glfwPollEvents();
 
+        const double currentTime = glfwGetTime();
+
         graphics->StartFrame();
 
         {
+            float color[4] = { static_cast<float>(std::cos(currentTime) / 2 + 0.5), 0.5, 0.2, 1.0 };
+            float offset = static_cast<float>(std::sin(currentTime)) / 12.0f;
+
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
             ctx.Dispatch(
                 { .path = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() /
                           "examples" / "example_hello_triangle" / "HelloTriangleShader.cs.hlsl",
                   .entryPoint = "CSMain",
                   .type = vex::ShaderType::ComputeShader },
-                {},
-                {},
-                { { vex::ResourceBinding{ .name = "OutputTexture", .texture = workingTexture } } },
+                vex::ResourceBindingSet{}
+                    .SetWriteBindings(std::initializer_list{
+                        vex::ResourceBinding{ .name = "OutputTexture", .texture = workingTexture },
+                    })
+                    .SetConstantsBindings(std::initializer_list{ vex::ConstantBinding{ offset } }),
                 { static_cast<uint32_t>(width) / 8, static_cast<uint32_t>(height) / 8, 1 });
             ctx.Dispatch(
                 { .path = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() /
                           "examples" / "example_hello_triangle" / "HelloTriangleShader2.cs.hlsl",
                   .entryPoint = "CSMain",
                   .type = vex::ShaderType::ComputeShader },
-                {},
-                {},
-                { { vex::ResourceBinding{ .name = "OutputTexture", .texture = workingTexture } } },
+                vex::ResourceBindingSet{}
+                    .SetWriteBindings(std::initializer_list{
+                        vex::ResourceBinding{ .name = "OutputTexture", .texture = workingTexture },
+                        vex::ResourceBinding{ .name = "OutputTexture2", .texture = workingTexture2 } })
+                    .SetConstantsBindings(std::initializer_list{ vex::ConstantBinding{ color } }),
                 { static_cast<uint32_t>(width) / 8, static_cast<uint32_t>(height) / 8, 1 });
-            ctx.Copy(workingTexture, graphics->GetCurrentBackBuffer());
+            ctx.Copy(workingTexture2, graphics->GetCurrentBackBuffer());
         }
 
         graphics->EndFrame(windowMode == Fullscreen);

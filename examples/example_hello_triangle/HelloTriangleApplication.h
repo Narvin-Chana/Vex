@@ -20,4 +20,5 @@ protected:
 
 private:
     vex::Texture workingTexture;
+    vex::Texture workingTexture2;
 };

@@ -1,5 +1,8 @@
 #include "DX12ResourceLayout.h"
 
+#include "Vex/ResourceBindingSet.h"
+
+#include <numeric>
 #include <ranges>
 #include <utility>
 
@@ -18,18 +21,6 @@ DX12ResourceLayout::DX12ResourceLayout(ComPtr<DX12Device>& device, const DX12Fea
 
 DX12ResourceLayout::~DX12ResourceLayout() = default;
 
-bool DX12ResourceLayout::ValidateGlobalConstant(const GlobalConstant& globalConstant) const
-{
-    if (!RHIResourceLayout::ValidateGlobalConstant(globalConstant))
-    {
-        return false;
-    }
-
-    // TODO: check size limits vs cbuffer limits
-
-    return true;
-}
-
 u32 DX12ResourceLayout::GetMaxLocalConstantSize() const
 {
     // Each global constant descriptor takes up 2 DWORDs in the root signature (as root descriptor).
@@ -39,6 +30,16 @@ u32 DX12ResourceLayout::GetMaxLocalConstantSize() const
                0,
                (featureChecker.GetMaxRootSignatureDWORDSize() - 2 * static_cast<u32>(globalConstants.size()))) *
            static_cast<u32>(sizeof(DWORD));
+}
+void DX12ResourceLayout::Update(const ResourceBindingSet& set)
+{
+    std::span<const ConstantBinding> constantBindings = set.GetConstantBindings();
+
+    reservedLocalConstantSize =
+        std::accumulate(constantBindings.begin(),
+                        constantBindings.end(),
+                        0u,
+                        [](const u32 acc, const ConstantBinding& constant) { return acc + constant.size; });
 }
 
 ComPtr<ID3D12RootSignature>& DX12ResourceLayout::GetRootSignature()
@@ -106,6 +107,99 @@ void DX12ResourceLayout::CompileRootSignature()
                                        IID_PPV_ARGS(&rootSignature));
 
     version++;
+}
+
+ScopedGlobalConstantHandle DX12ResourceLayout::RegisterScopedGlobalConstant(GlobalConstant globalConstant)
+{
+    std::string globalContantName = globalConstant.name;
+    if (globalConstants.contains(globalContantName))
+    {
+        VEX_LOG(Fatal, "Cannot register already registered global constant.");
+    }
+
+    if (!ValidateGlobalConstant(globalConstant))
+    {
+        VEX_LOG(Fatal, "Unable to validate global constant...");
+    }
+
+    globalConstants[globalContantName] = std::move(globalConstant);
+    isDirty = true;
+
+    return { *this, std::move(globalContantName) };
+}
+
+GlobalConstantHandle DX12ResourceLayout::RegisterGlobalConstant(GlobalConstant globalConstant)
+{
+    std::string globalContantName = globalConstant.name;
+    if (globalConstants.contains(globalContantName))
+    {
+        VEX_LOG(Fatal, "Cannot register already registered global constant.");
+    }
+
+    if (!ValidateGlobalConstant(globalConstant))
+    {
+        VEX_LOG(Fatal, "Unable to validate global constant...");
+    }
+
+    globalConstants[globalContantName] = std::move(globalConstant);
+    isDirty = true;
+
+    return { std::move(globalContantName) };
+}
+
+void DX12ResourceLayout::UnregisterGlobalConstant(GlobalConstantHandle globalConstantHandle)
+{
+    if (!globalConstants.contains(globalConstantHandle.name))
+    {
+        VEX_LOG(Fatal, "Cannot unregister non-registered global resource handle.");
+        return;
+    }
+
+    globalConstants.erase(globalConstantHandle.name);
+    isDirty = true;
+}
+
+bool DX12ResourceLayout::ValidateGlobalConstant(const GlobalConstant& globalConstant) const
+{
+    // Make sure no other global constant is using the same slot/space pair.
+    for (const auto& constant : globalConstants | std::views::values)
+    {
+        if (constant.slot == globalConstant.slot && constant.space == globalConstant.space)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+u32 DX12ResourceLayout::GetLocalConstantsOffset() const noexcept
+{
+    return reservedLocalConstantSize;
+}
+
+ScopedGlobalConstantHandle::ScopedGlobalConstantHandle(DX12ResourceLayout& globalLayout, std::string name)
+    : name{ std::move(name) }
+    , globalLayout{ &globalLayout }
+{
+}
+
+ScopedGlobalConstantHandle::ScopedGlobalConstantHandle(ScopedGlobalConstantHandle&& other) noexcept
+    : name{ std::exchange(other.name, "") }
+    , globalLayout{ std::exchange(other.globalLayout, nullptr) }
+{
+}
+
+ScopedGlobalConstantHandle& ScopedGlobalConstantHandle::operator=(ScopedGlobalConstantHandle&& other) noexcept
+{
+    name = std::exchange(other.name, "");
+    globalLayout = std::exchange(other.globalLayout, nullptr);
+    return *this;
+}
+
+ScopedGlobalConstantHandle::~ScopedGlobalConstantHandle()
+{
+    if (globalLayout)
+        globalLayout->UnregisterGlobalConstant({ std::move(name) });
 }
 
 } // namespace vex::dx12

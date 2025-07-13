@@ -115,6 +115,7 @@ private:
     inline static constexpr u32 DefaultRegistrySize = 1024;
 
     friend class CommandContext;
+    friend class ResourceBindingSet;
 };
 
 } // namespace vex
