@@ -37,6 +37,7 @@ public:
                                                                  RHIDescriptorPool& descriptorPool) override;
 
     virtual UniqueHandle<RHITexture> CreateTexture(const TextureDescription& description) override;
+    virtual UniqueHandle<RHIBuffer> CreateBuffer(const BufferDescription& description) override;
 
     virtual UniqueHandle<RHIDescriptorPool> CreateDescriptorPool() override;
 

@@ -22,6 +22,9 @@ float sdf(float2 p)
 
     // Convert pixel coordinates to normalized space for opengl-based sdf function (-1 to 1)
     float2 uv = float2(dtid.xy) / max(width, height).xx * 2 - 1;
+
+    uv.y += CB.offset;
+
     uv.y += 0.25f;
     uv.y *= -1;
     uv /= 0.5f;

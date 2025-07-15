@@ -1,4 +1,5 @@
 VEX_GLOBAL_RESOURCE(RWTexture2D<float4>, OutputTexture);
+VEX_GLOBAL_RESOURCE(RWTexture2D<float4>, SourceTexture);
 
 // Simple function to check if a point is inside a triangle
 bool IsInsideTriangle(float2 p, float2 v0, float2 v1, float2 v2)
@@ -34,6 +35,10 @@ bool IsInsideTriangle(float2 p, float2 v0, float2 v1, float2 v2)
     if (IsInsideTriangle(uv, v0, v1, v2) || IsInsideTriangle(uv - float2(1.15, 0), v0, v1, v2))
     {
         float3 color = float3(uv.x, uv.y, 1 - uv.x * uv.y);
-        OutputTexture[dtid.xy] += float4(color, 1.0f);
+        OutputTexture[dtid.xy] = CB.color;
+    }
+    else
+    {
+        outputTexture[dtid.xy] = SourceTexture[dtid.xy];
     }
 }

@@ -1,0 +1,151 @@
+﻿#include "VkBuffer.h"
+
+#include <Vex/Buffer.h>
+
+#include "VkCommandQueue.h"
+#include "VkErrorHandler.h"
+#include "VkGPUContext.h"
+#include "VkMemory.h"
+
+namespace vex::vk
+{
+
+::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDescription& desc)
+{
+    using enum ::vk::BufferUsageFlagBits;
+    switch (desc.usage)
+    {
+    case BufferUsage::GenericBuffer:
+        return (desc.memoryAcces & BufferMemoryAccess::GPUWrite) ? eStorageBuffer : eUniformBuffer;
+    case BufferUsage::IndexBuffer:
+        return eIndexBuffer;
+    case BufferUsage::VertexBuffer:
+        return eVertexBuffer;
+    default:
+        VEX_LOG(Fatal, "RHIBuffer::Usage not supported by VulkanRHI")
+        break;
+    }
+    std::unreachable();
+}
+
+::vk::MemoryPropertyFlags GetMemoryPropsFromDesc(const BufferDescription& desc)
+{
+    using enum ::vk::MemoryPropertyFlagBits;
+
+    bool GPUWrite = desc.memoryAcces & BufferMemoryAccess::GPUWrite;
+    bool GPURead = desc.memoryAcces & BufferMemoryAccess::GPURead;
+    bool CPUWrite = desc.memoryAcces & BufferMemoryAccess::CPUWrite;
+    bool CPURead = desc.memoryAcces & BufferMemoryAccess::CPURead;
+
+    if (!CPUWrite && !CPURead)
+    {
+        if (GPUWrite || GPURead)
+        {
+            return eDeviceLocal;
+        }
+    }
+    else
+    {
+        if (GPUWrite || GPURead)
+        {
+            return eHostCoherent | eHostVisible;
+        }
+    }
+
+    std::unreachable();
+}
+
+VkBuffer::VkBuffer(VkGPUContext& ctx, const BufferDescription& desc)
+    : RHIBuffer{ desc }
+    , ctx{ ctx }
+{
+    auto bufferUsage = GetVkBufferUsageFromDesc(desc);
+    auto memoryProps = GetMemoryPropsFromDesc(desc);
+
+    if (memoryProps & ::vk::MemoryPropertyFlagBits::eDeviceLocal)
+    {
+        // Needs to get its data from somewhere. Will therefore always need a transfer dest usage
+        bufferUsage |= ::vk::BufferUsageFlagBits::eTransferDst;
+        needsStagingBuffer = true;
+    }
+
+    buffer = VEX_VK_CHECK <<=
+        ctx.device.createBufferUnique({ .size = desc.size,
+                                        .usage = bufferUsage,
+                                        .sharingMode = ::vk::SharingMode::eExclusive,
+                                        .queueFamilyIndexCount = 1,
+                                        .pQueueFamilyIndices = &ctx.graphicsPresentQueue.family });
+
+    const ::vk::MemoryRequirements reqs = ctx.device.getBufferMemoryRequirements(*buffer);
+
+    memory = VEX_VK_CHECK <<= ctx.device.allocateMemoryUnique(
+        { .allocationSize = reqs.size * (needsStagingBuffer ? 1 : 2),
+          .memoryTypeIndex = GetBestMemoryType(ctx.physDevice, reqs.memoryTypeBits, memoryProps) });
+}
+
+bool VkBuffer::CanBeMapped()
+{
+    return needsStagingBuffer;
+}
+
+std::span<u8> VkBuffer::Map()
+{
+    VEX_ASSERT(CanBeMapped(), "Tried to map unmappable buffer");
+
+    void* data = VEX_VK_CHECK <<= ctx.device.mapMemory(*memory, 0, desc.size, static_cast<::vk::MemoryMapFlagBits>(0));
+    return { static_cast<u8*>(data), desc.size };
+}
+
+void VkBuffer::UnMap()
+{
+    ctx.device.unmapMemory(*memory);
+}
+
+::vk::Buffer& VkBuffer::GetBuffer()
+{
+    return *buffer;
+}
+
+} // namespace vex::vk
+
+::vk::AccessFlags2 vex::BufferUtil::GetAccessFlagsFromBufferState(RHIBufferState::Flags flags)
+{
+    using enum ::vk::AccessFlagBits2;
+    ::vk::AccessFlags2 accessFlags;
+    if (flags & RHIBufferState::ConstantBuffer)
+    {
+        accessFlags |= eUniformRead;
+    }
+
+    if (flags & RHIBufferState::StructuredBuffer)
+    {
+        accessFlags |= eShaderWrite | eShaderRead;
+    }
+
+    if (flags & RHIBufferState::Common)
+    {
+        accessFlags |= eNone;
+    }
+
+    if (flags & RHIBufferState::CopyDest)
+    {
+        accessFlags |= eTransferWrite;
+    }
+
+    if (flags & RHIBufferState::CopySource)
+    {
+        accessFlags |= eTransferRead;
+    }
+
+    if (flags & RHIBufferState::IndexBuffer)
+    {
+        accessFlags |= eIndexRead;
+    }
+
+    if (flags & RHIBufferState::VertexBuffer)
+    {
+        accessFlags |= eVertexAttributeRead;
+    }
+
+    return accessFlags;
+}
