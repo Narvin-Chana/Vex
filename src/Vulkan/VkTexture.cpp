@@ -121,6 +121,18 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(VkGPUContext& ctx,
     return handle;
 }
 
+void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
+{
+    for (auto& [handle, view] : cache | std::views::values)
+    {
+        if (handle != GInvalidBindlessHandle)
+        {
+            reinterpret_cast<VkDescriptorPool&>(descriptorPool).FreeStaticDescriptor(handle);
+        }
+    }
+    cache.clear();
+}
+
 void VkImageTexture::CreateImage(VkGPUContext& ctx)
 {
     ::vk::ImageCreateInfo createInfo{};

@@ -55,6 +55,7 @@ public:
     BindlessHandle GetOrCreateBindlessView(VkGPUContext& device,
                                            const VkTextureViewDesc& view,
                                            VkDescriptorPool& descriptorPool);
+    virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
 
     [[nodiscard]] ::vk::ImageLayout GetLayout() const
     {

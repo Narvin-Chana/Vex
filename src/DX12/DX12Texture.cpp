@@ -4,6 +4,7 @@
 
 #include <Vex/Logger.h>
 #include <Vex/Platform/Windows/WString.h>
+#include <Vex/RHI/RHIDescriptorPool.h>
 
 #include <DX12/DX12Formats.h>
 #include <DX12/HRChecker.h>
@@ -291,6 +292,18 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
 
 DX12Texture::~DX12Texture()
 {
+}
+
+void DX12Texture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
+{
+    for (auto& [heapSlot, bindlessHandle] : cache | std::views::values)
+    {
+        if (bindlessHandle != GInvalidBindlessHandle)
+        {
+            reinterpret_cast<DX12DescriptorPool&>(descriptorPool).FreeStaticDescriptor(bindlessHandle);
+        }
+    }
+    cache.clear();
 }
 
 CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(ComPtr<DX12Device>& device, DX12TextureView view)
