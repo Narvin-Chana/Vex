@@ -1,27 +1,32 @@
 #pragma once
 
-constexpr const char* ShaderGenMacros = R"(
+constexpr const char* ShaderGenGeneralMacros = R"(
+#if defined(VEX_DX12)
 
-// Temp until alex's MR is merged.
-#define VEX_DX12
+#define VEX_LOCAL_CONSTANT
 
-#ifdef VEX_DX12
+#elif defined(VEX_VULKAN)
+
+#define VEX_LOCAL_CONSTANT [[vk::push_constant]]
+
+#endif
+)";
+
+constexpr const char* ShaderGenBindingMacros = R"(
+#if defined(VEX_DX12)
 
 #define VEX_GLOBAL_RESOURCE(type, name) static type name = ResourceDescriptorHeap[zzzZZZ___GeneratedConstantsCB.name##_bindlessIndex]
 
-#elif VEX_VULKAN
+#elif defined(VEX_VULKAN)
 
-template<typename T> 
+// TODO: this only works with float4, figure out how to get all types working without having to spam many functions.
+RWTexture2D<float4> RWTextureDescriptorHeap[] : register(u3);
+
+template<typename T>
 T VexGetBindlessResource(uint index);
 
-template<> 
-Texture2D VexGetBindlessResource<Texture2D>(uint index)
-{
-    return TextureDescriptorHeap[index];
-}
-
-template <>
-RWTexture2D VexGetBindlessResource<RWTexture2D>(uint index)
+template<>
+RWTexture2D<float4> VexGetBindlessResource(uint index)
 {
     return RWTextureDescriptorHeap[index];
 }

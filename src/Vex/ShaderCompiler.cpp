@@ -156,22 +156,24 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
         buffer << shaderFile.rdbuf();
     }
 
+    std::string shaderFileStr = ShaderGenGeneralMacros;
+
     // Auto-generate shader constants bindings.
-    std::string shaderFileStr = "struct zzzZZZ___GeneratedConstants\n{";
+    shaderFileStr.append("struct zzzZZZ___GeneratedConstants\n{");
     for (std::string& name : resourceContext.GenerateShaderBindings())
     {
         // Remove spaces, we suppose that the user will not use any tabs or other cursed characters.
         std::replace(name.begin(), name.end(), ' ', '_');
         shaderFileStr.append(std::format("uint {}_bindlessIndex;", name));
     }
-
     // For now we suppose that the register b0 is used for the generated constants buffer (since local constants aren't
     // yet supported).
-    shaderFileStr.append("};\nConstantBuffer<zzzZZZ___GeneratedConstants> zzzZZZ___GeneratedConstantsCB: "
-                         "register(b0);");
+    shaderFileStr.append(
+        "};\nVEX_LOCAL_CONSTANT ConstantBuffer<zzzZZZ___GeneratedConstants> zzzZZZ___GeneratedConstantsCB: "
+        "register(b0);");
 
     // VEX_GLOBAL_RESOURCE and VEX_RESOURCE is how users will access resources, include macros that generate these.
-    shaderFileStr.append(ShaderGenMacros);
+    shaderFileStr.append(ShaderGenBindingMacros);
 
     // Append the actual shader file contents to the str.
     shaderFileStr.append(buffer.str());
