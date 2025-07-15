@@ -2,7 +2,6 @@
 
 #include <span>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include <Vex/TextureSampler.h>
@@ -10,16 +9,8 @@
 
 namespace vex
 {
-
-// Global constant buffer of memory.
-// Should be updated infrequently (eg: once per frame).
-struct GlobalConstant
-{
-    std::string name;
-    u32 size;
-    u32 slot;
-    u32 space;
-};
+class RHIBuffer;
+class ResourceBindingSet;
 
 class RHIResourceLayout;
 
@@ -49,13 +40,6 @@ public:
     void SetSamplers(std::span<TextureSampler> newSamplers);
     std::span<const TextureSampler> GetStaticSamplers() const;
 
-    ScopedGlobalConstantHandle RegisterScopedGlobalConstant(GlobalConstant globalConstant);
-    GlobalConstantHandle RegisterGlobalConstant(GlobalConstant globalConstant);
-    void UnregisterGlobalConstant(GlobalConstantHandle globalConstantHandle);
-
-    // Used to verify that the global constant would not make us bust the max size, slot or space imposed by our
-    // graphics API.
-    virtual bool ValidateGlobalConstant(const GlobalConstant& globalConstant) const;
     // Returns the max size of local constants that the graphics API supports.
     virtual u32 GetMaxLocalConstantSize() const = 0;
 
@@ -65,8 +49,6 @@ public:
 
 protected:
     bool isDirty = true;
-    std::unordered_map<std::string, GlobalConstant> globalConstants;
-
     std::vector<TextureSampler> samplers;
 };
 

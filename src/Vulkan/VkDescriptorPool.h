@@ -32,7 +32,7 @@ public:
     VkDescriptorPool(::vk::Device device);
     virtual ~VkDescriptorPool() override;
 
-    BindlessHandle AllocateStaticDescriptor(const RHITexture& texture);
+    BindlessHandle AllocateStaticDescriptor(const RHITexture& texture, bool writeAccess);
     BindlessHandle AllocateStaticDescriptor(const RHIBuffer& buffer);
     void FreeStaticDescriptor(BindlessHandle handle);
 
@@ -43,6 +43,7 @@ public:
     bool IsValid(BindlessHandle handle);
 
     void UpdateDescriptor(VkGPUContext& ctx, BindlessHandle targetDescriptor, ::vk::DescriptorImageInfo createInfo);
+    void UpdateDescriptor(VkGPUContext& ctx, BindlessHandle targetDescriptor, ::vk::DescriptorBufferInfo createInfo);
 
 private:
     static constexpr std::array DescriptorTypes{

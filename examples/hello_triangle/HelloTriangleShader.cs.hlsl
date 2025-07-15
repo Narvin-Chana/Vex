@@ -1,5 +1,8 @@
 VEX_GLOBAL_RESOURCE(RWTexture2D<float4>, OutputTexture);
 
+VEX_GLOBAL_RESOURCE(ByteAddressBuffer, ColorBuffer);
+VEX_GLOBAL_RESOURCE(RWByteAddressBuffer, CommBuffer);
+
 // Sourced from IQuilez SDF functions
 float dot2(float2 v)
 {
@@ -22,14 +25,17 @@ float sdf(float2 p)
 
     // Convert pixel coordinates to normalized space for opengl-based sdf function (-1 to 1)
     float2 uv = float2(dtid.xy) / max(width, height).xx * 2 - 1;
+
+    float4 color = ColorBuffer.Load<float4>(0);
+    CommBuffer.Store<float4>(0, float4(1,1,1,1) - color);
+
     uv.y += 0.25f;
     uv.y *= -1;
     uv /= 0.63f;
 
     if (sdf(uv) < 0)
     {
-        float3 color = float3(uv.x, uv.y, 1 - uv.x * uv.y);
-        OutputTexture[dtid.xy] = float4(color, 1.0f);
+        OutputTexture[dtid.xy] = float4(color.rgb, 1.0f);
     }
     else
     {

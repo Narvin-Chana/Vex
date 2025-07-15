@@ -15,6 +15,7 @@ struct VkTextureViewDesc
 {
     TextureViewType viewType = TextureViewType::Texture2D;
     TextureFormat format = TextureFormat::UNKNOWN;
+    ResourceUsage::Flags usage = ResourceUsage::None;
 
     u32 mipBias = 0;
     u32 mipCount = 1;
@@ -30,6 +31,7 @@ struct VkTextureViewDesc
 VEX_MAKE_HASHABLE(vex::vk::VkTextureViewDesc,
     VEX_HASH_COMBINE(seed, obj.viewType);
     VEX_HASH_COMBINE(seed, obj.format);
+    VEX_HASH_COMBINE(seed, obj.usage);
     VEX_HASH_COMBINE(seed, obj.mipBias);
     VEX_HASH_COMBINE(seed, obj.mipCount);
     VEX_HASH_COMBINE(seed, obj.startSlice);

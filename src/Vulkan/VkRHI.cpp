@@ -9,6 +9,7 @@
 #include <Vex/RHI/RHIFence.h>
 
 #include "Synchro/VkFence.h"
+#include "VkBuffer.h"
 #include "VkCommandPool.h"
 #include "VkCommandQueue.h"
 #include "VkDebug.h"
@@ -301,6 +302,10 @@ UniqueHandle<RHIResourceLayout> VkRHI::CreateResourceLayout(RHIDescriptorPool& d
 UniqueHandle<RHITexture> VkRHI::CreateTexture(const TextureDescription& description)
 {
     return MakeUnique<VkImageTexture>(GetGPUContext(), TextureDescription(description));
+}
+UniqueHandle<RHIBuffer> VkRHI::CreateBuffer(const BufferDescription& description)
+{
+    return MakeUnique<VkBuffer>(GetGPUContext(), description);
 }
 
 UniqueHandle<RHIDescriptorPool> VkRHI::CreateDescriptorPool()

@@ -1,6 +1,5 @@
 #include "CommandContext.h"
 
-#include <Vex/Bindings.h>
 #include <Vex/Debug.h>
 #include <Vex/DrawHelpers.h>
 #include <Vex/GfxBackend.h>
@@ -9,7 +8,9 @@
 #include <Vex/RHI/RHIBindings.h>
 #include <Vex/RHI/RHICommandList.h>
 #include <Vex/RHI/RHIPipelineState.h>
+#include <Vex/RHI/RHIResourceLayout.h>
 #include <Vex/RHI/RHISwapChain.h>
+#include <Vex/ResourceBindingSet.h>
 #include <Vex/ShaderResourceContext.h>
 
 namespace vex
@@ -62,10 +63,7 @@ CommandContext::CommandContext(GfxBackend* backend, RHICommandList* cmdList)
     , cmdList(cmdList)
 {
     cmdList->Open();
-    // TODO: To be discussed
-    RHIResourceLayout& resLayout = backend->GetPipelineStateCache().GetResourceLayout();
-    cmdList->SetDescriptorPool(*backend->descriptorPool, resLayout);
-    cmdList->SetLayout(resLayout);
+    cmdList->SetDescriptorPool(*backend->descriptorPool, backend->GetPipelineStateCache().GetResourceLayout());
 }
 
 CommandContext::~CommandContext()
@@ -176,6 +174,9 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
     // Transition our resources to the correct states.
     cmdList->Transition(textureStateTransitions);
 
+    // Bind the layout to the pipeline
+    cmdList->SetLayout(resourceLayout);
+
     // Transforms ResourceBinding into platform specific views, then binds them to the shader (preferably bindlessly).
     cmdList->SetLayoutResources(resourceLayout, rhiTextureBindings, rhiBufferBindings, *backend->descriptorPool);
 
@@ -209,22 +210,12 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
 }
 
 void CommandContext::Dispatch(const ShaderKey& shader,
-                              std::span<const ConstantBinding> constants,
-                              std::span<const ResourceBinding> reads,
-                              std::span<const ResourceBinding> readWrites,
+                              const ResourceBindingSet& resourceBindingSet,
                               std::array<u32, 3> groupCount)
 {
-    ResourceBinding::ValidateResourceBindings(reads, ResourceUsage::Read);
-    ResourceBinding::ValidateResourceBindings(readWrites, ResourceUsage::UnorderedAccess);
+    resourceBindingSet.ValidateBindings();
 
     RHIResourceLayout& resourceLayout = backend->GetPipelineStateCache().GetResourceLayout();
-
-    // Currently constants are not handled correctly, this will come with the implementation of buffers (includes
-    // constant buffers).
-    if (!constants.empty())
-    {
-        VEX_NOT_YET_IMPLEMENTED();
-    }
 
     // TODO: About resource binding logic!
     //
@@ -238,11 +229,6 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     // sufficient for most cases!). This could potentially even be done dynamically (so only if the root constants
     // doesn't have enough space to fit all resources), this would allow us to avoid the additional indirection this has
     // when few resources are bound!
-
-    // Upload local constants as push/root constants
-    // TODO: handle shader constants (validation, slot binding, etc...)!
-    // This current logic is "placeholder" and more of a proof of concept than something actually useable.
-    cmdList->SetLayoutLocalConstants(resourceLayout, constants);
 
     // --------------------------------
     // Current Resource Binding Logic:
@@ -276,44 +262,69 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     //              bindless index.
 
     // Collect all underlying RHI textures.
-    i32 totalSize = static_cast<i32>(reads.size() + readWrites.size());
 
     std::vector<RHITextureBinding> rhiTextureBindings;
-    rhiTextureBindings.reserve(totalSize);
     std::vector<RHIBufferBinding> rhiBufferBindings;
-    rhiBufferBindings.reserve(totalSize);
+    ResourceBindingSet::CollectRHIResources(*backend,
+                                            resourceBindingSet.writes,
+                                            rhiTextureBindings,
+                                            rhiBufferBindings,
+                                            ResourceUsage::UnorderedAccess);
+    const u32 texWriteCount = rhiTextureBindings.size();
+    const u32 bufferWriteCount = rhiBufferBindings.size();
+    ResourceBindingSet::CollectRHIResources(*backend,
+                                            resourceBindingSet.reads,
+                                            rhiTextureBindings,
+                                            rhiBufferBindings,
+                                            ResourceUsage::Read);
 
     std::vector<std::pair<RHITexture&, RHITextureState::Flags>> textureStateTransitions;
-    textureStateTransitions.reserve(totalSize);
+    textureStateTransitions.reserve(rhiTextureBindings.size());
 
-    auto CollectResources = [backend = backend, &rhiTextureBindings, &rhiBufferBindings, &textureStateTransitions](
-                                std::span<const ResourceBinding> resources,
-                                ResourceUsage::Type usage,
-                                RHITextureState::Flags state)
+    for (u32 i = 0; i < rhiTextureBindings.size(); ++i)
     {
-        for (const auto& binding : resources)
-        {
-            if (binding.IsTexture())
-            {
-                auto& texture = backend->GetRHITexture(binding.texture.handle);
-                textureStateTransitions.emplace_back(texture, state);
-                rhiTextureBindings.emplace_back(binding, usage, &texture);
-            }
+        textureStateTransitions.emplace_back(
+            *rhiTextureBindings[i].texture,
+            i < texWriteCount ? RHITextureState::UnorderedAccess : RHITextureState::ShaderResource);
+    }
 
-            if (binding.IsBuffer())
-            {
-                auto& buffer = backend->GetRHIBuffer(binding.buffer.handle);
-                rhiBufferBindings.emplace_back(binding, usage, &buffer);
-            }
+    std::vector<std::pair<RHIBuffer&, RHITextureState::Flags>> bufferStateTransitions;
+    bufferStateTransitions.reserve(rhiBufferBindings.size());
+
+    std::vector<std::pair<RHIBuffer&, RHITextureState::Flags>> bufferStagingCopyTransitions;
+    for (u32 i = 0; i < rhiBufferBindings.size(); ++i)
+    {
+        bufferStateTransitions.emplace_back(
+            *rhiBufferBindings[i].buffer,
+            i < bufferWriteCount ? RHIBufferState::StructuredBuffer : RHIBufferState::ShaderRead);
+
+        if (rhiBufferBindings[i].buffer->NeedsStagingBufferCopy())
+        {
+            bufferStagingCopyTransitions.emplace_back(*rhiBufferBindings[i].buffer, RHIBufferState::CopyDest);
+            bufferStagingCopyTransitions.emplace_back(*rhiBufferBindings[i].buffer->GetStagingBuffer(),
+                                                      RHIBufferState::CopySource);
         }
-    };
-    CollectResources(reads, ResourceUsage::Read, RHITextureState::ShaderResource);
-    CollectResources(readWrites, ResourceUsage::UnorderedAccess, RHITextureState::UnorderedAccess);
+    }
+
+    cmdList->Transition(bufferStagingCopyTransitions);
+    for (int i = 0; i < bufferStagingCopyTransitions.size() / 2; ++i)
+    {
+        auto& buffer = bufferStagingCopyTransitions[i * 2].first;
+        cmdList->Copy(*buffer.GetStagingBuffer(), buffer);
+        buffer.SetNeedsStagingBufferCopy(false);
+    }
 
     // Transition our resources to the correct states.
     cmdList->Transition(textureStateTransitions);
+    cmdList->Transition(bufferStateTransitions);
 
-    // Transforms ResourceBinding into platform specific views, then binds them to the shader (preferably bindlessly).
+    // Sets the resource layout to use for the dispatch
+    cmdList->SetLayout(resourceLayout);
+
+    // Upload local constants as push/root constants
+    // TODO: handle shader constants (validation, slot binding, etc...)!
+    cmdList->SetLayoutLocalConstants(resourceLayout, resourceBindingSet.GetConstantBindings());
+
     cmdList->SetLayoutResources(resourceLayout, rhiTextureBindings, rhiBufferBindings, *backend->descriptorPool);
 
     ComputePipelineStateKey psoKey = { .computeShader = shader };
@@ -345,10 +356,19 @@ void CommandContext::Copy(const Texture& source, const Texture& destination)
 {
     RHITexture& sourceRHI = backend->GetRHITexture(source.handle);
     RHITexture& destinationRHI = backend->GetRHITexture(destination.handle);
-    std::array<std::pair<RHITexture&, RHITextureState::Flags>, 2> transitions{
-        std::pair<RHITexture&, RHITextureState::Flags>{ sourceRHI, RHITextureState::CopySource },
-        std::pair<RHITexture&, RHITextureState::Flags>{ destinationRHI, RHITextureState::CopyDest }
-    };
+    std::array transitions{ std::pair<RHITexture&, RHITextureState::Flags>{ sourceRHI, RHITextureState::CopySource },
+                            std::pair<RHITexture&, RHITextureState::Flags>{ destinationRHI,
+                                                                            RHITextureState::CopyDest } };
+    cmdList->Transition(transitions);
+    cmdList->Copy(sourceRHI, destinationRHI);
+}
+
+void CommandContext::Copy(const Buffer& source, const Buffer& destination)
+{
+    RHIBuffer& sourceRHI = backend->GetRHIBuffer(source.handle);
+    RHIBuffer& destinationRHI = backend->GetRHIBuffer(destination.handle);
+    std::array transitions{ std::pair<RHIBuffer&, RHIBufferState::Flags>{ sourceRHI, RHIBufferState::CopySource },
+                            std::pair<RHIBuffer&, RHIBufferState::Flags>{ destinationRHI, RHIBufferState::CopyDest } };
     cmdList->Transition(transitions);
     cmdList->Copy(sourceRHI, destinationRHI);
 }

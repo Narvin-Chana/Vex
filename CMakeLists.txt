@@ -132,6 +132,7 @@ add_library(Vex STATIC
     "src/Vex/RHI/RHITexture.h"
     "src/Vex/Formats.cpp"
     "src/Vex/RHI/RHIBuffer.h"
+    "src/Vex/RHI/RHIBuffer.cpp"
     "src/Vex/Texture.h"
     "src/Vex/Texture.cpp"
     "src/Vex/Buffer.h"
@@ -160,6 +161,8 @@ add_library(Vex STATIC
     "src/Vex/ShaderCompiler.cpp"
     "src/Vex/Platform/Platform.h"
     "src/Vex/Formattable.h"
+    "src/Vex/ResourceBindingSet.cpp"
+    "src/Vex/ResourceBindingSet.h"
     "src/Vex/ShaderResourceContext.h"
     "src/Vex/ShaderResourceContext.cpp"
     "src/Vex/ShaderGen.h"
@@ -196,7 +199,7 @@ message(STATUS "Setting up Vex headers...")
 if(VEX_ENABLE_DX12)
     include(VexDX12)
     setup_dx12_backend(Vex)
-elseif(VEX_ENABLE_VULKAN)  
+elseif(VEX_ENABLE_VULKAN)
     include(VexVulkan)
     setup_vulkan_backend(Vex)
 endif()
@@ -236,7 +239,7 @@ endif()
 # Disable exceptions across the board.
 target_compile_options(Vex PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/EHs-c- /wd4530 /D_HAS_EXCEPTIONS=0>  # MSVC: disable exceptions, suppress warning for exception handler
-    $<$<CXX_COMPILER_ID:Clang>:-fno-exceptions>                     # Clang: disable exceptions  
+    $<$<CXX_COMPILER_ID:Clang>:-fno-exceptions>                     # Clang: disable exceptions
     $<$<CXX_COMPILER_ID:GNU>:-fno-exceptions>                       # GCC: disable exceptions
 )
 

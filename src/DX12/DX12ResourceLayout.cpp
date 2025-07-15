@@ -1,9 +1,11 @@
 #include "DX12ResourceLayout.h"
 
+#include <numeric>
 #include <ranges>
 #include <utility>
 
 #include <Vex/Logger.h>
+#include <Vex/ResourceBindingSet.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/Platform/Windows/HResult.h>
 
@@ -20,28 +22,9 @@ DX12ResourceLayout::DX12ResourceLayout(ComPtr<DX12Device>& device)
 
 DX12ResourceLayout::~DX12ResourceLayout() = default;
 
-bool DX12ResourceLayout::ValidateGlobalConstant(const GlobalConstant& globalConstant) const
-{
-    if (!RHIResourceLayout::ValidateGlobalConstant(globalConstant))
-    {
-        return false;
-    }
-
-    // TODO: check size limits vs cbuffer limits
-
-    return true;
-}
-
 u32 DX12ResourceLayout::GetMaxLocalConstantSize() const
 {
-    // Each global constant descriptor takes up 2 DWORDs in the root signature (as root descriptor).
-    // There is the option of using a descriptor table for constants to reduce their size, but adding a level of
-    // indirection, this is probably not needed thanks to bindless existing nowadays!
-    return std::max<u32>(0,
-                         (reinterpret_cast<DX12FeatureChecker*>(GPhysicalDevice->featureChecker.get())
-                              ->GetMaxRootSignatureDWORDSize() -
-                          2 * static_cast<u32>(globalConstants.size()))) *
-           static_cast<u32>(sizeof(DWORD));
+    return reinterpret_cast<DX12FeatureChecker*>(GPhysicalDevice->featureChecker.get())->GetMaxRootSignatureDWORDSize()
 }
 
 ComPtr<ID3D12RootSignature>& DX12ResourceLayout::GetRootSignature()
@@ -60,7 +43,6 @@ void DX12ResourceLayout::CompileRootSignature()
     u32 rootSignatureDWORDCount = GetMaxLocalConstantSize() / sizeof(DWORD);
 
     std::vector<CD3DX12_ROOT_PARAMETER> rootParameters;
-    rootParameters.reserve(1 + globalConstants.size());
 
     CD3DX12_ROOT_PARAMETER rootConstants;
     // Root constants are always bound at the beginning of the root parameters (in slot & space 0).

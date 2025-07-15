@@ -182,6 +182,28 @@ Texture GfxBackend::CreateTexture(TextureDescription description, ResourceLifeti
                     .description = std::move(description) };
 }
 
+Buffer GfxBackend::CreateBuffer(BufferDescription description, ResourceLifetime lifetime)
+{
+    if (lifetime == ResourceLifetime::Dynamic)
+    {
+        // TODO: handle dynamic resources, includes specifying that the resource when bound should use dynamic bindless
+        // indices and self-cleanup of the RHITexture should occur after the current frame ends.
+        VEX_NOT_YET_IMPLEMENTED();
+    }
+
+    auto rhiBuffer = rhi->CreateBuffer(description);
+    return Buffer{ .handle = bufferRegistry.AllocateElement(std::move(rhiBuffer)),
+                   .description = std::move(description) };
+}
+
+void GfxBackend::UpdateData(const Buffer& buffer, std::span<const u8> data)
+{
+    VEX_ASSERT(data.size() <= buffer.description.byteSize, "Buffer data exceded buffer size");
+
+    RHIBuffer& rhiBuffer = GetRHIBuffer(buffer.handle);
+    rhiBuffer.GetMappedMemory()->SetData(data);
+}
+
 void GfxBackend::DestroyTexture(const Texture& texture)
 {
     resourceCleanup.CleanupResource(std::move(textureRegistry[texture.handle]));
