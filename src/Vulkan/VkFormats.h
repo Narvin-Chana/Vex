@@ -1,8 +1,8 @@
 #pragma once
 
-#include <vulkan/vulkan_core.h>
-
 #include <utility>
+
+#include <vulkan/vulkan_core.h>
 
 #include <Vex/Formats.h>
 

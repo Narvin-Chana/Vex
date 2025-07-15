@@ -1,14 +1,14 @@
 #include "VkResourceLayout.h"
 
-#include <Vex/ResourceBindingSet.h>
+#include <utility>
+
 #include <Vex/Debug.h>
 #include <Vex/PhysicalDevice.h>
+#include <Vex/ResourceBindingSet.h>
 
-#include <numeric>
-
-#include "VkDescriptorPool.h"
-#include "VkErrorHandler.h"
-#include "VkFeatureChecker.h"
+#include <Vulkan/VkDescriptorPool.h>
+#include <Vulkan/VkErrorHandler.h>
+#include <Vulkan/VkFeatureChecker.h>
 
 namespace vex::vk
 {
@@ -36,6 +36,7 @@ u32 VkResourceLayout::GetMaxLocalConstantSize() const
 {
     const u32 maxBytes =
         reinterpret_cast<VkFeatureChecker*>(GPhysicalDevice->featureChecker.get())->GetMaxPushConstantSize();
+    // TODO: Consider global constant in the available size
     return std::max<u32>(0, maxBytes);
 }
 } // namespace vex::vk

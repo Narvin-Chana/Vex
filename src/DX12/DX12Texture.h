@@ -20,8 +20,8 @@ namespace vex::dx12
 
 struct DX12TextureView
 {
-    DX12TextureView(const ResourceBinding& binding, const TextureDescription& description, ResourceUsage::Type usage);
-    ResourceUsage::Type type;
+    DX12TextureView(const ResourceBinding& binding, const TextureDescription& description, TextureUsage::Type usage);
+    TextureUsage::Type usage;
     TextureViewType dimension;
     // Uses the underlying resource's format if set to DXGI_FORMAT_UNKNOWN (and if the texture's format is not
     // TYPELESS!).
@@ -39,7 +39,7 @@ struct DX12TextureView
 
 // clang-format off
 VEX_MAKE_HASHABLE(vex::dx12::DX12TextureView,
-    VEX_HASH_COMBINE(seed, obj.type);
+    VEX_HASH_COMBINE(seed, obj.usage);
     VEX_HASH_COMBINE(seed, obj.dimension);
     VEX_HASH_COMBINE(seed, obj.format);
     VEX_HASH_COMBINE(seed, obj.mipBias);
@@ -78,21 +78,19 @@ private:
 
     struct CacheEntry
     {
-        u32 heapSlot;
+        u32 heapSlot = ~0U;
         BindlessHandle bindlessHandle = GInvalidBindlessHandle;
     };
 
-    std::unordered_map<DX12TextureView, CacheEntry> cache;
+    std::unordered_map<DX12TextureView, CacheEntry> viewCache;
 
     static constexpr u32 MaxViewCountPerHeap = 32;
 
     // CPU-only visible heaps are "free" to create.
     // Aka they are just CPU memory, requiring no GPU calls.
-    DX12DescriptorHeap<HeapType::CBV_SRV_UAV> srvUavHeap;
     DX12DescriptorHeap<HeapType::RTV> rtvHeap;
     DX12DescriptorHeap<HeapType::DSV> dsvHeap;
 
-    FreeListAllocator srvUavHeapAllocator{ MaxViewCountPerHeap };
     FreeListAllocator rtvHeapAllocator{ MaxViewCountPerHeap };
     FreeListAllocator dsvHeapAllocator{ MaxViewCountPerHeap };
 };

@@ -5,16 +5,19 @@ namespace vex
 
 struct RenderHardwareInterface;
 using RHI = RenderHardwareInterface;
+
 class RHIBuffer;
-class RHIGraphicsPipelineState;
+struct RHIBufferBinding;
 class RHIComputePipelineState;
 class RHICommandList;
 class RHICommandPool;
-class RHIShader;
+class RHIDescriptorPool;
 class RHIFence;
+class RHIGraphicsPipelineState;
+class RHIResourceLayout;
+class RHIShader;
 class RHISwapChain;
 class RHITexture;
-class RHIResourceLayout;
-class RHIDescriptorPool;
+struct RHITextureBinding;
 
 } // namespace vex

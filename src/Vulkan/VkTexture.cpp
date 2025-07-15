@@ -1,11 +1,11 @@
 ﻿#include "VkTexture.h"
 
-#include "VkCommandPool.h"
-#include "VkDescriptorPool.h"
-#include "VkErrorHandler.h"
-#include "VkFormats.h"
-#include "VkGPUContext.h"
-#include "VkMemory.h"
+#include <Vulkan/VkCommandPool.h>
+#include <Vulkan/VkDescriptorPool.h>
+#include <Vulkan/VkErrorHandler.h>
+#include <Vulkan/VkFormats.h>
+#include <Vulkan/VkGPUContext.h>
+#include <Vulkan/VkMemory.h>
 
 namespace vex::vk
 {
@@ -110,7 +110,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(VkGPUContext& ctx,
 
     ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx.device.createImageViewUnique(viewCreate);
     const BindlessHandle handle =
-        descriptorPool.AllocateStaticDescriptor(*this, view.usage == ResourceUsage::UnorderedAccess);
+        descriptorPool.AllocateStaticDescriptor(*this, view.usage & TextureUsage::UnorderedAccess);
 
     descriptorPool.UpdateDescriptor(
         ctx,
@@ -163,19 +163,19 @@ void VkImageTexture::CreateImage(VkGPUContext& ctx)
     default:;
     }
 
-    if (description.usage & ResourceUsage::DepthStencil)
+    if (description.usage & TextureUsage::DepthStencil)
     {
         createInfo.usage |= ::vk::ImageUsageFlagBits::eDepthStencilAttachment;
     }
-    if (description.usage & ResourceUsage::Read)
+    if (description.usage & TextureUsage::Read)
     {
         createInfo.usage |= ::vk::ImageUsageFlagBits::eSampled;
     }
-    if (description.usage & ResourceUsage::UnorderedAccess)
+    if (description.usage & TextureUsage::UnorderedAccess)
     {
         createInfo.usage |= ::vk::ImageUsageFlagBits::eStorage;
     }
-    if (description.usage & ResourceUsage::RenderTarget)
+    if (description.usage & TextureUsage::RenderTarget)
     {
         createInfo.usage |= ::vk::ImageUsageFlagBits::eColorAttachment;
     }

@@ -8,21 +8,21 @@
 #include <Vex/RHI/RHICommandPool.h>
 #include <Vex/RHI/RHIFence.h>
 
-#include "Synchro/VkFence.h"
-#include "VkBuffer.h"
-#include "VkCommandPool.h"
-#include "VkCommandQueue.h"
-#include "VkDebug.h"
-#include "VkDescriptorPool.h"
-#include "VkErrorHandler.h"
-#include "VkExtensions.h"
-#include "VkHeaders.h"
-#include "VkPhysicalDevice.h"
-#include "VkPipelineState.h"
-#include "VkResourceLayout.h"
-#include "VkShader.h"
-#include "VkSwapChain.h"
-#include "VkTexture.h"
+#include <Vulkan/Synchro/VkFence.h>
+#include <Vulkan/VkBuffer.h>
+#include <Vulkan/VkCommandPool.h>
+#include <Vulkan/VkCommandQueue.h>
+#include <Vulkan/VkDebug.h>
+#include <Vulkan/VkDescriptorPool.h>
+#include <Vulkan/VkErrorHandler.h>
+#include <Vulkan/VkExtensions.h>
+#include <Vulkan/VkHeaders.h>
+#include <Vulkan/VkPhysicalDevice.h>
+#include <Vulkan/VkPipelineState.h>
+#include <Vulkan/VkResourceLayout.h>
+#include <Vulkan/VkShader.h>
+#include <Vulkan/VkSwapChain.h>
+#include <Vulkan/VkTexture.h>
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -199,8 +199,12 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
 
     auto physDeviceFeatures = physDevice.getFeatures();
 
+    ::vk::PhysicalDeviceRobustness2FeaturesKHR featuresRobustness;
+    featuresRobustness.nullDescriptor = true;
+
     ::vk::PhysicalDeviceVulkan13Features features13;
     features13.synchronization2 = true;
+    features13.pNext = featuresRobustness;
 
     ::vk::PhysicalDeviceVulkan12Features features12;
     features12.pNext = &features13;

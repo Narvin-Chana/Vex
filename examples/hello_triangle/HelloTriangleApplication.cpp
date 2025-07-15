@@ -49,16 +49,15 @@ HelloTriangleApplication::HelloTriangleApplication()
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
 
-    workingTexture =
-        graphics->CreateTexture({ .name = "Working Texture",
-                                  .type = vex::TextureType::Texture2D,
-                                  .width = DefaultWidth,
-                                  .height = DefaultHeight,
-                                  .depthOrArraySize = 1,
-                                  .mips = 1,
-                                  .format = vex::TextureFormat::RGBA8_UNORM,
-                                  .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess },
-                                vex::ResourceLifetime::Static);
+    workingTexture = graphics->CreateTexture({ .name = "Working Texture",
+                                               .type = vex::TextureType::Texture2D,
+                                               .width = DefaultWidth,
+                                               .height = DefaultHeight,
+                                               .depthOrArraySize = 1,
+                                               .mips = 1,
+                                               .format = vex::TextureFormat::RGBA8_UNORM,
+                                               .usage = vex::TextureUsage::Read | vex::TextureUsage::UnorderedAccess },
+                                             vex::ResourceLifetime::Static);
     finalOutputTexture =
         graphics->CreateTexture({ .name = "Final Output Texture",
                                   .type = vex::TextureType::Texture2D,
@@ -67,24 +66,25 @@ HelloTriangleApplication::HelloTriangleApplication()
                                   .depthOrArraySize = 1,
                                   .mips = 1,
                                   .format = vex::TextureFormat::RGBA8_UNORM,
-                                  .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess },
+                                  .usage = vex::TextureUsage::Read | vex::TextureUsage::UnorderedAccess },
                                 vex::ResourceLifetime::Static);
 
     // Example of CPU accessible buffer
-    colorBuffer =
-        graphics->CreateBuffer({ .name = "Color Buffer",
-                                 .byteSize = sizeof(float) * 4,
-                                 .usage = vex::BufferUsage::GenericBuffer,
-                                 .memoryAccess = vex::BufferMemoryAccess::CPUWrite | vex::BufferMemoryAccess::GPURead },
-                               vex::ResourceLifetime::Static);
+    colorBuffer = graphics->CreateBuffer(
+        { .name = "Color Buffer",
+          .byteSize = sizeof(float) * 4,
+#if !VEX_VULKAN
+          // Structured buffers are ONLY available in DX12 for now. Buffer pointers could allow this to exist in Vulkan.
+          .stride = 16,
+#endif
+          .usage = vex::BufferUsage::Read | vex::BufferUsage::CPUWrite },
+        vex::ResourceLifetime::Static);
 
     // Example of GPU only buffer
-    commBuffer =
-        graphics->CreateBuffer({ .name = "Comm Buffer",
-                                 .byteSize = sizeof(float) * 4,
-                                 .usage = vex::BufferUsage::GenericBuffer,
-                                 .memoryAccess = vex::BufferMemoryAccess::GPURead | vex::BufferMemoryAccess::GPUWrite },
-                               vex::ResourceLifetime::Static);
+    commBuffer = graphics->CreateBuffer({ .name = "Comm Buffer",
+                                          .byteSize = sizeof(float) * 4,
+                                          .usage = vex::BufferUsage::Read | vex::BufferUsage::UnorderedAccess },
+                                        vex::ResourceLifetime::Static);
 
 #if defined(_WIN32)
     // Suggestion of an intrusive (a la Unreal) way to display errors.
@@ -187,27 +187,38 @@ void HelloTriangleApplication::Run()
     }
 }
 
-void HelloTriangleApplication::OnResize(GLFWwindow* window, uint32_t width, uint32_t height)
+void HelloTriangleApplication::OnResize(GLFWwindow* window, uint32_t newWidth, uint32_t newHeight)
 {
-    if (width == 0 || height == 0)
+    if (newWidth == 0 || newHeight == 0)
     {
         return;
     }
 
     graphics->DestroyTexture(workingTexture);
+    graphics->DestroyTexture(finalOutputTexture);
 
-    ExampleApplication::OnResize(window, width, height);
+    ExampleApplication::OnResize(window, newWidth, newHeight);
 
+    finalOutputTexture =
+        graphics->CreateTexture({ .name = "Final Output Texture",
+                                  .type = vex::TextureType::Texture2D,
+                                  .width = newWidth,
+                                  .height = newHeight,
+                                  .depthOrArraySize = 1,
+                                  .mips = 1,
+                                  .format = vex::TextureFormat::RGBA8_UNORM,
+                                  .usage = vex::TextureUsage::Read | vex::TextureUsage::UnorderedAccess },
+                                vex::ResourceLifetime::Static);
     workingTexture = graphics->CreateTexture(
         {
             .name = "Working Texture",
             .type = vex::TextureType::Texture2D,
-            .width = width,
-            .height = height,
+            .width = newWidth,
+            .height = newHeight,
             .depthOrArraySize = 1,
             .mips = 1,
             .format = vex::TextureFormat::RGBA8_UNORM,
-            .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess,
+            .usage = vex::TextureUsage::Read | vex::TextureUsage::UnorderedAccess,
         },
         vex::ResourceLifetime::Static);
 }

@@ -9,6 +9,36 @@
 namespace vex
 {
 
+namespace Bindings_Internal
+{
+static bool IsValidHLSLResourceName(const std::string& name)
+{
+    // Check if empty
+    if (name.empty())
+    {
+        return false;
+    }
+
+    // First character must be a letter or underscore
+    if (!std::isalpha(name[0]) && name[0] != '_')
+    {
+        return false;
+    }
+
+    // Check each character
+    for (char c : name)
+    {
+        // Valid characters: letters, digits, underscore
+        if (!std::isalnum(c) && c != '_')
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+} // namespace Bindings_Internal
+
 std::vector<u8> ConstantBinding::ConcatConstantBindings(std::span<const ConstantBinding> constantBindings,
                                                         u32 maxBufferSize)
 {
@@ -39,15 +69,16 @@ std::vector<u8> ConstantBinding::ConcatConstantBindings(std::span<const Constant
 }
 
 void ResourceBinding::ValidateResourceBindings(std::span<const ResourceBinding> bindings,
-                                               ResourceUsage::Flags validUsageFlags)
+                                               TextureUsage::Flags validTextureUsageFlags,
+                                               BufferUsage::Flags validBufferUsageFlags)
 {
     bool depthStencilAlreadyFound = false;
 
     for (const auto& resource : bindings)
     {
-        if (resource.name.empty())
+        if (!Bindings_Internal::IsValidHLSLResourceName(resource.name))
         {
-            VEX_LOG(Fatal, "Invalid binding: You must specify a non-empty name.");
+            VEX_LOG(Fatal, "Invalid binding: You must specify a non-empty name that is valid for HLSL usage.");
         }
 
         if (!resource.IsBuffer() && !resource.IsTexture())
@@ -59,7 +90,7 @@ void ResourceBinding::ValidateResourceBindings(std::span<const ResourceBinding> 
 
         if (resource.IsTexture())
         {
-            if (!(resource.texture.description.usage & validUsageFlags))
+            if (!(resource.texture.description.usage & validTextureUsageFlags))
             {
                 VEX_LOG(Fatal,
                         "Invalid binding for resource \"{}\": The specified texture cannot be bound for this type of "
@@ -123,7 +154,7 @@ void ResourceBinding::ValidateResourceBindings(std::span<const ResourceBinding> 
             }
 
             if (FormatIsDepthStencilCompatible(resource.texture.description.format) &&
-                !(resource.texture.description.usage & ResourceUsage::DepthStencil))
+                !(resource.texture.description.usage & TextureUsage::DepthStencil))
             {
                 VEX_LOG(Fatal,
                         "Invalid binding for resource \"{}\": Texture's format ({}) requires the depth stencil usage "
@@ -133,7 +164,7 @@ void ResourceBinding::ValidateResourceBindings(std::span<const ResourceBinding> 
             }
 
             if (FormatIsDepthStencilCompatible(resource.texture.description.format) &&
-                (validUsageFlags & ResourceUsage::DepthStencil))
+                (validTextureUsageFlags & TextureUsage::DepthStencil))
             {
                 if (depthStencilAlreadyFound)
                 {
@@ -144,19 +175,69 @@ void ResourceBinding::ValidateResourceBindings(std::span<const ResourceBinding> 
                 }
                 depthStencilAlreadyFound = true;
             }
+
+            if (resource.bufferFlags != BufferBinding::None)
+            {
+                VEX_LOG(
+                    Warning,
+                    "Invalid binding for resource \"{}\": buffer binding flags is set. These are ignored for textures.",
+                    resource.name);
+            }
         }
 
         if (resource.IsBuffer())
         {
-            if (!((validUsageFlags & ResourceUsage::Read) || (validUsageFlags & ResourceUsage::UnorderedAccess)))
+            if (!(resource.buffer.description.usage & validBufferUsageFlags))
             {
-                VEX_LOG(
-                    Fatal,
-                    "Invalid binding for resource \"{}\": A buffer cannot be bound as a render target/depth stencil.",
-                    resource.name);
+                VEX_LOG(Fatal,
+                        "Invalid binding for resource \"{}\": The specified buffer cannot be bound for this type of "
+                        "operation. Check the usage flags of your resource at creation.",
+                        resource.name);
             }
 
-            // Nothing to do here for now
+            if (resource.mipBias != 0)
+            {
+                VEX_LOG(
+                    Warning,
+                    "Invalid binding for resource \"{}\": mipBias is set to {}. This parameter is ignored for buffers.",
+                    resource.name,
+                    resource.mipBias);
+            }
+
+            if (resource.mipCount != 0)
+            {
+                VEX_LOG(Warning,
+                        "Invalid binding for resource \"{}\": mipCount is set to {}. This parameter is ignored for "
+                        "buffers.",
+                        resource.name,
+                        resource.mipCount);
+            }
+
+            if (resource.startSlice != 0)
+            {
+                VEX_LOG(Warning,
+                        "Invalid binding for resource \"{}\": startSlice is set to {}. This parameter is ignored for "
+                        "buffers.",
+                        resource.name,
+                        resource.startSlice);
+            }
+
+            if (resource.sliceCount != 0)
+            {
+                VEX_LOG(Warning,
+                        "Invalid binding for resource \"{}\": sliceCount is set to {}. This parameter is ignored for "
+                        "buffers.",
+                        resource.name,
+                        resource.sliceCount);
+            }
+
+            if (resource.textureFlags != TextureBinding::None)
+            {
+                VEX_LOG(
+                    Warning,
+                    "Invalid binding for resource \"{}\": texture binding flags is set. These are ignored for buffers.",
+                    resource.name);
+            }
         }
     }
 }

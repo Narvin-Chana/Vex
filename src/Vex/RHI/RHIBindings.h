@@ -12,14 +12,14 @@ class RHIBuffer;
 struct RHITextureBinding
 {
     ResourceBinding binding;
-    ResourceUsage::Type usage;
+    TextureUsage::Type usage;
     RHITexture* texture;
 };
 
 struct RHIBufferBinding
 {
     ResourceBinding binding;
-    ResourceUsage::Type usage;
+    BufferUsage::Type usage;
     RHIBuffer* buffer;
 };
 

@@ -1,12 +1,11 @@
 ﻿#pragma once
 
-#include "VkDescriptorPool.h"
-
+#include <Vex/Hash.h>
+#include <Vex/RHI/RHIDescriptorPool.h>
 #include <Vex/RHI/RHITexture.h>
 
-#include "Vex/Hash.h"
-#include "Vex/RHI/RHIDescriptorPool.h"
-#include "VkHeaders.h"
+#include <Vulkan/VkDescriptorPool.h>
+#include <Vulkan/VkHeaders.h>
 
 namespace vex::vk
 {
@@ -15,7 +14,7 @@ struct VkTextureViewDesc
 {
     TextureViewType viewType = TextureViewType::Texture2D;
     TextureFormat format = TextureFormat::UNKNOWN;
-    ResourceUsage::Flags usage = ResourceUsage::None;
+    TextureUsage::Flags usage = TextureUsage::None;
 
     u32 mipBias = 0;
     u32 mipCount = 1;

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "VkHeaders.h"
-
 #include <Vex/RHI/RHIResourceLayout.h>
+
+#include <Vulkan/VkHeaders.h>
 
 namespace vex::vk
 {

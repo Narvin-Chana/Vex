@@ -5,6 +5,7 @@
 
 #include <magic_enum/magic_enum.hpp>
 
+#include <Vex.h>
 #include <Vex/CommandContext.h>
 #include <Vex/FeatureChecker.h>
 #include <Vex/Logger.h>

@@ -2,8 +2,8 @@
 
 #include <Vex/RHI/RHISwapChain.h>
 
-#include "VkGPUContext.h"
-#include "VkHeaders.h"
+#include <Vulkan/VkGPUContext.h>
+#include <Vulkan/VkHeaders.h>
 
 namespace vex
 {

@@ -8,7 +8,7 @@
 #include <Vex/Logger.h>
 #include <Vex/PlatformWindow.h>
 
-#include "VkHeaders.h"
+#include <Vulkan/VkHeaders.h>
 
 namespace vex::vk
 {

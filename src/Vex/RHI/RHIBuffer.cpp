@@ -44,10 +44,10 @@ struct StagedBufferMemory : DirectBufferMemory
     RHIBuffer& realBuffer;
 };
 
-bool DoesBufferNeedStagingBuffer(const BufferDescription& desc)
+static bool DoesBufferNeedStagingBuffer(const BufferDescription& desc)
 {
-    return (desc.memoryAccess & BufferMemoryAccess::GPURead | desc.memoryAccess & BufferMemoryAccess::GPUWrite) &&
-           !(desc.memoryAccess & BufferMemoryAccess::CPURead | desc.memoryAccess & BufferMemoryAccess::CPUWrite);
+    // Any buffer which does not have CPUWrite requires a staging buffer for the upload of data.
+    return !(desc.usage & BufferUsage::CPUWrite);
 }
 
 UniqueHandle<RHIMappedBufferMemory> RHIBuffer::GetMappedMemory()

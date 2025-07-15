@@ -20,11 +20,15 @@ DX12ResourceLayout::DX12ResourceLayout(ComPtr<DX12Device>& device)
 {
 }
 
-DX12ResourceLayout::~DX12ResourceLayout() = default;
+DX12ResourceLayout::~DX12ResourceLayout()
+{
+}
 
 u32 DX12ResourceLayout::GetMaxLocalConstantSize() const
 {
-    return reinterpret_cast<DX12FeatureChecker*>(GPhysicalDevice->featureChecker.get())->GetMaxRootSignatureDWORDSize();
+    return reinterpret_cast<DX12FeatureChecker*>(GPhysicalDevice->featureChecker.get())
+               ->GetMaxRootSignatureDWORDSize() *
+           static_cast<u32>(sizeof(DWORD));
 }
 
 ComPtr<ID3D12RootSignature>& DX12ResourceLayout::GetRootSignature()
