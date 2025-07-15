@@ -2,14 +2,16 @@
 
 #include <Vex/RHI/RHI.h>
 
+#include "Vex/RHI/RHIBuffer.h"
 #include "VkCommandQueue.h"
 #include "VkGPUContext.h"
 #include "VkHeaders.h"
 
 namespace vex
 {
+struct BufferDescription;
 struct PlatformWindowHandle;
-}
+} // namespace vex
 
 namespace vex::vk
 {
@@ -37,6 +39,7 @@ public:
                                                                  RHIDescriptorPool& descriptorPool) override;
 
     virtual UniqueHandle<RHITexture> CreateTexture(const TextureDescription& description) override;
+    virtual UniqueHandle<RHIBuffer> CreateBuffer(const BufferDescription& description) override;
 
     virtual UniqueHandle<RHIDescriptorPool> CreateDescriptorPool() override;
 

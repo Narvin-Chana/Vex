@@ -48,6 +48,7 @@ public:
 
     // Creates a new texture, the handle passed back should be kept.
     Texture CreateTexture(TextureDescription description, ResourceLifetime lifetime);
+    Buffer CreateBuffer(BufferDescription description, ResourceLifetime lifetime);
     // Destroys a texture, the handle passed in must be the one obtained from calling CreateTexture earlier.
     // Once destroyed the handle passed in is invalid and should no longer be used.
     void DestroyTexture(const Texture& texture);
@@ -116,6 +117,7 @@ private:
     inline static constexpr u32 DefaultRegistrySize = 1024;
 
     friend class CommandContext;
+    friend class ResourceBindingSet;
 };
 
 } // namespace vex

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "RHIBuffer.h"
+
 #include <array>
 #include <span>
 #include <utility>
@@ -50,6 +52,7 @@ public:
                               const TextureClearValue& clearValue) = 0;
 
     virtual void Transition(RHITexture& texture, RHITextureState::Flags newState) = 0;
+    virtual void Transition(RHIBuffer& texture, RHIBufferState::Flags newState) = 0;
     // Ideal for batching multiple resource transitions together.
     virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs) = 0;
 

@@ -20,4 +20,6 @@ protected:
 
 private:
     vex::Texture workingTexture;
+    vex::Buffer buffer;
+    vex::Texture workingTexture2;
 };

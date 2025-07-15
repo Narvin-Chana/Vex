@@ -5,6 +5,7 @@
 
 #include <numeric>
 
+#include "VkBuffer.h"
 #include "VkDescriptorPool.h"
 #include "VkErrorHandler.h"
 #include "VkPipelineState.h"
@@ -96,24 +97,14 @@ void VkCommandList::SetLayout(RHIResourceLayout& layout)
 
 void VkCommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout, std::span<const ConstantBinding> constants)
 {
-    auto& vkLayout = reinterpret_cast<const VkResourceLayout&>(layout);
-
-    std::vector<u8> pushConstantData(layout.GetMaxLocalConstantSize());
-
-    const u32 total = std::accumulate(constants.begin(),
-                                      constants.end(),
-                                      0u,
-                                      [](u32 acc, const ConstantBinding& binding) { return acc + binding.size; });
-
-    VEX_ASSERT(total <= pushConstantData.size(),
-               "Unable to bind local constants, you have surpassed the limit Vulkan allows for in root signatures.");
-
-    u8 currentIndex = 0;
-    for (const auto& binding : constants)
+    if (constants.empty())
     {
-        std::uninitialized_copy_n(static_cast<u8*>(binding.data), binding.size, &pushConstantData[currentIndex]);
-        currentIndex += binding.size;
+        return;
     }
+
+    auto constantData = ConstantBinding::ConcatConstantBindings(constants, layout.GetMaxLocalConstantSize());
+
+    auto& vkLayout = reinterpret_cast<const VkResourceLayout&>(layout);
 
     ::vk::ShaderStageFlags stageFlags;
     switch (type)
@@ -129,9 +120,9 @@ void VkCommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout, std
 
     commandBuffer->pushConstants(*vkLayout.pipelineLayout,
                                  stageFlags,
-                                 0,
-                                 pushConstantData.size(),
-                                 pushConstantData.data());
+                                 0, // Local constants start at 0
+                                 constantData.size(),
+                                 constantData.data());
 }
 
 void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
@@ -139,6 +130,11 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
                                        std::span<RHIBufferBinding> buffers,
                                        RHIDescriptorPool& descriptorPool)
 {
+    if (textures.empty())
+    {
+        z return;
+    }
+
     auto& vkResourceLayout = reinterpret_cast<const VkResourceLayout&>(layout);
     auto& vkDescriptorPool = reinterpret_cast<VkDescriptorPool&>(descriptorPool);
 
@@ -181,7 +177,7 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
 
     commandBuffer->pushConstants(*vkResourceLayout.pipelineLayout,
                                  stageFlags,
-                                 0,
+                                 layout.GetLocalConstantsOffset(), // Bindless indices start after local constants
                                  bindlessHandleIndices.size() * sizeof(u32),
                                  bindlessHandleIndices.data());
 }
@@ -297,6 +293,23 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
     return barrier;
 }
 
+::vk::BufferMemoryBarrier2 GetBufferBarrierFrom(VkBuffer& buffer, RHIBufferState::Flags flags)
+{
+    ::vk::AccessFlags2 srcAccessMask = BufferUtil::GetAccessFlagsFromBufferState(buffer.GetCurrentState());
+    ::vk::AccessFlags2 dstAccessMask = BufferUtil::GetAccessFlagsFromBufferState(flags);
+
+    // TODO: Figure out how to be more specific with stages
+    return { .buffer = buffer.GetBuffer(),
+             .srcStageMask = ::vk::PipelineStageFlagBits2::eAllCommands,
+             .srcAccessMask = srcAccessMask,
+             .dstStageMask = ::vk::PipelineStageFlagBits2::eAllCommands,
+             .dstAccessMask = dstAccessMask,
+             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+             .offset = 0,
+             .size = buffer.GetDescription().size };
+}
+
 void VkCommandList::Transition(RHITexture& texture, RHITextureState::Flags newState)
 {
     auto& vkTexture = reinterpret_cast<VkTexture&>(texture);
@@ -305,6 +318,16 @@ void VkCommandList::Transition(RHITexture& texture, RHITextureState::Flags newSt
     commandBuffer->pipelineBarrier2({ .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &memBarrier });
 
     texture.SetCurrentState(newState);
+}
+
+void VkCommandList::Transition(RHIBuffer& buffer, RHIBufferState::Flags newState)
+{
+    auto& vkBuffer = reinterpret_cast<VkBuffer&>(buffer);
+    auto memBarrier = GetBufferBarrierFrom(vkBuffer, newState);
+
+    commandBuffer->pipelineBarrier2({ .bufferMemoryBarrierCount = 1, .pBufferMemoryBarriers = &memBarrier });
+
+    buffer.SetCurrentState(newState);
 }
 
 void VkCommandList::Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs)

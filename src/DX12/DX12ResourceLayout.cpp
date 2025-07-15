@@ -1,5 +1,8 @@
 #include "DX12ResourceLayout.h"
 
+#include "Vex/ResourceBindingSet.h"
+
+#include <numeric>
 #include <ranges>
 #include <utility>
 
@@ -20,18 +23,6 @@ DX12ResourceLayout::DX12ResourceLayout(ComPtr<DX12Device>& device, const DX12Fea
 
 DX12ResourceLayout::~DX12ResourceLayout() = default;
 
-bool DX12ResourceLayout::ValidateGlobalConstant(const GlobalConstant& globalConstant) const
-{
-    if (!RHIResourceLayout::ValidateGlobalConstant(globalConstant))
-    {
-        return false;
-    }
-
-    // TODO: check size limits vs cbuffer limits
-
-    return true;
-}
-
 u32 DX12ResourceLayout::GetMaxLocalConstantSize() const
 {
     // Each global constant descriptor takes up 2 DWORDs in the root signature (as root descriptor).
@@ -41,6 +32,16 @@ u32 DX12ResourceLayout::GetMaxLocalConstantSize() const
                0,
                (featureChecker.GetMaxRootSignatureDWORDSize() - 2 * static_cast<u32>(globalConstants.size()))) *
            static_cast<u32>(sizeof(DWORD));
+}
+void DX12ResourceLayout::Update(const ResourceBindingSet& set)
+{
+    std::span<const ConstantBinding> constantBindings = set.GetConstantBindings();
+
+    reservedLocalConstantSize =
+        std::accumulate(constantBindings.begin(),
+                        constantBindings.end(),
+                        0u,
+                        [](const u32 acc, const ConstantBinding& constant) { return acc + constant.size; });
 }
 
 ComPtr<ID3D12RootSignature>& DX12ResourceLayout::GetRootSignature()
@@ -112,6 +113,11 @@ void DX12ResourceLayout::CompileRootSignature()
                                        IID_PPV_ARGS(&rootSignature));
 
     version++;
+}
+
+u32 DX12ResourceLayout::GetLocalConstantsOffset() const noexcept
+{
+    return reservedLocalConstantSize;
 }
 
 } // namespace vex::dx12

@@ -12,6 +12,7 @@
 namespace vex
 {
 
+class ResourceBindingSet;
 class GfxBackend;
 struct ConstantBinding;
 struct ResourceBinding;
@@ -50,11 +51,7 @@ public:
     {
     }
 
-    void Dispatch(const ShaderKey& shader,
-                  std::span<const ConstantBinding> constants,
-                  std::span<const ResourceBinding> reads,
-                  std::span<const ResourceBinding> readWrites,
-                  std::array<u32, 3> groupCount);
+    void Dispatch(const ShaderKey& shader, const ResourceBindingSet& resourceBindingSet, std::array<u32, 3> groupCount);
 
     void Copy(const Texture& source, const Texture& destination);
 

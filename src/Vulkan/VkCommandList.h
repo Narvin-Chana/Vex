@@ -41,6 +41,7 @@ public:
                               const TextureClearValue& clearValue) override;
 
     virtual void Transition(RHITexture& texture, RHITextureState::Flags newState) override;
+    virtual void Transition(RHIBuffer& texture, RHIBufferState::Flags newState) override;
     virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs) override;
 
     virtual void Draw(u32 vertexCount) override;

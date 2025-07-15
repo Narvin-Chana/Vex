@@ -1,5 +1,7 @@
 #pragma once
 
+#include "EnumFlags.h"
+
 #include <limits>
 #include <string>
 
@@ -9,10 +11,23 @@
 namespace vex
 {
 
-struct BufferDescription
+enum class BufferUsage : u8
+{
+    VertexBuffer,
+    IndexBuffer,
+    GenericBuffer
+};
+
+BEGIN_VEX_ENUM_FLAGS(BufferMemoryAccess, u8)
+CPURead, CPUWrite, GPURead,
+    GPUWrite END_VEX_ENUM_FLAGS()
+
+        struct BufferDescription
 {
     std::string name;
     u32 size;
+    BufferUsage usage;
+    BufferMemoryAccess::Flags memoryAcces;
 };
 
 struct BufferView
@@ -30,8 +45,8 @@ static constexpr BufferHandle GInvalidBufferHandle;
 
 struct Buffer final
 {
-    const BufferHandle handle;
-    const BufferDescription description;
+    BufferHandle handle;
+    BufferDescription description;
 };
 
 } // namespace vex
