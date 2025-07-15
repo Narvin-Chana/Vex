@@ -300,7 +300,7 @@ void DX12Texture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
     {
         if (bindlessHandle != GInvalidBindlessHandle)
         {
-            descriptorPool.FreeStaticDescriptor(bindlessHandle);
+            reinterpret_cast<DX12DescriptorPool&>(descriptorPool).FreeStaticDescriptor(bindlessHandle);
         }
     }
     cache.clear();

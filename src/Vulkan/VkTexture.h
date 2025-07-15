@@ -55,6 +55,7 @@ public:
     BindlessHandle GetOrCreateBindlessView(VkGPUContext& device,
                                            const VkTextureViewDesc& view,
                                            VkDescriptorPool& descriptorPool);
+    virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
 
     [[nodiscard]] ::vk::ImageLayout GetLayout() const
     {
@@ -73,7 +74,6 @@ class VkBackbufferTexture : public VkTexture
 {
 public:
     VkBackbufferTexture(TextureDescription&& description, ::vk::Image backbufferImage);
-    virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
 
     virtual ::vk::Image GetResource() override
     {
@@ -92,8 +92,6 @@ public:
 
     // Creates a new image from the description
     VkImageTexture(VkGPUContext& ctx, TextureDescription&& description);
-
-    virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
 
     virtual ::vk::Image GetResource() override
     {
