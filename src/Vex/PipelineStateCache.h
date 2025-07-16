@@ -1,5 +1,6 @@
 #pragma once
 
+#include <span>
 #include <unordered_map>
 
 #include <Vex/Containers/ResourceCleanup.h>
@@ -13,6 +14,7 @@ namespace vex
 
 struct ShaderKey;
 class FeatureChecker;
+struct ShaderResourceContext;
 
 class PipelineStateCache
 {
@@ -31,8 +33,10 @@ public:
 
     RHIResourceLayout& GetResourceLayout();
 
-    const RHIGraphicsPipelineState* GetGraphicsPipelineState(const RHIGraphicsPipelineState::Key& key);
-    const RHIComputePipelineState* GetComputePipelineState(const RHIComputePipelineState::Key& key);
+    const RHIGraphicsPipelineState* GetGraphicsPipelineState(const RHIGraphicsPipelineState::Key& key,
+                                                             const ShaderResourceContext& resourceContext);
+    const RHIComputePipelineState* GetComputePipelineState(const RHIComputePipelineState::Key& key,
+                                                           const ShaderResourceContext& resourceContext);
 
     ShaderCache& GetShaderCache();
 

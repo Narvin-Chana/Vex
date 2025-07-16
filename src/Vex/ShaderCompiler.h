@@ -39,6 +39,8 @@ using ComPtr = CComPtr<T>;
 namespace vex
 {
 
+struct ShaderResourceContext;
+
 struct CompilerUtil
 {
     CompilerUtil();
@@ -63,8 +65,8 @@ struct ShaderCache
     ShaderCache(ShaderCache&&) = default;
     ShaderCache& operator=(ShaderCache&&) = default;
 
-    std::expected<void, std::string> CompileShader(RHIShader& shader);
-    RHIShader* GetShader(const ShaderKey& key);
+    std::expected<void, std::string> CompileShader(RHIShader& shader, const ShaderResourceContext& resourceContext);
+    RHIShader* GetShader(const ShaderKey& key, const ShaderResourceContext& resourceContext);
 
     // Checks if the shader's hash is different compared to the last time it was compiled. Returns if the shader is
     // stale or not and the shader's latest hash (which can potentially be the same as the original).
