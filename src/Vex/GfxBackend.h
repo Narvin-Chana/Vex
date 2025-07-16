@@ -66,6 +66,7 @@ public:
     void RecompileChangedShaders();
     // Recompiles all shaders, could cause a big hitch depending on how many shaders your application uses.
     void RecompileAllShaders();
+    void SetShaderCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback);
 
 private:
     void EndCommandContext(RHICommandList& cmdList);

@@ -31,7 +31,7 @@ public:
 
     bool NeedsRecompile() const
     {
-        return isDirty;
+        return isDirty && !isErrored;
     }
 
     void MarkDirty()
@@ -44,6 +44,8 @@ public:
 
 private:
     bool isDirty = true;
+    // Errored shaders are set in stasis while awaiting a confirmation of whether to launch a recompilation.
+    bool isErrored = false;
     std::vector<u8> blob;
     std::size_t hash = 0;
 

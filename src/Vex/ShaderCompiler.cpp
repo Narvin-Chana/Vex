@@ -343,7 +343,16 @@ RHIShader* ShaderCache::GetShader(const ShaderKey& key, const ShaderResourceCont
         // in a string vector with the errors since the last compilation attempt.
         if (!result.has_value())
         {
-            VEX_LOG(Error, "Failed to compile shader:\n\t- {}:\n\t- Reason: {}", shaderPtr->key, result.error());
+            if (debugShaders)
+            {
+                shaderPtr->isErrored = true;
+                compilationErrors.emplace_back(shaderPtr->key, result.error());
+            }
+            // If we're not in a debugShaders context, a non-compiling shader is fatal.
+            VEX_LOG(debugShaders ? Error : Fatal,
+                    "Failed to compile shader:\n\t- {}:\n\t- Reason: {}",
+                    shaderPtr->key,
+                    result.error());
         }
     }
 
@@ -370,7 +379,8 @@ std::pair<bool, std::size_t> ShaderCache::IsShaderStale(const RHIShader& shader)
 
 void ShaderCache::MarkShaderDirty(const ShaderKey& key)
 {
-    if (!shaderCache.contains(key))
+    auto shader = shaderCache.find(key);
+    if (shader == shaderCache.end())
     {
         VEX_LOG(Error,
                 "The shader key passed did not yield any valid shaders in the shader cache (key {}). Unable to mark it "
@@ -379,7 +389,8 @@ void ShaderCache::MarkShaderDirty(const ShaderKey& key)
         return;
     }
 
-    shaderCache[key]->MarkDirty();
+    shader->second->MarkDirty();
+    shader->second->isErrored = false;
 }
 
 void ShaderCache::MarkAllShadersDirty()
@@ -387,7 +398,10 @@ void ShaderCache::MarkAllShadersDirty()
     for (auto& shader : shaderCache | std::views::values)
     {
         shader->MarkDirty();
+        shader->isErrored = false;
     }
+
+    VEX_LOG(Info, "Marked all shaders for recompilation...");
 }
 
 void ShaderCache::MarkAllStaleShadersDirty()
@@ -395,17 +409,35 @@ void ShaderCache::MarkAllStaleShadersDirty()
     u32 numStaleShaders = 0;
     for (auto& shader : shaderCache | std::views::values)
     {
-        if (auto [isShaderStale, newShaderHash] = IsShaderStale(*shader); isShaderStale)
+        if (auto [isShaderStale, newShaderHash] = IsShaderStale(*shader); isShaderStale || shader->isErrored)
         {
             shader->hash = newShaderHash;
             shader->MarkDirty();
+            shader->isErrored = false;
             numStaleShaders++;
         }
     }
 
-    if (numStaleShaders > 0)
+    VEX_LOG(Info, "Marked {} shader(s) for recompilation...", numStaleShaders);
+}
+
+void ShaderCache::SetCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback)
+{
+    errorsCallback = callback;
+}
+
+void ShaderCache::FlushCompilationErrors()
+{
+    // If user requests a recompilation (depends on the callback), remove the isErrored flag from all errored shaders.
+    if (errorsCallback && errorsCallback(compilationErrors))
     {
-        VEX_LOG(Info, "Marked {} shaders for recompilation...", numStaleShaders);
+        for (auto& [key, error] : compilationErrors)
+        {
+            VEX_ASSERT(shaderCache.contains(key), "A shader in compilationErrors was not found in the cache...");
+            // The next time we attempt to use this shader, it will be recompiled.
+            shaderCache[key]->isErrored = false;
+        }
+        compilationErrors.clear();
     }
 }
 

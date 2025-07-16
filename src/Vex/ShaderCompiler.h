@@ -51,6 +51,8 @@ struct CompilerUtil
     ComPtr<IDxcIncludeHandler> defaultIncludeHandler;
 };
 
+using ShaderCompileErrorsCallback = bool(const std::vector<std::pair<ShaderKey, std::string>>& errors);
+
 struct ShaderCache
 {
     ShaderCache() = default;
@@ -76,6 +78,9 @@ struct ShaderCache
     // Marks all stale shaders as dirty and thus in need of recompilation.
     void MarkAllStaleShadersDirty();
 
+    void SetCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback);
+    void FlushCompilationErrors();
+
 private:
     // Obtains a hash of the preprocessed shader, allowing us to verify if the shader's content has changed.
     std::optional<std::size_t> GetShaderHash(const RHIShader& shader) const;
@@ -91,6 +96,9 @@ private:
     std::vector<std::filesystem::path> additionalIncludeDirectories;
 
     std::unordered_map<ShaderKey, UniqueHandle<RHIShader>> shaderCache;
+
+    std::function<ShaderCompileErrorsCallback> errorsCallback = nullptr;
+    std::vector<std::pair<ShaderKey, std::string>> compilationErrors;
 };
 
 } // namespace vex

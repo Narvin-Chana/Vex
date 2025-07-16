@@ -121,10 +121,10 @@ inline Logger GLogger;
 // Doing logging like this instead of with a function allows for DebugBreak to break in the actual code, avoiding us
 // having to move up once in the call stack to get to the the actual code causing the error.
 #define VEX_LOG(level, message, ...)                                                                                   \
-    if (level >= vex::Logger::GetLogLevelFilter())                                                                     \
+    if ((level) >= vex::Logger::GetLogLevelFilter())                                                                   \
     {                                                                                                                  \
-        vex::GLogger.Log(level, message, ##__VA_ARGS__);                                                               \
-        if (level == vex::LogLevel::Fatal) /* Fatal error! Must exit. */                                               \
+        vex::GLogger.Log((level), message, ##__VA_ARGS__);                                                             \
+        if ((level) == vex::LogLevel::Fatal) /* Fatal error! Must exit. */                                             \
         {                                                                                                              \
             VEX_DEBUG_BREAK();                                                                                         \
             std::exit(1);                                                                                              \
