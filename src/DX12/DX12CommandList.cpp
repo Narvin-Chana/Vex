@@ -188,7 +188,7 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
 
     for (auto& [binding, usage, rhiBuffer] : buffers)
     {
-        // TODO: implement buffers!
+        VEX_NOT_YET_IMPLEMENTED();
     }
 
     // Now we can bind the bindless textures as constants in our root constants!
@@ -239,6 +239,11 @@ void DX12CommandList::Transition(RHITexture& texture, RHITextureState::Flags new
     commandList->ResourceBarrier(1, &resourceBarrier);
 }
 
+void DX12CommandList::Transition(RHIBuffer& buffer, RHIBufferState::Flags newState)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
 void DX12CommandList::Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs)
 {
     std::vector<D3D12_RESOURCE_BARRIER> transitionBarriers;
@@ -266,6 +271,11 @@ void DX12CommandList::Transition(std::span<std::pair<RHITexture&, RHITextureStat
     }
 }
 
+void DX12CommandList::Transition(std::span<std::pair<RHIBuffer&, RHIBufferState::Flags>> bufferNewStatePairs)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
 void DX12CommandList::Dispatch(const std::array<u32, 3>& groupCount)
 {
     switch (type)
@@ -290,6 +300,11 @@ void DX12CommandList::Copy(RHITexture& src, RHITexture& dst)
     ID3D12Resource* srcNative = reinterpret_cast<DX12Texture&>(src).GetRawTexture();
     ID3D12Resource* dstNative = reinterpret_cast<DX12Texture&>(dst).GetRawTexture();
     commandList->CopyResource(dstNative, srcNative);
+}
+
+void DX12CommandList::Copy(RHIBuffer& src, RHIBuffer& dst)
+{
+    VEX_NOT_YET_IMPLEMENTED();
 }
 
 CommandQueueType DX12CommandList::GetType() const

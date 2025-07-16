@@ -1,5 +1,6 @@
 #include "VkDescriptorPool.h"
 
+#include "Vex/RHI/RHIBuffer.h"
 #include "Vex/RHI/RHITexture.h"
 #include "Vex/UniqueHandle.h"
 #include "VkErrorHandler.h"
@@ -87,10 +88,9 @@ VkDescriptorPool::VkDescriptorPool(::vk::Device device)
 
 VkDescriptorPool::~VkDescriptorPool() = default;
 
-BindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHITexture& texture)
+BindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHITexture& texture, bool writeAccess)
 {
-    auto type = texture.GetCurrentState() == RHITextureState::UnorderedAccess ? ::vk::DescriptorType::eStorageImage
-                                                                              : ::vk::DescriptorType::eSampledImage;
+    auto type = writeAccess ? ::vk::DescriptorType::eStorageImage : ::vk::DescriptorType::eSampledImage;
 
     BindlessAllocation& alloc = bindlessAllocations[GetDescriptorTypeBinding(type)];
 
@@ -101,8 +101,14 @@ BindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHITexture& text
 
 BindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHIBuffer& buffer)
 {
-    VEX_NOT_YET_IMPLEMENTED();
-    return BindlessHandle();
+    // Everything needs to be a storage buffer since we use ByteAddressBuffers
+    auto type = ::vk::DescriptorType::eStorageBuffer;
+
+    BindlessAllocation& alloc = bindlessAllocations[GetDescriptorTypeBinding(type)];
+
+    u32 index = alloc.handles.Allocate();
+
+    return BindlessHandle::CreateHandle(index, alloc.generations[index], type);
 }
 
 void VkDescriptorPool::FreeStaticDescriptor(BindlessHandle handle)
@@ -183,6 +189,22 @@ void VkDescriptorPool::UpdateDescriptor(VkGPUContext& ctx,
         .descriptorCount = 1,
         .descriptorType = descType,
         .pImageInfo = &createInfo,
+    };
+
+    ctx.device.updateDescriptorSets(1, &writeSet, 0, nullptr);
+}
+void VkDescriptorPool::UpdateDescriptor(VkGPUContext& ctx,
+                                        BindlessHandle targetDescriptor,
+                                        ::vk::DescriptorBufferInfo createInfo)
+{
+    auto descType = GetDescriptorTypeFromHandle(targetDescriptor);
+    const ::vk::WriteDescriptorSet writeSet{
+        .dstSet = *bindlessSet,
+        .dstBinding = GetDescriptorTypeBinding(descType),
+        .dstArrayElement = targetDescriptor.GetIndex(),
+        .descriptorCount = 1,
+        .descriptorType = descType,
+        .pBufferInfo = &createInfo,
     };
 
     ctx.device.updateDescriptorSets(1, &writeSet, 0, nullptr);

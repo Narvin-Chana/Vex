@@ -43,8 +43,6 @@ void CommandContext::Dispatch(const ShaderKey& shader,
 
     RHIResourceLayout& resourceLayout = backend->GetPipelineStateCache().GetResourceLayout();
 
-    resourceLayout.Update(resourceBindingSet);
-
     // TODO: About resource binding logic!
     //
     // Currently constants and bindless indices are both bound as push/root constants, this could cause problems in DX12
@@ -93,9 +91,18 @@ void CommandContext::Dispatch(const ShaderKey& shader,
 
     std::vector<RHITextureBinding> rhiTextureBindings;
     std::vector<RHIBufferBinding> rhiBufferBindings;
-    resourceBindingSet.CollectWriteBindings(*backend, rhiTextureBindings, rhiBufferBindings);
+    ResourceBindingSet::CollectRHIResources(*backend,
+                                            resourceBindingSet.writes,
+                                            rhiTextureBindings,
+                                            rhiBufferBindings,
+                                            ResourceUsage::UnorderedAccess);
     const u32 texWriteCount = rhiTextureBindings.size();
-    resourceBindingSet.CollectReadBindings(*backend, rhiTextureBindings, rhiBufferBindings);
+    const u32 bufferWriteCount = rhiBufferBindings.size();
+    ResourceBindingSet::CollectRHIResources(*backend,
+                                            resourceBindingSet.reads,
+                                            rhiTextureBindings,
+                                            rhiBufferBindings,
+                                            ResourceUsage::Read);
 
     std::vector<std::pair<RHITexture&, RHITextureState::Flags>> textureStateTransitions;
     textureStateTransitions.reserve(rhiTextureBindings.size());
@@ -107,8 +114,35 @@ void CommandContext::Dispatch(const ShaderKey& shader,
             i < texWriteCount ? RHITextureState::UnorderedAccess : RHITextureState::ShaderResource);
     }
 
+    std::vector<std::pair<RHIBuffer&, RHITextureState::Flags>> bufferStateTransitions;
+    bufferStateTransitions.reserve(rhiBufferBindings.size());
+
+    std::vector<std::pair<RHIBuffer&, RHITextureState::Flags>> bufferStagingCopyTransitions;
+    for (u32 i = 0; i < rhiBufferBindings.size(); ++i)
+    {
+        bufferStateTransitions.emplace_back(
+            *rhiBufferBindings[i].buffer,
+            i < bufferWriteCount ? RHIBufferState::StructuredBuffer : RHIBufferState::ShaderRead);
+
+        if (rhiBufferBindings[i].buffer->NeedsStagingBufferCopy())
+        {
+            bufferStagingCopyTransitions.emplace_back(*rhiBufferBindings[i].buffer, RHIBufferState::CopyDest);
+            bufferStagingCopyTransitions.emplace_back(*rhiBufferBindings[i].buffer->GetStagingBuffer(),
+                                                      RHIBufferState::CopySource);
+        }
+    }
+
+    cmdList->Transition(bufferStagingCopyTransitions);
+    for (int i = 0; i < bufferStagingCopyTransitions.size() / 2; ++i)
+    {
+        auto& buffer = bufferStagingCopyTransitions[i * 2].first;
+        cmdList->Copy(*buffer.GetStagingBuffer(), buffer);
+        buffer.SetNeedsStagingBufferCopy(false);
+    }
+
     // Transition our resources to the correct states.
     cmdList->Transition(textureStateTransitions);
+    cmdList->Transition(bufferStateTransitions);
 
     // Sets the resource layout to use for the dispatch
     cmdList->SetLayout(resourceLayout);
@@ -143,10 +177,19 @@ void CommandContext::Copy(const Texture& source, const Texture& destination)
 {
     RHITexture& sourceRHI = backend->GetRHITexture(source.handle);
     RHITexture& destinationRHI = backend->GetRHITexture(destination.handle);
-    std::array<std::pair<RHITexture&, RHITextureState::Flags>, 2> transitions{
-        std::pair<RHITexture&, RHITextureState::Flags>{ sourceRHI, RHITextureState::CopySource },
-        std::pair<RHITexture&, RHITextureState::Flags>{ destinationRHI, RHITextureState::CopyDest }
-    };
+    std::array transitions{ std::pair<RHITexture&, RHITextureState::Flags>{ sourceRHI, RHITextureState::CopySource },
+                            std::pair<RHITexture&, RHITextureState::Flags>{ destinationRHI,
+                                                                            RHITextureState::CopyDest } };
+    cmdList->Transition(transitions);
+    cmdList->Copy(sourceRHI, destinationRHI);
+}
+
+void CommandContext::Copy(const Buffer& source, const Buffer& destination)
+{
+    RHIBuffer& sourceRHI = backend->GetRHIBuffer(source.handle);
+    RHIBuffer& destinationRHI = backend->GetRHIBuffer(destination.handle);
+    std::array transitions{ std::pair<RHIBuffer&, RHIBufferState::Flags>{ sourceRHI, RHIBufferState::CopySource },
+                            std::pair<RHIBuffer&, RHIBufferState::Flags>{ destinationRHI, RHIBufferState::CopyDest } };
     cmdList->Transition(transitions);
     cmdList->Copy(sourceRHI, destinationRHI);
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Vex/UniqueHandle.h"
+
 #include <span>
 
 #include <Vex/Buffer.h>
@@ -7,6 +9,7 @@
 
 namespace vex
 {
+class RHIDescriptorPool;
 
 // clang-format off
 
@@ -23,6 +26,14 @@ END_VEX_ENUM_FLAGS();
 
 // clang-format on
 
+// RAII structure to wrap Map and Unmap operations on a buffer
+class RHIMappedBufferMemory
+{
+public:
+    virtual ~RHIMappedBufferMemory() = default;
+    virtual void SetData(std::span<const u8> data) = 0;
+};
+
 class RHIBuffer
 {
 protected:
@@ -34,16 +45,27 @@ protected:
     }
 
     RHIBufferState::Flags currentState = RHIBufferState::Common;
+    bool needsStagingBufferCopy = false;
 
 public:
-    virtual bool CanBeMapped() = 0;
-    virtual std::span<u8> Map() = 0;
-    virtual void UnMap() = 0;
+    virtual UniqueHandle<RHIMappedBufferMemory> GetMappedMemory() = 0;
+
+    bool NeedsStagingBufferCopy() const noexcept
+    {
+        return needsStagingBufferCopy;
+    };
+    void SetNeedsStagingBufferCopy(const bool value)
+    {
+        needsStagingBufferCopy = value;
+    }
+
+    virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
 
     void SetCurrentState(const RHIBufferState::Flags flags)
     {
         currentState = flags;
     }
+
     RHIBufferState::Flags GetCurrentState() const noexcept
     {
         return currentState;
@@ -54,6 +76,7 @@ public:
         return desc;
     };
 
+    virtual RHIBuffer* GetStagingBuffer() = 0;
     virtual ~RHIBuffer() = default;
 };
 

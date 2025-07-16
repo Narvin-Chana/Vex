@@ -47,19 +47,32 @@ HelloTriangleApplication::HelloTriangleApplication()
                                                .clearValue{ .enabled = false } },
                                              vex::ResourceLifetime::Static);
     workingTexture2 = graphics->CreateTexture({ .name = "Working Texture 2",
-                                                   .type = vex::TextureType::Texture2D,
-                                                   .width = DefaultWidth,
-                                                   .height = DefaultHeight,
-                                                   .depthOrArraySize = 1,
-                                                   .mips = 1,
-                                                   .format = vex::TextureFormat::RGBA8_UNORM,
-                                                   .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess,
-                                                   .clearValue{ .enabled = false } },
-                                                 vex::ResourceLifetime::Static);
+                                                .type = vex::TextureType::Texture2D,
+                                                .width = DefaultWidth,
+                                                .height = DefaultHeight,
+                                                .depthOrArraySize = 1,
+                                                .mips = 1,
+                                                .format = vex::TextureFormat::RGBA8_UNORM,
+                                                .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess,
+                                                .clearValue{ .enabled = false } },
+                                              vex::ResourceLifetime::Static);
 
-    buffer = graphics->CreateBuffer(
-        { .name = "Data Buffer", .size = sizeof(float) * 4, .usage = vex::BufferUsage::ConstantBuffer },
-        vex::ResourceLifetime::Static);
+    // Example of CPU accessible buffer
+    colorBuffer =
+        graphics->CreateBuffer({ .name = "Color Buffer",
+                                 .size = sizeof(float) * 4,
+                                 .usage = vex::BufferUsage::GenericBuffer,
+                                 .memoryAcces = vex::BufferMemoryAccess::CPUWrite | vex::BufferMemoryAccess::GPURead },
+                               vex::ResourceLifetime::Static);
+
+    // Example of GPU only buffer
+    commBuffer =
+        graphics->CreateBuffer({ .name = "Comm Buffer",
+                                 .size = sizeof(float) * 4,
+                                 .usage = vex::BufferUsage::GenericBuffer,
+                                 .memoryAcces = vex::BufferMemoryAccess::GPURead | vex::BufferMemoryAccess::GPUWrite },
+                               vex::ResourceLifetime::Static);
+
 #if defined(_WIN32)
     // Suggestion of an intrusive (� la Unreal) way to display errors.
     // The handling of shader compilation errors is user choice.
@@ -93,7 +106,6 @@ HelloTriangleApplication::HelloTriangleApplication()
             return false;
         });
 #endif
-
 }
 
 HelloTriangleApplication::~HelloTriangleApplication()
@@ -122,8 +134,10 @@ void HelloTriangleApplication::Run()
         graphics->StartFrame();
 
         {
-            float color[4] = { static_cast<float>(std::cos(currentTime) / 2 + 0.5), 0.5, 0.2, 1.0 };
-            float offset = static_cast<float>(std::sin(currentTime)) / 12.0f;
+            float ocillatedColor = static_cast<float>(std::cos(currentTime) / 2 + 0.5);
+            float invOcillatedColor = 1 - ocillatedColor;
+            float color[4] = { invOcillatedColor, ocillatedColor, invOcillatedColor, 1.0 };
+            graphics->UpdateData(colorBuffer, color);
 
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
             ctx.Dispatch(
@@ -131,24 +145,27 @@ void HelloTriangleApplication::Run()
                           "examples" / "example_hello_triangle" / "HelloTriangleShader.cs.hlsl",
                   .entryPoint = "CSMain",
                   .type = vex::ShaderType::ComputeShader },
-                vex::ResourceBindingSet{}
-                    .SetWriteBindings(std::initializer_list{
-                        vex::ResourceBinding{ .name = "OutputTexture", .texture = workingTexture },
-                    })
-                    .SetConstantsBindings(std::initializer_list{ vex::ConstantBinding{ offset } }),
+                {
+                    .reads = {
+                        { .name = "ColorBuffer", .buffer = colorBuffer },
+                    },
+                    .writes = {
+                        { .name = "OutputTexture", .texture = workingTexture },
+                        { .name = "CommBuffer", .buffer = commBuffer }
+                    },
+                    .constants = {}
+                },
                 { static_cast<uint32_t>(width) / 8, static_cast<uint32_t>(height) / 8, 1 });
             ctx.Dispatch(
                 { .path = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() /
                           "examples" / "example_hello_triangle" / "HelloTriangleShader2.cs.hlsl",
                   .entryPoint = "CSMain",
                   .type = vex::ShaderType::ComputeShader },
-                vex::ResourceBindingSet{}
-                    .SetReadBindings(
-                        std::initializer_list{ vex::ResourceBinding{ .name = "DataBuffer", .buffer = buffer } })
-                    .SetWriteBindings(std::initializer_list{
-                        vex::ResourceBinding{ .name = "OutputTexture", .texture = workingTexture },
-                        vex::ResourceBinding{ .name = "OutputTexture2", .texture = workingTexture2 } })
-                    .SetConstantsBindings(std::initializer_list{ vex::ConstantBinding{ color } }),
+                {
+                    .reads = { { .name = "CommBuffer", .buffer = commBuffer },
+                               { .name = "SourceTexture", .texture = workingTexture } },
+                    .writes = { { .name = "OutputTexture", .texture = workingTexture2 } },
+                },
                 { static_cast<uint32_t>(width) / 8, static_cast<uint32_t>(height) / 8, 1 });
             ctx.Copy(workingTexture2, graphics->GetCurrentBackBuffer());
         }

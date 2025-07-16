@@ -16,9 +16,10 @@ class DX12Buffer : public RHIBuffer
 
 public:
     DX12Buffer(ComPtr<DX12Device>& device, const BufferDescription& desc);
-    bool CanBeMapped() override;
-    std::span<u8> Map() override;
-    void UnMap() override;
+
+    virtual UniqueHandle<RHIMappedBufferMemory> GetMappedMemory() override;
+    virtual RHIBuffer* GetStagingBuffer() override;
+    virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
 };
 
 } // namespace vex::dx12
