@@ -7,6 +7,7 @@
 #include <Vex/RHI/RHIBindings.h>
 #include <Vex/RHI/RHICommandList.h>
 #include <Vex/RHI/RHISwapChain.h>
+#include <Vex/ShaderResourceContext.h>
 
 namespace vex
 {
@@ -147,7 +148,10 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     // Register shader and get Pipeline if exists (if not create it).
     // TODO: If we would want to add the shader code-gen to fill-in bindless resources automatically, we'd also have to
     // pass in the reads, writes and constants here.
-    auto pipelineState = backend->GetPipelineStateCache().GetComputePipelineState({ .computeShader = shader });
+    auto pipelineState =
+        backend->GetPipelineStateCache().GetComputePipelineState({ .computeShader = shader },
+                                                                 { rhiTextureBindings, rhiBufferBindings });
+
     if (!pipelineState)
     {
         return;
