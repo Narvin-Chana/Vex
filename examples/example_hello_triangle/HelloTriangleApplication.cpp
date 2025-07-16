@@ -46,16 +46,17 @@ HelloTriangleApplication::HelloTriangleApplication()
                                                .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess,
                                                .clearValue{ .enabled = false } },
                                              vex::ResourceLifetime::Static);
-    workingTexture2 = graphics->CreateTexture({ .name = "Working Texture 2",
-                                                .type = vex::TextureType::Texture2D,
-                                                .width = DefaultWidth,
-                                                .height = DefaultHeight,
-                                                .depthOrArraySize = 1,
-                                                .mips = 1,
-                                                .format = vex::TextureFormat::RGBA8_UNORM,
-                                                .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess,
-                                                .clearValue{ .enabled = false } },
-                                              vex::ResourceLifetime::Static);
+    finalOutputTexture =
+        graphics->CreateTexture({ .name = "Final Output Texture",
+                                  .type = vex::TextureType::Texture2D,
+                                  .width = DefaultWidth,
+                                  .height = DefaultHeight,
+                                  .depthOrArraySize = 1,
+                                  .mips = 1,
+                                  .format = vex::TextureFormat::RGBA8_UNORM,
+                                  .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess,
+                                  .clearValue{ .enabled = false } },
+                                vex::ResourceLifetime::Static);
 
     // Example of CPU accessible buffer
     colorBuffer =
@@ -164,10 +165,10 @@ void HelloTriangleApplication::Run()
                 {
                     .reads = { { .name = "CommBuffer", .buffer = commBuffer },
                                { .name = "SourceTexture", .texture = workingTexture } },
-                    .writes = { { .name = "OutputTexture", .texture = workingTexture2 } },
+                    .writes = { { .name = "OutputTexture", .texture = finalOutputTexture } },
                 },
                 { static_cast<uint32_t>(width) / 8, static_cast<uint32_t>(height) / 8, 1 });
-            ctx.Copy(workingTexture2, graphics->GetCurrentBackBuffer());
+            ctx.Copy(finalOutputTexture, graphics->GetCurrentBackBuffer());
         }
 
         graphics->EndFrame(windowMode == Fullscreen);
