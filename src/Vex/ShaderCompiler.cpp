@@ -178,6 +178,10 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
     // Append the actual shader file contents to the str.
     shaderFileStr.append(buffer.str());
 
+#if !VEX_SHIPPING
+    VEX_LOG(Verbose, "Shader {} file dump: {}", shader.key, shaderFileStr);
+#endif
+
     ComPtr<IDxcBlobEncoding> shaderBlob;
     if (HRESULT hr = GCompilerUtil.utils->CreateBlobFromPinned(shaderFileStr.c_str(),
                                                                shaderFileStr.size(),
