@@ -186,6 +186,14 @@ Buffer GfxBackend::CreateBuffer(BufferDescription description, ResourceLifetime 
                    .description = std::move(description) };
 }
 
+void GfxBackend::UpdateData(const Buffer& buffer, std::span<const u8> data)
+{
+    VEX_ASSERT(data.size() <= buffer.description.size, "Buffer data exceded buffer size");
+
+    RHIBuffer& rhiBuffer = GetRHIBuffer(buffer.handle);
+    rhiBuffer.GetMappedMemory()->SetData(data);
+}
+
 void GfxBackend::DestroyTexture(const Texture& texture)
 {
     resourceCleanup.CleanupResource(std::move(textureRegistry[texture.handle]));

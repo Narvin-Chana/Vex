@@ -32,23 +32,12 @@ VkResourceLayout::VkResourceLayout(::vk::Device device,
 
 u32 VkResourceLayout::GetLocalConstantsOffset() const noexcept
 {
-    return reservedLocalConstantSize;
+    return 0;
 }
 
 u32 VkResourceLayout::GetMaxLocalConstantSize() const
 {
     const u32 maxBytes = featureChecker.GetMaxPushConstantSize();
-    return std::max<u32>(0, maxBytes - reservedLocalConstantSize);
-}
-
-void VkResourceLayout::Update(const ResourceBindingSet& set)
-{
-    std::span<const ConstantBinding> constantBindings = set.GetConstantBindings();
-
-    reservedLocalConstantSize =
-        std::accumulate(constantBindings.begin(),
-                        constantBindings.end(),
-                        0u,
-                        [](const u32 acc, const ConstantBinding& constant) { return acc + constant.size; });
+    return std::max<u32>(0, maxBytes);
 }
 } // namespace vex::vk

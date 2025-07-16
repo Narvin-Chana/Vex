@@ -32,8 +32,6 @@ public:
     virtual u32 GetMaxLocalConstantSize() const = 0;
     virtual u32 GetLocalConstantsOffset() const noexcept = 0;
 
-    virtual void Update(const ResourceBindingSet& set) = 0;
-
     // Should be updated each time the resource layout's graphics resource has changed. Allows relevant pipeline states
     // to be recompiled on the fly accordingly.
     u32 version = 0;

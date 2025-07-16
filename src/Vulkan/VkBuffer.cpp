@@ -9,14 +9,15 @@
 
 namespace vex::vk
 {
-
 ::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDescription& desc)
 {
     using enum ::vk::BufferUsageFlagBits;
     switch (desc.usage)
     {
+    case BufferUsage::StagingBuffer:
+        return eTransferSrc;
     case BufferUsage::GenericBuffer:
-        return (desc.memoryAcces & BufferMemoryAccess::GPUWrite) ? eStorageBuffer : eUniformBuffer;
+        return eStorageBuffer;
     case BufferUsage::IndexBuffer:
         return eIndexBuffer;
     case BufferUsage::VertexBuffer:
@@ -55,6 +56,40 @@ namespace vex::vk
     std::unreachable();
 }
 
+VkDirectBufferMemory::VkDirectBufferMemory(VkGPUContext& ctx, ::vk::DeviceMemory memory, u32 size)
+    : ctx{ ctx }
+    , memory{ memory }
+    , size{ size }
+{
+    data = static_cast<u8*>(VEX_VK_CHECK <<= ctx.device.mapMemory(memory, 0, size));
+}
+
+void VkDirectBufferMemory::SetData(std::span<const u8> inData)
+{
+    std::ranges::copy(inData, data);
+}
+
+VkDirectBufferMemory::~VkDirectBufferMemory()
+{
+    ctx.device.unmapMemory(memory);
+}
+
+VkStagedBufferMemory::VkStagedBufferMemory(VkGPUContext& ctx, VkBuffer& buffer)
+    : buffer{ buffer }
+    , mapping{ ctx, *buffer.stagingBuffer->memory, buffer.desc.size }
+{
+}
+
+void VkStagedBufferMemory::SetData(std::span<const u8> data)
+{
+    mapping.SetData(data);
+}
+
+VkStagedBufferMemory::~VkStagedBufferMemory()
+{
+    buffer.SetNeedsStagingBufferCopy(true);
+}
+
 VkBuffer::VkBuffer(VkGPUContext& ctx, const BufferDescription& desc)
     : RHIBuffer{ desc }
     , ctx{ ctx }
@@ -62,6 +97,7 @@ VkBuffer::VkBuffer(VkGPUContext& ctx, const BufferDescription& desc)
     auto bufferUsage = GetVkBufferUsageFromDesc(desc);
     auto memoryProps = GetMemoryPropsFromDesc(desc);
 
+    bool needsStagingBuffer = false;
     if (memoryProps & ::vk::MemoryPropertyFlagBits::eDeviceLocal)
     {
         // Needs to get its data from somewhere. Will therefore always need a transfer dest usage
@@ -79,31 +115,68 @@ VkBuffer::VkBuffer(VkGPUContext& ctx, const BufferDescription& desc)
     const ::vk::MemoryRequirements reqs = ctx.device.getBufferMemoryRequirements(*buffer);
 
     memory = VEX_VK_CHECK <<= ctx.device.allocateMemoryUnique(
-        { .allocationSize = reqs.size * (needsStagingBuffer ? 1 : 2),
+        { .allocationSize = reqs.size,
           .memoryTypeIndex = GetBestMemoryType(ctx.physDevice, reqs.memoryTypeBits, memoryProps) });
+
+    VEX_VK_CHECK << ctx.device.bindBufferMemory(*buffer, *memory, 0);
+
+    if (needsStagingBuffer)
+    {
+        stagingBuffer =
+            MakeUnique<VkBuffer>(ctx,
+                                 BufferDescription{
+                                     .name = desc.name + "_StagingBuffer",
+                                     .size = desc.size,
+                                     .usage = BufferUsage::StagingBuffer,
+                                     .memoryAcces = BufferMemoryAccess::CPUWrite | BufferMemoryAccess::GPURead,
+                                 });
+    }
 }
 
-bool VkBuffer::CanBeMapped()
+UniqueHandle<RHIMappedBufferMemory> VkBuffer::GetMappedMemory()
 {
-    return needsStagingBuffer;
+    if (stagingBuffer)
+    {
+        return MakeUnique<VkStagedBufferMemory>(ctx, *this);
+    }
+    return MakeUnique<VkDirectBufferMemory>(ctx, *memory, desc.size);
 }
 
-std::span<u8> VkBuffer::Map()
+BindlessHandle VkBuffer::GetOrCreateBindlessIndex(VkGPUContext& ctx, VkDescriptorPool& descriptorPool)
 {
-    VEX_ASSERT(CanBeMapped(), "Tried to map unmappable buffer");
+    if (bufferHandle)
+    {
+        return *bufferHandle;
+    }
 
-    void* data = VEX_VK_CHECK <<= ctx.device.mapMemory(*memory, 0, desc.size, static_cast<::vk::MemoryMapFlagBits>(0));
-    return { static_cast<u8*>(data), desc.size };
+    const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor(*this);
+
+    descriptorPool.UpdateDescriptor(ctx,
+                                    handle,
+                                    ::vk::DescriptorBufferInfo{ .buffer = *buffer, .offset = 0, .range = desc.size });
+
+    bufferHandle = handle;
+
+    return handle;
 }
 
-void VkBuffer::UnMap()
+void VkBuffer::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 {
-    ctx.device.unmapMemory(*memory);
+    if (bufferHandle && *bufferHandle != GInvalidBindlessHandle)
+    {
+        reinterpret_cast<VkDescriptorPool&>(descriptorPool).FreeStaticDescriptor(*bufferHandle);
+    }
+    bufferHandle.reset();
 }
 
 ::vk::Buffer& VkBuffer::GetBuffer()
 {
     return *buffer;
+}
+
+RHIBuffer* VkBuffer::GetStagingBuffer()
+{
+    return stagingBuffer ? stagingBuffer.get() : nullptr;
 }
 
 } // namespace vex::vk

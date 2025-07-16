@@ -132,7 +132,7 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
 {
     if (textures.empty())
     {
-        z return;
+        return;
     }
 
     auto& vkResourceLayout = reinterpret_cast<const VkResourceLayout&>(layout);
@@ -152,6 +152,7 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
                 VkTextureViewDesc{
                     .viewType = TextureUtil::GetTextureViewType(binding),
                     .format = TextureUtil::GetTextureFormat(binding),
+                    .usage = usage,
                     .mipBias = binding.mipBias,
                     .mipCount = (binding.mipCount == 0) ? rhiTexture->GetDescription().mips : binding.mipCount,
                     .startSlice = binding.startSlice,
@@ -161,6 +162,13 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
                 vkDescriptorPool);
             bindlessHandleIndices.push_back(handle.GetIndex());
         }
+    }
+
+    for (auto& [binding, usage, rhiBuffer] : buffers)
+    {
+        auto* vkBuffer = reinterpret_cast<VkBuffer*>(rhiBuffer);
+        const BindlessHandle handle = vkBuffer->GetOrCreateBindlessIndex(ctx, vkDescriptorPool);
+        bindlessHandleIndices.push_back(handle.GetIndex());
     }
 
     ::vk::ShaderStageFlags stageFlags;
@@ -253,6 +261,10 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
         barrier.srcAccessMask = AccessFlagBits2::eTransferRead;
         barrier.srcStageMask = PipelineStageFlagBits2::eTransfer;
         break;
+    case ImageLayout::eShaderReadOnlyOptimal:
+        barrier.dstAccessMask = AccessFlagBits2::eShaderRead;
+        barrier.dstStageMask = PipelineStageFlagBits2::eAllGraphics | PipelineStageFlagBits2::eComputeShader;
+        break;
     case ImageLayout::eGeneral:
     case ImageLayout::ePresentSrcKHR:
         barrier.srcAccessMask = AccessFlagBits2::eMemoryRead | AccessFlagBits2::eMemoryWrite;
@@ -299,13 +311,13 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
     ::vk::AccessFlags2 dstAccessMask = BufferUtil::GetAccessFlagsFromBufferState(flags);
 
     // TODO: Figure out how to be more specific with stages
-    return { .buffer = buffer.GetBuffer(),
-             .srcStageMask = ::vk::PipelineStageFlagBits2::eAllCommands,
+    return { .srcStageMask = ::vk::PipelineStageFlagBits2::eAllCommands,
              .srcAccessMask = srcAccessMask,
              .dstStageMask = ::vk::PipelineStageFlagBits2::eAllCommands,
              .dstAccessMask = dstAccessMask,
              .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
              .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+             .buffer = buffer.GetBuffer(),
              .offset = 0,
              .size = buffer.GetDescription().size };
 }
@@ -344,6 +356,25 @@ void VkCommandList::Transition(std::span<std::pair<RHITexture&, RHITextureState:
         { .imageMemoryBarrierCount = static_cast<u32>(barriers.size()), .pImageMemoryBarriers = barriers.data() });
 
     for (auto& [rhiTexture, flags] : textureNewStatePairs)
+    {
+        rhiTexture.SetCurrentState(flags);
+    }
+}
+
+void VkCommandList::Transition(std::span<std::pair<RHIBuffer&, RHIBufferState::Flags>> bufferNewStatePairs)
+{
+    std::vector<::vk::BufferMemoryBarrier2> barriers;
+
+    for (auto& [rhiTexture, flags] : bufferNewStatePairs)
+    {
+        auto& vkBuffer = reinterpret_cast<VkBuffer&>(rhiTexture);
+        barriers.push_back(GetBufferBarrierFrom(vkBuffer, flags));
+    }
+
+    commandBuffer->pipelineBarrier2(
+        { .bufferMemoryBarrierCount = static_cast<u32>(barriers.size()), .pBufferMemoryBarriers = barriers.data() });
+
+    for (auto& [rhiTexture, flags] : bufferNewStatePairs)
     {
         rhiTexture.SetCurrentState(flags);
     }
@@ -407,6 +438,16 @@ void VkCommandList::Copy(RHITexture& src, RHITexture& dst)
                              ::vk::ImageLayout::eTransferDstOptimal,
                              static_cast<u32>(copyRegions.size()),
                              copyRegions.data());
+}
+
+void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst)
+{
+    auto& vkSrc = reinterpret_cast<VkBuffer&>(src);
+    auto& vkDst = reinterpret_cast<VkBuffer&>(dst);
+
+    const ::vk::BufferCopy copy{ .srcOffset = 0, .dstOffset = 0, .size = vkSrc.GetDescription().size };
+
+    commandBuffer->copyBuffer(vkSrc.GetBuffer(), vkDst.GetBuffer(), 1, &copy);
 }
 
 CommandQueueType VkCommandList::GetType() const

@@ -7,21 +7,23 @@ namespace vex::dx12
 {
 
 DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, const BufferDescription& desc)
-    : RHIBuffer(desc.usage, desc.size)
+    : RHIBuffer(desc)
 {
 }
 
-bool DX12Buffer::CanBeMapped()
-{
-    VEX_NOT_YET_IMPLEMENTED();
-    return false;
-}
-std::span<u8> DX12Buffer::Map()
+UniqueHandle<RHIMappedBufferMemory> DX12Buffer::GetMappedMemory()
 {
     VEX_NOT_YET_IMPLEMENTED();
     return {};
 }
-void DX12Buffer::UnMap()
+
+RHIBuffer* DX12Buffer::GetStagingBuffer()
+{
+    VEX_NOT_YET_IMPLEMENTED();
+    return {};
+}
+
+void DX12Buffer::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 {
     VEX_NOT_YET_IMPLEMENTED();
 }

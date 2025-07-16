@@ -17,7 +17,6 @@ public:
 
     virtual u32 GetMaxLocalConstantSize() const override;
     virtual u32 GetLocalConstantsOffset() const noexcept override;
-    virtual void Update(const ResourceBindingSet& set) override;
 
     ComPtr<ID3D12RootSignature>& GetRootSignature();
 
@@ -27,8 +26,6 @@ private:
     ComPtr<DX12Device> device;
     const DX12FeatureChecker& featureChecker;
     ComPtr<ID3D12RootSignature> rootSignature;
-
-    u32 reservedLocalConstantSize;
 };
 
 } // namespace vex::dx12

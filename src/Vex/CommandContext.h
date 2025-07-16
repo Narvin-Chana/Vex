@@ -7,7 +7,6 @@
 #include <Vex/RHI/RHIFwd.h>
 #include <Vex/ShaderKey.h>
 #include <Vex/Types.h>
-#include <Vex/UniqueHandle.h>
 
 namespace vex
 {
@@ -54,6 +53,7 @@ public:
     void Dispatch(const ShaderKey& shader, const ResourceBindingSet& resourceBindingSet, std::array<u32, 3> groupCount);
 
     void Copy(const Texture& source, const Texture& destination);
+    void Copy(const Buffer& source, const Buffer& destination);
 
 private:
     GfxBackend* backend;

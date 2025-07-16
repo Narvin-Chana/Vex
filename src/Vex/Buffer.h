@@ -13,16 +13,24 @@ namespace vex
 
 enum class BufferUsage : u8
 {
+    StagingBuffer,
     VertexBuffer,
     IndexBuffer,
     GenericBuffer
 };
 
-BEGIN_VEX_ENUM_FLAGS(BufferMemoryAccess, u8)
-CPURead, CPUWrite, GPURead,
-    GPUWrite END_VEX_ENUM_FLAGS()
+// clang-format off
 
-        struct BufferDescription
+BEGIN_VEX_ENUM_FLAGS(BufferMemoryAccess, u8)
+    CPURead,
+    CPUWrite,
+    GPURead,
+    GPUWrite
+END_VEX_ENUM_FLAGS()
+
+    // clang-format on
+
+    struct BufferDescription
 {
     std::string name;
     u32 size;
