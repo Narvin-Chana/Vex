@@ -10,6 +10,8 @@ namespace vex
 void ResourceBinding::ValidateResourceBindings(std::span<const ResourceBinding> bindings,
                                                ResourceUsage::Flags validUsageFlags)
 {
+    bool depthStencilAlreadyFound = false;
+
     for (const auto& resource : bindings)
     {
         if (resource.name.empty())
@@ -88,10 +90,41 @@ void ResourceBinding::ValidateResourceBindings(std::span<const ResourceBinding> 
                             magic_enum::enum_name(resource.texture.description.format));
                 }
             }
+
+            if (FormatIsDepthStencilCompatible(resource.texture.description.format) &&
+                !(resource.texture.description.usage & ResourceUsage::DepthStencil))
+            {
+                VEX_LOG(Fatal,
+                        "Invalid binding for resource \"{}\": Texture's format ({}) requires the depth stencil usage "
+                        "upon creation.",
+                        resource.name,
+                        magic_enum::enum_name(resource.texture.description.format));
+            }
+
+            if (FormatIsDepthStencilCompatible(resource.texture.description.format) &&
+                (validUsageFlags & ResourceUsage::DepthStencil))
+            {
+                if (depthStencilAlreadyFound)
+                {
+                    VEX_LOG(Fatal,
+                            "Invalid binding for resource \"{}\": Cannot bind multiple depth stencils to the graphics "
+                            "pipeline.",
+                            resource.name);
+                }
+                depthStencilAlreadyFound = true;
+            }
         }
 
         if (resource.IsBuffer())
         {
+            if (!((validUsageFlags & ResourceUsage::Read) || (validUsageFlags & ResourceUsage::UnorderedAccess)))
+            {
+                VEX_LOG(
+                    Fatal,
+                    "Invalid binding for resource \"{}\": A buffer cannot be bound as a render target/depth stencil.",
+                    resource.name);
+            }
+
             // TODO: implement validation for buffers.
             VEX_NOT_YET_IMPLEMENTED();
         }

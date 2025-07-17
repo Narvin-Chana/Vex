@@ -5,6 +5,7 @@
 #include <Vex/RHI/RHIBindings.h>
 
 #include <DX12/DX12Formats.h>
+#include <DX12/DX12GraphicsPipeline.h>
 #include <DX12/DX12PipelineState.h>
 #include <DX12/DX12ResourceLayout.h>
 #include <DX12/DX12States.h>
@@ -194,13 +195,16 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
     // Allocate for worst-case scenario.
     bindlessHandles.reserve(textures.size() + buffers.size());
 
+    std::vector<CD3DX12_CPU_DESCRIPTOR_HANDLE> rtvHandles;
+    rtvHandles.reserve(8);
+
     for (auto& [binding, usage, rhiTexture] : textures)
     {
-        auto dxTexture = reinterpret_cast<DX12Texture*>(rhiTexture);
+        auto dxTexture = reinterpret_cast<DX12Texture&>(*rhiTexture);
 
         if (usage == ResourceUsage::Read || usage == ResourceUsage::UnorderedAccess)
         {
-            bindlessHandles.push_back(dxTexture->GetOrCreateBindlessView(
+            bindlessHandles.push_back(dxTexture.GetOrCreateBindlessView(
                 device,
                 DX12TextureView{
                     .type = usage,
@@ -217,8 +221,18 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
         }
         else // if (usage == ResourceUsage::RenderTarget || usage == ResourceUsage::DepthStencil)
         {
-            // TODO: We can just bind these directly to the command list using their D3D12_CPU_DESCRIPTOR_HANDLE!
-            // Currently not handled with the compute-only pipeline (since it has no need for RTV/DSVs).
+            rtvHandles.emplace_back(dxTexture.GetOrCreateRTVDSVView(
+                device,
+                DX12TextureView{
+                    .type = usage,
+                    .dimension = TextureUtil::GetTextureViewType(binding),
+                    .format = TextureFormatToDXGI(TextureUtil::GetTextureFormat(binding)),
+                    .mipBias = binding.mipBias,
+                    .mipCount = (binding.mipCount == 0) ? rhiTexture->GetDescription().mips : binding.mipCount,
+                    .startSlice = binding.startSlice,
+                    .sliceCount =
+                        (binding.sliceCount == 0) ? rhiTexture->GetDescription().depthOrArraySize : binding.sliceCount,
+                }));
         }
     }
 
@@ -247,6 +261,15 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
     default:
         break;
     }
+
+    // Bind RTV and DSVs
+    if (type != CommandQueueType::Graphics)
+    {
+        VEX_LOG(Fatal,
+                "Cannot bind resources as render target/depth stencil views when the command queue is not of type "
+                "Graphics.");
+    }
+    commandList->OMSetRenderTargets(static_cast<u32>(rtvHandles.size()), rtvHandles.data(), true, nullptr);
 }
 
 void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)
@@ -254,6 +277,11 @@ void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIRe
     commandList->SetDescriptorHeaps(
         1,
         reinterpret_cast<DX12DescriptorPool&>(descriptorPool).gpuHeap.GetRawDescriptorHeap().GetAddressOf());
+}
+
+void DX12CommandList::SetInputAssembly(InputAssembly inputAssembly)
+{
+    commandList->IASetPrimitiveTopology(GraphicsPipeline::GetDX12PrimitiveTopologyFromInputAssembly(inputAssembly));
 }
 
 void DX12CommandList::Transition(RHITexture& texture, RHITextureState::Flags newState)
@@ -300,6 +328,16 @@ void DX12CommandList::Transition(std::span<std::pair<RHITexture&, RHITextureStat
     {
         commandList->ResourceBarrier(transitionBarriers.size(), transitionBarriers.data());
     }
+}
+
+void DX12CommandList::Draw(u32 vertexCount)
+{
+    if (type != CommandQueueType::Graphics)
+    {
+        VEX_LOG(Fatal, "Cannot use draw calls with a non-graphics command queue.");
+    }
+
+    commandList->DrawInstanced(vertexCount, 1, 0, 0);
 }
 
 void DX12CommandList::Dispatch(const std::array<u32, 3>& groupCount)

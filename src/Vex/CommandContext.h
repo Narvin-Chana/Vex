@@ -2,6 +2,7 @@
 
 #include <span>
 
+#include <Vex/GraphicsPipeline.h>
 #include <Vex/RHI/RHIFwd.h>
 #include <Vex/ShaderKey.h>
 #include <Vex/Types.h>
@@ -19,6 +20,13 @@ struct DrawDescription
 {
     ShaderKey vertexShader;
     ShaderKey pixelShader;
+    VertexInputLayout vertexInputLayout;
+    InputAssembly inputAssembly;
+    RasterizerState rasterizerState;
+    DepthStencilState depthStencilState;
+    ColorBlendState colorBlendState;
+
+    bool operator==(const DrawDescription& other) const = default;
 };
 
 class CommandContext
@@ -36,6 +44,7 @@ public:
     void Draw(const DrawDescription& drawDesc,
               std::span<const ConstantBinding> constants,
               std::span<const ResourceBinding> reads,
+              std::span<const ResourceBinding> readWrites,
               std::span<const ResourceBinding> writes,
               u32 vertexCount);
 
@@ -49,7 +58,7 @@ public:
     void Dispatch(const ShaderKey& shader,
                   std::span<const ConstantBinding> constants,
                   std::span<const ResourceBinding> reads,
-                  std::span<const ResourceBinding> writes,
+                  std::span<const ResourceBinding> readWrites,
                   std::array<u32, 3> groupCount);
 
     void Copy(const Texture& source, const Texture& destination);

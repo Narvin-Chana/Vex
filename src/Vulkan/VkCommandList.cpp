@@ -207,6 +207,11 @@ void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIReso
                                       nullptr);
 }
 
+void VkCommandList::SetInputAssembly(InputAssembly inputAssembly)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
 // This only changes the access mask of the texture
 ::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITextureState::Flags flags)
 {
@@ -312,6 +317,11 @@ void VkCommandList::Transition(std::span<std::pair<RHITexture&, RHITextureState:
     {
         rhiTexture.SetCurrentState(flags);
     }
+}
+
+void VkCommandList::Draw(u32 vertexCount)
+{
+    commandBuffer->draw(vertexCount, 1, 0, 0);
 }
 
 void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount)

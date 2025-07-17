@@ -10,13 +10,22 @@ namespace vex::dx12
 class DX12GraphicsPipelineState : public RHIGraphicsPipelineState
 {
 public:
-    DX12GraphicsPipelineState(const Key& key);
+    DX12GraphicsPipelineState(const ComPtr<DX12Device>& device, const Key& key);
     virtual ~DX12GraphicsPipelineState() override;
     virtual void Compile(const RHIShader& vertexShader,
                          const RHIShader& pixelShader,
                          RHIResourceLayout& resourceLayout) override;
+    virtual bool NeedsRecompile(const Key& newKey) override;
+    virtual void Cleanup(ResourceCleanup& resourceCleanup) override;
+
+    // Verifies that the key does not contain fields with non-default values for features which DX12 does not support.
+    // Clears the unused fields which allows for changes to these fields to not impact the hash of the structure.
+    static void ValidateUnsupportedKeyFields(Key& key);
 
     ComPtr<ID3D12PipelineState> graphicsPSO;
+
+private:
+    ComPtr<DX12Device> device;
 };
 
 class DX12ComputePipelineState : public RHIComputePipelineState

@@ -6,7 +6,6 @@
 
 int main()
 {
-    // TODO: make the world a triangle...
     HelloTriangleApplication application;
     application.Run();
 }

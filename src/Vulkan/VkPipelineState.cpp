@@ -24,6 +24,18 @@ void VkGraphicsPipelineState::Compile(const RHIShader& vertexShader,
     VEX_NOT_YET_IMPLEMENTED();
 }
 
+bool VkGraphicsPipelineState::NeedsRecompile(const Key& newKey)
+{
+    // TODO: determine what is needed and what isn't, dynamic rendering should reduce how we compare this.
+    VEX_NOT_YET_IMPLEMENTED();
+    return false;
+}
+
+void VkGraphicsPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
 VkComputePipelineState::VkComputePipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache)
     : RHIComputePipelineState(key)
     , device{ device }
