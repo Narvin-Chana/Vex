@@ -147,7 +147,7 @@ struct DepthStencilState
         StencilOp failOp = StencilOp::Keep;
         StencilOp passOp = StencilOp::Keep;
         StencilOp depthFailOp = StencilOp::Keep;
-        CompareOp compareOp = CompareOp::Never;
+        CompareOp compareOp = CompareOp::Always;
         u32 readMask = 0;  // Only u8 in DX12
         u32 writeMask = 0; // Only u8 in DX12
         u32 reference = 0; // Vulkan only
@@ -245,13 +245,13 @@ struct ColorBlendState
     struct ColorBlendAttachment
     {
         bool blendEnabled = false;
-        BlendFactor srcColorBlendFactor;
-        BlendFactor dstColorBlendFactor;
-        BlendOp colorBlendOp;
-        BlendFactor srcAlphaBlendFactor;
-        BlendFactor dstAlphaBlendFactor;
-        BlendOp alphaBlendOp;
-        ColorWriteMask::Flags colorWriteMask;
+        BlendFactor srcColorBlendFactor = BlendFactor::One;
+        BlendFactor dstColorBlendFactor = BlendFactor::Zero;
+        BlendOp colorBlendOp = BlendOp::Add;
+        BlendFactor srcAlphaBlendFactor = BlendFactor::One;
+        BlendFactor dstAlphaBlendFactor = BlendFactor::Zero;
+        BlendOp alphaBlendOp = BlendOp::Add;
+        ColorWriteMask::Flags colorWriteMask = ColorWriteMask::All;
 
         bool operator==(const ColorBlendAttachment& other) const = default;
     };

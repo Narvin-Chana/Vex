@@ -37,6 +37,9 @@ static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDescript
     key.renderTargetState.depthStencilFormat =
         depthStencilBinding ? depthStencilBinding->texture.description.format : TextureFormat::UNKNOWN;
 
+    // Ensure each rendertarget has atleast a default color attachment (no blending, write all).
+    key.colorBlendState.attachments.resize(renderTargetBindings.size());
+
     return key;
 }
 
@@ -56,6 +59,47 @@ CommandContext::CommandContext(GfxBackend* backend, RHICommandList* cmdList)
 CommandContext::~CommandContext()
 {
     backend->EndCommandContext(*cmdList);
+}
+
+void CommandContext::SetViewport(float x, float y, float width, float height, float minDepth, float maxDepth)
+{
+    cmdList->SetViewport(x, y, width, height, minDepth, maxDepth);
+}
+
+void CommandContext::SetScissor(i32 x, i32 y, u32 width, u32 height)
+{
+    cmdList->SetScissor(x, y, width, height);
+}
+
+void CommandContext::ClearTexture(ResourceBinding binding,
+                                  TextureClearValue* optionalTextureClearValue,
+                                  std::optional<std::array<float, 4>> clearRect)
+{
+    if (!binding.IsTexture())
+    {
+        VEX_LOG(Fatal, "ClearTexture can only take in a texture.");
+    }
+    RHITexture& texture = backend->GetRHITexture(binding.texture.handle);
+    RHITextureState::Type newState;
+    if (binding.texture.description.usage & ResourceUsage::RenderTarget)
+    {
+        newState = RHITextureState::RenderTarget;
+    }
+    else if (binding.texture.description.usage & ResourceUsage::DepthStencil)
+    {
+        newState = RHITextureState::DepthWrite;
+    }
+    else
+    {
+        VEX_LOG(Fatal,
+                "Invalid texture passed to ClearTexture, your texture must allow for either RenderTarget usage or "
+                "DepthStencil usage.");
+    }
+    cmdList->Transition(texture, newState);
+    cmdList->ClearTexture(
+        texture,
+        binding,
+        optionalTextureClearValue ? *optionalTextureClearValue : binding.texture.description.clearValue);
 }
 
 void CommandContext::Draw(const DrawDescription& drawDesc,

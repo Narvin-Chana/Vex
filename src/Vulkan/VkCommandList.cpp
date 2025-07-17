@@ -212,6 +212,13 @@ void VkCommandList::SetInputAssembly(InputAssembly inputAssembly)
     VEX_NOT_YET_IMPLEMENTED();
 }
 
+void VkCommandList::ClearTexture(RHITexture& rhiTexture,
+                                 const ResourceBinding& clearBinding,
+                                 const TextureClearValue& clearValue)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
 // This only changes the access mask of the texture
 ::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITextureState::Flags flags)
 {

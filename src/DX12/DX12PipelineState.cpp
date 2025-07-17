@@ -50,6 +50,8 @@ void DX12GraphicsPipelineState::Compile(const RHIShader& vertexShader,
         .PrimitiveTopologyType = GetDX12PrimitiveTopologyTypeFromInputAssembly(key.inputAssembly),
         .NumRenderTargets = GetNumRenderTargetsFromRenderTargetState(key.renderTargetState),
         .SampleDesc = { .Count = 1 },
+        .NodeMask = 0,
+        .Flags = D3D12_PIPELINE_STATE_FLAG_NONE,
     };
     std::uninitialized_copy_n(rtvFormats.data(), 8, desc.RTVFormats);
     desc.DSVFormat = TextureFormatToDXGI(key.renderTargetState.depthStencilFormat);

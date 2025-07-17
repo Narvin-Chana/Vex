@@ -2,6 +2,7 @@
 
 #include <magic_enum/magic_enum.hpp>
 
+#include <Vex/Bindings.h>
 #include <Vex/Logger.h>
 #include <Vex/Platform/Windows/WString.h>
 #include <Vex/RHI/RHIDescriptorPool.h>
@@ -242,7 +243,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, const TextureDescription& d
     static const D3D12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 
     D3D12_CLEAR_VALUE* clearValue = nullptr;
-    if (description.clearValue.enabled)
+    if (description.clearValue.flags != TextureClear::None)
     {
         *clearValue = {};
         clearValue->Format = texDesc.Format;
@@ -422,6 +423,19 @@ BindlessHandle DX12Texture::GetOrCreateBindlessView(ComPtr<DX12Device>& device,
 
         return handle;
     }
+}
+
+DX12TextureView::DX12TextureView(const ResourceBinding& binding,
+                                 const TextureDescription& description,
+                                 ResourceUsage::Type usage)
+    : type{ usage }
+    , dimension{ TextureUtil::GetTextureViewType(binding) }
+    , format{ TextureFormatToDXGI(TextureUtil::GetTextureFormat(binding)) }
+    , mipBias{ binding.mipBias }
+    , mipCount{ (binding.mipCount == 0) ? description.mips : binding.mipCount }
+    , startSlice{ binding.startSlice }
+    , sliceCount{ (binding.sliceCount == 0) ? description.depthOrArraySize : binding.sliceCount }
+{
 }
 
 } // namespace vex::dx12

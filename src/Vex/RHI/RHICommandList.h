@@ -45,6 +45,10 @@ public:
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) = 0;
     virtual void SetInputAssembly(InputAssembly inputAssembly) = 0;
 
+    virtual void ClearTexture(RHITexture& rhiTexture,
+                              const ResourceBinding& clearBinding,
+                              const TextureClearValue& clearValue) = 0;
+
     virtual void Transition(RHITexture& texture, RHITextureState::Flags newState) = 0;
     // Ideal for batching multiple resource transitions together.
     virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs) = 0;

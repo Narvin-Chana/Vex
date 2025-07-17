@@ -15,6 +15,7 @@ class GfxBackend;
 struct ConstantBinding;
 struct ResourceBinding;
 struct Texture;
+struct TextureClearValue;
 
 struct DrawDescription
 {
@@ -40,6 +41,15 @@ public:
 
     CommandContext(CommandContext&& other) = default;
     CommandContext& operator=(CommandContext&& other) = default;
+
+    void SetViewport(float x, float y, float width, float height, float minDepth = 0.0f, float maxDepth = 1.0f);
+    void SetScissor(i32 x, i32 y, u32 width, u32 height);
+
+    // Clears a texture, by default will use the texture's ClearColor.
+    void ClearTexture(
+        ResourceBinding binding,
+        TextureClearValue* optionalTextureClearValue = nullptr, // Use ptr to allow for fwd declaration of type.
+        std::optional<std::array<float, 4>> clearRect = std::nullopt);
 
     void Draw(const DrawDescription& drawDesc,
               std::span<const ConstantBinding> constants,

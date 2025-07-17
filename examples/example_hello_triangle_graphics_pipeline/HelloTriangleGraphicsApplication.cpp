@@ -34,16 +34,16 @@ HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
             .enableGPUDebugLayer = !VEX_SHIPPING,
             .enableGPUBasedValidation = !VEX_SHIPPING });
 
-    workingTexture = graphics->CreateTexture({ .name = "Working Texture",
-                                               .type = vex::TextureType::Texture2D,
-                                               .width = DefaultWidth,
-                                               .height = DefaultHeight,
-                                               .depthOrArraySize = 1,
-                                               .mips = 1,
-                                               .format = vex::TextureFormat::RGBA8_UNORM,
-                                               .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess,
-                                               .clearValue{ .enabled = false } },
-                                             vex::ResourceLifetime::Static);
+    workingTexture =
+        graphics->CreateTexture({ .name = "Working Texture",
+                                  .type = vex::TextureType::Texture2D,
+                                  .width = DefaultWidth,
+                                  .height = DefaultHeight,
+                                  .depthOrArraySize = 1,
+                                  .mips = 1,
+                                  .format = vex::TextureFormat::RGBA8_UNORM,
+                                  .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess },
+                                vex::ResourceLifetime::Static);
 
 #if defined(_WIN32)
     // Suggestion of an intrusive (à la Unreal) way to display errors.
@@ -105,31 +105,51 @@ void HelloTriangleGraphicsApplication::Run()
 
         {
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
+
+            vex::DrawDescription drawDesc{
+                .vertexShader = { .path = std::filesystem::current_path()
+                                              .parent_path()
+                                              .parent_path()
+                                              .parent_path()
+                                              .parent_path() /
+                                          "examples" / "example_hello_triangle_graphics_pipeline" /
+                                          "HelloTriangleGraphicsShader.hlsl",
+                                  .entryPoint = "VSMain",
+                                  .type = vex::ShaderType::VertexShader },
+                .pixelShader = { .path = std::filesystem::current_path()
+                                             .parent_path()
+                                             .parent_path()
+                                             .parent_path()
+                                             .parent_path() /
+                                         "examples" / "example_hello_triangle_graphics_pipeline" /
+                                         "HelloTriangleGraphicsShader.hlsl",
+                                 .entryPoint = "PSMain",
+                                 .type = vex::ShaderType::PixelShader }
+            };
+
+            ctx.SetScissor(0, 0, DefaultWidth, DefaultHeight);
+
+            vex::TextureClearValue clearValue{ .flags = vex::TextureClear::ClearColor, .color = { 1, 0.5f, 1, 1 } };
+            ctx.ClearTexture(vex::ResourceBinding{ .name = "Backbuffer", .texture = graphics->GetCurrentBackBuffer() },
+                             &clearValue);
+
+            ctx.SetViewport(0, 0, DefaultWidth / 2.0f, DefaultHeight);
             ctx.Draw(
-                { .vertexShader = { .path = std::filesystem::current_path()
-                                                .parent_path()
-                                                .parent_path()
-                                                .parent_path()
-                                                .parent_path() /
-                                            "examples" / "example_hello_triangle_graphics_pipeline" /
-                                            "HelloTriangleGraphicsShader.hlsl",
-                                    .entryPoint = "VSMain",
-                                    .type = vex::ShaderType::VertexShader },
-                  .pixelShader = { .path = std::filesystem::current_path()
-                                               .parent_path()
-                                               .parent_path()
-                                               .parent_path()
-                                               .parent_path() /
-                                           "examples" / "example_hello_triangle_graphics_pipeline" /
-                                           "HelloTriangleGraphicsShader.hlsl",
-                                   .entryPoint = "PSMain",
-                                   .type = vex::ShaderType::PixelShader } },
+                drawDesc,
                 {},
                 {},
                 {},
                 { { vex::ResourceBinding{ .name = "OutputTexture", .texture = graphics->GetCurrentBackBuffer() } } },
                 3);
-            // ctx.Copy(workingTexture, graphics->GetCurrentBackBuffer());
+
+            ctx.SetViewport(DefaultWidth / 2.0f, 0, DefaultWidth / 2.0f, DefaultHeight);
+            ctx.Draw(
+                drawDesc,
+                {},
+                {},
+                {},
+                { { vex::ResourceBinding{ .name = "OutputTexture", .texture = graphics->GetCurrentBackBuffer() } } },
+                3);
         }
 
         graphics->EndFrame(windowMode == Fullscreen);
@@ -147,14 +167,14 @@ void HelloTriangleGraphicsApplication::OnResize(GLFWwindow* window, uint32_t wid
 
     ExampleApplication::OnResize(window, width, height);
 
-    workingTexture = graphics->CreateTexture({ .name = "Working Texture",
-                                               .type = vex::TextureType::Texture2D,
-                                               .width = width,
-                                               .height = height,
-                                               .depthOrArraySize = 1,
-                                               .mips = 1,
-                                               .format = vex::TextureFormat::RGBA8_UNORM,
-                                               .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess,
-                                               .clearValue{ .enabled = false } },
-                                             vex::ResourceLifetime::Static);
+    workingTexture =
+        graphics->CreateTexture({ .name = "Working Texture",
+                                  .type = vex::TextureType::Texture2D,
+                                  .width = width,
+                                  .height = height,
+                                  .depthOrArraySize = 1,
+                                  .mips = 1,
+                                  .format = vex::TextureFormat::RGBA8_UNORM,
+                                  .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess },
+                                vex::ResourceLifetime::Static);
 }
