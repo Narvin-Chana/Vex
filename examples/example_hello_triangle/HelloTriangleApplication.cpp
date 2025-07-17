@@ -34,16 +34,16 @@ HelloTriangleApplication::HelloTriangleApplication()
             .enableGPUDebugLayer = !VEX_SHIPPING,
             .enableGPUBasedValidation = !VEX_SHIPPING });
 
-    workingTexture = graphics->CreateTexture({ .name = "Working Texture",
-                                               .type = vex::TextureType::Texture2D,
-                                               .width = DefaultWidth,
-                                               .height = DefaultHeight,
-                                               .depthOrArraySize = 1,
-                                               .mips = 1,
-                                               .format = vex::TextureFormat::RGBA8_UNORM,
-                                               .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess,
-                                               .clearValue{ .enabled = false } },
-                                             vex::ResourceLifetime::Static);
+    workingTexture =
+        graphics->CreateTexture({ .name = "Working Texture",
+                                  .type = vex::TextureType::Texture2D,
+                                  .width = DefaultWidth,
+                                  .height = DefaultHeight,
+                                  .depthOrArraySize = 1,
+                                  .mips = 1,
+                                  .format = vex::TextureFormat::RGBA8_UNORM,
+                                  .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess },
+                                vex::ResourceLifetime::Static);
 
 #if defined(_WIN32)
     // Suggestion of an intrusive (à la Unreal) way to display errors.
@@ -141,14 +141,16 @@ void HelloTriangleApplication::OnResize(GLFWwindow* window, uint32_t width, uint
 
     ExampleApplication::OnResize(window, width, height);
 
-    workingTexture = graphics->CreateTexture({ .name = "Working Texture",
-                                               .type = vex::TextureType::Texture2D,
-                                               .width = width,
-                                               .height = height,
-                                               .depthOrArraySize = 1,
-                                               .mips = 1,
-                                               .format = vex::TextureFormat::RGBA8_UNORM,
-                                               .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess,
-                                               .clearValue{ .enabled = false } },
-                                             vex::ResourceLifetime::Static);
+    workingTexture = graphics->CreateTexture(
+        {
+            .name = "Working Texture",
+            .type = vex::TextureType::Texture2D,
+            .width = width,
+            .height = height,
+            .depthOrArraySize = 1,
+            .mips = 1,
+            .format = vex::TextureFormat::RGBA8_UNORM,
+            .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess,
+        },
+        vex::ResourceLifetime::Static);
 }

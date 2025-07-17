@@ -110,7 +110,7 @@ void HelloTriangleGraphicsApplication::Run()
         {
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
 
-            ctx.SetScissor(0, 0, DefaultWidth, DefaultHeight);
+            ctx.SetScissor(0, 0, width, height);
 
             // Clear backbuffer.
             vex::TextureClearValue clearValue{ .flags = vex::TextureClear::ClearColor, .color = { 1, 0.5f, 1, 1 } };
@@ -137,9 +137,9 @@ void HelloTriangleGraphicsApplication::Run()
                 .renderTargets = renderTargets,
             };
 
-            ctx.SetViewport(0, 0, DefaultWidth / 2.0f, DefaultHeight);
+            ctx.SetViewport(0, 0, width / 2.0f, height);
             ctx.Draw(drawDesc, drawResources, 3);
-            ctx.SetViewport(DefaultWidth / 2.0f, 0, DefaultWidth / 2.0f, DefaultHeight);
+            ctx.SetViewport(width / 2.0f, 0, width / 2.0f, height);
             ctx.Draw(drawDesc, drawResources, 3);
         }
 
