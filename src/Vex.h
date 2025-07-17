@@ -2,6 +2,7 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/CommandContext.h>
+#include <Vex/DrawHelpers.h>
 #include <Vex/FeatureChecker.h>
 #include <Vex/GfxBackend.h>
 

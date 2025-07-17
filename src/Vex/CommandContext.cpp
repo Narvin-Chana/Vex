@@ -2,6 +2,7 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/Debug.h>
+#include <Vex/DrawHelpers.h>
 #include <Vex/GfxBackend.h>
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
@@ -18,8 +19,8 @@ namespace CommandContext_Internal
 {
 
 static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDescription& drawDesc,
-                                                              std::span<ResourceBinding> renderTargetBindings,
-                                                              const ResourceBinding* depthStencilBinding)
+                                                              std::span<const ResourceBinding> renderTargetBindings,
+                                                              std::optional<ResourceBinding> depthStencilBinding)
 {
     GraphicsPipelineStateKey key{ .vertexShader = drawDesc.vertexShader,
                                   .pixelShader = drawDesc.pixelShader,
@@ -35,12 +36,23 @@ static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDescript
     }
 
     key.renderTargetState.depthStencilFormat =
-        depthStencilBinding ? depthStencilBinding->texture.description.format : TextureFormat::UNKNOWN;
+        depthStencilBinding.has_value() ? depthStencilBinding->texture.description.format : TextureFormat::UNKNOWN;
 
     // Ensure each rendertarget has atleast a default color attachment (no blending, write all).
     key.colorBlendState.attachments.resize(renderTargetBindings.size());
 
     return key;
+}
+
+static void ValidateDrawResources(const DrawResources& drawResources)
+{
+    ResourceBinding::ValidateResourceBindings(drawResources.readResources, ResourceUsage::Read);
+    ResourceBinding::ValidateResourceBindings(drawResources.unorderedAccessResources, ResourceUsage::UnorderedAccess);
+    ResourceBinding::ValidateResourceBindings(drawResources.renderTargets, ResourceUsage::RenderTarget);
+    if (drawResources.depthStencil)
+    {
+        ResourceBinding::ValidateResourceBindings({ { *drawResources.depthStencil } }, ResourceUsage::DepthStencil);
+    }
 }
 
 } // namespace CommandContext_Internal
@@ -102,29 +114,26 @@ void CommandContext::ClearTexture(ResourceBinding binding,
         optionalTextureClearValue ? *optionalTextureClearValue : binding.texture.description.clearValue);
 }
 
-void CommandContext::Draw(const DrawDescription& drawDesc,
-                          std::span<const ConstantBinding> constants,
-                          std::span<const ResourceBinding> reads,
-                          std::span<const ResourceBinding> readWrites,
-                          std::span<const ResourceBinding> writes,
-                          u32 vertexCount)
+void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& drawResources, u32 vertexCount)
 {
     using namespace vex::CommandContext_Internal;
 
-    ResourceBinding::ValidateResourceBindings(reads, ResourceUsage::Read);
-    ResourceBinding::ValidateResourceBindings(readWrites, ResourceUsage::UnorderedAccess);
-    ResourceBinding::ValidateResourceBindings(writes, ResourceUsage::DepthStencil | ResourceUsage::RenderTarget);
+    ValidateDrawResources(drawResources);
 
     RHIResourceLayout& resourceLayout = backend->GetPipelineStateCache().GetResourceLayout();
 
-    if (!constants.empty())
+    if (!drawResources.constants.empty())
     {
+        // Constants not yet implemented!
         VEX_NOT_YET_IMPLEMENTED();
     }
 
     // Collect all underlying RHI textures.
-    i32 totalSize = static_cast<i32>(reads.size() + writes.size());
+    i32 totalSize =
+        static_cast<i32>(drawResources.readResources.size() + drawResources.unorderedAccessResources.size() +
+                         drawResources.renderTargets.size() + (drawResources.depthStencil.has_value() ? 1 : 0));
 
+    // Conservative allocation.
     std::vector<RHITextureBinding> rhiTextureBindings;
     rhiTextureBindings.reserve(totalSize);
     std::vector<RHIBufferBinding> rhiBufferBindings;
@@ -154,42 +163,14 @@ void CommandContext::Draw(const DrawDescription& drawDesc,
             }
         }
     };
-    CollectResources(reads, ResourceUsage::Read, RHITextureState::ShaderResource);
-    CollectResources(readWrites, ResourceUsage::UnorderedAccess, RHITextureState::UnorderedAccess);
-
-    std::vector<ResourceBinding> renderTargetBindings;
-    renderTargetBindings.reserve(8);
-    const ResourceBinding* depthStencilBinding = nullptr;
-
-    for (const ResourceBinding& binding : writes)
+    CollectResources(drawResources.readResources, ResourceUsage::Read, RHITextureState::ShaderResource);
+    CollectResources(drawResources.unorderedAccessResources,
+                     ResourceUsage::UnorderedAccess,
+                     RHITextureState::UnorderedAccess);
+    CollectResources(drawResources.renderTargets, ResourceUsage::RenderTarget, RHITextureState::RenderTarget);
+    if (drawResources.depthStencil)
     {
-        // Validation should have caught this.
-        VEX_ASSERT(binding.IsTexture());
-
-        auto& texture = backend->GetRHITexture(binding.texture.handle);
-
-        // A texture cannot be bindable as render target AND depth stencil. This is determined by two things, 1: the
-        // texture's format and 2: the texture's usage flags. Vulkan completely dissallows render target + depth stencil
-        // usage, whereas DX12 allows it, but highly recommends against it.
-        //
-        // In Vex we completely ban using a single texture as render target AND depth stencil, which means if a write is
-        // a depthStencil format, we know its the depth stencil we want to bind.
-        if (FormatIsDepthStencilCompatible(binding.texture.description.format))
-        {
-            textureStateTransitions.emplace_back(texture, RHITextureState::DepthWrite);
-            rhiTextureBindings.emplace_back(binding, ResourceUsage::DepthStencil, &texture);
-
-            VEX_ASSERT(depthStencilBinding == nullptr, "Cannot have multiple depth stencil bindings.");
-            depthStencilBinding = &binding;
-        }
-        // Render target
-        else
-        {
-            textureStateTransitions.emplace_back(texture, RHITextureState::RenderTarget);
-            rhiTextureBindings.emplace_back(binding, ResourceUsage::RenderTarget, &texture);
-
-            renderTargetBindings.emplace_back(binding);
-        }
+        CollectResources({ { *drawResources.depthStencil } }, ResourceUsage::DepthStencil, RHITextureState::DepthWrite);
     }
 
     // Transition our resources to the correct states.
@@ -199,17 +180,18 @@ void CommandContext::Draw(const DrawDescription& drawDesc,
     cmdList->SetLayoutResources(resourceLayout, rhiTextureBindings, rhiBufferBindings, *backend->descriptorPool);
 
     auto pipelineState = backend->GetPipelineStateCache().GetGraphicsPipelineState(
-        GetGraphicsPSOKeyFromDrawDesc(drawDesc, renderTargetBindings, depthStencilBinding),
-        { rhiTextureBindings, rhiBufferBindings });
-
+        GetGraphicsPSOKeyFromDrawDesc(drawDesc, drawResources.renderTargets, drawResources.depthStencil),
+        ShaderResourceContext{ rhiTextureBindings, rhiBufferBindings });
     if (!pipelineState)
     {
         return;
     }
     cmdList->SetPipelineState(*pipelineState);
+
     cmdList->SetInputAssembly(drawDesc.inputAssembly);
 
-    // Validate draw vertex count
+    // TODO: Validate draw vertex count (eg: versus the currently used index buffer size)
+
     cmdList->Draw(vertexCount);
 }
 

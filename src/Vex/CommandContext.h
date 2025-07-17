@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <span>
 
 #include <Vex/GraphicsPipeline.h>
@@ -16,19 +17,8 @@ struct ConstantBinding;
 struct ResourceBinding;
 struct Texture;
 struct TextureClearValue;
-
-struct DrawDescription
-{
-    ShaderKey vertexShader;
-    ShaderKey pixelShader;
-    VertexInputLayout vertexInputLayout;
-    InputAssembly inputAssembly;
-    RasterizerState rasterizerState;
-    DepthStencilState depthStencilState;
-    ColorBlendState colorBlendState;
-
-    bool operator==(const DrawDescription& other) const = default;
-};
+struct DrawDescription;
+struct DrawResources;
 
 class CommandContext
 {
@@ -46,17 +36,12 @@ public:
     void SetScissor(i32 x, i32 y, u32 width, u32 height);
 
     // Clears a texture, by default will use the texture's ClearColor.
-    void ClearTexture(
-        ResourceBinding binding,
-        TextureClearValue* optionalTextureClearValue = nullptr, // Use ptr to allow for fwd declaration of type.
-        std::optional<std::array<float, 4>> clearRect = std::nullopt);
+    void ClearTexture(ResourceBinding binding,
+                      TextureClearValue* optionalTextureClearValue =
+                          nullptr, // Use ptr instead of optional to allow for fwd declaration of type.
+                      std::optional<std::array<float, 4>> clearRect = std::nullopt);
 
-    void Draw(const DrawDescription& drawDesc,
-              std::span<const ConstantBinding> constants,
-              std::span<const ResourceBinding> reads,
-              std::span<const ResourceBinding> readWrites,
-              std::span<const ResourceBinding> writes,
-              u32 vertexCount);
+    void Draw(const DrawDescription& drawDesc, const DrawResources& drawResources, u32 vertexCount);
 
     void DrawIndexed()
     {

@@ -207,7 +207,9 @@ add_library(Vex STATIC
     "src/Vex/ShaderResourceContext.h"
     "src/Vex/ShaderResourceContext.cpp"
     "src/Vex/ShaderGen.h"
- "src/Vex/GraphicsPipeline.h")
+    "src/Vex/GraphicsPipeline.h"
+    "src/Vex/DrawHelpers.h"
+)
 
 if (WIN32)
     target_sources(Vex PRIVATE
@@ -266,7 +268,9 @@ if (VEX_ENABLE_DX12)
         "src/DX12/DX12DescriptorPool.cpp"
         "src/DX12/DX12States.h"
         "src/DX12/DX12States.cpp"
-     "src/DX12/DX12GraphicsPipeline.h" "src/DX12/DX12GraphicsPipeline.cpp")
+        "src/DX12/DX12GraphicsPipeline.h"
+        "src/DX12/DX12GraphicsPipeline.cpp"
+    )
 endif()
 
 # Vulkan project files
