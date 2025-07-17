@@ -43,8 +43,7 @@ const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
 
     auto vertexShader = shaderCache.GetShader(ps->key.vertexShader, resourceContext);
     auto pixelShader = shaderCache.GetShader(ps->key.pixelShader, resourceContext);
-
-    if (!vertexShader || !pixelShader)
+    if (!vertexShader->IsValid() || !pixelShader->IsValid())
     {
         return nullptr;
     }
@@ -53,9 +52,11 @@ const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
     pipelineStateStale |= vertexShader->version > ps->vertexShaderVersion;
     pipelineStateStale |= pixelShader->version > ps->pixelShaderVersion;
     pipelineStateStale |= resourceLayout->version > ps->rootSignatureVersion;
-
+    // TODO: add other fields, maybe via custom == func? Or just accept new slot in cache?
     if (pipelineStateStale)
     {
+        // Avoids PSO being destroyed while frame is in flight.
+        ps->Cleanup(*resourceCleanup);
         ps->Compile(*vertexShader, *pixelShader, *resourceLayout);
     }
 

@@ -42,7 +42,6 @@ bool IsFormatSRGB(TextureFormat format)
     default:
         return false;
     }
-    std::unreachable();
 }
 
 bool FormatHasSRGBEquivalent(TextureFormat format)
@@ -59,7 +58,20 @@ bool FormatHasSRGBEquivalent(TextureFormat format)
     default:
         return false;
     }
-    std::unreachable();
+}
+
+bool FormatIsDepthStencilCompatible(TextureFormat format)
+{
+    switch (format)
+    {
+    case TextureFormat::D16_UNORM:
+    case TextureFormat::D24_UNORM_S8_UINT:
+    case TextureFormat::D32_FLOAT_S8_UINT:
+    case TextureFormat::D32_FLOAT:
+        return true;
+    default:
+        return false;
+    }
 }
 
 } // namespace vex

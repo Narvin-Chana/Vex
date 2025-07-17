@@ -33,7 +33,7 @@ END_VEX_ENUM_FLAGS();
 // Flags for a texture binding.
 BEGIN_VEX_ENUM_FLAGS(TextureBinding, u8)
     None,
-    SRGB,
+    SRGB = 1,
 END_VEX_ENUM_FLAGS();
 
 // clang-format on

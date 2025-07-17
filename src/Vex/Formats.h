@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Vex/Hash.h>
 #include <Vex/Types.h>
 
 namespace vex
@@ -86,4 +87,14 @@ bool IsFormatSRGB(TextureFormat format);
 
 bool FormatHasSRGBEquivalent(TextureFormat format);
 
+bool FormatIsDepthStencilCompatible(TextureFormat format);
+
 } // namespace vex
+
+// clang-format off
+
+VEX_MAKE_HASHABLE(vex::TextureFormat,
+    VEX_HASH_COMBINE_ENUM(seed, obj);
+);
+
+// clang-format on

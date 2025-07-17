@@ -198,8 +198,9 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
     shaderSource.Encoding = DXC_CP_ACP; // Assume BOM says UTF8 or UTF16 or this is ANSI text.
 
     std::vector<LPCWSTR> args;
+    std::vector<ShaderDefine> defines = shader.key.defines;
 
-    rhi->ModifyShaderCompilerEnvironment(args, shader.key.defines);
+    rhi->ModifyShaderCompilerEnvironment(args, defines);
 
     if (debugShaders)
     {
@@ -214,7 +215,7 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
 
     FillInAdditionalIncludeDirectories(args);
 
-    std::vector<DxcDefine> defines = ShaderCompiler_Internal::ConvertDefinesToDxcDefine(shader.key.defines);
+    std::vector<DxcDefine> dxcDefines = ShaderCompiler_Internal::ConvertDefinesToDxcDefine(defines);
     ComPtr<IDxcCompilerArgs> compilerArgs;
     if (HRESULT hr = GCompilerUtil.utils->BuildArguments(
             shader.key.path.wstring().c_str(),
@@ -222,8 +223,8 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
             ShaderCompiler_Internal::GetTargetFromShaderType(shader.key.type).c_str(),
             args.data(),
             static_cast<u32>(args.size()),
-            defines.data(),
-            static_cast<u32>(defines.size()),
+            dxcDefines.data(),
+            static_cast<u32>(dxcDefines.size()),
             &compilerArgs);
         FAILED(hr))
     {
@@ -329,29 +330,17 @@ RHIShader* ShaderCache::GetShader(const ShaderKey& key, const ShaderResourceCont
     if (shaderPtr->NeedsRecompile())
     {
         auto result = CompileShader(*shaderPtr, resourceContext);
-        // Currently this is just spat out to cout, however a future task (separate MR) will be to determine how to pass
-        // error info/retry info to the client user programatically.
-        //
-        // @alemarbre if you have any ideas I'd be interested.
-        // There's always the option of some sort of ShaderError callback that the user can subscribe to.
-        //
-        // Otherwise we could add the concept of log categories to the logger (my least preferred option) but it seems
-        // to be quite a bit more convoluted and requires more needless effort imo (we're a graphics lib, not a logging
-        // lib).
-        //
-        // The more C-style option is a function you can call periodically - a GetShaderCompilationErrors() that fills
-        // in a string vector with the errors since the last compilation attempt.
         if (!result.has_value())
         {
             if (debugShaders)
             {
                 shaderPtr->isErrored = true;
-                compilationErrors.emplace_back(shaderPtr->key, result.error());
+                compilationErrors.emplace_back(key, result.error());
             }
             // If we're not in a debugShaders context, a non-compiling shader is fatal.
             VEX_LOG(debugShaders ? Error : Fatal,
                     "Failed to compile shader:\n\t- {}:\n\t- Reason: {}",
-                    shaderPtr->key,
+                    key,
                     result.error());
         }
     }

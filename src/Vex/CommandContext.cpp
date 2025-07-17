@@ -2,15 +2,60 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/Debug.h>
+#include <Vex/DrawHelpers.h>
 #include <Vex/GfxBackend.h>
+#include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
 #include <Vex/RHI/RHIBindings.h>
 #include <Vex/RHI/RHICommandList.h>
+#include <Vex/RHI/RHIPipelineState.h>
 #include <Vex/RHI/RHISwapChain.h>
 #include <Vex/ShaderResourceContext.h>
 
 namespace vex
 {
+
+namespace CommandContext_Internal
+{
+
+static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDescription& drawDesc,
+                                                              std::span<const ResourceBinding> renderTargetBindings,
+                                                              std::optional<ResourceBinding> depthStencilBinding)
+{
+    GraphicsPipelineStateKey key{ .vertexShader = drawDesc.vertexShader,
+                                  .pixelShader = drawDesc.pixelShader,
+                                  .vertexInputLayout = drawDesc.vertexInputLayout,
+                                  .inputAssembly = drawDesc.inputAssembly,
+                                  .rasterizerState = drawDesc.rasterizerState,
+                                  .depthStencilState = drawDesc.depthStencilState,
+                                  .colorBlendState = drawDesc.colorBlendState };
+
+    for (const ResourceBinding& binding : renderTargetBindings)
+    {
+        key.renderTargetState.colorFormats.emplace_back(binding.texture.description.format);
+    }
+
+    key.renderTargetState.depthStencilFormat =
+        depthStencilBinding.has_value() ? depthStencilBinding->texture.description.format : TextureFormat::UNKNOWN;
+
+    // Ensure each rendertarget has atleast a default color attachment (no blending, write all).
+    key.colorBlendState.attachments.resize(renderTargetBindings.size());
+
+    return key;
+}
+
+static void ValidateDrawResources(const DrawResources& drawResources)
+{
+    ResourceBinding::ValidateResourceBindings(drawResources.readResources, ResourceUsage::Read);
+    ResourceBinding::ValidateResourceBindings(drawResources.unorderedAccessResources, ResourceUsage::UnorderedAccess);
+    ResourceBinding::ValidateResourceBindings(drawResources.renderTargets, ResourceUsage::RenderTarget);
+    if (drawResources.depthStencil)
+    {
+        ResourceBinding::ValidateResourceBindings({ { *drawResources.depthStencil } }, ResourceUsage::DepthStencil);
+    }
+}
+
+} // namespace CommandContext_Internal
 
 CommandContext::CommandContext(GfxBackend* backend, RHICommandList* cmdList)
     : backend(backend)
@@ -28,23 +73,136 @@ CommandContext::~CommandContext()
     backend->EndCommandContext(*cmdList);
 }
 
-void CommandContext::Draw(const DrawDescription& drawDesc,
-                          std::span<const ConstantBinding> constants,
-                          std::span<const ResourceBinding> reads,
-                          std::span<const ResourceBinding> writes,
-                          u32 vertexCount)
+void CommandContext::SetViewport(float x, float y, float width, float height, float minDepth, float maxDepth)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    cmdList->SetViewport(x, y, width, height, minDepth, maxDepth);
+}
+
+void CommandContext::SetScissor(i32 x, i32 y, u32 width, u32 height)
+{
+    cmdList->SetScissor(x, y, width, height);
+}
+
+void CommandContext::ClearTexture(ResourceBinding binding,
+                                  TextureClearValue* optionalTextureClearValue,
+                                  std::optional<std::array<float, 4>> clearRect)
+{
+    if (!binding.IsTexture())
+    {
+        VEX_LOG(Fatal, "ClearTexture can only take in a texture.");
+    }
+    RHITexture& texture = backend->GetRHITexture(binding.texture.handle);
+    RHITextureState::Type newState;
+    if (binding.texture.description.usage & ResourceUsage::RenderTarget)
+    {
+        newState = RHITextureState::RenderTarget;
+    }
+    else if (binding.texture.description.usage & ResourceUsage::DepthStencil)
+    {
+        newState = RHITextureState::DepthWrite;
+    }
+    else
+    {
+        VEX_LOG(Fatal,
+                "Invalid texture passed to ClearTexture, your texture must allow for either RenderTarget usage or "
+                "DepthStencil usage.");
+    }
+    cmdList->Transition(texture, newState);
+    cmdList->ClearTexture(
+        texture,
+        binding,
+        optionalTextureClearValue ? *optionalTextureClearValue : binding.texture.description.clearValue);
+}
+
+void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& drawResources, u32 vertexCount)
+{
+    using namespace vex::CommandContext_Internal;
+
+    ValidateDrawResources(drawResources);
+
+    RHIResourceLayout& resourceLayout = backend->GetPipelineStateCache().GetResourceLayout();
+
+    if (!drawResources.constants.empty())
+    {
+        // Constants not yet implemented!
+        VEX_NOT_YET_IMPLEMENTED();
+    }
+
+    // Collect all underlying RHI textures.
+    i32 totalSize =
+        static_cast<i32>(drawResources.readResources.size() + drawResources.unorderedAccessResources.size() +
+                         drawResources.renderTargets.size() + (drawResources.depthStencil.has_value() ? 1 : 0));
+
+    // Conservative allocation.
+    std::vector<RHITextureBinding> rhiTextureBindings;
+    rhiTextureBindings.reserve(totalSize);
+    std::vector<RHIBufferBinding> rhiBufferBindings;
+    rhiBufferBindings.reserve(totalSize);
+
+    std::vector<std::pair<RHITexture&, RHITextureState::Flags>> textureStateTransitions;
+    textureStateTransitions.reserve(totalSize);
+
+    auto CollectResources = [backend = backend, &rhiTextureBindings, &rhiBufferBindings, &textureStateTransitions](
+                                std::span<const ResourceBinding> resources,
+                                ResourceUsage::Type usage,
+                                RHITextureState::Flags state)
+    {
+        for (const ResourceBinding& binding : resources)
+        {
+            if (binding.IsTexture())
+            {
+                auto& texture = backend->GetRHITexture(binding.texture.handle);
+                textureStateTransitions.emplace_back(texture, state);
+                rhiTextureBindings.emplace_back(binding, usage, &texture);
+            }
+
+            if (binding.IsBuffer())
+            {
+                auto& buffer = backend->GetRHIBuffer(binding.buffer.handle);
+                rhiBufferBindings.emplace_back(binding, usage, &buffer);
+            }
+        }
+    };
+    CollectResources(drawResources.readResources, ResourceUsage::Read, RHITextureState::ShaderResource);
+    CollectResources(drawResources.unorderedAccessResources,
+                     ResourceUsage::UnorderedAccess,
+                     RHITextureState::UnorderedAccess);
+    CollectResources(drawResources.renderTargets, ResourceUsage::RenderTarget, RHITextureState::RenderTarget);
+    if (drawResources.depthStencil)
+    {
+        CollectResources({ { *drawResources.depthStencil } }, ResourceUsage::DepthStencil, RHITextureState::DepthWrite);
+    }
+
+    // Transition our resources to the correct states.
+    cmdList->Transition(textureStateTransitions);
+
+    // Transforms ResourceBinding into platform specific views, then binds them to the shader (preferably bindlessly).
+    cmdList->SetLayoutResources(resourceLayout, rhiTextureBindings, rhiBufferBindings, *backend->descriptorPool);
+
+    auto pipelineState = backend->GetPipelineStateCache().GetGraphicsPipelineState(
+        GetGraphicsPSOKeyFromDrawDesc(drawDesc, drawResources.renderTargets, drawResources.depthStencil),
+        ShaderResourceContext{ rhiTextureBindings, rhiBufferBindings });
+    if (!pipelineState)
+    {
+        return;
+    }
+    cmdList->SetPipelineState(*pipelineState);
+
+    cmdList->SetInputAssembly(drawDesc.inputAssembly);
+
+    // TODO: Validate draw vertex count (eg: versus the currently used index buffer size)
+
+    cmdList->Draw(vertexCount);
 }
 
 void CommandContext::Dispatch(const ShaderKey& shader,
                               std::span<const ConstantBinding> constants,
                               std::span<const ResourceBinding> reads,
-                              std::span<const ResourceBinding> writes,
+                              std::span<const ResourceBinding> readWrites,
                               std::array<u32, 3> groupCount)
 {
     ResourceBinding::ValidateResourceBindings(reads, ResourceUsage::Read);
-    ResourceBinding::ValidateResourceBindings(writes, ResourceUsage::UnorderedAccess);
+    ResourceBinding::ValidateResourceBindings(readWrites, ResourceUsage::UnorderedAccess);
 
     RHIResourceLayout& resourceLayout = backend->GetPipelineStateCache().GetResourceLayout();
 
@@ -105,7 +263,7 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     //              bindless index.
 
     // Collect all underlying RHI textures.
-    i32 totalSize = static_cast<i32>(reads.size() + writes.size());
+    i32 totalSize = static_cast<i32>(reads.size() + readWrites.size());
 
     std::vector<RHITextureBinding> rhiTextureBindings;
     rhiTextureBindings.reserve(totalSize);
@@ -115,7 +273,7 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     std::vector<std::pair<RHITexture&, RHITextureState::Flags>> textureStateTransitions;
     textureStateTransitions.reserve(totalSize);
 
-    auto CollectResources = [this, &rhiTextureBindings, &rhiBufferBindings, &textureStateTransitions](
+    auto CollectResources = [backend = backend, &rhiTextureBindings, &rhiBufferBindings, &textureStateTransitions](
                                 std::span<const ResourceBinding> resources,
                                 ResourceUsage::Type usage,
                                 RHITextureState::Flags state)
@@ -137,7 +295,7 @@ void CommandContext::Dispatch(const ShaderKey& shader,
         }
     };
     CollectResources(reads, ResourceUsage::Read, RHITextureState::ShaderResource);
-    CollectResources(writes, ResourceUsage::UnorderedAccess, RHITextureState::UnorderedAccess);
+    CollectResources(readWrites, ResourceUsage::UnorderedAccess, RHITextureState::UnorderedAccess);
 
     // Transition our resources to the correct states.
     cmdList->Transition(textureStateTransitions);

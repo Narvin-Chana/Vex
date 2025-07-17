@@ -4,19 +4,19 @@
 
 // Base macro for combining hashes
 #define VEX_HASH_COMBINE(seed, value)                                                                                  \
-    (seed) ^= std::hash<decltype(value)>()(value) + 0x9e3779b9 + ((seed) << 6) + ((seed) >> 2)
+    (seed) ^= std::hash<std::remove_const_t<std::remove_reference_t<decltype(value)>>>()(value) + 0x9e3779b9 +         \
+              ((seed) << 6) + ((seed) >> 2)
 
-// Macro for hashing an enum using magic_enum
+// Macro for hashing an enum using the string provided by magic_enum
 #define VEX_HASH_COMBINE_ENUM(seed, enum_value)                                                                        \
     (seed) ^= std::hash<std::string>()(std::string(magic_enum::enum_name(enum_value))) + 0x9e3779b9 + ((seed) << 6) +  \
               ((seed) >> 2)
 
 // Macro for hashing a container (vector, array, etc.)
-// Won't work for more than 1 level of depth (eg container inside container)
-#define VEX_HASH_COMBINE_CONTAINER(seed, container, ...)                                                               \
+#define VEX_HASH_COMBINE_CONTAINER(seed, container)                                                                    \
     for (const auto& item : container)                                                                                 \
     {                                                                                                                  \
-        __VA_ARGS__;                                                                                                   \
+        VEX_HASH_COMBINE(seed, item);                                                                                  \
     }
 
 // Macro to generate hash function for a struct or class
