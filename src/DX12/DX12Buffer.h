@@ -13,12 +13,13 @@ namespace vex::dx12
 
 class DX12Buffer : public RHIBuffer
 {
+    virtual UniqueHandle<RHIBuffer> CreateStagingBuffer() override;
 
 public:
     DX12Buffer(ComPtr<DX12Device>& device, const BufferDescription& desc);
 
-    virtual UniqueHandle<RHIMappedBufferMemory> GetMappedMemory() override;
-    virtual RHIBuffer* GetStagingBuffer() override;
+    virtual std::span<u8> Map() override;
+    virtual void UnMap() override;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
 };
 

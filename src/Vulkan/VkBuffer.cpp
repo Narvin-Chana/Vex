@@ -56,40 +56,6 @@ namespace vex::vk
     std::unreachable();
 }
 
-VkDirectBufferMemory::VkDirectBufferMemory(VkGPUContext& ctx, ::vk::DeviceMemory memory, u32 size)
-    : ctx{ ctx }
-    , memory{ memory }
-    , size{ size }
-{
-    data = static_cast<u8*>(VEX_VK_CHECK <<= ctx.device.mapMemory(memory, 0, size));
-}
-
-void VkDirectBufferMemory::SetData(std::span<const u8> inData)
-{
-    std::ranges::copy(inData, data);
-}
-
-VkDirectBufferMemory::~VkDirectBufferMemory()
-{
-    ctx.device.unmapMemory(memory);
-}
-
-VkStagedBufferMemory::VkStagedBufferMemory(VkGPUContext& ctx, VkBuffer& buffer)
-    : buffer{ buffer }
-    , mapping{ ctx, *buffer.stagingBuffer->memory, buffer.desc.size }
-{
-}
-
-void VkStagedBufferMemory::SetData(std::span<const u8> data)
-{
-    mapping.SetData(data);
-}
-
-VkStagedBufferMemory::~VkStagedBufferMemory()
-{
-    buffer.SetNeedsStagingBufferCopy(true);
-}
-
 VkBuffer::VkBuffer(VkGPUContext& ctx, const BufferDescription& desc)
     : RHIBuffer{ desc }
     , ctx{ ctx }
@@ -97,12 +63,10 @@ VkBuffer::VkBuffer(VkGPUContext& ctx, const BufferDescription& desc)
     auto bufferUsage = GetVkBufferUsageFromDesc(desc);
     auto memoryProps = GetMemoryPropsFromDesc(desc);
 
-    bool needsStagingBuffer = false;
     if (memoryProps & ::vk::MemoryPropertyFlagBits::eDeviceLocal)
     {
         // Needs to get its data from somewhere. Will therefore always need a transfer dest usage
         bufferUsage |= ::vk::BufferUsageFlagBits::eTransferDst;
-        needsStagingBuffer = true;
     }
 
     buffer = VEX_VK_CHECK <<=
@@ -119,27 +83,6 @@ VkBuffer::VkBuffer(VkGPUContext& ctx, const BufferDescription& desc)
           .memoryTypeIndex = GetBestMemoryType(ctx.physDevice, reqs.memoryTypeBits, memoryProps) });
 
     VEX_VK_CHECK << ctx.device.bindBufferMemory(*buffer, *memory, 0);
-
-    if (needsStagingBuffer)
-    {
-        stagingBuffer =
-            MakeUnique<VkBuffer>(ctx,
-                                 BufferDescription{
-                                     .name = desc.name + "_StagingBuffer",
-                                     .size = desc.size,
-                                     .usage = BufferUsage::StagingBuffer,
-                                     .memoryAcces = BufferMemoryAccess::CPUWrite | BufferMemoryAccess::GPURead,
-                                 });
-    }
-}
-
-UniqueHandle<RHIMappedBufferMemory> VkBuffer::GetMappedMemory()
-{
-    if (stagingBuffer)
-    {
-        return MakeUnique<VkStagedBufferMemory>(ctx, *this);
-    }
-    return MakeUnique<VkDirectBufferMemory>(ctx, *memory, desc.size);
 }
 
 BindlessHandle VkBuffer::GetOrCreateBindlessIndex(VkGPUContext& ctx, VkDescriptorPool& descriptorPool)
@@ -174,9 +117,26 @@ void VkBuffer::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
     return *buffer;
 }
 
-RHIBuffer* VkBuffer::GetStagingBuffer()
+UniqueHandle<RHIBuffer> VkBuffer::CreateStagingBuffer()
 {
-    return stagingBuffer ? stagingBuffer.get() : nullptr;
+    return MakeUnique<VkBuffer>(ctx,
+                                BufferDescription{
+                                    .name = desc.name + "_StagingBuffer",
+                                    .size = desc.size,
+                                    .usage = BufferUsage::StagingBuffer,
+                                    .memoryAcces = BufferMemoryAccess::CPUWrite | BufferMemoryAccess::GPURead,
+                                });
+}
+
+std::span<u8> VkBuffer::Map()
+{
+    void* ptr = VEX_VK_CHECK <<= ctx.device.mapMemory(*memory, 0, desc.size);
+    return { static_cast<u8*>(ptr), desc.size };
+}
+
+void VkBuffer::UnMap()
+{
+    ctx.device.unmapMemory(*memory);
 }
 
 } // namespace vex::vk
