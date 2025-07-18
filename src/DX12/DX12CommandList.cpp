@@ -123,60 +123,24 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
         break;
     }
 }
-
 void DX12CommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout,
                                               std::span<const ConstantBinding> constants)
 {
-    const auto& dxResourceLayout = reinterpret_cast<const DX12ResourceLayout&>(layout);
-    u32 rootSignatureDWORDCount = dxResourceLayout.GetMaxLocalConstantSize() / sizeof(DWORD);
-
-    u32 localConstantsByteSize = 0;
-    // Compute total size of constants (and make sure the constants fit in local constants).
-    for (const auto& binding : constants)
-    {
-        localConstantsByteSize += static_cast<u32>(binding.size);
-    }
-
-    if (localConstantsByteSize > dxResourceLayout.GetMaxLocalConstantSize())
-    {
-        VEX_LOG(Fatal,
-                "Unable to bind local constants, you have surpassed the limit DX12 allows for in root signatures.");
-        return;
-    }
-
-    std::vector<u8> dataToUpload(localConstantsByteSize);
-    u8* currPtr = dataToUpload.data();
-    for (const auto& binding : constants)
-    {
-        std::memcpy(currPtr, binding.data, binding.size);
-        currPtr += binding.size;
-    }
-
-    auto DivideAndRoundUp = [](u32 x, u32 y) { return (x + y - 1) / y; };
-
-    // Data is stored in the form of 32bit chunks, so there is still a chance our local data is too fat to fit in root
-    // constant storage.
-    u32 finalByteSize = DivideAndRoundUp(localConstantsByteSize, sizeof(DWORD));
-    if (finalByteSize > dxResourceLayout.GetMaxLocalConstantSize())
-    {
-        VEX_LOG(Fatal,
-                "Unable to bind local constants, you have surpassed the limit DX12 allows for in root signatures.");
-    }
-
-    if (finalByteSize == 0)
+    if (constants.empty())
     {
         return;
     }
 
-    // Padding to fill out the unused local constants space.
-    dataToUpload.resize(rootSignatureDWORDCount);
+    auto constantData = ConstantBinding::ConcatConstantBindings(constants, layout.GetMaxLocalConstantSize());
+
+    auto DWORDCount = constantData.size() / sizeof(DWORD);
 
     switch (type)
     {
     case CommandQueueType::Graphics:
-        commandList->SetGraphicsRoot32BitConstants(0, rootSignatureDWORDCount, dataToUpload.data(), 0);
+        commandList->SetGraphicsRoot32BitConstants(0, DWORDCount, constantData.data(), 0);
     case CommandQueueType::Compute:
-        commandList->SetComputeRoot32BitConstants(0, rootSignatureDWORDCount, dataToUpload.data(), 0);
+        commandList->SetComputeRoot32BitConstants(0, DWORDCount, constantData.data(), 0);
     case CommandQueueType::Copy:
     default:
         break;
@@ -224,7 +188,7 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
 
     for (auto& [binding, usage, rhiBuffer] : buffers)
     {
-        // TODO: implement buffers!
+        VEX_NOT_YET_IMPLEMENTED();
     }
 
     // Now we can bind the bindless textures as constants in our root constants!
@@ -237,12 +201,12 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
         commandList->SetGraphicsRoot32BitConstants(0,
                                                    static_cast<u32>(bindlessHandles.size()),
                                                    bindlessHandles.data(),
-                                                   0);
+                                                   layout.GetLocalConstantsOffset() / sizeof(DWORD));
     case CommandQueueType::Compute:
         commandList->SetComputeRoot32BitConstants(0,
                                                   static_cast<u32>(bindlessHandles.size()),
                                                   bindlessHandles.data(),
-                                                  0);
+                                                  layout.GetLocalConstantsOffset() / sizeof(DWORD));
     case CommandQueueType::Copy:
     default:
         break;
@@ -275,6 +239,11 @@ void DX12CommandList::Transition(RHITexture& texture, RHITextureState::Flags new
     commandList->ResourceBarrier(1, &resourceBarrier);
 }
 
+void DX12CommandList::Transition(RHIBuffer& buffer, RHIBufferState::Flags newState)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
 void DX12CommandList::Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs)
 {
     std::vector<D3D12_RESOURCE_BARRIER> transitionBarriers;
@@ -302,6 +271,11 @@ void DX12CommandList::Transition(std::span<std::pair<RHITexture&, RHITextureStat
     }
 }
 
+void DX12CommandList::Transition(std::span<std::pair<RHIBuffer&, RHIBufferState::Flags>> bufferNewStatePairs)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
 void DX12CommandList::Dispatch(const std::array<u32, 3>& groupCount)
 {
     switch (type)
@@ -326,6 +300,11 @@ void DX12CommandList::Copy(RHITexture& src, RHITexture& dst)
     ID3D12Resource* srcNative = reinterpret_cast<DX12Texture&>(src).GetRawTexture();
     ID3D12Resource* dstNative = reinterpret_cast<DX12Texture&>(dst).GetRawTexture();
     commandList->CopyResource(dstNative, srcNative);
+}
+
+void DX12CommandList::Copy(RHIBuffer& src, RHIBuffer& dst)
+{
+    VEX_NOT_YET_IMPLEMENTED();
 }
 
 CommandQueueType DX12CommandList::GetType() const

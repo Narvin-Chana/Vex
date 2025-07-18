@@ -11,8 +11,8 @@
 #include <Vex/FrameResource.h>
 #include <Vex/PipelineStateCache.h>
 #include <Vex/PlatformWindow.h>
-#include <Vex/Resource.h>
 #include <Vex/RHI/RHIFwd.h>
+#include <Vex/Resource.h>
 #include <Vex/Texture.h>
 #include <Vex/UniqueHandle.h>
 
@@ -48,6 +48,13 @@ public:
 
     // Creates a new texture, the handle passed back should be kept.
     Texture CreateTexture(TextureDescription description, ResourceLifetime lifetime);
+
+    Buffer CreateBuffer(BufferDescription description, ResourceLifetime lifetime);
+    void UpdateData(const Buffer& buffer, std::span<const u8> data);
+
+    template <class T>
+        requires std::is_trivially_copyable_v<T>
+    void UpdateData(const Buffer& buffer, const T& data);
     // Destroys a texture, the handle passed in must be the one obtained from calling CreateTexture earlier.
     // Once destroyed the handle passed in is invalid and should no longer be used.
     void DestroyTexture(const Texture& texture);
@@ -116,6 +123,15 @@ private:
     inline static constexpr u32 DefaultRegistrySize = 1024;
 
     friend class CommandContext;
+    friend class ResourceBindingSet;
 };
+
+template <class T>
+    requires std::is_trivially_copyable_v<T>
+void GfxBackend::UpdateData(const Buffer& buffer, const T& data)
+{
+    const u8* dataPtr = reinterpret_cast<const u8*>(&data);
+    UpdateData(buffer, std::span{ dataPtr, sizeof(T) });
+}
 
 } // namespace vex
