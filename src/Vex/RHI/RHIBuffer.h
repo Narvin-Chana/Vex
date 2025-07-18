@@ -39,18 +39,26 @@ class RHIBuffer
 protected:
     BufferDescription desc;
 
-    RHIBuffer(const BufferDescription& desc)
+    explicit RHIBuffer(const BufferDescription& desc)
         : desc{ desc }
     {
     }
 
+    UniqueHandle<RHIBuffer> stagingBuffer;
     RHIBufferState::Flags currentState = RHIBufferState::Common;
     bool needsStagingBufferCopy = false;
 
-public:
-    virtual UniqueHandle<RHIMappedBufferMemory> GetMappedMemory() = 0;
+    virtual UniqueHandle<RHIBuffer> CreateStagingBuffer() = 0;
 
-    bool NeedsStagingBufferCopy() const noexcept
+public:
+    // RAII safe version to access buffer memory
+    UniqueHandle<RHIMappedBufferMemory> GetMappedMemory();
+
+    // Raw direct access to buffer memory
+    virtual std::span<u8> Map() = 0;
+    virtual void UnMap() = 0;
+
+    [[nodiscard]] bool NeedsStagingBufferCopy() const noexcept
     {
         return needsStagingBufferCopy;
     };
@@ -66,17 +74,20 @@ public:
         currentState = flags;
     }
 
-    RHIBufferState::Flags GetCurrentState() const noexcept
+    [[nodiscard]] RHIBufferState::Flags GetCurrentState() const noexcept
     {
         return currentState;
     }
 
-    const BufferDescription& GetDescription() const noexcept
+    [[nodiscard]] const BufferDescription& GetDescription() const noexcept
     {
         return desc;
     };
 
-    virtual RHIBuffer* GetStagingBuffer() = 0;
+    virtual RHIBuffer* GetStagingBuffer()
+    {
+        return stagingBuffer.get();
+    };
     virtual ~RHIBuffer() = default;
 };
 

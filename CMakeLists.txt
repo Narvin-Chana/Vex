@@ -176,6 +176,7 @@ add_library(Vex STATIC
     "src/Vex/RHI/RHITexture.h"
     "src/Vex/Formats.cpp"
     "src/Vex/RHI/RHIBuffer.h"
+    "src/Vex/RHI/RHIBuffer.cpp"
     "src/Vex/Texture.h"
     "src/Vex/Texture.cpp"
     "src/Vex/Buffer.h"
