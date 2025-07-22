@@ -19,8 +19,6 @@ struct DrawDescription
     RasterizerState rasterizerState;
     DepthStencilState depthStencilState;
     ColorBlendState colorBlendState;
-
-    bool operator==(const DrawDescription& other) const = default;
 };
 
 struct DrawResources
@@ -35,8 +33,6 @@ struct DrawResources
     std::span<const ResourceBinding> renderTargets;
     // Write-only resource (optional).
     std::optional<ResourceBinding> depthStencil = std::nullopt;
-
-    bool operator==(const DrawResources& other) const = default;
 };
 
 } // namespace vex

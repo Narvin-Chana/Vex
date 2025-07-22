@@ -5,6 +5,8 @@
 
 #include <Vex/Logger.h>
 
+#include <Vex/Platform/Windows/HResult.h>
+
 #include <DX12/HRChecker.h>
 
 namespace vex::dx12
@@ -90,14 +92,18 @@ void DX12ResourceLayout::CompileRootSignature()
 
     ComPtr<ID3DBlob> signature;
     ComPtr<ID3DBlob> error;
-    chkSoft << D3D12SerializeRootSignature(&rootSignatureDesc,
-                                           D3D_ROOT_SIGNATURE_VERSION_1,
-                                           signature.GetAddressOf(),
-                                           error.GetAddressOf());
+    HRESULT hr = D3D12SerializeRootSignature(&rootSignatureDesc,
+                                             D3D_ROOT_SIGNATURE_VERSION_1,
+                                             signature.GetAddressOf(),
+                                             error.GetAddressOf());
     if (error)
     {
         const char* errorMessage = static_cast<const char*>(error->GetBufferPointer());
         VEX_LOG(Fatal, "Error serializing root signature: {}", errorMessage);
+    }
+    else if (FAILED(hr))
+    {
+        VEX_LOG(Fatal, "Unspecified error serializing root signature: {}", HRToError(hr));
     }
 
     chk << device->CreateRootSignature(0,

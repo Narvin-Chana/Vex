@@ -1,6 +1,7 @@
 #include "GfxBackend.h"
 
 #include <algorithm>
+#include <utility>
 
 #include <magic_enum/magic_enum.hpp>
 
@@ -152,6 +153,8 @@ void GfxBackend::EndCommandContext(RHICommandList& cmdList)
     cmdList.Transition(transitions);
 
     cmdList.Close();
+    // TODO(https://trello.com/c/yrO8xMkU): change command list execution to be done in one batch at the end of the
+    // frame (more efficient according to AMD's performance guide).
     rhi->ExecuteCommandList(cmdList);
 }
 
