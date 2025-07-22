@@ -247,15 +247,16 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
     }
 
     // Bind RTV and DSVs
-    if (type != CommandQueueType::Graphics)
+    if (type == CommandQueueType::Graphics)
     {
-        VEX_LOG(Fatal,
-                "Cannot bind resources as render target/depth stencil views when the command queue is not of type "
-                "Graphics.");
+        CD3DX12_CPU_DESCRIPTOR_HANDLE* dsvHandlePtr = dsvHandle.has_value() ? &dsvHandle.value() : nullptr;
+        commandList->OMSetRenderTargets(static_cast<u32>(rtvHandles.size()), rtvHandles.data(), true, dsvHandlePtr);
     }
-
-    CD3DX12_CPU_DESCRIPTOR_HANDLE* dsvHandlePtr = dsvHandle.has_value() ? &dsvHandle.value() : nullptr;
-    commandList->OMSetRenderTargets(static_cast<u32>(rtvHandles.size()), rtvHandles.data(), true, dsvHandlePtr);
+    else
+    {
+        VEX_ASSERT(!dsvHandle.has_value() && rtvHandles.empty(),
+                   "Cannot bind a depth stencil or render target to a non-graphics queue CommandList.");
+    }
 }
 
 void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)
@@ -276,29 +277,38 @@ void DX12CommandList::ClearTexture(RHITexture& rhiTexture,
 {
     const TextureDescription& desc = rhiTexture.GetDescription();
 
-    // Clearing in DX12 allows for multiple slices to be cleared, however you cannot clear multiple mips with one call.
+    // Clearing in DX12 allows for multiple slices to be cleared, however you cannot clear multiple mips with one
+    // call.
     // Instead we iterate on the mips passed in by the user.
-    for (u32 mip = clearBinding.mipBias;
-         mip < ((clearBinding.mipCount == 0) ? 1 : (clearBinding.mipBias + clearBinding.mipCount));
-         ++mip)
+
+    if (desc.usage & ResourceUsage::RenderTarget)
     {
-        if (desc.usage & ResourceUsage::RenderTarget)
+        DX12TextureView dxTextureView{ clearBinding, desc, ResourceUsage::RenderTarget };
+        dxTextureView.mipCount = 1;
+
+        for (u32 mip = clearBinding.mipBias;
+             mip < ((clearBinding.mipCount == 0) ? 1 : (clearBinding.mipBias + clearBinding.mipCount));
+             ++mip)
         {
-            DX12TextureView dxTextureView{ clearBinding, desc, ResourceUsage::RenderTarget };
-            dxTextureView.mipCount = 1;
             dxTextureView.mipBias = mip;
             VEX_ASSERT(clearValue.flags & TextureClear::ClearColor,
-                       "Clearing the color requires the TextureClear::ClearColor flag.");
+                       "Clearing the color requires the TextureClear::ClearColor flag for texture: {}.",
+                       desc.name);
             commandList->ClearRenderTargetView(
                 reinterpret_cast<DX12Texture&>(rhiTexture).GetOrCreateRTVDSVView(device, dxTextureView),
                 clearValue.color,
                 0,
                 nullptr);
         }
-        else if (desc.usage & ResourceUsage::DepthStencil)
+    }
+    else if (desc.usage & ResourceUsage::DepthStencil)
+    {
+        DX12TextureView dxTextureView{ clearBinding, desc, ResourceUsage::DepthStencil };
+        dxTextureView.mipCount = 1;
+        for (u32 mip = clearBinding.mipBias;
+             mip < ((clearBinding.mipCount == 0) ? 1 : (clearBinding.mipBias + clearBinding.mipCount));
+             ++mip)
         {
-            DX12TextureView dxTextureView{ clearBinding, desc, ResourceUsage::DepthStencil };
-            dxTextureView.mipCount = 1;
             dxTextureView.mipBias = mip;
             D3D12_CLEAR_FLAGS clearFlags = static_cast<D3D12_CLEAR_FLAGS>(0);
             if (clearValue.flags & TextureClear::ClearDepth)
@@ -310,7 +320,9 @@ void DX12CommandList::ClearTexture(RHITexture& rhiTexture,
                 clearFlags |= D3D12_CLEAR_FLAG_STENCIL;
             }
             VEX_ASSERT(std::to_underlying(clearFlags) != 0,
-                       "Clear flags for the depth-stencil cannot be 0, you must either clear depth, stencil, or both!");
+                       "Clear flags for the depth-stencil cannot be 0, you must either clear depth, stencil, or both "
+                       "for texture: {}!",
+                       desc.name);
 
             commandList->ClearDepthStencilView(
                 reinterpret_cast<DX12Texture&>(rhiTexture).GetOrCreateRTVDSVView(device, dxTextureView),
@@ -320,6 +332,10 @@ void DX12CommandList::ClearTexture(RHITexture& rhiTexture,
                 0,
                 nullptr);
         }
+    }
+    else
+    {
+        VEX_LOG(Fatal, "The passed in texture does not support the usage required to be cleared: {}.", desc.name);
     }
 }
 
