@@ -25,9 +25,6 @@ DX12ResourceLayout::~DX12ResourceLayout() = default;
 
 u32 DX12ResourceLayout::GetMaxLocalConstantSize() const
 {
-    // Each global constant descriptor takes up 2 DWORDs in the root signature (as root descriptor).
-    // There is the option of using a descriptor table for constants to reduce their size, but adding a level of
-    // indirection, this is probably not needed thanks to bindless existing nowadays!
     return featureChecker.GetMaxRootSignatureDWORDSize() * static_cast<u32>(sizeof(DWORD));
 }
 
