@@ -18,8 +18,11 @@ std::vector<u8> ConstantBinding::ConcatConstantBindings(std::span<const Constant
                                       0u,
                                       [](u32 acc, const ConstantBinding& binding) { return acc + binding.size; });
 
-    VEX_ASSERT(total <= maxBufferSize,
-               "Unable to create local constants buffer, you have surpassed the limit allowed for.");
+    if (total <= maxBufferSize)
+    {
+        VEX_LOG(Fatal,
+                "Unable to create local constants buffer, you have surpassed the limit allowed for local constants.");
+    }
 
     std::vector<u8> constantDataBuffer;
     constantDataBuffer.resize(total);

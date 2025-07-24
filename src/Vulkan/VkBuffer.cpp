@@ -33,10 +33,10 @@ namespace vex::vk
 {
     using enum ::vk::MemoryPropertyFlagBits;
 
-    bool GPUWrite = desc.memoryAcces & BufferMemoryAccess::GPUWrite;
-    bool GPURead = desc.memoryAcces & BufferMemoryAccess::GPURead;
-    bool CPUWrite = desc.memoryAcces & BufferMemoryAccess::CPUWrite;
-    bool CPURead = desc.memoryAcces & BufferMemoryAccess::CPURead;
+    bool GPUWrite = desc.memoryAccess & BufferMemoryAccess::GPUWrite;
+    bool GPURead = desc.memoryAccess & BufferMemoryAccess::GPURead;
+    bool CPUWrite = desc.memoryAccess & BufferMemoryAccess::CPUWrite;
+    bool CPURead = desc.memoryAccess & BufferMemoryAccess::CPURead;
 
     if (!CPUWrite && !CPURead)
     {
@@ -70,7 +70,7 @@ VkBuffer::VkBuffer(VkGPUContext& ctx, const BufferDescription& desc)
     }
 
     buffer = VEX_VK_CHECK <<=
-        ctx.device.createBufferUnique({ .size = desc.size,
+        ctx.device.createBufferUnique({ .size = desc.byteSize,
                                         .usage = bufferUsage,
                                         .sharingMode = ::vk::SharingMode::eExclusive,
                                         .queueFamilyIndexCount = 1,
@@ -94,9 +94,10 @@ BindlessHandle VkBuffer::GetOrCreateBindlessIndex(VkGPUContext& ctx, VkDescripto
 
     const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor(*this);
 
-    descriptorPool.UpdateDescriptor(ctx,
-                                    handle,
-                                    ::vk::DescriptorBufferInfo{ .buffer = *buffer, .offset = 0, .range = desc.size });
+    descriptorPool.UpdateDescriptor(
+        ctx,
+        handle,
+        ::vk::DescriptorBufferInfo{ .buffer = *buffer, .offset = 0, .range = desc.byteSize });
 
     bufferHandle = handle;
 
@@ -122,16 +123,16 @@ UniqueHandle<RHIBuffer> VkBuffer::CreateStagingBuffer()
     return MakeUnique<VkBuffer>(ctx,
                                 BufferDescription{
                                     .name = desc.name + "_StagingBuffer",
-                                    .size = desc.size,
+                                    .byteSize = desc.byteSize,
                                     .usage = BufferUsage::StagingBuffer,
-                                    .memoryAcces = BufferMemoryAccess::CPUWrite | BufferMemoryAccess::GPURead,
+                                    .memoryAccess = BufferMemoryAccess::CPUWrite | BufferMemoryAccess::GPURead,
                                 });
 }
 
 std::span<u8> VkBuffer::Map()
 {
-    void* ptr = VEX_VK_CHECK <<= ctx.device.mapMemory(*memory, 0, desc.size);
-    return { static_cast<u8*>(ptr), desc.size };
+    void* ptr = VEX_VK_CHECK <<= ctx.device.mapMemory(*memory, 0, desc.byteSize);
+    return { static_cast<u8*>(ptr), desc.byteSize };
 }
 
 void VkBuffer::UnMap()

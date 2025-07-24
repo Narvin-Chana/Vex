@@ -1,10 +1,8 @@
 #pragma once
 
-#include "EnumFlags.h"
-
-#include <limits>
 #include <string>
 
+#include <Vex/EnumFlags.h>
 #include <Vex/Handle.h>
 #include <Vex/Types.h>
 
@@ -33,9 +31,9 @@ END_VEX_ENUM_FLAGS()
     struct BufferDescription
 {
     std::string name;
-    u32 size;
+    u32 byteSize;
     BufferUsage usage;
-    BufferMemoryAccess::Flags memoryAcces;
+    BufferMemoryAccess::Flags memoryAccess;
 };
 
 struct BufferView

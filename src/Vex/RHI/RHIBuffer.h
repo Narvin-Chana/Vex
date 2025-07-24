@@ -1,11 +1,10 @@
 #pragma once
 
-#include "Vex/UniqueHandle.h"
-
 #include <span>
 
 #include <Vex/Buffer.h>
 #include <Vex/Types.h>
+#include <Vex/UniqueHandle.h>
 
 namespace vex
 {
@@ -36,20 +35,6 @@ public:
 
 class RHIBuffer
 {
-protected:
-    BufferDescription desc;
-
-    explicit RHIBuffer(const BufferDescription& desc)
-        : desc{ desc }
-    {
-    }
-
-    UniqueHandle<RHIBuffer> stagingBuffer;
-    RHIBufferState::Flags currentState = RHIBufferState::Common;
-    bool needsStagingBufferCopy = false;
-
-    virtual UniqueHandle<RHIBuffer> CreateStagingBuffer() = 0;
-
 public:
     // RAII safe version to access buffer memory
     UniqueHandle<RHIMappedBufferMemory> GetMappedMemory();
@@ -89,6 +74,20 @@ public:
         return stagingBuffer.get();
     };
     virtual ~RHIBuffer() = default;
+
+protected:
+    BufferDescription desc;
+
+    explicit RHIBuffer(const BufferDescription& desc)
+        : desc{ desc }
+    {
+    }
+
+    UniqueHandle<RHIBuffer> stagingBuffer;
+    RHIBufferState::Flags currentState = RHIBufferState::Common;
+    bool needsStagingBufferCopy = false;
+
+    virtual UniqueHandle<RHIBuffer> CreateStagingBuffer() = 0;
 };
 
 } // namespace vex

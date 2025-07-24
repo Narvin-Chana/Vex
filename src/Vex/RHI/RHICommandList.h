@@ -1,12 +1,11 @@
 #pragma once
 
-#include "RHIBuffer.h"
-
 #include <array>
 #include <span>
 #include <utility>
 
 #include <Vex/RHI/RHI.h>
+#include <Vex/RHI/RHIBuffer.h>
 #include <Vex/RHI/RHITexture.h>
 #include <Vex/Types.h>
 

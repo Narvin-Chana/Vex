@@ -1,8 +1,5 @@
 #include "CommandContext.h"
 
-#include "RHI/RHIResourceLayout.h"
-
-#include <Vex/Bindings.h>
 #include <Vex/Debug.h>
 #include <Vex/DrawHelpers.h>
 #include <Vex/GfxBackend.h>
@@ -10,6 +7,7 @@
 #include <Vex/Logger.h>
 #include <Vex/RHI/RHIBindings.h>
 #include <Vex/RHI/RHICommandList.h>
+#include <Vex/RHI/RHIResourceLayout.h>
 #include <Vex/RHI/RHIPipelineState.h>
 #include <Vex/RHI/RHISwapChain.h>
 #include <Vex/ResourceBindingSet.h>

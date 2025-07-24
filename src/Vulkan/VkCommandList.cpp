@@ -319,7 +319,7 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
              .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
              .buffer = buffer.GetBuffer(),
              .offset = 0,
-             .size = buffer.GetDescription().size };
+             .size = buffer.GetDescription().byteSize };
 }
 
 void VkCommandList::Transition(RHITexture& texture, RHITextureState::Flags newState)
@@ -445,7 +445,7 @@ void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst)
     auto& vkSrc = reinterpret_cast<VkBuffer&>(src);
     auto& vkDst = reinterpret_cast<VkBuffer&>(dst);
 
-    const ::vk::BufferCopy copy{ .srcOffset = 0, .dstOffset = 0, .size = vkSrc.GetDescription().size };
+    const ::vk::BufferCopy copy{ .srcOffset = 0, .dstOffset = 0, .size = vkSrc.GetDescription().byteSize };
 
     commandBuffer->copyBuffer(vkSrc.GetBuffer(), vkDst.GetBuffer(), 1, &copy);
 }

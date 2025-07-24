@@ -83,17 +83,17 @@ HelloTriangleApplication::HelloTriangleApplication()
     // Example of CPU accessible buffer
     colorBuffer =
         graphics->CreateBuffer({ .name = "Color Buffer",
-                                 .size = sizeof(float) * 4,
+                                 .byteSize = sizeof(float) * 4,
                                  .usage = vex::BufferUsage::GenericBuffer,
-                                 .memoryAcces = vex::BufferMemoryAccess::CPUWrite | vex::BufferMemoryAccess::GPURead },
+                                 .memoryAccess = vex::BufferMemoryAccess::CPUWrite | vex::BufferMemoryAccess::GPURead },
                                vex::ResourceLifetime::Static);
 
     // Example of GPU only buffer
     commBuffer =
         graphics->CreateBuffer({ .name = "Comm Buffer",
-                                 .size = sizeof(float) * 4,
+                                 .byteSize = sizeof(float) * 4,
                                  .usage = vex::BufferUsage::GenericBuffer,
-                                 .memoryAcces = vex::BufferMemoryAccess::GPURead | vex::BufferMemoryAccess::GPUWrite },
+                                 .memoryAccess = vex::BufferMemoryAccess::GPURead | vex::BufferMemoryAccess::GPUWrite },
                                vex::ResourceLifetime::Static);
 
 #if defined(_WIN32)

@@ -188,7 +188,7 @@ Buffer GfxBackend::CreateBuffer(BufferDescription description, ResourceLifetime 
 
 void GfxBackend::UpdateData(const Buffer& buffer, std::span<const u8> data)
 {
-    VEX_ASSERT(data.size() <= buffer.description.size, "Buffer data exceded buffer size");
+    VEX_ASSERT(data.size() <= buffer.description.byteSize, "Buffer data exceded buffer size");
 
     RHIBuffer& rhiBuffer = GetRHIBuffer(buffer.handle);
     rhiBuffer.GetMappedMemory()->SetData(data);

@@ -1,6 +1,6 @@
 ﻿#include "RHIBuffer.h"
 
-#include "Vex/Debug.h"
+#include <Vex/Debug.h>
 
 namespace vex
 {
@@ -46,8 +46,8 @@ struct StagedBufferMemory : DirectBufferMemory
 
 bool DoesBufferNeedStagingBuffer(const BufferDescription& desc)
 {
-    return (desc.memoryAcces & BufferMemoryAccess::GPURead | desc.memoryAcces & BufferMemoryAccess::GPUWrite) &&
-           !(desc.memoryAcces & BufferMemoryAccess::CPURead | desc.memoryAcces & BufferMemoryAccess::CPUWrite);
+    return (desc.memoryAccess & BufferMemoryAccess::GPURead | desc.memoryAccess & BufferMemoryAccess::GPUWrite) &&
+           !(desc.memoryAccess & BufferMemoryAccess::CPURead | desc.memoryAccess & BufferMemoryAccess::CPUWrite);
 }
 
 UniqueHandle<RHIMappedBufferMemory> RHIBuffer::GetMappedMemory()

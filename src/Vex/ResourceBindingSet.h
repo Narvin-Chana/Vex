@@ -1,8 +1,9 @@
 ﻿#pragma once
-#include "Bindings.h"
-#include "RHI/RHIBindings.h"
 
 #include <vector>
+
+#include <Vex/Bindings.h>
+#include <Vex/RHI/RHIBindings.h>
 
 namespace vex
 {
