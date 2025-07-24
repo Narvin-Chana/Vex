@@ -7,8 +7,6 @@
 #define GLFW_EXPOSE_NATIVE_X11
 #endif
 
-#include "Vex/ResourceBindingSet.h"
-
 #include <GLFW/glfw3native.h>
 
 #if defined(__linux__)

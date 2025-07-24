@@ -24,21 +24,16 @@ BEGIN_VEX_ENUM_FLAGS(BufferMemoryAccess, u8)
     CPUWrite,
     GPURead,
     GPUWrite
-END_VEX_ENUM_FLAGS()
+END_VEX_ENUM_FLAGS();
 
-    // clang-format on
+// clang-format on
 
-    struct BufferDescription
+struct BufferDescription
 {
     std::string name;
     u32 byteSize;
     BufferUsage usage;
     BufferMemoryAccess::Flags memoryAccess;
-};
-
-struct BufferView
-{
-    // TODO: implement buffers
 };
 
 // Strongly defined type represents a buffer.

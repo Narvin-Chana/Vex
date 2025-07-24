@@ -135,7 +135,7 @@ std::span<u8> VkBuffer::Map()
     return { static_cast<u8*>(ptr), desc.byteSize };
 }
 
-void VkBuffer::UnMap()
+void VkBuffer::Unmap()
 {
     ctx.device.unmapMemory(*memory);
 }

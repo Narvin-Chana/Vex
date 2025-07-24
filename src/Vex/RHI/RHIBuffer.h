@@ -41,7 +41,7 @@ public:
 
     // Raw direct access to buffer memory
     virtual std::span<u8> Map() = 0;
-    virtual void UnMap() = 0;
+    virtual void Unmap() = 0;
 
     [[nodiscard]] bool NeedsStagingBufferCopy() const noexcept
     {

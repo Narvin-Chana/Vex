@@ -19,7 +19,7 @@ public:
     DX12Buffer(ComPtr<DX12Device>& device, const BufferDescription& desc);
 
     virtual std::span<u8> Map() override;
-    virtual void UnMap() override;
+    virtual void Unmap() override;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
 };
 

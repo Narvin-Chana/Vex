@@ -30,11 +30,6 @@ VkResourceLayout::VkResourceLayout(::vk::Device device,
     version++;
 }
 
-u32 VkResourceLayout::GetLocalConstantsOffset() const noexcept
-{
-    return 0;
-}
-
 u32 VkResourceLayout::GetMaxLocalConstantSize() const
 {
     const u32 maxBytes = featureChecker.GetMaxPushConstantSize();

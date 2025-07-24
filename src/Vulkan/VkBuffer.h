@@ -34,7 +34,7 @@ public:
     ::vk::Buffer& GetBuffer();
 
     virtual std::span<u8> Map() override;
-    virtual void UnMap() override;
+    virtual void Unmap() override;
 
 private:
     virtual UniqueHandle<RHIBuffer> CreateStagingBuffer() override;

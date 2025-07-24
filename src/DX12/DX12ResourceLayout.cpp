@@ -86,9 +86,4 @@ void DX12ResourceLayout::CompileRootSignature()
     version++;
 }
 
-u32 DX12ResourceLayout::GetLocalConstantsOffset() const noexcept
-{
-    return 0;
-}
-
 } // namespace vex::dx12

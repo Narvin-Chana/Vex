@@ -30,7 +30,6 @@ public:
 
     // Returns the max size of local constants that the graphics API supports.
     virtual u32 GetMaxLocalConstantSize() const = 0;
-    virtual u32 GetLocalConstantsOffset() const noexcept = 0;
 
     // Should be updated each time the resource layout's graphics resource has changed. Allows relevant pipeline states
     // to be recompiled on the fly accordingly.

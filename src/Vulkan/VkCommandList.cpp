@@ -185,7 +185,7 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
 
     commandBuffer->pushConstants(*vkResourceLayout.pipelineLayout,
                                  stageFlags,
-                                 layout.GetLocalConstantsOffset(), // Bindless indices start after local constants
+                                 0,
                                  bindlessHandleIndices.size() * sizeof(u32),
                                  bindlessHandleIndices.data());
 }

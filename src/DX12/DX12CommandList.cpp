@@ -199,12 +199,12 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
         commandList->SetGraphicsRoot32BitConstants(0,
                                                    static_cast<u32>(bindlessHandles.size()),
                                                    bindlessHandles.data(),
-                                                   layout.GetLocalConstantsOffset() / sizeof(DWORD));
+                                                   0);
     case CommandQueueType::Compute:
         commandList->SetComputeRoot32BitConstants(0,
                                                   static_cast<u32>(bindlessHandles.size()),
                                                   bindlessHandles.data(),
-                                                  layout.GetLocalConstantsOffset() / sizeof(DWORD));
+                                                  0);
     case CommandQueueType::Copy:
     default:
         break;

@@ -16,7 +16,7 @@ BEGIN_VEX_ENUM_FLAGS(ResourceUsage, u8)
     DepthStencil    = 1 << 3, // DSV in DX12, Depth/Stencil Attachment in Vulkan
 END_VEX_ENUM_FLAGS();
 
- //clang-format on
+//clang-format on
 
 enum class ResourceLifetime : u8
 {

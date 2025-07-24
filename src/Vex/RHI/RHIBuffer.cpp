@@ -21,7 +21,7 @@ struct DirectBufferMemory : RHIMappedBufferMemory
 
     ~DirectBufferMemory() override
     {
-        buffer.UnMap();
+        buffer.Unmap();
     }
 
     std::span<u8> data;

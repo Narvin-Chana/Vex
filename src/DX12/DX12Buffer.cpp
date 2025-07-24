@@ -23,7 +23,7 @@ std::span<u8> DX12Buffer::Map()
     return {};
 }
 
-void DX12Buffer::UnMap()
+void DX12Buffer::Unmap()
 {
     VEX_NOT_YET_IMPLEMENTED();
 }

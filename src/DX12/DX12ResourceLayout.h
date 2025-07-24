@@ -16,7 +16,6 @@ public:
     virtual ~DX12ResourceLayout() override;
 
     virtual u32 GetMaxLocalConstantSize() const override;
-    virtual u32 GetLocalConstantsOffset() const noexcept override;
 
     ComPtr<ID3D12RootSignature>& GetRootSignature();
 

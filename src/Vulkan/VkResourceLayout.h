@@ -18,7 +18,6 @@ public:
                      const VkDescriptorPool& descriptorPool,
                      const VkFeatureChecker& featureChecker);
 
-    virtual u32 GetLocalConstantsOffset() const noexcept override;
     virtual u32 GetMaxLocalConstantSize() const override;
 
     ::vk::UniquePipelineLayout pipelineLayout;
