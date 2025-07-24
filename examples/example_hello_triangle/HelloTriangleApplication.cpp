@@ -97,7 +97,7 @@ HelloTriangleApplication::HelloTriangleApplication()
                                vex::ResourceLifetime::Static);
 
 #if defined(_WIN32)
-    // Suggestion of an intrusive (� la Unreal) way to display errors.
+    // Suggestion of an intrusive (a la Unreal) way to display errors.
     // The handling of shader compilation errors is user choice.
     graphics->SetShaderCompilationErrorsCallback(
         [window = window](const std::vector<std::pair<vex::ShaderKey, std::string>>& errors) -> bool
