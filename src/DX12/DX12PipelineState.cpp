@@ -76,42 +76,21 @@ void DX12GraphicsPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
     resourceCleanup.CleanupResource(std::move(cleanupPSO));
 }
 
-#define VEX_STRING(str) #str
-#define VEX_DECLARE_FIELD_CHECK(cond, fieldName, fieldValue)                                                           \
-    if ((cond))                                                                                                        \
-    {                                                                                                                  \
-        VEX_LOG(Fatal,                                                                                                 \
-                "Field " VEX_STRING(fieldName) " with value " VEX_STRING(fieldValue) " is unsupported in DX12.");      \
-    }
-
-void DX12GraphicsPipelineState::ValidateUnsupportedKeyFields(Key& key)
+void DX12GraphicsPipelineState::ClearUnsupportedKeyFields(Key& key)
 {
-    auto IsNearlyZero = [](float num) { return std::abs(num) < std::numeric_limits<float>::epsilon(); };
-
-    VEX_DECLARE_FIELD_CHECK(key.inputAssembly.primitiveRestartEnabled, inputAssembly.primitiveRestartEnabled, true);
-    VEX_DECLARE_FIELD_CHECK(key.rasterizerState.depthClampEnabled, rasterizerState.depthClampEnabled, true);
-    VEX_DECLARE_FIELD_CHECK(key.rasterizerState.polygonMode == PolygonMode::Line,
-                            rasterizerState.polygonMode,
-                            PolygonMode::Line);
-    VEX_DECLARE_FIELD_CHECK(key.rasterizerState.polygonMode == PolygonMode::Point,
-                            rasterizerState.polygonMode,
-                            PolygonMode::Point);
-    VEX_DECLARE_FIELD_CHECK(!IsNearlyZero(key.rasterizerState.lineWidth), rasterizerState.lineWidth, different to 0);
-    VEX_DECLARE_FIELD_CHECK(key.depthStencilState.front.reference, depthStencilState.front.reference, different to 0);
-    VEX_DECLARE_FIELD_CHECK(key.depthStencilState.back.reference, depthStencilState.back.reference, different to 0);
-    VEX_DECLARE_FIELD_CHECK(!IsNearlyZero(key.depthStencilState.minDepthBounds),
-                            depthStencilState.minDepthBounds,
-                            different to 0);
-    VEX_DECLARE_FIELD_CHECK(!IsNearlyZero(key.depthStencilState.maxDepthBounds),
-                            depthStencilState.maxDepthBounds,
-                            different to 0);
-    VEX_DECLARE_FIELD_CHECK(key.colorBlendState.logicOpEnabled, colorBlendState.logicOpEnabled, true);
-    // Forced to LogicOp::Clear, just to keep the key's hash consistent.
+    // Unsupported fields are forced to default in order to keep the key's hash consistent.
+    key.inputAssembly.primitiveRestartEnabled = true;
+    key.rasterizerState.depthClampEnabled = true;
+    key.rasterizerState.polygonMode = PolygonMode::Line;
+    key.rasterizerState.polygonMode = PolygonMode::Point;
+    key.rasterizerState.lineWidth = 0;
+    key.depthStencilState.front.reference = 0;
+    key.depthStencilState.back.reference = 0;
+    key.depthStencilState.minDepthBounds = 0;
+    key.depthStencilState.maxDepthBounds = 0;
+    key.colorBlendState.logicOpEnabled = true;
     key.colorBlendState.logicOp = LogicOp::Clear;
 }
-
-#undef VEX_DECLARE_FIELD_CHECK
-#undef VEX_STRING
 
 DX12ComputePipelineState::DX12ComputePipelineState(const ComPtr<DX12Device>& device, const Key& key)
     : RHIComputePipelineState(key)

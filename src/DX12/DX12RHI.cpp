@@ -139,7 +139,7 @@ UniqueHandle<RHIGraphicsPipelineState> DX12RHI::CreateGraphicsPipelineState(cons
 {
     GraphicsPipelineStateKey keyCopy = key;
     // Will clear out unsupported fields/validate that the user is not expecting invalid features.
-    DX12GraphicsPipelineState::ValidateUnsupportedKeyFields(keyCopy);
+    DX12GraphicsPipelineState::ClearUnsupportedKeyFields(keyCopy);
     return MakeUnique<DX12GraphicsPipelineState>(device, std::move(keyCopy));
 }
 

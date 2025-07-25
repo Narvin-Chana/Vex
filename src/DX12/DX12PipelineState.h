@@ -20,7 +20,7 @@ public:
 
     // Verifies that the key does not contain fields with non-default values for features which DX12 does not support.
     // Clears the unused fields which allows for changes to these fields to not impact the hash of the structure.
-    static void ValidateUnsupportedKeyFields(Key& key);
+    static void ClearUnsupportedKeyFields(Key& key);
 
     ComPtr<ID3D12PipelineState> graphicsPSO;
 
