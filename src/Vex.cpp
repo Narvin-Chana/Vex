@@ -12,7 +12,7 @@
 namespace vex
 {
 
-UniqueHandle<GfxBackend> CreateGraphicsBackend(GraphicsAPI api, const BackendDescription& description)
+UniqueHandle<GfxBackend> CreateGraphicsBackend(const BackendDescription& description)
 {
     if (description.platformWindow.width == 0 || description.platformWindow.height == 0)
     {
@@ -23,27 +23,19 @@ UniqueHandle<GfxBackend> CreateGraphicsBackend(GraphicsAPI api, const BackendDes
         return {};
     }
     UniqueHandle<GfxBackend> backend;
-    switch (api)
-    {
 #if VEX_DX12
-    case GraphicsAPI::DirectX12:
-        backend = MakeUnique<GfxBackend>(MakeUnique<vex::dx12::DX12RHI>(description.platformWindow.windowHandle,
-                                                                        description.enableGPUDebugLayer,
-                                                                        description.enableGPUBasedValidation),
-                                         description);
-        break;
-#endif
-#if VEX_VULKAN
-    case GraphicsAPI::Vulkan:
-        backend = MakeUnique<GfxBackend>(MakeUnique<vex::vk::VkRHI>(description.platformWindow.windowHandle,
+    backend = MakeUnique<GfxBackend>(MakeUnique<vex::dx12::DX12RHI>(description.platformWindow.windowHandle,
                                                                     description.enableGPUDebugLayer,
                                                                     description.enableGPUBasedValidation),
-                                         description);
-        break;
+                                     description);
+#elif VEX_VULKAN
+    backend = MakeUnique<GfxBackend>(MakeUnique<vex::vk::VkRHI>(description.platformWindow.windowHandle,
+                                                                description.enableGPUDebugLayer,
+                                                                description.enableGPUBasedValidation),
+                                     description);
+#else
+#error No supported GraphicsAPI, check your build tool config.
 #endif
-    default:
-        VEX_LOG(Fatal, "Attempting to create a graphics backend for an unsupported API.");
-    }
 
     return backend;
 }
