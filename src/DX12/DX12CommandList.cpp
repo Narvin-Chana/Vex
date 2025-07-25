@@ -193,21 +193,24 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
     // TODO: figure out how this interacts with local root constants, there should be a way to get the first slot we can
     // write bindless indices to (that is after local constants). For now we just default to slot 0, and suppose that no
     // constants exist (just to get our Hello Triangle working).
-    switch (type)
+    if (!bindlessHandles.empty())
     {
-    case CommandQueueType::Graphics:
-        commandList->SetGraphicsRoot32BitConstants(0,
-                                                   static_cast<u32>(bindlessHandles.size()),
-                                                   bindlessHandles.data(),
-                                                   0);
-    case CommandQueueType::Compute:
-        commandList->SetComputeRoot32BitConstants(0,
-                                                  static_cast<u32>(bindlessHandles.size()),
-                                                  bindlessHandles.data(),
-                                                  0);
-    case CommandQueueType::Copy:
-    default:
-        break;
+        switch (type)
+        {
+        case CommandQueueType::Graphics:
+            commandList->SetGraphicsRoot32BitConstants(0,
+                                                       static_cast<u32>(bindlessHandles.size()),
+                                                       bindlessHandles.data(),
+                                                       0);
+        case CommandQueueType::Compute:
+            commandList->SetComputeRoot32BitConstants(0,
+                                                      static_cast<u32>(bindlessHandles.size()),
+                                                      bindlessHandles.data(),
+                                                      0);
+        case CommandQueueType::Copy:
+        default:
+            break;
+        }
     }
 
     // Bind RTV and DSVs

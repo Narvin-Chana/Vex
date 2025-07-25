@@ -7,8 +7,8 @@
 #include <Vex/Logger.h>
 #include <Vex/RHI/RHIBindings.h>
 #include <Vex/RHI/RHICommandList.h>
-#include <Vex/RHI/RHIResourceLayout.h>
 #include <Vex/RHI/RHIPipelineState.h>
+#include <Vex/RHI/RHIResourceLayout.h>
 #include <Vex/RHI/RHISwapChain.h>
 #include <Vex/ResourceBindingSet.h>
 #include <Vex/ShaderResourceContext.h>
@@ -173,6 +173,9 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
 
     // Transition our resources to the correct states.
     cmdList->Transition(textureStateTransitions);
+
+    // Bind the layout to the pipeline
+    cmdList->SetLayout(resourceLayout);
 
     // Transforms ResourceBinding into platform specific views, then binds them to the shader (preferably bindlessly).
     cmdList->SetLayoutResources(resourceLayout, rhiTextureBindings, rhiBufferBindings, *backend->descriptorPool);
