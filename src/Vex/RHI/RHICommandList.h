@@ -5,6 +5,7 @@
 #include <utility>
 
 #include <Vex/RHI/RHI.h>
+#include <Vex/RHI/RHIBuffer.h>
 #include <Vex/RHI/RHITexture.h>
 #include <Vex/Types.h>
 
@@ -50,19 +51,17 @@ public:
                               const TextureClearValue& clearValue) = 0;
 
     virtual void Transition(RHITexture& texture, RHITextureState::Flags newState) = 0;
+    virtual void Transition(RHIBuffer& texture, RHIBufferState::Flags newState) = 0;
     // Ideal for batching multiple resource transitions together.
     virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs) = 0;
+    virtual void Transition(std::span<std::pair<RHIBuffer&, RHIBufferState::Flags>> bufferNewStatePairs) = 0;
 
     virtual void Draw(u32 vertexCount) = 0;
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount) = 0;
 
     virtual void Copy(RHITexture& src, RHITexture& dst) = 0;
-
-    // TODO: implement (not using VEX_NOT_YET_IMPLEMENTED since we're in a .h), will be done in a Buffer-specific PR.
-    // virtual void Copy(RHIBuffer& src, RHIBuffer& dst)
-    //{
-    //}
+    virtual void Copy(RHIBuffer& src, RHIBuffer& dst) = 0;
 
     virtual CommandQueueType GetType() const = 0;
 };

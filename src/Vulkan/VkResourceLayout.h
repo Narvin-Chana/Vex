@@ -17,7 +17,7 @@ public:
     VkResourceLayout(::vk::Device device,
                      const VkDescriptorPool& descriptorPool,
                      const VkFeatureChecker& featureChecker);
-    virtual bool ValidateGlobalConstant(const GlobalConstant& globalConstant) const override;
+
     virtual u32 GetMaxLocalConstantSize() const override;
 
     ::vk::UniquePipelineLayout pipelineLayout;

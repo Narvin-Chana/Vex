@@ -157,6 +157,7 @@ add_library(Vex STATIC
     "src/Vex/RHI/RHITexture.h"
     "src/Vex/Formats.cpp"
     "src/Vex/RHI/RHIBuffer.h"
+    "src/Vex/RHI/RHIBuffer.cpp"
     "src/Vex/Texture.h"
     "src/Vex/Texture.cpp"
     "src/Vex/Buffer.h"
@@ -185,6 +186,8 @@ add_library(Vex STATIC
     "src/Vex/ShaderCompiler.cpp"
     "src/Vex/Platform/Platform.h"
     "src/Vex/Formattable.h"
+    "src/Vex/ResourceBindingSet.cpp"
+    "src/Vex/ResourceBindingSet.h"
     "src/Vex/ShaderResourceContext.h"
     "src/Vex/ShaderResourceContext.cpp"
     "src/Vex/ShaderGen.h"
@@ -251,6 +254,8 @@ if (VEX_ENABLE_DX12)
         "src/DX12/DX12States.cpp"
         "src/DX12/DX12GraphicsPipeline.h"
         "src/DX12/DX12GraphicsPipeline.cpp"
+        "src/DX12/DX12Buffer.cpp"
+        "src/DX12/DX12Buffer.h"
     )
 endif()
 
@@ -291,6 +296,8 @@ if (VEX_ENABLE_VULKAN)
         "src/Vulkan/VkMemory.h"
         "src/Vulkan/VkDescriptorPool.h"
         "src/Vulkan/VkDescriptorPool.cpp"
+        "src/Vulkan/VkBuffer.cpp"
+        "src/Vulkan/VkBuffer.h"
     )
 endif()
 

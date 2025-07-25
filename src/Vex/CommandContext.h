@@ -1,21 +1,20 @@
 #pragma once
 
 #include <optional>
-#include <span>
 
-#include <Vex/GraphicsPipeline.h>
 #include <Vex/RHI/RHIFwd.h>
 #include <Vex/ShaderKey.h>
 #include <Vex/Types.h>
-#include <Vex/UniqueHandle.h>
 
 namespace vex
 {
 
+class ResourceBindingSet;
 class GfxBackend;
 struct ConstantBinding;
 struct ResourceBinding;
 struct Texture;
+struct Buffer;
 struct TextureClearValue;
 struct DrawDescription;
 struct DrawResources;
@@ -50,13 +49,10 @@ public:
     {
     }
 
-    void Dispatch(const ShaderKey& shader,
-                  std::span<const ConstantBinding> constants,
-                  std::span<const ResourceBinding> reads,
-                  std::span<const ResourceBinding> readWrites,
-                  std::array<u32, 3> groupCount);
+    void Dispatch(const ShaderKey& shader, const ResourceBindingSet& resourceBindingSet, std::array<u32, 3> groupCount);
 
     void Copy(const Texture& source, const Texture& destination);
+    void Copy(const Buffer& source, const Buffer& destination);
 
 private:
     GfxBackend* backend;

@@ -205,9 +205,10 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
     shaderSource.Encoding = DXC_CP_ACP; // Assume BOM says UTF8 or UTF16 or this is ANSI text.
 
     std::vector<LPCWSTR> args;
-    std::vector<ShaderDefine> defines = shader.key.defines;
 
-    rhi->ModifyShaderCompilerEnvironment(args, defines);
+    std::vector<ShaderDefine> shaderDefines = shader.key.defines;
+
+    rhi->ModifyShaderCompilerEnvironment(args, shaderDefines);
 
     if (debugShaders)
     {
@@ -222,7 +223,7 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
 
     FillInAdditionalIncludeDirectories(args);
 
-    std::vector<DxcDefine> dxcDefines = ShaderCompiler_Internal::ConvertDefinesToDxcDefine(defines);
+    std::vector<DxcDefine> defines = ShaderCompiler_Internal::ConvertDefinesToDxcDefine(shaderDefines);
     ComPtr<IDxcCompilerArgs> compilerArgs;
     if (HRESULT hr = GetCompilerUtil().utils->BuildArguments(
             shader.key.path.wstring().c_str(),
@@ -230,8 +231,8 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
             ShaderCompiler_Internal::GetTargetFromShaderType(shader.key.type).c_str(),
             args.data(),
             static_cast<u32>(args.size()),
-            dxcDefines.data(),
-            static_cast<u32>(dxcDefines.size()),
+            defines.data(),
+            static_cast<u32>(defines.size()),
             &compilerArgs);
         FAILED(hr))
     {

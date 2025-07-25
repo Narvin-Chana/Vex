@@ -12,6 +12,7 @@
 
 namespace vex
 {
+struct BufferDescription;
 
 struct ShaderDefine;
 struct PhysicalDevice;
@@ -40,6 +41,7 @@ struct RenderHardwareInterface
                                                                  RHIDescriptorPool& descriptorPool) = 0;
 
     virtual UniqueHandle<RHITexture> CreateTexture(const TextureDescription& description) = 0;
+    virtual UniqueHandle<RHIBuffer> CreateBuffer(const BufferDescription& description) = 0;
 
     virtual UniqueHandle<RHIDescriptorPool> CreateDescriptorPool() = 0;
 

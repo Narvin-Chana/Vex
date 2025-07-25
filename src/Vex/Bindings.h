@@ -14,13 +14,15 @@ struct ConstantBinding
 {
     template <typename T>
     ConstantBinding(const T& data)
-        : data{ &data }
+        : data{ static_cast<const void*>(&data) }
         , size{ sizeof(T) }
     {
     }
 
-    void* data;
+    const void* data;
     u32 size;
+
+    static std::vector<u8> ConcatConstantBindings(std::span<const ConstantBinding> constantBindings, u32 maxBufferSize);
 };
 
 // clang-format off
@@ -58,11 +60,11 @@ struct ResourceBinding
     // 0 means to use every slice.
     u32 sliceCount = 0;
 
-    bool IsBuffer() const
+    [[nodiscard]] bool IsBuffer() const
     {
         return buffer.handle != GInvalidBufferHandle;
     }
-    bool IsTexture() const
+    [[nodiscard]] bool IsTexture() const
     {
         return texture.handle != GInvalidTextureHandle;
     }
