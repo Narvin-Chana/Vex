@@ -77,25 +77,6 @@ endif()
 # Dependencies fetching uses the FetchContent module
 include(FetchContent)
 
-# Fetch efsw dependency
-message(STATUS "Fetching efsw...")
-FetchContent_Declare(
-    efsw
-    GIT_REPOSITORY https://github.com/SpartanJ/efsw.git
-    GIT_TAG        1.4.1
-)
-# Completely override efsw's build options
-set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)  # Enable option() to override cached variables
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "Force static libraries" FORCE)
-set(EFSW_SHARED OFF CACHE BOOL "Disable efsw shared library" FORCE)
-set(EFSW_STATIC ON CACHE BOOL "Enable efsw static library" FORCE)
-
-# Prevent any additional targets
-set(EFSW_BUILD_TEST OFF CACHE BOOL "Disable efsw tests" FORCE)
-set(EFSW_BUILD_SAMPLES OFF CACHE BOOL "Disable efsw samples" FORCE)
-
-FetchContent_MakeAvailable(efsw)
-
 if (VEX_ENABLE_VULKAN)
     # Fetch Vulkan-Hpp dependency
     message(STATUS "Fetching VulkanHpp...")

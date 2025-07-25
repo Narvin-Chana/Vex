@@ -8,9 +8,4 @@
 
 #include <Vex/Platform/Linux/WString.h>
 
-// X11 defines a macro called "Always"
-#if defined(Always)
-#undef Always
-#endif // defined(Always)
-
 #endif
