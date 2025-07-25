@@ -11,4 +11,25 @@
 #endif
 
 #include <vulkan/vulkan.hpp>
-#undef None // We use None as an enum value which causes issues there.
+
+#if defined(__linux__)
+// Undefine problematic X11 macros on Linux
+#ifdef Always
+#undef Always
+#endif
+#ifdef None
+#undef None
+#endif
+#ifdef Success
+#undef Success
+#endif
+#ifdef Bool
+#undef Bool
+#endif
+#ifdef True
+#undef True
+#endif
+#ifdef False
+#undef False
+#endif
+#endif

@@ -40,15 +40,19 @@ struct ShaderKey
 } // namespace vex
 
 // clang-format off
+
+VEX_MAKE_HASHABLE(vex::ShaderDefine,
+    VEX_HASH_COMBINE(seed, obj.name);
+    VEX_HASH_COMBINE(seed, obj.value);  
+);
+
 VEX_MAKE_HASHABLE(vex::ShaderKey, 
     VEX_HASH_COMBINE(seed, obj.path);
     VEX_HASH_COMBINE(seed, obj.entryPoint);
     VEX_HASH_COMBINE_ENUM(seed, obj.type);
-    VEX_HASH_COMBINE_CONTAINER(seed, obj.defines,
-        VEX_HASH_COMBINE(seed, item.name);
-        VEX_HASH_COMBINE(seed, item.value);
-    );
+    VEX_HASH_COMBINE_CONTAINER(seed, obj.defines);
 );
+
 // clang-format on
 
 VEX_FORMATTABLE(vex::ShaderDefine, "ShaderDefine(\"{}\", \"{}\")", obj.name, obj.value);

@@ -1,6 +1,6 @@
-#include "VkPipelineState.h"
 #include "Vex/RHI/RHIShader.h"
 #include "VkErrorHandler.h"
+#include "VkPipelineState.h"
 #include "VkResourceLayout.h"
 
 #include <Vex/Containers/ResourceCleanup.h>
@@ -20,6 +20,11 @@ VkGraphicsPipelineState::VkGraphicsPipelineState(const Key& key)
 void VkGraphicsPipelineState::Compile(const RHIShader& vertexShader,
                                       const RHIShader& pixelShader,
                                       RHIResourceLayout& resourceLayout)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
+void VkGraphicsPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
 {
     VEX_NOT_YET_IMPLEMENTED();
 }

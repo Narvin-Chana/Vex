@@ -14,6 +14,7 @@ public:
     virtual void Compile(const RHIShader& vertexShader,
                          const RHIShader& pixelShader,
                          RHIResourceLayout& resourceLayout) override;
+    virtual void Cleanup(ResourceCleanup& resourceCleanup) override;
 };
 
 class VkComputePipelineState : public RHIComputePipelineState

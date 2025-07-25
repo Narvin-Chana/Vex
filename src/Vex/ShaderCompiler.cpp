@@ -79,8 +79,6 @@ ShaderCache::ShaderCache(RHI* rhi, bool enableShaderDebugging)
 
 ShaderCache::~ShaderCache() = default;
 
-thread_local CompilerUtil ShaderCache::GCompilerUtil;
-
 ComPtr<IDxcResult> ShaderCache::GetPreprocessedShader(const RHIShader& shader,
                                                       const ComPtr<IDxcBlobEncoding>& shaderBlobUTF8) const
 {
@@ -92,8 +90,11 @@ ComPtr<IDxcResult> ShaderCache::GetPreprocessedShader(const RHIShader& shader,
                          .Encoding = CP_UTF8 };
 
     ComPtr<IDxcResult> result;
-    if (HRESULT hr = GCompilerUtil.compiler
-                         ->Compile(&buffer, args.data(), static_cast<u32>(args.size()), nullptr, IID_PPV_ARGS(&result));
+    if (HRESULT hr = GetCompilerUtil().compiler->Compile(&buffer,
+                                                         args.data(),
+                                                         static_cast<u32>(args.size()),
+                                                         nullptr,
+                                                         IID_PPV_ARGS(&result));
         FAILED(hr))
     {
         return nullptr;
@@ -110,11 +111,17 @@ void ShaderCache::FillInAdditionalIncludeDirectories(std::vector<LPCWSTR>& args)
     }
 }
 
+CompilerUtil& ShaderCache::GetCompilerUtil()
+{
+    thread_local CompilerUtil GCompilerUtil;
+    return GCompilerUtil;
+}
+
 std::optional<std::size_t> ShaderCache::GetShaderHash(const RHIShader& shader) const
 {
     ComPtr<IDxcBlobEncoding> shaderBlobUTF8;
     u32 codePage = CP_UTF8;
-    if (HRESULT hr = GCompilerUtil.utils->LoadFile(shader.key.path.wstring().c_str(), &codePage, &shaderBlobUTF8);
+    if (HRESULT hr = GetCompilerUtil().utils->LoadFile(shader.key.path.wstring().c_str(), &codePage, &shaderBlobUTF8);
         FAILED(hr))
     {
         VEX_LOG(Error, "Unable to get shader hash, failed to load shader from filepath: {}", shader.key.path.string());
@@ -183,10 +190,10 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
 #endif
 
     ComPtr<IDxcBlobEncoding> shaderBlob;
-    if (HRESULT hr = GCompilerUtil.utils->CreateBlobFromPinned(shaderFileStr.c_str(),
-                                                               shaderFileStr.size(),
-                                                               CP_UTF8,
-                                                               &shaderBlob);
+    if (HRESULT hr = GetCompilerUtil().utils->CreateBlobFromPinned(shaderFileStr.c_str(),
+                                                                   shaderFileStr.size(),
+                                                                   CP_UTF8,
+                                                                   &shaderBlob);
         FAILED(hr))
     {
         return std::unexpected("Failed to load shader from filesystem.");
@@ -198,8 +205,9 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
     shaderSource.Encoding = DXC_CP_ACP; // Assume BOM says UTF8 or UTF16 or this is ANSI text.
 
     std::vector<LPCWSTR> args;
+    std::vector<ShaderDefine> defines = shader.key.defines;
 
-    rhi->ModifyShaderCompilerEnvironment(args, shader.key.defines);
+    rhi->ModifyShaderCompilerEnvironment(args, defines);
 
     if (debugShaders)
     {
@@ -214,16 +222,16 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
 
     FillInAdditionalIncludeDirectories(args);
 
-    std::vector<DxcDefine> defines = ShaderCompiler_Internal::ConvertDefinesToDxcDefine(shader.key.defines);
+    std::vector<DxcDefine> dxcDefines = ShaderCompiler_Internal::ConvertDefinesToDxcDefine(defines);
     ComPtr<IDxcCompilerArgs> compilerArgs;
-    if (HRESULT hr = GCompilerUtil.utils->BuildArguments(
+    if (HRESULT hr = GetCompilerUtil().utils->BuildArguments(
             shader.key.path.wstring().c_str(),
             StringToWString(shader.key.entryPoint).c_str(),
             ShaderCompiler_Internal::GetTargetFromShaderType(shader.key.type).c_str(),
             args.data(),
             static_cast<u32>(args.size()),
-            defines.data(),
-            static_cast<u32>(defines.size()),
+            dxcDefines.data(),
+            static_cast<u32>(dxcDefines.size()),
             &compilerArgs);
         FAILED(hr))
     {
@@ -232,11 +240,11 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
     }
 
     ComPtr<IDxcResult> shaderCompilationResults;
-    HRESULT compilationHR = GCompilerUtil.compiler->Compile(&shaderSource,
-                                                            compilerArgs->GetArguments(),
-                                                            compilerArgs->GetCount(),
-                                                            GCompilerUtil.defaultIncludeHandler.operator->(),
-                                                            IID_PPV_ARGS(&shaderCompilationResults));
+    HRESULT compilationHR = GetCompilerUtil().compiler->Compile(&shaderSource,
+                                                                compilerArgs->GetArguments(),
+                                                                compilerArgs->GetCount(),
+                                                                GetCompilerUtil().defaultIncludeHandler.operator->(),
+                                                                IID_PPV_ARGS(&shaderCompilationResults));
 
     ComPtr<IDxcBlobUtf8> errors = nullptr;
     if (HRESULT hrError = shaderCompilationResults->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
@@ -329,29 +337,17 @@ RHIShader* ShaderCache::GetShader(const ShaderKey& key, const ShaderResourceCont
     if (shaderPtr->NeedsRecompile())
     {
         auto result = CompileShader(*shaderPtr, resourceContext);
-        // Currently this is just spat out to cout, however a future task (separate MR) will be to determine how to pass
-        // error info/retry info to the client user programatically.
-        //
-        // @alemarbre if you have any ideas I'd be interested.
-        // There's always the option of some sort of ShaderError callback that the user can subscribe to.
-        //
-        // Otherwise we could add the concept of log categories to the logger (my least preferred option) but it seems
-        // to be quite a bit more convoluted and requires more needless effort imo (we're a graphics lib, not a logging
-        // lib).
-        //
-        // The more C-style option is a function you can call periodically - a GetShaderCompilationErrors() that fills
-        // in a string vector with the errors since the last compilation attempt.
         if (!result.has_value())
         {
             if (debugShaders)
             {
                 shaderPtr->isErrored = true;
-                compilationErrors.emplace_back(shaderPtr->key, result.error());
+                compilationErrors.emplace_back(key, result.error());
             }
             // If we're not in a debugShaders context, a non-compiling shader is fatal.
             VEX_LOG(debugShaders ? Error : Fatal,
                     "Failed to compile shader:\n\t- {}:\n\t- Reason: {}",
-                    shaderPtr->key,
+                    key,
                     result.error());
         }
     }

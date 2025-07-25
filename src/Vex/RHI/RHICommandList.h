@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include <array>
 #include <span>
 #include <utility>
@@ -17,6 +16,7 @@ class RHITexture;
 class RHIBuffer;
 struct RHITextureBinding;
 struct RHIBufferBinding;
+struct InputAssembly;
 
 class RHICommandList
 {
@@ -43,10 +43,17 @@ public:
                                     std::span<RHIBufferBinding> buffers,
                                     RHIDescriptorPool& descriptorPool) = 0;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) = 0;
+    virtual void SetInputAssembly(InputAssembly inputAssembly) = 0;
+
+    virtual void ClearTexture(RHITexture& rhiTexture,
+                              const ResourceBinding& clearBinding,
+                              const TextureClearValue& clearValue) = 0;
 
     virtual void Transition(RHITexture& texture, RHITextureState::Flags newState) = 0;
     // Ideal for batching multiple resource transitions together.
     virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs) = 0;
+
+    virtual void Draw(u32 vertexCount) = 0;
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount) = 0;
 

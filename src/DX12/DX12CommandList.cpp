@@ -1,10 +1,13 @@
 #include "DX12CommandList.h"
 
+#include <optional>
+
 #include <Vex/Bindings.h>
 #include <Vex/Logger.h>
 #include <Vex/RHI/RHIBindings.h>
 
 #include <DX12/DX12Formats.h>
+#include <DX12/DX12GraphicsPipeline.h>
 #include <DX12/DX12PipelineState.h>
 #include <DX12/DX12ResourceLayout.h>
 #include <DX12/DX12States.h>
@@ -194,31 +197,26 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
     // Allocate for worst-case scenario.
     bindlessHandles.reserve(textures.size() + buffers.size());
 
+    std::vector<CD3DX12_CPU_DESCRIPTOR_HANDLE> rtvHandles;
+    rtvHandles.reserve(8);
+
+    std::optional<CD3DX12_CPU_DESCRIPTOR_HANDLE> dsvHandle;
+
     for (auto& [binding, usage, rhiTexture] : textures)
     {
-        auto dxTexture = reinterpret_cast<DX12Texture*>(rhiTexture);
-
-        if (usage == ResourceUsage::Read || usage == ResourceUsage::UnorderedAccess)
+        auto dxTexture = reinterpret_cast<DX12Texture&>(*rhiTexture);
+        DX12TextureView dxTextureView{ binding, rhiTexture->GetDescription(), usage };
+        if (usage & ResourceUsage::Read || usage & ResourceUsage::UnorderedAccess)
         {
-            bindlessHandles.push_back(dxTexture->GetOrCreateBindlessView(
-                device,
-                DX12TextureView{
-                    .type = usage,
-                    .dimension = TextureUtil::GetTextureViewType(binding),
-                    .format = TextureFormatToDXGI(TextureUtil::GetTextureFormat(binding)),
-                    .mipBias = binding.mipBias,
-                    .mipCount = (binding.mipCount == 0) ? rhiTexture->GetDescription().mips : binding.mipCount,
-                    .startSlice = binding.startSlice,
-                    .sliceCount =
-                        (binding.sliceCount == 0) ? rhiTexture->GetDescription().depthOrArraySize : binding.sliceCount,
-
-                },
-                dxDescriptorPool));
+            bindlessHandles.push_back(dxTexture.GetOrCreateBindlessView(device, dxTextureView, dxDescriptorPool));
         }
-        else // if (usage == ResourceUsage::RenderTarget || usage == ResourceUsage::DepthStencil)
+        else if (usage & ResourceUsage::RenderTarget)
         {
-            // TODO: We can just bind these directly to the command list using their D3D12_CPU_DESCRIPTOR_HANDLE!
-            // Currently not handled with the compute-only pipeline (since it has no need for RTV/DSVs).
+            rtvHandles.emplace_back(dxTexture.GetOrCreateRTVDSVView(device, dxTextureView));
+        }
+        else if (usage & ResourceUsage::DepthStencil)
+        {
+            dsvHandle = dxTexture.GetOrCreateRTVDSVView(device, dxTextureView);
         }
     }
 
@@ -247,6 +245,18 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
     default:
         break;
     }
+
+    // Bind RTV and DSVs
+    if (type == CommandQueueType::Graphics)
+    {
+        CD3DX12_CPU_DESCRIPTOR_HANDLE* dsvHandlePtr = dsvHandle.has_value() ? &dsvHandle.value() : nullptr;
+        commandList->OMSetRenderTargets(static_cast<u32>(rtvHandles.size()), rtvHandles.data(), true, dsvHandlePtr);
+    }
+    else
+    {
+        VEX_ASSERT(!dsvHandle.has_value() && rtvHandles.empty(),
+                   "Cannot bind a depth stencil or render target to a non-graphics queue CommandList.");
+    }
 }
 
 void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)
@@ -254,6 +264,79 @@ void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIRe
     commandList->SetDescriptorHeaps(
         1,
         reinterpret_cast<DX12DescriptorPool&>(descriptorPool).gpuHeap.GetRawDescriptorHeap().GetAddressOf());
+}
+
+void DX12CommandList::SetInputAssembly(InputAssembly inputAssembly)
+{
+    commandList->IASetPrimitiveTopology(GraphicsPipeline::GetDX12PrimitiveTopologyFromInputAssembly(inputAssembly));
+}
+
+void DX12CommandList::ClearTexture(RHITexture& rhiTexture,
+                                   const ResourceBinding& clearBinding,
+                                   const TextureClearValue& clearValue)
+{
+    const TextureDescription& desc = rhiTexture.GetDescription();
+
+    // Clearing in DX12 allows for multiple slices to be cleared, however you cannot clear multiple mips with one
+    // call.
+    // Instead we iterate on the mips passed in by the user.
+
+    if (desc.usage & ResourceUsage::RenderTarget)
+    {
+        DX12TextureView dxTextureView{ clearBinding, desc, ResourceUsage::RenderTarget };
+        dxTextureView.mipCount = 1;
+
+        for (u32 mip = clearBinding.mipBias;
+             mip < ((clearBinding.mipCount == 0) ? 1 : (clearBinding.mipBias + clearBinding.mipCount));
+             ++mip)
+        {
+            dxTextureView.mipBias = mip;
+            VEX_ASSERT(clearValue.flags & TextureClear::ClearColor,
+                       "Clearing the color requires the TextureClear::ClearColor flag for texture: {}.",
+                       desc.name);
+            commandList->ClearRenderTargetView(
+                reinterpret_cast<DX12Texture&>(rhiTexture).GetOrCreateRTVDSVView(device, dxTextureView),
+                clearValue.color,
+                0,
+                nullptr);
+        }
+    }
+    else if (desc.usage & ResourceUsage::DepthStencil)
+    {
+        DX12TextureView dxTextureView{ clearBinding, desc, ResourceUsage::DepthStencil };
+        dxTextureView.mipCount = 1;
+        for (u32 mip = clearBinding.mipBias;
+             mip < ((clearBinding.mipCount == 0) ? 1 : (clearBinding.mipBias + clearBinding.mipCount));
+             ++mip)
+        {
+            dxTextureView.mipBias = mip;
+            D3D12_CLEAR_FLAGS clearFlags = static_cast<D3D12_CLEAR_FLAGS>(0);
+            if (clearValue.flags & TextureClear::ClearDepth)
+            {
+                clearFlags |= D3D12_CLEAR_FLAG_DEPTH;
+            }
+            if (clearValue.flags & TextureClear::ClearStencil)
+            {
+                clearFlags |= D3D12_CLEAR_FLAG_STENCIL;
+            }
+            VEX_ASSERT(std::to_underlying(clearFlags) != 0,
+                       "Clear flags for the depth-stencil cannot be 0, you must either clear depth, stencil, or both "
+                       "for texture: {}!",
+                       desc.name);
+
+            commandList->ClearDepthStencilView(
+                reinterpret_cast<DX12Texture&>(rhiTexture).GetOrCreateRTVDSVView(device, dxTextureView),
+                clearFlags,
+                clearValue.depth,
+                clearValue.stencil,
+                0,
+                nullptr);
+        }
+    }
+    else
+    {
+        VEX_LOG(Fatal, "The passed in texture does not support the usage required to be cleared: {}.", desc.name);
+    }
 }
 
 void DX12CommandList::Transition(RHITexture& texture, RHITextureState::Flags newState)
@@ -300,6 +383,16 @@ void DX12CommandList::Transition(std::span<std::pair<RHITexture&, RHITextureStat
     {
         commandList->ResourceBarrier(transitionBarriers.size(), transitionBarriers.data());
     }
+}
+
+void DX12CommandList::Draw(u32 vertexCount)
+{
+    if (type != CommandQueueType::Graphics)
+    {
+        VEX_LOG(Fatal, "Cannot use draw calls with a non-graphics command queue.");
+    }
+
+    commandList->DrawInstanced(vertexCount, 1, 0, 0);
 }
 
 void DX12CommandList::Dispatch(const std::array<u32, 3>& groupCount)

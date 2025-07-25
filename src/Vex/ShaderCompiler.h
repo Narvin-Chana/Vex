@@ -87,7 +87,7 @@ private:
     ComPtr<IDxcResult> GetPreprocessedShader(const RHIShader& shader, const ComPtr<IDxcBlobEncoding>& shaderBlob) const;
     void FillInAdditionalIncludeDirectories(std::vector<LPCWSTR>& args) const;
 
-    static thread_local CompilerUtil GCompilerUtil;
+    static CompilerUtil& GetCompilerUtil();
 
     RHI* rhi;
     // Determines if shaders should be compiled with debug symbols.

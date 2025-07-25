@@ -10,11 +10,17 @@
 #include <DX12/DX12DescriptorPool.h>
 #include <DX12/DX12Headers.h>
 
+namespace vex
+{
+struct ResourceBinding;
+}
+
 namespace vex::dx12
 {
 
 struct DX12TextureView
 {
+    DX12TextureView(const ResourceBinding& binding, const TextureDescription& description, ResourceUsage::Type usage);
     ResourceUsage::Type type;
     TextureViewType dimension;
     // Uses the underlying resource's format if set to DXGI_FORMAT_UNKNOWN (and if the texture's format is not

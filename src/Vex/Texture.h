@@ -11,7 +11,7 @@
 namespace vex
 {
 
-enum class TextureType
+enum class TextureType : u8
 {
     Texture2D,
     TextureCube,
@@ -19,7 +19,7 @@ enum class TextureType
 };
 
 // Used internally for views (eg: a cubemap can either be interpreted as a 6 slice Texture2DArray or a TextureCube).
-enum class TextureViewType
+enum class TextureViewType : u8
 {
     Texture2D,
     Texture2DArray,
@@ -36,9 +36,20 @@ TextureViewType GetTextureViewType(const ResourceBinding& binding);
 TextureFormat GetTextureFormat(const ResourceBinding& binding);
 } // namespace TextureUtil
 
+// clang-format off
+
+BEGIN_VEX_ENUM_FLAGS(TextureClear, u8)
+    None = 0,
+    ClearColor = 1,
+    ClearDepth = 2,
+    ClearStencil = 4,
+END_VEX_ENUM_FLAGS();
+
+// clang-format on
+
 struct TextureClearValue
 {
-    bool enabled = false;
+    TextureClear::Flags flags = TextureClear::None;
     float color[4];
     float depth;
     u8 stencil;

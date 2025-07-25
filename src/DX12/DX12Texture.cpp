@@ -2,6 +2,7 @@
 
 #include <magic_enum/magic_enum.hpp>
 
+#include <Vex/Bindings.h>
 #include <Vex/Logger.h>
 #include <Vex/Platform/Windows/WString.h>
 #include <Vex/RHI/RHIDescriptorPool.h>
@@ -32,9 +33,39 @@ static D3D12_RESOURCE_DIMENSION ConvertTypeToDX12ResourceDimension(TextureType t
 
 static D3D12_RENDER_TARGET_VIEW_DESC CreateRenderTargetViewDesc(DX12TextureView view)
 {
-    // TODO: implement RTV logic
-    VEX_NOT_YET_IMPLEMENTED();
-    return {};
+    D3D12_RENDER_TARGET_VIEW_DESC desc{ .Format = view.format };
+
+    switch (view.dimension)
+    {
+    case TextureViewType::Texture2D:
+        desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+        desc.Texture2D = {
+            .MipSlice = view.mipBias,
+            .PlaneSlice = view.startSlice,
+        };
+        break;
+    case TextureViewType::Texture2DArray:
+    case TextureViewType::TextureCube:
+    case TextureViewType::TextureCubeArray:
+        desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+        desc.Texture2DArray = {
+            .MipSlice = view.mipBias,
+            .FirstArraySlice = view.startSlice,
+            .ArraySize = view.sliceCount,
+            .PlaneSlice = 0,
+        };
+        break;
+    case TextureViewType::Texture3D:
+        desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
+        desc.Texture3D = {
+            .MipSlice = view.mipBias,
+            .FirstWSlice = view.startSlice,
+            .WSize = view.sliceCount,
+        };
+        break;
+    }
+
+    return desc;
 }
 
 static D3D12_DEPTH_STENCIL_VIEW_DESC CreateDepthStencilViewDesc(DX12TextureView view)
@@ -212,7 +243,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, const TextureDescription& d
     static const D3D12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 
     D3D12_CLEAR_VALUE* clearValue = nullptr;
-    if (description.clearValue.enabled)
+    if (description.clearValue.flags != TextureClear::None)
     {
         *clearValue = {};
         clearValue->Format = texDesc.Format;
@@ -239,6 +270,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, const TextureDescription& d
 
 DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID3D12Resource> nativeTex)
     : texture(std::move(nativeTex))
+    , rtvHeap(device, MaxViewCountPerHeap)
 {
     VEX_ASSERT(texture, "The texture passed in should be defined!");
     description.name = std::move(name);
@@ -391,6 +423,19 @@ BindlessHandle DX12Texture::GetOrCreateBindlessView(ComPtr<DX12Device>& device,
 
         return handle;
     }
+}
+
+DX12TextureView::DX12TextureView(const ResourceBinding& binding,
+                                 const TextureDescription& description,
+                                 ResourceUsage::Type usage)
+    : type{ usage }
+    , dimension{ TextureUtil::GetTextureViewType(binding) }
+    , format{ TextureFormatToDXGI(TextureUtil::GetTextureFormat(binding)) }
+    , mipBias{ binding.mipBias }
+    , mipCount{ (binding.mipCount == 0) ? description.mips : binding.mipCount }
+    , startSlice{ binding.startSlice }
+    , sliceCount{ (binding.sliceCount == 0) ? description.depthOrArraySize : binding.sliceCount }
+{
 }
 
 } // namespace vex::dx12

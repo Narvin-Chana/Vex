@@ -137,7 +137,10 @@ UniqueHandle<RHIShader> DX12RHI::CreateShader(const ShaderKey& key)
 
 UniqueHandle<RHIGraphicsPipelineState> DX12RHI::CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key)
 {
-    return MakeUnique<DX12GraphicsPipelineState>(key);
+    GraphicsPipelineStateKey keyCopy = key;
+    // Will clear out unsupported fields/validate that the user is not expecting invalid features.
+    DX12GraphicsPipelineState::ClearUnsupportedKeyFields(keyCopy);
+    return MakeUnique<DX12GraphicsPipelineState>(device, std::move(keyCopy));
 }
 
 UniqueHandle<RHIComputePipelineState> DX12RHI::CreateComputePipelineState(const ComputePipelineStateKey& key)
@@ -181,6 +184,7 @@ void DX12RHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIn
 {
     chk << GetQueue(queueType)->Wait(static_cast<DX12Fence&>(fence).fence.Get(), fence.GetFenceValue(fenceIndex));
 }
+
 void DX12RHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args, std::vector<ShaderDefine>& defines)
 {
     args.push_back(L"-Qstrip_reflect");
