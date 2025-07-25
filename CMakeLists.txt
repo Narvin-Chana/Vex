@@ -168,14 +168,14 @@ add_library(Vex STATIC
     "src/Vex/DrawHelpers.h"
 )
 
-if (WIN32)
+if(WIN32)
     target_sources(Vex PRIVATE
         "src/Vex/Platform/Windows/WString.h"
         "src/Vex/Platform/Windows/HResult.h"
     )
 endif()
 
-if (LINUX)
+if(LINUX)
     target_sources(Vex PRIVATE
         "src/Vex/Platform/Linux/WString.h"
     )
@@ -262,12 +262,12 @@ endforeach()
 
 # Add the build examples only if we're directly building cmake from Vex (so not if Vex is setup as an actual dependency).
 # Examples are used to develop Vex, they should not be used or included in projects that use Vex.
-if (CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     option(VEX_BUILD_EXAMPLES "Build the example programs" ON)
 else()
     option(VEX_BUILD_EXAMPLES "Build the example programs" OFF)
 endif()
-if (VEX_BUILD_EXAMPLES)
+if(VEX_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
 

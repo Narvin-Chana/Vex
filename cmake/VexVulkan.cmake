@@ -8,9 +8,14 @@ function(setup_vulkan_backend TARGET)
     FetchContent_Declare(
         VulkanHpp
         GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Hpp.git
-        GIT_TAG        v1.4.309
+        GIT_TAG        v1.4.323
     )
     FetchContent_MakeAvailable(VulkanHpp)
+
+    message(STATUS "Vulkan_FOUND: ${Vulkan_FOUND}")
+    message(STATUS "Vulkan_LIBRARIES: ${Vulkan_LIBRARIES}")
+    message(STATUS "Vulkan_INCLUDE_DIRS: ${Vulkan_INCLUDE_DIRS}")
+    message(STATUS "Vulkan library path: ${Vulkan_LIBRARY}")
 
     # Vulkan source files
     set(VEX_VULKAN_SOURCES
