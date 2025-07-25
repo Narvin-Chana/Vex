@@ -1,9 +1,7 @@
 #pragma once
 
 #include <optional>
-#include <span>
 
-#include <Vex/GraphicsPipeline.h>
 #include <Vex/RHI/RHIFwd.h>
 #include <Vex/ShaderKey.h>
 #include <Vex/Types.h>
@@ -16,6 +14,7 @@ class GfxBackend;
 struct ConstantBinding;
 struct ResourceBinding;
 struct Texture;
+struct Buffer;
 struct TextureClearValue;
 struct DrawDescription;
 struct DrawResources;

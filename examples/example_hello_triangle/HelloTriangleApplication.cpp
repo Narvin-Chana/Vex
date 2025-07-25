@@ -74,8 +74,7 @@ HelloTriangleApplication::HelloTriangleApplication()
                                   .depthOrArraySize = 1,
                                   .mips = 1,
                                   .format = vex::TextureFormat::RGBA8_UNORM,
-                                  .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess,
-                                  .clearValue{ .enabled = false } },
+                                  .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess },
                                 vex::ResourceLifetime::Static);
 
     // Example of CPU accessible buffer

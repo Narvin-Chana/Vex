@@ -231,8 +231,8 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
             ShaderCompiler_Internal::GetTargetFromShaderType(shader.key.type).c_str(),
             args.data(),
             static_cast<u32>(args.size()),
-            dxcDefines.data(),
-            static_cast<u32>(dxcDefines.size()),
+            defines.data(),
+            static_cast<u32>(defines.size()),
             &compilerArgs);
         FAILED(hr))
     {
