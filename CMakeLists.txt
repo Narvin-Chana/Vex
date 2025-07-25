@@ -33,43 +33,62 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -DVEX_DEBU
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DVEX_DEBUG=0 -DVEX_DEVELOPMENT=0 -DVEX_SHIPPING=1")
 
 # =========================================
-# Check for available graphics APIs
+# Graphics Backend Selection
 # =========================================
-message(STATUS "Checking for available graphics APIs...")
-set(VEX_AVAILABLE_BACKENDS "")
+message(STATUS "Configuring graphics backend...")
 
-# Check for DirectX 12 (Windows only)
-option(VEX_ENABLE_DX12 "Enable DirectX 12 backend if available" ON)
-if(WIN32)
-    add_compile_definitions(NOMINMAX)
-    if (VEX_ENABLE_DX12)
-        list(APPEND VEX_AVAILABLE_BACKENDS "DirectX12")
-    endif()
-else()
-    message(STATUS "DirectX SDK not supported on platforms other than WIN32.")
-    set(VEX_ENABLE_DX12 OFF)
-endif()
+# Define backend options
+set(VEX_GRAPHICS_BACKEND "AUTO" CACHE STRING "Graphics backend to use (AUTO, DX12, VULKAN)")
+set_property(CACHE VEX_GRAPHICS_BACKEND PROPERTY STRINGS "AUTO" "DX12" "VULKAN")
 
-# Check for Vulkan
-option(VEX_ENABLE_VULKAN "Enable Vulkan backend if available" ON)
-if(VEX_ENABLE_VULKAN)
-    find_package(Vulkan QUIET)
-    if(Vulkan_FOUND)
-        list(APPEND VEX_AVAILABLE_BACKENDS "Vulkan")
+# Determine which backend to use
+set(VEX_SELECTED_BACKEND "")
+
+if(VEX_GRAPHICS_BACKEND STREQUAL "AUTO")
+    # Auto-detect best available backend
+    if(WIN32)
+        set(VEX_SELECTED_BACKEND "DX12")
+        message(STATUS "Auto-selected DirectX 12 backend for Windows")
     else()
-        message(STATUS "Vulkan SDK not found, disabling Vulkan backend")
-        set(VEX_ENABLE_VULKAN OFF)
+        find_package(Vulkan QUIET)
+        if(Vulkan_FOUND)
+            set(VEX_SELECTED_BACKEND "VULKAN")
+            message(STATUS "Auto-selected Vulkan backend")
+        else()
+            message(FATAL_ERROR "No suitable graphics backend found. Vulkan SDK is required on non-Windows platforms.")
+        endif()
     endif()
+elseif(VEX_GRAPHICS_BACKEND STREQUAL "DX12")
+    if(NOT WIN32)
+        message(FATAL_ERROR "DirectX 12 backend is only available on Windows")
+    endif()
+    set(VEX_SELECTED_BACKEND "DX12")
+    message(STATUS "Explicitly selected DirectX 12 backend")
+elseif(VEX_GRAPHICS_BACKEND STREQUAL "VULKAN")
+    find_package(Vulkan QUIET)
+    if(NOT Vulkan_FOUND)
+        message(FATAL_ERROR "Vulkan SDK not found, cannot use Vulkan backend")
+    endif()
+    set(VEX_SELECTED_BACKEND "VULKAN")
+    message(STATUS "Explicitly selected Vulkan backend")
+else()
+    message(FATAL_ERROR "Invalid VEX_GRAPHICS_BACKEND: ${VEX_GRAPHICS_BACKEND}. Must be AUTO, DX12, or VULKAN")
 endif()
 
-# Report available backends
-message(STATUS "Available graphics backends: ${VEX_AVAILABLE_BACKENDS}")
+# Set backend flags
+set(VEX_ENABLE_DX12 OFF)
+set(VEX_ENABLE_VULKAN OFF)
 
-# Make sure we have at least one backend
-list(LENGTH VEX_AVAILABLE_BACKENDS NUM_BACKENDS)
-if(NUM_BACKENDS EQUAL 0)
-    message(ERROR "No graphics backends available. Some functionality may be limited.")
+if(VEX_SELECTED_BACKEND STREQUAL "DX12")
+    set(VEX_ENABLE_DX12 ON)
+    add_compile_definitions(NOMINMAX)
+elseif(VEX_SELECTED_BACKEND STREQUAL "VULKAN")
+    set(VEX_ENABLE_VULKAN ON)
+else()
+    message(FATAL_ERROR "No graphics backend was selected, please check your configuration.")
 endif()
+
+message(STATUS "Selected graphics backend: ${VEX_SELECTED_BACKEND}")
 
 # =========================================
 # DEPENDENCIES FETCHING
@@ -370,6 +389,12 @@ endif()
 
 # Static linking to magic_enum
 add_header_only_dependency(Vex magic_enum "${magic_enum_SOURCE_DIR}" "include" "magic_enum")
+# =========================================
+# ADDITIONAL DEFINES
+# =========================================
+if(WIN32)
+    target_compile_definitions(Vex PUBLIC NOMINMAX WIN32_MEAN_AND_LEAN)
+endif()
 
 # =========================================
 # INSTALLATION

@@ -18,63 +18,129 @@
       }
     },
     {
-      "name": "x64-MSVC-Base",
+      "name": "debug-build",
       "hidden": true,
-      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "development-build",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "shipping-build",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "dx12-api",
+      "hidden": true,
+      "cacheVariables": {
+        "VEX_GRAPHICS_BACKEND": "DX12"
+      }
+    },
+    {
+      "name": "vulkan-api",
+      "hidden": true,
+      "cacheVariables": {
+        "VEX_GRAPHICS_BACKEND": "VULKAN"
+      }
+    },
+    {
+      "name": "msvc-compiler",
+      "hidden": true,
       "environment": {
         "VSCMD_ARG_TGT_ARCH": "x64"
       }
     },
     {
-      "name": "x64-Clang-Base",
+      "name": "clang-compiler",
       "hidden": true,
-      "inherits": "base",
       "environment": {
         "CC": "clang",
         "CXX": "clang++"
       }
     },
     {
-      "name": "x64-MSVC-Debug",
-      "inherits": "x64-MSVC-Base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
+      "name": "msvc-debug-dx12",
+      "displayName": "MSVC Debug DX12",
+      "inherits": [ "base", "msvc-compiler", "debug-build", "dx12-api" ]
+    },
+    {
+      "name": "msvc-debug-vulkan",
+      "displayName": "MSVC Debug Vulkan",
+      "inherits": [ "base", "msvc-compiler", "debug-build", "vulkan-api" ]
+    },
+    {
+      "name": "msvc-development-dx12",
+      "displayName": "MSVC Development DX12",
+      "inherits": [ "base", "msvc-compiler", "development-build", "dx12-api" ]
+    },
+    {
+      "name": "msvc-development-vulkan",
+      "displayName": "MSVC Development Vulkan",
+      "inherits": [ "base", "msvc-compiler", "development-build", "vulkan-api" ]
+    },
+    {
+      "name": "msvc-shipping-dx12",
+      "displayName": "MSVC Shipping DX12",
+      "inherits": [ "base", "msvc-compiler", "shipping-build", "dx12-api" ]
+    },
+    {
+      "name": "msvc-shipping-vulkan",
+      "displayName": "MSVC Shipping Vulkan",
+      "inherits": [ "base", "msvc-compiler", "shipping-build", "vulkan-api" ]
+    },
+    {
+      "name": "clang-debug-dx12",
+      "displayName": "Clang Debug DX12",
+      "inherits": [ "base", "clang-compiler", "debug-build", "dx12-api" ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
       }
     },
     {
-      "name": "x64-MSVC-Development",
-      "inherits": "x64-MSVC-Base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      "name": "clang-debug-vulkan",
+      "displayName": "Clang Debug Vulkan",
+      "inherits": [ "base", "clang-compiler", "debug-build", "vulkan-api" ]
+    },
+    {
+      "name": "clang-development-dx12",
+      "displayName": "Clang Development DX12",
+      "inherits": [ "base", "clang-compiler", "development-build", "dx12-api" ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
       }
     },
     {
-      "name": "x64-MSVC-Shipping",
-      "inherits": "x64-MSVC-Base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+      "name": "clang-development-vulkan",
+      "displayName": "Clang Development Vulkan",
+      "inherits": [ "base", "clang-compiler", "development-build", "vulkan-api" ]
+    },
+    {
+      "name": "clang-shipping-dx12",
+      "displayName": "Clang Shipping DX12",
+      "inherits": [ "base", "clang-compiler", "shipping-build", "dx12-api" ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
       }
     },
     {
-      "name": "x64-Clang-Debug",
-      "inherits": "x64-Clang-Base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
-      }
-    },
-    {
-      "name": "x64-Clang-Development",
-      "inherits": "x64-Clang-Base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
-      }
-    },
-    {
-      "name": "x64-Clang-Shipping",
-      "inherits": "x64-Clang-Base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
-      }
+      "name": "clang-shipping-vulkan",
+      "displayName": "Clang Shipping Vulkan",
+      "inherits": [ "base", "clang-compiler", "shipping-build", "vulkan-api" ]
     }
   ]
 }
