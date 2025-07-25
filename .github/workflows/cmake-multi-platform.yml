@@ -110,7 +110,7 @@ jobs:
         clang++ --version
 
     - name: Install Vulkan SDK (Windows)
-      if: matrix.os == 'windows-latest' && (matrix.graphics_api == 'vulkan' || matrix.graphics_api == 'vulkan_directx12')
+      if: matrix.os == 'windows-latest' && (matrix.graphics_api == 'vulkan')
       uses: humbletim/setup-vulkan-sdk@523828e49cd4afabce369c39c7ee6543a2b7a735
       with:
         vulkan-query-version: latest

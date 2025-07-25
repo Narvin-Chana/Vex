@@ -12,11 +12,6 @@ function(setup_vulkan_backend TARGET)
     )
     FetchContent_MakeAvailable(VulkanHpp)
 
-    message(STATUS "Vulkan_FOUND: ${Vulkan_FOUND}")
-    message(STATUS "Vulkan_LIBRARIES: ${Vulkan_LIBRARIES}")
-    message(STATUS "Vulkan_INCLUDE_DIRS: ${Vulkan_INCLUDE_DIRS}")
-    message(STATUS "Vulkan library path: ${Vulkan_LIBRARY}")
-
     # Vulkan source files
     set(VEX_VULKAN_SOURCES
         "src/Vulkan/VkFormats.h" 
