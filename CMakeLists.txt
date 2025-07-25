@@ -226,6 +226,13 @@ if(WIN32)
     target_compile_definitions(Vex PUBLIC NOMINMAX WIN32_MEAN_AND_LEAN)
 endif()
 
+# Disable exceptions across the board.
+target_compile_options(Vex PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/EHs-c->           # MSVC: disable exceptions
+    $<$<CXX_COMPILER_ID:Clang>:-fno-exceptions>   # Clang: disable exceptions  
+    $<$<CXX_COMPILER_ID:GNU>:-fno-exceptions>     # GCC: disable exceptions
+)
+
 # =========================================
 # INSTALLATION
 # =========================================
