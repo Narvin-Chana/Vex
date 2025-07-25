@@ -38,7 +38,6 @@ public:
     virtual void Compile(const RHIShader& vertexShader,
                          const RHIShader& pixelShader,
                          RHIResourceLayout& resourceLayout) = 0;
-    virtual bool NeedsRecompile(const Key& newKey) = 0;
     virtual void Cleanup(ResourceCleanup& resourceCleanup) = 0;
 
     Key key;

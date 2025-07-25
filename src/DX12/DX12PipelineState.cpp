@@ -63,11 +63,6 @@ void DX12GraphicsPipelineState::Compile(const RHIShader& vertexShader,
 #endif
 }
 
-bool DX12GraphicsPipelineState::NeedsRecompile(const Key& newKey)
-{
-    return false;
-}
-
 void DX12GraphicsPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
 {
     // Simple swap and move
