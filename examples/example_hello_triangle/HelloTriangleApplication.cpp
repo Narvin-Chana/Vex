@@ -155,7 +155,7 @@ void HelloTriangleApplication::Run()
         graphics->StartFrame();
 
         {
-            float ocillatedColor = static_cast<float>(std::cos(currentTime) / 2 + 0.5);
+            float ocillatedColor = static_cast<float>(cos(currentTime) / 2 + 0.5);
             float invOcillatedColor = 1 - ocillatedColor;
             float color[4] = { invOcillatedColor, ocillatedColor, invOcillatedColor, 1.0 };
             graphics->UpdateData(colorBuffer, color);
