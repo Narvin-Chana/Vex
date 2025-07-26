@@ -111,6 +111,20 @@ void GfxBackend::StartFrame()
 
 void GfxBackend::EndFrame(bool isFullscreenMode)
 {
+    RHITexture& currentRHIBackBuffer = GetRHITexture(GetCurrentBackBuffer().handle);
+    // Make sure the backbuffer is in Present mode, if not we will have to open a command list just to transition it.
+    if (!(currentRHIBackBuffer.GetCurrentState() & RHITextureState::Present))
+    {
+        // We are forced to use a graphics queue when transitioning to the present state.
+        RHICommandList* cmdList = commandPools.Get(currentFrameIndex)->CreateCommandList(CommandQueueType::Graphics);
+        cmdList->Open();
+        cmdList->Transition(currentRHIBackBuffer, RHITextureState::Present);
+        cmdList->Close();
+        queuedCommandLists.push_back(cmdList);
+    }
+
+    FlushCommandListQueue();
+
     swapChain->Present(isFullscreenMode);
 
     // Signal all queue fences.
@@ -135,7 +149,7 @@ void GfxBackend::EndFrame(bool isFullscreenMode)
     // Release the memory occupied by the command lists that are done.
     GetCurrentCommandPool().ReclaimAllCommandListMemory();
 
-    // Send all shader errors to the user.
+    // Send all shader errors to the user, only done on frame end, not on GPU flush.
     psCache.GetShaderCache().FlushCompilationErrors();
 }
 
@@ -146,20 +160,12 @@ CommandContext GfxBackend::BeginScopedCommandContext(CommandQueueType queueType)
 
 void GfxBackend::EndCommandContext(RHICommandList& cmdList)
 {
-    // Force all backbuffers back to the present mode, this is because they could have been manipulated during the
-    // context's execution and thus changed state. There might be a better way to handle this....
-    std::vector<std::pair<RHITexture&, RHITextureState::Flags>> transitions;
-    transitions.reserve(backBuffers.size());
-    for (auto& bb : backBuffers)
-    {
-        transitions.emplace_back(GetRHITexture(bb.handle), RHITextureState::Present);
-    }
-    cmdList.Transition(transitions);
-
+    // We want to close a command list asap, to allow for driver optimizations.
     cmdList.Close();
-    // TODO(https://trello.com/c/yrO8xMkU): change command list execution to be done in one batch at the end of the
-    // frame (more efficient according to AMD's performance guide).
-    rhi->ExecuteCommandList(cmdList);
+
+    // However the submitting of a commandList should be batched as much as possible for further driver optimizations
+    // (allowed to append them together during execution or reorder if no dependencies exist).
+    queuedCommandLists.push_back(&cmdList);
 }
 
 Texture GfxBackend::CreateTexture(TextureDescription description, ResourceLifetime lifetime)
@@ -184,6 +190,11 @@ void GfxBackend::DestroyTexture(const Texture& texture)
 
 void GfxBackend::FlushGPU()
 {
+    VEX_LOG(Info, "Forcing a GPU flush...");
+
+    // Rid ourselves of the currently queued up command lists.
+    FlushCommandListQueue();
+
     for (auto queueType : magic_enum::enum_values<CommandQueueType>())
     {
         // Increment fence values before signaling to ensure we're waiting on new values.
@@ -203,6 +214,8 @@ void GfxBackend::FlushGPU()
 
     // Release the memory occupied by the command lists that are done.
     commandPools.ForEach([](auto& el) { el->ReclaimAllCommandListMemory(); });
+
+    VEX_LOG(Info, "GPU flush done.");
 }
 
 void GfxBackend::SetVSync(bool useVSync)
@@ -319,6 +332,12 @@ void GfxBackend::CreateBackBuffers()
     // Recreating the backbuffers means resetting the current frame index to 0 (as if we've just started the application
     // from scratch).
     currentFrameIndex = 0;
+}
+
+void GfxBackend::FlushCommandListQueue()
+{
+    rhi->ExecuteCommandLists(queuedCommandLists);
+    queuedCommandLists.clear();
 }
 
 } // namespace vex

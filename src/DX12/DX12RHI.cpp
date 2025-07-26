@@ -169,6 +169,26 @@ void DX12RHI::ExecuteCommandList(RHICommandList& commandList)
     queues[commandList.GetType()]->ExecuteCommandLists(1, &p);
 }
 
+void DX12RHI::ExecuteCommandLists(std::span<RHICommandList*> commandLists)
+{
+    std::array<std::vector<ID3D12CommandList*>, CommandQueueTypes::Count> rawCommandListsPerQueue;
+    for (RHICommandList* cmdList : commandLists)
+    {
+        rawCommandListsPerQueue[cmdList->GetType()].push_back(
+            reinterpret_cast<DX12CommandList*>(cmdList)->commandList.Get());
+    }
+
+    for (u32 i = 0; i < CommandQueueTypes::Count; ++i)
+    {
+        const auto& rawCmdLists = rawCommandListsPerQueue[i];
+        if (rawCmdLists.empty())
+        {
+            continue;
+        }
+        queues[i]->ExecuteCommandLists(rawCmdLists.size(), rawCmdLists.data());
+    }
+}
+
 UniqueHandle<RHIFence> DX12RHI::CreateFence(u32 numFenceIndices)
 {
     return MakeUnique<DX12Fence>(numFenceIndices, device);

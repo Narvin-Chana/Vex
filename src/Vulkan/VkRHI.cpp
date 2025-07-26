@@ -339,6 +339,16 @@ void VkRHI::ExecuteCommandList(RHICommandList& commandList)
     VEX_VK_CHECK << cmdQueue.queue.submit2KHR(submitInfo);
 }
 
+void VkRHI::ExecuteCommandLists(std::span<RHICommandList*> commandLists)
+{
+    // TODO(https://trello.com/c/J4WjMkVk): Improve this, the other function has semaphores and stuff, it seemed a bit
+    // complicated, so I just call it once per CommandList for now (which is obviously not optimal).
+    for (RHICommandList* cmdList : commandLists)
+    {
+        ExecuteCommandList(*cmdList);
+    }
+}
+
 UniqueHandle<RHIFence> VkRHI::CreateFence(u32 numFenceIndices)
 {
     return MakeUnique<VkFence>(numFenceIndices, *device);

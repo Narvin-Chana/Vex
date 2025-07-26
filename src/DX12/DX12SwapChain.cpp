@@ -90,7 +90,7 @@ UniqueHandle<RHITexture> DX12SwapChain::CreateBackBuffer(u8 backBufferIndex)
 
 u8 DX12SwapChain::GetBackBufferCount(FrameBuffering frameBuffering)
 {
-    return std::max<u8>(2, std::to_underlying(frameBuffering));
+    return std::min(2, std::to_underlying(frameBuffering));
 }
 
 } // namespace vex::dx12
