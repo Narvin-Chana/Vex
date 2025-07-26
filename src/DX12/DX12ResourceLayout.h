@@ -12,7 +12,7 @@ namespace vex::dx12
 class DX12ResourceLayout : public RHIResourceLayout
 {
 public:
-    DX12ResourceLayout(ComPtr<DX12Device>& device, const DX12FeatureChecker& featureChecker);
+    DX12ResourceLayout(ComPtr<DX12Device>& device);
     virtual ~DX12ResourceLayout() override;
 
     virtual bool ValidateGlobalConstant(const GlobalConstant& globalConstant) const override;
@@ -24,7 +24,6 @@ private:
     void CompileRootSignature();
 
     ComPtr<DX12Device> device;
-    const DX12FeatureChecker& featureChecker;
     ComPtr<ID3D12RootSignature> rootSignature;
 };
 

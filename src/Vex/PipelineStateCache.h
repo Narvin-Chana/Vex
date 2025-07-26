@@ -22,7 +22,6 @@ public:
     PipelineStateCache() = default;
     PipelineStateCache(RHI* rhi,
                        RHIDescriptorPool& descriptorPool,
-                       const FeatureChecker& featureChecker,
                        ResourceCleanup* resourceCleanup,
                        bool enableShaderDebugging);
     ~PipelineStateCache();

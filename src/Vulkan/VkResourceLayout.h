@@ -11,12 +11,8 @@ class VkDescriptorPool;
 
 class VkResourceLayout : public RHIResourceLayout
 {
-    const VkFeatureChecker& featureChecker;
-
 public:
-    VkResourceLayout(::vk::Device device,
-                     const VkDescriptorPool& descriptorPool,
-                     const VkFeatureChecker& featureChecker);
+    VkResourceLayout(::vk::Device device, const VkDescriptorPool& descriptorPool);
     virtual bool ValidateGlobalConstant(const GlobalConstant& globalConstant) const override;
     virtual u32 GetMaxLocalConstantSize() const override;
 

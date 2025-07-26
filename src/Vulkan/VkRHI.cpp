@@ -28,367 +28,364 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 namespace vex::vk
 {
 
-	// Should be redone properly
-	static ::vk::PhysicalDeviceProperties GetHighestApiVersionDevice()
-	{
-		// Create temporary instance to check device properties
-		::vk::UniqueInstance instance = VEX_VK_CHECK <<= ::vk::createInstanceUnique({});
-		VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
+// Should be redone properly
+static ::vk::PhysicalDeviceProperties GetHighestApiVersionDevice()
+{
+    // Create temporary instance to check device properties
+    ::vk::UniqueInstance instance = VEX_VK_CHECK <<= ::vk::createInstanceUnique({});
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
 
-		auto devices = VEX_VK_CHECK <<= instance->enumeratePhysicalDevices();
+    auto devices = VEX_VK_CHECK <<= instance->enumeratePhysicalDevices();
 
-		::vk::PhysicalDeviceProperties bestDevice{};
-		for (auto dev : devices)
-		{
-			auto prop = dev.getProperties();
-			if (prop.apiVersion > bestDevice.apiVersion)
-			{
-				bestDevice = prop;
-			}
-		}
+    ::vk::PhysicalDeviceProperties bestDevice{};
+    for (auto dev : devices)
+    {
+        auto prop = dev.getProperties();
+        if (prop.apiVersion > bestDevice.apiVersion)
+        {
+            bestDevice = prop;
+        }
+    }
 
-		return bestDevice;
-	}
+    return bestDevice;
+}
 
-	VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation)
-	{
-		VULKAN_HPP_DEFAULT_DISPATCHER.init();
+VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation)
+{
+    VULKAN_HPP_DEFAULT_DISPATCHER.init();
 
-		::vk::ApplicationInfo appInfo{
-			.pApplicationName = "Vulkan App",
-			.applicationVersion = VK_MAKE_VERSION(1, 0, 0),
-			.pEngineName = "No Engine",
-			.engineVersion = VK_MAKE_VERSION(1, 0, 0),
-			.apiVersion = GetHighestApiVersionDevice().apiVersion,
-		};
+    ::vk::ApplicationInfo appInfo{
+        .pApplicationName = "Vulkan App",
+        .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+        .pEngineName = "No Engine",
+        .engineVersion = VK_MAKE_VERSION(1, 0, 0),
+        .apiVersion = GetHighestApiVersionDevice().apiVersion,
+    };
 
-		::vk::DebugUtilsMessengerCreateInfoEXT* debugCreateInfoPtr = nullptr;
+    ::vk::DebugUtilsMessengerCreateInfoEXT* debugCreateInfoPtr = nullptr;
 
-		if (enableGPUDebugLayer)
-		{
-			using Severity = ::vk::DebugUtilsMessageSeverityFlagBitsEXT;
-			using MessageType = ::vk::DebugUtilsMessageTypeFlagBitsEXT;
-			::vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo{
-				.messageSeverity = Severity::eVerbose | Severity::eWarning | Severity::eError,
-				.messageType = MessageType::eGeneral | MessageType::eValidation | MessageType::ePerformance,
-				.pfnUserCallback = debugCallback,
-			};
-			debugCreateInfoPtr = &debugCreateInfo;
-		}
+    if (enableGPUDebugLayer)
+    {
+        using Severity = ::vk::DebugUtilsMessageSeverityFlagBitsEXT;
+        using MessageType = ::vk::DebugUtilsMessageTypeFlagBitsEXT;
+        ::vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo{
+            .messageSeverity = Severity::eVerbose | Severity::eWarning | Severity::eError,
+            .messageType = MessageType::eGeneral | MessageType::eValidation | MessageType::ePerformance,
+            .pfnUserCallback = debugCallback,
+        };
+        debugCreateInfoPtr = &debugCreateInfo;
+    }
 
-		std::vector<const char*> requiredInstanceExtensions = GetRequiredInstanceExtensions(enableGPUDebugLayer);
+    std::vector<const char*> requiredInstanceExtensions = GetRequiredInstanceExtensions(enableGPUDebugLayer);
 
-		std::vector<const char*> validationLayers = GetDefaultValidationLayers(enableGPUBasedValidation);
-		validationLayers = FilterSupportedValidationLayers(validationLayers);
+    std::vector<const char*> validationLayers = GetDefaultValidationLayers(enableGPUBasedValidation);
+    validationLayers = FilterSupportedValidationLayers(validationLayers);
 
-		::vk::InstanceCreateInfo instanceCI{
-			.sType = ::vk::StructureType::eInstanceCreateInfo,
-			.pNext = debugCreateInfoPtr,
-			.flags = {},
-			.pApplicationInfo = &appInfo,
-			.enabledLayerCount = static_cast<u32>(validationLayers.size()),
-			.ppEnabledLayerNames = validationLayers.data(),
-			.enabledExtensionCount = static_cast<u32>(requiredInstanceExtensions.size()),
-			.ppEnabledExtensionNames = requiredInstanceExtensions.data(),
-		};
+    ::vk::InstanceCreateInfo instanceCI{
+        .sType = ::vk::StructureType::eInstanceCreateInfo,
+        .pNext = debugCreateInfoPtr,
+        .flags = {},
+        .pApplicationInfo = &appInfo,
+        .enabledLayerCount = static_cast<u32>(validationLayers.size()),
+        .ppEnabledLayerNames = validationLayers.data(),
+        .enabledExtensionCount = static_cast<u32>(requiredInstanceExtensions.size()),
+        .ppEnabledExtensionNames = requiredInstanceExtensions.data(),
+    };
 
-		VEX_LOG(Info, "Create VK instances with layers:");
-		for (auto validationLayer : validationLayers)
-		{
-			VEX_LOG(Info, "\t{}", validationLayer);
-		}
+    VEX_LOG(Info, "Create VK instances with layers:");
+    for (auto validationLayer : validationLayers)
+    {
+        VEX_LOG(Info, "\t{}", validationLayer);
+    }
 
-		VEX_LOG(Info, "Create VK instances with extensions:");
-		for (auto instanceExtension : requiredInstanceExtensions)
-		{
-			VEX_LOG(Info, "\t{}", instanceExtension);
-		}
+    VEX_LOG(Info, "Create VK instances with extensions:");
+    for (auto instanceExtension : requiredInstanceExtensions)
+    {
+        VEX_LOG(Info, "\t{}", instanceExtension);
+    }
 
-		instance = VEX_VK_CHECK <<= ::vk::createInstanceUnique(instanceCI);
+    instance = VEX_VK_CHECK <<= ::vk::createInstanceUnique(instanceCI);
 
-		VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
 
-		InitWindow(windowHandle);
-	}
+    InitWindow(windowHandle);
+}
 
-	VkRHI::~VkRHI() = default;
+VkRHI::~VkRHI() = default;
 
-	void VkRHI::InitWindow(const PlatformWindowHandle& windowHandle)
-	{
+void VkRHI::InitWindow(const PlatformWindowHandle& windowHandle)
+{
 #if defined(_WIN32)
-		::vk::Win32SurfaceCreateInfoKHR createInfo{
-			.hinstance = GetModuleHandle(nullptr),
-			.hwnd = windowHandle.window,
-		};
-		surface = VEX_VK_CHECK <<= instance->createWin32SurfaceKHRUnique(createInfo);
+    ::vk::Win32SurfaceCreateInfoKHR createInfo{
+        .hinstance = GetModuleHandle(nullptr),
+        .hwnd = windowHandle.window,
+    };
+    surface = VEX_VK_CHECK <<= instance->createWin32SurfaceKHRUnique(createInfo);
 #elif defined(__linux__)
-		::vk::XlibSurfaceCreateInfoKHR createInfo{
-			.dpy = windowHandle.display,
-			.window = windowHandle.window,
-		};
-		surface = VEX_VK_CHECK <<= instance->createXlibSurfaceKHRUnique(createInfo);
+    ::vk::XlibSurfaceCreateInfoKHR createInfo{
+        .dpy = windowHandle.display,
+        .window = windowHandle.window,
+    };
+    surface = VEX_VK_CHECK <<= instance->createXlibSurfaceKHRUnique(createInfo);
 #endif
-	}
+}
 
-	std::vector<UniqueHandle<PhysicalDevice>> VkRHI::EnumeratePhysicalDevices()
-	{
-		std::vector<UniqueHandle<PhysicalDevice>> physicalDevices;
+std::vector<UniqueHandle<PhysicalDevice>> VkRHI::EnumeratePhysicalDevices()
+{
+    std::vector<UniqueHandle<PhysicalDevice>> physicalDevices;
 
-		std::vector<::vk::PhysicalDevice> vkPhysicalDevices = VEX_VK_CHECK <<= instance->enumeratePhysicalDevices();
-		if (vkPhysicalDevices.empty())
-		{
-			VEX_LOG(Fatal, "No physical devices compatible with Vulkan were found!");
-		}
+    std::vector<::vk::PhysicalDevice> vkPhysicalDevices = VEX_VK_CHECK <<= instance->enumeratePhysicalDevices();
+    if (vkPhysicalDevices.empty())
+    {
+        VEX_LOG(Fatal, "No physical devices compatible with Vulkan were found!");
+    }
 
-		physicalDevices.reserve(vkPhysicalDevices.size());
-		for (const ::vk::PhysicalDevice& dev : vkPhysicalDevices)
-		{
-			physicalDevices.push_back(MakeUnique<vex::vk::VkPhysicalDevice>(dev));
-		}
+    physicalDevices.reserve(vkPhysicalDevices.size());
+    for (const ::vk::PhysicalDevice& dev : vkPhysicalDevices)
+    {
+        physicalDevices.push_back(MakeUnique<vex::vk::VkPhysicalDevice>(dev));
+    }
 
-		return physicalDevices;
-	}
+    return physicalDevices;
+}
 
-	void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
-	{
-		physDevice = static_cast<VkPhysicalDevice*>(vexPhysicalDevice.get())->physicalDevice;
+void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
+{
+    physDevice = static_cast<VkPhysicalDevice*>(vexPhysicalDevice.get())->physicalDevice;
 
-		i32 graphicsQueueFamily = -1;
-		i32 computeQueueFamily = -1;
-		i32 copyQueueFamily = -1;
+    i32 graphicsQueueFamily = -1;
+    i32 computeQueueFamily = -1;
+    i32 copyQueueFamily = -1;
 
-		std::vector<::vk::QueueFamilyProperties> queueFamilies = physDevice.getQueueFamilyProperties();
-		u32 i = 0;
-		for (const auto& property : queueFamilies)
-		{
-			bool presentSupported = VEX_VK_CHECK <<= physDevice.getSurfaceSupportKHR(static_cast<uint32_t>(i), *surface);
+    std::vector<::vk::QueueFamilyProperties> queueFamilies = physDevice.getQueueFamilyProperties();
+    u32 i = 0;
+    for (const auto& property : queueFamilies)
+    {
+        bool presentSupported = VEX_VK_CHECK <<= physDevice.getSurfaceSupportKHR(static_cast<uint32_t>(i), *surface);
 
-			if (graphicsQueueFamily == -1 && presentSupported && property.queueFlags & ::vk::QueueFlagBits::eGraphics)
-			{
-				graphicsQueueFamily = static_cast<i32>(i);
-			}
-			else if (computeQueueFamily == -1 && property.queueFlags & ::vk::QueueFlagBits::eCompute)
-			{
-				computeQueueFamily = static_cast<i32>(i);
-			}
-			else if (copyQueueFamily == -1 && property.queueFlags & ::vk::QueueFlagBits::eTransfer)
-			{
-				copyQueueFamily = static_cast<i32>(i);
-			}
+        if (graphicsQueueFamily == -1 && presentSupported && property.queueFlags & ::vk::QueueFlagBits::eGraphics)
+        {
+            graphicsQueueFamily = static_cast<i32>(i);
+        }
+        else if (computeQueueFamily == -1 && property.queueFlags & ::vk::QueueFlagBits::eCompute)
+        {
+            computeQueueFamily = static_cast<i32>(i);
+        }
+        else if (copyQueueFamily == -1 && property.queueFlags & ::vk::QueueFlagBits::eTransfer)
+        {
+            copyQueueFamily = static_cast<i32>(i);
+        }
 
-			++i;
-		}
+        ++i;
+    }
 
-		std::set uniqueQueueFamilies{ graphicsQueueFamily, computeQueueFamily, copyQueueFamily };
-		uniqueQueueFamilies.erase(-1);
+    std::set uniqueQueueFamilies{ graphicsQueueFamily, computeQueueFamily, copyQueueFamily };
+    uniqueQueueFamilies.erase(-1);
 
-		float queuePriority = 1.0f;
-		std::vector<::vk::DeviceQueueCreateInfo> queueCreateInfos;
-		for (uint32_t queueFamily : uniqueQueueFamilies)
-		{
-			::vk::DeviceQueueCreateInfo queueCreateInfo{
-				.queueFamilyIndex = queueFamily,
-				.queueCount = 1,
-				.pQueuePriorities = &queuePriority,
-			};
-			queueCreateInfos.push_back(queueCreateInfo);
-		}
+    float queuePriority = 1.0f;
+    std::vector<::vk::DeviceQueueCreateInfo> queueCreateInfos;
+    for (uint32_t queueFamily : uniqueQueueFamilies)
+    {
+        ::vk::DeviceQueueCreateInfo queueCreateInfo{
+            .queueFamilyIndex = queueFamily,
+            .queueCount = 1,
+            .pQueuePriorities = &queuePriority,
+        };
+        queueCreateInfos.push_back(queueCreateInfo);
+    }
 
-		std::vector extensions = GetDefaultDeviceExtensions();
+    std::vector extensions = GetDefaultDeviceExtensions();
 
-		auto physDeviceFeatures = physDevice.getFeatures();
+    auto physDeviceFeatures = physDevice.getFeatures();
 
-		::vk::PhysicalDeviceVulkan13Features features13;
-		features13.synchronization2 = true;
+    ::vk::PhysicalDeviceVulkan13Features features13;
+    features13.synchronization2 = true;
 
-		::vk::PhysicalDeviceVulkan12Features features12;
-		features12.pNext = &features13;
-		features12.timelineSemaphore = true;
-		features12.descriptorIndexing = true;
+    ::vk::PhysicalDeviceVulkan12Features features12;
+    features12.pNext = &features13;
+    features12.timelineSemaphore = true;
+    features12.descriptorIndexing = true;
 
-		features12.runtimeDescriptorArray = true;
-		features12.descriptorBindingPartiallyBound = true;
-		features12.descriptorBindingUniformBufferUpdateAfterBind = true;
-		features12.descriptorBindingStorageBufferUpdateAfterBind = true;
-		features12.descriptorBindingSampledImageUpdateAfterBind = true;
-		features12.descriptorBindingStorageImageUpdateAfterBind = true;
+    features12.runtimeDescriptorArray = true;
+    features12.descriptorBindingPartiallyBound = true;
+    features12.descriptorBindingUniformBufferUpdateAfterBind = true;
+    features12.descriptorBindingStorageBufferUpdateAfterBind = true;
+    features12.descriptorBindingSampledImageUpdateAfterBind = true;
+    features12.descriptorBindingStorageImageUpdateAfterBind = true;
 
-		::vk::DeviceCreateInfo deviceCreateInfo{ .pNext = &features12,
-												 .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
-												 .pQueueCreateInfos = queueCreateInfos.data(),
-												 .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
-												 .ppEnabledExtensionNames = extensions.data(),
-												 .pEnabledFeatures = &physDeviceFeatures };
+    ::vk::DeviceCreateInfo deviceCreateInfo{ .pNext = &features12,
+                                             .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
+                                             .pQueueCreateInfos = queueCreateInfos.data(),
+                                             .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+                                             .ppEnabledExtensionNames = extensions.data(),
+                                             .pEnabledFeatures = &physDeviceFeatures };
 
-		device = VEX_VK_CHECK <<= physDevice.createDeviceUnique(deviceCreateInfo);
+    device = VEX_VK_CHECK <<= physDevice.createDeviceUnique(deviceCreateInfo);
 
-		VULKAN_HPP_DEFAULT_DISPATCHER.init(*device);
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(*device);
 
-		auto createSemaphore = [&]
-			{
-				::vk::SemaphoreTypeCreateInfoKHR type{ .semaphoreType = ::vk::SemaphoreType::eTimeline, .initialValue = 0 };
+    auto createSemaphore = [&]
+    {
+        ::vk::SemaphoreTypeCreateInfoKHR type{ .semaphoreType = ::vk::SemaphoreType::eTimeline, .initialValue = 0 };
 
-				return VEX_VK_CHECK <<= device->createSemaphoreUnique(::vk::SemaphoreCreateInfo{
-						   .pNext = &type,
-					});
-			};
+        return VEX_VK_CHECK <<= device->createSemaphoreUnique(::vk::SemaphoreCreateInfo{
+                   .pNext = &type,
+               });
+    };
 
-		if (graphicsQueueFamily == -1)
-		{
-			VEX_LOG(Fatal, "Unable to create graphics queue on device!");
-		}
-		commandQueues[CommandQueueTypes::Graphics] = VkCommandQueue{ CommandQueueTypes::Graphics,
-																	 static_cast<u32>(graphicsQueueFamily),
-																	 device->getQueue(graphicsQueueFamily, 0),
-																	 0,
-																	 createSemaphore() };
+    if (graphicsQueueFamily == -1)
+    {
+        VEX_LOG(Fatal, "Unable to create graphics queue on device!");
+    }
+    commandQueues[CommandQueueTypes::Graphics] = VkCommandQueue{ CommandQueueTypes::Graphics,
+                                                                 static_cast<u32>(graphicsQueueFamily),
+                                                                 device->getQueue(graphicsQueueFamily, 0),
+                                                                 0,
+                                                                 createSemaphore() };
 
-		if (computeQueueFamily != -1)
-		{
-			commandQueues[CommandQueueTypes::Compute] = VkCommandQueue{ CommandQueueTypes::Compute,
-																		static_cast<u32>(computeQueueFamily),
-																		device->getQueue(computeQueueFamily, 0),
-																		0,
-																		createSemaphore() };
-		}
+    if (computeQueueFamily != -1)
+    {
+        commandQueues[CommandQueueTypes::Compute] = VkCommandQueue{ CommandQueueTypes::Compute,
+                                                                    static_cast<u32>(computeQueueFamily),
+                                                                    device->getQueue(computeQueueFamily, 0),
+                                                                    0,
+                                                                    createSemaphore() };
+    }
 
-		if (copyQueueFamily != -1)
-		{
-			commandQueues[CommandQueueTypes::Copy] = VkCommandQueue{ CommandQueueTypes::Copy,
-																	 static_cast<u32>(copyQueueFamily),
-																	 device->getQueue(copyQueueFamily, 0),
-																	 0,
-																	 createSemaphore() };
-		}
+    if (copyQueueFamily != -1)
+    {
+        commandQueues[CommandQueueTypes::Copy] = VkCommandQueue{ CommandQueueTypes::Copy,
+                                                                 static_cast<u32>(copyQueueFamily),
+                                                                 device->getQueue(copyQueueFamily, 0),
+                                                                 0,
+                                                                 createSemaphore() };
+    }
 
-		PSOCache = VEX_VK_CHECK <<= device->createPipelineCacheUnique({});
+    PSOCache = VEX_VK_CHECK <<= device->createPipelineCacheUnique({});
 
-		// Initializes values for the first time
-		GetGPUContext();
-	}
+    // Initializes values for the first time
+    GetGPUContext();
+}
 
-	UniqueHandle<RHISwapChain> VkRHI::CreateSwapChain(const SwapChainDescription& description,
-		const PlatformWindow& platformWindow)
-	{
-		return MakeUnique<VkSwapChain>(GetGPUContext(), description, platformWindow);
-	}
+UniqueHandle<RHISwapChain> VkRHI::CreateSwapChain(const SwapChainDescription& description,
+                                                  const PlatformWindow& platformWindow)
+{
+    return MakeUnique<VkSwapChain>(GetGPUContext(), description, platformWindow);
+}
 
-	UniqueHandle<RHICommandPool> VkRHI::CreateCommandPool()
-	{
-		return MakeUnique<VkCommandPool>(GetGPUContext(), commandQueues);
-	}
+UniqueHandle<RHICommandPool> VkRHI::CreateCommandPool()
+{
+    return MakeUnique<VkCommandPool>(GetGPUContext(), commandQueues);
+}
 
-	UniqueHandle<RHIShader> VkRHI::CreateShader(const ShaderKey& key)
-	{
-		return MakeUnique<VkShader>(key);
-	}
+UniqueHandle<RHIShader> VkRHI::CreateShader(const ShaderKey& key)
+{
+    return MakeUnique<VkShader>(key);
+}
 
-	UniqueHandle<RHIGraphicsPipelineState> VkRHI::CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key)
-	{
-		return MakeUnique<VkGraphicsPipelineState>(key);
-	}
+UniqueHandle<RHIGraphicsPipelineState> VkRHI::CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key)
+{
+    return MakeUnique<VkGraphicsPipelineState>(key);
+}
 
-	UniqueHandle<RHIComputePipelineState> VkRHI::CreateComputePipelineState(const ComputePipelineStateKey& key)
-	{
-		return MakeUnique<VkComputePipelineState>(key, *device, *PSOCache);
-	}
+UniqueHandle<RHIComputePipelineState> VkRHI::CreateComputePipelineState(const ComputePipelineStateKey& key)
+{
+    return MakeUnique<VkComputePipelineState>(key, *device, *PSOCache);
+}
 
-	UniqueHandle<RHIResourceLayout> VkRHI::CreateResourceLayout(const FeatureChecker& featureChecker,
-		RHIDescriptorPool& descriptorPool)
-	{
-		return MakeUnique<VkResourceLayout>(*device,
-			reinterpret_cast<const VkDescriptorPool&>(descriptorPool),
-			reinterpret_cast<const VkFeatureChecker&>(featureChecker));
-	}
+UniqueHandle<RHIResourceLayout> VkRHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool)
+{
+    return MakeUnique<VkResourceLayout>(*device, reinterpret_cast<const VkDescriptorPool&>(descriptorPool));
+}
 
-	UniqueHandle<RHITexture> VkRHI::CreateTexture(const TextureDescription& description)
-	{
-		return MakeUnique<VkImageTexture>(GetGPUContext(), TextureDescription(description));
-	}
+UniqueHandle<RHITexture> VkRHI::CreateTexture(const TextureDescription& description)
+{
+    return MakeUnique<VkImageTexture>(GetGPUContext(), TextureDescription(description));
+}
 
-	UniqueHandle<RHIDescriptorPool> VkRHI::CreateDescriptorPool()
-	{
-		return MakeUnique<VkDescriptorPool>(*device);
-	}
+UniqueHandle<RHIDescriptorPool> VkRHI::CreateDescriptorPool()
+{
+    return MakeUnique<VkDescriptorPool>(*device);
+}
 
-	void VkRHI::ExecuteCommandList(RHICommandList& commandList)
-	{
-		auto& cmdList = reinterpret_cast<VkCommandList&>(commandList);
+void VkRHI::ExecuteCommandList(RHICommandList& commandList)
+{
+    auto& cmdList = reinterpret_cast<VkCommandList&>(commandList);
 
-		auto& cmdQueue = commandQueues[cmdList.GetType()];
+    auto& cmdQueue = commandQueues[cmdList.GetType()];
 
-		::vk::CommandBufferSubmitInfoKHR cmdBuffreInfo{
-			.commandBuffer = *cmdList.commandBuffer,
-			.deviceMask = 0,
-		};
+    ::vk::CommandBufferSubmitInfoKHR cmdBuffreInfo{
+        .commandBuffer = *cmdList.commandBuffer,
+        .deviceMask = 0,
+    };
 
-		::vk::SemaphoreSubmitInfo semWaitInfo{
-			.semaphore = *cmdQueue.waitSemaphore,
-			.value = cmdQueue.waitValue,
-		};
+    ::vk::SemaphoreSubmitInfo semWaitInfo{
+        .semaphore = *cmdQueue.waitSemaphore,
+        .value = cmdQueue.waitValue,
+    };
 
-		::vk::SemaphoreSubmitInfo semSignalInfo{
-			.semaphore = *cmdQueue.waitSemaphore,
-			.value = ++cmdQueue.waitValue,
-		};
+    ::vk::SemaphoreSubmitInfo semSignalInfo{
+        .semaphore = *cmdQueue.waitSemaphore,
+        .value = ++cmdQueue.waitValue,
+    };
 
-		::vk::SubmitInfo2KHR submitInfo{ .waitSemaphoreInfoCount = 1,
-										 .pWaitSemaphoreInfos = &semWaitInfo,
-										 .commandBufferInfoCount = 1,
-										 .pCommandBufferInfos = &cmdBuffreInfo,
-										 .signalSemaphoreInfoCount = 1,
-										 .pSignalSemaphoreInfos = &semSignalInfo };
+    ::vk::SubmitInfo2KHR submitInfo{ .waitSemaphoreInfoCount = 1,
+                                     .pWaitSemaphoreInfos = &semWaitInfo,
+                                     .commandBufferInfoCount = 1,
+                                     .pCommandBufferInfos = &cmdBuffreInfo,
+                                     .signalSemaphoreInfoCount = 1,
+                                     .pSignalSemaphoreInfos = &semSignalInfo };
 
-		VEX_VK_CHECK << cmdQueue.queue.submit2KHR(submitInfo);
-	}
+    VEX_VK_CHECK << cmdQueue.queue.submit2KHR(submitInfo);
+}
 
-	UniqueHandle<RHIFence> VkRHI::CreateFence(u32 numFenceIndices)
-	{
-		return MakeUnique<VkFence>(numFenceIndices, *device);
-	}
+UniqueHandle<RHIFence> VkRHI::CreateFence(u32 numFenceIndices)
+{
+    return MakeUnique<VkFence>(numFenceIndices, *device);
+}
 
-	void VkRHI::SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
-	{
-		auto& vkFence = reinterpret_cast<VkFence&>(fence);
+void VkRHI::SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
+{
+    auto& vkFence = reinterpret_cast<VkFence&>(fence);
 
-		::vk::TimelineSemaphoreSubmitInfoKHR timelineInfo{ .signalSemaphoreValueCount = 1,
-														   .pSignalSemaphoreValues = &fence.GetFenceValue(fenceIndex) };
+    ::vk::TimelineSemaphoreSubmitInfoKHR timelineInfo{ .signalSemaphoreValueCount = 1,
+                                                       .pSignalSemaphoreValues = &fence.GetFenceValue(fenceIndex) };
 
-		::vk::SubmitInfo submit{
-			.pNext = &timelineInfo,
-			.signalSemaphoreCount = 1,
-			.pSignalSemaphores = &*vkFence.fence,
-		};
+    ::vk::SubmitInfo submit{
+        .pNext = &timelineInfo,
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores = &*vkFence.fence,
+    };
 
-		VEX_VK_CHECK << commandQueues[queueType].queue.submit(submit);
-	}
+    VEX_VK_CHECK << commandQueues[queueType].queue.submit(submit);
+}
 
-	void VkRHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
-	{
-		auto& vkFence = reinterpret_cast<VkFence&>(fence);
+void VkRHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
+{
+    auto& vkFence = reinterpret_cast<VkFence&>(fence);
 
-		VkTimelineSemaphoreSubmitInfoKHR timelineInfo;
-		timelineInfo.signalSemaphoreValueCount = 1;
-		timelineInfo.pSignalSemaphoreValues = &fence.GetFenceValue(fenceIndex);
+    VkTimelineSemaphoreSubmitInfoKHR timelineInfo;
+    timelineInfo.signalSemaphoreValueCount = 1;
+    timelineInfo.pSignalSemaphoreValues = &fence.GetFenceValue(fenceIndex);
 
-		::vk::SubmitInfo submit;
-		submit.pNext = &timelineInfo;
-		submit.pWaitSemaphores = &*vkFence.fence;
-		submit.waitSemaphoreCount = 1;
+    ::vk::SubmitInfo submit;
+    submit.pNext = &timelineInfo;
+    submit.pWaitSemaphores = &*vkFence.fence;
+    submit.waitSemaphoreCount = 1;
 
-		VEX_VK_CHECK << commandQueues[queueType].queue.submit(submit);
-	}
+    VEX_VK_CHECK << commandQueues[queueType].queue.submit(submit);
+}
 
-	void VkRHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args, std::vector<ShaderDefine>& defines)
-	{
-		args.push_back(L"-spirv");
-		defines.emplace_back(L"VEX_VULKAN");
-	}
+void VkRHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args, std::vector<ShaderDefine>& defines)
+{
+    args.push_back(L"-spirv");
+    defines.emplace_back(L"VEX_VULKAN");
+}
 
-	VkGPUContext& VkRHI::GetGPUContext()
-	{
-		static VkGPUContext ctx{ *device, physDevice, *surface, commandQueues[CommandQueueType::Graphics] };
-		return ctx;
-	}
+VkGPUContext& VkRHI::GetGPUContext()
+{
+    static VkGPUContext ctx{ *device, physDevice, *surface, commandQueues[CommandQueueType::Graphics] };
+    return ctx;
+}
 
 } // namespace vex::vk

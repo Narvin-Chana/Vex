@@ -57,14 +57,19 @@ GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& des
     // Obtain the best physical device.
     std::sort(physicalDevices.begin(), physicalDevices.end(), [](const auto& l, const auto& r) { return *l > *r; });
 
-    physicalDevice = std::move(physicalDevices[0]);
+    if (GPhysicalDevice)
+    {
+        VEX_LOG(Fatal, "Cannot launch multiple instances of Vex...");
+    }
+
+    GPhysicalDevice = std::move(physicalDevices[0]);
 
 #if !VEX_SHIPPING
-    physicalDevice->DumpPhysicalDeviceInfo();
+    GPhysicalDevice->DumpPhysicalDeviceInfo();
 #endif
 
     // Initializes RHI which includes creating logicial device and swapchain
-    rhi->Init(physicalDevice);
+    rhi->Init(GPhysicalDevice);
 
     VEX_LOG(Info,
             "Created graphics backend with width {} and height {}.",
@@ -80,11 +85,7 @@ GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& des
 
     descriptorPool = rhi->CreateDescriptorPool();
 
-    psCache = PipelineStateCache(rhi.get(),
-                                 *descriptorPool,
-                                 *physicalDevice->featureChecker,
-                                 &resourceCleanup,
-                                 description.enableShaderDebugging);
+    psCache = PipelineStateCache(rhi.get(), *descriptorPool, &resourceCleanup, description.enableShaderDebugging);
 
     swapChain = rhi->CreateSwapChain({ .format = description.swapChainFormat,
                                        .frameBuffering = description.frameBuffering,
@@ -98,6 +99,9 @@ GfxBackend::~GfxBackend()
 {
     // Wait for work to be done before starting the deletion of resources.
     FlushGPU();
+
+    // Clear the physical device.
+    GPhysicalDevice = nullptr;
 }
 
 void GfxBackend::StartFrame()

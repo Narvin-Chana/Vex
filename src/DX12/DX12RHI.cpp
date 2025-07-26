@@ -148,10 +148,9 @@ UniqueHandle<RHIComputePipelineState> DX12RHI::CreateComputePipelineState(const 
     return MakeUnique<DX12ComputePipelineState>(device, key);
 }
 
-UniqueHandle<RHIResourceLayout> DX12RHI::CreateResourceLayout(const FeatureChecker& featureChecker,
-                                                              RHIDescriptorPool& descriptorPool)
+UniqueHandle<RHIResourceLayout> DX12RHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool)
 {
-    return MakeUnique<DX12ResourceLayout>(device, reinterpret_cast<const DX12FeatureChecker&>(featureChecker));
+    return MakeUnique<DX12ResourceLayout>(device);
 }
 
 UniqueHandle<RHITexture> DX12RHI::CreateTexture(const TextureDescription& description)

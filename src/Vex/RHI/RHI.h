@@ -20,7 +20,6 @@ struct GraphicsPipelineStateKey;
 struct ComputePipelineStateKey;
 struct SwapChainDescription;
 struct PlatformWindow;
-class FeatureChecker;
 
 struct RenderHardwareInterface
 {
@@ -36,8 +35,7 @@ struct RenderHardwareInterface
     virtual UniqueHandle<RHIShader> CreateShader(const ShaderKey& key) = 0;
     virtual UniqueHandle<RHIGraphicsPipelineState> CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key) = 0;
     virtual UniqueHandle<RHIComputePipelineState> CreateComputePipelineState(const ComputePipelineStateKey& key) = 0;
-    virtual UniqueHandle<RHIResourceLayout> CreateResourceLayout(const FeatureChecker& featureChecker,
-                                                                 RHIDescriptorPool& descriptorPool) = 0;
+    virtual UniqueHandle<RHIResourceLayout> CreateResourceLayout(RHIDescriptorPool& descriptorPool) = 0;
 
     virtual UniqueHandle<RHITexture> CreateTexture(const TextureDescription& description) = 0;
 

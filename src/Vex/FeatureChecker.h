@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Vex/Types.h>
+#include <Vex/UniqueHandle.h>
 
 namespace vex
 {

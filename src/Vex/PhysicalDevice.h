@@ -23,4 +23,6 @@ struct PhysicalDevice
     UniqueHandle<FeatureChecker> featureChecker;
 };
 
+inline UniqueHandle<PhysicalDevice> GPhysicalDevice = nullptr;
+
 } // namespace vex
