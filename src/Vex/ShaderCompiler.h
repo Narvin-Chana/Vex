@@ -99,7 +99,7 @@ private:
 
     std::vector<std::filesystem::path> additionalIncludeDirectories;
 
-    std::unordered_map<ShaderKey, UniqueHandle<RHIShader>> shaderCache;
+    std::unordered_map<ShaderKey, UniqueHandle<RHIShader>> shaderCompiler;
 
     std::function<ShaderCompileErrorsCallback> errorsCallback = nullptr;
     std::vector<std::pair<ShaderKey, std::string>> compilationErrors;

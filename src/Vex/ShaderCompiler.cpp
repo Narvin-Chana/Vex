@@ -328,15 +328,15 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(RHIShader& shader
 RHIShader* ShaderCompiler::GetShader(const ShaderKey& key, const ShaderResourceContext& resourceContext)
 {
     RHIShader* shaderPtr;
-    if (shaderCache.contains(key))
+    if (shaderCompiler.contains(key))
     {
-        shaderPtr = shaderCache[key].get();
+        shaderPtr = shaderCompiler[key].get();
     }
     else
     {
         UniqueHandle<RHIShader> shader = rhi->CreateShader(key);
         shaderPtr = shader.get();
-        shaderCache[key] = std::move(shader);
+        shaderCompiler[key] = std::move(shader);
     }
 
     if (shaderPtr->NeedsRecompile())
@@ -380,8 +380,8 @@ std::pair<bool, std::size_t> ShaderCompiler::IsShaderStale(const RHIShader& shad
 
 void ShaderCompiler::MarkShaderDirty(const ShaderKey& key)
 {
-    auto shader = shaderCache.find(key);
-    if (shader == shaderCache.end())
+    auto shader = shaderCompiler.find(key);
+    if (shader == shaderCompiler.end())
     {
         VEX_LOG(Error,
                 "The shader key passed did not yield any valid shaders in the shader cache (key {}). Unable to mark it "
@@ -396,7 +396,7 @@ void ShaderCompiler::MarkShaderDirty(const ShaderKey& key)
 
 void ShaderCompiler::MarkAllShadersDirty()
 {
-    for (auto& shader : shaderCache | std::views::values)
+    for (auto& shader : shaderCompiler | std::views::values)
     {
         shader->MarkDirty();
         shader->isErrored = false;
@@ -408,7 +408,7 @@ void ShaderCompiler::MarkAllShadersDirty()
 void ShaderCompiler::MarkAllStaleShadersDirty()
 {
     u32 numStaleShaders = 0;
-    for (auto& shader : shaderCache | std::views::values)
+    for (auto& shader : shaderCompiler | std::views::values)
     {
         if (auto [isShaderStale, newShaderHash] = IsShaderStale(*shader); isShaderStale || shader->isErrored)
         {
@@ -434,9 +434,9 @@ void ShaderCompiler::FlushCompilationErrors()
     {
         for (auto& [key, error] : compilationErrors)
         {
-            VEX_ASSERT(shaderCache.contains(key), "A shader in compilationErrors was not found in the cache...");
+            VEX_ASSERT(shaderCompiler.contains(key), "A shader in compilationErrors was not found in the cache...");
             // The next time we attempt to use this shader, it will be recompiled.
-            shaderCache[key]->isErrored = false;
+            shaderCompiler[key]->isErrored = false;
         }
         compilationErrors.clear();
     }
