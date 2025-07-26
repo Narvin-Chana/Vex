@@ -277,7 +277,7 @@ struct RenderTargetState
 
 VEX_MAKE_HASHABLE(vex::VertexInputLayout::VertexAttribute,
     VEX_HASH_COMBINE(seed, obj.binding);
-    VEX_HASH_COMBINE_ENUM(seed, obj.format);
+    VEX_HASH_COMBINE(seed, obj.format);
     VEX_HASH_COMBINE(seed, obj.offset);
     VEX_HASH_COMBINE(seed, obj.semanticName);
     VEX_HASH_COMBINE(seed, obj.semanticIndex);
@@ -286,7 +286,7 @@ VEX_MAKE_HASHABLE(vex::VertexInputLayout::VertexAttribute,
 VEX_MAKE_HASHABLE(vex::VertexInputLayout::VertexBinding,
     VEX_HASH_COMBINE(seed, obj.binding);
     VEX_HASH_COMBINE(seed, obj.stride);
-    VEX_HASH_COMBINE_ENUM(seed, obj.inputRate);
+    VEX_HASH_COMBINE(seed, obj.inputRate);
 );
 
 VEX_MAKE_HASHABLE(vex::VertexInputLayout,
@@ -295,16 +295,16 @@ VEX_MAKE_HASHABLE(vex::VertexInputLayout,
 );
 
 VEX_MAKE_HASHABLE(vex::InputAssembly,
-    VEX_HASH_COMBINE_ENUM(seed, obj.topology);
+    VEX_HASH_COMBINE(seed, obj.topology);
     VEX_HASH_COMBINE(seed, obj.primitiveRestartEnabled);
 );
 
 VEX_MAKE_HASHABLE(vex::RasterizerState,
     VEX_HASH_COMBINE(seed, obj.rasterizerDiscardEnabled);
     VEX_HASH_COMBINE(seed, obj.depthClampEnabled);
-    VEX_HASH_COMBINE_ENUM(seed, obj.polygonMode);
-    VEX_HASH_COMBINE_ENUM(seed, obj.cullMode);
-    VEX_HASH_COMBINE_ENUM(seed, obj.winding);
+    VEX_HASH_COMBINE(seed, obj.polygonMode);
+    VEX_HASH_COMBINE(seed, obj.cullMode);
+    VEX_HASH_COMBINE(seed, obj.winding);
     VEX_HASH_COMBINE(seed, obj.depthBiasEnabled);
     VEX_HASH_COMBINE(seed, obj.depthBiasConstantFactor);
     VEX_HASH_COMBINE(seed, obj.depthBiasClamp);
@@ -313,10 +313,10 @@ VEX_MAKE_HASHABLE(vex::RasterizerState,
 );
 
 VEX_MAKE_HASHABLE(vex::DepthStencilState::StencilOpState,
-    VEX_HASH_COMBINE_ENUM(seed, obj.failOp);
-    VEX_HASH_COMBINE_ENUM(seed, obj.passOp);
-    VEX_HASH_COMBINE_ENUM(seed, obj.depthFailOp);
-    VEX_HASH_COMBINE_ENUM(seed, obj.compareOp);
+    VEX_HASH_COMBINE(seed, obj.failOp);
+    VEX_HASH_COMBINE(seed, obj.passOp);
+    VEX_HASH_COMBINE(seed, obj.depthFailOp);
+    VEX_HASH_COMBINE(seed, obj.compareOp);
     VEX_HASH_COMBINE(seed, obj.readMask);
     VEX_HASH_COMBINE(seed, obj.writeMask);
     VEX_HASH_COMBINE(seed, obj.reference);
@@ -325,7 +325,7 @@ VEX_MAKE_HASHABLE(vex::DepthStencilState::StencilOpState,
 VEX_MAKE_HASHABLE(vex::DepthStencilState,
     VEX_HASH_COMBINE(seed, obj.depthTestEnabled);
     VEX_HASH_COMBINE(seed, obj.depthWriteEnabled);
-    VEX_HASH_COMBINE_ENUM(seed, obj.depthCompareOp);
+    VEX_HASH_COMBINE(seed, obj.depthCompareOp);
     VEX_HASH_COMBINE(seed, obj.depthBoundsTestEnabled);
     VEX_HASH_COMBINE(seed, obj.front);
     VEX_HASH_COMBINE(seed, obj.back);
@@ -335,25 +335,25 @@ VEX_MAKE_HASHABLE(vex::DepthStencilState,
 
 VEX_MAKE_HASHABLE(vex::ColorBlendState::ColorBlendAttachment,
     VEX_HASH_COMBINE(seed, obj.blendEnabled);
-    VEX_HASH_COMBINE_ENUM(seed, obj.srcColorBlendFactor);
-    VEX_HASH_COMBINE_ENUM(seed, obj.dstColorBlendFactor);
-    VEX_HASH_COMBINE_ENUM(seed, obj.colorBlendOp);
-    VEX_HASH_COMBINE_ENUM(seed, obj.srcAlphaBlendFactor);
-    VEX_HASH_COMBINE_ENUM(seed, obj.dstAlphaBlendFactor);
-    VEX_HASH_COMBINE_ENUM(seed, obj.alphaBlendOp);
+    VEX_HASH_COMBINE(seed, obj.srcColorBlendFactor);
+    VEX_HASH_COMBINE(seed, obj.dstColorBlendFactor);
+    VEX_HASH_COMBINE(seed, obj.colorBlendOp);
+    VEX_HASH_COMBINE(seed, obj.srcAlphaBlendFactor);
+    VEX_HASH_COMBINE(seed, obj.dstAlphaBlendFactor);
+    VEX_HASH_COMBINE(seed, obj.alphaBlendOp);
     VEX_HASH_COMBINE(seed, obj.colorWriteMask);
 );
 
 VEX_MAKE_HASHABLE(vex::ColorBlendState,
     VEX_HASH_COMBINE(seed, obj.logicOpEnabled);
-    VEX_HASH_COMBINE_ENUM(seed, obj.logicOp);
+    VEX_HASH_COMBINE(seed, obj.logicOp);
     VEX_HASH_COMBINE_CONTAINER(seed, obj.attachments);
     VEX_HASH_COMBINE_CONTAINER(seed, obj.blendConstants);
 );
 
 VEX_MAKE_HASHABLE(vex::RenderTargetState,
     VEX_HASH_COMBINE_CONTAINER(seed, obj.colorFormats);
-    VEX_HASH_COMBINE_ENUM(seed, obj.depthStencilFormat);
+    VEX_HASH_COMBINE(seed, obj.depthStencilFormat);
 );
 
 // clang-format on

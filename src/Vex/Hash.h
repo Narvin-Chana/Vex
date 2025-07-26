@@ -2,15 +2,30 @@
 
 #include <magic_enum/magic_enum.hpp>
 
+namespace vex
+{
+
+template <typename T>
+constexpr auto PurifyHashValue(const T& obj) -> decltype(auto)
+{
+    if constexpr (std::is_enum_v<T>)
+    {
+        // For enums, convert to underlying type
+        return std::to_underlying(obj);
+    }
+    else
+    {
+        // For primitive types and other hashable types
+        return obj;
+    }
+}
+
+} // namespace vex
+
 // Base macro for combining hashes
 #define VEX_HASH_COMBINE(seed, value)                                                                                  \
-    (seed) ^= std::hash<std::remove_const_t<std::remove_reference_t<decltype(value)>>>()(value) + 0x9e3779b9 +         \
-              ((seed) << 6) + ((seed) >> 2)
-
-// Macro for hashing an enum using the string provided by magic_enum
-#define VEX_HASH_COMBINE_ENUM(seed, enum_value)                                                                        \
-    (seed) ^= std::hash<std::string>()(std::string(magic_enum::enum_name(enum_value))) + 0x9e3779b9 + ((seed) << 6) +  \
-              ((seed) >> 2)
+    (seed) ^= std::hash<std::decay_t<decltype(vex::PurifyHashValue(value))>>{}(vex::PurifyHashValue(value)) +          \
+              0x9e3779b9 + ((seed) << 6) + ((seed) >> 2);
 
 // Macro for hashing a container (vector, array, etc.)
 #define VEX_HASH_COMBINE_CONTAINER(seed, container)                                                                    \
