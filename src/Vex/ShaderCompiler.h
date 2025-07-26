@@ -33,6 +33,7 @@ using ComPtr = CComPtr<T>;
 #endif
 
 #include <Vex/RHI/RHIFwd.h>
+#include <Vex/ShaderCompilerSettings.h>
 #include <Vex/ShaderKey.h>
 #include <Vex/UniqueHandle.h>
 
@@ -53,17 +54,17 @@ struct CompilerUtil
 
 using ShaderCompileErrorsCallback = bool(const std::vector<std::pair<ShaderKey, std::string>>& errors);
 
-struct ShaderCache
+struct ShaderCompiler
 {
-    ShaderCache() = default;
-    ShaderCache(RHI* rhi, bool enableShaderDebugging);
-    ~ShaderCache();
+    ShaderCompiler() = default;
+    ShaderCompiler(RHI* rhi, const ShaderCompilerSettings& compilerSettings);
+    ~ShaderCompiler();
 
-    ShaderCache(const ShaderCache&) = delete;
-    ShaderCache& operator=(const ShaderCache&) = delete;
+    ShaderCompiler(const ShaderCompiler&) = delete;
+    ShaderCompiler& operator=(const ShaderCompiler&) = delete;
 
-    ShaderCache(ShaderCache&&) = default;
-    ShaderCache& operator=(ShaderCache&&) = default;
+    ShaderCompiler(ShaderCompiler&&) = default;
+    ShaderCompiler& operator=(ShaderCompiler&&) = default;
 
     std::expected<void, std::string> CompileShader(RHIShader& shader, const ShaderResourceContext& resourceContext);
     RHIShader* GetShader(const ShaderKey& key, const ShaderResourceContext& resourceContext);
@@ -82,6 +83,10 @@ struct ShaderCache
     void FlushCompilationErrors();
 
 private:
+    static constexpr auto HLSL202xFlags = {
+        L"-HV 202x", L"-Wconversion", L"-Wdouble-promotion", L"-Whlsl-legacy-literal"
+    };
+
     // Obtains a hash of the preprocessed shader, allowing us to verify if the shader's content has changed.
     std::optional<std::size_t> GetShaderHash(const RHIShader& shader) const;
     ComPtr<IDxcResult> GetPreprocessedShader(const RHIShader& shader, const ComPtr<IDxcBlobEncoding>& shaderBlob) const;
@@ -90,12 +95,11 @@ private:
     static CompilerUtil& GetCompilerUtil();
 
     RHI* rhi;
-    // Determines if shaders should be compiled with debug symbols.
-    // Defaults to true in non-shipping builds and false in shipping.
-    bool debugShaders = !VEX_SHIPPING;
+    ShaderCompilerSettings compilerSettings;
+
     std::vector<std::filesystem::path> additionalIncludeDirectories;
 
-    std::unordered_map<ShaderKey, UniqueHandle<RHIShader>> shaderCache;
+    std::unordered_map<ShaderKey, UniqueHandle<RHIShader>> shaderCompiler;
 
     std::function<ShaderCompileErrorsCallback> errorsCallback = nullptr;
     std::vector<std::pair<ShaderKey, std::string>> compilationErrors;

@@ -12,7 +12,6 @@
 namespace vex
 {
 
-struct ShaderKey;
 class FeatureChecker;
 struct ShaderResourceContext;
 
@@ -20,9 +19,11 @@ class PipelineStateCache
 {
 public:
     PipelineStateCache() = default;
-    PipelineStateCache(RHI* rhi, RHIDescriptorPool& descriptorPool, const FeatureChecker& featureChecker,
+    PipelineStateCache(RHI* rhi,
+                       RHIDescriptorPool& descriptorPool,
+                       const FeatureChecker& featureChecker,
                        ResourceCleanup* resourceCleanup,
-                       bool enableShaderDebugging);
+                       const ShaderCompilerSettings& compilerSettings);
     ~PipelineStateCache();
 
     PipelineStateCache(const PipelineStateCache&) = delete;
@@ -38,14 +39,14 @@ public:
     const RHIComputePipelineState* GetComputePipelineState(const RHIComputePipelineState::Key& key,
                                                            const ShaderResourceContext& resourceContext);
 
-    ShaderCache& GetShaderCache();
+    ShaderCompiler& GetShaderCache();
 
 private:
     RHI* rhi;
 
     ResourceCleanup* resourceCleanup;
 
-    ShaderCache shaderCache;
+    ShaderCompiler shaderCompiler;
     UniqueHandle<RHIResourceLayout> resourceLayout;
     std::unordered_map<RHIGraphicsPipelineState::Key, UniqueHandle<RHIGraphicsPipelineState>> graphicsPSCache;
     std::unordered_map<RHIComputePipelineState::Key, UniqueHandle<RHIComputePipelineState>> computePSCache;
