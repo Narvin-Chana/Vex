@@ -71,16 +71,16 @@ CompilerUtil::CompilerUtil()
 
 CompilerUtil::~CompilerUtil() = default;
 
-ShaderCache::ShaderCache(RHI* rhi, bool enableShaderDebugging)
+ShaderCompiler::ShaderCompiler(RHI* rhi, const ShaderCompilerSettings& compilerSettings)
     : rhi(rhi)
-    , debugShaders(enableShaderDebugging)
+    , compilerSettings(compilerSettings)
 {
 }
 
-ShaderCache::~ShaderCache() = default;
+ShaderCompiler::~ShaderCompiler() = default;
 
-ComPtr<IDxcResult> ShaderCache::GetPreprocessedShader(const RHIShader& shader,
-                                                      const ComPtr<IDxcBlobEncoding>& shaderBlobUTF8) const
+ComPtr<IDxcResult> ShaderCompiler::GetPreprocessedShader(const RHIShader& shader,
+                                                         const ComPtr<IDxcBlobEncoding>& shaderBlobUTF8) const
 {
     std::vector<LPCWSTR> args = { L"-P" }; // -P gives us the preprocessor output of the shader.
     FillInAdditionalIncludeDirectories(args);
@@ -103,7 +103,7 @@ ComPtr<IDxcResult> ShaderCache::GetPreprocessedShader(const RHIShader& shader,
     return result;
 }
 
-void ShaderCache::FillInAdditionalIncludeDirectories(std::vector<LPCWSTR>& args) const
+void ShaderCompiler::FillInAdditionalIncludeDirectories(std::vector<LPCWSTR>& args) const
 {
     for (auto& additionalIncludeFolder : additionalIncludeDirectories)
     {
@@ -111,13 +111,13 @@ void ShaderCache::FillInAdditionalIncludeDirectories(std::vector<LPCWSTR>& args)
     }
 }
 
-CompilerUtil& ShaderCache::GetCompilerUtil()
+CompilerUtil& ShaderCompiler::GetCompilerUtil()
 {
     thread_local CompilerUtil GCompilerUtil;
     return GCompilerUtil;
 }
 
-std::optional<std::size_t> ShaderCache::GetShaderHash(const RHIShader& shader) const
+std::optional<std::size_t> ShaderCompiler::GetShaderHash(const RHIShader& shader) const
 {
     ComPtr<IDxcBlobEncoding> shaderBlobUTF8;
     u32 codePage = CP_UTF8;
@@ -143,8 +143,8 @@ std::optional<std::size_t> ShaderCache::GetShaderHash(const RHIShader& shader) c
     return std::nullopt;
 }
 
-std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
-                                                            const ShaderResourceContext& resourceContext)
+std::expected<void, std::string> ShaderCompiler::CompileShader(RHIShader& shader,
+                                                               const ShaderResourceContext& resourceContext)
 {
     // Generate the hash if this is the first time we've compiled this shader.
     if (shader.version == 0)
@@ -209,7 +209,7 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
 
     rhi->ModifyShaderCompilerEnvironment(args, defines);
 
-    if (debugShaders)
+    if (compilerSettings.enableShaderDebugging)
     {
         args.insert(args.end(),
                     {
@@ -218,6 +218,11 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
                         DXC_ARG_DEBUG_NAME_FOR_SOURCE,
                         L"-Qembed_debug",
                     });
+    }
+
+    if (compilerSettings.enableHLSL202xFeatures)
+    {
+        args.insert(args.end(), HLSL202xFlags);
     }
 
     FillInAdditionalIncludeDirectories(args);
@@ -320,7 +325,7 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
     return {};
 }
 
-RHIShader* ShaderCache::GetShader(const ShaderKey& key, const ShaderResourceContext& resourceContext)
+RHIShader* ShaderCompiler::GetShader(const ShaderKey& key, const ShaderResourceContext& resourceContext)
 {
     RHIShader* shaderPtr;
     if (shaderCache.contains(key))
@@ -339,13 +344,13 @@ RHIShader* ShaderCache::GetShader(const ShaderKey& key, const ShaderResourceCont
         auto result = CompileShader(*shaderPtr, resourceContext);
         if (!result.has_value())
         {
-            if (debugShaders)
+            if (compilerSettings.enableShaderDebugging)
             {
                 shaderPtr->isErrored = true;
                 compilationErrors.emplace_back(key, result.error());
             }
             // If we're not in a debugShaders context, a non-compiling shader is fatal.
-            VEX_LOG(debugShaders ? Error : Fatal,
+            VEX_LOG(compilerSettings.enableShaderDebugging ? Error : Fatal,
                     "Failed to compile shader:\n\t- {}:\n\t- Reason: {}",
                     key,
                     result.error());
@@ -355,7 +360,7 @@ RHIShader* ShaderCache::GetShader(const ShaderKey& key, const ShaderResourceCont
     return shaderPtr;
 }
 
-std::pair<bool, std::size_t> ShaderCache::IsShaderStale(const RHIShader& shader) const
+std::pair<bool, std::size_t> ShaderCompiler::IsShaderStale(const RHIShader& shader) const
 {
     if (!std::filesystem::exists(shader.key.path))
     {
@@ -373,7 +378,7 @@ std::pair<bool, std::size_t> ShaderCache::IsShaderStale(const RHIShader& shader)
     return { isShaderStale, *newHash };
 }
 
-void ShaderCache::MarkShaderDirty(const ShaderKey& key)
+void ShaderCompiler::MarkShaderDirty(const ShaderKey& key)
 {
     auto shader = shaderCache.find(key);
     if (shader == shaderCache.end())
@@ -389,7 +394,7 @@ void ShaderCache::MarkShaderDirty(const ShaderKey& key)
     shader->second->isErrored = false;
 }
 
-void ShaderCache::MarkAllShadersDirty()
+void ShaderCompiler::MarkAllShadersDirty()
 {
     for (auto& shader : shaderCache | std::views::values)
     {
@@ -400,7 +405,7 @@ void ShaderCache::MarkAllShadersDirty()
     VEX_LOG(Info, "Marked all shaders for recompilation...");
 }
 
-void ShaderCache::MarkAllStaleShadersDirty()
+void ShaderCompiler::MarkAllStaleShadersDirty()
 {
     u32 numStaleShaders = 0;
     for (auto& shader : shaderCache | std::views::values)
@@ -417,12 +422,12 @@ void ShaderCache::MarkAllStaleShadersDirty()
     VEX_LOG(Info, "Marked {} shader(s) for recompilation...", numStaleShaders);
 }
 
-void ShaderCache::SetCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback)
+void ShaderCompiler::SetCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback)
 {
     errorsCallback = callback;
 }
 
-void ShaderCache::FlushCompilationErrors()
+void ShaderCompiler::FlushCompilationErrors()
 {
     // If user requests a recompilation (depends on the callback), remove the isErrored flag from all errored shaders.
     if (errorsCallback && errorsCallback(compilationErrors))

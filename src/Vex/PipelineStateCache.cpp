@@ -12,10 +12,10 @@ PipelineStateCache::PipelineStateCache(RHI* rhi,
                                        RHIDescriptorPool& descriptorPool,
                                        const FeatureChecker& featureChecker,
                                        ResourceCleanup* resourceCleanup,
-                                       bool enableShaderDebugging)
+                                       const ShaderCompilerSettings& compilerSettings)
     : rhi(rhi)
     , resourceCleanup(resourceCleanup)
-    , shaderCache(rhi, enableShaderDebugging)
+    , shaderCache(rhi, compilerSettings)
     , resourceLayout(rhi->CreateResourceLayout(featureChecker, descriptorPool))
 {
 }
@@ -97,7 +97,7 @@ const RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const
     return ps;
 }
 
-ShaderCache& PipelineStateCache::GetShaderCache()
+ShaderCompiler& PipelineStateCache::GetShaderCache()
 {
     return shaderCache;
 }

@@ -84,7 +84,7 @@ GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& des
                                  *descriptorPool,
                                  *physicalDevice->featureChecker,
                                  &resourceCleanup,
-                                 description.enableShaderDebugging);
+                                 description.shaderCompilerSettings);
 
     swapChain = rhi->CreateSwapChain({ .format = description.swapChainFormat,
                                        .frameBuffering = description.frameBuffering,
@@ -242,7 +242,7 @@ Texture GfxBackend::GetCurrentBackBuffer()
 
 void GfxBackend::RecompileAllShaders()
 {
-    if (description.enableShaderDebugging)
+    if (description.shaderCompilerSettings.enableShaderDebugging)
     {
         psCache.GetShaderCache().MarkAllShadersDirty();
     }
@@ -254,7 +254,7 @@ void GfxBackend::RecompileAllShaders()
 
 void GfxBackend::SetShaderCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback)
 {
-    if (description.enableShaderDebugging)
+    if (description.shaderCompilerSettings.enableShaderDebugging)
     {
         psCache.GetShaderCache().SetCompilationErrorsCallback(callback);
     }
@@ -266,7 +266,7 @@ void GfxBackend::SetShaderCompilationErrorsCallback(std::function<ShaderCompileE
 
 void GfxBackend::RecompileChangedShaders()
 {
-    if (description.enableShaderDebugging)
+    if (description.shaderCompilerSettings.enableShaderDebugging)
     {
         psCache.GetShaderCache().MarkAllStaleShadersDirty();
     }

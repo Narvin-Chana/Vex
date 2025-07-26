@@ -31,8 +31,7 @@ struct BackendDescription
     FrameBuffering frameBuffering = FrameBuffering::Triple;
     bool enableGPUDebugLayer = !VEX_SHIPPING;
     bool enableGPUBasedValidation = !VEX_SHIPPING;
-    // Enables shader hot reloading and includes debug symbols in shaders for graphics debugging purposes.
-    bool enableShaderDebugging = !VEX_SHIPPING;
+    ShaderCompilerSettings shaderCompilerSettings;
 };
 
 class GfxBackend
@@ -113,7 +112,7 @@ private:
     FreeList<UniqueHandle<RHITexture>, TextureHandle> textureRegistry;
     FreeList<UniqueHandle<RHIBuffer>, BufferHandle> bufferRegistry;
 
-    inline static constexpr u32 DefaultRegistrySize = 1024;
+    static constexpr u32 DefaultRegistrySize = 1024;
 
     friend class CommandContext;
 };
