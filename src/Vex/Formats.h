@@ -94,7 +94,7 @@ bool FormatIsDepthStencilCompatible(TextureFormat format);
 // clang-format off
 
 VEX_MAKE_HASHABLE(vex::TextureFormat,
-    VEX_HASH_COMBINE_ENUM(seed, obj);
+    VEX_HASH_COMBINE(seed, obj);
 );
 
 // clang-format on

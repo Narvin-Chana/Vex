@@ -39,9 +39,9 @@ struct DX12TextureView
 
 // clang-format off
 VEX_MAKE_HASHABLE(vex::dx12::DX12TextureView,
-    VEX_HASH_COMBINE_ENUM(seed, obj.type);
-    VEX_HASH_COMBINE_ENUM(seed, obj.dimension);
-    VEX_HASH_COMBINE_ENUM(seed, obj.format);
+    VEX_HASH_COMBINE(seed, obj.type);
+    VEX_HASH_COMBINE(seed, obj.dimension);
+    VEX_HASH_COMBINE(seed, obj.format);
     VEX_HASH_COMBINE(seed, obj.mipBias);
     VEX_HASH_COMBINE(seed, obj.mipCount);
     VEX_HASH_COMBINE(seed, obj.startSlice);
