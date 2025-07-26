@@ -10,6 +10,7 @@
 #include <Vex/RHI/RHIShader.h>
 #include <Vex/ShaderGen.h>
 #include <Vex/ShaderResourceContext.h>
+#include <Vex/TextureSampler.h>
 
 namespace vex
 {
@@ -165,19 +166,28 @@ std::expected<void, std::string> ShaderCache::CompileShader(RHIShader& shader,
 
     std::string shaderFileStr = ShaderGenGeneralMacros;
 
+    // Auto-generate shader static sampler bindings.
+    shaderFileStr.append("// SAMPLERS -------------------------\n");
+    for (u32 i = 0; i < resourceContext.samplers.size(); ++i)
+    {
+        const TextureSampler& sampler = resourceContext.samplers[i];
+        shaderFileStr.append(std::format("SamplerState {} : register(s{}, space0);\n", sampler.name, i));
+    }
+
     // Auto-generate shader constants bindings.
+    shaderFileStr.append("// GENERATED CONSTANTS -------------------------\n");
     shaderFileStr.append("struct zzzZZZ___GeneratedConstants\n{");
     for (std::string& name : resourceContext.GenerateShaderBindings())
     {
         // Remove spaces, we suppose that the user will not use any tabs or other cursed characters.
         std::replace(name.begin(), name.end(), ' ', '_');
-        shaderFileStr.append(std::format("uint {}_bindlessIndex;", name));
+        shaderFileStr.append(std::format("uint {}_bindlessIndex;\n", name));
     }
     // For now we suppose that the register b0 is used for the generated constants buffer (since local constants aren't
     // yet supported).
     shaderFileStr.append(
         "};\nVEX_LOCAL_CONSTANT ConstantBuffer<zzzZZZ___GeneratedConstants> zzzZZZ___GeneratedConstantsCB: "
-        "register(b0);");
+        "register(b0);\n");
 
     // VEX_GLOBAL_RESOURCE and VEX_RESOURCE is how users will access resources, include macros that generate these.
     shaderFileStr.append(ShaderGenBindingMacros);

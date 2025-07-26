@@ -164,6 +164,7 @@ add_library(Vex STATIC
     "src/Vex/ShaderResourceContext.h"
     "src/Vex/ShaderResourceContext.cpp"
     "src/Vex/ShaderGen.h"
+    "src/Vex/TextureSampler.h"
     "src/Vex/GraphicsPipeline.h"
     "src/Vex/DrawHelpers.h"
 )

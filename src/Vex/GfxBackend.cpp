@@ -264,6 +264,11 @@ void GfxBackend::SetShaderCompilationErrorsCallback(std::function<ShaderCompileE
     }
 }
 
+void GfxBackend::SetSamplers(std::span<TextureSampler> newSamplers)
+{
+    psCache.GetResourceLayout().SetSamplers(newSamplers);
+}
+
 void GfxBackend::RecompileChangedShaders()
 {
     if (description.enableShaderDebugging)

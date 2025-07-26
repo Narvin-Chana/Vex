@@ -4,9 +4,9 @@
 #include <utility>
 
 #include <Vex/Logger.h>
-
 #include <Vex/Platform/Windows/HResult.h>
 
+#include <DX12/DX12TextureSampler.h>
 #include <DX12/HRChecker.h>
 
 namespace vex::dx12
@@ -77,13 +77,14 @@ void DX12ResourceLayout::CompileRootSignature()
         rootSignatureDWORDCount += 2;
     }
 
-    // TODO: add static samplers!
+    std::vector<D3D12_STATIC_SAMPLER_DESC> dxSamplers =
+        GraphicsPipeline::GetDX12StaticSamplersFromTextureSamplers(samplers);
 
     CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc =
         CD3DX12_ROOT_SIGNATURE_DESC(static_cast<u32>(rootParameters.size()),
                                     rootParameters.data(),
-                                    0,
-                                    nullptr,
+                                    dxSamplers.size(),
+                                    dxSamplers.data(),
                                     D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
                                         D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED 
             // Evaluate the usefulness of bindless samplers, static samplers seem to be easier to map to how Vulkan works.
