@@ -299,6 +299,12 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
 
 void VkCommandList::Transition(RHITexture& texture, RHITextureState::Flags newState)
 {
+    // Nothing to do if the states are already equal.
+    if (texture.GetCurrentState() == newState)
+    {
+        return;
+    }
+
     auto& vkTexture = reinterpret_cast<VkTexture&>(texture);
     auto memBarrier = GetMemoryBarrierFrom(vkTexture, newState);
 
@@ -313,8 +319,19 @@ void VkCommandList::Transition(std::span<std::pair<RHITexture&, RHITextureState:
 
     for (auto& [rhiTexture, flags] : textureNewStatePairs)
     {
+        // Nothing to do if the states are already equal.
+        if (flags == rhiTexture.GetCurrentState())
+        {
+            continue;
+        }
         auto& vkTexture = reinterpret_cast<VkTexture&>(rhiTexture);
         barriers.push_back(GetMemoryBarrierFrom(vkTexture, flags));
+    }
+
+    // No transitions means our job is done.
+    if (barriers.empty())
+    {
+        return;
     }
 
     commandBuffer->pipelineBarrier2(
