@@ -49,7 +49,7 @@ private:
     std::vector<u8> blob;
     std::size_t hash = 0;
 
-    friend struct ShaderCache;
+    friend struct ShaderCompiler;
 };
 
 } // namespace vex

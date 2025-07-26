@@ -116,7 +116,7 @@ void HelloTriangleGraphicsApplication::Run()
 {
     static std::filesystem::path shaderFolderPath =
         std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() / "examples" /
-        "example_hello_triangle_graphics_pipeline";
+        "hello_triangle_graphics_pipeline";
 
     while (!glfwWindowShouldClose(window))
     {

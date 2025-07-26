@@ -85,7 +85,7 @@ GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& des
 
     descriptorPool = rhi->CreateDescriptorPool();
 
-    psCache = PipelineStateCache(rhi.get(), *descriptorPool, &resourceCleanup, description.enableShaderDebugging);
+    psCache = PipelineStateCache(rhi.get(), *descriptorPool, &resourceCleanup, description.shaderCompilerSettings);
 
     swapChain = rhi->CreateSwapChain({ .format = description.swapChainFormat,
                                        .frameBuffering = description.frameBuffering,
@@ -150,7 +150,7 @@ void GfxBackend::EndFrame(bool isFullscreenMode)
     GetCurrentCommandPool().ReclaimAllCommandListMemory();
 
     // Send all shader errors to the user, only done on frame end, not on GPU flush.
-    psCache.GetShaderCache().FlushCompilationErrors();
+    psCache.GetShaderCompiler().FlushCompilationErrors();
 }
 
 CommandContext GfxBackend::BeginScopedCommandContext(CommandQueueType queueType)
@@ -259,9 +259,9 @@ Texture GfxBackend::GetCurrentBackBuffer()
 
 void GfxBackend::RecompileAllShaders()
 {
-    if (description.enableShaderDebugging)
+    if (description.shaderCompilerSettings.enableShaderDebugging)
     {
-        psCache.GetShaderCache().MarkAllShadersDirty();
+        psCache.GetShaderCompiler().MarkAllShadersDirty();
     }
     else
     {
@@ -271,9 +271,9 @@ void GfxBackend::RecompileAllShaders()
 
 void GfxBackend::SetShaderCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback)
 {
-    if (description.enableShaderDebugging)
+    if (description.shaderCompilerSettings.enableShaderDebugging)
     {
-        psCache.GetShaderCache().SetCompilationErrorsCallback(callback);
+        psCache.GetShaderCompiler().SetCompilationErrorsCallback(callback);
     }
     else
     {
@@ -288,9 +288,9 @@ void GfxBackend::SetSamplers(std::span<TextureSampler> newSamplers)
 
 void GfxBackend::RecompileChangedShaders()
 {
-    if (description.enableShaderDebugging)
+    if (description.shaderCompilerSettings.enableShaderDebugging)
     {
-        psCache.GetShaderCache().MarkAllStaleShadersDirty();
+        psCache.GetShaderCompiler().MarkAllStaleShadersDirty();
     }
     else
     {

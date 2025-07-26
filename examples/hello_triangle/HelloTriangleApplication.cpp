@@ -121,7 +121,7 @@ void HelloTriangleApplication::Run()
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
             ctx.Dispatch(
                 { .path = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() /
-                          "examples" / "example_hello_triangle" / "HelloTriangleShader.cs.hlsl",
+                          "examples" / "hello_triangle" / "HelloTriangleShader.cs.hlsl",
                   .entryPoint = "CSMain",
                   .type = vex::ShaderType::ComputeShader },
                 {},
@@ -130,7 +130,7 @@ void HelloTriangleApplication::Run()
                 { static_cast<uint32_t>(width) / 8, static_cast<uint32_t>(height) / 8, 1 });
             ctx.Dispatch(
                 { .path = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() /
-                          "examples" / "example_hello_triangle" / "HelloTriangleShader2.cs.hlsl",
+                          "examples" / "hello_triangle" / "HelloTriangleShader2.cs.hlsl",
                   .entryPoint = "CSMain",
                   .type = vex::ShaderType::ComputeShader },
                 {},
