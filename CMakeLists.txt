@@ -235,9 +235,9 @@ endif()
 
 # Disable exceptions across the board.
 target_compile_options(Vex PRIVATE
-    $<$<CXX_COMPILER_ID:MSVC>:/EHs-c- /D_HAS_EXCEPTIONS=0 /EHs-c- /D_HAS_EXCEPTIONS=0 /wd4530>  # MSVC: disable exceptions
-    $<$<CXX_COMPILER_ID:Clang>:-fno-exceptions>             # Clang: disable exceptions  
-    $<$<CXX_COMPILER_ID:GNU>:-fno-exceptions>               # GCC: disable exceptions
+    $<$<CXX_COMPILER_ID:MSVC>:/EHs-c- /wd4530 /D_HAS_EXCEPTIONS=0>  # MSVC: disable exceptions, suppress warning for exception handler
+    $<$<CXX_COMPILER_ID:Clang>:-fno-exceptions>                     # Clang: disable exceptions  
+    $<$<CXX_COMPILER_ID:GNU>:-fno-exceptions>                       # GCC: disable exceptions
 )
 
 # =========================================
