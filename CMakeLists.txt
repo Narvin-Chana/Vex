@@ -81,7 +81,6 @@ set(VEX_ENABLE_VULKAN OFF)
 
 if(VEX_SELECTED_BACKEND STREQUAL "DX12")
     set(VEX_ENABLE_DX12 ON)
-    add_compile_definitions(NOMINMAX)
 elseif(VEX_SELECTED_BACKEND STREQUAL "VULKAN")
     set(VEX_ENABLE_VULKAN ON)
 else()
@@ -224,14 +223,21 @@ target_compile_definitions(Vex PUBLIC VEX_DX12=$<BOOL:${VEX_ENABLE_DX12}> VEX_VU
 
 if(WIN32)
     # Avoid windows polluting the code with macros.
-    target_compile_definitions(Vex PUBLIC NOMINMAX WIN32_MEAN_AND_LEAN)
+    target_compile_definitions(Vex PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN)
+endif()
+
+# Remove MSVC's default exception handling flags
+if(MSVC)
+    string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    string(REPLACE "/EHs" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    string(REPLACE "/EHc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 endif()
 
 # Disable exceptions across the board.
 target_compile_options(Vex PRIVATE
-    $<$<CXX_COMPILER_ID:MSVC>:/EHs-c->           # MSVC: disable exceptions
-    $<$<CXX_COMPILER_ID:Clang>:-fno-exceptions>   # Clang: disable exceptions  
-    $<$<CXX_COMPILER_ID:GNU>:-fno-exceptions>     # GCC: disable exceptions
+    $<$<CXX_COMPILER_ID:MSVC>:/EHs-c- /D_HAS_EXCEPTIONS=0 /EHs-c- /D_HAS_EXCEPTIONS=0 /wd4530>  # MSVC: disable exceptions
+    $<$<CXX_COMPILER_ID:Clang>:-fno-exceptions>             # Clang: disable exceptions  
+    $<$<CXX_COMPILER_ID:GNU>:-fno-exceptions>               # GCC: disable exceptions
 )
 
 # =========================================
