@@ -28,8 +28,8 @@ struct VkTextureViewDesc
 
 // clang-format off
 VEX_MAKE_HASHABLE(vex::vk::VkTextureViewDesc,
-    VEX_HASH_COMBINE_ENUM(seed, obj.viewType);
-    VEX_HASH_COMBINE_ENUM(seed, obj.format);
+    VEX_HASH_COMBINE(seed, obj.viewType);
+    VEX_HASH_COMBINE(seed, obj.format);
     VEX_HASH_COMBINE(seed, obj.mipBias);
     VEX_HASH_COMBINE(seed, obj.mipCount);
     VEX_HASH_COMBINE(seed, obj.startSlice);

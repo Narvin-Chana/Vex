@@ -49,7 +49,7 @@ VEX_MAKE_HASHABLE(vex::ShaderDefine,
 VEX_MAKE_HASHABLE(vex::ShaderKey, 
     VEX_HASH_COMBINE(seed, obj.path);
     VEX_HASH_COMBINE(seed, obj.entryPoint);
-    VEX_HASH_COMBINE_ENUM(seed, obj.type);
+    VEX_HASH_COMBINE(seed, obj.type);
     VEX_HASH_COMBINE_CONTAINER(seed, obj.defines);
 );
 

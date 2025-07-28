@@ -24,7 +24,7 @@ float sdf(float2 p)
     float2 uv = float2(dtid.xy) / max(width, height).xx * 2 - 1;
     uv.y += 0.25f;
     uv.y *= -1;
-    uv /= 0.5f;
+    uv /= 0.63f;
 
     if (sdf(uv) < 0)
     {
