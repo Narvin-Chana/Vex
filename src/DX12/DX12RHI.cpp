@@ -84,7 +84,7 @@ std::vector<UniqueHandle<PhysicalDevice>> DX12RHI::EnumeratePhysicalDevices()
 
 void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
 {
-    device = DXGIFactory::CreateDevice(
+    device = DXGIFactory::CreateDeviceStrict(
         static_cast<DX12PhysicalDevice*>(physicalDevice.get())->adapter.Get(),
         DX12FeatureChecker::ConvertFeatureLevelToDX12FeatureLevel(physicalDevice->featureChecker->GetFeatureLevel()));
     VEX_ASSERT(device.Get(), "D3D12 device creation must succeed");

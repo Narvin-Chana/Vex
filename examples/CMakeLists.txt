@@ -33,8 +33,8 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
     if (EXAMPLE_SOURCES)
         add_executable(${EXAMPLE_NAME} ${EXAMPLE_SOURCES} "ExampleApplication.h" "ExampleApplication.cpp")
 
-        # Setup the d3d12 agility sdk
-        vex_setup_d3d12_agility_runtime(${EXAMPLE_NAME})
+        # Setup the runtime dependencies of Vex
+        vex_setup_runtime(${EXAMPLE_NAME})
 
         if(UNIX)
             link_with_dxc(${EXAMPLE_NAME})
