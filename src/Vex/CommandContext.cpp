@@ -179,16 +179,29 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
     // Transforms ResourceBinding into platform specific views, then binds them to the shader (preferably bindlessly).
     cmdList->SetLayoutResources(resourceLayout, rhiTextureBindings, rhiBufferBindings, *backend->descriptorPool);
 
-    auto pipelineState = backend->GetPipelineStateCache().GetGraphicsPipelineState(
-        GetGraphicsPSOKeyFromDrawDesc(drawDesc, drawResources.renderTargets, drawResources.depthStencil),
-        ShaderResourceContext{ rhiTextureBindings, rhiBufferBindings });
-    if (!pipelineState)
-    {
-        return;
-    }
-    cmdList->SetPipelineState(*pipelineState);
+    auto graphicsPSOKey =
+        GetGraphicsPSOKeyFromDrawDesc(drawDesc, drawResources.renderTargets, drawResources.depthStencil);
 
-    cmdList->SetInputAssembly(drawDesc.inputAssembly);
+    if (!cachedGraphicsPSOKey || graphicsPSOKey != *cachedGraphicsPSOKey)
+    {
+        auto pipelineState = backend->GetPipelineStateCache().GetGraphicsPipelineState(
+            graphicsPSOKey,
+            ShaderResourceContext{ rhiTextureBindings, rhiBufferBindings });
+        // No valid PSO means we cannot proceed.
+        if (!pipelineState)
+        {
+            return;
+        }
+
+        cmdList->SetPipelineState(*pipelineState);
+        cachedGraphicsPSOKey = graphicsPSOKey;
+    }
+
+    if (!cachedInputAssembly || drawDesc.inputAssembly != cachedInputAssembly)
+    {
+        cmdList->SetInputAssembly(drawDesc.inputAssembly);
+        cachedInputAssembly = drawDesc.inputAssembly;
+    }
 
     // TODO: Validate draw vertex count (eg: versus the currently used index buffer size)
 
@@ -303,18 +316,23 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     // Transforms ResourceBinding into platform specific views, then binds them to the shader (preferably bindlessly).
     cmdList->SetLayoutResources(resourceLayout, rhiTextureBindings, rhiBufferBindings, *backend->descriptorPool);
 
-    // Register shader and get Pipeline if exists (if not create it).
-    // TODO: If we would want to add the shader code-gen to fill-in bindless resources automatically, we'd also have to
-    // pass in the reads, writes and constants here.
-    auto pipelineState =
-        backend->GetPipelineStateCache().GetComputePipelineState({ .computeShader = shader },
-                                                                 { rhiTextureBindings, rhiBufferBindings });
+    ComputePipelineStateKey psoKey = { .computeShader = shader };
 
-    if (!pipelineState)
+    if (!cachedComputePSOKey || psoKey != cachedComputePSOKey)
     {
-        return;
+        // Register shader and get Pipeline if exists (if not create it).
+        auto pipelineState =
+            backend->GetPipelineStateCache().GetComputePipelineState(psoKey, { rhiTextureBindings, rhiBufferBindings });
+
+        // Nothing more to do if the PSO is invalid.
+        if (!pipelineState)
+        {
+            VEX_LOG(Error, "PSO cache returned an invalid pipeline state, unable to continue dispatch...");
+            return;
+        }
+        cmdList->SetPipelineState(*pipelineState);
+        cachedComputePSOKey = psoKey;
     }
-    cmdList->SetPipelineState(*pipelineState);
 
     // Validate dispatch (vs platform/api constraints)
     // backend->ValidateDispatch(groupCount);

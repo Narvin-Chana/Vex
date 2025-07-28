@@ -373,10 +373,9 @@ void DX12CommandList::Transition(std::span<std::pair<RHITexture&, RHITextureStat
         DX12Texture& dxTexture = reinterpret_cast<DX12Texture&>(texture);
         D3D12_RESOURCE_BARRIER resourceBarrier =
             CD3DX12_RESOURCE_BARRIER::Transition(dxTexture.GetRawTexture(), currentDX12State, newDX12State);
+        transitionBarriers.push_back(std::move(resourceBarrier));
 
         texture.SetCurrentState(newState);
-
-        transitionBarriers.push_back(std::move(resourceBarrier));
     }
 
     if (!transitionBarriers.empty())
