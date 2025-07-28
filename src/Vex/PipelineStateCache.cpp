@@ -27,8 +27,8 @@ RHIResourceLayout& PipelineStateCache::GetResourceLayout()
     return *resourceLayout;
 }
 
-const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
-    const RHIGraphicsPipelineState::Key& key, const ShaderResourceContext& resourceContext)
+const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(const RHIGraphicsPipelineState::Key& key,
+                                                                             ShaderResourceContext resourceContext)
 {
     RHIGraphicsPipelineState* ps;
     if (graphicsPSCache.contains(key))
@@ -40,6 +40,9 @@ const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
         graphicsPSCache[key] = rhi->CreateGraphicsPipelineState(key);
         ps = graphicsPSCache[key].get();
     }
+
+    // Add samplers to the resourceContext
+    resourceContext.samplers = resourceLayout->GetStaticSamplers();
 
     auto vertexShader = shaderCache.GetShader(ps->key.vertexShader, resourceContext);
     auto pixelShader = shaderCache.GetShader(ps->key.pixelShader, resourceContext);
@@ -64,7 +67,7 @@ const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
 }
 
 const RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const RHIComputePipelineState::Key& key,
-                                                                           const ShaderResourceContext& resourceContext)
+                                                                           ShaderResourceContext resourceContext)
 {
     RHIComputePipelineState* ps;
     if (computePSCache.contains(key))
@@ -76,6 +79,9 @@ const RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const
         computePSCache[key] = rhi->CreateComputePipelineState(key);
         ps = computePSCache[key].get();
     }
+
+    // Add samplers to the resourceContext
+    resourceContext.samplers = resourceLayout->GetStaticSamplers();
 
     auto shader = shaderCache.GetShader(ps->key.computeShader, resourceContext);
     if (!shader->IsValid())

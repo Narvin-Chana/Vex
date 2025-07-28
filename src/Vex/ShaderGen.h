@@ -1,6 +1,8 @@
 #pragma once
 
 constexpr const char* ShaderGenGeneralMacros = R"(
+// GENERAL MACROS -------------------------
+
 #if defined(VEX_DX12)
 
 #define VEX_LOCAL_CONSTANT
@@ -13,6 +15,9 @@ constexpr const char* ShaderGenGeneralMacros = R"(
 )";
 
 constexpr const char* ShaderGenBindingMacros = R"(
+
+// BINDING MACROS -------------------------
+
 #if defined(VEX_DX12)
 
 #define VEX_GLOBAL_RESOURCE(type, name) static type name = ResourceDescriptorHeap[zzzZZZ___GeneratedConstantsCB.name##_bindlessIndex]

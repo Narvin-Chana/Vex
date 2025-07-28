@@ -7,6 +7,7 @@
 #include <Vex/RHI/RHIFwd.h>
 #include <Vex/RHI/RHIPipelineState.h>
 #include <Vex/ShaderCompiler.h>
+#include <Vex/ShaderResourceContext.h>
 #include <Vex/UniqueHandle.h>
 
 namespace vex
@@ -14,13 +15,14 @@ namespace vex
 
 struct ShaderKey;
 class FeatureChecker;
-struct ShaderResourceContext;
 
 class PipelineStateCache
 {
 public:
     PipelineStateCache() = default;
-    PipelineStateCache(RHI* rhi, RHIDescriptorPool& descriptorPool, const FeatureChecker& featureChecker,
+    PipelineStateCache(RHI* rhi,
+                       RHIDescriptorPool& descriptorPool,
+                       const FeatureChecker& featureChecker,
                        ResourceCleanup* resourceCleanup,
                        bool enableShaderDebugging);
     ~PipelineStateCache();
@@ -34,9 +36,9 @@ public:
     RHIResourceLayout& GetResourceLayout();
 
     const RHIGraphicsPipelineState* GetGraphicsPipelineState(const RHIGraphicsPipelineState::Key& key,
-                                                             const ShaderResourceContext& resourceContext);
+                                                             ShaderResourceContext resourceContext);
     const RHIComputePipelineState* GetComputePipelineState(const RHIComputePipelineState::Key& key,
-                                                           const ShaderResourceContext& resourceContext);
+                                                           ShaderResourceContext resourceContext);
 
     ShaderCache& GetShaderCache();
 

@@ -48,6 +48,9 @@ HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
 
+    std::vector<vex::TextureSampler> samplers{ vex::TextureSampler{ .name = "MySampler" } };
+    graphics->SetSamplers(samplers);
+
     workingTexture =
         graphics->CreateTexture({ .name = "Working Texture",
                                   .type = vex::TextureType::Texture2D,

@@ -22,6 +22,7 @@ namespace vex
 class CommandContext;
 struct PhysicalDevice;
 struct Texture;
+struct TextureSampler;
 
 struct BackendDescription
 {
@@ -41,24 +42,34 @@ public:
     GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& description);
     ~GfxBackend();
 
+    // Start of the frame, sets up the swapchain and backbuffers.
     void StartFrame();
+
+    // Ends the frame by presenting to the swapchain. Contains a CPU-blocking wait until the next backbuffer is
+    // available.
     void EndFrame(bool isFullscreenMode);
 
+    // Begin a scoped CommandContext in which GPU commands can be submitted. The command context will automatically
+    // submit its commands upon destruction.
     CommandContext BeginScopedCommandContext(CommandQueueType queueType);
 
     // Creates a new texture, the handle passed back should be kept.
     Texture CreateTexture(TextureDescription description, ResourceLifetime lifetime);
     // Destroys a texture, the handle passed in must be the one obtained from calling CreateTexture earlier.
-    // Once destroyed the handle passed in is invalid and should no longer be used.
+    // Once destroyed, the handle passed in is invalid and should no longer be used.
     void DestroyTexture(const Texture& texture);
 
     // Flushes all current GPU commands.
     void FlushGPU();
 
+    // Enables or disables vsync when presenting.
     void SetVSync(bool useVSync);
 
+    // Called when the underlying window resizes, allows the swapchain to be resized.
     void OnWindowResized(u32 newWidth, u32 newHeight);
 
+    // Obtains the current backbuffer texture, should not be stored from frame to frame, as a previously obtained
+    // backbuffer could no longer be available.
     Texture GetCurrentBackBuffer();
 
     // Recompiles all shader which have changed since the last compilation. Useful for shader development and
@@ -67,6 +78,8 @@ public:
     // Recompiles all shaders, could cause a big hitch depending on how many shaders your application uses.
     void RecompileAllShaders();
     void SetShaderCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback);
+
+    void SetSamplers(std::span<TextureSampler> newSamplers);
 
 private:
     void EndCommandContext(RHICommandList& cmdList);
