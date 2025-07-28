@@ -5,6 +5,7 @@
 
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/RHI/RHIFwd.h>
+#include <Vex/RHI/RHIPipelineState.h>
 #include <Vex/ShaderKey.h>
 #include <Vex/Types.h>
 #include <Vex/UniqueHandle.h>
@@ -61,6 +62,13 @@ public:
 private:
     GfxBackend* backend;
     RHICommandList* cmdList;
+
+    // Used to avoid resetting the same state multiple times which can be costly on certain hardware.
+    // In general draws and dispatches are recommended to be grouped by PSO, so this caching can be very efficient
+    // versus binding everything each time.
+    std::optional<GraphicsPipelineStateKey> cachedGraphicsPSOKey = std::nullopt;
+    std::optional<ComputePipelineStateKey> cachedComputePSOKey = std::nullopt;
+    std::optional<InputAssembly> cachedInputAssembly = std::nullopt;
 };
 
 } // namespace vex

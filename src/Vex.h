@@ -5,6 +5,8 @@
 #include <Vex/DrawHelpers.h>
 #include <Vex/FeatureChecker.h>
 #include <Vex/GfxBackend.h>
+#include <Vex/GraphicsPipeline.h>
+#include <Vex/TextureSampler.h>
 
 namespace vex
 {
@@ -14,6 +16,6 @@ enum class GraphicsAPI : u8
     Vulkan
 };
 
-UniqueHandle<GfxBackend> CreateGraphicsBackend(GraphicsAPI api, const BackendDescription& description);
+UniqueHandle<GfxBackend> CreateGraphicsBackend(const BackendDescription& description);
 
 } // namespace vex

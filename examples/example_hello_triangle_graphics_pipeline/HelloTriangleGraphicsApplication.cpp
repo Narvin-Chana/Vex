@@ -42,19 +42,14 @@ HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
     vex::PlatformWindowHandle platformWindow{ .window = glfwGetX11Window(window), .display = glfwGetX11Display() };
 #endif
 
-#define USE_VULKAN 0
+    graphics = CreateGraphicsBackend(vex::BackendDescription{
+        .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
+        .swapChainFormat = vex::TextureFormat::RGBA8_UNORM,
+        .enableGPUDebugLayer = !VEX_SHIPPING,
+        .enableGPUBasedValidation = !VEX_SHIPPING });
 
-    graphics = CreateGraphicsBackend(
-#if VEX_VULKAN and USE_VULKAN
-        vex::GraphicsAPI::Vulkan,
-#else // VEX_DX12 and not FORCE_VULKAN
-        vex::GraphicsAPI::DirectX12,
-#endif
-        vex::BackendDescription{
-            .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
-            .swapChainFormat = vex::TextureFormat::RGBA8_UNORM,
-            .enableGPUDebugLayer = !VEX_SHIPPING,
-            .enableGPUBasedValidation = !VEX_SHIPPING });
+    std::vector<vex::TextureSampler> samplers{ vex::TextureSampler{ .name = "MySampler" } };
+    graphics->SetSamplers(samplers);
 
     workingTexture =
         graphics->CreateTexture({ .name = "Working Texture",

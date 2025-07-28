@@ -25,6 +25,9 @@ VkResourceLayout::VkResourceLayout(::vk::Device device,
 
     pipelineLayout = VEX_VK_CHECK <<= device.createPipelineLayoutUnique(createInfo);
 
+    // TODO(https://trello.com/c/SQBSUKw9): Add sampler support on the Vulkan side. This class contains the samplers,
+    // now we just have to bind them.
+
     version++;
 }
 

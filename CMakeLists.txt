@@ -33,60 +33,68 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -DVEX_DEBU
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DVEX_DEBUG=0 -DVEX_DEVELOPMENT=0 -DVEX_SHIPPING=1")
 
 # =========================================
-# Check for available graphics APIs
+# Graphics Backend Selection
 # =========================================
-message(STATUS "Checking for available graphics APIs...")
-set(VEX_AVAILABLE_BACKENDS "")
+message(STATUS "Configuring graphics backend...")
 
-# Check for DirectX 12 (Windows only)
-option(VEX_ENABLE_DX12 "Enable DirectX 12 backend if available" ON)
-if(WIN32)
-    add_compile_definitions(NOMINMAX)
-    if (VEX_ENABLE_DX12)
-        list(APPEND VEX_AVAILABLE_BACKENDS "DirectX12")
-    endif()
-else()
-    message(STATUS "DirectX SDK not supported on platforms other than WIN32.")
-    set(VEX_ENABLE_DX12 OFF)
-endif()
+# Define backend options
+set(VEX_GRAPHICS_BACKEND "AUTO" CACHE STRING "Graphics backend to use (AUTO, DX12, VULKAN)")
+set_property(CACHE VEX_GRAPHICS_BACKEND PROPERTY STRINGS "AUTO" "DX12" "VULKAN")
 
-# Check for Vulkan
-option(VEX_ENABLE_VULKAN "Enable Vulkan backend if available" ON)
-if(VEX_ENABLE_VULKAN)
-    find_package(Vulkan QUIET)
-    if(Vulkan_FOUND)
-        list(APPEND VEX_AVAILABLE_BACKENDS "Vulkan")
+# Determine which backend to use
+set(VEX_SELECTED_BACKEND "")
+
+if(VEX_GRAPHICS_BACKEND STREQUAL "AUTO")
+    # Auto-detect best available backend
+    if(WIN32)
+        set(VEX_SELECTED_BACKEND "DX12")
+        message(STATUS "Auto-selected DirectX 12 backend for Windows")
     else()
-        message(STATUS "Vulkan SDK not found, disabling Vulkan backend")
-        set(VEX_ENABLE_VULKAN OFF)
+        find_package(Vulkan QUIET)
+        if(Vulkan_FOUND)
+            set(VEX_SELECTED_BACKEND "VULKAN")
+            message(STATUS "Auto-selected Vulkan backend")
+        else()
+            message(FATAL_ERROR "No suitable graphics backend found. Vulkan SDK is required on non-Windows platforms.")
+        endif()
     endif()
+elseif(VEX_GRAPHICS_BACKEND STREQUAL "DX12")
+    if(NOT WIN32)
+        message(FATAL_ERROR "DirectX 12 backend is only available on Windows")
+    endif()
+    set(VEX_SELECTED_BACKEND "DX12")
+    message(STATUS "Explicitly selected DirectX 12 backend")
+elseif(VEX_GRAPHICS_BACKEND STREQUAL "VULKAN")
+    find_package(Vulkan QUIET)
+    if(NOT Vulkan_FOUND)
+        message(FATAL_ERROR "Vulkan SDK not found, cannot use Vulkan backend")
+    endif()
+    set(VEX_SELECTED_BACKEND "VULKAN")
+    message(STATUS "Explicitly selected Vulkan backend")
+else()
+    message(FATAL_ERROR "Invalid VEX_GRAPHICS_BACKEND: ${VEX_GRAPHICS_BACKEND}. Must be AUTO, DX12, or VULKAN")
 endif()
 
-# Report available backends
-message(STATUS "Available graphics backends: ${VEX_AVAILABLE_BACKENDS}")
+# Set backend flags
+set(VEX_ENABLE_DX12 OFF)
+set(VEX_ENABLE_VULKAN OFF)
 
-# Make sure we have at least one backend
-list(LENGTH VEX_AVAILABLE_BACKENDS NUM_BACKENDS)
-if(NUM_BACKENDS EQUAL 0)
-    message(ERROR "No graphics backends available. Some functionality may be limited.")
+if(VEX_SELECTED_BACKEND STREQUAL "DX12")
+    set(VEX_ENABLE_DX12 ON)
+    add_compile_definitions(NOMINMAX)
+elseif(VEX_SELECTED_BACKEND STREQUAL "VULKAN")
+    set(VEX_ENABLE_VULKAN ON)
+else()
+    message(FATAL_ERROR "No graphics backend was selected, please check your configuration.")
 endif()
+
+message(STATUS "Selected graphics backend: ${VEX_SELECTED_BACKEND}")
 
 # =========================================
 # DEPENDENCIES FETCHING
 # =========================================
 # Dependencies fetching uses the FetchContent module
 include(FetchContent)
-
-if (VEX_ENABLE_VULKAN)
-    # Fetch Vulkan-Hpp dependency
-    message(STATUS "Fetching VulkanHpp...")
-    FetchContent_Declare(
-        VulkanHpp
-        GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Hpp.git
-        GIT_TAG        v1.4.309
-    )
-    FetchContent_MakeAvailable(VulkanHpp)
-endif()
 
 # Fetch magic_enum dependency
 message(STATUS "Fetching magic_enum...")
@@ -96,38 +104,6 @@ FetchContent_Declare(
     GIT_TAG v0.9.7
 )
 FetchContent_MakeAvailable(magic_enum)
-
-# Fetch DX12 Agility SDK
-if (WIN32 AND VEX_ENABLE_DX12)
-    set(DX_AGILITY_VERSION "616")
-    set(AGILITY_SDK_DIR "${CMAKE_BINARY_DIR}/DirectX-AgilitySDK")
-    set(AGILITY_SDK_NUPKG "${CMAKE_BINARY_DIR}/agility_sdk.nupkg")
-
-    # Download the NuGet package if not already downloaded
-    if(NOT EXISTS "${AGILITY_SDK_DIR}/build")
-        message(STATUS "Downloading DX12 Agility SDK 1.${DX_AGILITY_VERSION}.0...")
-
-        file(DOWNLOAD
-            "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.${DX_AGILITY_VERSION}.0"
-            "${AGILITY_SDK_NUPKG}"
-        )
-
-        # NuGet packages are ZIP files with different extension
-        file(ARCHIVE_EXTRACT
-            INPUT "${AGILITY_SDK_NUPKG}"
-            DESTINATION "${AGILITY_SDK_DIR}"
-        )
-
-        message(STATUS "DirectX Agility SDK extracted to: ${AGILITY_SDK_DIR}")
-
-        # Clean up the downloaded package
-        file(REMOVE "${AGILITY_SDK_NUPKG}")
-    endif()
-
-    # Set the variables for use in functions
-    set(DX_AGILITY_SDK_VERSION ${DX_AGILITY_VERSION} CACHE STRING "DirectX Agility SDK Version" FORCE)
-    set(DX_AGILITY_SDK_SOURCE_DIR "${AGILITY_SDK_DIR}/build/native" CACHE PATH "DirectX Agility SDK Source Directory" FORCE)
-endif()
 # =========================================
 
 # Set static library output
@@ -188,18 +164,19 @@ add_library(Vex STATIC
     "src/Vex/ShaderResourceContext.h"
     "src/Vex/ShaderResourceContext.cpp"
     "src/Vex/ShaderGen.h"
+    "src/Vex/TextureSampler.h"
     "src/Vex/GraphicsPipeline.h"
     "src/Vex/DrawHelpers.h"
 )
 
-if (WIN32)
+if(WIN32)
     target_sources(Vex PRIVATE
         "src/Vex/Platform/Windows/WString.h"
         "src/Vex/Platform/Windows/HResult.h"
     )
 endif()
 
-if (LINUX)
+if(LINUX)
     target_sources(Vex PRIVATE
         "src/Vex/Platform/Linux/WString.h"
     )
@@ -211,171 +188,57 @@ target_include_directories(Vex PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
-# DX12 project files
-if (VEX_ENABLE_DX12)
-    set(VEX_DX12_SOURCES 
-        "src/DX12/DX12Headers.h"
-        "src/DX12/DX12Formats.h" 
-        "src/DX12/DX12FeatureChecker.h"
-        "src/DX12/DX12FeatureChecker.cpp"
-        "src/DX12/DX12RHI.h"
-        "src/DX12/DX12RHI.cpp"
-        "src/DX12/HRChecker.h"
-        "src/DX12/HRChecker.cpp"
-        "src/DX12/DXGIFactory.h"
-        "src/DX12/DXGIFactory.cpp"
-        "src/DX12/DX12PhysicalDevice.h"
-        "src/DX12/DX12PhysicalDevice.cpp"
-        "src/DX12/DX12Debug.h"
-        "src/DX12/DX12Debug.cpp"
-        "src/DX12/DX12Fence.h"
-        "src/DX12/DX12Fence.cpp"
-        "src/DX12/DX12CommandPool.h"
-        "src/DX12/DX12CommandPool.cpp"
-        "src/DX12/DX12CommandList.h"
-        "src/DX12/DX12CommandList.cpp"
-        "src/DX12/DX12SwapChain.h"
-        "src/DX12/DX12SwapChain.cpp"
-        "src/DX12/DX12Texture.h"
-        "src/DX12/DX12Texture.cpp"
-        "src/DX12/DX12PipelineState.h"
-        "src/DX12/DX12PipelineState.cpp"
-        "src/DX12/DX12Shader.h"
-        "src/DX12/DX12Shader.cpp"
-        "src/DX12/DX12ResourceLayout.h"
-        "src/DX12/DX12ResourceLayout.cpp"
-        "src/DX12/DX12DescriptorHeap.h"
-        "src/DX12/DX12DescriptorPool.h"
-        "src/DX12/DX12DescriptorPool.cpp"
-        "src/DX12/DX12States.h"
-        "src/DX12/DX12States.cpp"
-        "src/DX12/DX12GraphicsPipeline.h"
-        "src/DX12/DX12GraphicsPipeline.cpp"
-    )
-endif()
-
-# Vulkan project files
-if (VEX_ENABLE_VULKAN)
-    set(VEX_VULKAN_SOURCES
-        "src/Vulkan/VkFormats.h" 
-        "src/Vulkan/VkFeatureChecker.h"
-        "src/Vulkan/VkFeatureChecker.cpp"
-        "src/Vulkan/VkRHI.h"
-        "src/Vulkan/VkRHI.cpp"
-        "src/Vulkan/VkExtensions.cpp"
-        "src/Vulkan/VkDebug.h"
-        "src/Vulkan/VkDebug.cpp"
-        "src/Vulkan/VkErrorHandler.h"
-        "src/Vulkan/VkErrorHandler.cpp"
-        "src/Vulkan/VkPhysicalDevice.h"
-        "src/Vulkan/VkPhysicalDevice.cpp"
-        "src/Vulkan/VkCommandPool.cpp"
-        "src/Vulkan/VkCommandPool.h"
-        "src/Vulkan/VkCommandQueue.cpp"
-        "src/Vulkan/VkCommandQueue.h"
-        "src/Vulkan/VkCommandList.cpp"
-        "src/Vulkan/VkCommandList.h"
-        "src/Vulkan/Synchro/VkFence.cpp"
-        "src/Vulkan/Synchro/VkFence.h"
-        "src/Vulkan/VkSwapChain.h"
-        "src/Vulkan/VkSwapChain.cpp"
-        "src/Vulkan/VkShader.h"
-        "src/Vulkan/VkShader.cpp"
-        "src/Vulkan/VkPipelineState.h"
-        "src/Vulkan/VkPipelineState.cpp"
-        "src/Vulkan/VkResourceLayout.h"
-        "src/Vulkan/VkResourceLayout.cpp"
-        "src/Vulkan/VkTexture.h"
-        "src/Vulkan/VkTexture.cpp"
-        "src/Vulkan/VkGPUContext.h"
-        "src/Vulkan/VkMemory.h"
-        "src/Vulkan/VkDescriptorPool.h"
-        "src/Vulkan/VkDescriptorPool.cpp"
-    )
-endif()
-
 # =========================================
 # REGISTER DEPENDENCIES
 # =========================================
 message(STATUS "Setting up Vex headers...")
 
-# Static linking with DXC.
-build_with_dxc(Vex)
-
-# Static linking to efsw
-add_header_only_dependency(Vex efsw "${efsw_SOURCE_DIR}" "include" "efsw")
-
-# Static linking to DirectX 12
-if (VEX_ENABLE_DX12)
-    message(STATUS "DX12 found!")
-
-    # DirectX Agility SDK headers
-    add_header_only_dependency(Vex DirectXAgilitySDK "${DX_AGILITY_SDK_SOURCE_DIR}" "include" "directx")
-
-    target_link_libraries(Vex PUBLIC d3d12.lib dxgi.lib dxguid.lib)
-    target_sources(Vex PRIVATE ${VEX_DX12_SOURCES})
-    # Vex DX12 definition
-    target_compile_definitions(Vex PUBLIC VEX_DX12=1)
-else()
-    target_compile_definitions(Vex PUBLIC VEX_DX12=0)
+# Configure selected backend
+if(VEX_ENABLE_DX12)
+    include(VexDX12)
+    setup_dx12_backend(Vex)
+elseif(VEX_ENABLE_VULKAN)  
+    include(VexVulkan)
+    setup_vulkan_backend(Vex)
 endif()
 
-function(vex_setup_d3d12_agility_runtime TARGET)
-    if (VEX_ENABLE_DX12)
-        set(VEX_D3D12_AGILITY_SOURCE_SDK_DIR "${DX_AGILITY_SDK_SOURCE_DIR}/bin/x64")
-
-        if(NOT EXISTS "${VEX_D3D12_AGILITY_SOURCE_SDK_DIR}/D3D12Core.dll")
-            message(STATUS ERROR " Missing D3D12Core.dll in Agility SDK directory: ${VEX_D3D12_AGILITY_SOURCE_SDK_DIR}.")
-            return()
-        endif()
-
-        target_compile_definitions(Vex PRIVATE 
-            DIRECTX_AGILITY_SDK_VERSION=${DX_AGILITY_SDK_VERSION}
-            D3D12_AGILITY_SDK_ENABLED
-        )
-
-        target_compile_definitions(${TARGET} PRIVATE 
-            DIRECTX_AGILITY_SDK_VERSION=${DX_AGILITY_SDK_VERSION}
-            D3D12_AGILITY_SDK_ENABLED
-        )
-
-        target_sources(${TARGET} PRIVATE
-            "${VEX_ROOT_DIR}/src/DX12/DX12AgilitySDK.cpp"
-        )
-
-        add_custom_command(TARGET ${TARGET} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${TARGET}>/D3D12"
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${VEX_D3D12_AGILITY_SOURCE_SDK_DIR}/D3D12Core.dll"
-                "${VEX_D3D12_AGILITY_SOURCE_SDK_DIR}/d3d12SDKLayers.dll"
-                "$<TARGET_FILE_DIR:${TARGET}>/D3D12"
-            COMMENT "Copying Agility SDK's DLLs to output directory : $<TARGET_FILE_DIR:${TARGET}>/D3D12..."
-        )
-
-        message(STATUS "D3D12 Agility SDK 1.${DX_AGILITY_SDK_VERSION}.0 will be deployed with ${TARGET}")
+function(vex_setup_runtime TARGET)
+    if(VEX_ENABLE_DX12)
+        include(VexDX12)
+        vex_setup_d3d12_agility_runtime(${TARGET})
     endif()
 endfunction()
 
-# Static linking to Vulkan
-if(VEX_ENABLE_VULKAN)
-    message(STATUS "Vulkan found!")
-    target_sources(Vex PRIVATE ${VEX_VULKAN_SOURCES})
-    target_link_libraries(Vex PUBLIC Vulkan::Vulkan)
-    # Make Vulkan-Hpp headers available
-    add_header_only_dependency(Vex vulkanhpp "${vulkanhpp_SOURCE_DIR}" "vulkan" "vulkan")
-    target_compile_definitions(Vex PUBLIC VEX_VULKAN=1)
-else()
-    target_compile_definitions(Vex PUBLIC VEX_VULKAN=0)
-endif()
+# Static linking with DXC.
+build_with_dxc(Vex)
 
 # Static linking to magic_enum
 add_header_only_dependency(Vex magic_enum "${magic_enum_SOURCE_DIR}" "include" "magic_enum")
 
 # =========================================
+# DEFINES
+# =========================================
+
+# Graphics API defines
+target_compile_definitions(Vex PUBLIC VEX_DX12=$<BOOL:${VEX_ENABLE_DX12}> VEX_VULKAN=$<BOOL:${VEX_ENABLE_VULKAN}>)
+
+if(WIN32)
+    # Avoid windows polluting the code with macros.
+    target_compile_definitions(Vex PUBLIC NOMINMAX WIN32_MEAN_AND_LEAN)
+endif()
+
+# Disable exceptions across the board.
+target_compile_options(Vex PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/EHs-c->           # MSVC: disable exceptions
+    $<$<CXX_COMPILER_ID:Clang>:-fno-exceptions>   # Clang: disable exceptions  
+    $<$<CXX_COMPILER_ID:GNU>:-fno-exceptions>     # GCC: disable exceptions
+)
+
+# =========================================
 # INSTALLATION
 # =========================================
 message(STATUS "Installing Vex...")
-# Gets the list of registered header dependencies (previous section)
+# Gets the list of registered header dependencies (previous sections)
 get_property(HEADER_DEPS_TO_INSTALL GLOBAL PROPERTY HEADER_DEPS_TO_INSTALL)
 
 # Installation rules
@@ -407,12 +270,12 @@ endforeach()
 
 # Add the build examples only if we're directly building cmake from Vex (so not if Vex is setup as an actual dependency).
 # Examples are used to develop Vex, they should not be used or included in projects that use Vex.
-if (CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     option(VEX_BUILD_EXAMPLES "Build the example programs" ON)
 else()
     option(VEX_BUILD_EXAMPLES "Build the example programs" OFF)
 endif()
-if (VEX_BUILD_EXAMPLES)
+if(VEX_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
 

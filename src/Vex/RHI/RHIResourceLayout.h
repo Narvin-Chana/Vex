@@ -1,9 +1,11 @@
 #pragma once
 
+#include <span>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include <Vex/TextureSampler.h>
 #include <Vex/Types.h>
 
 namespace vex
@@ -39,15 +41,13 @@ private:
     RHIResourceLayout& globalLayout;
 };
 
-struct ResourceSampler
-{
-    // TODO: implement samplers
-};
-
 class RHIResourceLayout
 {
 public:
     virtual ~RHIResourceLayout() = default;
+
+    void SetSamplers(std::span<TextureSampler> newSamplers);
+    std::span<const TextureSampler> GetStaticSamplers() const;
 
     ScopedGlobalConstantHandle RegisterScopedGlobalConstant(GlobalConstant globalConstant);
     GlobalConstantHandle RegisterGlobalConstant(GlobalConstant globalConstant);
@@ -66,7 +66,8 @@ public:
 protected:
     bool isDirty = true;
     std::unordered_map<std::string, GlobalConstant> globalConstants;
-    std::vector<ResourceSampler> samplers;
+
+    std::vector<TextureSampler> samplers;
 };
 
 } // namespace vex
