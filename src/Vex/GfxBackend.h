@@ -91,6 +91,8 @@ private:
     RHIBuffer& GetRHIBuffer(BufferHandle bufferHandle);
 
     void CreateBackBuffers();
+    // Executes all currently queued up command lists.
+    void FlushCommandListQueue();
 
     // Index of the current frame, possible values depends on buffering:
     //  {0} if single buffering
@@ -124,6 +126,9 @@ private:
     // Converts from the Handle to the actual underlying RHI resource.
     FreeList<UniqueHandle<RHITexture>, TextureHandle> textureRegistry;
     FreeList<UniqueHandle<RHIBuffer>, BufferHandle> bufferRegistry;
+
+    // We submit our command lists in batch at the end of the frame, to reduce driver overhead.
+    std::vector<RHICommandList*> queuedCommandLists;
 
     inline static constexpr u32 DefaultRegistrySize = 1024;
 

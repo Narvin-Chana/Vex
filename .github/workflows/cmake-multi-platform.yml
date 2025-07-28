@@ -154,18 +154,29 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
+    - name: Setup MSVC environment
+      if: matrix.os == 'windows-latest' && matrix.c_compiler == 'cl'
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+
+    - name: Install Ninja
+      if: matrix.os == 'windows-latest'
+      run: |
+        choco install ninja
+
     - name: Configure CMake
-      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        -G Ninja
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-        ${{ matrix.os != 'windows-latest' && format('-DCMAKE_BUILD_TYPE={0}', matrix.build_type) || '' }}
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DVEX_BUILD_EXAMPLES=ON
         ${{ matrix.graphics_api == 'directx12' && '-DVEX_GRAPHICS_BACKEND=DX12' || '' }}
         ${{ matrix.graphics_api == 'vulkan' && '-DVEX_GRAPHICS_BACKEND=VULKAN' || '' }}
         -S ${{ github.workspace }}
+
 
     - name: Build
       # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).

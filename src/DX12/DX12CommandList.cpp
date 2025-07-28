@@ -341,19 +341,20 @@ void DX12CommandList::ClearTexture(RHITexture& rhiTexture,
 
 void DX12CommandList::Transition(RHITexture& texture, RHITextureState::Flags newState)
 {
-    // Nothing to do if the states are already equal.
-    if (texture.GetCurrentState() == newState)
+    DX12Texture& dxTexture = reinterpret_cast<DX12Texture&>(texture);
+    D3D12_RESOURCE_STATES currentDX12State = RHITextureStateToDX12State(texture.GetCurrentState());
+    D3D12_RESOURCE_STATES newDX12State = RHITextureStateToDX12State(newState);
+
+    texture.SetCurrentState(newState);
+    // Nothing to do if the states are already equal (we compare raw API states, due to them not mapping 1:1 to Vex
+    // ones).
+    if (currentDX12State == newDX12State)
     {
         return;
     }
 
-    DX12Texture& dxTexture = reinterpret_cast<DX12Texture&>(texture);
-    D3D12_RESOURCE_STATES currentDX12State = RHITextureStateToDX12State(texture.GetCurrentState());
-    D3D12_RESOURCE_STATES newDX12State = RHITextureStateToDX12State(newState);
-    D3D12_RESOURCE_BARRIER resourceBarrier =
+    CD3DX12_RESOURCE_BARRIER resourceBarrier =
         CD3DX12_RESOURCE_BARRIER::Transition(dxTexture.GetRawTexture(), currentDX12State, newDX12State);
-
-    texture.SetCurrentState(newState);
 
     commandList->ResourceBarrier(1, &resourceBarrier);
 }
@@ -366,6 +367,9 @@ void DX12CommandList::Transition(std::span<std::pair<RHITexture&, RHITextureStat
     {
         D3D12_RESOURCE_STATES currentDX12State = RHITextureStateToDX12State(texture.GetCurrentState());
         D3D12_RESOURCE_STATES newDX12State = RHITextureStateToDX12State(newState);
+        texture.SetCurrentState(newState);
+        // Nothing to do if the states are already equal (we compare raw API states, due to them not mapping 1:1 to Vex
+        // ones).
         if (newDX12State == currentDX12State)
         {
             continue;
@@ -374,8 +378,6 @@ void DX12CommandList::Transition(std::span<std::pair<RHITexture&, RHITextureStat
         D3D12_RESOURCE_BARRIER resourceBarrier =
             CD3DX12_RESOURCE_BARRIER::Transition(dxTexture.GetRawTexture(), currentDX12State, newDX12State);
         transitionBarriers.push_back(std::move(resourceBarrier));
-
-        texture.SetCurrentState(newState);
     }
 
     if (!transitionBarriers.empty())
