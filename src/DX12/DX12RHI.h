@@ -33,8 +33,7 @@ public:
         const GraphicsPipelineStateKey& key) override;
     virtual UniqueHandle<RHIComputePipelineState> CreateComputePipelineState(
         const ComputePipelineStateKey& key) override;
-    virtual UniqueHandle<RHIResourceLayout> CreateResourceLayout(const FeatureChecker& featureChecker,
-                                                                 RHIDescriptorPool& descriptorPool) override;
+    virtual UniqueHandle<RHIResourceLayout> CreateResourceLayout(RHIDescriptorPool& descriptorPool) override;
 
     virtual UniqueHandle<RHITexture> CreateTexture(const TextureDescription& description) override;
 

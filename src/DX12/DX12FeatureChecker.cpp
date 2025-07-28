@@ -30,14 +30,34 @@ DX12FeatureChecker::DX12FeatureChecker(const ComPtr<ID3D12Device>& device)
     featureLevels.NumFeatureLevels = _countof(d3dFeatureLevels);
     featureLevels.pFeatureLevelsRequested = d3dFeatureLevels;
 
-    // Initialize shader model data
-    shaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_7;
-
     chk << device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
     chk << device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1));
     chk << device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &options7, sizeof(options7));
-    chk << device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &shaderModel, sizeof(shaderModel));
     chk << device->CheckFeatureSupport(D3D12_FEATURE_FEATURE_LEVELS, &featureLevels, sizeof(featureLevels));
+
+    // List of shader models to check, from highest to lowest
+    static const D3D_SHADER_MODEL shaderModelsToCheck[] = {
+        D3D_SHADER_MODEL_6_9, D3D_SHADER_MODEL_6_8, D3D_SHADER_MODEL_6_7, D3D_SHADER_MODEL_6_6, D3D_SHADER_MODEL_6_5,
+        D3D_SHADER_MODEL_6_4, D3D_SHADER_MODEL_6_3, D3D_SHADER_MODEL_6_2, D3D_SHADER_MODEL_6_1, D3D_SHADER_MODEL_6_0
+    };
+
+    // Find the highest supported shader model
+    bool shaderModelFound = false;
+    for (const auto& model : shaderModelsToCheck)
+    {
+        shaderModel.HighestShaderModel = model;
+        if (SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &shaderModel, sizeof(shaderModel))))
+        {
+            shaderModelFound = true;
+            break;
+        }
+    }
+
+    if (shaderModel.HighestShaderModel < D3D_SHADER_MODEL_6_6)
+    {
+        VEX_LOG(Fatal,
+                "Vex's DX12 implementation requires at least SM_6_6 for the untyped ResourceDescriptorHeap feature.");
+    }
 }
 
 DX12FeatureChecker::~DX12FeatureChecker() = default;

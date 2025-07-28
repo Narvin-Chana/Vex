@@ -4,7 +4,10 @@
 #include <ranges>
 #include <string>
 
+#include <magic_enum/magic_enum.hpp>
+
 #include <Vex/Logger.h>
+#include <Vex/PhysicalDevice.h>
 #include <Vex/Platform/Platform.h>
 #include <Vex/RHI/RHI.h>
 #include <Vex/RHI/RHIShader.h>
@@ -31,21 +34,32 @@ static std::vector<DxcDefine> ConvertDefinesToDxcDefine(const std::vector<Shader
 
 static std::wstring GetTargetFromShaderType(ShaderType type)
 {
-    // TODO(https://trello.com/c/JjGISzqs): Make this use the FeatureChecker, which would allow us to use the highest
-    // target supported.
-    if (type == ShaderType::VertexShader)
+    FeatureChecker* featureChecker = GPhysicalDevice->featureChecker.get();
+
+    std::wstring highestSupportedShaderModel =
+        StringToWString(std::string(magic_enum::enum_name(featureChecker->GetShaderModel())));
+
+    // First char changes depending on shader type.
+    switch (type)
     {
-        return L"vs_6_6";
+    case ShaderType::VertexShader:
+        highestSupportedShaderModel[0] = L'v';
+        break;
+    case ShaderType::PixelShader:
+        highestSupportedShaderModel[0] = L'p';
+        break;
+    case ShaderType::ComputeShader:
+        highestSupportedShaderModel[0] = L'c';
+        break;
+    default:
+        VEX_LOG(Fatal, "Unsupported shader type for the Vex ShaderCompiler.");
+        break;
     }
-    if (type == ShaderType::PixelShader)
-    {
-        return L"ps_6_6";
-    }
-    if (type == ShaderType::ComputeShader)
-    {
-        return L"cs_6_6";
-    }
-    return L"";
+
+    // Second character is always 's'.
+    highestSupportedShaderModel[1] = L's';
+
+    return highestSupportedShaderModel;
 }
 
 } // namespace ShaderCompiler_Internal

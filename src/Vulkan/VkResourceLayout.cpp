@@ -1,17 +1,15 @@
 #include "VkResourceLayout.h"
 
+#include <Vex/Debug.h>
+#include <Vex/PhysicalDevice.h>
+
 #include "VkDescriptorPool.h"
 #include "VkErrorHandler.h"
 #include "VkFeatureChecker.h"
 
-#include <Vex/Debug.h>
-
 namespace vex::vk
 {
-VkResourceLayout::VkResourceLayout(::vk::Device device,
-                                   const VkDescriptorPool& descriptorPool,
-                                   const VkFeatureChecker& featureChecker)
-    : featureChecker{ featureChecker }
+VkResourceLayout::VkResourceLayout(::vk::Device device, const VkDescriptorPool& descriptorPool)
 {
     ::vk::PushConstantRange range{ .stageFlags =
                                        ::vk::ShaderStageFlagBits::eAllGraphics | ::vk::ShaderStageFlagBits::eCompute,
@@ -42,7 +40,8 @@ bool VkResourceLayout::ValidateGlobalConstant(const GlobalConstant& globalConsta
 }
 u32 VkResourceLayout::GetMaxLocalConstantSize() const
 {
-    const u32 maxBytes = featureChecker.GetMaxPushConstantSize();
+    const u32 maxBytes =
+        reinterpret_cast<VkFeatureChecker*>(GPhysicalDevice->featureChecker.get())->GetMaxPushConstantSize();
 
     // TODO: Consider global constant in the available size
     return std::max<u32>(0, maxBytes);

@@ -99,7 +99,6 @@ private:
     u8 currentFrameIndex = 0;
 
     UniqueHandle<RHI> rhi;
-    UniqueHandle<PhysicalDevice> physicalDevice;
 
     BackendDescription description;
 
