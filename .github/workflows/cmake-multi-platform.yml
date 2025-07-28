@@ -37,16 +37,20 @@ jobs:
           # Remove unsupported compilers from windows/linux
           - os: windows-latest
             c_compiler: gcc
+            cpp_compiler: g++
           - os: ubuntu-latest
             c_compiler: cl
+            cpp_compiler: cl
           # Remove DirectX-only configurations from Linux (not supported)
           - os: ubuntu-latest
             graphics_api: directx12
           # Reduce the number of different jobs by limiting the directx-only / vulkan only builds to release targets
           - build_type: Debug
             c_compiler: gcc
+            cpp_compiler: g++
           - build_type: Debug
             c_compiler: cl
+            c_ppcompiler: cl
 
     name: ${{ matrix.os }} ${{ matrix.c_compiler }} ${{ matrix.build_type }} ${{ matrix.graphics_api }}
 
