@@ -6,7 +6,7 @@ namespace vex
 {
 
 template <typename T>
-constexpr auto PurifyHashValue(const T& obj) -> decltype(auto)
+constexpr auto PurifyHashValue(const T& obj) -> auto
 {
     if constexpr (std::is_enum_v<T>)
     {
