@@ -14,7 +14,36 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glfw)
 
-set(EXAMPLES_COMMON_LIBS PRIVATE Vex glfw)
+FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG v1.92.1
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(imgui)
+add_library(imguiLib STATIC
+    "${imgui_SOURCE_DIR}/imgui.cpp"
+    "${imgui_SOURCE_DIR}/imgui_demo.cpp"
+    "${imgui_SOURCE_DIR}/imgui_draw.cpp"
+    "${imgui_SOURCE_DIR}/imgui_tables.cpp"
+    "${imgui_SOURCE_DIR}/imgui_widgets.cpp"
+    "${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp"
+)
+# Backend files
+if(VEX_ENABLE_VULKAN)
+    target_sources(imguiLib PRIVATE ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp)
+endif()
+    
+if(VEX_ENABLE_DX12)
+    target_sources(imguiLib PRIVATE ${imgui_SOURCE_DIR}/backends/imgui_impl_dx12.cpp)
+endif()
+    
+target_include_directories(imguiLib PUBLIC 
+     ${imgui_SOURCE_DIR}
+     ${imgui_SOURCE_DIR}/backends
+)
+
+set(EXAMPLES_COMMON_LIBS PRIVATE Vex glfw imguiLib)
 
 # Find all example directories
 file(GLOB EXAMPLE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/*")
@@ -39,7 +68,9 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
         if(UNIX)
             link_with_dxc(${EXAMPLE_NAME})
         endif()
-
+        
+        # Link ImGui with its dependencies
+        target_link_libraries(imguiLib PUBLIC glfw Vex)
         target_link_libraries(${EXAMPLE_NAME} PRIVATE ${EXAMPLES_COMMON_LIBS})
         target_include_directories(${EXAMPLE_NAME} PRIVATE "${EXAMPLE_DIR}" "${CMAKE_SOURCE_DIR}/src")
     endif()

@@ -10,6 +10,7 @@
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/RHI/RHI.h>
+#include <Vex/RHI/RHIAccessor.h>
 #include <Vex/RHI/RHIBuffer.h>
 #include <Vex/RHI/RHICommandList.h>
 #include <Vex/RHI/RHICommandPool.h>
@@ -156,6 +157,11 @@ void GfxBackend::EndFrame(bool isFullscreenMode)
 CommandContext GfxBackend::BeginScopedCommandContext(CommandQueueType queueType)
 {
     return { this, GetCurrentCommandPool().CreateCommandList(queueType) };
+}
+
+UniqueHandle<RHIAccessor> GfxBackend::CreateRHIAccessor()
+{
+    return rhi->CreateRHIAccessor(*descriptorPool);
 }
 
 void GfxBackend::EndCommandContext(RHICommandList& cmdList)

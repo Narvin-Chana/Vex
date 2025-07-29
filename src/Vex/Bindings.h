@@ -40,8 +40,8 @@ END_VEX_ENUM_FLAGS();
 
 struct ResourceBinding
 {
-    // Name of the resource used inside the shader.
-    // eg: VEX_RESOURCE(Texture2D<float3>, MyName);
+    // Name of the resource used inside the shader (eg: VEX_RESOURCE(Texture2D<float3>, MyName);)
+    // Only required if applicable (eg: RenderTargets and DepthStencilViews do not require names)
     std::string name;
 
     Buffer buffer;

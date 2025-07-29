@@ -262,6 +262,10 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
         barrier.srcAccessMask = AccessFlagBits2::eMemoryRead | AccessFlagBits2::eMemoryWrite;
         barrier.srcStageMask = PipelineStageFlagBits2::eAllCommands;
         break;
+    case ImageLayout::eColorAttachmentOptimal:
+        barrier.srcAccessMask = AccessFlagBits2::eColorAttachmentWrite;
+        barrier.srcStageMask = PipelineStageFlagBits2::eAllGraphics;
+        break;
     default:
         VEX_ASSERT(false, "Transition source image layout not supported");
     }
@@ -289,6 +293,10 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
     case ImageLayout::ePresentSrcKHR:
         barrier.dstAccessMask = AccessFlagBits2::eMemoryRead | AccessFlagBits2::eMemoryWrite;
         barrier.dstStageMask = PipelineStageFlagBits2::eAllCommands;
+        break;
+    case ImageLayout::eColorAttachmentOptimal:
+        barrier.dstAccessMask = AccessFlagBits2::eColorAttachmentWrite;
+        barrier.dstStageMask = PipelineStageFlagBits2::eAllGraphics;
         break;
     default:
         VEX_ASSERT(false, "Transition source image layout not supported");

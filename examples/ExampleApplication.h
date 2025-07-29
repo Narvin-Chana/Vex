@@ -4,7 +4,7 @@
 
 #include <Vex.h>
 
-class GLFWwindow;
+struct GLFWwindow;
 
 class ExampleApplication
 {

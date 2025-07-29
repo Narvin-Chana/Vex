@@ -47,6 +47,7 @@ public:
     virtual void WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) override;
     virtual void ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
                                                  std::vector<ShaderDefine>& defines) override;
+    virtual UniqueHandle<RHIAccessor> CreateRHIAccessor(RHIDescriptorPool& descriptorPool) override;
 
 private:
     VkGPUContext& GetGPUContext();

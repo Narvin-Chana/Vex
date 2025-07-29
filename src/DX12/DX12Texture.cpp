@@ -405,7 +405,7 @@ BindlessHandle DX12Texture::GetOrCreateBindlessView(ComPtr<DX12Device>& device,
         auto desc = CreateShaderResourceViewDesc(view);
         auto descriptor = srvUavHeap.GetCPUDescriptorHandle(idx);
         device->CreateShaderResourceView(texture.Get(), &desc, descriptor);
-        BindlessHandle handle = descriptorPool.AllocateStaticDescriptor(*this);
+        BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
         descriptorPool.CopyDescriptor(device, handle, descriptor);
         cache[view] = { .heapSlot = idx, .bindlessHandle = handle };
 
@@ -417,7 +417,7 @@ BindlessHandle DX12Texture::GetOrCreateBindlessView(ComPtr<DX12Device>& device,
         auto desc = CreateUnorderedAccessViewDesc(view);
         auto descriptor = srvUavHeap.GetCPUDescriptorHandle(idx);
         device->CreateUnorderedAccessView(texture.Get(), nullptr, &desc, descriptor);
-        BindlessHandle handle = descriptorPool.AllocateStaticDescriptor(*this);
+        BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
         descriptorPool.CopyDescriptor(device, handle, descriptor);
         cache[view] = { .heapSlot = idx, .bindlessHandle = handle };
 

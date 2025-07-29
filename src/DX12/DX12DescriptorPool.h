@@ -24,7 +24,7 @@ public:
     DX12DescriptorPool(ComPtr<DX12Device>& device);
     virtual ~DX12DescriptorPool() override;
 
-    BindlessHandle AllocateStaticDescriptor(const RHITexture& texture);
+    BindlessHandle AllocateStaticDescriptor();
     BindlessHandle AllocateStaticDescriptor(const RHIBuffer& buffer);
     void FreeStaticDescriptor(BindlessHandle handle);
 
@@ -35,10 +35,10 @@ public:
     bool IsValid(BindlessHandle handle);
 
     void CopyDescriptor(ComPtr<DX12Device>& device, BindlessHandle handle, CD3DX12_CPU_DESCRIPTOR_HANDLE descriptor);
+    CD3DX12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptor(BindlessHandle handle);
     CD3DX12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptor(BindlessHandle handle);
 
 private:
-    CD3DX12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptor(BindlessHandle handle);
     CD3DX12_CPU_DESCRIPTOR_HANDLE GetNullDescriptor();
 
     ComPtr<DX12Device> device;
@@ -56,5 +56,6 @@ private:
 
     inline static constexpr u32 DefaultHeapSize = 8192;
     friend class DX12CommandList;
+    friend class DX12RHIAccessor;
 };
 } // namespace vex::dx12

@@ -176,7 +176,8 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
     // Transition our resources to the correct states.
     cmdList->Transition(textureStateTransitions);
 
-    // Transforms ResourceBinding into platform specific views, then binds them to the shader (preferably bindlessly).
+    // Transforms ResourceBinding into platform specific views, then binds them to the shader (preferably
+    // bindlessly).
     cmdList->SetLayoutResources(resourceLayout, rhiTextureBindings, rhiBufferBindings, *backend->descriptorPool);
 
     auto graphicsPSOKey =
@@ -228,16 +229,16 @@ void CommandContext::Dispatch(const ShaderKey& shader,
 
     // TODO: About resource binding logic!
     //
-    // Currently constants and bindless indices are both bound as push/root constants, this could cause problems in DX12
-    // if the total size of local constants, textures and global constants, surpasses the total size of the root
-    // constants...
+    // Currently constants and bindless indices are both bound as push/root constants, this could cause problems in
+    // DX12 if the total size of local constants, textures and global constants, surpasses the total size of the
+    // root constants...
     //
-    // A solution for this could be to bind bindless indices via a root constant buffer, which would allow us have an
-    // "infinite" amount of them (not really infinite, the max size of a cbuffer is 64'000 bytes, a bindless handle is
-    // 32 bits, so this gives us 16'000 resources that can be bound inside one shader! I believe this should be
-    // sufficient for most cases!). This could potentially even be done dynamically (so only if the root constants
-    // doesn't have enough space to fit all resources), this would allow us to avoid the additional indirection this has
-    // when few resources are bound!
+    // A solution for this could be to bind bindless indices via a root constant buffer, which would allow us have
+    // an "infinite" amount of them (not really infinite, the max size of a cbuffer is 64'000 bytes, a bindless
+    // handle is 32 bits, so this gives us 16'000 resources that can be bound inside one shader! I believe this
+    // should be sufficient for most cases!). This could potentially even be done dynamically (so only if the root
+    // constants doesn't have enough space to fit all resources), this would allow us to avoid the additional
+    // indirection this has when few resources are bound!
 
     // Upload local constants as push/root constants
     // TODO: handle shader constants (validation, slot binding, etc...)!
@@ -261,13 +262,13 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     //              Grab its bindless handle:
     //                  Make sure its still valid:
     //                      If so we can use it.
-    //                      Else create a new bindless handle that will be used (TODO: figure out logic for dynamic vs
-    //                      static resources, for now we only consider static resources).
+    //                      Else create a new bindless handle that will be used (TODO: figure out logic for dynamic
+    //                      vs static resources, for now we only consider static resources).
     //              Once the bindless handle has been obtained send it to the command list to be set as a push/root
     //              constant.
     //
-    //              Right now these constants will be "guessed" by the user in the shader-side (probably bound to slots
-    //              in the order of declaration on C++ side).
+    //              Right now these constants will be "guessed" by the user in the shader-side (probably bound to
+    //              slots in the order of declaration on C++ side).
     //
     //              AND FOR THE FUTURE:
     //              Send it to the pipeline state to make it accessible to the shader via some code gen upon
@@ -313,7 +314,8 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     // Transition our resources to the correct states.
     cmdList->Transition(textureStateTransitions);
 
-    // Transforms ResourceBinding into platform specific views, then binds them to the shader (preferably bindlessly).
+    // Transforms ResourceBinding into platform specific views, then binds them to the shader (preferably
+    // bindlessly).
     cmdList->SetLayoutResources(resourceLayout, rhiTextureBindings, rhiBufferBindings, *backend->descriptorPool);
 
     ComputePipelineStateKey psoKey = { .computeShader = shader };
@@ -351,6 +353,30 @@ void CommandContext::Copy(const Texture& source, const Texture& destination)
     };
     cmdList->Transition(transitions);
     cmdList->Copy(sourceRHI, destinationRHI);
+}
+
+void CommandContext::SetRenderTarget(const ResourceBinding& renderTarget)
+{
+    if (!renderTarget.IsTexture())
+    {
+        VEX_LOG(Fatal, "Only textures can be set as render targets.");
+    }
+
+    if (!(renderTarget.texture.description.usage & ResourceUsage::RenderTarget))
+    {
+        VEX_LOG(Fatal, "Only textures with RenderTarget usage set upon creation can be set as render targets.");
+    }
+
+    auto& rt = backend->GetRHITexture(renderTarget.texture.handle);
+    cmdList->Transition(rt, RHITextureState::RenderTarget);
+
+    RHITextureBinding rtBinding{ .binding = renderTarget, .usage = ResourceUsage::RenderTarget, .texture = &rt };
+    cmdList->SetLayoutResources(backend->psCache.GetResourceLayout(), { &rtBinding, 1 }, {}, *backend->descriptorPool);
+}
+
+RHICommandList* CommandContext::GetRHICommandList()
+{
+    return cmdList;
 }
 
 } // namespace vex

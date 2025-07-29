@@ -32,6 +32,8 @@ private:
     ComPtr<DX12Device> device;
     std::array<std::vector<UniqueHandle<DX12CommandList>>, CommandQueueTypes::Count> perQueueAvailableCommandLists;
     std::array<std::vector<UniqueHandle<DX12CommandList>>, CommandQueueTypes::Count> perQueueOccupiedCommandLists;
+
+    friend class DX12RHIAccessor;
 };
 
 } // namespace vex::dx12

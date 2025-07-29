@@ -427,4 +427,9 @@ CommandQueueType DX12CommandList::GetType() const
     return type;
 }
 
+ID3D12GraphicsCommandList10* DX12CommandList::GetNativeCommandList()
+{
+    return commandList.Get();
+}
+
 } // namespace vex::dx12

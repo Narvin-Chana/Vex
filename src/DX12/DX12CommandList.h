@@ -51,6 +51,8 @@ public:
 
     virtual CommandQueueType GetType() const override;
 
+    ID3D12GraphicsCommandList10* GetNativeCommandList();
+
 private:
     ComPtr<DX12Device> device;
     CommandQueueType type;

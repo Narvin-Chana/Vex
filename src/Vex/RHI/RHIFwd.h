@@ -16,5 +16,6 @@ class RHISwapChain;
 class RHITexture;
 class RHIResourceLayout;
 class RHIDescriptorPool;
+struct RHIAccessor;
 
 } // namespace vex

@@ -51,6 +51,8 @@ struct RenderHardwareInterface
 
     virtual void ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
                                                  std::vector<ShaderDefine>& defines) = 0;
+
+    virtual UniqueHandle<RHIAccessor> CreateRHIAccessor(RHIDescriptorPool& descriptorPool) = 0;
 };
 
 using RHI = RenderHardwareInterface;

@@ -18,6 +18,7 @@
 #include "VkHeaders.h"
 #include "VkPhysicalDevice.h"
 #include "VkPipelineState.h"
+#include "VkRHIAccessor.h"
 #include "VkResourceLayout.h"
 #include "VkShader.h"
 #include "VkSwapChain.h"
@@ -390,6 +391,11 @@ void VkRHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args, s
 {
     args.push_back(L"-spirv");
     defines.emplace_back(L"VEX_VULKAN");
+}
+
+UniqueHandle<RHIAccessor> VkRHI::CreateRHIAccessor(RHIDescriptorPool& descriptorPool)
+{
+    return MakeUnique<VkRHIAccessor>();
 }
 
 VkGPUContext& VkRHI::GetGPUContext()

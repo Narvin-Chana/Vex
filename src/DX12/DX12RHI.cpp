@@ -9,6 +9,7 @@
 #include <DX12/DX12Fence.h>
 #include <DX12/DX12PhysicalDevice.h>
 #include <DX12/DX12PipelineState.h>
+#include <DX12/DX12RHIAccessor.h>
 #include <DX12/DX12ResourceLayout.h>
 #include <DX12/DX12Shader.h>
 #include <DX12/DX12SwapChain.h>
@@ -208,6 +209,13 @@ void DX12RHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
 {
     args.push_back(L"-Qstrip_reflect");
     defines.emplace_back(L"VEX_DX12");
+}
+
+UniqueHandle<RHIAccessor> DX12RHI::CreateRHIAccessor(RHIDescriptorPool& descriptorPool)
+{
+    return MakeUnique<DX12RHIAccessor>(device,
+                                       queues[CommandQueueType::Graphics],
+                                       reinterpret_cast<DX12DescriptorPool*>(&descriptorPool));
 }
 
 ComPtr<ID3D12CommandQueue>& DX12RHI::GetQueue(CommandQueueType queueType)

@@ -3,6 +3,7 @@
 #include <array>
 
 #include <Vex/RHI/RHI.h>
+#include <Vex/RHI/RHIFwd.h>
 
 #include <DX12/DX12FeatureChecker.h>
 
@@ -47,6 +48,8 @@ public:
     virtual void WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) override;
     virtual void ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
                                                  std::vector<ShaderDefine>& defines) override;
+
+    virtual UniqueHandle<RHIAccessor> CreateRHIAccessor(RHIDescriptorPool& descriptorPool) override;
 
 private:
     ComPtr<ID3D12CommandQueue>& GetQueue(CommandQueueType queueType);

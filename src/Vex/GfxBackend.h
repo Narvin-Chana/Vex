@@ -11,8 +11,8 @@
 #include <Vex/FrameResource.h>
 #include <Vex/PipelineStateCache.h>
 #include <Vex/PlatformWindow.h>
-#include <Vex/Resource.h>
 #include <Vex/RHI/RHIFwd.h>
+#include <Vex/Resource.h>
 #include <Vex/Texture.h>
 #include <Vex/UniqueHandle.h>
 
@@ -79,6 +79,10 @@ public:
     void SetShaderCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback);
 
     void SetSamplers(std::span<TextureSampler> newSamplers);
+
+public:
+    // Raw accessors, should be used with caution!
+    UniqueHandle<RHIAccessor> CreateRHIAccessor();
 
 private:
     void EndCommandContext(RHICommandList& cmdList);
