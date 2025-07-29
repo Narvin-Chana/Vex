@@ -11,10 +11,10 @@ namespace vex
 PipelineStateCache::PipelineStateCache(RHI* rhi,
                                        RHIDescriptorPool& descriptorPool,
                                        ResourceCleanup* resourceCleanup,
-                                       bool enableShaderDebugging)
+                                       const ShaderCompilerSettings& compilerSettings)
     : rhi(rhi)
     , resourceCleanup(resourceCleanup)
-    , shaderCache(rhi, enableShaderDebugging)
+    , shaderCompiler(rhi, compilerSettings)
     , resourceLayout(rhi->CreateResourceLayout(descriptorPool))
 {
 }
@@ -43,8 +43,8 @@ const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(con
     // Add samplers to the resourceContext
     resourceContext.samplers = resourceLayout->GetStaticSamplers();
 
-    auto vertexShader = shaderCache.GetShader(ps->key.vertexShader, resourceContext);
-    auto pixelShader = shaderCache.GetShader(ps->key.pixelShader, resourceContext);
+    auto vertexShader = shaderCompiler.GetShader(ps->key.vertexShader, resourceContext);
+    auto pixelShader = shaderCompiler.GetShader(ps->key.pixelShader, resourceContext);
     if (!vertexShader->IsValid() || !pixelShader->IsValid())
     {
         return nullptr;
@@ -82,7 +82,7 @@ const RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const
     // Add samplers to the resourceContext
     resourceContext.samplers = resourceLayout->GetStaticSamplers();
 
-    auto shader = shaderCache.GetShader(ps->key.computeShader, resourceContext);
+    auto shader = shaderCompiler.GetShader(ps->key.computeShader, resourceContext);
     if (!shader->IsValid())
     {
         return nullptr;
@@ -102,9 +102,9 @@ const RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const
     return ps;
 }
 
-ShaderCache& PipelineStateCache::GetShaderCache()
+ShaderCompiler& PipelineStateCache::GetShaderCompiler()
 {
-    return shaderCache;
+    return shaderCompiler;
 }
 
 } // namespace vex

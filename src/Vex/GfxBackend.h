@@ -32,8 +32,7 @@ struct BackendDescription
     FrameBuffering frameBuffering = FrameBuffering::Triple;
     bool enableGPUDebugLayer = !VEX_SHIPPING;
     bool enableGPUBasedValidation = !VEX_SHIPPING;
-    // Enables shader hot reloading and includes debug symbols in shaders for graphics debugging purposes.
-    bool enableShaderDebugging = !VEX_SHIPPING;
+    ShaderCompilerSettings shaderCompilerSettings;
 };
 
 class GfxBackend
@@ -130,7 +129,7 @@ private:
     // We submit our command lists in batch at the end of the frame, to reduce driver overhead.
     std::vector<RHICommandList*> queuedCommandLists;
 
-    inline static constexpr u32 DefaultRegistrySize = 1024;
+    static constexpr u32 DefaultRegistrySize = 1024;
 
     friend class CommandContext;
 };
