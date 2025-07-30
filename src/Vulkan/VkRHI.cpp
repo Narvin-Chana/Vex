@@ -199,7 +199,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
 
     auto physDeviceFeatures = physDevice.getFeatures();
 
-    ::vk::PhysicalDeviceRobustness2FeaturesKHR featuresRobustness;
+    ::vk::PhysicalDeviceRobustness2FeaturesEXT featuresRobustness;
     featuresRobustness.nullDescriptor = true;
 
     ::vk::PhysicalDeviceVulkan13Features features13;
