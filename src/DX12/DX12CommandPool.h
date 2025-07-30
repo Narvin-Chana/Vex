@@ -4,11 +4,12 @@
 #include <mutex>
 #include <vector>
 
+#include <RHIFwd.h>
 #include <Vex/RHI/RHI.h>
 #include <Vex/RHI/RHICommandPool.h>
 #include <Vex/UniqueHandle.h>
 
-#include <DX12/DX12CommandList.h>
+#include <DX12/DX12Headers.h>
 
 namespace vex::dx12
 {
@@ -24,14 +25,14 @@ public:
     virtual void ReclaimAllCommandListMemory() override;
 
 private:
-    std::vector<UniqueHandle<DX12CommandList>>& GetAvailableCommandLists(CommandQueueType queueType);
-    std::vector<UniqueHandle<DX12CommandList>>& GetOccupiedCommandLists(CommandQueueType queueType);
+    std::vector<UniqueHandle<RHICommandList>>& GetAvailableCommandLists(CommandQueueType queueType);
+    std::vector<UniqueHandle<RHICommandList>>& GetOccupiedCommandLists(CommandQueueType queueType);
 
     std::mutex poolMutex;
 
     ComPtr<DX12Device> device;
-    std::array<std::vector<UniqueHandle<DX12CommandList>>, CommandQueueTypes::Count> perQueueAvailableCommandLists;
-    std::array<std::vector<UniqueHandle<DX12CommandList>>, CommandQueueTypes::Count> perQueueOccupiedCommandLists;
+    std::array<std::vector<UniqueHandle<RHICommandList>>, CommandQueueTypes::Count> perQueueAvailableCommandLists;
+    std::array<std::vector<UniqueHandle<RHICommandList>>, CommandQueueTypes::Count> perQueueOccupiedCommandLists;
 };
 
 } // namespace vex::dx12

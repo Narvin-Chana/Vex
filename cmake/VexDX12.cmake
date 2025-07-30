@@ -74,7 +74,8 @@ function(setup_dx12_backend TARGET)
         "src/DX12/DX12States.cpp"
         "src/DX12/DX12GraphicsPipeline.h"
         "src/DX12/DX12GraphicsPipeline.cpp"
-    )
+        "src/DX12/DX12RHITypes.h"
+     "src/DX12/DX12RHIFwd.h")
 
     # Add DX12 sources to target
     target_sources(${TARGET} PRIVATE ${VEX_DX12_SOURCES})

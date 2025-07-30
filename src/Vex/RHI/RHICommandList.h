@@ -1,10 +1,13 @@
 #pragma once
 
 #include <array>
+#include <concepts>
 #include <span>
+#include <type_traits>
 #include <utility>
 
 #include <Vex/RHI/RHI.h>
+#include <Vex/RHI/RHIFwd.h>
 #include <Vex/RHI/RHITexture.h>
 #include <Vex/Types.h>
 
@@ -18,53 +21,64 @@ struct RHITextureBinding;
 struct RHIBufferBinding;
 struct InputAssembly;
 
-class RHICommandList
-{
-public:
-    virtual ~RHICommandList() = default;
+template <class T>
+concept RHICommandListInterface = requires(T t, const T ct) {
+    { ct.IsOpen() } -> std::same_as<bool>;
 
-    virtual bool IsOpen() const = 0;
+    t.Open();
+    t.Close();
 
-    virtual void Open() = 0;
-    virtual void Close() = 0;
+    t.SetViewport(float{}, // x
+                  float{}, // y
+                  float{}, // width
+                  float{}, // height
+                  float{}, // minDepth
+                  float{}  // maxDepth
+    );
+    t.SetScissor(i32{}, // x
+                 i32{}, // y
+                 u32{}, // width
+                 u32{}  // height
+    );
 
-    virtual void SetViewport(
-        float x, float y, float width, float height, float minDepth = 0.0f, float maxDepth = 1.0f) = 0;
-    virtual void SetScissor(i32 x, i32 y, u32 width, u32 height) = 0;
+    t.SetPipelineState(std::declval<const RHIGraphicsPipelineState&>() // graphicsPipelineState
+    );
+    t.SetPipelineState(std::declval<const RHIComputePipelineState&>() // computePipelineState
+    );
 
-    virtual void SetPipelineState(const RHIGraphicsPipelineState& graphicsPipelineState) = 0;
-    virtual void SetPipelineState(const RHIComputePipelineState& computePipelineState) = 0;
+    t.SetLayout(std::declval<RHIResourceLayout&>());
+    t.SetLayoutLocalConstants(std::declval<const RHIResourceLayout&>(), // layout
+                              std::span<const ConstantBinding>{}        // constants
+    );
+    t.SetLayoutResources(std::declval<const RHIResourceLayout&>(), // layout
+                         std::span<RHITextureBinding>{},           // textures
+                         std::span<RHIBufferBinding>{},            // buffers
+                         std::declval<RHIDescriptorPool&>()        // descriptorPool
+    );
 
-    virtual void SetLayout(RHIResourceLayout& layout) = 0;
-    virtual void SetLayoutLocalConstants(const RHIResourceLayout& layout,
-                                         std::span<const ConstantBinding> constants) = 0;
-    virtual void SetLayoutResources(const RHIResourceLayout& layout,
-                                    std::span<RHITextureBinding> textures,
-                                    std::span<RHIBufferBinding> buffers,
-                                    RHIDescriptorPool& descriptorPool) = 0;
-    virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) = 0;
-    virtual void SetInputAssembly(InputAssembly inputAssembly) = 0;
+    t.SetDescriptorPool(std::declval<RHIDescriptorPool&>(), // descriptorPool
+                        std::declval<RHIResourceLayout&>()  // resourceLayout
+    );
+    t.SetInputAssembly(std::declval<InputAssembly>() // inputAssembly
+    );
 
-    virtual void ClearTexture(RHITexture& rhiTexture,
-                              const ResourceBinding& clearBinding,
-                              const TextureClearValue& clearValue) = 0;
+    t.ClearTexture(std::declval<RHITexture&>(),             // rhiTexture
+                   std::declval<const ResourceBinding&>(),  // clearBinding
+                   std::declval<const TextureClearValue&>() // clearValue
+    );
 
-    virtual void Transition(RHITexture& texture, RHITextureState::Flags newState) = 0;
-    // Ideal for batching multiple resource transitions together.
-    virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs) = 0;
+    t.Transition(std::declval<RHITexture&>(), // texture
+                 RHITextureState::Flags{}     // newState
+    );
+    t.Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>>{} // textureNewStatePairs
+    );
 
-    virtual void Draw(u32 vertexCount) = 0;
+    t.Draw(u32{} // vertexCount
+    );
+    t.Dispatch(std::declval<const std::array<u32, 3>&>() // groupCount
+    );
 
-    virtual void Dispatch(const std::array<u32, 3>& groupCount) = 0;
-
-    virtual void Copy(RHITexture& src, RHITexture& dst) = 0;
-
-    // TODO: implement (not using VEX_NOT_YET_IMPLEMENTED since we're in a .h), will be done in a Buffer-specific PR.
-    // virtual void Copy(RHIBuffer& src, RHIBuffer& dst)
-    //{
-    //}
-
-    virtual CommandQueueType GetType() const = 0;
+    { ct.GetType() } -> std::same_as<CommandQueueType>;
 };
 
 } // namespace vex

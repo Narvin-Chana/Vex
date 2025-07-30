@@ -16,6 +16,8 @@
 #include <DX12/DXGIFactory.h>
 #include <DX12/HRChecker.h>
 
+#include <RHITypes.h>
+
 namespace vex::dx12
 {
 
@@ -165,7 +167,7 @@ UniqueHandle<RHIDescriptorPool> DX12RHI::CreateDescriptorPool()
 
 void DX12RHI::ExecuteCommandList(RHICommandList& commandList)
 {
-    ID3D12CommandList* p = static_cast<DX12CommandList&>(commandList).commandList.Get();
+    ID3D12CommandList* p = commandList.commandList.Get();
     queues[commandList.GetType()]->ExecuteCommandLists(1, &p);
 }
 
@@ -174,8 +176,7 @@ void DX12RHI::ExecuteCommandLists(std::span<RHICommandList*> commandLists)
     std::array<std::vector<ID3D12CommandList*>, CommandQueueTypes::Count> rawCommandListsPerQueue;
     for (RHICommandList* cmdList : commandLists)
     {
-        rawCommandListsPerQueue[cmdList->GetType()].push_back(
-            reinterpret_cast<DX12CommandList*>(cmdList)->commandList.Get());
+        rawCommandListsPerQueue[cmdList->GetType()].push_back(cmdList->commandList.Get());
     }
 
     for (u32 i = 0; i < CommandQueueTypes::Count; ++i)

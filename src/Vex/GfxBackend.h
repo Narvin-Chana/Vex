@@ -3,6 +3,7 @@
 #include <array>
 #include <vector>
 
+#include <RHIFwd.h>
 #include <Vex/Buffer.h>
 #include <Vex/CommandQueueType.h>
 #include <Vex/Containers/FreeList.h>
@@ -11,8 +12,8 @@
 #include <Vex/FrameResource.h>
 #include <Vex/PipelineStateCache.h>
 #include <Vex/PlatformWindow.h>
-#include <Vex/Resource.h>
 #include <Vex/RHI/RHIFwd.h>
+#include <Vex/Resource.h>
 #include <Vex/Texture.h>
 #include <Vex/UniqueHandle.h>
 

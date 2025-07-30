@@ -19,13 +19,15 @@ RHICommandList* DX12CommandPool::CreateCommandList(CommandQueueType queueType)
 {
     std::scoped_lock lock(poolMutex);
 
-    UniqueHandle<DX12CommandList> cmdList = nullptr;
+    auto& available = GetAvailableCommandLists(queueType);
+    auto& occupied = GetOccupiedCommandLists(queueType);
 
-    if (!GetAvailableCommandLists(queueType).empty())
+    UniqueHandle<DX12CommandList> cmdList;
+    if (!available.empty())
     {
         // Reserve available command list.
-        cmdList = std::move(GetAvailableCommandLists(queueType).back());
-        GetAvailableCommandLists(queueType).pop_back();
+        cmdList = std::move(available.back());
+        available.pop_back();
     }
     else
     {
@@ -36,26 +38,30 @@ RHICommandList* DX12CommandPool::CreateCommandList(CommandQueueType queueType)
 
     VEX_ASSERT(cmdList != nullptr);
 
-    GetOccupiedCommandLists(queueType).push_back(std::move(cmdList));
-    return GetOccupiedCommandLists(queueType).back().get();
+    occupied.push_back(std::move(cmdList));
+    return occupied.back().get();
 }
 
 void DX12CommandPool::ReclaimCommandListMemory(CommandQueueType queueType)
 {
-    if (GetOccupiedCommandLists(queueType).size())
+    std::scoped_lock lock(poolMutex);
+
+    auto& occupied = GetOccupiedCommandLists(queueType);
+
+    if (occupied.size())
     {
-        std::size_t availableCmdListSize = GetAvailableCommandLists(queueType).size();
+        auto& available = GetAvailableCommandLists(queueType);
 #if 0
         VEX_LOG(Info,
                 "Reclaimed {} cmd lists for queue {}",
-                GetOccupiedCommandLists(queueType).size(),
+                occupied.size(),
                 magic_enum::enum_name(queueType));
 #endif
-        GetAvailableCommandLists(queueType).resize(availableCmdListSize + GetOccupiedCommandLists(queueType).size());
-        std::move(GetOccupiedCommandLists(queueType).begin(),
-                  GetOccupiedCommandLists(queueType).end(),
-                  GetAvailableCommandLists(queueType).data() + availableCmdListSize);
-        GetOccupiedCommandLists(queueType).clear();
+        available.reserve(available.size() + occupied.size());
+        available.insert(available.end(),
+                         std::make_move_iterator(occupied.begin()),
+                         std::make_move_iterator(occupied.end()));
+        occupied.clear();
     }
 }
 

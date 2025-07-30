@@ -8,48 +8,43 @@
 namespace vex::dx12
 {
 
-class DX12CommandList : public RHICommandList
+class DX12CommandList final
 {
 public:
     DX12CommandList(const ComPtr<DX12Device>& device, CommandQueueType type);
-    virtual ~DX12CommandList() = default;
 
-    virtual bool IsOpen() const override;
+    bool IsOpen() const;
 
-    virtual void Open() override;
-    virtual void Close() override;
+    void Open();
+    void Close();
 
-    virtual void SetViewport(
-        float x, float y, float width, float height, float minDepth = 0.0f, float maxDepth = 1.0f) override;
-    virtual void SetScissor(i32 x, i32 y, u32 width, u32 height) override;
+    void SetViewport(float x, float y, float width, float height, float minDepth = 0.0f, float maxDepth = 1.0f);
+    void SetScissor(i32 x, i32 y, u32 width, u32 height);
 
-    virtual void SetPipelineState(const RHIGraphicsPipelineState& graphicsPipelineState) override;
-    virtual void SetPipelineState(const RHIComputePipelineState& computePipelineState) override;
+    void SetPipelineState(const RHIGraphicsPipelineState& graphicsPipelineState);
+    void SetPipelineState(const RHIComputePipelineState& computePipelineState);
 
-    virtual void SetLayout(RHIResourceLayout& layout) override;
-    virtual void SetLayoutLocalConstants(const RHIResourceLayout& layout,
-                                         std::span<const ConstantBinding> constants) override;
-    virtual void SetLayoutResources(const RHIResourceLayout& layout,
-                                    std::span<RHITextureBinding> textures,
-                                    std::span<RHIBufferBinding> buffers,
-                                    RHIDescriptorPool& descriptorPool) override;
-    virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) override;
-    virtual void SetInputAssembly(InputAssembly inputAssembly) override;
+    void SetLayout(RHIResourceLayout& layout);
+    void SetLayoutLocalConstants(const RHIResourceLayout& layout, std::span<const ConstantBinding> constants);
+    void SetLayoutResources(const RHIResourceLayout& layout,
+                            std::span<RHITextureBinding> textures,
+                            std::span<RHIBufferBinding> buffers,
+                            RHIDescriptorPool& descriptorPool);
+    void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout);
+    void SetInputAssembly(InputAssembly inputAssembly);
 
-    virtual void ClearTexture(RHITexture& rhiTexture,
-                              const ResourceBinding& clearBinding,
-                              const TextureClearValue& clearValue) override;
+    void ClearTexture(RHITexture& rhiTexture, const ResourceBinding& clearBinding, const TextureClearValue& clearValue);
 
-    virtual void Transition(RHITexture& texture, RHITextureState::Flags newState) override;
-    virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs) override;
+    void Transition(RHITexture& texture, RHITextureState::Flags newState);
+    void Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs);
 
-    virtual void Draw(u32 vertexCount) override;
+    void Draw(u32 vertexCount);
 
-    virtual void Dispatch(const std::array<u32, 3>& groupCount) override;
+    void Dispatch(const std::array<u32, 3>& groupCount);
 
-    virtual void Copy(RHITexture& src, RHITexture& dst) override;
+    void Copy(RHITexture& src, RHITexture& dst);
 
-    virtual CommandQueueType GetType() const override;
+    CommandQueueType GetType() const;
 
 private:
     ComPtr<DX12Device> device;

@@ -1,12 +1,13 @@
 #pragma once
 
+#include <RHIFwd.h>
 #include <Vex/RHI/RHI.h>
 #include <Vex/UniqueHandle.h>
 
 namespace vex
 {
 
-class RHICommandList;
+// class RHICommandList;
 
 class RHICommandPool
 {

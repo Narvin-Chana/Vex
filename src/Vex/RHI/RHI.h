@@ -9,6 +9,7 @@
 #include <Vex/Types.h>
 #include <Vex/UniqueHandle.h>
 
+#include <RHIFwd.h>
 #include <Vex/RHI/RHIFwd.h>
 
 namespace vex

@@ -1,5 +1,6 @@
 #include "CommandContext.h"
 
+#include <RHITypes.h>
 #include <Vex/Bindings.h>
 #include <Vex/Debug.h>
 #include <Vex/DrawHelpers.h>

@@ -3,6 +3,7 @@
 #include <optional>
 #include <span>
 
+#include <RHIFwd.h>
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/RHI/RHIFwd.h>
 #include <Vex/RHI/RHIPipelineState.h>

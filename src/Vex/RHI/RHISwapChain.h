@@ -7,7 +7,6 @@
 
 namespace vex
 {
-class RHICommandList;
 
 class RHITexture;
 

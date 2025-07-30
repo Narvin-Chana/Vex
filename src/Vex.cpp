@@ -1,5 +1,6 @@
 #include "Vex.h"
 
+#include <RHITypes.h>
 #include <Vex/Logger.h>
 
 #if VEX_DX12
@@ -39,5 +40,7 @@ UniqueHandle<GfxBackend> CreateGraphicsBackend(const BackendDescription& descrip
 
     return backend;
 }
+
+static_assert(RHICommandListInterface<RHICommandList>);
 
 } // namespace vex
