@@ -5,9 +5,9 @@
 #include <utility>
 
 #include <Vex/Logger.h>
-#include <Vex/ResourceBindingSet.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/Platform/Windows/HResult.h>
+#include <Vex/ResourceBindingSet.h>
 
 #include <DX12/DX12TextureSampler.h>
 #include <DX12/HRChecker.h>
@@ -24,7 +24,7 @@ DX12ResourceLayout::~DX12ResourceLayout() = default;
 
 u32 DX12ResourceLayout::GetMaxLocalConstantSize() const
 {
-    return reinterpret_cast<DX12FeatureChecker*>(GPhysicalDevice->featureChecker.get())->GetMaxRootSignatureDWORDSize()
+    return reinterpret_cast<DX12FeatureChecker*>(GPhysicalDevice->featureChecker.get())->GetMaxRootSignatureDWORDSize();
 }
 
 ComPtr<ID3D12RootSignature>& DX12ResourceLayout::GetRootSignature()
@@ -50,15 +50,6 @@ void DX12ResourceLayout::CompileRootSignature()
     rootParameters.push_back(std::move(rootConstants));
 
     // TODO: consider descriptor tables?
-
-    for (const GlobalConstant& constant : globalConstants | std::views::values)
-    {
-        CD3DX12_ROOT_PARAMETER globalConstantParameter;
-        globalConstantParameter.InitAsConstantBufferView(rootSignatureDWORDCount);
-        rootParameters.push_back(std::move(globalConstantParameter));
-
-        rootSignatureDWORDCount += 2;
-    }
 
     std::vector<D3D12_STATIC_SAMPLER_DESC> dxSamplers =
         GraphicsPipeline::GetDX12StaticSamplersFromTextureSamplers(samplers);

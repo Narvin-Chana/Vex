@@ -48,6 +48,8 @@ function(setup_vulkan_backend TARGET)
         "src/Vulkan/VkMemory.h"
         "src/Vulkan/VkDescriptorPool.h"
         "src/Vulkan/VkDescriptorPool.cpp"
+        "src/Vulkan/VkBuffer.h"
+        "src/Vulkan/VkBuffer.cpp"
     )
 
     # Add Vulkan sources to target

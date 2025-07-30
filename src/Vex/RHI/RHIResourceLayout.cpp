@@ -1,5 +1,7 @@
 #include "RHIResourceLayout.h"
 
+#include <Vex/Logger.h>
+
 namespace vex
 {
 
