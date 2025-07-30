@@ -49,15 +49,16 @@ HelloTriangleApplication::HelloTriangleApplication()
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
 
-    workingTexture = graphics->CreateTexture({ .name = "Working Texture",
-                                               .type = vex::TextureType::Texture2D,
-                                               .width = DefaultWidth,
-                                               .height = DefaultHeight,
-                                               .depthOrArraySize = 1,
-                                               .mips = 1,
-                                               .format = vex::TextureFormat::RGBA8_UNORM,
-                                               .usage = vex::TextureUsage::Read | vex::TextureUsage::UnorderedAccess },
-                                             vex::ResourceLifetime::Static);
+    workingTexture =
+        graphics->CreateTexture({ .name = "Working Texture",
+                                  .type = vex::TextureType::Texture2D,
+                                  .width = DefaultWidth,
+                                  .height = DefaultHeight,
+                                  .depthOrArraySize = 1,
+                                  .mips = 1,
+                                  .format = vex::TextureFormat::RGBA8_UNORM,
+                                  .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
+                                vex::ResourceLifetime::Static);
     finalOutputTexture =
         graphics->CreateTexture({ .name = "Final Output Texture",
                                   .type = vex::TextureType::Texture2D,
@@ -66,7 +67,7 @@ HelloTriangleApplication::HelloTriangleApplication()
                                   .depthOrArraySize = 1,
                                   .mips = 1,
                                   .format = vex::TextureFormat::RGBA8_UNORM,
-                                  .usage = vex::TextureUsage::Read | vex::TextureUsage::UnorderedAccess },
+                                  .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
                                 vex::ResourceLifetime::Static);
 
     // Example of CPU accessible buffer
@@ -77,13 +78,13 @@ HelloTriangleApplication::HelloTriangleApplication()
           // Structured buffers are ONLY available in DX12 for now. Buffer pointers could allow this to exist in Vulkan.
           .stride = 16,
 #endif
-          .usage = vex::BufferUsage::Read | vex::BufferUsage::CPUWrite },
+          .usage = vex::BufferUsage::ShaderRead | vex::BufferUsage::CPUWrite },
         vex::ResourceLifetime::Static);
 
     // Example of GPU only buffer
     commBuffer = graphics->CreateBuffer({ .name = "Comm Buffer",
                                           .byteSize = sizeof(float) * 4,
-                                          .usage = vex::BufferUsage::Read | vex::BufferUsage::UnorderedAccess },
+                                          .usage = vex::BufferUsage::ShaderRead | vex::BufferUsage::ShaderReadWrite },
                                         vex::ResourceLifetime::Static);
 
 #if defined(_WIN32)
@@ -207,7 +208,7 @@ void HelloTriangleApplication::OnResize(GLFWwindow* window, uint32_t newWidth, u
                                   .depthOrArraySize = 1,
                                   .mips = 1,
                                   .format = vex::TextureFormat::RGBA8_UNORM,
-                                  .usage = vex::TextureUsage::Read | vex::TextureUsage::UnorderedAccess },
+                                  .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
                                 vex::ResourceLifetime::Static);
     workingTexture = graphics->CreateTexture(
         {
@@ -218,7 +219,7 @@ void HelloTriangleApplication::OnResize(GLFWwindow* window, uint32_t newWidth, u
             .depthOrArraySize = 1,
             .mips = 1,
             .format = vex::TextureFormat::RGBA8_UNORM,
-            .usage = vex::TextureUsage::Read | vex::TextureUsage::UnorderedAccess,
+            .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite,
         },
         vex::ResourceLifetime::Static);
 }

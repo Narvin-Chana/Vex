@@ -16,8 +16,8 @@ namespace vex
 
 BEGIN_VEX_ENUM_FLAGS(TextureUsage, u8)
     None            = 0,
-    Read            = 1 << 0, // SRV in DX12, Sampled/Combined Image in Vulkan
-    UnorderedAccess = 1 << 1, // UAV in DX12, Storage Image in Vulkan
+    ShaderRead      = 1 << 0, // SRV in DX12, Sampled/Combined Image in Vulkan
+    ShaderReadWrite = 1 << 1, // UAV in DX12, Storage Image in Vulkan
     RenderTarget    = 1 << 2, // RTV in DX12, Color Attachment in Vulkan
     DepthStencil    = 1 << 3, // DSV in DX12, Depth/Stencil Attachment in Vulkan
 END_VEX_ENUM_FLAGS();
@@ -76,7 +76,7 @@ struct TextureDescription
     // mips = 0 indicates that you want max mips
     u16 mips = 1;
     TextureFormat format;
-    TextureUsage::Flags usage = TextureUsage::Read;
+    TextureUsage::Flags usage = TextureUsage::ShaderRead;
     TextureClearValue clearValue;
 };
 

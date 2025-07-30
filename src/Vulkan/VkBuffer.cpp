@@ -15,7 +15,7 @@ namespace vex::vk
 {
     using enum ::vk::BufferUsageFlagBits;
     ::vk::BufferUsageFlags flags;
-    if (desc.usage & BufferUsage::Read)
+    if (desc.usage & BufferUsage::ShaderRead)
     {
         flags |= eStorageBuffer;
     }
@@ -48,14 +48,14 @@ namespace vex::vk
 {
     using enum ::vk::MemoryPropertyFlagBits;
 
-    bool GPURead = (desc.usage & BufferUsage::Read) > 0;
-    GPURead |= (desc.usage & BufferUsage::UnorderedAccess) > 0;
+    bool GPURead = (desc.usage & BufferUsage::ShaderRead) > 0;
+    GPURead |= (desc.usage & BufferUsage::ShaderReadWrite) > 0;
     GPURead |= (desc.usage & BufferUsage::VertexBuffer) > 0;
     GPURead |= (desc.usage & BufferUsage::IndexBuffer) > 0;
     GPURead |= (desc.usage & BufferUsage::IndirectArgs) > 0;
     GPURead |= (desc.usage & BufferUsage::RaytracingAccelerationStructure) > 0;
 
-    bool GPUWrite = desc.usage & BufferUsage::UnorderedAccess;
+    bool GPUWrite = desc.usage & BufferUsage::ShaderReadWrite;
     bool CPURead = desc.usage & BufferUsage::CPUVisible;
     bool CPUWrite = desc.usage & BufferUsage::CPUWrite;
 
@@ -193,7 +193,7 @@ void VkBuffer::Unmap()
         accessFlags |= eShaderRead;
     }
 
-    if (flags & RHIBufferState::UnorderedAccess)
+    if (flags & RHIBufferState::ShaderReadWrite)
     {
         accessFlags |= eShaderWrite;
     }

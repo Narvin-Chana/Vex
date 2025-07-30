@@ -12,7 +12,7 @@ namespace vex
 BEGIN_VEX_ENUM_FLAGS(RHITextureState, u8)
     Common = 0,
     RenderTarget = 1,
-    UnorderedAccess = 2,
+    ShaderReadWrite = 2,
     DepthWrite = 4,
     DepthRead = 8,
     ShaderResource = 16,

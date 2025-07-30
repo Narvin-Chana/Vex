@@ -10,7 +10,7 @@ D3D12_RESOURCE_STATES RHITextureStateToDX12State(RHITextureState::Flags state)
     {
         outState |= D3D12_RESOURCE_STATE_RENDER_TARGET;
     }
-    if (state & RHITextureState::UnorderedAccess)
+    if (state & RHITextureState::ShaderReadWrite)
     {
         outState |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
     }
@@ -53,7 +53,7 @@ D3D12_RESOURCE_STATES RHIBufferStateToDX12State(RHIBufferState::Flags state)
     {
         outState |= D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
     }
-    if (state & RHIBufferState::UnorderedAccess)
+    if (state & RHIBufferState::ShaderReadWrite)
     {
         outState |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
     }

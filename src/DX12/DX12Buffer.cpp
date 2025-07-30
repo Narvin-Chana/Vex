@@ -14,7 +14,7 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, const BufferDescription& desc
 {
     const CD3DX12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(
         desc.byteSize,
-        (desc.usage & BufferUsage::UnorderedAccess) ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
+        (desc.usage & BufferUsage::ShaderReadWrite) ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
                                                     : D3D12_RESOURCE_FLAG_NONE);
     CD3DX12_HEAP_PROPERTIES heapProps;
     D3D12_RESOURCE_STATES dxInitialState = D3D12_RESOURCE_STATE_COMMON;
@@ -98,12 +98,12 @@ void DX12Buffer::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferUsage::Type usage, DX12DescriptorPool& descriptorPool)
 {
     // Usage is the exact correct usage (no longer flags), so == is valid here.
-    bool isSRVView = (usage == BufferUsage::Read) && (desc.usage & BufferUsage::Read);
-    bool isUAVView = (usage == BufferUsage::UnorderedAccess) && (desc.usage & BufferUsage::UnorderedAccess);
+    bool isSRVView = (usage == BufferUsage::ShaderRead) && (desc.usage & BufferUsage::ShaderRead);
+    bool isUAVView = (usage == BufferUsage::ShaderReadWrite) && (desc.usage & BufferUsage::ShaderReadWrite);
 
     VEX_ASSERT(
         isSRVView || isUAVView,
-        "The bindless view requested for buffer '{}' must be either of type SRV or UAV (Read or UnorderedAccess).",
+        "The bindless view requested for buffer '{}' must be either of type SRV or UAV (ShaderRead or ShaderReadWrite).",
         desc.name);
 
     // Check cache first

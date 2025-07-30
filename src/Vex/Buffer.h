@@ -14,8 +14,8 @@ namespace vex
 // Determines how the buffer can be used.
 BEGIN_VEX_ENUM_FLAGS(BufferUsage, u8)
     None                            = 0,
-    Read                            = 1 << 0, // SRV in DX12, read StorageBuffer in Vulkan
-    UnorderedAccess                 = 1 << 1, // UAV in DX12, readWrite StorageBuffer in Vulkan
+    ShaderRead                      = 1 << 0, // SRV in DX12, read StorageBuffer in Vulkan
+    ShaderReadWrite                 = 1 << 1, // UAV in DX12, readWrite StorageBuffer in Vulkan
     VertexBuffer                    = 1 << 2,
     IndexBuffer                     = 1 << 3,
     IndirectArgs                    = 1 << 4,

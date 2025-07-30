@@ -47,10 +47,12 @@ static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDescript
 
 static void ValidateDrawResources(const DrawResources& drawResources)
 {
-    ResourceBinding::ValidateResourceBindings(drawResources.readResources, TextureUsage::Read, BufferUsage::Read);
+    ResourceBinding::ValidateResourceBindings(drawResources.readResources,
+                                              TextureUsage::ShaderRead,
+                                              BufferUsage::ShaderRead);
     ResourceBinding::ValidateResourceBindings(drawResources.unorderedAccessResources,
-                                              TextureUsage::UnorderedAccess,
-                                              BufferUsage::UnorderedAccess);
+                                              TextureUsage::ShaderReadWrite,
+                                              BufferUsage::ShaderReadWrite);
     ResourceBinding::ValidateResourceBindings(drawResources.renderTargets, TextureUsage::RenderTarget);
     if (drawResources.depthStencil)
     {
@@ -162,10 +164,10 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
                 rhiTextureBindings.emplace_back(binding, usage, &texture);
             }
         };
-        CollectTextures(drawResources.readResources, TextureUsage::Read, RHITextureState::ShaderResource);
+        CollectTextures(drawResources.readResources, TextureUsage::ShaderRead, RHITextureState::ShaderResource);
         CollectTextures(drawResources.unorderedAccessResources,
-                        TextureUsage::UnorderedAccess,
-                        RHITextureState::UnorderedAccess);
+                        TextureUsage::ShaderReadWrite,
+                        RHITextureState::ShaderReadWrite);
         CollectTextures(drawResources.renderTargets, TextureUsage::RenderTarget, RHITextureState::RenderTarget);
         if (drawResources.depthStencil)
         {
@@ -193,10 +195,10 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
                 rhiBufferBindings.emplace_back(binding, usage, &buffer);
             }
         };
-        CollectBuffers(drawResources.readResources, BufferUsage::Read, RHIBufferState::ShaderResource);
+        CollectBuffers(drawResources.readResources, BufferUsage::ShaderRead, RHIBufferState::ShaderResource);
         CollectBuffers(drawResources.unorderedAccessResources,
-                       BufferUsage::UnorderedAccess,
-                       RHIBufferState::UnorderedAccess);
+                       BufferUsage::ShaderReadWrite,
+                       RHIBufferState::ShaderReadWrite);
     }
 
     // TODO(https://trello.com/c/IGxuLci9): Correctly integrate buffers here, including staging upload.
@@ -301,16 +303,16 @@ void CommandContext::Dispatch(const ShaderKey& shader,
                                             resourceBindingSet.writes,
                                             rhiTextureBindings,
                                             rhiBufferBindings,
-                                            TextureUsage::UnorderedAccess,
-                                            BufferUsage::UnorderedAccess);
+                                            TextureUsage::ShaderReadWrite,
+                                            BufferUsage::ShaderReadWrite);
     const u32 texWriteCount = rhiTextureBindings.size();
     const u32 bufferWriteCount = rhiBufferBindings.size();
     ResourceBindingSet::CollectRHIResources(*backend,
                                             resourceBindingSet.reads,
                                             rhiTextureBindings,
                                             rhiBufferBindings,
-                                            TextureUsage::Read,
-                                            BufferUsage::Read);
+                                            TextureUsage::ShaderRead,
+                                            BufferUsage::ShaderRead);
 
     // This code will be greatly simplied when we add caching of transitions until the next GPU operation.
     // See: https://trello.com/c/kJWhd2iu
@@ -322,7 +324,7 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     {
         textureStateTransitions.emplace_back(
             *rhiTextureBindings[i].texture,
-            i < texWriteCount ? RHITextureState::UnorderedAccess : RHITextureState::ShaderResource);
+            i < texWriteCount ? RHITextureState::ShaderReadWrite : RHITextureState::ShaderResource);
     }
 
     std::vector<std::pair<RHIBuffer&, RHIBufferState::Flags>> bufferStateTransitions;
@@ -333,7 +335,7 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     {
         bufferStateTransitions.emplace_back(
             *rhiBufferBindings[i].buffer,
-            i < bufferWriteCount ? RHIBufferState::UnorderedAccess : RHIBufferState::ShaderResource);
+            i < bufferWriteCount ? RHIBufferState::ShaderReadWrite : RHIBufferState::ShaderResource);
 
         if (rhiBufferBindings[i].buffer->NeedsStagingBufferCopy())
         {

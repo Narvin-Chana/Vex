@@ -110,7 +110,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(VkGPUContext& ctx,
 
     ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx.device.createImageViewUnique(viewCreate);
     const BindlessHandle handle =
-        descriptorPool.AllocateStaticDescriptor(*this, view.usage & TextureUsage::UnorderedAccess);
+        descriptorPool.AllocateStaticDescriptor(*this, view.usage & TextureUsage::ShaderReadWrite);
 
     descriptorPool.UpdateDescriptor(
         ctx,
@@ -167,11 +167,11 @@ void VkImageTexture::CreateImage(VkGPUContext& ctx)
     {
         createInfo.usage |= ::vk::ImageUsageFlagBits::eDepthStencilAttachment;
     }
-    if (description.usage & TextureUsage::Read)
+    if (description.usage & TextureUsage::ShaderRead)
     {
         createInfo.usage |= ::vk::ImageUsageFlagBits::eSampled;
     }
-    if (description.usage & TextureUsage::UnorderedAccess)
+    if (description.usage & TextureUsage::ShaderReadWrite)
     {
         createInfo.usage |= ::vk::ImageUsageFlagBits::eStorage;
     }
@@ -214,7 +214,7 @@ namespace vex::TextureUtil
     case RenderTarget:
         return ::vk::ImageLayout::eColorAttachmentOptimal;
         break;
-    case UnorderedAccess:
+    case ShaderReadWrite:
         return ::vk::ImageLayout::eGeneral;
         break;
     case ShaderResource:

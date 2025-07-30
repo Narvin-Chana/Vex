@@ -9,8 +9,8 @@ namespace vex
 
 void ResourceBindingSet::ValidateBindings() const
 {
-    ResourceBinding::ValidateResourceBindings(reads, TextureUsage::Read, BufferUsage::Read);
-    ResourceBinding::ValidateResourceBindings(writes, TextureUsage::UnorderedAccess, BufferUsage::UnorderedAccess);
+    ResourceBinding::ValidateResourceBindings(reads, TextureUsage::ShaderRead, BufferUsage::ShaderRead);
+    ResourceBinding::ValidateResourceBindings(writes, TextureUsage::ShaderReadWrite, BufferUsage::ShaderReadWrite);
 }
 
 void ResourceBindingSet::CollectRHIResources(GfxBackend& backend,

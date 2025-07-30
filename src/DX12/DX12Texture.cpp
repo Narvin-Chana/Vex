@@ -222,7 +222,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, const TextureDescription& d
         break;
     }
 
-    if (!(description.usage & TextureUsage::Read))
+    if (!(description.usage & TextureUsage::ShaderRead))
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
     }
@@ -230,7 +230,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, const TextureDescription& d
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
     }
-    if (description.usage & TextureUsage::UnorderedAccess)
+    if (description.usage & TextureUsage::ShaderReadWrite)
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
     }
@@ -306,7 +306,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
     description.usage = TextureUsage::None;
     if (!(nativeDesc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE))
     {
-        description.usage |= TextureUsage::Read;
+        description.usage |= TextureUsage::ShaderRead;
     }
     if (nativeDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
     {
@@ -314,7 +314,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
     }
     if (nativeDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)
     {
-        description.usage |= TextureUsage::UnorderedAccess;
+        description.usage |= TextureUsage::ShaderReadWrite;
     }
     if (nativeDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
     {
@@ -391,9 +391,9 @@ BindlessHandle DX12Texture::GetOrCreateBindlessView(ComPtr<DX12Device>& device,
 {
     using namespace Texture_Internal;
 
-    bool isSRVView = (view.usage == TextureUsage::Read) && (description.usage & TextureUsage::Read);
+    bool isSRVView = (view.usage == TextureUsage::ShaderRead) && (description.usage & TextureUsage::ShaderRead);
     bool isUAVView =
-        (view.usage == TextureUsage::UnorderedAccess) && (description.usage & TextureUsage::UnorderedAccess);
+        (view.usage == TextureUsage::ShaderReadWrite) && (description.usage & TextureUsage::ShaderReadWrite);
 
     VEX_ASSERT(isSRVView || isUAVView,
                "Texture view requested must be of type SRV or UAV AND the underlying texture must support this usage.");

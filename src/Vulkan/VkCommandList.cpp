@@ -143,7 +143,7 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
     {
         auto vkTexture = reinterpret_cast<VkTexture*>(rhiTexture);
 
-        if (usage == TextureUsage::Read || usage == TextureUsage::UnorderedAccess)
+        if (usage == TextureUsage::ShaderRead || usage == TextureUsage::ShaderReadWrite)
         {
             const BindlessHandle handle = vkTexture->GetOrCreateBindlessView(
                 ctx,

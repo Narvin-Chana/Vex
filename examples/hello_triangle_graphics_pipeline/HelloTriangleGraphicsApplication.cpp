@@ -58,7 +58,7 @@ HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
                                                .depthOrArraySize = 1,
                                                .mips = 1,
                                                .format = vex::TextureFormat::RGBA8_UNORM,
-                                               .usage = vex::TextureUsage::Read | vex::TextureUsage::UnorderedAccess },
+                                               .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
                                              vex::ResourceLifetime::Static);
 
 #if defined(_WIN32)
@@ -181,6 +181,6 @@ void HelloTriangleGraphicsApplication::OnResize(GLFWwindow* window, uint32_t wid
                                                .depthOrArraySize = 1,
                                                .mips = 1,
                                                .format = vex::TextureFormat::RGBA8_UNORM,
-                                               .usage = vex::TextureUsage::Read | vex::TextureUsage::UnorderedAccess },
+                                               .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
                                              vex::ResourceLifetime::Static);
 }

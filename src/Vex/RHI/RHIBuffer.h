@@ -21,7 +21,7 @@ BEGIN_VEX_ENUM_FLAGS(RHIBufferState, u16)
     // We still expose the state, in case we ever decide to use them in a bindful (bindless-less?) manner.
     UniformResource = 1 << 2,
     ShaderResource = 1 << 3,
-    UnorderedAccess = 1 << 4,
+    ShaderReadWrite = 1 << 4,
     VertexBuffer = 1 << 5,
     IndexBuffer = 1 << 6,
     IndirectArgs = 1 << 7,

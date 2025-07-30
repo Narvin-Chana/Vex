@@ -172,7 +172,7 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
     {
         auto& dxTexture = reinterpret_cast<DX12Texture&>(*rhiTexture);
         DX12TextureView dxTextureView{ binding, rhiTexture->GetDescription(), usage };
-        if (usage & TextureUsage::Read || usage & TextureUsage::UnorderedAccess)
+        if (usage & TextureUsage::ShaderRead || usage & TextureUsage::ShaderReadWrite)
         {
             bindlessHandles.push_back(
                 dxTexture.GetOrCreateBindlessView(device, dxTextureView, dxDescriptorPool).GetIndex());

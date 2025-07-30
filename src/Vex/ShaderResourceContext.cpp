@@ -10,7 +10,7 @@ std::vector<std::string> ShaderResourceContext::GenerateShaderBindings() const
     std::vector<std::string> names;
     for (const auto& tex : textures)
     {
-        if (tex.usage == TextureUsage::Read || tex.usage == TextureUsage::UnorderedAccess)
+        if (tex.usage == TextureUsage::ShaderRead || tex.usage == TextureUsage::ShaderReadWrite)
         {
             names.emplace_back(tex.binding.name);
         }
@@ -18,7 +18,7 @@ std::vector<std::string> ShaderResourceContext::GenerateShaderBindings() const
 
     for (const auto& buf : buffers)
     {
-        if (buf.usage == BufferUsage::Read || buf.usage == BufferUsage::UnorderedAccess)
+        if (buf.usage == BufferUsage::ShaderRead || buf.usage == BufferUsage::ShaderReadWrite)
         {
             names.emplace_back(buf.binding.name);
         }
