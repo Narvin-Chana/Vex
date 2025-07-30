@@ -1,12 +1,12 @@
 #include "VkDescriptorPool.h"
 
-#include "Vex/RHI/RHIBuffer.h"
-#include "Vex/RHI/RHITexture.h"
-#include "Vex/UniqueHandle.h"
-#include "VkErrorHandler.h"
-#include "VkGPUContext.h"
-
 #include <Vex/Debug.h>
+#include <Vex/RHI/RHIBuffer.h>
+#include <Vex/RHI/RHITexture.h>
+#include <Vex/UniqueHandle.h>
+
+#include <Vulkan/VkErrorHandler.h>
+#include <Vulkan/VkGPUContext.h>
 
 namespace vex::vk
 {
@@ -101,11 +101,10 @@ BindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHITexture& text
 
 BindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHIBuffer& buffer)
 {
-    // Everything needs to be a storage buffer since we use ByteAddressBuffers
+    // This handles both StructuredBuffer AND RWStructuredBuffer
     auto type = ::vk::DescriptorType::eStorageBuffer;
 
     BindlessAllocation& alloc = bindlessAllocations[GetDescriptorTypeBinding(type)];
-
     u32 index = alloc.handles.Allocate();
 
     return BindlessHandle::CreateHandle(index, alloc.generations[index], type);

@@ -3,10 +3,11 @@
 #include <unordered_map>
 
 #include <Vex/Containers/FreeList.h>
+#include <Vex/Handle.h>
 #include <Vex/RHI/RHIDescriptorPool.h>
+#include <Vex/RHI/RHIFwd.h>
 
-#include "Vex/Handle.h"
-#include "VkHeaders.h"
+#include <Vulkan/VkHeaders.h>
 
 namespace vex::vk
 {

@@ -5,7 +5,9 @@
 #include <Vex/Bindings.h>
 #include <Vex/Logger.h>
 #include <Vex/RHI/RHIBindings.h>
+#include <Vex/Texture.h>
 
+#include <DX12/DX12Buffer.h>
 #include <DX12/DX12Formats.h>
 #include <DX12/DX12GraphicsPipeline.h>
 #include <DX12/DX12PipelineState.h>
@@ -157,7 +159,7 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
 {
     auto& dxDescriptorPool = reinterpret_cast<DX12DescriptorPool&>(descriptorPool);
 
-    std::vector<BindlessHandle> bindlessHandles;
+    std::vector<u32> bindlessHandles;
     // Allocate for worst-case scenario.
     bindlessHandles.reserve(textures.size() + buffers.size());
 
@@ -168,17 +170,18 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
 
     for (auto& [binding, usage, rhiTexture] : textures)
     {
-        auto dxTexture = reinterpret_cast<DX12Texture&>(*rhiTexture);
+        auto& dxTexture = reinterpret_cast<DX12Texture&>(*rhiTexture);
         DX12TextureView dxTextureView{ binding, rhiTexture->GetDescription(), usage };
-        if (usage & ResourceUsage::Read || usage & ResourceUsage::UnorderedAccess)
+        if (usage & TextureUsage::ShaderRead || usage & TextureUsage::ShaderReadWrite)
         {
-            bindlessHandles.push_back(dxTexture.GetOrCreateBindlessView(device, dxTextureView, dxDescriptorPool));
+            bindlessHandles.push_back(
+                dxTexture.GetOrCreateBindlessView(device, dxTextureView, dxDescriptorPool).GetIndex());
         }
-        else if (usage & ResourceUsage::RenderTarget)
+        else if (usage & TextureUsage::RenderTarget)
         {
             rtvHandles.emplace_back(dxTexture.GetOrCreateRTVDSVView(device, dxTextureView));
         }
-        else if (usage & ResourceUsage::DepthStencil)
+        else if (usage & TextureUsage::DepthStencil)
         {
             dsvHandle = dxTexture.GetOrCreateRTVDSVView(device, dxTextureView);
         }
@@ -186,7 +189,8 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
 
     for (auto& [binding, usage, rhiBuffer] : buffers)
     {
-        VEX_NOT_YET_IMPLEMENTED();
+        auto& dxBuffer = reinterpret_cast<DX12Buffer&>(*rhiBuffer);
+        bindlessHandles.push_back(dxBuffer.GetOrCreateBindlessView(usage, dxDescriptorPool).GetIndex());
     }
 
     // Now we can bind the bindless textures as constants in our root constants!
@@ -248,9 +252,9 @@ void DX12CommandList::ClearTexture(RHITexture& rhiTexture,
     // call.
     // Instead we iterate on the mips passed in by the user.
 
-    if (desc.usage & ResourceUsage::RenderTarget)
+    if (desc.usage & TextureUsage::RenderTarget)
     {
-        DX12TextureView dxTextureView{ clearBinding, desc, ResourceUsage::RenderTarget };
+        DX12TextureView dxTextureView{ clearBinding, desc, TextureUsage::RenderTarget };
         dxTextureView.mipCount = 1;
 
         for (u32 mip = clearBinding.mipBias;
@@ -268,9 +272,9 @@ void DX12CommandList::ClearTexture(RHITexture& rhiTexture,
                 nullptr);
         }
     }
-    else if (desc.usage & ResourceUsage::DepthStencil)
+    else if (desc.usage & TextureUsage::DepthStencil)
     {
-        DX12TextureView dxTextureView{ clearBinding, desc, ResourceUsage::DepthStencil };
+        DX12TextureView dxTextureView{ clearBinding, desc, TextureUsage::DepthStencil };
         dxTextureView.mipCount = 1;
         for (u32 mip = clearBinding.mipBias;
              mip < ((clearBinding.mipCount == 0) ? 1 : (clearBinding.mipBias + clearBinding.mipCount));
@@ -328,7 +332,21 @@ void DX12CommandList::Transition(RHITexture& texture, RHITextureState::Flags new
 
 void DX12CommandList::Transition(RHIBuffer& buffer, RHIBufferState::Flags newState)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    // Nothing to do if the states are already equal.
+    if (buffer.GetCurrentState() == newState)
+    {
+        return;
+    }
+
+    DX12Buffer& dxBuffer = reinterpret_cast<DX12Buffer&>(buffer);
+    D3D12_RESOURCE_STATES currentDX12State = RHIBufferStateToDX12State(dxBuffer.GetCurrentState());
+    D3D12_RESOURCE_STATES newDX12State = RHIBufferStateToDX12State(newState);
+    D3D12_RESOURCE_BARRIER resourceBarrier =
+        CD3DX12_RESOURCE_BARRIER::Transition(dxBuffer.GetRawBuffer(), currentDX12State, newDX12State);
+
+    buffer.SetCurrentState(newState);
+
+    commandList->ResourceBarrier(1, &resourceBarrier);
 }
 
 void DX12CommandList::Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs)
@@ -360,7 +378,29 @@ void DX12CommandList::Transition(std::span<std::pair<RHITexture&, RHITextureStat
 
 void DX12CommandList::Transition(std::span<std::pair<RHIBuffer&, RHIBufferState::Flags>> bufferNewStatePairs)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    std::vector<D3D12_RESOURCE_BARRIER> transitionBarriers;
+    transitionBarriers.reserve(bufferNewStatePairs.size());
+    for (auto& [buffer, newState] : bufferNewStatePairs)
+    {
+        D3D12_RESOURCE_STATES currentDX12State = RHIBufferStateToDX12State(buffer.GetCurrentState());
+        D3D12_RESOURCE_STATES newDX12State = RHIBufferStateToDX12State(newState);
+        if (newDX12State == currentDX12State)
+        {
+            continue;
+        }
+        DX12Buffer& dxBuffer = reinterpret_cast<DX12Buffer&>(buffer);
+        D3D12_RESOURCE_BARRIER resourceBarrier =
+            CD3DX12_RESOURCE_BARRIER::Transition(dxBuffer.GetRawBuffer(), currentDX12State, newDX12State);
+
+        buffer.SetCurrentState(newState);
+
+        transitionBarriers.push_back(std::move(resourceBarrier));
+    }
+
+    if (!transitionBarriers.empty())
+    {
+        commandList->ResourceBarrier(transitionBarriers.size(), transitionBarriers.data());
+    }
 }
 
 void DX12CommandList::Draw(u32 vertexCount)

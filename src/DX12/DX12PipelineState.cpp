@@ -59,7 +59,7 @@ void DX12GraphicsPipelineState::Compile(const RHIShader& vertexShader,
     chk << device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&graphicsPSO));
 
 #if !VEX_SHIPPING
-    graphicsPSO->SetName(StringToWString(std::format("{}", key)).c_str());
+    chk << graphicsPSO->SetName(StringToWString(std::format("{}", key)).c_str());
 #endif
 }
 

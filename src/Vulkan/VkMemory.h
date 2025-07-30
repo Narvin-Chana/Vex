@@ -1,7 +1,8 @@
 ﻿#pragma once
 
-#include "Vex/Logger.h"
-#include "VkHeaders.h"
+#include <Vex/Logger.h>
+
+#include <Vulkan/VkHeaders.h>
 
 namespace vex::vk
 {

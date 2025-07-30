@@ -8,10 +8,8 @@
 #elif defined(__linux__)
 #define GLFW_EXPOSE_NATIVE_X11
 #endif
-
 #include <GLFW/glfw3native.h>
 
-#include <Vex.h>
 #include <Vex/Logger.h>
 
 ExampleApplication::ExampleApplication(std::string_view windowName)

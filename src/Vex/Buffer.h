@@ -9,21 +9,20 @@
 namespace vex
 {
 
-enum class BufferUsage : u8
-{
-    StagingBuffer,
-    VertexBuffer,
-    IndexBuffer,
-    GenericBuffer
-};
-
 // clang-format off
 
-BEGIN_VEX_ENUM_FLAGS(BufferMemoryAccess, u8)
-    CPURead,
-    CPUWrite,
-    GPURead,
-    GPUWrite
+// Determines how the buffer can be used.
+BEGIN_VEX_ENUM_FLAGS(BufferUsage, u8)
+    None                            = 0,
+    ShaderRead                      = 1 << 0, // SRV in DX12, read StorageBuffer in Vulkan
+    ShaderReadWrite                 = 1 << 1, // UAV in DX12, readWrite StorageBuffer in Vulkan
+    VertexBuffer                    = 1 << 2,
+    IndexBuffer                     = 1 << 3,
+    IndirectArgs                    = 1 << 4,
+    RaytracingAccelerationStructure = 1 << 5,
+    CPUVisible                      = 1 << 6, // Can be read by CPU
+    CPUWrite                        = 1 << 7, // Can be written to by CPU
+    // GPU visiblity is deduced from other flags.
 END_VEX_ENUM_FLAGS();
 
 // clang-format on
@@ -31,9 +30,15 @@ END_VEX_ENUM_FLAGS();
 struct BufferDescription
 {
     std::string name;
-    u32 byteSize;
-    BufferUsage usage;
-    BufferMemoryAccess::Flags memoryAccess;
+    u32 byteSize = 0;
+    // Stride of zero means this is a raw buffer (unstructured, represented in shaders as a ByteAddressBuffer)
+    u32 stride = 0;
+    BufferUsage::Flags usage = BufferUsage::None;
+
+    bool IsStructured() const
+    {
+        return stride != 0;
+    }
 };
 
 // Strongly defined type represents a buffer.

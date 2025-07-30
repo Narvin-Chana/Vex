@@ -1,13 +1,13 @@
-#include "Vex/RHI/RHIShader.h"
-#include "VkErrorHandler.h"
 #include "VkPipelineState.h"
-#include "VkResourceLayout.h"
 
 #include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/Debug.h>
 #include <Vex/RHI/RHIBuffer.h>
 #include <Vex/RHI/RHIShader.h>
 #include <Vex/RHI/RHITexture.h>
+
+#include <Vulkan/VkErrorHandler.h>
+#include <Vulkan/VkResourceLayout.h>
 
 namespace vex::vk
 {

@@ -196,8 +196,7 @@ static D3D12_UNORDERED_ACCESS_VIEW_DESC CreateUnorderedAccessViewDesc(DX12Textur
 } // namespace Texture_Internal
 
 DX12Texture::DX12Texture(ComPtr<DX12Device>& device, const TextureDescription& desc)
-    : srvUavHeap(device, MaxViewCountPerHeap)
-    , rtvHeap(device, MaxViewCountPerHeap)
+    : rtvHeap(device, MaxViewCountPerHeap)
     , dsvHeap(device, MaxViewCountPerHeap)
 {
     description = desc;
@@ -223,19 +222,19 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, const TextureDescription& d
         break;
     }
 
-    if (!(description.usage & ResourceUsage::Read))
+    if (!(description.usage & TextureUsage::ShaderRead))
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
     }
-    if (description.usage & ResourceUsage::RenderTarget)
+    if (description.usage & TextureUsage::RenderTarget)
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
     }
-    if (description.usage & ResourceUsage::UnorderedAccess)
+    if (description.usage & TextureUsage::ShaderReadWrite)
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
     }
-    if (description.usage & ResourceUsage::DepthStencil)
+    if (description.usage & TextureUsage::DepthStencil)
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
     }
@@ -265,12 +264,15 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, const TextureDescription& d
                                            clearValue,
                                            IID_PPV_ARGS(&texture));
 
-    texture->SetName(StringToWString(description.name).data());
+#if !VEX_SHIPPING
+    chk << texture->SetName(StringToWString(description.name).data());
+#endif
 }
 
 DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID3D12Resource> nativeTex)
     : texture(std::move(nativeTex))
     , rtvHeap(device, MaxViewCountPerHeap)
+    , dsvHeap(device, MaxViewCountPerHeap)
 {
     VEX_ASSERT(texture, "The texture passed in should be defined!");
     description.name = std::move(name);
@@ -301,25 +303,27 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
     description.depthOrArraySize = static_cast<u32>(nativeDesc.DepthOrArraySize);
     description.mips = nativeDesc.MipLevels;
     description.format = DXGIToTextureFormat(nativeDesc.Format);
-    description.usage = ResourceUsage::None;
+    description.usage = TextureUsage::None;
     if (!(nativeDesc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE))
     {
-        description.usage |= ResourceUsage::Read;
+        description.usage |= TextureUsage::ShaderRead;
     }
     if (nativeDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
     {
-        description.usage |= ResourceUsage::RenderTarget;
+        description.usage |= TextureUsage::RenderTarget;
     }
     if (nativeDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)
     {
-        description.usage |= ResourceUsage::UnorderedAccess;
+        description.usage |= TextureUsage::ShaderReadWrite;
     }
     if (nativeDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
     {
-        description.usage |= ResourceUsage::DepthStencil;
+        description.usage |= TextureUsage::DepthStencil;
     }
 
-    texture->SetName(StringToWString(description.name).data());
+#if !VEX_SHIPPING
+    chk << texture->SetName(StringToWString(description.name).data());
+#endif
 }
 
 DX12Texture::~DX12Texture()
@@ -328,26 +332,26 @@ DX12Texture::~DX12Texture()
 
 void DX12Texture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 {
-    for (auto& [heapSlot, bindlessHandle] : cache | std::views::values)
+    for (auto& [heapSlot, bindlessHandle] : viewCache | std::views::values)
     {
         if (bindlessHandle != GInvalidBindlessHandle)
         {
             reinterpret_cast<DX12DescriptorPool&>(descriptorPool).FreeStaticDescriptor(bindlessHandle);
         }
     }
-    cache.clear();
+    viewCache.clear();
 }
 
 CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(ComPtr<DX12Device>& device, DX12TextureView view)
 {
     using namespace Texture_Internal;
 
-    bool isRTVView = (view.type == ResourceUsage::RenderTarget) && (description.usage & ResourceUsage::RenderTarget);
-    bool isDSVView = (view.type == ResourceUsage::DepthStencil) && (description.usage & ResourceUsage::DepthStencil);
+    bool isRTVView = (view.usage == TextureUsage::RenderTarget) && (description.usage & TextureUsage::RenderTarget);
+    bool isDSVView = (view.usage == TextureUsage::DepthStencil) && (description.usage & TextureUsage::DepthStencil);
     VEX_ASSERT(isRTVView || isDSVView,
                "Texture view requested must be for an RTV or DSV AND the underlying texture must support this usage.");
 
-    if (auto it = cache.find(view); it != cache.end())
+    if (auto it = viewCache.find(view); it != viewCache.end())
     {
         if (isRTVView)
         {
@@ -363,7 +367,7 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(ComPtr<DX12Devi
     if (isRTVView)
     {
         auto idx = rtvHeapAllocator.Allocate();
-        cache[view] = { .heapSlot = idx };
+        viewCache[view] = { .heapSlot = idx };
         auto desc = CreateRenderTargetViewDesc(view);
         auto rtvDescriptor = rtvHeap.GetCPUDescriptorHandle(idx);
         device->CreateRenderTargetView(texture.Get(), &desc, rtvDescriptor);
@@ -372,7 +376,7 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(ComPtr<DX12Devi
     else // if (isDSVView)
     {
         auto idx = dsvHeapAllocator.Allocate();
-        cache[view] = { .heapSlot = idx };
+        viewCache[view] = { .heapSlot = idx };
         auto desc = CreateDepthStencilViewDesc(view);
         auto dsvDescriptor = dsvHeap.GetCPUDescriptorHandle(idx);
         device->CreateDepthStencilView(texture.Get(), &desc, dsvDescriptor);
@@ -387,48 +391,42 @@ BindlessHandle DX12Texture::GetOrCreateBindlessView(ComPtr<DX12Device>& device,
 {
     using namespace Texture_Internal;
 
-    bool isSRVView = (view.type == ResourceUsage::Read) && (description.usage & ResourceUsage::Read);
+    bool isSRVView = (view.usage == TextureUsage::ShaderRead) && (description.usage & TextureUsage::ShaderRead);
     bool isUAVView =
-        (view.type == ResourceUsage::UnorderedAccess) && (description.usage & ResourceUsage::UnorderedAccess);
+        (view.usage == TextureUsage::ShaderReadWrite) && (description.usage & TextureUsage::ShaderReadWrite);
 
     VEX_ASSERT(isSRVView || isUAVView,
                "Texture view requested must be of type SRV or UAV AND the underlying texture must support this usage.");
 
-    if (auto it = cache.find(view); it != cache.end() && descriptorPool.IsValid(it->second.bindlessHandle))
+    // Check cache first
+    if (auto it = viewCache.find(view); it != viewCache.end() && descriptorPool.IsValid(it->second.bindlessHandle))
     {
         return it->second.bindlessHandle;
     }
 
+    BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
+
     if (isSRVView)
     {
-        auto idx = srvUavHeapAllocator.Allocate();
         auto desc = CreateShaderResourceViewDesc(view);
-        auto descriptor = srvUavHeap.GetCPUDescriptorHandle(idx);
-        device->CreateShaderResourceView(texture.Get(), &desc, descriptor);
-        BindlessHandle handle = descriptorPool.AllocateStaticDescriptor(*this);
-        descriptorPool.CopyDescriptor(device, handle, descriptor);
-        cache[view] = { .heapSlot = idx, .bindlessHandle = handle };
-
-        return handle;
+        auto cpuDescriptorHandle = descriptorPool.GetCPUDescriptor(handle);
+        device->CreateShaderResourceView(texture.Get(), &desc, cpuDescriptorHandle);
     }
     else // if (isUAVView)
     {
-        auto idx = srvUavHeapAllocator.Allocate();
         auto desc = CreateUnorderedAccessViewDesc(view);
-        auto descriptor = srvUavHeap.GetCPUDescriptorHandle(idx);
-        device->CreateUnorderedAccessView(texture.Get(), nullptr, &desc, descriptor);
-        BindlessHandle handle = descriptorPool.AllocateStaticDescriptor(*this);
-        descriptorPool.CopyDescriptor(device, handle, descriptor);
-        cache[view] = { .heapSlot = idx, .bindlessHandle = handle };
-
-        return handle;
+        auto cpuDescriptorHandle = descriptorPool.GetCPUDescriptor(handle);
+        device->CreateUnorderedAccessView(texture.Get(), nullptr, &desc, cpuDescriptorHandle);
     }
+
+    viewCache[view] = { .bindlessHandle = handle };
+    return handle;
 }
 
 DX12TextureView::DX12TextureView(const ResourceBinding& binding,
                                  const TextureDescription& description,
-                                 ResourceUsage::Type usage)
-    : type{ usage }
+                                 TextureUsage::Type type)
+    : usage{ type }
     , dimension{ TextureUtil::GetTextureViewType(binding) }
     , format{ TextureFormatToDXGI(TextureUtil::GetTextureFormat(binding)) }
     , mipBias{ binding.mipBias }

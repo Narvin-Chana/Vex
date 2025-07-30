@@ -135,25 +135,44 @@ ForEachMacros:
   - BOOST_FOREACH
 IfMacros:
   - KJ_IF_MAYBE
-IncludeBlocks:   Preserve
+IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex:           '^<pch\.h>$'
-    Priority:        -10
-    SortPriority:    -10
-    CaseSensitive:   false
-  - Regex:           '^"(llvm|llvm-c|clang|clang-c)/'
-    Priority:        2
-    SortPriority:    0
-    CaseSensitive:   false
-  - Regex:           '^(<|"(gtest|gmock|isl|json)/)'
-    Priority:        3
-    SortPriority:    0
-    CaseSensitive:   false
-  - Regex:           '.*'
-    Priority:        1
-    SortPriority:    0
-    CaseSensitive:   false
-IncludeIsMainRegex: '(Test)?$'
+    # Category 0: Main header (.h of a .cpp)
+    - Regex: '^"[^/]+\.h"$'
+      Priority: 0
+      SortPriority: 0
+      CaseSensitive: false
+    # Category 1: Standard library headers (no path, common names)
+    - Regex: '^<[^/>\.]+>$'
+      Priority: 1
+      SortPriority: 1
+      CaseSensitive: false
+    # Category 2: Vex/ headers (BEFORE third-party includes to ensure it matches first)
+    - Regex: '^<Vex/.*>$'
+      Priority: 3
+      SortPriority: 3
+      CaseSensitive: true
+    # Category 2: Vex.h should also be grouped with Vex/ includes
+    - Regex: '^<Vex.h>$'
+      Priority: 3
+      SortPriority: 3
+      CaseSensitive: true
+    # Category 3: DX12/ headers
+    - Regex: '^<DX12/.*>$'
+      Priority: 4
+      SortPriority: 4
+      CaseSensitive: true
+    # Category 4: Vulkan/ headers
+    - Regex: '^<Vulkan/.*>$'
+      Priority: 5
+      SortPriority: 5
+      CaseSensitive: true
+    # Category 5: Everything else (third-party libraries)
+    - Regex: '^<.*>$'
+      Priority: 2
+      SortPriority: 2
+      CaseSensitive: false
+IncludeIsMainRegex: ''
 IncludeIsMainSourceRegex: ''
 IndentAccessModifiers: false
 IndentCaseBlocks: false

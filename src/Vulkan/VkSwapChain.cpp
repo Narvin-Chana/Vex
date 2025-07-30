@@ -2,12 +2,12 @@
 
 #include <Vex/PlatformWindow.h>
 
-#include "VkCommandQueue.h"
-#include "VkErrorHandler.h"
-#include "VkFormats.h"
-#include "VkGPUContext.h"
-#include "VkHeaders.h"
-#include "VkTexture.h"
+#include <Vulkan/VkCommandQueue.h>
+#include <Vulkan/VkErrorHandler.h>
+#include <Vulkan/VkFormats.h>
+#include <Vulkan/VkGPUContext.h>
+#include <Vulkan/VkHeaders.h>
+#include <Vulkan/VkTexture.h>
 
 namespace vex::vk
 {
@@ -159,6 +159,7 @@ void VkSwapChain::Present(bool isFullscreenMode)
 
 void VkSwapChain::Resize(u32 width, u32 height)
 {
+    swapchain.reset();
     InitSwapchainResource(width, height);
 }
 

@@ -1,9 +1,12 @@
 ﻿#pragma once
 
+#include <span>
 #include <vector>
 
 #include <Vex/Bindings.h>
+#include <Vex/Buffer.h>
 #include <Vex/RHI/RHIBindings.h>
+#include <Vex/Texture.h>
 
 namespace vex
 {
@@ -17,7 +20,8 @@ public:
                                     std::span<const ResourceBinding> resources,
                                     std::vector<RHITextureBinding>& textureBindings,
                                     std::vector<RHIBufferBinding>& bufferBindings,
-                                    ResourceUsage::Type usage);
+                                    TextureUsage::Type textureUsage,
+                                    BufferUsage::Type bufferUsage);
 
     std::vector<ResourceBinding> reads;
     std::vector<ResourceBinding> writes;

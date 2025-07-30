@@ -1,12 +1,12 @@
 ﻿#pragma once
 
-#include "VkDescriptorPool.h"
-#include "VkHeaders.h"
+#include <span>
 
 #include <Vex/RHI/RHIBuffer.h>
 #include <Vex/Types.h>
 
-#include <span>
+#include <Vulkan/VkDescriptorPool.h>
+#include <Vulkan/VkHeaders.h>
 
 namespace vex
 {

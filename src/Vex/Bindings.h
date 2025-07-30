@@ -70,7 +70,8 @@ struct ResourceBinding
     }
 
     static void ValidateResourceBindings(std::span<const ResourceBinding> bindings,
-                                         ResourceUsage::Flags validUsageFlags);
+                                         TextureUsage::Flags validUsageFlags,
+                                         BufferUsage::Flags validBufferUsageFlags = BufferUsage::None);
 };
 
 } // namespace vex

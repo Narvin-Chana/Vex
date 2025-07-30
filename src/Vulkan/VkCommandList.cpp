@@ -3,14 +3,12 @@
 #include <Vex/Bindings.h>
 #include <Vex/RHI/RHIBindings.h>
 
-#include <numeric>
-
-#include "VkBuffer.h"
-#include "VkDescriptorPool.h"
-#include "VkErrorHandler.h"
-#include "VkPipelineState.h"
-#include "VkResourceLayout.h"
-#include "VkTexture.h"
+#include <Vulkan/VkBuffer.h>
+#include <Vulkan/VkDescriptorPool.h>
+#include <Vulkan/VkErrorHandler.h>
+#include <Vulkan/VkPipelineState.h>
+#include <Vulkan/VkResourceLayout.h>
+#include <Vulkan/VkTexture.h>
 
 namespace vex::vk
 {
@@ -130,7 +128,7 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
                                        std::span<RHIBufferBinding> buffers,
                                        RHIDescriptorPool& descriptorPool)
 {
-    if (textures.empty())
+    if (textures.empty() && buffers.empty())
     {
         return;
     }
@@ -145,7 +143,7 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
     {
         auto vkTexture = reinterpret_cast<VkTexture*>(rhiTexture);
 
-        if (usage == ResourceUsage::Read || usage == ResourceUsage::UnorderedAccess)
+        if (usage == TextureUsage::ShaderRead || usage == TextureUsage::ShaderReadWrite)
         {
             const BindlessHandle handle = vkTexture->GetOrCreateBindlessView(
                 ctx,
@@ -162,6 +160,13 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
                 vkDescriptorPool);
             bindlessHandleIndices.push_back(handle.GetIndex());
         }
+    }
+
+    for (auto& [binding, usage, rhiBuffer] : buffers)
+    {
+        auto* vkBuffer = reinterpret_cast<VkBuffer*>(rhiBuffer);
+        const BindlessHandle handle = vkBuffer->GetOrCreateBindlessIndex(ctx, vkDescriptorPool);
+        bindlessHandleIndices.push_back(handle.GetIndex());
     }
 
     for (auto& [binding, usage, rhiBuffer] : buffers)

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Vex/Debug.h>
 #include <Vex/Types.h>
 
 #include <DX12/DX12Headers.h>

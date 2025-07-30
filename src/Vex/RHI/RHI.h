@@ -5,11 +5,10 @@
 
 #include <Vex/CommandQueueType.h>
 #include <Vex/Containers/FreeList.h>
+#include <Vex/RHI/RHIFwd.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
 #include <Vex/UniqueHandle.h>
-
-#include <Vex/RHI/RHIFwd.h>
 
 namespace vex
 {

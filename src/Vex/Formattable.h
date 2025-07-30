@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Platform/Platform.h"
-
 #include <format>
 #include <vector>
+
+#include "Platform/Platform.h"
 
 // Defines the std::formatter boilerplate for making a type printable using VEX_LOG (and std:format).
 // formatStr should be the output format and the variadic should be the type's fields to output.

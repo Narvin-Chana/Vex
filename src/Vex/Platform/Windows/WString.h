@@ -1,8 +1,8 @@
 #pragma once
 
-#include <winstring.h>
-
 #include <string>
+
+#include <winstring.h>
 
 #include <Vex/Types.h>
 
