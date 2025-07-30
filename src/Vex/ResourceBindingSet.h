@@ -5,7 +5,7 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/Buffer.h>
-#include <Vex/RHI/RHIBindings.h>
+#include <Vex/RHIBindings.h>
 #include <Vex/Texture.h>
 
 namespace vex

@@ -9,8 +9,8 @@
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/Platform/Platform.h>
-#include <Vex/RHI/RHI.h>
-#include <Vex/RHI/RHIShader.h>
+#include <Vex/RHIImpl/RHI.h>
+#include <Vex/Shader.h>
 #include <Vex/ShaderGen.h>
 #include <Vex/ShaderResourceContext.h>
 #include <Vex/TextureSampler.h>
@@ -98,7 +98,7 @@ ShaderCompiler::ShaderCompiler(RHI* rhi, const ShaderCompilerSettings& compilerS
 
 ShaderCompiler::~ShaderCompiler() = default;
 
-ComPtr<IDxcResult> ShaderCompiler::GetPreprocessedShader(const RHIShader& shader,
+ComPtr<IDxcResult> ShaderCompiler::GetPreprocessedShader(const Shader& shader,
                                                          const ComPtr<IDxcBlobEncoding>& shaderBlobUTF8) const
 {
     std::vector<LPCWSTR> args = { L"-P" }; // -P gives us the preprocessor output of the shader.
@@ -136,7 +136,7 @@ CompilerUtil& ShaderCompiler::GetCompilerUtil()
     return GCompilerUtil;
 }
 
-std::optional<std::size_t> ShaderCompiler::GetShaderHash(const RHIShader& shader) const
+std::optional<std::size_t> ShaderCompiler::GetShaderHash(const Shader& shader) const
 {
     ComPtr<IDxcBlobEncoding> shaderBlobUTF8;
     u32 codePage = CP_UTF8;
@@ -162,7 +162,7 @@ std::optional<std::size_t> ShaderCompiler::GetShaderHash(const RHIShader& shader
     return std::nullopt;
 }
 
-std::expected<void, std::string> ShaderCompiler::CompileShader(RHIShader& shader,
+std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
                                                                const ShaderResourceContext& resourceContext)
 {
     // Generate the hash if this is the first time we've compiled this shader.
@@ -299,7 +299,7 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(RHIShader& shader
         return std::unexpected("Failed to obtain the shader blob after compilation.");
     }
 
-    // Store shader bytecode blob inside the RHIShader.
+    // Store shader bytecode blob inside the Shader.
     shader.blob.resize(shaderBytecode->GetBufferSize());
     std::memcpy(shader.blob.data(), shaderBytecode->GetBufferPointer(), shader.blob.size() * sizeof(u8));
 
@@ -354,16 +354,16 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(RHIShader& shader
     return {};
 }
 
-RHIShader* ShaderCompiler::GetShader(const ShaderKey& key, const ShaderResourceContext& resourceContext)
+Shader* ShaderCompiler::GetShader(const ShaderKey& key, const ShaderResourceContext& resourceContext)
 {
-    RHIShader* shaderPtr;
+    Shader* shaderPtr;
     if (shaderCompiler.contains(key))
     {
         shaderPtr = shaderCompiler[key].get();
     }
     else
     {
-        UniqueHandle<RHIShader> shader = rhi->CreateShader(key);
+        UniqueHandle<Shader> shader = MakeUnique<Shader>(key);
         shaderPtr = shader.get();
         shaderCompiler[key] = std::move(shader);
     }
@@ -389,7 +389,7 @@ RHIShader* ShaderCompiler::GetShader(const ShaderKey& key, const ShaderResourceC
     return shaderPtr;
 }
 
-std::pair<bool, std::size_t> ShaderCompiler::IsShaderStale(const RHIShader& shader) const
+std::pair<bool, std::size_t> ShaderCompiler::IsShaderStale(const Shader& shader) const
 {
     if (!std::filesystem::exists(shader.key.path))
     {

@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <Vex/RHI/RHI.h>
+#include <Vex/CommandQueueType.h>
 #include <Vex/Types.h>
 
 #include <Vulkan/VkHeaders.h>

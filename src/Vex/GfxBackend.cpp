@@ -10,22 +10,23 @@
 #include <Vex/FeatureChecker.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
-#include <Vex/RHI/RHI.h>
-#include <Vex/RHI/RHIBuffer.h>
-#include <Vex/RHI/RHICommandList.h>
-#include <Vex/RHI/RHICommandPool.h>
-#include <Vex/RHI/RHIDescriptorPool.h>
-#include <Vex/RHI/RHIFence.h>
-#include <Vex/RHI/RHIResourceLayout.h>
-#include <Vex/RHI/RHIShader.h>
-#include <Vex/RHI/RHISwapChain.h>
-#include <Vex/RHI/RHITexture.h>
+#include <Vex/RHIImpl/RHI.h>
+#include <Vex/RHIImpl/RHIBuffer.h>
+#include <Vex/RHIImpl/RHICommandList.h>
+#include <Vex/RHIImpl/RHICommandPool.h>
+#include <Vex/RHIImpl/RHIDescriptorPool.h>
+#include <Vex/RHIImpl/RHIFence.h>
+#include <Vex/RHIImpl/RHIResourceLayout.h>
+#include <Vex/RHIImpl/RHISwapChain.h>
+#include <Vex/RHIImpl/RHITexture.h>
 
 namespace vex
 {
 
-GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& description)
-    : rhi(std::move(newRHI))
+GfxBackend::GfxBackend(const BackendDescription& description)
+    : rhi(MakeUnique<RHI>(description.platformWindow.windowHandle,
+                          description.enableGPUDebugLayer,
+                          description.enableGPUBasedValidation))
     , description(description)
     , resourceCleanup(static_cast<i8>(description.frameBuffering))
     , commandPools(description.frameBuffering)
@@ -202,7 +203,7 @@ void GfxBackend::UpdateData(const Buffer& buffer, std::span<const u8> data)
     VEX_ASSERT(data.size() <= buffer.description.byteSize, "Buffer data exceded buffer size");
 
     RHIBuffer& rhiBuffer = GetRHIBuffer(buffer.handle);
-    rhiBuffer.GetMappedMemory()->SetData(data);
+    rhiBuffer.GetMappedMemory().SetData(data);
 }
 
 void GfxBackend::DestroyTexture(const Texture& texture)

@@ -1,8 +1,9 @@
 ﻿#include "ResourceBindingSet.h"
 
 #include <Vex/GfxBackend.h>
-#include <Vex/RHI/RHIBuffer.h>
-#include <Vex/RHI/RHITexture.h>
+
+#include <RHI/RHIBuffer.h>
+#include <RHI/RHITexture.h>
 
 namespace vex
 {

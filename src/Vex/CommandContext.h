@@ -2,10 +2,11 @@
 
 #include <optional>
 
-#include <Vex/RHI/RHIFwd.h>
-#include <Vex/RHI/RHIPipelineState.h>
+#include <Vex/RHIFwd.h>
 #include <Vex/ShaderKey.h>
 #include <Vex/Types.h>
+
+#include <RHI/RHIPipelineState.h>
 
 namespace vex
 {
