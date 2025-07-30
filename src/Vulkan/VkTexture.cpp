@@ -109,7 +109,8 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(VkGPUContext& ctx,
                                                 } };
 
     ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx.device.createImageViewUnique(viewCreate);
-    const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor(*this);
+    const BindlessHandle handle =
+        descriptorPool.AllocateStaticDescriptor(*this, view.usage == ResourceUsage::UnorderedAccess);
 
     descriptorPool.UpdateDescriptor(
         ctx,

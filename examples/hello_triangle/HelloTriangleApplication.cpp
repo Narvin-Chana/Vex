@@ -8,6 +8,7 @@
 #endif
 
 #include <GLFW/glfw3native.h>
+#include <math.h>
 
 #if defined(__linux__)
 // Undefine problematic X11 macros
@@ -58,9 +59,35 @@ HelloTriangleApplication::HelloTriangleApplication()
                                   .format = vex::TextureFormat::RGBA8_UNORM,
                                   .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess },
                                 vex::ResourceLifetime::Static);
+    finalOutputTexture =
+        graphics->CreateTexture({ .name = "Final Output Texture",
+                                  .type = vex::TextureType::Texture2D,
+                                  .width = DefaultWidth,
+                                  .height = DefaultHeight,
+                                  .depthOrArraySize = 1,
+                                  .mips = 1,
+                                  .format = vex::TextureFormat::RGBA8_UNORM,
+                                  .usage = vex::ResourceUsage::Read | vex::ResourceUsage::UnorderedAccess },
+                                vex::ResourceLifetime::Static);
+
+    // Example of CPU accessible buffer
+    colorBuffer =
+        graphics->CreateBuffer({ .name = "Color Buffer",
+                                 .byteSize = sizeof(float) * 4,
+                                 .usage = vex::BufferUsage::GenericBuffer,
+                                 .memoryAccess = vex::BufferMemoryAccess::CPUWrite | vex::BufferMemoryAccess::GPURead },
+                               vex::ResourceLifetime::Static);
+
+    // Example of GPU only buffer
+    commBuffer =
+        graphics->CreateBuffer({ .name = "Comm Buffer",
+                                 .byteSize = sizeof(float) * 4,
+                                 .usage = vex::BufferUsage::GenericBuffer,
+                                 .memoryAccess = vex::BufferMemoryAccess::GPURead | vex::BufferMemoryAccess::GPUWrite },
+                               vex::ResourceLifetime::Static);
 
 #if defined(_WIN32)
-    // Suggestion of an intrusive (à la Unreal) way to display errors.
+    // Suggestion of an intrusive (a la Unreal) way to display errors.
     // The handling of shader compilation errors is user choice.
     graphics->SetShaderCompilationErrorsCallback(
         [window = window](const std::vector<std::pair<vex::ShaderKey, std::string>>& errors) -> bool
@@ -115,29 +142,45 @@ void HelloTriangleApplication::Run()
     {
         glfwPollEvents();
 
+        const double currentTime = glfwGetTime();
+
         graphics->StartFrame();
 
         {
+            float ocillatedColor = static_cast<float>(cos(currentTime) / 2 + 0.5);
+            float invOcillatedColor = 1 - ocillatedColor;
+            float color[4] = { invOcillatedColor, ocillatedColor, invOcillatedColor, 1.0 };
+            graphics->UpdateData(colorBuffer, color);
+
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
             ctx.Dispatch(
                 { .path = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() /
                           "examples" / "hello_triangle" / "HelloTriangleShader.cs.hlsl",
                   .entryPoint = "CSMain",
                   .type = vex::ShaderType::ComputeShader },
-                {},
-                {},
-                { { vex::ResourceBinding{ .name = "OutputTexture", .texture = workingTexture } } },
+                {
+                    .reads = {
+                        { .name = "ColorBuffer", .buffer = colorBuffer },
+                    },
+                    .writes = {
+                        { .name = "OutputTexture", .texture = workingTexture },
+                        { .name = "CommBuffer", .buffer = commBuffer }
+                    },
+                    .constants = {}
+                },
                 { static_cast<uint32_t>(width) / 8, static_cast<uint32_t>(height) / 8, 1 });
             ctx.Dispatch(
                 { .path = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() /
                           "examples" / "hello_triangle" / "HelloTriangleShader2.cs.hlsl",
                   .entryPoint = "CSMain",
                   .type = vex::ShaderType::ComputeShader },
-                {},
-                {},
-                { { vex::ResourceBinding{ .name = "OutputTexture", .texture = workingTexture } } },
+                {
+                    .reads = { { .name = "CommBuffer", .buffer = commBuffer },
+                               { .name = "SourceTexture", .texture = workingTexture } },
+                    .writes = { { .name = "OutputTexture", .texture = finalOutputTexture } },
+                },
                 { static_cast<uint32_t>(width) / 8, static_cast<uint32_t>(height) / 8, 1 });
-            ctx.Copy(workingTexture, graphics->GetCurrentBackBuffer());
+            ctx.Copy(finalOutputTexture, graphics->GetCurrentBackBuffer());
         }
 
         graphics->EndFrame(windowMode == Fullscreen);

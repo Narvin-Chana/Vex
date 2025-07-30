@@ -1,7 +1,10 @@
 #include "VkResourceLayout.h"
 
+#include <Vex/ResourceBindingSet.h>
 #include <Vex/Debug.h>
 #include <Vex/PhysicalDevice.h>
+
+#include <numeric>
 
 #include "VkDescriptorPool.h"
 #include "VkErrorHandler.h"
@@ -29,21 +32,10 @@ VkResourceLayout::VkResourceLayout(::vk::Device device, const VkDescriptorPool& 
     version++;
 }
 
-bool VkResourceLayout::ValidateGlobalConstant(const GlobalConstant& globalConstant) const
-{
-    if (!RHIResourceLayout::ValidateGlobalConstant(globalConstant))
-    {
-        return false;
-    }
-
-    return true;
-}
 u32 VkResourceLayout::GetMaxLocalConstantSize() const
 {
     const u32 maxBytes =
         reinterpret_cast<VkFeatureChecker*>(GPhysicalDevice->featureChecker.get())->GetMaxPushConstantSize();
-
-    // TODO: Consider global constant in the available size
     return std::max<u32>(0, maxBytes);
 }
 } // namespace vex::vk

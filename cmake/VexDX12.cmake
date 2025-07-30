@@ -74,6 +74,8 @@ function(setup_dx12_backend TARGET)
         "src/DX12/DX12States.cpp"
         "src/DX12/DX12GraphicsPipeline.h"
         "src/DX12/DX12GraphicsPipeline.cpp"
+        "src/DX12/DX12Buffer.h"
+        "src/DX12/DX12Buffer.cpp"
     )
 
     # Add DX12 sources to target

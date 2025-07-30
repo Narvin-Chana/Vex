@@ -1,5 +1,7 @@
 #include "DX12RHI.h"
 
+#include "DX12Buffer.h"
+
 #include <Vex/Logger.h>
 #include <Vex/PlatformWindow.h>
 
@@ -156,6 +158,11 @@ UniqueHandle<RHIResourceLayout> DX12RHI::CreateResourceLayout(RHIDescriptorPool&
 UniqueHandle<RHITexture> DX12RHI::CreateTexture(const TextureDescription& description)
 {
     return MakeUnique<DX12Texture>(device, description);
+}
+
+UniqueHandle<RHIBuffer> DX12RHI::CreateBuffer(const BufferDescription& description)
+{
+    return MakeUnique<DX12Buffer>(device, description);
 }
 
 UniqueHandle<RHIDescriptorPool> DX12RHI::CreateDescriptorPool()

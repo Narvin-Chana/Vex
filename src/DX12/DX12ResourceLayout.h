@@ -15,7 +15,6 @@ public:
     DX12ResourceLayout(ComPtr<DX12Device>& device);
     virtual ~DX12ResourceLayout() override;
 
-    virtual bool ValidateGlobalConstant(const GlobalConstant& globalConstant) const override;
     virtual u32 GetMaxLocalConstantSize() const override;
 
     ComPtr<ID3D12RootSignature>& GetRootSignature();
