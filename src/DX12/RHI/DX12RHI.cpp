@@ -196,12 +196,12 @@ UniqueHandle<RHIFence> DX12RHI::CreateFence(u32 numFenceIndices)
 
 void DX12RHI::SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
 {
-    chk << GetQueue(queueType)->Signal(static_cast<DX12Fence&>(fence).fence.Get(), fence.GetFenceValue(fenceIndex));
+    chk << GetQueue(queueType)->Signal(fence.fence.Get(), fence.GetFenceValue(fenceIndex));
 }
 
 void DX12RHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
 {
-    chk << GetQueue(queueType)->Wait(static_cast<DX12Fence&>(fence).fence.Get(), fence.GetFenceValue(fenceIndex));
+    chk << GetQueue(queueType)->Wait(fence.fence.Get(), fence.GetFenceValue(fenceIndex));
 }
 
 void DX12RHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args, std::vector<ShaderDefine>& defines)

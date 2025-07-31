@@ -128,7 +128,7 @@ void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
     {
         if (handle != GInvalidBindlessHandle)
         {
-            reinterpret_cast<VkDescriptorPool&>(descriptorPool).FreeStaticDescriptor(handle);
+            descriptorPool.FreeStaticDescriptor(handle);
         }
     }
     cache.clear();

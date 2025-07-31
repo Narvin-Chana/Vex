@@ -41,8 +41,6 @@ VkComputePipelineState::~VkComputePipelineState() = default;
 
 void VkComputePipelineState::Compile(const Shader& computeShader, RHIResourceLayout& resourceLayout)
 {
-    auto& vkResourceLayout = reinterpret_cast<VkResourceLayout&>(resourceLayout);
-
     std::span<const u8> shaderCode = computeShader.GetBlob();
     ::vk::ShaderModuleCreateInfo shaderModulecreateInfo{
         .codeSize = shaderCode.size(),
@@ -58,7 +56,7 @@ void VkComputePipelineState::Compile(const Shader& computeShader, RHIResourceLay
                 .module = *computeShaderModule,
                 .pName = "CSMain",
             },
-        .layout = *vkResourceLayout.pipelineLayout,
+        .layout = *resourceLayout.pipelineLayout,
     };
 
     computePipeline = VEX_VK_CHECK <<= device.createComputePipelineUnique(PSOCache, computePipelineCreateInfo);

@@ -103,19 +103,17 @@ void DX12CommandList::SetScissor(i32 x, i32 y, u32 width, u32 height)
 
 void DX12CommandList::SetPipelineState(const RHIGraphicsPipelineState& graphicsPipelineState)
 {
-    const auto& pso = reinterpret_cast<const DX12GraphicsPipelineState&>(graphicsPipelineState);
-    commandList->SetPipelineState(pso.graphicsPSO.Get());
+    commandList->SetPipelineState(graphicsPipelineState.graphicsPSO.Get());
 }
 
 void DX12CommandList::SetPipelineState(const RHIComputePipelineState& computePipelineState)
 {
-    const auto& pso = reinterpret_cast<const DX12ComputePipelineState&>(computePipelineState);
-    commandList->SetPipelineState(pso.computePSO.Get());
+    commandList->SetPipelineState(computePipelineState.computePSO.Get());
 }
 
 void DX12CommandList::SetLayout(RHIResourceLayout& layout)
 {
-    auto globalRootSignature = reinterpret_cast<DX12ResourceLayout&>(layout).GetRootSignature().Get();
+    ID3D12RootSignature* globalRootSignature = layout.GetRootSignature().Get();
 
     switch (type)
     {
@@ -157,8 +155,6 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
                                          std::span<RHIBufferBinding> buffers,
                                          RHIDescriptorPool& descriptorPool)
 {
-    auto& dxDescriptorPool = reinterpret_cast<DX12DescriptorPool&>(descriptorPool);
-
     std::vector<u32> bindlessHandles;
     // Allocate for worst-case scenario.
     bindlessHandles.reserve(textures.size() + buffers.size());
@@ -168,29 +164,27 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
 
     std::optional<CD3DX12_CPU_DESCRIPTOR_HANDLE> dsvHandle;
 
-    for (auto& [binding, usage, rhiTexture] : textures)
+    for (auto& [binding, usage, texture] : textures)
     {
-        auto& dxTexture = reinterpret_cast<DX12Texture&>(*rhiTexture);
-        DX12TextureView dxTextureView{ binding, rhiTexture->GetDescription(), usage };
+        DX12TextureView dxTextureView{ binding, texture->GetDescription(), usage };
         if (usage & TextureUsage::ShaderRead || usage & TextureUsage::ShaderReadWrite)
         {
             bindlessHandles.push_back(
-                dxTexture.GetOrCreateBindlessView(device, dxTextureView, dxDescriptorPool).GetIndex());
+                texture->GetOrCreateBindlessView(device, dxTextureView, descriptorPool).GetIndex());
         }
         else if (usage & TextureUsage::RenderTarget)
         {
-            rtvHandles.emplace_back(dxTexture.GetOrCreateRTVDSVView(device, dxTextureView));
+            rtvHandles.emplace_back(texture->GetOrCreateRTVDSVView(device, dxTextureView));
         }
         else if (usage & TextureUsage::DepthStencil)
         {
-            dsvHandle = dxTexture.GetOrCreateRTVDSVView(device, dxTextureView);
+            dsvHandle = texture->GetOrCreateRTVDSVView(device, dxTextureView);
         }
     }
 
-    for (auto& [binding, usage, rhiBuffer] : buffers)
+    for (auto& [binding, usage, buffer] : buffers)
     {
-        auto& dxBuffer = reinterpret_cast<DX12Buffer&>(*rhiBuffer);
-        bindlessHandles.push_back(dxBuffer.GetOrCreateBindlessView(usage, dxDescriptorPool).GetIndex());
+        bindlessHandles.push_back(buffer->GetOrCreateBindlessView(usage, descriptorPool).GetIndex());
     }
 
     // Now we can bind the bindless textures as constants in our root constants!
@@ -232,9 +226,7 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
 
 void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)
 {
-    commandList->SetDescriptorHeaps(
-        1,
-        reinterpret_cast<DX12DescriptorPool&>(descriptorPool).gpuHeap.GetRawDescriptorHeap().GetAddressOf());
+    commandList->SetDescriptorHeaps(1, descriptorPool.gpuHeap.GetRawDescriptorHeap().GetAddressOf());
 }
 
 void DX12CommandList::SetInputAssembly(InputAssembly inputAssembly)
@@ -265,11 +257,10 @@ void DX12CommandList::ClearTexture(RHITexture& rhiTexture,
             VEX_ASSERT(clearValue.flags & TextureClear::ClearColor,
                        "Clearing the color requires the TextureClear::ClearColor flag for texture: {}.",
                        desc.name);
-            commandList->ClearRenderTargetView(
-                reinterpret_cast<DX12Texture&>(rhiTexture).GetOrCreateRTVDSVView(device, dxTextureView),
-                clearValue.color,
-                0,
-                nullptr);
+            commandList->ClearRenderTargetView(rhiTexture.GetOrCreateRTVDSVView(device, dxTextureView),
+                                               clearValue.color,
+                                               0,
+                                               nullptr);
         }
     }
     else if (desc.usage & TextureUsage::DepthStencil)
@@ -295,13 +286,12 @@ void DX12CommandList::ClearTexture(RHITexture& rhiTexture,
                        "for texture: {}!",
                        desc.name);
 
-            commandList->ClearDepthStencilView(
-                reinterpret_cast<DX12Texture&>(rhiTexture).GetOrCreateRTVDSVView(device, dxTextureView),
-                clearFlags,
-                clearValue.depth,
-                clearValue.stencil,
-                0,
-                nullptr);
+            commandList->ClearDepthStencilView(rhiTexture.GetOrCreateRTVDSVView(device, dxTextureView),
+                                               clearFlags,
+                                               clearValue.depth,
+                                               clearValue.stencil,
+                                               0,
+                                               nullptr);
         }
     }
     else
@@ -312,7 +302,6 @@ void DX12CommandList::ClearTexture(RHITexture& rhiTexture,
 
 void DX12CommandList::Transition(RHITexture& texture, RHITextureState::Flags newState)
 {
-    DX12Texture& dxTexture = reinterpret_cast<DX12Texture&>(texture);
     D3D12_RESOURCE_STATES currentDX12State = RHITextureStateToDX12State(texture.GetCurrentState());
     D3D12_RESOURCE_STATES newDX12State = RHITextureStateToDX12State(newState);
 
@@ -325,7 +314,7 @@ void DX12CommandList::Transition(RHITexture& texture, RHITextureState::Flags new
     }
 
     CD3DX12_RESOURCE_BARRIER resourceBarrier =
-        CD3DX12_RESOURCE_BARRIER::Transition(dxTexture.GetRawTexture(), currentDX12State, newDX12State);
+        CD3DX12_RESOURCE_BARRIER::Transition(texture.GetRawTexture(), currentDX12State, newDX12State);
 
     commandList->ResourceBarrier(1, &resourceBarrier);
 }
@@ -338,11 +327,10 @@ void DX12CommandList::Transition(RHIBuffer& buffer, RHIBufferState::Flags newSta
         return;
     }
 
-    DX12Buffer& dxBuffer = reinterpret_cast<DX12Buffer&>(buffer);
-    D3D12_RESOURCE_STATES currentDX12State = RHIBufferStateToDX12State(dxBuffer.GetCurrentState());
+    D3D12_RESOURCE_STATES currentDX12State = RHIBufferStateToDX12State(buffer.GetCurrentState());
     D3D12_RESOURCE_STATES newDX12State = RHIBufferStateToDX12State(newState);
     D3D12_RESOURCE_BARRIER resourceBarrier =
-        CD3DX12_RESOURCE_BARRIER::Transition(dxBuffer.GetRawBuffer(), currentDX12State, newDX12State);
+        CD3DX12_RESOURCE_BARRIER::Transition(buffer.GetRawBuffer(), currentDX12State, newDX12State);
 
     buffer.SetCurrentState(newState);
 
@@ -364,9 +352,8 @@ void DX12CommandList::Transition(std::span<std::pair<RHITexture&, RHITextureStat
         {
             continue;
         }
-        DX12Texture& dxTexture = reinterpret_cast<DX12Texture&>(texture);
         D3D12_RESOURCE_BARRIER resourceBarrier =
-            CD3DX12_RESOURCE_BARRIER::Transition(dxTexture.GetRawTexture(), currentDX12State, newDX12State);
+            CD3DX12_RESOURCE_BARRIER::Transition(texture.GetRawTexture(), currentDX12State, newDX12State);
         transitionBarriers.push_back(std::move(resourceBarrier));
     }
 
@@ -388,9 +375,8 @@ void DX12CommandList::Transition(std::span<std::pair<RHIBuffer&, RHIBufferState:
         {
             continue;
         }
-        DX12Buffer& dxBuffer = reinterpret_cast<DX12Buffer&>(buffer);
         D3D12_RESOURCE_BARRIER resourceBarrier =
-            CD3DX12_RESOURCE_BARRIER::Transition(dxBuffer.GetRawBuffer(), currentDX12State, newDX12State);
+            CD3DX12_RESOURCE_BARRIER::Transition(buffer.GetRawBuffer(), currentDX12State, newDX12State);
 
         buffer.SetCurrentState(newState);
 
@@ -434,9 +420,7 @@ void DX12CommandList::Copy(RHITexture& src, RHITexture& dst)
                    src.GetDescription().mips == dst.GetDescription().mips &&
                    src.GetDescription().format == dst.GetDescription().format,
                "The two textures must be compatible in order to Copy to be useable.");
-    ID3D12Resource* srcNative = reinterpret_cast<DX12Texture&>(src).GetRawTexture();
-    ID3D12Resource* dstNative = reinterpret_cast<DX12Texture&>(dst).GetRawTexture();
-    commandList->CopyResource(dstNative, srcNative);
+    commandList->CopyResource(dst.GetRawTexture(), src.GetRawTexture());
 }
 
 void DX12CommandList::Copy(RHIBuffer& src, RHIBuffer& dst)

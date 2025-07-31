@@ -39,7 +39,7 @@ void DX12GraphicsPipelineState::Compile(const Shader& vertexShader,
     std::array<DXGI_FORMAT, 8> rtvFormats = GetRTVFormatsFromRenderTargetState(key.renderTargetState);
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC desc{
-        .pRootSignature = reinterpret_cast<DX12ResourceLayout&>(resourceLayout).GetRootSignature().Get(),
+        .pRootSignature = resourceLayout.GetRootSignature().Get(),
         .VS = CD3DX12_SHADER_BYTECODE(vsBlob.data(), vsBlob.size()),
         .PS = CD3DX12_SHADER_BYTECODE(psBlob.data(), psBlob.size()),
         .BlendState = GetDX12BlendStateFromColorBlendState(key.colorBlendState),
@@ -99,7 +99,7 @@ void DX12ComputePipelineState::Compile(const Shader& computeShader, RHIResourceL
 {
     auto blob = computeShader.GetBlob();
     D3D12_COMPUTE_PIPELINE_STATE_DESC desc{
-        .pRootSignature = reinterpret_cast<DX12ResourceLayout&>(resourceLayout).GetRootSignature().Get(),
+        .pRootSignature = resourceLayout.GetRootSignature().Get(),
         .CS = CD3DX12_SHADER_BYTECODE(blob.data(), blob.size()),
         .NodeMask = 0,
         .Flags = D3D12_PIPELINE_STATE_FLAG_NONE,

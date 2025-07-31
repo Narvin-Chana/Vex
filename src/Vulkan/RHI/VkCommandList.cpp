@@ -84,8 +84,7 @@ void VkCommandList::SetPipelineState(const RHIGraphicsPipelineState& graphicsPip
 
 void VkCommandList::SetPipelineState(const RHIComputePipelineState& computePipelineState)
 {
-    auto& vkPSO = reinterpret_cast<const VkComputePipelineState&>(computePipelineState);
-    commandBuffer->bindPipeline(::vk::PipelineBindPoint::eCompute, *vkPSO.computePipeline);
+    commandBuffer->bindPipeline(::vk::PipelineBindPoint::eCompute, *computePipelineState.computePipeline);
 }
 
 void VkCommandList::SetLayout(RHIResourceLayout& layout)
@@ -102,8 +101,6 @@ void VkCommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout, std
 
     auto constantData = ConstantBinding::ConcatConstantBindings(constants, layout.GetMaxLocalConstantSize());
 
-    auto& vkLayout = reinterpret_cast<const VkResourceLayout&>(layout);
-
     ::vk::ShaderStageFlags stageFlags;
     switch (type)
     {
@@ -116,7 +113,7 @@ void VkCommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout, std
         VEX_ASSERT(false, "Operation not supported on this queue type");
     }
 
-    commandBuffer->pushConstants(*vkLayout.pipelineLayout,
+    commandBuffer->pushConstants(*layout.pipelineLayout,
                                  stageFlags,
                                  0, // Local constants start at 0
                                  constantData.size(),
@@ -139,40 +136,30 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
     std::vector<u32> bindlessHandleIndices;
     bindlessHandleIndices.reserve(textures.size() + buffers.size());
 
-    for (auto& [binding, usage, rhiTexture] : textures)
+    for (auto& [binding, usage, texture] : textures)
     {
-        auto vkTexture = reinterpret_cast<VkTexture*>(rhiTexture);
-
-        if (usage == TextureUsage::ShaderRead || usage == TextureUsage::ShaderReadWrite)
+        if (usage & TextureUsage::ShaderRead || usage & TextureUsage::ShaderReadWrite)
         {
-            const BindlessHandle handle = vkTexture->GetOrCreateBindlessView(
+            const BindlessHandle handle = texture->GetOrCreateBindlessView(
                 ctx,
                 VkTextureViewDesc{
                     .viewType = TextureUtil::GetTextureViewType(binding),
                     .format = TextureUtil::GetTextureFormat(binding),
                     .usage = usage,
                     .mipBias = binding.mipBias,
-                    .mipCount = (binding.mipCount == 0) ? rhiTexture->GetDescription().mips : binding.mipCount,
+                    .mipCount = (binding.mipCount == 0) ? texture->GetDescription().mips : binding.mipCount,
                     .startSlice = binding.startSlice,
                     .sliceCount =
-                        (binding.sliceCount == 0) ? rhiTexture->GetDescription().depthOrArraySize : binding.sliceCount,
+                        (binding.sliceCount == 0) ? texture->GetDescription().depthOrArraySize : binding.sliceCount,
                 },
                 vkDescriptorPool);
             bindlessHandleIndices.push_back(handle.GetIndex());
         }
     }
 
-    for (auto& [binding, usage, rhiBuffer] : buffers)
+    for (auto& [binding, usage, buffer] : buffers)
     {
-        auto* vkBuffer = reinterpret_cast<VkBuffer*>(rhiBuffer);
-        const BindlessHandle handle = vkBuffer->GetOrCreateBindlessIndex(ctx, vkDescriptorPool);
-        bindlessHandleIndices.push_back(handle.GetIndex());
-    }
-
-    for (auto& [binding, usage, rhiBuffer] : buffers)
-    {
-        auto* vkBuffer = reinterpret_cast<VkBuffer*>(rhiBuffer);
-        const BindlessHandle handle = vkBuffer->GetOrCreateBindlessIndex(ctx, vkDescriptorPool);
+        const BindlessHandle handle = buffer->GetOrCreateBindlessIndex(ctx, vkDescriptorPool);
         bindlessHandleIndices.push_back(handle.GetIndex());
     }
 
@@ -197,21 +184,18 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
 
 void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)
 {
-    auto& descPool = reinterpret_cast<VkDescriptorPool&>(descriptorPool);
-    auto& vkLayout = reinterpret_cast<VkResourceLayout&>(resourceLayout);
-
     commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eCompute,
-                                      *vkLayout.pipelineLayout,
+                                      *resourceLayout.pipelineLayout,
                                       0,
                                       1,
-                                      &*descPool.bindlessSet,
+                                      &*descriptorPool.bindlessSet,
                                       0,
                                       nullptr);
     commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eGraphics,
-                                      *vkLayout.pipelineLayout,
+                                      *resourceLayout.pipelineLayout,
                                       0,
                                       1,
-                                      &*descPool.bindlessSet,
+                                      &*descriptorPool.bindlessSet,
                                       0,
                                       nullptr);
 }
@@ -335,8 +319,7 @@ void VkCommandList::Transition(RHITexture& texture, RHITextureState::Flags newSt
         return;
     }
 
-    auto& vkTexture = reinterpret_cast<VkTexture&>(texture);
-    auto memBarrier = GetMemoryBarrierFrom(vkTexture, newState);
+    auto memBarrier = GetMemoryBarrierFrom(texture, newState);
 
     commandBuffer->pipelineBarrier2({ .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &memBarrier });
 
@@ -345,8 +328,13 @@ void VkCommandList::Transition(RHITexture& texture, RHITextureState::Flags newSt
 
 void VkCommandList::Transition(RHIBuffer& buffer, RHIBufferState::Flags newState)
 {
-    auto& vkBuffer = reinterpret_cast<VkBuffer&>(buffer);
-    auto memBarrier = GetBufferBarrierFrom(vkBuffer, newState);
+    // Nothing to do if the states are already equal.
+    if (buffer.GetCurrentState() == newState)
+    {
+        return;
+    }
+
+    auto memBarrier = GetBufferBarrierFrom(buffer, newState);
 
     commandBuffer->pipelineBarrier2({ .bufferMemoryBarrierCount = 1, .pBufferMemoryBarriers = &memBarrier });
 
@@ -357,15 +345,14 @@ void VkCommandList::Transition(std::span<std::pair<RHITexture&, RHITextureState:
 {
     std::vector<::vk::ImageMemoryBarrier2> barriers;
 
-    for (auto& [rhiTexture, flags] : textureNewStatePairs)
+    for (auto& [texture, flags] : textureNewStatePairs)
     {
         // Nothing to do if the states are already equal.
-        if (flags == rhiTexture.GetCurrentState())
+        if (flags == texture.GetCurrentState())
         {
             continue;
         }
-        auto& vkTexture = reinterpret_cast<VkTexture&>(rhiTexture);
-        barriers.push_back(GetMemoryBarrierFrom(vkTexture, flags));
+        barriers.push_back(GetMemoryBarrierFrom(texture, flags));
     }
 
     // No transitions means our job is done.
@@ -387,10 +374,20 @@ void VkCommandList::Transition(std::span<std::pair<RHIBuffer&, RHIBufferState::F
 {
     std::vector<::vk::BufferMemoryBarrier2> barriers;
 
-    for (auto& [rhiTexture, flags] : bufferNewStatePairs)
+    for (auto& [buffer, flags] : bufferNewStatePairs)
     {
-        auto& vkBuffer = reinterpret_cast<VkBuffer&>(rhiTexture);
-        barriers.push_back(GetBufferBarrierFrom(vkBuffer, flags));
+        // Nothing to do if the states are already equal.
+        if (flags == buffer.GetCurrentState())
+        {
+            continue;
+        }
+        barriers.push_back(GetBufferBarrierFrom(buffer, flags));
+    }
+
+    // No transitions means our job is done.
+    if (barriers.empty())
+    {
+        return;
     }
 
     commandBuffer->pipelineBarrier2(
@@ -414,12 +411,9 @@ void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount)
 
 void VkCommandList::Copy(RHITexture& src, RHITexture& dst)
 {
-    auto& vkSrc = reinterpret_cast<VkTexture&>(src);
-    auto& vkDst = reinterpret_cast<VkTexture&>(dst);
-
     // We assume a copy from 0,0 in the source to 0,0 in the dest with extent the size of the source
-    auto& srcDesc = vkSrc.GetDescription();
-    auto& dstDesc = vkSrc.GetDescription();
+    auto& srcDesc = src.GetDescription();
+    auto& dstDesc = dst.GetDescription();
 
     VEX_ASSERT(srcDesc.depthOrArraySize <= dstDesc.depthOrArraySize);
     VEX_ASSERT(srcDesc.mips <= dstDesc.mips);
@@ -454,9 +448,9 @@ void VkCommandList::Copy(RHITexture& src, RHITexture& dst)
         height /= 2;
     }
 
-    commandBuffer->copyImage(vkSrc.GetResource(),
+    commandBuffer->copyImage(src.GetResource(),
                              ::vk::ImageLayout::eTransferSrcOptimal,
-                             vkDst.GetResource(),
+                             dst.GetResource(),
                              ::vk::ImageLayout::eTransferDstOptimal,
                              static_cast<u32>(copyRegions.size()),
                              copyRegions.data());
@@ -464,12 +458,8 @@ void VkCommandList::Copy(RHITexture& src, RHITexture& dst)
 
 void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst)
 {
-    auto& vkSrc = reinterpret_cast<VkBuffer&>(src);
-    auto& vkDst = reinterpret_cast<VkBuffer&>(dst);
-
-    const ::vk::BufferCopy copy{ .srcOffset = 0, .dstOffset = 0, .size = vkSrc.GetDescription().byteSize };
-
-    commandBuffer->copyBuffer(vkSrc.GetNativeBuffer(), vkDst.GetNativeBuffer(), 1, &copy);
+    const ::vk::BufferCopy copy{ .srcOffset = 0, .dstOffset = 0, .size = src.GetDescription().byteSize };
+    commandBuffer->copyBuffer(src.GetNativeBuffer(), dst.GetNativeBuffer(), 1, &copy);
 }
 
 CommandQueueType VkCommandList::GetType() const

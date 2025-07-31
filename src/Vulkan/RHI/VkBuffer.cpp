@@ -135,7 +135,7 @@ void VkBuffer::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 {
     if (bufferHandle && *bufferHandle != GInvalidBindlessHandle)
     {
-        reinterpret_cast<VkDescriptorPool&>(descriptorPool).FreeStaticDescriptor(*bufferHandle);
+        descriptorPool.FreeStaticDescriptor(*bufferHandle);
     }
     bufferHandle.reset();
 }

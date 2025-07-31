@@ -295,7 +295,7 @@ UniqueHandle<RHIComputePipelineState> VkRHI::CreateComputePipelineState(const Co
 
 UniqueHandle<RHIResourceLayout> VkRHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool)
 {
-    return MakeUnique<VkResourceLayout>(*device, reinterpret_cast<const VkDescriptorPool&>(descriptorPool));
+    return MakeUnique<VkResourceLayout>(*device, descriptorPool);
 }
 
 UniqueHandle<RHITexture> VkRHI::CreateTexture(const TextureDescription& description)
@@ -314,12 +314,10 @@ UniqueHandle<RHIDescriptorPool> VkRHI::CreateDescriptorPool()
 
 void VkRHI::ExecuteCommandList(RHICommandList& commandList)
 {
-    auto& cmdList = reinterpret_cast<VkCommandList&>(commandList);
-
-    auto& cmdQueue = commandQueues[cmdList.GetType()];
+    auto& cmdQueue = commandQueues[commandList.GetType()];
 
     ::vk::CommandBufferSubmitInfoKHR cmdBuffreInfo{
-        .commandBuffer = *cmdList.commandBuffer,
+        .commandBuffer = *commandList.commandBuffer,
         .deviceMask = 0,
     };
 
@@ -360,15 +358,13 @@ UniqueHandle<RHIFence> VkRHI::CreateFence(u32 numFenceIndices)
 
 void VkRHI::SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
 {
-    auto& vkFence = reinterpret_cast<VkFence&>(fence);
-
     ::vk::TimelineSemaphoreSubmitInfoKHR timelineInfo{ .signalSemaphoreValueCount = 1,
                                                        .pSignalSemaphoreValues = &fence.GetFenceValue(fenceIndex) };
 
     ::vk::SubmitInfo submit{
         .pNext = &timelineInfo,
         .signalSemaphoreCount = 1,
-        .pSignalSemaphores = &*vkFence.fence,
+        .pSignalSemaphores = &*fence.fence,
     };
 
     VEX_VK_CHECK << commandQueues[queueType].queue.submit(submit);
@@ -376,15 +372,13 @@ void VkRHI::SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIn
 
 void VkRHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
 {
-    auto& vkFence = reinterpret_cast<VkFence&>(fence);
-
     VkTimelineSemaphoreSubmitInfoKHR timelineInfo;
     timelineInfo.signalSemaphoreValueCount = 1;
     timelineInfo.pSignalSemaphoreValues = &fence.GetFenceValue(fenceIndex);
 
     ::vk::SubmitInfo submit;
     submit.pNext = &timelineInfo;
-    submit.pWaitSemaphores = &*vkFence.fence;
+    submit.pWaitSemaphores = &*fence.fence;
     submit.waitSemaphoreCount = 1;
 
     VEX_VK_CHECK << commandQueues[queueType].queue.submit(submit);

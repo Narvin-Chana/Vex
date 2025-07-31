@@ -36,7 +36,6 @@ u32 VkResourceLayout::GetMaxLocalConstantSize() const
 {
     const u32 maxBytes =
         reinterpret_cast<VkFeatureChecker*>(GPhysicalDevice->featureChecker.get())->GetMaxPushConstantSize();
-    // TODO: Consider global constant in the available size
     return std::max<u32>(0, maxBytes);
 }
 } // namespace vex::vk
