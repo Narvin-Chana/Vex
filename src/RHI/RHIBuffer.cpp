@@ -37,7 +37,7 @@ MappedMemory RHIBufferInterface::GetMappedMemory()
     {
         if (!stagingBuffer)
         {
-            stagingBuffer = static_cast<RHIBuffer*>(this)->CreateStagingBuffer();
+            stagingBuffer = CreateStagingBuffer();
         }
         return MappedMemory(*static_cast<RHIBuffer*>(this), true);
     }

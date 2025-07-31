@@ -47,7 +47,6 @@ private:
 
     friend struct VkStagedBufferMemory;
     friend struct VkDirectBufferMemory;
-    friend class RHIBufferInterface;
 };
 
 } // namespace vex::vk

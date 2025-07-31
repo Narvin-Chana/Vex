@@ -39,8 +39,6 @@ private:
     ComPtr<ID3D12Resource> buffer;
 
     std::unordered_map<BufferUsage::Type, BindlessHandle> viewCache;
-
-    friend class RHIBufferInterface;
 };
 
 } // namespace vex::dx12
