@@ -357,15 +357,15 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
 Shader* ShaderCompiler::GetShader(const ShaderKey& key, const ShaderResourceContext& resourceContext)
 {
     Shader* shaderPtr;
-    if (shaderCompiler.contains(key))
+    if (auto el = shaderCache.find(key); el != shaderCache.end())
     {
-        shaderPtr = shaderCompiler[key].get();
+        shaderPtr = &el->second;
     }
     else
     {
-        UniqueHandle<Shader> shader = MakeUnique<Shader>(key);
-        shaderPtr = shader.get();
-        shaderCompiler[key] = std::move(shader);
+        // Avoids the default constructor being called (it is not defined for class Shader)
+        shaderCache.emplace(std::piecewise_construct, std::make_tuple(key), std::make_tuple(Shader(key)));
+        shaderPtr = &shaderCache.find(key)->second;
     }
 
     if (shaderPtr->NeedsRecompile())
@@ -409,8 +409,8 @@ std::pair<bool, std::size_t> ShaderCompiler::IsShaderStale(const Shader& shader)
 
 void ShaderCompiler::MarkShaderDirty(const ShaderKey& key)
 {
-    auto shader = shaderCompiler.find(key);
-    if (shader == shaderCompiler.end())
+    auto shader = shaderCache.find(key);
+    if (shader == shaderCache.end())
     {
         VEX_LOG(Error,
                 "The shader key passed did not yield any valid shaders in the shader cache (key {}). Unable to mark it "
@@ -419,16 +419,16 @@ void ShaderCompiler::MarkShaderDirty(const ShaderKey& key)
         return;
     }
 
-    shader->second->MarkDirty();
-    shader->second->isErrored = false;
+    shader->second.MarkDirty();
+    shader->second.isErrored = false;
 }
 
 void ShaderCompiler::MarkAllShadersDirty()
 {
-    for (auto& shader : shaderCompiler | std::views::values)
+    for (auto& shader : shaderCache | std::views::values)
     {
-        shader->MarkDirty();
-        shader->isErrored = false;
+        shader.MarkDirty();
+        shader.isErrored = false;
     }
 
     VEX_LOG(Info, "Marked all shaders for recompilation...");
@@ -437,13 +437,13 @@ void ShaderCompiler::MarkAllShadersDirty()
 void ShaderCompiler::MarkAllStaleShadersDirty()
 {
     u32 numStaleShaders = 0;
-    for (auto& shader : shaderCompiler | std::views::values)
+    for (auto& shader : shaderCache | std::views::values)
     {
-        if (auto [isShaderStale, newShaderHash] = IsShaderStale(*shader); isShaderStale || shader->isErrored)
+        if (auto [isShaderStale, newShaderHash] = IsShaderStale(shader); isShaderStale || shader.isErrored)
         {
-            shader->hash = newShaderHash;
-            shader->MarkDirty();
-            shader->isErrored = false;
+            shader.hash = newShaderHash;
+            shader.MarkDirty();
+            shader.isErrored = false;
             numStaleShaders++;
         }
     }
@@ -463,9 +463,10 @@ void ShaderCompiler::FlushCompilationErrors()
     {
         for (auto& [key, error] : compilationErrors)
         {
-            VEX_ASSERT(shaderCompiler.contains(key), "A shader in compilationErrors was not found in the cache...");
+            auto el = shaderCache.find(key);
+            VEX_ASSERT(el != shaderCache.end(), "A shader in compilationErrors was not found in the cache...");
             // The next time we attempt to use this shader, it will be recompiled.
-            shaderCompiler[key]->isErrored = false;
+            el->second.isErrored = false;
         }
         compilationErrors.clear();
     }

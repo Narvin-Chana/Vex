@@ -48,14 +48,18 @@ public:
             : buffer(buffer)
             , useStagingBuffer(useStagingBuffer)
         {
-            data = buffer.Map();
+            data = useStagingBuffer ? buffer.GetStagingBuffer()->Map() : buffer.Map();
         }
 
         ~MappedMemory()
         {
-            buffer.Unmap();
-            if (useStagingBuffer)
+            if (!useStagingBuffer)
             {
+                buffer.Unmap();
+            }
+            else
+            {
+                buffer.GetStagingBuffer()->Unmap();
                 buffer.SetNeedsStagingBufferCopy(true);
             }
         }
