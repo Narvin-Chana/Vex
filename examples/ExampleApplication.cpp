@@ -10,8 +10,6 @@
 #endif
 #include <GLFW/glfw3native.h>
 
-#include <Vex/Logger.h>
-
 ExampleApplication::ExampleApplication(std::string_view windowName)
 {
 #if defined(__linux__)

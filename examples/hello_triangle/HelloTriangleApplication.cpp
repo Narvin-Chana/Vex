@@ -8,31 +8,6 @@
 #endif
 
 #include <GLFW/glfw3native.h>
-#include <math.h>
-
-#if defined(__linux__)
-// Undefine problematic X11 macros
-#ifdef Always
-#undef Always
-#endif
-#ifdef None
-#undef None
-#endif
-#ifdef Success
-#undef Success
-#endif
-#ifdef Bool
-#undef Bool
-#endif
-#ifdef True
-#undef True
-#endif
-#ifdef False
-#undef False
-#endif
-#endif
-
-#include <Vex/Logger.h>
 
 HelloTriangleApplication::HelloTriangleApplication()
     : ExampleApplication("HelloTriangleApplication")

@@ -31,8 +31,6 @@
 #endif
 #endif
 
-#include <Vex/Logger.h>
-
 HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
     : ExampleApplication("HelloTriangleGraphicsApplication")
 {
@@ -51,15 +49,16 @@ HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
     std::vector<vex::TextureSampler> samplers{ vex::TextureSampler{ .name = "MySampler" } };
     graphics->SetSamplers(samplers);
 
-    workingTexture = graphics->CreateTexture({ .name = "Working Texture",
-                                               .type = vex::TextureType::Texture2D,
-                                               .width = DefaultWidth,
-                                               .height = DefaultHeight,
-                                               .depthOrArraySize = 1,
-                                               .mips = 1,
-                                               .format = vex::TextureFormat::RGBA8_UNORM,
-                                               .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
-                                             vex::ResourceLifetime::Static);
+    workingTexture =
+        graphics->CreateTexture({ .name = "Working Texture",
+                                  .type = vex::TextureType::Texture2D,
+                                  .width = DefaultWidth,
+                                  .height = DefaultHeight,
+                                  .depthOrArraySize = 1,
+                                  .mips = 1,
+                                  .format = vex::TextureFormat::RGBA8_UNORM,
+                                  .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
+                                vex::ResourceLifetime::Static);
 
 #if defined(_WIN32)
     // Suggestion of an intrusive (à la Unreal) way to display errors.
@@ -174,13 +173,14 @@ void HelloTriangleGraphicsApplication::OnResize(GLFWwindow* window, uint32_t wid
 
     ExampleApplication::OnResize(window, width, height);
 
-    workingTexture = graphics->CreateTexture({ .name = "Working Texture",
-                                               .type = vex::TextureType::Texture2D,
-                                               .width = width,
-                                               .height = height,
-                                               .depthOrArraySize = 1,
-                                               .mips = 1,
-                                               .format = vex::TextureFormat::RGBA8_UNORM,
-                                               .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
-                                             vex::ResourceLifetime::Static);
+    workingTexture =
+        graphics->CreateTexture({ .name = "Working Texture",
+                                  .type = vex::TextureType::Texture2D,
+                                  .width = width,
+                                  .height = height,
+                                  .depthOrArraySize = 1,
+                                  .mips = 1,
+                                  .format = vex::TextureFormat::RGBA8_UNORM,
+                                  .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
+                                vex::ResourceLifetime::Static);
 }

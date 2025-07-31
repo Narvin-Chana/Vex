@@ -1,7 +1,5 @@
 #pragma once
 
-#include <Vex.h>
-
 #include "../ExampleApplication.h"
 
 class GLFWwindow;
