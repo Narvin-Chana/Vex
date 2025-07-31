@@ -1,9 +1,5 @@
 #pragma once
 
-#include <unordered_map>
-
-#include <Vex/Containers/FreeList.h>
-#include <Vex/Handle.h>
 #include <Vex/RHIFwd.h>
 
 #include <RHI/RHIDescriptorPool.h>
@@ -18,14 +14,7 @@ class VkDescriptorPool final : public RHIDescriptorPoolInterface
 {
 public:
     VkDescriptorPool(::vk::Device device);
-
-    BindlessHandle AllocateStaticDescriptor();
-    void FreeStaticDescriptor(BindlessHandle handle);
-
-    BindlessHandle AllocateDynamicDescriptor();
-    void FreeDynamicDescriptor(BindlessHandle handle);
-
-    bool IsValid(BindlessHandle handle);
+    virtual void CopyNullDescriptor(u32 slotIndex) override;
 
     void UpdateDescriptor(VkGPUContext& ctx,
                           BindlessHandle targetDescriptor,
@@ -38,13 +27,6 @@ private:
     ::vk::UniqueDescriptorPool descriptorPool;
     ::vk::UniqueDescriptorSet bindlessSet; // Single global set for bindless resources
     ::vk::UniqueDescriptorSetLayout bindlessLayout;
-
-    struct BindlessAllocation
-    {
-        std::vector<u8> generations;
-        FreeListAllocator handles;
-    };
-    BindlessAllocation bindlessAllocation;
 
     friend class VkCommandList;
     friend class VkResourceLayout;

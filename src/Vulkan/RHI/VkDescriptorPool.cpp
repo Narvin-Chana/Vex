@@ -9,14 +9,17 @@
 
 namespace vex::vk
 {
-static constexpr u32 BindlessMaxDescriptors = 1024;
+
+static constexpr ::vk::DescriptorBufferInfo NullDescriptorBufferInfo{ .buffer = VK_NULL_HANDLE,
+                                                                      .offset = 0,
+                                                                      .range = VK_WHOLE_SIZE };
 
 VkDescriptorPool::VkDescriptorPool(::vk::Device device)
     : device{ device }
 {
     ::vk::DescriptorPoolSize poolSize{
         .type = ::vk::DescriptorType::eMutableEXT,
-        .descriptorCount = BindlessMaxDescriptors,
+        .descriptorCount = DefaultPoolSize,
     };
 
     ::vk::DescriptorPoolCreateInfo descriptorPoolInfo{
@@ -70,7 +73,7 @@ VkDescriptorPool::VkDescriptorPool(::vk::Device device)
     ::vk::DescriptorSetLayoutBinding descriptorSetLayoutBinding = {
         .binding = 0,
         .descriptorType = ::vk::DescriptorType::eMutableEXT,
-        .descriptorCount = BindlessMaxDescriptors,
+        .descriptorCount = DefaultPoolSize,
         .stageFlags = ::vk::ShaderStageFlagBits::eAll,
         .pImmutableSamplers = nullptr,
     };
@@ -104,42 +107,25 @@ VkDescriptorPool::VkDescriptorPool(::vk::Device device)
 
     bindlessSet = std::move(descSets[0]);
 
-    bindlessAllocation.handles = FreeListAllocator(BindlessMaxDescriptors);
-    bindlessAllocation.generations.resize(BindlessMaxDescriptors);
-
     // The pool should be split into two sections, one for static descriptors (aka resources that we load in once
     // at startup or for streaming and reuse thereafter) and one section for dynamic descriptors (for resources that
     // are created and destroyed during the same frame, eg: temporary buffers).
 }
 
-BindlessHandle VkDescriptorPool::AllocateStaticDescriptor()
+void VkDescriptorPool::CopyNullDescriptor(u32 slotIndex)
 {
-    u32 index = bindlessAllocation.handles.Allocate();
-    return BindlessHandle::CreateHandle(index, bindlessAllocation.generations[index]);
-}
-
-void VkDescriptorPool::FreeStaticDescriptor(BindlessHandle handle)
-{
-    const u32 index = handle.GetIndex();
-    auto& [generations, handles] = bindlessAllocation;
-    generations[index]++;
-    handles.Deallocate(index);
-}
-
-BindlessHandle VkDescriptorPool::AllocateDynamicDescriptor()
-{
-    VEX_NOT_YET_IMPLEMENTED();
-    return BindlessHandle();
-}
-
-void VkDescriptorPool::FreeDynamicDescriptor(BindlessHandle handle)
-{
-    VEX_NOT_YET_IMPLEMENTED();
-}
-
-bool VkDescriptorPool::IsValid(BindlessHandle handle)
-{
-    return handle.GetGeneration() == bindlessAllocation.generations[handle.GetIndex()];
+    // We copy in any arbitrary null descriptor, in this case its a null buffer.
+    const ::vk::WriteDescriptorSet nullWriteDescriptorSet{
+        .dstSet = *bindlessSet,
+        .dstBinding = 0,
+        .dstArrayElement = slotIndex,
+        .descriptorCount = 1,
+        .descriptorType = ::vk::DescriptorType::eStorageBuffer,
+        .pImageInfo = nullptr,
+        .pBufferInfo = &NullDescriptorBufferInfo,
+        .pTexelBufferView = nullptr,
+    };
+    device.updateDescriptorSets(1, &nullWriteDescriptorSet, 0, nullptr);
 }
 
 void VkDescriptorPool::UpdateDescriptor(VkGPUContext& ctx,
