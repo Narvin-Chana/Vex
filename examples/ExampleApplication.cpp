@@ -10,6 +10,22 @@
 #endif
 #include <GLFW/glfw3native.h>
 
+#if defined(__linux__)
+// Undefine problematic X11 macros
+#ifdef Always
+#undef Always
+#endif
+#ifdef None
+#undef None
+#endif
+#ifdef Success
+#undef Success
+#endif
+#ifndef Bool
+#define Bool bool
+#endif
+#endif
+
 ExampleApplication::ExampleApplication(std::string_view windowName)
 {
 #if defined(__linux__)

@@ -2,19 +2,6 @@
 
 #include <string_view>
 
-#if defined(__linux__)
-// Undefine problematic X11 macros
-#ifdef Always
-#undef Always
-#endif
-#ifdef None
-#undef None
-#endif
-#ifdef Success
-#undef Success
-#endif
-#endif
-
 #include <Vex.h>
 #include <Vex/Logger.h>
 
