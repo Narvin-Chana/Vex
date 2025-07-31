@@ -31,7 +31,7 @@ public:
 
     BindlessHandle GetOrCreateBindlessIndex(VkGPUContext& ctx, VkDescriptorPool& descriptorPool);
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
-    ::vk::Buffer& GetNativeBuffer();
+    ::vk::Buffer GetNativeBuffer();
 
     virtual std::span<u8> Map() override;
     virtual void Unmap() override;

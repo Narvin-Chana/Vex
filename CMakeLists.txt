@@ -106,7 +106,35 @@ FetchContent_MakeAvailable(magic_enum)
 # =========================================
 
 # Set static library output
-add_library(Vex STATIC     
+add_library(Vex STATIC
+    # Platform
+    "src/Vex/Platform/Platform.h"
+    # RHI
+    "src/Vex/RHIFwd.h"
+    "src/RHI/RHI.h"  
+    "src/RHI/RHICommandPool.h"
+    "src/RHI/RHIFence.h"
+    "src/RHI/RHIFence.cpp"
+    "src/RHI/RHISwapChain.h"
+    "src/RHI/RHITexture.h"
+    "src/RHI/RHIBuffer.h"
+    "src/RHI/RHIPipelineState.h"
+    "src/RHI/RHIResourceLayout.cpp"
+    "src/Vex/RHIBindings.h"
+    "src/RHI/RHIResourceLayout.h"
+    "src/RHI/RHIDescriptorPool.h"
+    "src/RHI/RHICommandList.h"
+    "src/Vex/RHIImpl/RHICommandList.h"
+    "src/Vex/RHIImpl/RHICommandPool.h"
+    "src/Vex/RHIImpl/RHIDescriptorPool.h"
+    "src/Vex/RHIImpl/RHIPipelineState.h"
+    "src/Vex/RHIImpl/RHISwapChain.h"
+    "src/Vex/RHIImpl/RHIResourceLayout.h"
+    "src/Vex/RHIImpl/RHIFence.h"
+    "src/Vex/RHIImpl/RHITexture.h"
+    "src/Vex/RHIImpl/RHI.h"
+    "src/Vex/RHIImpl/RHIBuffer.h"
+    # Vex API
     "src/Vex.h"
     "src/Vex.cpp"
     "src/Vex/GfxBackend.h" 
@@ -155,30 +183,7 @@ add_library(Vex STATIC
     "src/Vex/GraphicsPipeline.h"
     "src/Vex/DrawHelpers.h"
     "src/Vex/ShaderCompilerSettings.h"
-    # Platform
-    "src/Vex/Platform/Platform.h"
-    # RHI
-    "src/Vex/RHIFwd.h"
-    "src/RHI/RHI.h"  
-    "src/RHI/RHICommandPool.h"
-    "src/RHI/RHIFence.h"
-    "src/RHI/RHIFence.cpp"
-    "src/RHI/RHISwapChain.h"
-    "src/RHI/RHITexture.h"
-    "src/RHI/RHIBuffer.h"
-    
-    "src/RHI/RHIPipelineState.h"
-    "src/RHI/RHIResourceLayout.cpp"
-    "src/Vex/RHIBindings.h"
-    "src/RHI/RHIResourceLayout.h"
-    "src/RHI/RHIDescriptorPool.h"
-    "src/RHI/RHICommandList.h"
-    "src/Vex/RHIImpl/RHICommandList.h"
-    "src/Vex/RHIImpl/RHICommandPool.h"
-    "src/Vex/RHIImpl/RHIDescriptorPool.h"
-    "src/Vex/RHIImpl/RHIPipelineState.h"
-    "src/Vex/RHIImpl/RHISwapChain.h"
- "src/Vex/RHIImpl/RHIResourceLayout.h" "src/Vex/RHIImpl/RHIFence.h" "src/Vex/RHIImpl/RHITexture.h" "src/Vex/RHIImpl/RHI.h" "src/Vex/RHIImpl/RHIBuffer.h")
+)
 
 if(WIN32)
     target_sources(Vex PRIVATE

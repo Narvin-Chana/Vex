@@ -21,6 +21,10 @@ class VkRHI final : public RenderHardwareInterface
 {
 public:
     VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation);
+    VkRHI(const VkRHI&) = delete;
+    VkRHI& operator=(const VkRHI&) = delete;
+    VkRHI(VkRHI&&) = default;
+    VkRHI& operator=(VkRHI&&) = default;
     ~VkRHI();
 
     virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() override;

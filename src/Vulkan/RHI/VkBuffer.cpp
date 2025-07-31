@@ -140,7 +140,7 @@ void VkBuffer::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
     bufferHandle.reset();
 }
 
-::vk::Buffer& VkBuffer::GetNativeBuffer()
+::vk::Buffer VkBuffer::GetNativeBuffer()
 {
     return *buffer;
 }
