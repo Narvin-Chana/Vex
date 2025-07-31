@@ -4,19 +4,17 @@
 #include <vector>
 
 #include <Vex/CommandQueueType.h>
-#include <Vex/Containers/FreeList.h>
 #include <Vex/RHIFwd.h>
-#include <Vex/Texture.h>
 #include <Vex/Types.h>
 #include <Vex/UniqueHandle.h>
 
 namespace vex
 {
-struct BufferDescription;
 
+struct BufferDescription;
+struct TextureDescription;
 struct ShaderDefine;
 struct PhysicalDevice;
-struct ShaderKey;
 struct GraphicsPipelineStateKey;
 struct ComputePipelineStateKey;
 struct SwapChainDescription;
