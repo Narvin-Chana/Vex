@@ -13,15 +13,6 @@
 #ifdef Success
 #undef Success
 #endif
-#ifdef Bool
-#undef Bool
-#endif
-#ifdef True
-#undef True
-#endif
-#ifdef False
-#undef False
-#endif
 #endif
 
 #include <Vex.h>
