@@ -12,6 +12,7 @@
 #include <Vex/PipelineStateCache.h>
 #include <Vex/PlatformWindow.h>
 #include <Vex/RHIFwd.h>
+#include <Vex/RHIImpl/RHI.h>
 #include <Vex/Resource.h>
 #include <Vex/Texture.h>
 #include <Vex/UniqueHandle.h>
@@ -112,7 +113,7 @@ private:
     //  {0, 1, 2} if triple buffering
     u8 currentFrameIndex = 0;
 
-    UniqueHandle<RHI> rhi;
+    RHI rhi;
 
     BackendDescription description;
 
