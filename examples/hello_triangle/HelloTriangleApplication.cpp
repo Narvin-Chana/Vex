@@ -66,10 +66,9 @@ HelloTriangleApplication::HelloTriangleApplication()
     colorBuffer = graphics->CreateBuffer(
         { .name = "Color Buffer",
           .byteSize = sizeof(float) * 4,
-#if !VEX_VULKAN
-          // Structured buffers are ONLY available in DX12 for now. Buffer pointers could allow this to exist in Vulkan.
+          // Structured buffers are available in both DX12 and Vulkan. Passing in a non-zero stride, makes the buffer
+          // Structured. If you pass in a zeroed stride, using a StructuredBuffer in HLSL is no longer valid.
           .stride = 16,
-#endif
           .usage = vex::BufferUsage::ShaderRead | vex::BufferUsage::CPUWrite },
         vex::ResourceLifetime::Static);
 

@@ -197,10 +197,29 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
 
     std::vector extensions = GetDefaultDeviceExtensions();
 
-    auto physDeviceFeatures = physDevice.getFeatures();
+    std::optional<::vk::PhysicalDeviceAccelerationStructureFeaturesKHR> featuresAccelerationStructure;
+    if (vexPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing))
+    {
+        extensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+        extensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+        featuresAccelerationStructure = {
+            .accelerationStructure = true,
+            .descriptorBindingAccelerationStructureUpdateAfterBind = true,
+        };
+    }
 
+    // Allows for mutable descriptors
+    ::vk::PhysicalDeviceMutableDescriptorTypeFeaturesEXT featuresMutableDescriptors;
+    featuresMutableDescriptors.mutableDescriptorType = true;
+    if (featuresAccelerationStructure.has_value())
+    {
+        featuresMutableDescriptors.pNext = featuresAccelerationStructure.value();
+    }
+
+    // Allows for null descriptors
     ::vk::PhysicalDeviceRobustness2FeaturesEXT featuresRobustness;
     featuresRobustness.nullDescriptor = true;
+    featuresRobustness.pNext = featuresMutableDescriptors;
 
     ::vk::PhysicalDeviceVulkan13Features features13;
     features13.synchronization2 = true;
@@ -218,6 +237,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     features12.descriptorBindingSampledImageUpdateAfterBind = true;
     features12.descriptorBindingStorageImageUpdateAfterBind = true;
 
+    auto physDeviceFeatures = physDevice.getFeatures();
     ::vk::DeviceCreateInfo deviceCreateInfo{ .pNext = &features12,
                                              .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
                                              .pQueueCreateInfos = queueCreateInfos.data(),
@@ -387,6 +407,9 @@ void VkRHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceInde
 void VkRHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args, std::vector<ShaderDefine>& defines)
 {
     args.push_back(L"-spirv");
+    args.push_back(L"-fvk-bind-resource-heap");
+    args.push_back(L"0");
+    args.push_back(L"0");
     defines.emplace_back(L"VEX_VULKAN");
 }
 

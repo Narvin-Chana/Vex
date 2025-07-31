@@ -13,12 +13,6 @@
 namespace vex::dx12
 {
 
-struct BindlessHandle : Handle<BindlessHandle>
-{
-};
-
-static constexpr BindlessHandle GInvalidBindlessHandle;
-
 class DX12DescriptorPool final : public RHIDescriptorPoolInterface
 {
 public:
