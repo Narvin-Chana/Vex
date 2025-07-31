@@ -15,7 +15,7 @@ struct BufferDescription;
 namespace vex::dx12
 {
 
-class DX12Buffer final : public RHIBufferInterface<DX12Buffer>
+class DX12Buffer final : public RHIBufferInterface
 {
 public:
     DX12Buffer(ComPtr<DX12Device>& device, const BufferDescription& desc);
@@ -40,7 +40,7 @@ private:
 
     std::unordered_map<BufferUsage::Type, BindlessHandle> viewCache;
 
-    friend class RHIBufferInterface<DX12Buffer>;
+    friend class RHIBufferInterface;
 };
 
 } // namespace vex::dx12

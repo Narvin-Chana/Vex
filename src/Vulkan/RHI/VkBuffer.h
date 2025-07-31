@@ -24,7 +24,7 @@ struct VkStagingBuffer;
 struct VkGPUContext;
 struct VkDirectBufferMemory;
 
-class VkBuffer final : public RHIBufferInterface<VkBuffer>
+class VkBuffer final : public RHIBufferInterface
 {
 public:
     VkBuffer(VkGPUContext& ctx, const BufferDescription& desc);
@@ -47,7 +47,7 @@ private:
 
     friend struct VkStagedBufferMemory;
     friend struct VkDirectBufferMemory;
-    friend class RHIBufferInterface<VkBuffer>;
+    friend class RHIBufferInterface;
 };
 
 } // namespace vex::vk

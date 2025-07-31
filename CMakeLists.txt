@@ -118,6 +118,7 @@ add_library(Vex STATIC
     "src/RHI/RHISwapChain.h"
     "src/RHI/RHITexture.h"
     "src/RHI/RHIBuffer.h"
+    "src/RHI/RHIBuffer.cpp"
     "src/RHI/RHIPipelineState.h"
     "src/RHI/RHIResourceLayout.cpp"
     "src/Vex/RHIBindings.h"

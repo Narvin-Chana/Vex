@@ -31,67 +31,27 @@ END_VEX_ENUM_FLAGS();
 
 // clang-format on
 
-struct RHIMappedBufferMemory
+class MappedMemory
 {
-    virtual ~RHIMappedBufferMemory() = 0;
-    virtual void SetData(std::span<const u8> inData) = 0;
+public:
+    MappedMemory(RHIBuffer& buffer, bool useStagingBuffer);
+    ~MappedMemory();
+    void SetData(std::span<const u8> inData);
+
+private:
+    RHIBuffer& buffer;
+    std::span<u8> data;
+    bool useStagingBuffer;
 };
 
-template <class Derived>
 class RHIBufferInterface
 {
 public:
-    class MappedMemory
-    {
-    public:
-        MappedMemory(Derived& buffer, bool useStagingBuffer)
-            : buffer(buffer)
-            , useStagingBuffer(useStagingBuffer)
-        {
-            data = useStagingBuffer ? buffer.GetStagingBuffer()->Map() : buffer.Map();
-        }
-
-        ~MappedMemory()
-        {
-            if (!useStagingBuffer)
-            {
-                buffer.Unmap();
-            }
-            else
-            {
-                buffer.GetStagingBuffer()->Unmap();
-                buffer.SetNeedsStagingBufferCopy(true);
-            }
-        }
-
-        void SetData(std::span<const u8> inData)
-        {
-            VEX_ASSERT(data.size() >= inData.size());
-            std::ranges::copy(inData, data.begin());
-        }
-
-    private:
-        Derived& buffer;
-        std::span<u8> data;
-        bool useStagingBuffer;
-    };
-
     // RAII safe version to access buffer memory
-    MappedMemory GetMappedMemory()
-    {
-        if (ShouldUseStagingBuffer())
-        {
-            if (!stagingBuffer)
-            {
-                stagingBuffer = static_cast<Derived*>(this)->CreateStagingBuffer();
-            }
-            return MappedMemory(*static_cast<Derived*>(this), true);
-        }
-        return MappedMemory(*static_cast<Derived*>(this), false);
-    }
+    MappedMemory GetMappedMemory();
 
     // Raw direct access to buffer memory
-    virtual UniqueHandle<Derived> CreateStagingBuffer() = 0;
+    virtual UniqueHandle<RHIBuffer> CreateStagingBuffer() = 0;
     virtual std::span<u8> Map() = 0;
     virtual void Unmap() = 0;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
@@ -121,28 +81,16 @@ public:
         return desc;
     };
 
-    Derived* GetStagingBuffer()
-    {
-        VEX_ASSERT(stagingBuffer);
-        return stagingBuffer.get();
-    };
+    RHIBuffer* GetStagingBuffer();
 
 protected:
-    explicit RHIBufferInterface(const BufferDescription& desc)
-        : desc{ desc }
-    {
-    }
-
-    bool ShouldUseStagingBuffer() const
-    {
-        // Any buffer which does not have CPUWrite requires a staging buffer for the upload of data.
-        return !(desc.usage & BufferUsage::CPUWrite);
-    }
+    explicit RHIBufferInterface(const BufferDescription& desc);
+    bool ShouldUseStagingBuffer() const;
 
     BufferDescription desc;
     RHIBufferState::Flags currentState = RHIBufferState::Common;
 
-    UniqueHandle<Derived> stagingBuffer;
+    UniqueHandle<RHIBuffer> stagingBuffer;
     bool needsStagingBufferCopy = false;
 };
 
