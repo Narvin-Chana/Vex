@@ -1,0 +1,45 @@
+#pragma once
+
+#include <vector>
+
+#include <Vex/RHIFwd.h>
+#include <Vex/UniqueHandle.h>
+
+#include <RHI/RHISwapChain.h>
+
+#include <DX12/DX12Headers.h>
+
+namespace vex
+{
+struct PlatformWindow;
+} // namespace vex
+
+namespace vex::dx12
+{
+
+class DX12SwapChain final : public RHISwapChainInterface
+{
+public:
+    DX12SwapChain(const ComPtr<DX12Device>& device,
+                  SwapChainDescription desc,
+                  const ComPtr<ID3D12CommandQueue>& commandQueue,
+                  const PlatformWindow& platformWindow);
+    ~DX12SwapChain();
+    virtual void AcquireNextBackbuffer(u8 frameIndex) override;
+    virtual void Present(bool isFullscreenMode) override;
+    virtual void Resize(u32 width, u32 height) override;
+
+    virtual void SetVSync(bool enableVSync) override;
+    virtual bool NeedsFlushForVSyncToggle() override;
+
+    virtual UniqueHandle<RHITexture> CreateBackBuffer(u8 backBufferIndex) override;
+
+private:
+    static u8 GetBackBufferCount(FrameBuffering frameBuffering);
+
+    ComPtr<DX12Device> device;
+    SwapChainDescription description;
+    ComPtr<IDXGISwapChain4> swapChain;
+};
+
+} // namespace vex::dx12

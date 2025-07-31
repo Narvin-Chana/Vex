@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Vex/RHI/RHIBuffer.h>
-#include <Vex/RHI/RHITexture.h>
+#include <RHI/RHIBuffer.h>
+#include <RHI/RHITexture.h>
 
 #include <DX12/DX12Headers.h>
 

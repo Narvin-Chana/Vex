@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include <Vex/RHI/RHIBindings.h>
+#include <Vex/RHIBindings.h>
 #include <Vex/TextureSampler.h>
 
 namespace vex

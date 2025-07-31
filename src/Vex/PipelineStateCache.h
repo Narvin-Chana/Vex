@@ -4,8 +4,8 @@
 #include <unordered_map>
 
 #include <Vex/Containers/ResourceCleanup.h>
-#include <Vex/RHI/RHIFwd.h>
-#include <Vex/RHI/RHIPipelineState.h>
+#include <Vex/RHIFwd.h>
+#include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/ShaderCompiler.h>
 #include <Vex/ShaderResourceContext.h>
 #include <Vex/UniqueHandle.h>

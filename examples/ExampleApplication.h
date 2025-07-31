@@ -3,6 +3,7 @@
 #include <string_view>
 
 #include <Vex.h>
+#include <Vex/Logger.h>
 
 class GLFWwindow;
 

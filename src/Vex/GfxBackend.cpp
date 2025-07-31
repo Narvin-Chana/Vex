@@ -10,22 +10,23 @@
 #include <Vex/FeatureChecker.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
-#include <Vex/RHI/RHI.h>
-#include <Vex/RHI/RHIBuffer.h>
-#include <Vex/RHI/RHICommandList.h>
-#include <Vex/RHI/RHICommandPool.h>
-#include <Vex/RHI/RHIDescriptorPool.h>
-#include <Vex/RHI/RHIFence.h>
-#include <Vex/RHI/RHIResourceLayout.h>
-#include <Vex/RHI/RHIShader.h>
-#include <Vex/RHI/RHISwapChain.h>
-#include <Vex/RHI/RHITexture.h>
+#include <Vex/RHIImpl/RHI.h>
+#include <Vex/RHIImpl/RHIBuffer.h>
+#include <Vex/RHIImpl/RHICommandList.h>
+#include <Vex/RHIImpl/RHICommandPool.h>
+#include <Vex/RHIImpl/RHIDescriptorPool.h>
+#include <Vex/RHIImpl/RHIFence.h>
+#include <Vex/RHIImpl/RHIResourceLayout.h>
+#include <Vex/RHIImpl/RHISwapChain.h>
+#include <Vex/RHIImpl/RHITexture.h>
 
 namespace vex
 {
 
-GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& description)
-    : rhi(std::move(newRHI))
+GfxBackend::GfxBackend(const BackendDescription& description)
+    : rhi(RHI(description.platformWindow.windowHandle,
+              description.enableGPUDebugLayer,
+              description.enableGPUBasedValidation))
     , description(description)
     , resourceCleanup(static_cast<i8>(description.frameBuffering))
     , commandPools(description.frameBuffering)
@@ -49,7 +50,7 @@ GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& des
     }
     VEX_LOG(Info, "Running Vex in {}", vexTargetName);
 
-    auto physicalDevices = rhi->EnumeratePhysicalDevices();
+    auto physicalDevices = rhi.EnumeratePhysicalDevices();
     if (physicalDevices.empty())
     {
         VEX_LOG(Fatal, "The underlying graphics API was unable to find atleast one physical device.");
@@ -69,8 +70,8 @@ GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& des
     GPhysicalDevice->DumpPhysicalDeviceInfo();
 #endif
 
-    // Initializes RHI which includes creating logicial device and swapchain
-    rhi->Init(GPhysicalDevice);
+    // Initializes RHI which includes creating logical device and swapchain
+    rhi.Init(GPhysicalDevice);
 
     VEX_LOG(Info,
             "Created graphics backend with width {} and height {}.",
@@ -79,19 +80,19 @@ GfxBackend::GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& des
 
     for (auto queueType : magic_enum::enum_values<CommandQueueType>())
     {
-        queueFrameFences[queueType] = rhi->CreateFence(std::to_underlying(description.frameBuffering));
+        queueFrameFences[queueType] = rhi.CreateFence(std::to_underlying(description.frameBuffering));
     }
 
-    commandPools.ForEach([this](UniqueHandle<RHICommandPool>& el) { el = rhi->CreateCommandPool(); });
+    commandPools.ForEach([this](UniqueHandle<RHICommandPool>& el) { el = rhi.CreateCommandPool(); });
 
-    descriptorPool = rhi->CreateDescriptorPool();
+    descriptorPool = rhi.CreateDescriptorPool();
 
-    psCache = PipelineStateCache(rhi.get(), *descriptorPool, &resourceCleanup, description.shaderCompilerSettings);
+    psCache = PipelineStateCache(&rhi, *descriptorPool, &resourceCleanup, description.shaderCompilerSettings);
 
-    swapChain = rhi->CreateSwapChain({ .format = description.swapChainFormat,
-                                       .frameBuffering = description.frameBuffering,
-                                       .useVSync = description.useVSync },
-                                     description.platformWindow);
+    swapChain = rhi.CreateSwapChain({ .format = description.swapChainFormat,
+                                      .frameBuffering = description.frameBuffering,
+                                      .useVSync = description.useVSync },
+                                    description.platformWindow);
 
     CreateBackBuffers();
 }
@@ -131,7 +132,7 @@ void GfxBackend::EndFrame(bool isFullscreenMode)
     // Signal all queue fences.
     for (auto queueType : magic_enum::enum_values<CommandQueueType>())
     {
-        rhi->SignalFence(queueType, *queueFrameFences[queueType], currentFrameIndex);
+        rhi.SignalFence(queueType, *queueFrameFences[queueType], currentFrameIndex);
     }
 
     u32 nextFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
@@ -178,7 +179,7 @@ Texture GfxBackend::CreateTexture(TextureDescription description, ResourceLifeti
         VEX_NOT_YET_IMPLEMENTED();
     }
 
-    auto rhiTexture = rhi->CreateTexture(description);
+    auto rhiTexture = rhi.CreateTexture(description);
     return Texture{ .handle = textureRegistry.AllocateElement(std::move(rhiTexture)),
                     .description = std::move(description) };
 }
@@ -192,7 +193,7 @@ Buffer GfxBackend::CreateBuffer(BufferDescription description, ResourceLifetime 
         VEX_NOT_YET_IMPLEMENTED();
     }
 
-    auto rhiBuffer = rhi->CreateBuffer(description);
+    auto rhiBuffer = rhi.CreateBuffer(description);
     return Buffer{ .handle = bufferRegistry.AllocateElement(std::move(rhiBuffer)),
                    .description = std::move(description) };
 }
@@ -202,7 +203,7 @@ void GfxBackend::UpdateData(const Buffer& buffer, std::span<const u8> data)
     VEX_ASSERT(data.size() <= buffer.description.byteSize, "Buffer data exceded buffer size");
 
     RHIBuffer& rhiBuffer = GetRHIBuffer(buffer.handle);
-    rhiBuffer.GetMappedMemory()->SetData(data);
+    rhiBuffer.GetMappedMemory().SetData(data);
 }
 
 void GfxBackend::DestroyTexture(const Texture& texture)
@@ -223,7 +224,7 @@ void GfxBackend::FlushGPU()
         // Increment fence values before signaling to ensure we're waiting on new values.
         ++queueFrameFences[queueType]->GetFenceValue(currentFrameIndex);
         // Signal fences with incremented value.
-        rhi->SignalFence(queueType, *queueFrameFences[queueType], currentFrameIndex);
+        rhi.SignalFence(queueType, *queueFrameFences[queueType], currentFrameIndex);
     }
 
     // Wait for the currentFrameIndex we just signaled to be done for all queue fences.
@@ -359,7 +360,7 @@ void GfxBackend::CreateBackBuffers()
 
 void GfxBackend::FlushCommandListQueue()
 {
-    rhi->ExecuteCommandLists(queuedCommandLists);
+    rhi.ExecuteCommandLists(queuedCommandLists);
     queuedCommandLists.clear();
 }
 

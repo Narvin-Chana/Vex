@@ -3,7 +3,7 @@
 #include <variant>
 #include <vector>
 
-#include <Vex/RHI/RHIFwd.h>
+#include <Vex/RHIFwd.h>
 #include <Vex/Types.h>
 #include <Vex/UniqueHandle.h>
 

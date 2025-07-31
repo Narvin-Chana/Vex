@@ -11,7 +11,8 @@
 #include <Vex/FrameResource.h>
 #include <Vex/PipelineStateCache.h>
 #include <Vex/PlatformWindow.h>
-#include <Vex/RHI/RHIFwd.h>
+#include <Vex/RHIFwd.h>
+#include <Vex/RHIImpl/RHI.h>
 #include <Vex/Resource.h>
 #include <Vex/Texture.h>
 #include <Vex/UniqueHandle.h>
@@ -38,7 +39,7 @@ struct BackendDescription
 class GfxBackend
 {
 public:
-    GfxBackend(UniqueHandle<RHI>&& newRHI, const BackendDescription& description);
+    GfxBackend(const BackendDescription& description);
     ~GfxBackend();
 
     // Start of the frame, sets up the swapchain and backbuffers.
@@ -112,7 +113,7 @@ private:
     //  {0, 1, 2} if triple buffering
     u8 currentFrameIndex = 0;
 
-    UniqueHandle<RHI> rhi;
+    RHI rhi;
 
     BackendDescription description;
 

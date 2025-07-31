@@ -1,17 +1,15 @@
 #include "HelloTriangleApplication.h"
 
 #include <GLFW/glfw3.h>
+#include <math.h>
 #if defined(_WIN32)
 #define GLFW_EXPOSE_NATIVE_WIN32
 #elif defined(__linux__)
 #define GLFW_EXPOSE_NATIVE_X11
 #endif
 
-#include <GLFW/glfw3native.h>
-#include <math.h>
-
 #if defined(__linux__)
-// Undefine problematic X11 macros
+// Undefine/define problematic X11 macros
 #ifdef Always
 #undef Always
 #endif
@@ -21,18 +19,12 @@
 #ifdef Success
 #undef Success
 #endif
-#ifdef Bool
-#undef Bool
-#endif
-#ifdef True
-#undef True
-#endif
-#ifdef False
-#undef False
+#ifndef Bool
+#define Bool bool
 #endif
 #endif
 
-#include <Vex/Logger.h>
+#include <GLFW/glfw3native.h>
 
 HelloTriangleApplication::HelloTriangleApplication()
     : ExampleApplication("HelloTriangleApplication")

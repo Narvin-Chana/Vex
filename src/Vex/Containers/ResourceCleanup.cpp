@@ -1,9 +1,9 @@
 #include "ResourceCleanup.h"
 
 #include <Vex/Debug.h>
-#include <Vex/RHI/RHIBuffer.h>
-#include <Vex/RHI/RHIPipelineState.h>
-#include <Vex/RHI/RHITexture.h>
+#include <Vex/RHIImpl/RHIBuffer.h>
+#include <Vex/RHIImpl/RHIPipelineState.h>
+#include <Vex/RHIImpl/RHITexture.h>
 
 namespace vex
 {

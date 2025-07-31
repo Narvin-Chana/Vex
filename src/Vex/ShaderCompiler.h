@@ -6,11 +6,10 @@
 
 // Include dependencies required by DXC.
 #if defined(_WIN32)
-#include <windows.h>
-#include <wrl/client.h>
-
 #include <Unknwn.h>
 #include <dxcapi.h>
+#include <windows.h>
+#include <wrl/client.h>
 
 namespace vex
 {
@@ -32,7 +31,7 @@ using ComPtr = CComPtr<T>;
 
 #endif
 
-#include <Vex/RHI/RHIFwd.h>
+#include <Vex/RHIFwd.h>
 #include <Vex/ShaderCompilerSettings.h>
 #include <Vex/ShaderKey.h>
 #include <Vex/UniqueHandle.h>
@@ -41,6 +40,7 @@ namespace vex
 {
 
 struct ShaderResourceContext;
+class Shader;
 
 struct CompilerUtil
 {
@@ -66,12 +66,12 @@ struct ShaderCompiler
     ShaderCompiler(ShaderCompiler&&) = default;
     ShaderCompiler& operator=(ShaderCompiler&&) = default;
 
-    std::expected<void, std::string> CompileShader(RHIShader& shader, const ShaderResourceContext& resourceContext);
-    RHIShader* GetShader(const ShaderKey& key, const ShaderResourceContext& resourceContext);
+    std::expected<void, std::string> CompileShader(Shader& shader, const ShaderResourceContext& resourceContext);
+    Shader* GetShader(const ShaderKey& key, const ShaderResourceContext& resourceContext);
 
     // Checks if the shader's hash is different compared to the last time it was compiled. Returns if the shader is
     // stale or not and the shader's latest hash (which can potentially be the same as the original).
-    std::pair<bool, std::size_t> IsShaderStale(const RHIShader& shader) const;
+    std::pair<bool, std::size_t> IsShaderStale(const Shader& shader) const;
 
     void MarkShaderDirty(const ShaderKey& key);
     void MarkAllShadersDirty();
@@ -88,8 +88,8 @@ private:
     };
 
     // Obtains a hash of the preprocessed shader, allowing us to verify if the shader's content has changed.
-    std::optional<std::size_t> GetShaderHash(const RHIShader& shader) const;
-    ComPtr<IDxcResult> GetPreprocessedShader(const RHIShader& shader, const ComPtr<IDxcBlobEncoding>& shaderBlob) const;
+    std::optional<std::size_t> GetShaderHash(const Shader& shader) const;
+    ComPtr<IDxcResult> GetPreprocessedShader(const Shader& shader, const ComPtr<IDxcBlobEncoding>& shaderBlob) const;
     void FillInAdditionalIncludeDirectories(std::vector<LPCWSTR>& args) const;
 
     static CompilerUtil& GetCompilerUtil();
@@ -99,7 +99,7 @@ private:
 
     std::vector<std::filesystem::path> additionalIncludeDirectories;
 
-    std::unordered_map<ShaderKey, UniqueHandle<RHIShader>> shaderCompiler;
+    std::unordered_map<ShaderKey, Shader> shaderCache;
 
     std::function<ShaderCompileErrorsCallback> errorsCallback = nullptr;
     std::vector<std::pair<ShaderKey, std::string>> compilationErrors;

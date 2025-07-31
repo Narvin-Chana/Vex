@@ -5,11 +5,14 @@
 #include <Vex/GfxBackend.h>
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
-#include <Vex/RHI/RHIBindings.h>
-#include <Vex/RHI/RHICommandList.h>
-#include <Vex/RHI/RHIPipelineState.h>
-#include <Vex/RHI/RHIResourceLayout.h>
-#include <Vex/RHI/RHISwapChain.h>
+#include <Vex/RHIBindings.h>
+#include <Vex/RHIImpl/RHIBuffer.h>
+#include <Vex/RHIImpl/RHICommandList.h>
+#include <Vex/RHIImpl/RHIDescriptorPool.h>
+#include <Vex/RHIImpl/RHIPipelineState.h>
+#include <Vex/RHIImpl/RHIResourceLayout.h>
+#include <Vex/RHIImpl/RHISwapChain.h>
+#include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/ResourceBindingSet.h>
 #include <Vex/ShaderResourceContext.h>
 
