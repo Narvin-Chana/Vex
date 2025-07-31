@@ -8,10 +8,8 @@
 #elif defined(__linux__)
 #define GLFW_EXPOSE_NATIVE_X11
 #endif
-#include <GLFW/glfw3native.h>
-
 #if defined(__linux__)
-// Undefine problematic X11 macros
+// Undefine/define problematic X11 macros
 #ifdef Always
 #undef Always
 #endif
@@ -25,6 +23,7 @@
 #define Bool bool
 #endif
 #endif
+#include <GLFW/glfw3native.h>
 
 ExampleApplication::ExampleApplication(std::string_view windowName)
 {

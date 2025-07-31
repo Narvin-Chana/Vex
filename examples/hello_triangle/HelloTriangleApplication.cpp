@@ -8,6 +8,22 @@
 #define GLFW_EXPOSE_NATIVE_X11
 #endif
 
+#if defined(__linux__)
+// Undefine/define problematic X11 macros
+#ifdef Always
+#undef Always
+#endif
+#ifdef None
+#undef None
+#endif
+#ifdef Success
+#undef Success
+#endif
+#ifndef Bool
+#define Bool bool
+#endif
+#endif
+
 #include <GLFW/glfw3native.h>
 
 HelloTriangleApplication::HelloTriangleApplication()

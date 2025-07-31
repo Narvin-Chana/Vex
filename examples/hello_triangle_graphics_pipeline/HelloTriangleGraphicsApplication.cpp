@@ -7,10 +7,8 @@
 #define GLFW_EXPOSE_NATIVE_X11
 #endif
 
-#include <GLFW/glfw3native.h>
-
 #if defined(__linux__)
-// Undefine problematic X11 macros
+// Undefine/define problematic X11 macros
 #ifdef Always
 #undef Always
 #endif
@@ -20,16 +18,12 @@
 #ifdef Success
 #undef Success
 #endif
-#ifdef Bool
-#undef Bool
-#endif
-#ifdef True
-#undef True
-#endif
-#ifdef False
-#undef False
+#ifndef Bool
+#define Bool bool
 #endif
 #endif
+
+#include <GLFW/glfw3native.h>
 
 HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
     : ExampleApplication("HelloTriangleGraphicsApplication")
