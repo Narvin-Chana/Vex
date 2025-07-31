@@ -1,6 +1,7 @@
 #include "VkDescriptorPool.h"
 
 #include <Vex/Debug.h>
+#include <Vex/PhysicalDevice.h>
 #include <Vex/UniqueHandle.h>
 
 #include <Vulkan/VkErrorHandler.h>
@@ -45,28 +46,28 @@ VkDescriptorPool::VkDescriptorPool(::vk::Device device)
     // are no longer statically known at layout creation time."
     //
     // I believe this trade off is worth it given it greatly simplifies our code.
-    std::vector<::vk::DescriptorType> cbvSrvUavTypes = {
+    std::vector<::vk::DescriptorType> descriptorTypes = {
         ::vk::DescriptorType::eSampledImage,       ::vk::DescriptorType::eStorageImage,
         ::vk::DescriptorType::eUniformTexelBuffer, ::vk::DescriptorType::eStorageTexelBuffer,
         ::vk::DescriptorType::eUniformBuffer,      ::vk::DescriptorType::eStorageBuffer,
     };
     if (GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing))
     {
-        cbvSrvUavTypes.push_back(::vk::DescriptorType::eAccelerationStructureKHR);
+        descriptorTypes.push_back(::vk::DescriptorType::eAccelerationStructureKHR);
     }
 
-    ::vk::MutableDescriptorTypeListEXT cbvSrvUavTypeList = {
-        .descriptorTypeCount = static_cast<u32>(cbvSrvUavTypes.size()),
-        .pDescriptorTypes = cbvSrvUavTypes.data(),
+    ::vk::MutableDescriptorTypeListEXT mutableDescriptorTypeList = {
+        .descriptorTypeCount = static_cast<u32>(descriptorTypes.size()),
+        .pDescriptorTypes = descriptorTypes.data(),
     };
 
     ::vk::MutableDescriptorTypeCreateInfoEXT mutableTypeInfo = {
         .pNext = nullptr,
         .mutableDescriptorTypeListCount = 1,
-        .pMutableDescriptorTypeLists = &cbvSrvUavTypeList,
+        .pMutableDescriptorTypeLists = &mutableDescriptorTypeList,
     };
 
-    ::vk::DescriptorSetLayoutBinding cbvSrvUavBinding = {
+    ::vk::DescriptorSetLayoutBinding descriptorSetLayoutBinding = {
         .binding = 0,
         .descriptorType = ::vk::DescriptorType::eMutableEXT,
         .descriptorCount = BindlessMaxDescriptors,
@@ -86,7 +87,7 @@ VkDescriptorPool::VkDescriptorPool(::vk::Device device)
         .pNext = &bindingFlagsInfo,
         .flags = ::vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool,
         .bindingCount = 1,
-        .pBindings = &cbvSrvUavBinding,
+        .pBindings = &descriptorSetLayoutBinding,
     };
 
     // Create layout

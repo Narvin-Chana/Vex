@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Vex/Resource.h>
+
 namespace vex
 {
 
