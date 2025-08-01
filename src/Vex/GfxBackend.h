@@ -24,6 +24,7 @@ class CommandContext;
 struct PhysicalDevice;
 struct Texture;
 struct TextureSampler;
+class RenderExtension;
 
 struct BackendDescription
 {
@@ -94,6 +95,8 @@ public:
 
     void SetSamplers(std::span<TextureSampler> newSamplers);
 
+    void RegisterRenderExtension(UniqueHandle<RenderExtension>&& renderExtension);
+
 private:
     void EndCommandContext(RHICommandList& cmdList);
 
@@ -142,6 +145,8 @@ private:
 
     // We submit our command lists in batch at the end of the frame, to reduce driver overhead.
     std::vector<RHICommandList*> queuedCommandLists;
+
+    std::vector<UniqueHandle<RenderExtension>> renderExtensions;
 
     static constexpr u32 DefaultRegistrySize = 1024;
 

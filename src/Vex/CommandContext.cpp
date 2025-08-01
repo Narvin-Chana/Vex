@@ -415,4 +415,28 @@ void CommandContext::Copy(const Buffer& source, const Buffer& destination)
     cmdList->Copy(sourceRHI, destinationRHI);
 }
 
+void CommandContext::SetRenderTarget(const ResourceBinding& renderTarget)
+{
+    if (!renderTarget.IsTexture())
+    {
+        VEX_LOG(Fatal, "Only textures can be set as render targets.");
+    }
+
+    if (!(renderTarget.texture.description.usage & TextureUsage::RenderTarget))
+    {
+        VEX_LOG(Fatal, "Only textures with RenderTarget usage set upon creation can be set as render targets.");
+    }
+
+    auto& rt = backend->GetRHITexture(renderTarget.texture.handle);
+    cmdList->Transition(rt, RHITextureState::RenderTarget);
+
+    RHITextureBinding rtBinding{ .binding = renderTarget, .usage = TextureUsage::RenderTarget, .texture = &rt };
+    cmdList->SetLayoutResources(backend->psCache.GetResourceLayout(), { &rtBinding, 1 }, {}, *backend->descriptorPool);
+}
+
+RHICommandList& CommandContext::GetRHICommandList()
+{
+    return *cmdList;
+}
+
 } // namespace vex

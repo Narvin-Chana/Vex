@@ -37,6 +37,11 @@ public:
     CD3DX12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptor(BindlessHandle handle);
     CD3DX12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptor(BindlessHandle handle);
 
+    ComPtr<ID3D12DescriptorHeap>& GetNativeDescriptorHeap()
+    {
+        return gpuHeap.GetNativeDescriptorHeap();
+    }
+
 private:
     CD3DX12_CPU_DESCRIPTOR_HANDLE GetNullDescriptor();
 

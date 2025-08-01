@@ -52,9 +52,9 @@ public:
 
     virtual CommandQueueType GetType() const override;
 
-    ID3D12GraphicsCommandList10* GetNativeCommandList()
+    ComPtr<ID3D12GraphicsCommandList10>& GetNativeCommandList()
     {
-        return commandList.Get();
+        return commandList;
     }
 
 private:

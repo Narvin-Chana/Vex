@@ -100,7 +100,7 @@ void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
                                        .Priority = D3D12_COMMAND_QUEUE_PRIORITY_HIGH,
                                        .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
                                        .NodeMask = 0 };
-        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetQueue(CommandQueueType::Graphics)));
+        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetNativeQueue(CommandQueueType::Graphics)));
     }
 
     {
@@ -108,7 +108,7 @@ void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
                                        .Priority = D3D12_COMMAND_QUEUE_PRIORITY_HIGH,
                                        .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
                                        .NodeMask = 0 };
-        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetQueue(CommandQueueType::Compute)));
+        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetNativeQueue(CommandQueueType::Compute)));
     }
 
     {
@@ -116,14 +116,14 @@ void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
                                        .Priority = D3D12_COMMAND_QUEUE_PRIORITY_HIGH,
                                        .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
                                        .NodeMask = 0 };
-        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetQueue(CommandQueueType::Copy)));
+        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetNativeQueue(CommandQueueType::Copy)));
     }
 }
 
 UniqueHandle<RHISwapChain> DX12RHI::CreateSwapChain(const SwapChainDescription& description,
                                                     const PlatformWindow& platformWindow)
 {
-    return MakeUnique<DX12SwapChain>(device, description, GetQueue(CommandQueueType::Graphics), platformWindow);
+    return MakeUnique<DX12SwapChain>(device, description, GetNativeQueue(CommandQueueType::Graphics), platformWindow);
 }
 
 UniqueHandle<RHICommandPool> DX12RHI::CreateCommandPool()
@@ -166,7 +166,7 @@ UniqueHandle<RHIDescriptorPool> DX12RHI::CreateDescriptorPool()
 
 void DX12RHI::ExecuteCommandList(RHICommandList& commandList)
 {
-    ID3D12CommandList* p = commandList.GetNativeCommandList();
+    ID3D12CommandList* p = commandList.GetNativeCommandList().Get();
     queues[commandList.GetType()]->ExecuteCommandLists(1, &p);
 }
 
@@ -175,7 +175,7 @@ void DX12RHI::ExecuteCommandLists(std::span<RHICommandList*> commandLists)
     std::array<std::vector<ID3D12CommandList*>, CommandQueueTypes::Count> rawCommandListsPerQueue;
     for (RHICommandList* cmdList : commandLists)
     {
-        rawCommandListsPerQueue[cmdList->GetType()].push_back(cmdList->GetNativeCommandList());
+        rawCommandListsPerQueue[cmdList->GetType()].push_back(cmdList->GetNativeCommandList().Get());
     }
 
     for (u32 i = 0; i < CommandQueueTypes::Count; ++i)
@@ -196,12 +196,12 @@ UniqueHandle<RHIFence> DX12RHI::CreateFence(u32 numFenceIndices)
 
 void DX12RHI::SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
 {
-    chk << GetQueue(queueType)->Signal(fence.fence.Get(), fence.GetFenceValue(fenceIndex));
+    chk << GetNativeQueue(queueType)->Signal(fence.fence.Get(), fence.GetFenceValue(fenceIndex));
 }
 
 void DX12RHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
 {
-    chk << GetQueue(queueType)->Wait(fence.fence.Get(), fence.GetFenceValue(fenceIndex));
+    chk << GetNativeQueue(queueType)->Wait(fence.fence.Get(), fence.GetFenceValue(fenceIndex));
 }
 
 void DX12RHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args, std::vector<ShaderDefine>& defines)
@@ -210,7 +210,12 @@ void DX12RHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
     defines.emplace_back(L"VEX_DX12");
 }
 
-ComPtr<ID3D12CommandQueue>& DX12RHI::GetQueue(CommandQueueType queueType)
+ComPtr<DX12Device>& DX12RHI::GetNativeDevice()
+{
+    return device;
+}
+
+ComPtr<ID3D12CommandQueue>& DX12RHI::GetNativeQueue(CommandQueueType queueType)
 {
     return queues[std::to_underlying(queueType)];
 }
