@@ -1,6 +1,7 @@
 #include "GfxBackend.h"
 
 #include <algorithm>
+#include <ranges>
 #include <utility>
 
 #include <magic_enum/magic_enum.hpp>
@@ -331,11 +332,23 @@ void GfxBackend::SetSamplers(std::span<TextureSampler> newSamplers)
     psCache.GetResourceLayout().SetSamplers(newSamplers);
 }
 
-void GfxBackend::RegisterRenderExtension(UniqueHandle<RenderExtension>&& renderExtension)
+RenderExtension* GfxBackend::RegisterRenderExtension(UniqueHandle<RenderExtension>&& renderExtension)
 {
     renderExtension->data = RenderExtensionData{ .rhi = &rhi, .descriptorPool = descriptorPool.get() };
     renderExtension->Initialize();
     renderExtensions.push_back(std::move(renderExtension));
+    return renderExtensions.back().get();
+}
+
+void GfxBackend::UnregisterRenderExtension(RenderExtension* renderExtension)
+{
+    auto el = std::ranges::find_if(renderExtensions,
+                                   [renderExtension](const UniqueHandle<RenderExtension>& ext)
+                                   { return ext.get() == renderExtension; });
+    if (el != renderExtensions.end())
+    {
+        renderExtensions.erase(el);
+    }
 }
 
 void GfxBackend::RecompileChangedShaders()

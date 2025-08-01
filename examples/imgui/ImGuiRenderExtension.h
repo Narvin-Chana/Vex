@@ -4,12 +4,12 @@
 #include <Vex/FrameResource.h>
 #include <Vex/RenderExtension.h>
 
+struct GLFWwindow;
+
 namespace vex
 {
 class GfxBackend;
 }
-
-struct GLFWwindow;
 
 class ImGuiRenderExtension : public vex::RenderExtension
 {
@@ -18,6 +18,7 @@ public:
                          GLFWwindow* window,
                          vex::FrameBuffering buffering,
                          vex::TextureFormat swapchainFormat);
+
     virtual ~ImGuiRenderExtension() override;
 
     virtual void Initialize() override;

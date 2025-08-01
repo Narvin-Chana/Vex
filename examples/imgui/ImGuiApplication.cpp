@@ -19,7 +19,6 @@ ImGuiApplication::ImGuiApplication()
 #elif defined(__linux__)
     vex::PlatformWindowHandle platformWindow{ .window = glfwGetX11Window(window), .display = glfwGetX11Display() };
 #endif
-
     graphics = CreateGraphicsBackend(vex::BackendDescription{
         .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
         .swapChainFormat = SwapchainFormat,

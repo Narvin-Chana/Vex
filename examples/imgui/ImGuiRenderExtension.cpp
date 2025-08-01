@@ -8,9 +8,7 @@
 #include <imgui_impl_dx12.h>
 #endif
 
-#include <GLFW/glfw3.h> // for GLFWwindow
-
-#include <Vex.h>
+#include <Vex/CommandContext.h>
 #include <Vex/Formats.h>
 #include <Vex/FrameResource.h>
 #include <Vex/GfxBackend.h>

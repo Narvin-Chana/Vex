@@ -5,7 +5,7 @@
 #include <Vex.h>
 #include <Vex/Logger.h>
 
-class GLFWwindow;
+struct GLFWwindow;
 
 class ExampleApplication
 {

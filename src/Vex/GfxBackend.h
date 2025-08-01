@@ -95,7 +95,10 @@ public:
 
     void SetSamplers(std::span<TextureSampler> newSamplers);
 
-    void RegisterRenderExtension(UniqueHandle<RenderExtension>&& renderExtension);
+    // Register a custom RenderExtension, it will be automatically unregistered when the graphics backend is destroyed.
+    RenderExtension* RegisterRenderExtension(UniqueHandle<RenderExtension>&& renderExtension);
+    // You can manually unregister a RenderExtension by passing in the pointer returned on creation.
+    void UnregisterRenderExtension(RenderExtension* renderExtension);
 
 private:
     void EndCommandContext(RHICommandList& cmdList);

@@ -2,8 +2,6 @@
 
 #include "../ExampleApplication.h"
 
-class GLFWwindow;
-
 struct ImGuiApplication : public ExampleApplication
 {
     ImGuiApplication();
