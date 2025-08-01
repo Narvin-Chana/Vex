@@ -8,11 +8,12 @@
 #include <imgui_impl_dx12.h>
 #endif
 
-#include <GLFW/glfw3.h>
+#include <GLFW/glfw3.h> // for GLFWwindow
 
 #include <Vex.h>
+#include <Vex/Formats.h>
+#include <Vex/FrameResource.h>
 #include <Vex/GfxBackend.h>
-#include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
 #if VEX_DX12

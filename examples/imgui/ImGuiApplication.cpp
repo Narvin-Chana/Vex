@@ -9,6 +9,8 @@
 #include <GLFW/glfw3native.h>
 #include <ImGuiRenderExtension.h>
 
+#include <Vex/UniqueHandle.h>
+
 ImGuiApplication::ImGuiApplication()
     : ExampleApplication("ImGuiApplication")
 {

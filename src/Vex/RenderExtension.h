@@ -15,10 +15,8 @@ struct RenderExtensionData
 class RenderExtension
 {
 public:
-    RenderExtension() = default;
-    virtual ~RenderExtension()
-    {
-    }
+    RenderExtension();
+    virtual ~RenderExtension();
 
     virtual void Initialize()
     {

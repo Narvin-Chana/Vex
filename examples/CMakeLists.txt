@@ -46,7 +46,7 @@ target_include_directories(imguiLib PUBLIC
 # Link ImGui with its dependencies
 target_link_libraries(imguiLib PUBLIC glfw)
 
-set(EXAMPLES_COMMON_LIBS PRIVATE Vex glfw imguiLib)
+set(EXAMPLES_COMMON_LIBS Vex imguiLib glfw)
 # Find all example directories
 file(GLOB EXAMPLE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/*")
 
@@ -58,7 +58,7 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
     get_filename_component(EXAMPLE_NAME ${EXAMPLE_DIR} NAME)
     
     # Find the source files in the example dir
-    file(GLOB EXAMPLE_SOURCES "${EXAMPLE_DIR}/*.cpp")
+    file(GLOB EXAMPLE_SOURCES "${EXAMPLE_DIR}/*.cpp" "${EXAMPLE_DIR}/*.h")
 
     # Only create the example if there are source files.
     if (EXAMPLE_SOURCES)
@@ -68,7 +68,7 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
             message(STATUS "  - ${FILE}")
         endforeach()
         
-        add_executable(${EXAMPLE_NAME} ${EXAMPLE_SOURCES} "ExampleApplication.h" "ExampleApplication.cpp")
+        add_executable(${EXAMPLE_NAME} ${EXAMPLE_SOURCES} "ExampleApplication.cpp")
 
         # Setup the runtime dependencies of Vex
         vex_setup_runtime(${EXAMPLE_NAME})

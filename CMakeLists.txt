@@ -184,7 +184,9 @@ add_library(Vex STATIC
     "src/Vex/GraphicsPipeline.h"
     "src/Vex/DrawHelpers.h"
     "src/Vex/ShaderCompilerSettings.h"
- "src/Vex/RenderExtension.h")
+    "src/Vex/RenderExtension.h"
+    "src/Vex/RenderExtension.cpp"
+)
 
 if(WIN32)
     target_sources(Vex PRIVATE
