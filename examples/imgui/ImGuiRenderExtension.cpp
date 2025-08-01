@@ -1,7 +1,14 @@
 #include "ImGuiRenderExtension.h"
 
+#if VEX_VULKAN
+// ImGui uses vulkan.h headers, Vex uses vulkan.hpp,
+// vulkan.hpp only compiles correctly when included BEFORE vulkan.h.
+#include <Vulkan/VkHeaders.h>
+#endif
+
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
+
 #if VEX_VULKAN
 #include <imgui_impl_vulkan.h>
 #elif VEX_DX12

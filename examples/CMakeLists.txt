@@ -44,7 +44,7 @@ target_include_directories(imguiLib PUBLIC
 )
 
 # Link ImGui with its dependencies
-target_link_libraries(imguiLib PUBLIC glfw)
+target_link_libraries(imguiLib PUBLIC glfw Vex)
 
 set(EXAMPLES_COMMON_LIBS Vex imguiLib glfw)
 # Find all example directories
