@@ -258,7 +258,7 @@ void DX12CommandList::ClearTexture(RHITexture& rhiTexture,
                        "Clearing the color requires the TextureClear::ClearColor flag for texture: {}.",
                        desc.name);
             commandList->ClearRenderTargetView(rhiTexture.GetOrCreateRTVDSVView(device, dxTextureView),
-                                               clearValue.color,
+                                               clearValue.color.data(),
                                                0,
                                                nullptr);
         }

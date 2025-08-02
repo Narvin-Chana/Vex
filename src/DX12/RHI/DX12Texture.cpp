@@ -71,9 +71,11 @@ static D3D12_RENDER_TARGET_VIEW_DESC CreateRenderTargetViewDesc(DX12TextureView 
 
 static D3D12_DEPTH_STENCIL_VIEW_DESC CreateDepthStencilViewDesc(DX12TextureView view)
 {
-    // TODO: implement DSV logic
-    VEX_NOT_YET_IMPLEMENTED();
-    return {};
+    // TODO: could eventually investigate setting the DepthRead / StencilRead flags for further optimization.
+    D3D12_DEPTH_STENCIL_VIEW_DESC desc{ .Format = view.format,
+                                        .ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D,
+                                        .Texture2D = { .MipSlice = view.mipBias } };
+    return desc;
 }
 
 static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(DX12TextureView view)
@@ -242,13 +244,14 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, const TextureDescription& d
 
     static const D3D12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 
-    D3D12_CLEAR_VALUE* clearValue = nullptr;
+    D3D12_CLEAR_VALUE clearValue;
+    D3D12_CLEAR_VALUE* clearValuePtr = nullptr;
     if (description.clearValue.flags != TextureClear::None)
     {
-        *clearValue = {};
-        clearValue->Format = texDesc.Format;
-        std::memcpy(clearValue->Color, description.clearValue.color, sizeof(clearValue->Color));
-        clearValue->DepthStencil = { .Depth = description.clearValue.depth, .Stencil = description.clearValue.stencil };
+        clearValue.Format = texDesc.Format;
+        std::memcpy(clearValue.Color, description.clearValue.color.data(), sizeof(float) * 4);
+        clearValue.DepthStencil = { .Depth = description.clearValue.depth, .Stencil = description.clearValue.stencil };
+        clearValuePtr = &clearValue;
     }
 
     // For SRGB handling in DX12, the texture should have a typeless format.
@@ -262,7 +265,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, const TextureDescription& d
                                            D3D12_HEAP_FLAG_NONE,
                                            &texDesc,
                                            D3D12_RESOURCE_STATE_COMMON,
-                                           clearValue,
+                                           clearValuePtr,
                                            IID_PPV_ARGS(&texture));
 
 #if !VEX_SHIPPING
