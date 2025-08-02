@@ -6,9 +6,7 @@ namespace vex::dx12
 DX12DescriptorPool::DX12DescriptorPool(ComPtr<DX12Device>& device)
     // TODO: allow resizing, currently disallowed
     : device{ device }
-    , allocator(DefaultHeapSize)
-    , generations(DefaultHeapSize)
-    , gpuHeap(device, DefaultHeapSize)
+    , gpuHeap(device, DefaultPoolSize)
     , nullHeap(device, 1)
 {
     // Fill in the null heap with a null SRV.
@@ -20,59 +18,15 @@ DX12DescriptorPool::DX12DescriptorPool(ComPtr<DX12Device>& device)
     device->CreateShaderResourceView(nullptr, &nullDesc, GetNullDescriptor());
 }
 
-DX12DescriptorPool::~DX12DescriptorPool()
+void DX12DescriptorPool::CopyNullDescriptor(u32 slotIndex)
 {
-}
-
-BindlessHandle DX12DescriptorPool::AllocateStaticDescriptor()
-{
-    std::scoped_lock lock{ mutex };
-    if (allocator.freeIndices.empty())
-    {
-        // TODO: add resizing
-        // Resize(gpuHeap.size() * 2);
-    }
-
-    u32 index = allocator.Allocate();
-    // A bindless handle is initially created without any descriptor in the slot.
-    // We suppose that this will then be filled in the the user of the BindlessHandle.
-    return BindlessHandle::CreateHandle(index, generations[index]);
-}
-
-void DX12DescriptorPool::FreeStaticDescriptor(BindlessHandle handle)
-{
-    std::scoped_lock lock{ mutex };
-    auto idx = handle.GetIndex();
     device->CopyDescriptorsSimple(1,
-                                  gpuHeap.GetCPUDescriptorHandle(idx),
+                                  gpuHeap.GetCPUDescriptorHandle(slotIndex),
                                   GetNullDescriptor(),
                                   D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-    generations[idx]++;
-    allocator.Deallocate(idx);
 }
 
-BindlessHandle DX12DescriptorPool::AllocateDynamicDescriptor()
-{
-    std::scoped_lock lock{ mutex };
-    VEX_NOT_YET_IMPLEMENTED();
-    return BindlessHandle();
-}
-
-void DX12DescriptorPool::FreeDynamicDescriptor(BindlessHandle handle)
-{
-    std::scoped_lock lock{ mutex };
-    VEX_NOT_YET_IMPLEMENTED();
-}
-
-bool DX12DescriptorPool::IsValid(BindlessHandle handle)
-{
-    std::scoped_lock lock{ mutex };
-    return handle.GetGeneration() == generations[handle.GetIndex()];
-}
-
-void DX12DescriptorPool::CopyDescriptor(ComPtr<DX12Device>& device,
-                                        BindlessHandle handle,
-                                        CD3DX12_CPU_DESCRIPTOR_HANDLE descriptor)
+void DX12DescriptorPool::CopyDescriptor(BindlessHandle handle, CD3DX12_CPU_DESCRIPTOR_HANDLE descriptor)
 {
     VEX_ASSERT(IsValid(handle), "Invalid handle passed to DX12 Descriptor Pool.");
     device->CopyDescriptorsSimple(1, GetCPUDescriptor(handle), descriptor, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);

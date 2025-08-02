@@ -111,15 +111,7 @@ BindlessHandle VkBuffer::GetOrCreateBindlessIndex(VkGPUContext& ctx, VkDescripto
         return *bufferHandle;
     }
 
-    if (desc.stride != 0)
-    {
-        VEX_LOG(Fatal,
-                "VulkanRHI currently does not support StructuredBuffer<> hlsl type due to restrictions with bindless. "
-                "This could be fixed in the future using DeviceAddressBuffers, but in the meantime, set stride to 0 "
-                "and use a (RW)ByteAddressBuffer in your shaders.");
-    }
-
-    const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor(*this);
+    const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
 
     descriptorPool.UpdateDescriptor(
         ctx,

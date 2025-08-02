@@ -236,6 +236,9 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
 
     std::vector<ShaderDefine> shaderDefines = shader.key.defines;
 
+    shaderDefines.emplace_back(L"VEX_DEBUG", std::to_wstring(VEX_DEBUG));
+    shaderDefines.emplace_back(L"VEX_DEVELOPMENT", std::to_wstring(VEX_DEVELOPMENT));
+    shaderDefines.emplace_back(L"VEX_SHIPPING", std::to_wstring(VEX_SHIPPING));
     rhi->ModifyShaderCompilerEnvironment(args, shaderDefines);
 
     if (compilerSettings.enableShaderDebugging)

@@ -1,6 +1,7 @@
 #include "VkDescriptorPool.h"
 
 #include <Vex/Debug.h>
+#include <Vex/PhysicalDevice.h>
 #include <Vex/UniqueHandle.h>
 
 #include <Vulkan/VkErrorHandler.h>
@@ -8,56 +9,89 @@
 
 namespace vex::vk
 {
-static constexpr u32 BindlessMaxDescriptorPerType = 1000;
-static constexpr ::vk::DescriptorImageInfo NullDescriptorImageInfo{ .sampler = nullptr,
-                                                                    .imageView = nullptr,
-                                                                    .imageLayout = ::vk::ImageLayout::eUndefined };
 
-static constexpr ::vk::DescriptorBufferInfo NullDescriptorBufferInfo{ .buffer = nullptr, .offset = 0, .range = 0 };
+static constexpr ::vk::DescriptorBufferInfo NullDescriptorBufferInfo{ .buffer = VK_NULL_HANDLE,
+                                                                      .offset = 0,
+                                                                      .range = VK_WHOLE_SIZE };
 
 VkDescriptorPool::VkDescriptorPool(::vk::Device device)
     : device{ device }
 {
-    std::vector<::vk::DescriptorPoolSize> poolSize;
-    poolSize.reserve(DescriptorTypes.size());
-    std::ranges::transform(
-        DescriptorTypes,
-        std::back_inserter(poolSize),
-        [](auto type)
-        { return ::vk::DescriptorPoolSize{ .type = type, .descriptorCount = BindlessMaxDescriptorPerType }; });
+    ::vk::DescriptorPoolSize poolSize{
+        .type = ::vk::DescriptorType::eMutableEXT,
+        .descriptorCount = DefaultPoolSize,
+    };
 
     ::vk::DescriptorPoolCreateInfo descriptorPoolInfo{
         .flags = ::vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind |
                  ::vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
         .maxSets = 1,
-        .poolSizeCount = static_cast<uint32_t>(poolSize.size()),
-        .pPoolSizes = poolSize.data(),
+        .poolSizeCount = 1,
+        .pPoolSizes = &poolSize,
     };
 
     descriptorPool = VEX_VK_CHECK <<= device.createDescriptorPoolUnique(descriptorPoolInfo);
 
-    // Inspired from https://dev.to/gasim/implementing-bindless-design-in-vulkan-34no
-    std::array<::vk::DescriptorSetLayoutBinding, DescriptorTypes.size()> bindings{};
-    std::array<::vk::DescriptorBindingFlags, DescriptorTypes.size()> flags{};
-
-    for (uint32_t i = 0; i < DescriptorTypes.size(); ++i)
+    // Create a mutable descriptor binding set, this allows us to use the ResourceDescriptorHeap in HLSL shaders which
+    // greatly simplifies the resulting code. It is important to know that this also disallows certain aspects:
+    //
+    // - Bindless descriptors all belong to the same heap, which means bindless handle indices no longer have to store
+    // the type of the pool.
+    //
+    // - To cite the Vulkan docs:
+    // "A mutable descriptor is expected to consume as much memory as the largest descriptor type
+    // it supports, and it is expected that there will be holes in GPU memory between descriptors when smaller
+    // descriptor types are used. Using mutable descriptor types should only be considered when it is meaningful, e.g.
+    // when the alternative is emitting 6+ large descriptor arrays as a workaround in bindless DirectX 12 emulation or
+    // similar.
+    // Using mutable descriptor types as a lazy workaround for using concrete descriptor types will likely lead
+    // to lower GPU performance. It might also disable certain fast-paths in implementations since the descriptors types
+    // are no longer statically known at layout creation time."
+    //
+    // I believe this trade off is worth it given it greatly simplifies our code.
+    std::vector<::vk::DescriptorType> descriptorTypes = {
+        ::vk::DescriptorType::eSampledImage,       ::vk::DescriptorType::eStorageImage,
+        ::vk::DescriptorType::eUniformTexelBuffer, ::vk::DescriptorType::eStorageTexelBuffer,
+        ::vk::DescriptorType::eUniformBuffer,      ::vk::DescriptorType::eStorageBuffer,
+    };
+    if (GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing))
     {
-        bindings[i].binding = i;
-        bindings[i].descriptorType = DescriptorTypes[i];
-        bindings[i].descriptorCount = BindlessMaxDescriptorPerType;
-        bindings[i].stageFlags = ::vk::ShaderStageFlagBits::eAll;
-        flags[i] = ::vk::DescriptorBindingFlagBits::ePartiallyBound | ::vk::DescriptorBindingFlagBits::eUpdateAfterBind;
+        descriptorTypes.push_back(::vk::DescriptorType::eAccelerationStructureKHR);
     }
 
-    ::vk::DescriptorSetLayoutBindingFlagsCreateInfo bindingFlags{};
-    bindingFlags.pBindingFlags = flags.data();
-    bindingFlags.bindingCount = DescriptorTypes.size();
+    ::vk::MutableDescriptorTypeListEXT mutableDescriptorTypeList = {
+        .descriptorTypeCount = static_cast<u32>(descriptorTypes.size()),
+        .pDescriptorTypes = descriptorTypes.data(),
+    };
 
-    ::vk::DescriptorSetLayoutCreateInfo createInfo{};
-    createInfo.bindingCount = DescriptorTypes.size();
-    createInfo.pBindings = bindings.data();
-    createInfo.flags = ::vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool;
-    createInfo.pNext = &bindingFlags;
+    ::vk::MutableDescriptorTypeCreateInfoEXT mutableTypeInfo = {
+        .pNext = nullptr,
+        .mutableDescriptorTypeListCount = 1,
+        .pMutableDescriptorTypeLists = &mutableDescriptorTypeList,
+    };
+
+    ::vk::DescriptorSetLayoutBinding descriptorSetLayoutBinding = {
+        .binding = 0,
+        .descriptorType = ::vk::DescriptorType::eMutableEXT,
+        .descriptorCount = DefaultPoolSize,
+        .stageFlags = ::vk::ShaderStageFlagBits::eAll,
+        .pImmutableSamplers = nullptr,
+    };
+
+    ::vk::DescriptorBindingFlagsEXT bindingFlags =
+        ::vk::DescriptorBindingFlagBits::ePartiallyBound | ::vk::DescriptorBindingFlagBits::eUpdateAfterBind;
+
+    ::vk::DescriptorSetLayoutBindingFlagsCreateInfoEXT bindingFlagsInfo = {
+        .pNext = &mutableTypeInfo,
+        .bindingCount = 1,
+        .pBindingFlags = &bindingFlags,
+    };
+    ::vk::DescriptorSetLayoutCreateInfo createInfo = {
+        .pNext = &bindingFlagsInfo,
+        .flags = ::vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool,
+        .bindingCount = 1,
+        .pBindings = &descriptorSetLayoutBinding,
+    };
 
     // Create layout
     bindlessLayout = VEX_VK_CHECK <<= device.createDescriptorSetLayoutUnique(createInfo);
@@ -73,162 +107,62 @@ VkDescriptorPool::VkDescriptorPool(::vk::Device device)
 
     bindlessSet = std::move(descSets[0]);
 
-    for (int i = 0; i < DescriptorTypes.size(); i++)
-    {
-        bindlessAllocations[i].generations.resize(BindlessMaxDescriptorPerType);
-        bindlessAllocations[i].handles = FreeListAllocator(BindlessMaxDescriptorPerType);
-    }
-
     // The pool should be split into two sections, one for static descriptors (aka resources that we load in once
     // at startup or for streaming and reuse thereafter) and one section for dynamic descriptors (for resources that
     // are created and destroyed during the same frame, eg: temporary buffers).
 }
 
-BindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHITexture& texture, bool writeAccess)
+void VkDescriptorPool::CopyNullDescriptor(u32 slotIndex)
 {
-    auto type = writeAccess ? ::vk::DescriptorType::eStorageImage : ::vk::DescriptorType::eSampledImage;
-
-    BindlessAllocation& alloc = bindlessAllocations[GetDescriptorTypeBinding(type)];
-
-    u32 index = alloc.handles.Allocate();
-
-    return BindlessHandle::CreateHandle(index, alloc.generations[index], type);
-}
-
-BindlessHandle VkDescriptorPool::AllocateStaticDescriptor(const RHIBuffer& buffer)
-{
-    // This handles both StructuredBuffer AND RWStructuredBuffer
-    auto type = ::vk::DescriptorType::eStorageBuffer;
-
-    BindlessAllocation& alloc = bindlessAllocations[GetDescriptorTypeBinding(type)];
-    u32 index = alloc.handles.Allocate();
-
-    return BindlessHandle::CreateHandle(index, alloc.generations[index], type);
-}
-
-void VkDescriptorPool::FreeStaticDescriptor(BindlessHandle handle)
-{
-    const ::vk::DescriptorType type = GetDescriptorTypeFromHandle(handle);
-    const ::vk::DescriptorImageInfo* imageInfo{};
-    const ::vk::DescriptorBufferInfo* bufferInfo{};
-
-    switch (type)
-    {
-    case ::vk::DescriptorType::eSampledImage:
-    case ::vk::DescriptorType::eStorageImage:
-        imageInfo = &NullDescriptorImageInfo;
-        break;
-    case ::vk::DescriptorType::eStorageBuffer:
-    case ::vk::DescriptorType::eUniformBuffer:
-        bufferInfo = &NullDescriptorBufferInfo;
-        break;
-    default:
-        VEX_ASSERT(false, "Bindless handle type not supported");
-    }
-
-    const u32 index = handle.GetIndex();
-
-    const ::vk::WriteDescriptorSet NullWriteDescriptorSet{ .dstSet = *bindlessSet,
-                                                           .dstBinding = GetDescriptorTypeBinding(type),
-                                                           .dstArrayElement = index,
-                                                           .descriptorCount = 1,
-                                                           .descriptorType = type,
-                                                           .pImageInfo = imageInfo,
-                                                           .pBufferInfo = bufferInfo,
-                                                           .pTexelBufferView = nullptr };
-
-    device.updateDescriptorSets(1, &NullWriteDescriptorSet, 0, nullptr);
-
-    auto& [generations, handles] = GetAllocation(handle);
-    generations[index]++;
-    handles.Deallocate(index);
-}
-
-BindlessHandle VkDescriptorPool::AllocateDynamicDescriptor(const RHITexture& texture)
-{
-    VEX_NOT_YET_IMPLEMENTED();
-    return BindlessHandle();
-}
-
-BindlessHandle VkDescriptorPool::AllocateDynamicDescriptor(const RHIBuffer& buffer)
-{
-    VEX_NOT_YET_IMPLEMENTED();
-    return BindlessHandle();
-}
-
-void VkDescriptorPool::FreeDynamicDescriptor(BindlessHandle handle)
-{
-    VEX_NOT_YET_IMPLEMENTED();
-}
-
-bool VkDescriptorPool::IsValid(BindlessHandle handle)
-{
-    return handle.GetGeneration() == GetAllocation(handle).generations[handle.GetIndex()];
-}
-
-u8 VkDescriptorPool::GetDescriptorTypeBinding(BindlessHandle handle)
-{
-    auto handleType = GetDescriptorTypeFromHandle(handle);
-    return GetDescriptorTypeBinding(handleType);
+    // We copy in any arbitrary null descriptor, in this case its a null buffer.
+    const ::vk::WriteDescriptorSet nullWriteDescriptorSet{
+        .dstSet = *bindlessSet,
+        .dstBinding = 0,
+        .dstArrayElement = slotIndex,
+        .descriptorCount = 1,
+        .descriptorType = ::vk::DescriptorType::eStorageBuffer,
+        .pImageInfo = nullptr,
+        .pBufferInfo = &NullDescriptorBufferInfo,
+        .pTexelBufferView = nullptr,
+    };
+    device.updateDescriptorSets(1, &nullWriteDescriptorSet, 0, nullptr);
 }
 
 void VkDescriptorPool::UpdateDescriptor(VkGPUContext& ctx,
                                         BindlessHandle targetDescriptor,
-                                        ::vk::DescriptorImageInfo createInfo)
+                                        ::vk::DescriptorImageInfo createInfo,
+                                        bool hasGPUWriteAccess)
 {
-    auto descType = GetDescriptorTypeFromHandle(targetDescriptor);
+    auto type = hasGPUWriteAccess ? ::vk::DescriptorType::eStorageImage : ::vk::DescriptorType::eSampledImage;
     const ::vk::WriteDescriptorSet writeSet{
         .dstSet = *bindlessSet,
-        .dstBinding = GetDescriptorTypeBinding(descType),
+        .dstBinding = 0,
         .dstArrayElement = targetDescriptor.GetIndex(),
         .descriptorCount = 1,
-        .descriptorType = descType,
+        .descriptorType = type,
         .pImageInfo = &createInfo,
     };
 
     ctx.device.updateDescriptorSets(1, &writeSet, 0, nullptr);
 }
+
 void VkDescriptorPool::UpdateDescriptor(VkGPUContext& ctx,
                                         BindlessHandle targetDescriptor,
                                         ::vk::DescriptorBufferInfo createInfo)
 {
-    auto descType = GetDescriptorTypeFromHandle(targetDescriptor);
+    // This handles StructuredBuffer, RWStructuredBuffer, ByteAddressBuffer and RWByteAddressBuffer.
+    // TODO: support uniform buffers!
+    auto type = ::vk::DescriptorType::eStorageBuffer;
     const ::vk::WriteDescriptorSet writeSet{
         .dstSet = *bindlessSet,
-        .dstBinding = GetDescriptorTypeBinding(descType),
+        .dstBinding = 0,
         .dstArrayElement = targetDescriptor.GetIndex(),
         .descriptorCount = 1,
-        .descriptorType = descType,
+        .descriptorType = type,
         .pBufferInfo = &createInfo,
     };
 
     ctx.device.updateDescriptorSets(1, &writeSet, 0, nullptr);
-}
-
-VkDescriptorPool::BindlessAllocation& VkDescriptorPool::GetAllocation(BindlessHandle handle)
-{
-    return bindlessAllocations[GetDescriptorTypeBinding(handle)];
-}
-
-VkDescriptorPool::BindlessAllocation& VkDescriptorPool::GetAllocation(::vk::DescriptorType type)
-{
-    return bindlessAllocations[GetDescriptorTypeBinding(type)];
-}
-
-::vk::DescriptorType VkDescriptorPool::GetDescriptorTypeFromHandle(BindlessHandle handle)
-{
-    return handle.type;
-}
-u8 VkDescriptorPool::GetDescriptorTypeBinding(::vk::DescriptorType type)
-{
-    for (int i = 0; i < DescriptorTypes.size(); ++i)
-    {
-        if (DescriptorTypes[i] == type)
-            return i;
-    }
-
-    VEX_LOG(Fatal, "Bindless handle not found in metadata");
-    std::unreachable();
 }
 
 } // namespace vex::vk
