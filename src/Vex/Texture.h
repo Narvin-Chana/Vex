@@ -63,7 +63,7 @@ END_VEX_ENUM_FLAGS();
 struct TextureClearValue
 {
     TextureClear::Flags flags = TextureClear::None;
-    float color[4];
+    std::array<float, 4> color;
     float depth;
     u8 stencil;
 };

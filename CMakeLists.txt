@@ -23,16 +23,6 @@ include(GitHooks)
 include(VexDXC)
 
 # =========================================
-# Set configuration flags
-# Debug: Full debug symbols
-# Development: Optimizations with some debug symbols
-# Shipping: Fully optimized build without debug symbols
-# =========================================
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DVEX_DEBUG=1 -DVEX_DEVELOPMENT=0 -DVEX_SHIPPING=0")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -DVEX_DEBUG=0 -DVEX_DEVELOPMENT=1 -DVEX_SHIPPING=0")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DVEX_DEBUG=0 -DVEX_DEVELOPMENT=0 -DVEX_SHIPPING=1")
-
-# =========================================
 # Graphics Backend Selection
 # =========================================
 message(STATUS "Configuring graphics backend...")
@@ -235,6 +225,18 @@ add_header_only_dependency(Vex magic_enum "${magic_enum_SOURCE_DIR}" "include" "
 # =========================================
 # DEFINES
 # =========================================
+
+# =========================================
+# Set configuration defines
+# Debug: Full debug symbols
+# Development: Optimizations with some debug symbols
+# Shipping: Fully optimized build without debug symbols
+# =========================================
+target_compile_definitions(Vex PUBLIC
+    $<$<CONFIG:Debug>:VEX_DEBUG=1 VEX_DEVELOPMENT=0 VEX_SHIPPING=0>
+    $<$<CONFIG:RelWithDebInfo>:VEX_DEBUG=0 VEX_DEVELOPMENT=1 VEX_SHIPPING=0>
+    $<$<CONFIG:Release>:VEX_DEBUG=0 VEX_DEVELOPMENT=0 VEX_SHIPPING=1>
+)
 
 # Graphics API defines
 target_compile_definitions(Vex PUBLIC VEX_DX12=$<BOOL:${VEX_ENABLE_DX12}> VEX_VULKAN=$<BOOL:${VEX_ENABLE_VULKAN}>)
