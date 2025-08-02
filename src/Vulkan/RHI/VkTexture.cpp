@@ -109,13 +109,13 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(VkGPUContext& ctx,
                                                 } };
 
     ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx.device.createImageViewUnique(viewCreate);
-    const BindlessHandle handle =
-        descriptorPool.AllocateStaticDescriptor(*this, view.usage & TextureUsage::ShaderReadWrite);
+    const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
 
     descriptorPool.UpdateDescriptor(
         ctx,
         handle,
-        ::vk::DescriptorImageInfo{ .sampler = nullptr, .imageView = *imageView, .imageLayout = GetLayout() });
+        ::vk::DescriptorImageInfo{ .sampler = nullptr, .imageView = *imageView, .imageLayout = GetLayout() },
+        view.usage & TextureUsage::ShaderReadWrite);
 
     cache[view] = { .handle = handle, .view = std::move(imageView) };
 
@@ -124,7 +124,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(VkGPUContext& ctx,
 
 void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 {
-    for (auto& [handle, view] : cache | std::views::values)
+    for (const auto& [handle, view] : cache | std::views::values)
     {
         if (handle != GInvalidBindlessHandle)
         {
