@@ -1,6 +1,7 @@
 #include "GfxBackend.h"
 
 #include <algorithm>
+#include <ranges>
 #include <utility>
 
 #include <magic_enum/magic_enum.hpp>
@@ -19,6 +20,7 @@
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITexture.h>
+#include <Vex/RenderExtension.h>
 
 namespace vex
 {
@@ -102,6 +104,11 @@ GfxBackend::~GfxBackend()
     // Wait for work to be done before starting the deletion of resources.
     FlushGPU();
 
+    for (auto& renderExtension : renderExtensions)
+    {
+        renderExtension->Destroy();
+    }
+
     // Clear the physical device.
     GPhysicalDevice = nullptr;
 }
@@ -109,10 +116,20 @@ GfxBackend::~GfxBackend()
 void GfxBackend::StartFrame()
 {
     swapChain->AcquireNextBackbuffer(currentFrameIndex);
+
+    for (auto& renderExtension : renderExtensions)
+    {
+        renderExtension->OnFrameStart();
+    }
 }
 
 void GfxBackend::EndFrame(bool isFullscreenMode)
 {
+    for (auto& renderExtension : renderExtensions)
+    {
+        renderExtension->OnFrameEnd();
+    }
+
     RHITexture& currentRHIBackBuffer = GetRHITexture(GetCurrentBackBuffer().handle);
     // Make sure the backbuffer is in Present mode, if not we will have to open a command list just to transition it.
     if (!(currentRHIBackBuffer.GetCurrentState() & RHITextureState::Present))
@@ -272,6 +289,11 @@ void GfxBackend::OnWindowResized(u32 newWidth, u32 newHeight)
     swapChain->Resize(newWidth, newHeight);
     CreateBackBuffers();
 
+    for (auto& renderExtension : renderExtensions)
+    {
+        renderExtension->OnResize(newWidth, newHeight);
+    }
+
     description.platformWindow.width = newWidth;
     description.platformWindow.height = newHeight;
 }
@@ -308,6 +330,25 @@ void GfxBackend::SetShaderCompilationErrorsCallback(std::function<ShaderCompileE
 void GfxBackend::SetSamplers(std::span<TextureSampler> newSamplers)
 {
     psCache.GetResourceLayout().SetSamplers(newSamplers);
+}
+
+RenderExtension* GfxBackend::RegisterRenderExtension(UniqueHandle<RenderExtension>&& renderExtension)
+{
+    renderExtension->data = RenderExtensionData{ .rhi = &rhi, .descriptorPool = descriptorPool.get() };
+    renderExtension->Initialize();
+    renderExtensions.push_back(std::move(renderExtension));
+    return renderExtensions.back().get();
+}
+
+void GfxBackend::UnregisterRenderExtension(RenderExtension* renderExtension)
+{
+    auto el = std::ranges::find_if(renderExtensions,
+                                   [renderExtension](const UniqueHandle<RenderExtension>& ext)
+                                   { return ext.get() == renderExtension; });
+    if (el != renderExtensions.end())
+    {
+        renderExtensions.erase(el);
+    }
 }
 
 void GfxBackend::RecompileChangedShaders()

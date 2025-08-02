@@ -24,6 +24,7 @@ class CommandContext;
 struct PhysicalDevice;
 struct Texture;
 struct TextureSampler;
+class RenderExtension;
 
 struct BackendDescription
 {
@@ -94,6 +95,11 @@ public:
 
     void SetSamplers(std::span<TextureSampler> newSamplers);
 
+    // Register a custom RenderExtension, it will be automatically unregistered when the graphics backend is destroyed.
+    RenderExtension* RegisterRenderExtension(UniqueHandle<RenderExtension>&& renderExtension);
+    // You can manually unregister a RenderExtension by passing in the pointer returned on creation.
+    void UnregisterRenderExtension(RenderExtension* renderExtension);
+
 private:
     void EndCommandContext(RHICommandList& cmdList);
 
@@ -142,6 +148,8 @@ private:
 
     // We submit our command lists in batch at the end of the frame, to reduce driver overhead.
     std::vector<RHICommandList*> queuedCommandLists;
+
+    std::vector<UniqueHandle<RenderExtension>> renderExtensions;
 
     static constexpr u32 DefaultRegistrySize = 1024;
 

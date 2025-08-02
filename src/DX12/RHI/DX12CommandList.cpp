@@ -226,7 +226,7 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
 
 void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)
 {
-    commandList->SetDescriptorHeaps(1, descriptorPool.gpuHeap.GetRawDescriptorHeap().GetAddressOf());
+    commandList->SetDescriptorHeaps(1, descriptorPool.gpuHeap.GetNativeDescriptorHeap().GetAddressOf());
 }
 
 void DX12CommandList::SetInputAssembly(InputAssembly inputAssembly)

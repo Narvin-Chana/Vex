@@ -64,7 +64,7 @@ public:
         return handle;
     }
 
-    ComPtr<ID3D12DescriptorHeap>& GetRawDescriptorHeap()
+    ComPtr<ID3D12DescriptorHeap>& GetNativeDescriptorHeap()
     {
         return heap;
     }

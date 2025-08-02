@@ -49,9 +49,10 @@ public:
     virtual void ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
                                                  std::vector<ShaderDefine>& defines) override;
 
-private:
-    ComPtr<ID3D12CommandQueue>& GetQueue(CommandQueueType queueType);
+    ComPtr<DX12Device>& GetNativeDevice();
+    ComPtr<ID3D12CommandQueue>& GetNativeQueue(CommandQueueType queueType);
 
+private:
     bool enableGPUDebugLayer = false;
 
     ComPtr<DX12Device> device;

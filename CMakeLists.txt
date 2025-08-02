@@ -114,6 +114,7 @@ add_library(Vex STATIC
     "src/Vex/RHIBindings.h"
     "src/RHI/RHIResourceLayout.h"
     "src/RHI/RHIDescriptorPool.h"
+    "src/RHI/RHIDescriptorPool.cpp"
     "src/RHI/RHICommandList.h"
     "src/Vex/RHIImpl/RHICommandList.h"
     "src/Vex/RHIImpl/RHICommandPool.h"
@@ -174,7 +175,10 @@ add_library(Vex STATIC
     "src/Vex/GraphicsPipeline.h"
     "src/Vex/DrawHelpers.h"
     "src/Vex/ShaderCompilerSettings.h"
- "src/RHI/RHIDescriptorPool.cpp")
+    "src/Vex/RenderExtension.h"
+    "src/Vex/RenderExtension.cpp"
+)
+
 
 if(WIN32)
     target_sources(Vex PRIVATE

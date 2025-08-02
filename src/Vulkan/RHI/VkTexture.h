@@ -52,6 +52,7 @@ class VkDescriptorPool;
 class VkTexture : public RHITextureInterface
 {
 public:
+    virtual ~VkTexture() = default;
     virtual ::vk::Image GetResource() = 0;
 
     BindlessHandle GetOrCreateBindlessView(VkGPUContext& device,

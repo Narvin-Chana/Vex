@@ -56,6 +56,14 @@ public:
     void Copy(const Texture& source, const Texture& destination);
     void Copy(const Buffer& source, const Buffer& destination);
 
+    // Manually sets a target as the current render target.
+    // Is done automatically by draw calls, so its generally not necessary to call this.
+    void SetRenderTarget(const ResourceBinding& renderTarget);
+
+    // Returns the RHI command list associated with this context (you should avoid using this unless you know
+    // what you are doing).
+    RHICommandList& GetRHICommandList();
+
 private:
     GfxBackend* backend;
     RHICommandList* cmdList;
