@@ -52,7 +52,7 @@ void ImGuiRenderExtension::Initialize()
 
     static struct DescriptorHelper
     {
-        std::unordered_map<size_t, vex::dx12::BindlessHandle> descriptorsMap;
+        std::unordered_map<size_t, vex::BindlessHandle> descriptorsMap;
         vex::RHIDescriptorPool& descriptorPool;
     } helper{ .descriptorPool = *data.descriptorPool };
 
@@ -68,7 +68,7 @@ void ImGuiRenderExtension::Initialize()
                                        D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle,
                                        D3D12_GPU_DESCRIPTOR_HANDLE* gpuHandle)
     {
-        vex::dx12::BindlessHandle handle = helper.descriptorPool.AllocateStaticDescriptor();
+        vex::BindlessHandle handle = helper.descriptorPool.AllocateStaticDescriptor();
         *cpuHandle = helper.descriptorPool.GetCPUDescriptor(handle);
         *gpuHandle = helper.descriptorPool.GetGPUDescriptor(handle);
         helper.descriptorsMap[cpuHandle->ptr] = handle;
@@ -76,7 +76,7 @@ void ImGuiRenderExtension::Initialize()
     initInfo.SrvDescriptorFreeFn =
         [](ImGui_ImplDX12_InitInfo*, D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle, D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle)
     {
-        vex::dx12::BindlessHandle handle = helper.descriptorsMap[cpuHandle.ptr];
+        vex::BindlessHandle handle = helper.descriptorsMap[cpuHandle.ptr];
         helper.descriptorPool.FreeStaticDescriptor(handle);
         helper.descriptorsMap.erase(cpuHandle.ptr);
     };
