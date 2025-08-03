@@ -2,6 +2,7 @@
 
 #include <Vex/EnumFlags.h>
 #include <Vex/RHIFwd.h>
+#include <Vex/Resource.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
 
@@ -11,15 +12,15 @@ namespace vex
 // clang-format off
 
 BEGIN_VEX_ENUM_FLAGS(RHITextureState, u8)
-    Common = 0,
-    RenderTarget = 1,
-    ShaderReadWrite = 2,
-    DepthWrite = 4,
-    DepthRead = 8,
-    ShaderResource = 16,
-    CopySource = 32,
-    CopyDest = 64,
-    Present = 128,
+    Common          = 0,
+    RenderTarget    = 1 << 0,
+    ShaderReadWrite = 1 << 1,
+    DepthWrite      = 1 << 2,
+    DepthRead       = 1 << 3,
+    ShaderResource  = 1 << 4,
+    CopySource      = 1 << 5,
+    CopyDest        = 1 << 6,
+    Present         = 1 << 7,
 END_VEX_ENUM_FLAGS();
 
 // clang-format on
@@ -27,6 +28,9 @@ END_VEX_ENUM_FLAGS();
 class RHITextureInterface
 {
 public:
+    virtual BindlessHandle GetOrCreateBindlessView(const ResourceBinding& binding,
+                                                   TextureUsage::Type usage,
+                                                   RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
 
     const TextureDescription& GetDescription() const

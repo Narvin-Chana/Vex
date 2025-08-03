@@ -83,19 +83,7 @@ void DX12Buffer::Unmap()
     buffer->Unmap(0, &range);
 }
 
-void DX12Buffer::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
-{
-    for (BindlessHandle bindlessHandle : viewCache | std::views::values)
-    {
-        if (bindlessHandle != GInvalidBindlessHandle)
-        {
-            descriptorPool.FreeStaticDescriptor(bindlessHandle);
-        }
-    }
-    viewCache.clear();
-}
-
-BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferUsage::Type usage, DX12DescriptorPool& descriptorPool)
+BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferUsage::Type usage, RHIDescriptorPool& descriptorPool)
 {
     // Usage is the exact correct usage (no longer flags), so == is valid here.
     bool isSRVView = (usage == BufferUsage::ShaderRead) && (desc.usage & BufferUsage::ShaderRead);
@@ -177,6 +165,18 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferUsage::Type usage, DX12
 
     viewCache[usage] = handle;
     return handle;
+}
+
+void DX12Buffer::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
+{
+    for (BindlessHandle bindlessHandle : viewCache | std::views::values)
+    {
+        if (bindlessHandle != GInvalidBindlessHandle)
+        {
+            descriptorPool.FreeStaticDescriptor(bindlessHandle);
+        }
+    }
+    viewCache.clear();
 }
 
 } // namespace vex::dx12

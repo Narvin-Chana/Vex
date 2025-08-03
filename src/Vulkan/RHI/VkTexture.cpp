@@ -1,5 +1,7 @@
 ﻿#include "VkTexture.h"
 
+#include <Vex/Bindings.h>
+
 #include <Vulkan/RHI/VkCommandPool.h>
 #include <Vulkan/RHI/VkDescriptorPool.h>
 #include <Vulkan/VkErrorHandler.h>
@@ -64,34 +66,54 @@ namespace vex::vk
 //     return *sampler;
 // }
 
-VkBackbufferTexture::VkBackbufferTexture(TextureDescription&& inDescription, ::vk::Image backbufferImage)
-    : image{ backbufferImage }
+VkTexture::VkTexture(VkGPUContext& ctx)
+    : ctx(ctx)
+{
+}
+
+VkBackbufferTexture::VkBackbufferTexture(VkGPUContext& ctx,
+                                         TextureDescription&& inDescription,
+                                         ::vk::Image backbufferImage)
+    : VkTexture(ctx)
+    , image{ backbufferImage }
 {
     description = std::move(inDescription);
 }
 
-VkImageTexture::VkImageTexture(const TextureDescription& inDescription, ::vk::UniqueImage rawImage)
-    : image{ std::move(rawImage) }
+VkImageTexture::VkImageTexture(VkGPUContext& ctx, const TextureDescription& inDescription, ::vk::UniqueImage rawImage)
+    : VkTexture(ctx)
+    , image{ std::move(rawImage) }
 {
     description = inDescription;
 }
 
-VkImageTexture::VkImageTexture(TextureDescription&& inDescription, ::vk::UniqueImage rawImage)
-    : image{ std::move(rawImage) }
+VkImageTexture::VkImageTexture(VkGPUContext& ctx, TextureDescription&& inDescription, ::vk::UniqueImage rawImage)
+    : VkTexture(ctx)
+    , image{ std::move(rawImage) }
 {
     description = std::move(inDescription);
 }
 
 VkImageTexture::VkImageTexture(VkGPUContext& ctx, TextureDescription&& inDescription)
+    : VkTexture(ctx)
 {
     description = std::move(inDescription);
     CreateImage(ctx);
 }
 
-BindlessHandle VkTexture::GetOrCreateBindlessView(VkGPUContext& ctx,
-                                                  const VkTextureViewDesc& view,
-                                                  VkDescriptorPool& descriptorPool)
+BindlessHandle VkTexture::GetOrCreateBindlessView(const ResourceBinding& binding,
+                                                  TextureUsage::Type usage,
+                                                  RHIDescriptorPool& descriptorPool)
 {
+    VkTextureViewDesc view{
+        .viewType = TextureUtil::GetTextureViewType(binding),
+        .format = TextureUtil::GetTextureFormat(binding),
+        .usage = usage,
+        .mipBias = binding.mipBias,
+        .mipCount = (binding.mipCount == 0) ? description.mips : binding.mipCount,
+        .startSlice = binding.startSlice,
+        .sliceCount = (binding.sliceCount == 0) ? description.depthOrArraySize : binding.sliceCount,
+    };
     if (auto it = cache.find(view); it != cache.end() && descriptorPool.IsValid(it->second.handle))
     {
         return it->second.handle;

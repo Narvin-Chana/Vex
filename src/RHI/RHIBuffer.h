@@ -5,6 +5,7 @@
 #include <Vex/Buffer.h>
 #include <Vex/Debug.h>
 #include <Vex/RHIFwd.h>
+#include <Vex/Resource.h>
 #include <Vex/Types.h>
 #include <Vex/UniqueHandle.h>
 
@@ -54,6 +55,7 @@ public:
     virtual UniqueHandle<RHIBuffer> CreateStagingBuffer() = 0;
     virtual std::span<u8> Map() = 0;
     virtual void Unmap() = 0;
+    virtual BindlessHandle GetOrCreateBindlessView(BufferUsage::Type usage, RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
 
     [[nodiscard]] bool NeedsStagingBufferCopy() const noexcept

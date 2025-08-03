@@ -5,6 +5,7 @@
 #include <Vex/Containers/FreeList.h>
 #include <Vex/Hash.h>
 #include <Vex/RHIFwd.h>
+#include <Vex/Resource.h>
 
 #include <RHI/RHITexture.h>
 
@@ -61,6 +62,9 @@ public:
     // Takes ownership of the passed in texture.
     DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID3D12Resource> rawTex);
     ~DX12Texture();
+    virtual BindlessHandle GetOrCreateBindlessView(const ResourceBinding& binding,
+                                                   TextureUsage::Type usage,
+                                                   RHIDescriptorPool& descriptorPool) override;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
 
     ID3D12Resource* GetRawTexture()
@@ -68,15 +72,14 @@ public:
         return texture.Get();
     }
 
-    CD3DX12_CPU_DESCRIPTOR_HANDLE GetOrCreateRTVDSVView(ComPtr<DX12Device>& device, DX12TextureView view);
-    BindlessHandle GetOrCreateBindlessView(ComPtr<DX12Device>& device,
-                                           DX12TextureView view,
-                                           DX12DescriptorPool& descriptorPool);
+    CD3DX12_CPU_DESCRIPTOR_HANDLE GetOrCreateRTVDSVView(DX12TextureView view);
 
     D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
 
 private:
     ComPtr<ID3D12Resource> texture;
+
+    ComPtr<DX12Device> device;
 
     struct CacheEntry
     {

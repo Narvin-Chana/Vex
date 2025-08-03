@@ -22,9 +22,9 @@ public:
 
     virtual std::span<u8> Map() override;
     virtual void Unmap() override;
-    virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
 
-    BindlessHandle GetOrCreateBindlessView(BufferUsage::Type usage, DX12DescriptorPool& descriptorPool);
+    virtual BindlessHandle GetOrCreateBindlessView(BufferUsage::Type usage, RHIDescriptorPool& descriptorPool) override;
+    virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
 
     ID3D12Resource* GetRawBuffer()
     {
