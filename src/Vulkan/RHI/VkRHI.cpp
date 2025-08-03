@@ -322,6 +322,7 @@ UniqueHandle<RHITexture> VkRHI::CreateTexture(const TextureDescription& descript
 {
     return MakeUnique<VkImageTexture>(GetGPUContext(), TextureDescription(description));
 }
+
 UniqueHandle<RHIBuffer> VkRHI::CreateBuffer(const BufferDescription& description)
 {
     return MakeUnique<VkBuffer>(GetGPUContext(), description);

@@ -52,9 +52,13 @@ class VkDescriptorPool;
 class VkTexture : public RHITextureInterface
 {
 public:
+    VkTexture(VkGPUContext& ctx);
     virtual ~VkTexture() = default;
     virtual ::vk::Image GetResource() = 0;
 
+    virtual BindlessHandle GetOrCreateBindlessView(const ResourceBinding& binding,
+                                                   TextureUsage::Type usage,
+                                                   RHIDescriptorPool& descriptorPool) override;
     BindlessHandle GetOrCreateBindlessView(VkGPUContext& device,
                                            const VkTextureViewDesc& view,
                                            VkDescriptorPool& descriptorPool);
@@ -71,12 +75,15 @@ public:
         ::vk::UniqueImageView view;
     };
     std::unordered_map<VkTextureViewDesc, CacheEntry> cache;
+
+protected:
+    VkGPUContext& ctx;
 };
 
 class VkBackbufferTexture final : public VkTexture
 {
 public:
-    VkBackbufferTexture(TextureDescription&& description, ::vk::Image backbufferImage);
+    VkBackbufferTexture(VkGPUContext& ctx, TextureDescription&& description, ::vk::Image backbufferImage);
 
     virtual ::vk::Image GetResource() override
     {
@@ -90,8 +97,8 @@ class VkImageTexture final : public VkTexture
 {
 public:
     // Takes ownership of the image
-    VkImageTexture(const TextureDescription& description, ::vk::UniqueImage rawImage);
-    VkImageTexture(TextureDescription&& description, ::vk::UniqueImage rawImage);
+    VkImageTexture(VkGPUContext& ctx, const TextureDescription& description, ::vk::UniqueImage rawImage);
+    VkImageTexture(VkGPUContext& ctx, TextureDescription&& description, ::vk::UniqueImage rawImage);
 
     // Creates a new image from the description
     VkImageTexture(VkGPUContext& ctx, TextureDescription&& description);

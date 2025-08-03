@@ -189,7 +189,7 @@ UniqueHandle<RHITexture> VkSwapChain::CreateBackBuffer(u8 backBufferIndex)
         .format = VulkanToTextureFormat(surfaceFormat.format),
     };
 
-    return MakeUnique<VkBackbufferTexture>(std::move(desc), backbufferImages[backBufferIndex]);
+    return MakeUnique<VkBackbufferTexture>(ctx, std::move(desc), backbufferImages[backBufferIndex]);
 }
 
 void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)

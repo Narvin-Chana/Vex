@@ -229,6 +229,34 @@ void GfxBackend::DestroyTexture(const Texture& texture)
     textureRegistry.FreeElement(texture.handle);
 }
 
+void GfxBackend::DestroyBuffer(const Buffer& buffer)
+{
+    resourceCleanup.CleanupResource(std::move(bufferRegistry[buffer.handle]));
+    bufferRegistry.FreeElement(buffer.handle);
+}
+
+BindlessHandle GfxBackend::GetTextureBindlessHandle(const ResourceBinding& bindlessResource, TextureUsage::Type usage)
+{
+    if (!bindlessResource.IsTexture())
+    {
+        VEX_LOG(Fatal, "Your bindlessResource must have a texture set.");
+    }
+
+    auto& texture = GetRHITexture(bindlessResource.texture.handle);
+    return texture.GetOrCreateBindlessView(bindlessResource, usage, *descriptorPool);
+}
+
+BindlessHandle GfxBackend::GetBufferBindlessHandle(const ResourceBinding& bindlessResource, BufferUsage::Type usage)
+{
+    if (!bindlessResource.IsBuffer())
+    {
+        VEX_LOG(Fatal, "Your bindlessResource must have a buffer set.");
+    }
+
+    auto& buffer = GetRHIBuffer(bindlessResource.buffer.handle);
+    return buffer.GetOrCreateBindlessView(usage, *descriptorPool);
+}
+
 void GfxBackend::FlushGPU()
 {
     VEX_LOG(Info, "Forcing a GPU flush...");

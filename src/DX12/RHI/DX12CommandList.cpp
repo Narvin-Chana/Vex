@@ -166,19 +166,18 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
 
     for (auto& [binding, usage, texture] : textures)
     {
-        DX12TextureView dxTextureView{ binding, texture->GetDescription(), usage };
         if (usage & TextureUsage::ShaderRead || usage & TextureUsage::ShaderReadWrite)
         {
-            bindlessHandles.push_back(
-                texture->GetOrCreateBindlessView(device, dxTextureView, descriptorPool).GetIndex());
+            bindlessHandles.push_back(texture->GetOrCreateBindlessView(binding, usage, descriptorPool).GetIndex());
         }
         else if (usage & TextureUsage::RenderTarget)
         {
-            rtvHandles.emplace_back(texture->GetOrCreateRTVDSVView(device, dxTextureView));
+            rtvHandles.emplace_back(
+                texture->GetOrCreateRTVDSVView(DX12TextureView{ binding, texture->GetDescription(), usage }));
         }
         else if (usage & TextureUsage::DepthStencil)
         {
-            dsvHandle = texture->GetOrCreateRTVDSVView(device, dxTextureView);
+            dsvHandle = texture->GetOrCreateRTVDSVView(DX12TextureView{ binding, texture->GetDescription(), usage });
         }
     }
 
@@ -257,7 +256,7 @@ void DX12CommandList::ClearTexture(RHITexture& rhiTexture,
             VEX_ASSERT(clearValue.flags & TextureClear::ClearColor,
                        "Clearing the color requires the TextureClear::ClearColor flag for texture: {}.",
                        desc.name);
-            commandList->ClearRenderTargetView(rhiTexture.GetOrCreateRTVDSVView(device, dxTextureView),
+            commandList->ClearRenderTargetView(rhiTexture.GetOrCreateRTVDSVView(dxTextureView),
                                                clearValue.color.data(),
                                                0,
                                                nullptr);
@@ -286,7 +285,7 @@ void DX12CommandList::ClearTexture(RHITexture& rhiTexture,
                        "for texture: {}!",
                        desc.name);
 
-            commandList->ClearDepthStencilView(rhiTexture.GetOrCreateRTVDSVView(device, dxTextureView),
+            commandList->ClearDepthStencilView(rhiTexture.GetOrCreateRTVDSVView(dxTextureView),
                                                clearFlags,
                                                clearValue.depth,
                                                clearValue.stencil,

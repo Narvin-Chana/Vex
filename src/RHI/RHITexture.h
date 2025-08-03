@@ -2,6 +2,7 @@
 
 #include <Vex/EnumFlags.h>
 #include <Vex/RHIFwd.h>
+#include <Vex/Resource.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
 
@@ -27,6 +28,9 @@ END_VEX_ENUM_FLAGS();
 class RHITextureInterface
 {
 public:
+    virtual BindlessHandle GetOrCreateBindlessView(const ResourceBinding& binding,
+                                                   TextureUsage::Type usage,
+                                                   RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
 
     const TextureDescription& GetDescription() const

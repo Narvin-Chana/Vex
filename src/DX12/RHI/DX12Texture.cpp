@@ -199,7 +199,9 @@ static D3D12_UNORDERED_ACCESS_VIEW_DESC CreateUnorderedAccessViewDesc(DX12Textur
 } // namespace Texture_Internal
 
 DX12Texture::DX12Texture(ComPtr<DX12Device>& device, const TextureDescription& desc)
-    : rtvHeap(device, MaxViewCountPerHeap)
+    : texture(nullptr)
+    , device(device)
+    , rtvHeap(device, MaxViewCountPerHeap)
     , dsvHeap(device, MaxViewCountPerHeap)
 {
     description = desc;
@@ -275,6 +277,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, const TextureDescription& d
 
 DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID3D12Resource> nativeTex)
     : texture(std::move(nativeTex))
+    , device(device)
     , rtvHeap(device, MaxViewCountPerHeap)
     , dsvHeap(device, MaxViewCountPerHeap)
 {
@@ -334,6 +337,46 @@ DX12Texture::~DX12Texture()
 {
 }
 
+BindlessHandle DX12Texture::GetOrCreateBindlessView(const ResourceBinding& binding,
+                                                    TextureUsage::Type usage,
+                                                    RHIDescriptorPool& descriptorPool)
+{
+    DX12TextureView view{ binding, description, usage };
+
+    using namespace Texture_Internal;
+
+    bool isSRVView = (view.usage == TextureUsage::ShaderRead) && (description.usage & TextureUsage::ShaderRead);
+    bool isUAVView =
+        (view.usage == TextureUsage::ShaderReadWrite) && (description.usage & TextureUsage::ShaderReadWrite);
+
+    VEX_ASSERT(isSRVView || isUAVView,
+               "Texture view requested must be of type SRV or UAV AND the underlying texture must support this usage.");
+
+    // Check cache first
+    if (auto it = viewCache.find(view); it != viewCache.end() && descriptorPool.IsValid(it->second.bindlessHandle))
+    {
+        return it->second.bindlessHandle;
+    }
+
+    BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
+
+    if (isSRVView)
+    {
+        auto desc = CreateShaderResourceViewDesc(view);
+        auto cpuDescriptorHandle = descriptorPool.GetCPUDescriptor(handle);
+        device->CreateShaderResourceView(texture.Get(), &desc, cpuDescriptorHandle);
+    }
+    else // if (isUAVView)
+    {
+        auto desc = CreateUnorderedAccessViewDesc(view);
+        auto cpuDescriptorHandle = descriptorPool.GetCPUDescriptor(handle);
+        device->CreateUnorderedAccessView(texture.Get(), nullptr, &desc, cpuDescriptorHandle);
+    }
+
+    viewCache[view] = { .bindlessHandle = handle };
+    return handle;
+}
+
 void DX12Texture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 {
     for (auto& [heapSlot, bindlessHandle] : viewCache | std::views::values)
@@ -346,7 +389,7 @@ void DX12Texture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
     viewCache.clear();
 }
 
-CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(ComPtr<DX12Device>& device, DX12TextureView view)
+CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(DX12TextureView view)
 {
     using namespace Texture_Internal;
 
@@ -389,48 +432,10 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(ComPtr<DX12Devi
     }
 }
 
-BindlessHandle DX12Texture::GetOrCreateBindlessView(ComPtr<DX12Device>& device,
-                                                    DX12TextureView view,
-                                                    DX12DescriptorPool& descriptorPool)
-{
-    using namespace Texture_Internal;
-
-    bool isSRVView = (view.usage == TextureUsage::ShaderRead) && (description.usage & TextureUsage::ShaderRead);
-    bool isUAVView =
-        (view.usage == TextureUsage::ShaderReadWrite) && (description.usage & TextureUsage::ShaderReadWrite);
-
-    VEX_ASSERT(isSRVView || isUAVView,
-               "Texture view requested must be of type SRV or UAV AND the underlying texture must support this usage.");
-
-    // Check cache first
-    if (auto it = viewCache.find(view); it != viewCache.end() && descriptorPool.IsValid(it->second.bindlessHandle))
-    {
-        return it->second.bindlessHandle;
-    }
-
-    BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
-
-    if (isSRVView)
-    {
-        auto desc = CreateShaderResourceViewDesc(view);
-        auto cpuDescriptorHandle = descriptorPool.GetCPUDescriptor(handle);
-        device->CreateShaderResourceView(texture.Get(), &desc, cpuDescriptorHandle);
-    }
-    else // if (isUAVView)
-    {
-        auto desc = CreateUnorderedAccessViewDesc(view);
-        auto cpuDescriptorHandle = descriptorPool.GetCPUDescriptor(handle);
-        device->CreateUnorderedAccessView(texture.Get(), nullptr, &desc, cpuDescriptorHandle);
-    }
-
-    viewCache[view] = { .bindlessHandle = handle };
-    return handle;
-}
-
 DX12TextureView::DX12TextureView(const ResourceBinding& binding,
                                  const TextureDescription& description,
-                                 TextureUsage::Type type)
-    : usage{ type }
+                                 TextureUsage::Type usage)
+    : usage{ usage }
     , dimension{ TextureUtil::GetTextureViewType(binding) }
     , format{ TextureFormatToDXGI(TextureUtil::GetTextureFormat(binding)) }
     , mipBias{ binding.mipBias }

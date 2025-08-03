@@ -73,6 +73,13 @@ public:
     // Once destroyed, the handle passed in is invalid and should no longer be used.
     void DestroyTexture(const Texture& texture);
 
+    // Destroys a buffer, the handle passed in must be the one obtained from calling CreateBuffer earlier.
+    // Once destroyed, the handle passed in is invalid and should no longer be used.
+    void DestroyBuffer(const Buffer& buffer);
+
+    BindlessHandle GetTextureBindlessHandle(const ResourceBinding& bindlessResource, TextureUsage::Type usage);
+    BindlessHandle GetBufferBindlessHandle(const ResourceBinding& bindlessResource, BufferUsage::Type usage);
+
     // Flushes all current GPU commands.
     void FlushGPU();
 

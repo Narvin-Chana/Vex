@@ -130,9 +130,6 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
         return;
     }
 
-    auto& vkResourceLayout = reinterpret_cast<const VkResourceLayout&>(layout);
-    auto& vkDescriptorPool = reinterpret_cast<VkDescriptorPool&>(descriptorPool);
-
     std::vector<u32> bindlessHandleIndices;
     bindlessHandleIndices.reserve(textures.size() + buffers.size());
 
@@ -140,26 +137,14 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
     {
         if (usage & TextureUsage::ShaderRead || usage & TextureUsage::ShaderReadWrite)
         {
-            const BindlessHandle handle = texture->GetOrCreateBindlessView(
-                ctx,
-                VkTextureViewDesc{
-                    .viewType = TextureUtil::GetTextureViewType(binding),
-                    .format = TextureUtil::GetTextureFormat(binding),
-                    .usage = usage,
-                    .mipBias = binding.mipBias,
-                    .mipCount = (binding.mipCount == 0) ? texture->GetDescription().mips : binding.mipCount,
-                    .startSlice = binding.startSlice,
-                    .sliceCount =
-                        (binding.sliceCount == 0) ? texture->GetDescription().depthOrArraySize : binding.sliceCount,
-                },
-                vkDescriptorPool);
+            const BindlessHandle handle = texture->GetOrCreateBindlessView(binding, usage, descriptorPool);
             bindlessHandleIndices.push_back(handle.GetIndex());
         }
     }
 
     for (auto& [binding, usage, buffer] : buffers)
     {
-        const BindlessHandle handle = buffer->GetOrCreateBindlessIndex(ctx, vkDescriptorPool);
+        const BindlessHandle handle = buffer->GetOrCreateBindlessView(usage, descriptorPool);
         bindlessHandleIndices.push_back(handle.GetIndex());
     }
 
@@ -175,7 +160,7 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
         VEX_ASSERT(false, "Operation not supported on this queue type");
     }
 
-    commandBuffer->pushConstants(*vkResourceLayout.pipelineLayout,
+    commandBuffer->pushConstants(*layout.pipelineLayout,
                                  stageFlags,
                                  0,
                                  bindlessHandleIndices.size() * sizeof(u32),

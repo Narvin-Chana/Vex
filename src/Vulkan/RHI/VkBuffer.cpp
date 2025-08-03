@@ -104,7 +104,7 @@ VkBuffer::VkBuffer(VkGPUContext& ctx, const BufferDescription& desc)
     VEX_VK_CHECK << ctx.device.bindBufferMemory(*buffer, *memory, 0);
 }
 
-BindlessHandle VkBuffer::GetOrCreateBindlessIndex(VkGPUContext& ctx, VkDescriptorPool& descriptorPool)
+BindlessHandle VkBuffer::GetOrCreateBindlessView(BufferUsage::Type, RHIDescriptorPool& descriptorPool)
 {
     if (bufferHandle)
     {
