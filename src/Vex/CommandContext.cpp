@@ -434,6 +434,16 @@ void CommandContext::SetRenderTarget(const ResourceBinding& renderTarget)
     cmdList->SetLayoutResources(backend->psCache.GetResourceLayout(), { &rtBinding, 1 }, {}, *backend->descriptorPool);
 }
 
+void CommandContext::Transition(const Texture& texture, RHITextureState::Type newState)
+{
+    cmdList->Transition(backend->GetRHITexture(texture.handle), newState);
+}
+
+void CommandContext::Transition(const Buffer& buffer, RHIBufferState::Type newState)
+{
+    cmdList->Transition(backend->GetRHIBuffer(buffer.handle), newState);
+}
+
 RHICommandList& CommandContext::GetRHICommandList()
 {
     return *cmdList;
