@@ -14,8 +14,12 @@ namespace vex::vk
 static ::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDescription& desc)
 {
     using enum ::vk::BufferUsageFlagBits;
-    ::vk::BufferUsageFlags flags;
-    if (desc.usage & BufferUsage::ShaderRead)
+    ::vk::BufferUsageFlags flags = eTransferSrc;
+    if (desc.usage & BufferUsage::UniformBuffer)
+    {
+        flags |= eUniformBuffer;
+    }
+    if (desc.usage & (BufferUsage::ReadWriteBuffer | BufferUsage::GenericBuffer))
     {
         flags |= eStorageBuffer;
     }
@@ -35,12 +39,6 @@ static ::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDescription& 
     {
         flags |= eAccelerationStructureStorageKHR;
     }
-
-    if (!flags)
-    {
-        VEX_LOG(Fatal, "Buffer usage not supported by VulkanRHI.");
-    }
-
     return flags;
 }
 
@@ -48,27 +46,14 @@ static ::vk::MemoryPropertyFlags GetMemoryPropsFromDesc(const BufferDescription&
 {
     using enum ::vk::MemoryPropertyFlagBits;
 
-    bool GPURead = (desc.usage & BufferUsage::ShaderRead) > 0;
-    GPURead |= (desc.usage & BufferUsage::ShaderReadWrite) > 0;
-    GPURead |= (desc.usage & BufferUsage::VertexBuffer) > 0;
-    GPURead |= (desc.usage & BufferUsage::IndexBuffer) > 0;
-    GPURead |= (desc.usage & BufferUsage::IndirectArgs) > 0;
-    GPURead |= (desc.usage & BufferUsage::RaytracingAccelerationStructure) > 0;
-
-    bool GPUWrite = desc.usage & BufferUsage::ShaderReadWrite;
-    bool CPURead = desc.usage & BufferUsage::CPUVisible;
-    bool CPUWrite = desc.usage & BufferUsage::CPUWrite;
-
-    if (!CPUWrite && !CPURead && (GPUWrite || GPURead))
+    switch (desc.memoryLocality)
     {
+    case ResourceMemoryLocality::GPUOnly:
         return eDeviceLocal;
-    }
-    else if (GPUWrite || GPURead)
-    {
+    case ResourceMemoryLocality::CPURead:
+    case ResourceMemoryLocality::CPUWrite:
         return eHostCoherent | eHostVisible;
-    }
-    else
-    {
+    default:
         VEX_LOG(Fatal, "Unable to deduce memory properties from BufferDescription of {}", desc.name);
     }
 
@@ -104,7 +89,7 @@ VkBuffer::VkBuffer(VkGPUContext& ctx, const BufferDescription& desc)
     VEX_VK_CHECK << ctx.device.bindBufferMemory(*buffer, *memory, 0);
 }
 
-BindlessHandle VkBuffer::GetOrCreateBindlessView(BufferUsage::Type, RHIDescriptorPool& descriptorPool)
+BindlessHandle VkBuffer::GetOrCreateBindlessView(BufferBindingUsage usage, u32 stride, RHIDescriptorPool& descriptorPool)
 {
     if (bufferHandle)
     {
@@ -116,6 +101,8 @@ BindlessHandle VkBuffer::GetOrCreateBindlessView(BufferUsage::Type, RHIDescripto
     descriptorPool.UpdateDescriptor(
         ctx,
         handle,
+        desc.usage == BufferUsage::UniformBuffer ? ::vk::DescriptorType::eUniformBuffer
+                                                 : ::vk::DescriptorType::eStorageBuffer,
         ::vk::DescriptorBufferInfo{ .buffer = *buffer, .offset = 0, .range = desc.byteSize });
 
     bufferHandle = handle;
@@ -140,11 +127,10 @@ void VkBuffer::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 UniqueHandle<VkBuffer> VkBuffer::CreateStagingBuffer()
 {
     return MakeUnique<VkBuffer>(ctx,
-                                BufferDescription{
-                                    .name = desc.name + "_StagingBuffer",
-                                    .byteSize = desc.byteSize,
-                                    .usage = BufferUsage::CPUWrite,
-                                });
+                                BufferDescription{ .name = desc.name + "_StagingBuffer",
+                                                   .byteSize = desc.byteSize,
+                                                   .usage = BufferUsage::None,
+                                                   .memoryLocality = ResourceMemoryLocality::CPUWrite });
 }
 
 std::span<u8> VkBuffer::Map()

@@ -213,17 +213,17 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     featuresMutableDescriptors.mutableDescriptorType = true;
     if (featuresAccelerationStructure.has_value())
     {
-        featuresMutableDescriptors.pNext = featuresAccelerationStructure.value();
+        featuresMutableDescriptors.pNext = &featuresAccelerationStructure.value();
     }
 
     // Allows for null descriptors
     ::vk::PhysicalDeviceRobustness2FeaturesEXT featuresRobustness;
     featuresRobustness.nullDescriptor = true;
-    featuresRobustness.pNext = featuresMutableDescriptors;
+    featuresRobustness.pNext = &featuresMutableDescriptors;
 
     ::vk::PhysicalDeviceVulkan13Features features13;
     features13.synchronization2 = true;
-    features13.pNext = featuresRobustness;
+    features13.pNext = &featuresRobustness;
 
     ::vk::PhysicalDeviceVulkan12Features features12;
     features12.pNext = &features13;

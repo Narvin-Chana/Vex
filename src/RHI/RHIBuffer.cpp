@@ -44,7 +44,7 @@ MappedMemory RHIBufferInterface::GetMappedMemory()
     return MappedMemory(*static_cast<RHIBuffer*>(this), false);
 }
 
-vex::RHIBufferInterface::RHIBufferInterface(const BufferDescription& desc)
+RHIBufferInterface::RHIBufferInterface(const BufferDescription& desc)
     : desc{ desc }
 {
 }
@@ -52,7 +52,7 @@ vex::RHIBufferInterface::RHIBufferInterface(const BufferDescription& desc)
 bool RHIBufferInterface::ShouldUseStagingBuffer() const
 {
     // Any buffer which does not have CPUWrite requires a staging buffer for the upload of data.
-    return !(desc.usage & BufferUsage::CPUWrite);
+    return desc.memoryLocality != ResourceMemoryLocality::CPUWrite;
 }
 
 RHIBuffer* RHIBufferInterface::GetStagingBuffer()

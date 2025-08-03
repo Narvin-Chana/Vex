@@ -4,8 +4,8 @@ struct Colors
 {
     float4 cols;
 };
-VEX_GLOBAL_RESOURCE(StructuredBuffer<Colors>, ColorBuffer);
-VEX_GLOBAL_RESOURCE(RWByteAddressBuffer, CommBuffer);
+VEX_GLOBAL_RESOURCE(ConstantBuffer<Colors>, ColorBuffer);
+VEX_GLOBAL_RESOURCE(RWStructuredBuffer<float4>, CommBuffer);
 
 // Sourced from IQuilez SDF functions
 float dot2(float2 v)
@@ -30,8 +30,8 @@ float sdf(float2 p)
     // Convert pixel coordinates to normalized space for opengl-based sdf function (-1 to 1)
     float2 uv = float2(dtid.xy) / max(width, height).xx * 2 - 1;
 
-    float4 color = ColorBuffer[0].cols;
-    CommBuffer.Store<float4>(0, float4(1, 1, 1, 1) - color);
+    float4 color = ColorBuffer.cols;
+    CommBuffer[0] = float4(1, 1, 1, 1) - color;
 
     uv.y += 0.25f;
     uv.y *= -1;

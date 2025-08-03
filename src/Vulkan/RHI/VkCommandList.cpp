@@ -142,9 +142,9 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
         }
     }
 
-    for (auto& [binding, usage, buffer] : buffers)
+    for (auto& [binding, buffer] : buffers)
     {
-        const BindlessHandle handle = buffer->GetOrCreateBindlessView(usage, descriptorPool);
+        const BindlessHandle handle = buffer->GetOrCreateBindlessView(binding.bufferUsage, binding.bufferStride, descriptorPool);
         bindlessHandleIndices.push_back(handle.GetIndex());
     }
 
@@ -271,6 +271,10 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
     case ImageLayout::ePresentSrcKHR:
         barrier.dstAccessMask = AccessFlagBits2::eMemoryRead | AccessFlagBits2::eMemoryWrite;
         barrier.dstStageMask = PipelineStageFlagBits2::eAllCommands;
+        break;
+    case ImageLayout::eColorAttachmentOptimal:
+        barrier.dstAccessMask = AccessFlagBits2::eMemoryWrite;
+        barrier.dstStageMask = PipelineStageFlagBits2::eAllGraphics;
         break;
     default:
         VEX_ASSERT(false, "Transition source image layout not supported");

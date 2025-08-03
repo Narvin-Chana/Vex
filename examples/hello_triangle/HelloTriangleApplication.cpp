@@ -63,19 +63,17 @@ HelloTriangleApplication::HelloTriangleApplication()
                                 vex::ResourceLifetime::Static);
 
     // Example of CPU accessible buffer
-    colorBuffer = graphics->CreateBuffer(
-        { .name = "Color Buffer",
-          .byteSize = sizeof(float) * 4,
-          // Structured buffers are available in both DX12 and Vulkan. Passing in a non-zero stride, makes the buffer
-          // Structured. If you pass in a zeroed stride, using a StructuredBuffer in HLSL is no longer valid.
-          .stride = 16,
-          .usage = vex::BufferUsage::ShaderRead | vex::BufferUsage::CPUWrite },
-        vex::ResourceLifetime::Static);
+    colorBuffer = graphics->CreateBuffer({ .name = "Color Buffer",
+                                           .byteSize = sizeof(float) * 4,
+                                           .usage = vex::BufferUsage::UniformBuffer,
+                                           .memoryLocality = vex::ResourceMemoryLocality::GPUOnly },
+                                         vex::ResourceLifetime::Static);
 
     // Example of GPU only buffer
     commBuffer = graphics->CreateBuffer({ .name = "Comm Buffer",
                                           .byteSize = sizeof(float) * 4,
-                                          .usage = vex::BufferUsage::ShaderRead | vex::BufferUsage::ShaderReadWrite },
+                                          .usage = vex::BufferUsage::ReadWriteBuffer | vex::BufferUsage::GenericBuffer,
+                                          .memoryLocality = vex::ResourceMemoryLocality::GPUOnly },
                                         vex::ResourceLifetime::Static);
 
 #if defined(_WIN32)
@@ -152,11 +150,14 @@ void HelloTriangleApplication::Run()
                   .type = vex::ShaderType::ComputeShader },
                 {
                     .reads = {
-                        { .name = "ColorBuffer", .buffer = colorBuffer },
+                        { .name = "ColorBuffer", .buffer = colorBuffer, .bufferUsage = vex::BufferBindingUsage::ConstantBuffer },
                     },
                     .writes = {
                         { .name = "OutputTexture", .texture = workingTexture },
-                        { .name = "CommBuffer", .buffer = commBuffer }
+                        { .name = "CommBuffer",
+                            .buffer = commBuffer,
+                            .bufferUsage = vex::BufferBindingUsage::RWStructuredBuffer,
+                            .bufferStride = sizeof(float) * 4 }
                     },
                     .constants = {}
                 },
@@ -167,7 +168,10 @@ void HelloTriangleApplication::Run()
                   .entryPoint = "CSMain",
                   .type = vex::ShaderType::ComputeShader },
                 {
-                    .reads = { { .name = "CommBuffer", .buffer = commBuffer },
+                    .reads = { { .name = "CommBuffer",
+                                 .buffer = commBuffer,
+                                 .bufferUsage = vex::BufferBindingUsage::StructuredBuffer,
+                                 .bufferStride = sizeof(float) * 4 },
                                { .name = "SourceTexture", .texture = workingTexture } },
                     .writes = { { .name = "OutputTexture", .texture = finalOutputTexture } },
                 },

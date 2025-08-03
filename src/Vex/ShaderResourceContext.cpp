@@ -18,7 +18,7 @@ std::vector<std::string> ShaderResourceContext::GenerateShaderBindings() const
 
     for (const auto& buf : buffers)
     {
-        if (buf.usage == BufferUsage::ShaderRead || buf.usage == BufferUsage::ShaderReadWrite)
+        if (buf.binding.bufferUsage != BufferBindingUsage::None)
         {
             names.emplace_back(buf.binding.name);
         }

@@ -148,17 +148,15 @@ void VkDescriptorPool::UpdateDescriptor(VkGPUContext& ctx,
 
 void VkDescriptorPool::UpdateDescriptor(VkGPUContext& ctx,
                                         BindlessHandle targetDescriptor,
+                                        ::vk::DescriptorType descType,
                                         ::vk::DescriptorBufferInfo createInfo)
 {
-    // This handles StructuredBuffer, RWStructuredBuffer, ByteAddressBuffer and RWByteAddressBuffer.
-    // TODO: support uniform buffers!
-    auto type = ::vk::DescriptorType::eStorageBuffer;
     const ::vk::WriteDescriptorSet writeSet{
         .dstSet = *bindlessSet,
         .dstBinding = 0,
         .dstArrayElement = targetDescriptor.GetIndex(),
         .descriptorCount = 1,
-        .descriptorType = type,
+        .descriptorType = descType,
         .pBufferInfo = &createInfo,
     };
 

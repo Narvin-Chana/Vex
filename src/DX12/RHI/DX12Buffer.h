@@ -12,6 +12,29 @@ namespace vex
 {
 struct BufferDescription;
 }
+
+namespace vex::dx12
+{
+
+struct BufferViewCacheKey
+{
+    BufferBindingUsage usage;
+    u32 stride;
+
+    bool operator==(const BufferViewCacheKey& other) const = default;
+};
+
+} // namespace vex::dx12
+
+// clang-format off
+
+VEX_MAKE_HASHABLE(vex::dx12::BufferViewCacheKey,
+    VEX_HASH_COMBINE(seed, obj.usage);
+    VEX_HASH_COMBINE(seed, obj.stride);
+);
+
+// clang-format on
+
 namespace vex::dx12
 {
 
@@ -23,7 +46,7 @@ public:
     virtual std::span<u8> Map() override;
     virtual void Unmap() override;
 
-    virtual BindlessHandle GetOrCreateBindlessView(BufferUsage::Type usage, RHIDescriptorPool& descriptorPool) override;
+    virtual BindlessHandle GetOrCreateBindlessView(BufferBindingUsage usage, u32 stride, RHIDescriptorPool& descriptorPool) override;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
 
     ID3D12Resource* GetRawBuffer()
@@ -38,7 +61,7 @@ private:
 
     ComPtr<ID3D12Resource> buffer;
 
-    std::unordered_map<BufferUsage::Type, BindlessHandle> viewCache;
+    std::unordered_map<BufferViewCacheKey, BindlessHandle> viewCache;
 };
 
 } // namespace vex::dx12

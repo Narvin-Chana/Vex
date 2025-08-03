@@ -176,7 +176,7 @@ void ResourceBinding::ValidateResourceBindings(std::span<const ResourceBinding> 
                 depthStencilAlreadyFound = true;
             }
 
-            if (resource.bufferFlags != BufferBinding::None)
+            if (resource.bufferUsage != BufferBindingUsage::None)
             {
                 VEX_LOG(
                     Warning,
@@ -192,6 +192,14 @@ void ResourceBinding::ValidateResourceBindings(std::span<const ResourceBinding> 
                 VEX_LOG(Fatal,
                         "Invalid binding for resource \"{}\": The specified buffer cannot be bound for this type of "
                         "operation. Check the usage flags of your resource at creation.",
+                        resource.name);
+            }
+
+            if (!IsBindingUsageCompatibleWithBufferUsage(resource.buffer.description.usage, resource.bufferUsage))
+            {
+                VEX_LOG(Fatal,
+                        "Invalid binding for resource \"{}\": Binding usage must be compatible with buffer description "
+                        "usage.",
                         resource.name);
             }
 

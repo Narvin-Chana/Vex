@@ -179,15 +179,14 @@ UniqueHandle<RHITexture> VkSwapChain::CreateBackBuffer(u8 backBufferIndex)
 {
     auto backbufferImages = VEX_VK_CHECK <<= ctx.device.getSwapchainImagesKHR(*swapchain);
 
-    TextureDescription desc{
-        .name = std::format("backbuffer_{}", backBufferIndex),
-        .type = TextureType::Texture2D,
-        .width = width,
-        .height = height,
-        .depthOrArraySize = 1,
-        .mips = 1,
-        .format = VulkanToTextureFormat(surfaceFormat.format),
-    };
+    TextureDescription desc{ .name = std::format("backbuffer_{}", backBufferIndex),
+                             .type = TextureType::Texture2D,
+                             .width = width,
+                             .height = height,
+                             .depthOrArraySize = 1,
+                             .mips = 1,
+                             .format = VulkanToTextureFormat(surfaceFormat.format),
+                             .usage = TextureUsage::RenderTarget | TextureUsage::ShaderRead };
 
     return MakeUnique<VkBackbufferTexture>(ctx, std::move(desc), backbufferImages[backBufferIndex]);
 }
