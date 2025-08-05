@@ -32,10 +32,4 @@ VkResourceLayout::VkResourceLayout(::vk::Device device, const VkDescriptorPool& 
     version++;
 }
 
-u32 VkResourceLayout::GetMaxLocalConstantSize() const
-{
-    const u32 maxBytes =
-        reinterpret_cast<VkFeatureChecker*>(GPhysicalDevice->featureChecker.get())->GetMaxPushConstantSize();
-    return std::max<u32>(0, maxBytes);
-}
 } // namespace vex::vk

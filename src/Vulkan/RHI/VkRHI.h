@@ -17,7 +17,7 @@ struct PlatformWindowHandle;
 namespace vex::vk
 {
 
-class VkRHI final : public RenderHardwareInterface
+class VkRHI final : public RHIBase
 {
 public:
     VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation);

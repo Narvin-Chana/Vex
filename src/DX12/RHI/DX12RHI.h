@@ -17,7 +17,7 @@ struct PlatformWindowHandle;
 namespace vex::dx12
 {
 
-class DX12RHI final : public RenderHardwareInterface
+class DX12RHI final : public RHIBase
 {
 public:
     DX12RHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation);

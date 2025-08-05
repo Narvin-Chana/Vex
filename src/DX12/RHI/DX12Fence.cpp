@@ -6,7 +6,7 @@ namespace vex::dx12
 {
 
 DX12Fence::DX12Fence(u32 numFenceIndices, ComPtr<DX12Device>& device)
-    : RHIFenceInterface(numFenceIndices)
+    : RHIFenceBase(numFenceIndices)
 {
     chk << device->CreateFence(GetFenceValue(0), D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
     ++GetFenceValue(0);

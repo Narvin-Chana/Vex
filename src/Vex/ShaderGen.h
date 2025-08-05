@@ -1,20 +1,27 @@
 #pragma once
 
-constexpr const char* ShaderGenGeneralMacros = R"(
+#include <string_view>
+
+namespace vex
+{
+
+constexpr std::string_view ShaderGenLocalConstantName = "zzzZZZ___VEX_LOCAL_CONSTANT";
+
+constexpr std::string_view ShaderGenGeneralMacros = R"(
 // GENERAL MACROS -------------------------
 
 #if defined(VEX_DX12)
 
-#define VEX_LOCAL_CONSTANT
+#define zzzZZZ___VEX_LOCAL_CONSTANT
 
 #elif defined(VEX_VULKAN)
 
-#define VEX_LOCAL_CONSTANT [[vk::push_constant]]
+#define zzzZZZ___VEX_LOCAL_CONSTANT [[vk::push_constant]]
 
 #endif
 )";
 
-constexpr const char* ShaderGenBindingMacros = R"(
+constexpr std::string_view ShaderGenBindingMacros = R"(
 
 // BINDING MACROS -------------------------
 
@@ -26,4 +33,8 @@ constexpr const char* ShaderGenBindingMacros = R"(
 // Can now use myStruct in your code as any other StructuredBuffer.
 #define VEX_GET_BINDLESS_RESOURCE(index) ResourceDescriptorHeap[index];
 
+#define VEX_LOCAL_CONSTANTS(type, name) zzzZZZ___VEX_LOCAL_CONSTANT ConstantBuffer<type> name : register(b1);
+
 )";
+
+} // namespace vex

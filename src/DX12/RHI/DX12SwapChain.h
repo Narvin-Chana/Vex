@@ -17,7 +17,7 @@ struct PlatformWindow;
 namespace vex::dx12
 {
 
-class DX12SwapChain final : public RHISwapChainInterface
+class DX12SwapChain final : public RHISwapChainBase
 {
 public:
     DX12SwapChain(const ComPtr<DX12Device>& device,

@@ -16,7 +16,7 @@ struct SwapChainDescription
     bool useVSync = false;
 };
 
-class RHISwapChainInterface
+class RHISwapChainBase
 {
 public:
     virtual void AcquireNextBackbuffer(u8 frameIndex) = 0;

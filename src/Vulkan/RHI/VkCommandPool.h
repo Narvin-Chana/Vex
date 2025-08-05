@@ -10,7 +10,7 @@
 
 namespace vex::vk
 {
-class VkCommandPool final : public RHICommandPoolInterface
+class VkCommandPool final : public RHICommandPoolBase
 {
 public:
     VkCommandPool(VkGPUContext& ctx, const std::array<VkCommandQueue, CommandQueueTypes::Count>& commandQueues);

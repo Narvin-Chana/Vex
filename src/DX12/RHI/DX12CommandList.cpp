@@ -115,6 +115,7 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
 {
     ID3D12RootSignature* globalRootSignature = layout.GetRootSignature().Get();
 
+    // Set root signature.
     switch (type)
     {
     case CommandQueueType::Graphics:
@@ -125,90 +126,60 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
     default:
         break;
     }
-}
-void DX12CommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout,
-                                              std::span<const ConstantBinding> constants)
-{
-    if (constants.empty())
-    {
-        return;
-    }
 
-    auto constantData = ConstantBinding::ConcatConstantBindings(constants, layout.GetMaxLocalConstantSize());
-
-    auto DWORDCount = constantData.size() / sizeof(DWORD);
-
+    auto localConstantsData = layout.GetLocalConstantsData();
     switch (type)
     {
     case CommandQueueType::Graphics:
-        commandList->SetGraphicsRoot32BitConstants(0, DWORDCount, constantData.data(), 0);
+        // Set bindless cbuffer (in first slot of root signature).
+        commandList->SetGraphicsRootConstantBufferView(
+            0,
+            layout.internalConstantBuffers.Get(layout.FrameIndex)->GetRawBuffer()->GetGPUVirtualAddress());
+        // Set local constants (in second slot of root signature).
+        commandList->SetGraphicsRoot32BitConstants(1,
+                                                   static_cast<u32>(localConstantsData.size()),
+                                                   localConstantsData.data(),
+                                                   0);
     case CommandQueueType::Compute:
-        commandList->SetComputeRoot32BitConstants(0, DWORDCount, constantData.data(), 0);
+        // Set bindless cbuffer (in first slot of root signature).
+        commandList->SetComputeRootConstantBufferView(
+            0,
+            layout.internalConstantBuffers.Get(layout.FrameIndex)->GetRawBuffer()->GetGPUVirtualAddress());
+        // Set local constants (in second slot of root signature).
+        commandList->SetComputeRoot32BitConstants(1,
+                                                  static_cast<u32>(localConstantsData.size()),
+                                                  localConstantsData.data(),
+                                                  0);
     case CommandQueueType::Copy:
     default:
         break;
     }
 }
 
-void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
-                                         std::span<RHITextureBinding> textures,
-                                         std::span<RHIBufferBinding> buffers,
-                                         RHIDescriptorPool& descriptorPool)
+void DX12CommandList::SetRenderTargetsAndDepthStencil(std::span<RHITextureBinding> renderTargets,
+                                                      std::optional<RHITextureBinding> depthStencil)
 {
-    std::vector<u32> bindlessHandles;
-    // Allocate for worst-case scenario.
-    bindlessHandles.reserve(textures.size() + buffers.size());
-
     std::vector<CD3DX12_CPU_DESCRIPTOR_HANDLE> rtvHandles;
     rtvHandles.reserve(8);
 
     std::optional<CD3DX12_CPU_DESCRIPTOR_HANDLE> dsvHandle;
-
-    for (auto& [binding, usage, texture] : textures)
+    if (depthStencil.has_value())
     {
-        if (usage & TextureUsage::ShaderRead || usage & TextureUsage::ShaderReadWrite)
-        {
-            bindlessHandles.push_back(texture->GetOrCreateBindlessView(binding, usage, descriptorPool).GetIndex());
-        }
-        else if (usage & TextureUsage::RenderTarget)
-        {
-            rtvHandles.emplace_back(
-                texture->GetOrCreateRTVDSVView(DX12TextureView{ binding, texture->GetDescription(), usage }));
-        }
-        else if (usage & TextureUsage::DepthStencil)
-        {
-            dsvHandle = texture->GetOrCreateRTVDSVView(DX12TextureView{ binding, texture->GetDescription(), usage });
-        }
+        dsvHandle = depthStencil->texture->GetOrCreateRTVDSVView(
+            DX12TextureView{ depthStencil->binding, depthStencil->texture->GetDescription(), depthStencil->usage });
     }
 
-    for (auto& [binding, buffer] : buffers)
+    for (auto& [binding, usage, texture] : renderTargets)
     {
-        bindlessHandles.push_back(
-            buffer->GetOrCreateBindlessView(binding.bufferUsage, binding.bufferStride, descriptorPool).GetIndex());
-    }
-
-    // Now we can bind the bindless textures as constants in our root constants!
-    // TODO: figure out how this interacts with local root constants, there should be a way to get the first slot we can
-    // write bindless indices to (that is after local constants). For now we just default to slot 0, and suppose that no
-    // constants exist (just to get our Hello Triangle working).
-    if (!bindlessHandles.empty())
-    {
-        switch (type)
+        if (!(usage & TextureUsage::RenderTarget))
         {
-        case CommandQueueType::Graphics:
-            commandList->SetGraphicsRoot32BitConstants(0,
-                                                       static_cast<u32>(bindlessHandles.size()),
-                                                       bindlessHandles.data(),
-                                                       0);
-        case CommandQueueType::Compute:
-            commandList->SetComputeRoot32BitConstants(0,
-                                                      static_cast<u32>(bindlessHandles.size()),
-                                                      bindlessHandles.data(),
-                                                      0);
-        case CommandQueueType::Copy:
-        default:
-            break;
+            VEX_LOG(Fatal,
+                    "Cannot set a non-render target texture as a render target...\nResource {} was not bound as a "
+                    "render target.",
+                    texture->GetDescription().name);
         }
+        rtvHandles.emplace_back(
+            texture->GetOrCreateRTVDSVView(DX12TextureView{ binding, texture->GetDescription(), usage }));
     }
 
     // Bind RTV and DSVs
@@ -224,7 +195,7 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
     }
 }
 
-void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)
+void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& layout)
 {
     commandList->SetDescriptorHeaps(1, descriptorPool.gpuHeap.GetNativeDescriptorHeap().GetAddressOf());
 }

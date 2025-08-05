@@ -8,7 +8,7 @@
 namespace vex::dx12
 {
 
-class DX12DescriptorPool final : public RHIDescriptorPoolInterface
+class DX12DescriptorPool final : public RHIDescriptorPoolBase
 {
 public:
     DX12DescriptorPool(ComPtr<DX12Device>& device);

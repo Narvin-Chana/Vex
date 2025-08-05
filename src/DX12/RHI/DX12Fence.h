@@ -7,7 +7,7 @@
 namespace vex::dx12
 {
 
-class DX12Fence final : public RHIFenceInterface
+class DX12Fence final : public RHIFenceBase
 {
 public:
     DX12Fence(u32 numFenceIndices, ComPtr<DX12Device>& device);

@@ -25,7 +25,7 @@ END_VEX_ENUM_FLAGS();
 
 // clang-format on
 
-class RHITextureInterface
+class RHITextureBase
 {
 public:
     virtual BindlessHandle GetOrCreateBindlessView(const ResourceBinding& binding,

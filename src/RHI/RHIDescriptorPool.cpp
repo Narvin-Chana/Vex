@@ -5,7 +5,7 @@
 namespace vex
 {
 
-RHIDescriptorPoolInterface::RHIDescriptorPoolInterface()
+RHIDescriptorPoolBase::RHIDescriptorPoolBase()
     : allocator({
           .generations = std::vector<u8>(DefaultPoolSize),
           .handles = FreeListAllocator(DefaultPoolSize),
@@ -13,7 +13,7 @@ RHIDescriptorPoolInterface::RHIDescriptorPoolInterface()
 {
 }
 
-BindlessHandle RHIDescriptorPoolInterface::AllocateStaticDescriptor()
+BindlessHandle RHIDescriptorPoolBase::AllocateStaticDescriptor()
 {
     if (allocator.handles.freeIndices.empty())
     {
@@ -26,7 +26,7 @@ BindlessHandle RHIDescriptorPoolInterface::AllocateStaticDescriptor()
     return BindlessHandle::CreateHandle(index, allocator.generations[index]);
 }
 
-void RHIDescriptorPoolInterface::FreeStaticDescriptor(BindlessHandle handle)
+void RHIDescriptorPoolBase::FreeStaticDescriptor(BindlessHandle handle)
 {
     const u32 index = handle.GetIndex();
     auto& [generations, handles] = allocator;
@@ -36,18 +36,18 @@ void RHIDescriptorPoolInterface::FreeStaticDescriptor(BindlessHandle handle)
     CopyNullDescriptor(index);
 }
 
-BindlessHandle RHIDescriptorPoolInterface::AllocateDynamicDescriptor()
+BindlessHandle RHIDescriptorPoolBase::AllocateDynamicDescriptor()
 {
     VEX_NOT_YET_IMPLEMENTED();
     return BindlessHandle();
 }
 
-void RHIDescriptorPoolInterface::FreeDynamicDescriptor(BindlessHandle handle)
+void RHIDescriptorPoolBase::FreeDynamicDescriptor(BindlessHandle handle)
 {
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-bool RHIDescriptorPoolInterface::IsValid(BindlessHandle handle)
+bool RHIDescriptorPoolBase::IsValid(BindlessHandle handle)
 {
     return handle.GetGeneration() == allocator.generations[handle.GetIndex()];
 }

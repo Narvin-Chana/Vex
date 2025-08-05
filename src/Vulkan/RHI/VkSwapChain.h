@@ -27,7 +27,7 @@ struct VkSwapChainSupportDetails
     }
 };
 
-class VkSwapChain final : public RHISwapChainInterface
+class VkSwapChain final : public RHISwapChainBase
 {
 
 public:

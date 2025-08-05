@@ -99,7 +99,7 @@ void VkCommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout, std
         return;
     }
 
-    auto constantData = ConstantBinding::ConcatConstantBindings(constants, layout.GetMaxLocalConstantSize());
+    auto constantData = layout.GetLocalConstantsData();
 
     ::vk::ShaderStageFlags stageFlags;
     switch (type)

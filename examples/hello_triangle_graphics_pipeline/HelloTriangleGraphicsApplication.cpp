@@ -114,6 +114,8 @@ void HelloTriangleGraphicsApplication::Run()
     {
         glfwPollEvents();
 
+        const double currentTime = glfwGetTime();
+
         graphics->StartFrame();
 
         {
@@ -139,8 +141,13 @@ void HelloTriangleGraphicsApplication::Run()
             std::array<vex::ResourceBinding, 1> renderTargets = {
                 vex::ResourceBinding{ .name = "OutputTexture", .texture = graphics->GetCurrentBackBuffer() }
             };
+
+            // Cursed float overflow UB greatness.
+            static float time = 0;
+            time += static_cast<float>(currentTime / 1000.0);
+
             vex::DrawResources drawResources{
-                .constants = {},
+                .constants = { { vex::ConstantBinding(time) } },
                 .readResources = {},
                 .unorderedAccessResources = {},
                 .renderTargets = renderTargets,

@@ -55,7 +55,7 @@ VEX_MAKE_HASHABLE(vex::dx12::DX12TextureView,
 namespace vex::dx12
 {
 
-class DX12Texture final : public RHITextureInterface
+class DX12Texture final : public RHITextureBase
 {
 public:
     DX12Texture(ComPtr<DX12Device>& device, const TextureDescription& description);

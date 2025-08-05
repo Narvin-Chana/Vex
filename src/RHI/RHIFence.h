@@ -7,10 +7,10 @@
 namespace vex
 {
 
-class RHIFenceInterface
+class RHIFenceBase
 {
 public:
-    RHIFenceInterface(u32 numFenceIndices);
+    RHIFenceBase(u32 numFenceIndices);
     u64& GetFenceValue(u32 fenceIndex);
 
 #if !VEX_SHIPPING

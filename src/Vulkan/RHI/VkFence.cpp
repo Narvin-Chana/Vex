@@ -6,7 +6,7 @@ namespace vex::vk
 {
 
 VkFence::VkFence(u32 numFenceIndices, ::vk::Device device)
-    : RHIFenceInterface(numFenceIndices)
+    : RHIFenceBase(numFenceIndices)
     , device{ device }
 {
     ::vk::SemaphoreTypeCreateInfoKHR type{ .semaphoreType = ::vk::SemaphoreType::eTimeline,

@@ -6,10 +6,10 @@
 namespace vex
 {
 
-class RHIDescriptorPoolInterface
+class RHIDescriptorPoolBase
 {
 public:
-    RHIDescriptorPoolInterface();
+    RHIDescriptorPoolBase();
 
     // Nullifies the passed in descriptor handle slot, to indicate that the resource is no longer useable.
     // We don't use BindlessHandle, as it is technically no longer valid.

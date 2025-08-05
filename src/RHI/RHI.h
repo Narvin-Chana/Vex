@@ -20,7 +20,7 @@ struct ComputePipelineStateKey;
 struct SwapChainDescription;
 struct PlatformWindow;
 
-struct RenderHardwareInterface
+struct RHIBase
 {
     virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() = 0;
     virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) = 0;

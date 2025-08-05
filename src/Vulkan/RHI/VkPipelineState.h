@@ -7,7 +7,7 @@
 namespace vex::vk
 {
 
-class VkGraphicsPipelineState final : public RHIGraphicsPipelineStateInterface
+class VkGraphicsPipelineState final : public RHIGraphicsPipelineStateBase
 {
 public:
     VkGraphicsPipelineState(const Key& key);

@@ -182,7 +182,7 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
         buffer << shaderFile.rdbuf();
     }
 
-    std::string shaderFileStr = ShaderGenGeneralMacros;
+    std::string shaderFileStr{ ShaderGenGeneralMacros };
 
     // Auto-generate shader static sampler bindings.
     shaderFileStr.append("// SAMPLERS -------------------------\n");
@@ -203,9 +203,9 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
     }
     // For now we suppose that the register b0 is used for the generated constants buffer (since local constants aren't
     // yet supported).
-    shaderFileStr.append(
-        "};\nVEX_LOCAL_CONSTANT ConstantBuffer<zzzZZZ___GeneratedConstants> zzzZZZ___GeneratedConstantsCB: "
-        "register(b0);\n");
+    shaderFileStr.append(std::format(
+        "}};\n{} ConstantBuffer<zzzZZZ___GeneratedConstants> zzzZZZ___GeneratedConstantsCB: register(b0);\n",
+        ShaderGenLocalConstantName));
 
     // VEX_GLOBAL_RESOURCE and VEX_RESOURCE is how users will access resources, include macros that generate these.
     shaderFileStr.append(ShaderGenBindingMacros);

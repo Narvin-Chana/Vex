@@ -24,7 +24,7 @@ struct VkStagingBuffer;
 struct VkGPUContext;
 struct VkDirectBufferMemory;
 
-class VkBuffer final : public RHIBufferInterface
+class VkBuffer final : public RHIBufferBase
 {
 public:
     VkBuffer(VkGPUContext& ctx, const BufferDescription& desc);

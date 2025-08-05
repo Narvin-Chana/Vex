@@ -17,7 +17,7 @@ static u32 RaiseToMultipleOf(u32 val, u32 multiple)
 } // namespace BufferHelpers_Internal
 
 DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, const BufferDescription& desc)
-    : RHIBufferInterface(desc)
+    : RHIBufferBase(desc)
     , device(device)
 {
     auto size = desc.byteSize;

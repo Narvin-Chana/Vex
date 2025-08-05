@@ -6,7 +6,7 @@
 
 namespace vex::vk
 {
-class VkFence final : public RHIFenceInterface
+class VkFence final : public RHIFenceBase
 {
 public:
     VkFence(u32 numFenceIndices, ::vk::Device device);

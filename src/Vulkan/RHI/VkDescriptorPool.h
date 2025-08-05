@@ -10,7 +10,7 @@ namespace vex::vk
 {
 struct VkGPUContext;
 
-class VkDescriptorPool final : public RHIDescriptorPoolInterface
+class VkDescriptorPool final : public RHIDescriptorPoolBase
 {
 public:
     VkDescriptorPool(::vk::Device device);

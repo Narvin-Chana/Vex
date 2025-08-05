@@ -21,10 +21,7 @@ public:
     virtual FeatureLevel GetFeatureLevel() const override;
     virtual ResourceBindingTier GetResourceBindingTier() const override;
     virtual ShaderModel GetShaderModel() const override;
-    static u32 GetMaxPushConstantSize()
-    {
-        return 128;
-    };
+    virtual u32 GetMaxLocalConstantsByteSize() const override;
 
 private:
     ::vk::PhysicalDeviceProperties deviceProperties;

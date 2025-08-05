@@ -45,7 +45,7 @@ private:
     bool useStagingBuffer;
 };
 
-class RHIBufferInterface
+class RHIBufferBase
 {
 public:
     // RAII safe version to access buffer memory
@@ -86,7 +86,7 @@ public:
     RHIBuffer* GetStagingBuffer();
 
 protected:
-    explicit RHIBufferInterface(const BufferDescription& desc);
+    explicit RHIBufferBase(const BufferDescription& desc);
     bool ShouldUseStagingBuffer() const;
 
     BufferDescription desc;

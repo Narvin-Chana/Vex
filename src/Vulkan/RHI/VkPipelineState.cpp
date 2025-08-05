@@ -12,7 +12,7 @@ namespace vex::vk
 {
 
 VkGraphicsPipelineState::VkGraphicsPipelineState(const Key& key)
-    : RHIGraphicsPipelineStateInterface(key)
+    : RHIGraphicsPipelineStateBase(key)
 {
 }
 

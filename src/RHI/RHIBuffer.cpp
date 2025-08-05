@@ -31,7 +31,7 @@ void MappedMemory::SetData(std::span<const u8> inData)
     std::ranges::copy(inData, data.begin());
 }
 
-MappedMemory RHIBufferInterface::GetMappedMemory()
+MappedMemory RHIBufferBase::GetMappedMemory()
 {
     if (ShouldUseStagingBuffer())
     {
@@ -44,18 +44,18 @@ MappedMemory RHIBufferInterface::GetMappedMemory()
     return MappedMemory(*static_cast<RHIBuffer*>(this), false);
 }
 
-RHIBufferInterface::RHIBufferInterface(const BufferDescription& desc)
+RHIBufferBase::RHIBufferBase(const BufferDescription& desc)
     : desc{ desc }
 {
 }
 
-bool RHIBufferInterface::ShouldUseStagingBuffer() const
+bool RHIBufferBase::ShouldUseStagingBuffer() const
 {
     // Any buffer which does not have CPUWrite requires a staging buffer for the upload of data.
     return desc.memoryLocality != ResourceMemoryLocality::CPUWrite;
 }
 
-RHIBuffer* RHIBufferInterface::GetStagingBuffer()
+RHIBuffer* RHIBufferBase::GetStagingBuffer()
 {
     VEX_ASSERT(stagingBuffer);
     return stagingBuffer.get();

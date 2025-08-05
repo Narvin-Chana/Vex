@@ -26,12 +26,12 @@ struct GraphicsPipelineStateKey
     bool operator==(const GraphicsPipelineStateKey& other) const = default;
 };
 
-class RHIGraphicsPipelineStateInterface
+class RHIGraphicsPipelineStateBase
 {
 public:
     using Key = GraphicsPipelineStateKey;
 
-    RHIGraphicsPipelineStateInterface(const Key& key)
+    RHIGraphicsPipelineStateBase(const Key& key)
         : key{ key }
     {
     }
