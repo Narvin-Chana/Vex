@@ -20,7 +20,10 @@ public:
                           BindlessHandle targetDescriptor,
                           ::vk::DescriptorImageInfo createInfo,
                           bool writeAccess);
-    void UpdateDescriptor(VkGPUContext& ctx, BindlessHandle targetDescriptor, ::vk::DescriptorBufferInfo createInfo);
+    void UpdateDescriptor(VkGPUContext& ctx,
+                          BindlessHandle targetDescriptor,
+                          ::vk::DescriptorType descType,
+                          ::vk::DescriptorBufferInfo createInfo);
 
 private:
     ::vk::Device device;

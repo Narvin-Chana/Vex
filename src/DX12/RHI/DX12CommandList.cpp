@@ -181,9 +181,10 @@ void DX12CommandList::SetLayoutResources(const RHIResourceLayout& layout,
         }
     }
 
-    for (auto& [binding, usage, buffer] : buffers)
+    for (auto& [binding, buffer] : buffers)
     {
-        bindlessHandles.push_back(buffer->GetOrCreateBindlessView(usage, descriptorPool).GetIndex());
+        bindlessHandles.push_back(
+            buffer->GetOrCreateBindlessView(binding.bufferUsage, binding.bufferStride, descriptorPool).GetIndex());
     }
 
     // Now we can bind the bindless textures as constants in our root constants!
@@ -424,7 +425,7 @@ void DX12CommandList::Copy(RHITexture& src, RHITexture& dst)
 
 void DX12CommandList::Copy(RHIBuffer& src, RHIBuffer& dst)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    commandList->CopyBufferRegion(dst.GetRawBuffer(), 0, src.GetRawBuffer(), 0, src.GetDescription().byteSize);
 }
 
 CommandQueueType DX12CommandList::GetType() const

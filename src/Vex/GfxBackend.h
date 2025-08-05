@@ -78,7 +78,8 @@ public:
     void DestroyBuffer(const Buffer& buffer);
 
     BindlessHandle GetTextureBindlessHandle(const ResourceBinding& bindlessResource, TextureUsage::Type usage);
-    BindlessHandle GetBufferBindlessHandle(const ResourceBinding& bindlessResource, BufferUsage::Type usage);
+    // Stride needs to be set if usage == StructuredBuffer
+    BindlessHandle GetBufferBindlessHandle(const ResourceBinding& bindlessResource,  BufferBindingUsage usage, u32 stride = 0);
 
     // Flushes all current GPU commands.
     void FlushGPU();

@@ -12,6 +12,13 @@ enum class ResourceLifetime : u8
     Dynamic, // Valid only for the current frame.
 };
 
+enum class ResourceMemoryLocality : u8
+{
+    GPUOnly,
+    CPURead,
+    CPUWrite,
+};
+
 struct BindlessHandle : Handle<BindlessHandle>
 {
 };

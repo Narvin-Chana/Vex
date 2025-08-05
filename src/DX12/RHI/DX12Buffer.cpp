@@ -8,37 +8,46 @@
 namespace vex::dx12
 {
 
+namespace BufferHelpers_Internal
+{
+static u32 RaiseToMultipleOf(u32 val, u32 multiple)
+{
+    return val + (multiple - (val % multiple));
+}
+} // namespace BufferHelpers_Internal
+
 DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, const BufferDescription& desc)
     : RHIBufferInterface(desc)
     , device(device)
 {
+    auto size = desc.byteSize;
+    // Size of constant buffers need to be multiples of 256. User won't know its bigger but it shouldn't be an issue
+    if (desc.usage & BufferUsage::UniformBuffer)
+        size = BufferHelpers_Internal::RaiseToMultipleOf(desc.byteSize, 256);
+
     const CD3DX12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(
-        desc.byteSize,
-        (desc.usage & BufferUsage::ShaderReadWrite) ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
+        size,
+        (desc.usage & BufferUsage::ReadWriteBuffer) ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
                                                     : D3D12_RESOURCE_FLAG_NONE);
     CD3DX12_HEAP_PROPERTIES heapProps;
     D3D12_RESOURCE_STATES dxInitialState = D3D12_RESOURCE_STATE_COMMON;
 
-    if (desc.usage & BufferUsage::CPUVisible)
+    if (desc.memoryLocality == ResourceMemoryLocality::CPURead)
     {
         heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK);
         dxInitialState = D3D12_RESOURCE_STATE_COPY_DEST;
         currentState = RHIBufferState::CopyDest;
     }
-    else if (desc.usage & BufferUsage::CPUWrite)
+    else if (desc.memoryLocality == ResourceMemoryLocality::CPUWrite)
     {
         heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
         dxInitialState = D3D12_RESOURCE_STATE_GENERIC_READ;
         currentState = RHIBufferState::ShaderResource;
     }
-    else if (desc.usage != BufferUsage::None)
+    else
     {
         heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
         // Default state is conserved.
-    }
-    else
-    {
-        VEX_LOG(Fatal, "Unsupported buffer description, usage does not map to DX12.");
     }
 
     chk << device->CreateCommittedResource(&heapProps,
@@ -56,11 +65,10 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, const BufferDescription& desc
 UniqueHandle<RHIBuffer> DX12Buffer::CreateStagingBuffer()
 {
     return MakeUnique<DX12Buffer>(device,
-                                  BufferDescription{
-                                      .name = desc.name + "_StagingBuffer",
-                                      .byteSize = desc.byteSize,
-                                      .usage = BufferUsage::CPUWrite,
-                                  });
+                                  BufferDescription{ .name = desc.name + "_StagingBuffer",
+                                                     .byteSize = desc.byteSize,
+                                                     .usage = BufferUsage::None,
+                                                     .memoryLocality = ResourceMemoryLocality::CPUWrite });
 }
 
 std::span<u8> DX12Buffer::Map()
@@ -83,43 +91,52 @@ void DX12Buffer::Unmap()
     buffer->Unmap(0, &range);
 }
 
-BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferUsage::Type usage, RHIDescriptorPool& descriptorPool)
+BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
+                                                   u32 stride,
+                                                   DX12DescriptorPool& descriptorPool)
 {
-    // Usage is the exact correct usage (no longer flags), so == is valid here.
-    bool isSRVView = (usage == BufferUsage::ShaderRead) && (desc.usage & BufferUsage::ShaderRead);
-    bool isUAVView = (usage == BufferUsage::ShaderReadWrite) && (desc.usage & BufferUsage::ShaderReadWrite);
+    bool isCBV = usage == BufferBindingUsage::ConstantBuffer;
+    bool isSRV = usage == BufferBindingUsage::StructuredBuffer || usage == BufferBindingUsage::ByteAddressBuffer;
+    bool isUAV = usage == BufferBindingUsage::RWStructuredBuffer || usage == BufferBindingUsage::RWByteAddressBuffer;
 
-    VEX_ASSERT(isSRVView || isUAVView,
-               "The bindless view requested for buffer '{}' must be either of type SRV or UAV (ShaderRead or "
-               "ShaderReadWrite).",
+    VEX_ASSERT(isSRV || isUAV || isCBV,
+               "The bindless view requested for buffer '{}' must be either of type SRV, CBV or UAV.",
                desc.name);
 
     // Check cache first
-    if (auto it = viewCache.find(usage); it != viewCache.end() && descriptorPool.IsValid(it->second))
+    BufferViewCacheKey cacheKey{ usage, stride };
+    if (auto it = viewCache.find(cacheKey); it != viewCache.end() && descriptorPool.IsValid(it->second))
     {
         return it->second;
     }
 
     BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
 
-    if (isSRVView)
+    if (isCBV)
+    {
+        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
+        cbvDesc.BufferLocation = buffer->GetGPUVirtualAddress();
+        cbvDesc.SizeInBytes = BufferHelpers_Internal::RaiseToMultipleOf(desc.byteSize, 256u);
+
+        auto cpuHandle = descriptorPool.GetCPUDescriptor(handle);
+        device->CreateConstantBufferView(&cbvDesc, cpuHandle);
+    }
+    else if (isSRV)
     {
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
 
-        if (desc.IsStructured())
+        switch (usage)
         {
-            // As a StructuredBuffer
+        case BufferBindingUsage::StructuredBuffer:
             srvDesc.Format = DXGI_FORMAT_UNKNOWN;
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.Buffer.FirstElement = 0;
-            srvDesc.Buffer.NumElements = desc.byteSize / desc.stride;
-            srvDesc.Buffer.StructureByteStride = desc.stride;
+            srvDesc.Buffer.NumElements = desc.byteSize / stride;
+            srvDesc.Buffer.StructureByteStride = stride;
             srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-        }
-        else
-        {
-            // As a raw ByteAddressBuffer
+            break;
+        case BufferBindingUsage::ByteAddressBuffer:
             srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -127,6 +144,9 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferUsage::Type usage, RHID
             srvDesc.Buffer.NumElements = desc.byteSize / 4; // R32 elements (4 bytes each)
             srvDesc.Buffer.StructureByteStride = 0;
             srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+            break;
+        default:
+            break;
         }
 
         auto cpuHandle = descriptorPool.GetCPUDescriptor(handle);
@@ -136,20 +156,18 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferUsage::Type usage, RHID
     {
         D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
 
-        if (desc.IsStructured())
+        switch (usage)
         {
-            // As a RWStructuredBuffer
+        case BufferBindingUsage::RWStructuredBuffer:
             uavDesc.Format = DXGI_FORMAT_UNKNOWN;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
             uavDesc.Buffer.FirstElement = 0;
-            uavDesc.Buffer.NumElements = desc.byteSize / desc.stride;
-            uavDesc.Buffer.StructureByteStride = desc.stride;
+            uavDesc.Buffer.NumElements = desc.byteSize / stride;
+            uavDesc.Buffer.StructureByteStride = stride;
             uavDesc.Buffer.CounterOffsetInBytes = 0;
             uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
-        }
-        else
-        {
-            // As a raw RWByteAddressBuffer
+            break;
+        case BufferBindingUsage::RWByteAddressBuffer:
             uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
             uavDesc.Buffer.FirstElement = 0;
@@ -157,13 +175,15 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferUsage::Type usage, RHID
             uavDesc.Buffer.StructureByteStride = 0;
             uavDesc.Buffer.CounterOffsetInBytes = 0;
             uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+        default:
+            break;
         }
 
         auto cpuHandle = descriptorPool.GetCPUDescriptor(handle);
         device->CreateUnorderedAccessView(buffer.Get(), nullptr, &uavDesc, cpuHandle);
     }
 
-    viewCache[usage] = handle;
+    viewCache[cacheKey] = handle;
     return handle;
 }
 

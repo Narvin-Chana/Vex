@@ -21,7 +21,7 @@ public:
                                     std::vector<RHITextureBinding>& textureBindings,
                                     std::vector<RHIBufferBinding>& bufferBindings,
                                     TextureUsage::Type textureUsage,
-                                    BufferUsage::Type bufferUsage);
+                                    BufferUsage::Flags bufferUsage);
 
     std::vector<ResourceBinding> reads;
     std::vector<ResourceBinding> writes;

@@ -10,8 +10,10 @@ namespace vex
 
 void ResourceBindingSet::ValidateBindings() const
 {
-    ResourceBinding::ValidateResourceBindings(reads, TextureUsage::ShaderRead, BufferUsage::ShaderRead);
-    ResourceBinding::ValidateResourceBindings(writes, TextureUsage::ShaderReadWrite, BufferUsage::ShaderReadWrite);
+    ResourceBinding::ValidateResourceBindings(reads,
+                                              TextureUsage::ShaderRead,
+                                              BufferUsage::UniformBuffer | BufferUsage::GenericBuffer);
+    ResourceBinding::ValidateResourceBindings(writes, TextureUsage::ShaderReadWrite, BufferUsage::ReadWriteBuffer);
 }
 
 void ResourceBindingSet::CollectRHIResources(GfxBackend& backend,
@@ -19,7 +21,7 @@ void ResourceBindingSet::CollectRHIResources(GfxBackend& backend,
                                              std::vector<RHITextureBinding>& textureBindings,
                                              std::vector<RHIBufferBinding>& bufferBindings,
                                              TextureUsage::Type textureUsage,
-                                             BufferUsage::Type bufferUsage)
+                                             BufferUsage::Flags bufferUsage)
 {
     textureBindings.reserve(textureBindings.size() + resources.size());
     bufferBindings.reserve(bufferBindings.size() + resources.size());
@@ -32,10 +34,10 @@ void ResourceBindingSet::CollectRHIResources(GfxBackend& backend,
             textureBindings.emplace_back(binding, textureUsage, &texture);
         }
 
-        if (binding.IsBuffer())
+        if (binding.IsBuffer() && IsBindingUsageCompatibleWithBufferUsage(bufferUsage, binding.bufferUsage))
         {
             auto& buffer = backend.GetRHIBuffer(binding.buffer.handle);
-            bufferBindings.emplace_back(binding, bufferUsage, &buffer);
+            bufferBindings.emplace_back(binding, &buffer);
         }
     }
 }

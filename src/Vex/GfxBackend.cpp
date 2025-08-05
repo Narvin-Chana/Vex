@@ -203,6 +203,8 @@ Texture GfxBackend::CreateTexture(TextureDescription description, ResourceLifeti
 
 Buffer GfxBackend::CreateBuffer(BufferDescription description, ResourceLifetime lifetime)
 {
+    ValidateBufferDescription(description);
+
     if (lifetime == ResourceLifetime::Dynamic)
     {
         // TODO: handle dynamic resources, includes specifying that the resource when bound should use dynamic bindless
@@ -246,7 +248,7 @@ BindlessHandle GfxBackend::GetTextureBindlessHandle(const ResourceBinding& bindl
     return texture.GetOrCreateBindlessView(bindlessResource, usage, *descriptorPool);
 }
 
-BindlessHandle GfxBackend::GetBufferBindlessHandle(const ResourceBinding& bindlessResource, BufferUsage::Type usage)
+BindlessHandle GfxBackend::GetBufferBindlessHandle(const ResourceBinding& bindlessResource, BufferBindingUsage usage, u32 stride)
 {
     if (!bindlessResource.IsBuffer())
     {
@@ -254,7 +256,7 @@ BindlessHandle GfxBackend::GetBufferBindlessHandle(const ResourceBinding& bindle
     }
 
     auto& buffer = GetRHIBuffer(bindlessResource.buffer.handle);
-    return buffer.GetOrCreateBindlessView(usage, *descriptorPool);
+    return buffer.GetOrCreateBindlessView(usage, stride, *descriptorPool);
 }
 
 void GfxBackend::FlushGPU()

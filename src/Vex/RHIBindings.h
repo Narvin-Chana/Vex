@@ -18,7 +18,6 @@ struct RHITextureBinding
 struct RHIBufferBinding
 {
     ResourceBinding binding;
-    BufferUsage::Type usage;
     RHIBuffer* buffer;
 };
 

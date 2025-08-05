@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <optional>
 
 #include <Vex/RHIFwd.h>
 
@@ -54,6 +55,12 @@ public:
 
 private:
     bool enableGPUDebugLayer = false;
+
+    struct LiveObjectsReporter
+    {
+        ~LiveObjectsReporter();
+    };
+    std::optional<LiveObjectsReporter> liveObjectsReporter;
 
     ComPtr<DX12Device> device;
 

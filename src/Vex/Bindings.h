@@ -46,10 +46,14 @@ struct ResourceBinding
     // eg: VEX_RESOURCE(Texture2D<float3>, MyName);
     std::string name;
 
+    // The buffer to bind
     Buffer buffer;
-    BufferBinding::Flags bufferFlags;
+    // The usage to use in this binding. Needs to be part of the usages of the buffer description
+    BufferBindingUsage bufferUsage;
 
+    // The texture to bind
     Texture texture;
+    // Flags for binding the texture
     TextureBinding::Flags textureFlags;
 
     u32 mipBias = 0;
@@ -60,6 +64,9 @@ struct ResourceBinding
     // 0 means to use every slice.
     u32 sliceCount = 0;
 
+    // Stride of the buffer if necessary
+    u32 bufferStride = 0;
+
     [[nodiscard]] bool IsBuffer() const
     {
         return buffer.handle != GInvalidBufferHandle;
@@ -69,9 +76,11 @@ struct ResourceBinding
         return texture.handle != GInvalidTextureHandle;
     }
 
+    // Takes in an array of bindings and does some validation on them
+    // the passed in flags assure that the bindings can be used according to those flags
     static void ValidateResourceBindings(std::span<const ResourceBinding> bindings,
                                          TextureUsage::Flags validUsageFlags,
-                                         BufferUsage::Flags validBufferUsageFlags = BufferUsage::None);
+                                         BufferUsage::Flags validBufferUsageFlags = BufferUsage::GenericBuffer);
 };
 
 } // namespace vex
