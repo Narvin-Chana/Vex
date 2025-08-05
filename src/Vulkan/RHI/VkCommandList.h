@@ -17,7 +17,7 @@ struct VkGPUContext;
 
 class VkTexture;
 
-class VkCommandList final : public RHICommandListInterface
+class VkCommandList final : public RHICommandListBase
 {
 public:
     VkCommandList(NonNullPtr<VkGPUContext> ctx, ::vk::UniqueCommandBuffer&& commandBuffer, CommandQueueType type);
@@ -34,13 +34,7 @@ public:
     virtual void SetPipelineState(const RHIGraphicsPipelineState& graphicsPipelineState) override;
     virtual void SetPipelineState(const RHIComputePipelineState& computePipelineState) override;
 
-    virtual void SetLayout(RHIResourceLayout& layout) override;
-    virtual void SetLayoutLocalConstants(const RHIResourceLayout& layout,
-                                         std::span<const ConstantBinding> constants) override;
-    virtual void SetLayoutResources(const RHIResourceLayout& layout,
-                                    std::span<RHITextureBinding> textures,
-                                    std::span<RHIBufferBinding> buffers,
-                                    RHIDescriptorPool& descriptorPool) override;
+    virtual void SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& descriptorPool) override;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) override;
     virtual void SetInputAssembly(InputAssembly inputAssembly) override;
     virtual void ClearTexture(RHITexture& rhiTexture,

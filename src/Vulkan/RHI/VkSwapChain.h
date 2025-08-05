@@ -28,7 +28,7 @@ struct VkSwapChainSupportDetails
     }
 };
 
-class VkSwapChain final : public RHISwapChainInterface
+class VkSwapChain final : public RHISwapChainBase
 {
 
 public:
@@ -36,10 +36,7 @@ public:
                 const SwapChainDescription& description,
                 const PlatformWindow& platformWindow);
 
-    virtual void AcquireNextBackbuffer(u8 frameIndex) override;
-    virtual void Present(bool isFullscreenMode) override;
     virtual void Resize(u32 width, u32 height) override;
-
     virtual void SetVSync(bool enableVSync) override;
     virtual bool NeedsFlushForVSyncToggle() override;
 
@@ -56,12 +53,17 @@ private:
     SwapChainDescription description;
 
     ::vk::UniqueSwapchainKHR swapchain;
+
+    // Used to wait for acquisition of the next frame's backbuffer image.
+    std::vector<::vk::UniqueSemaphore> backbufferAcquisition;
+    // Used to wait for all command lists to finish before presenting.
     std::vector<::vk::UniqueSemaphore> presentSemaphore;
 
-    std::vector<::vk::UniqueSemaphore> backbufferAcquisition;
-
+    // TODO(https://trello.com/c/KVA9njlW): currentBackBufferID is unused, this is probably not correct.
     u32 currentBackbufferId;
     u32 width, height;
+
+    friend class VkRHI;
 };
 
 } // namespace vex::vk

@@ -93,10 +93,10 @@ ShaderModel DX12FeatureChecker::GetShaderModel() const
     return ConvertDX12ShaderModelToShaderModel(shaderModel.HighestShaderModel);
 }
 
-u32 DX12FeatureChecker::GetMaxRootSignatureDWORDSize() const
+u32 DX12FeatureChecker::GetMaxLocalConstantsByteSize() const
 {
     // 64 DWORDS is the hard-coded DX12 limit for root signatures.
-    return 64;
+    return 64 * sizeof(DWORD);
 }
 
 FeatureLevel DX12FeatureChecker::ConvertDX12FeatureLevelToFeatureLevel(D3D_FEATURE_LEVEL featureLevel)

@@ -17,8 +17,7 @@ public:
     virtual FeatureLevel GetFeatureLevel() const override;
     virtual ResourceBindingTier GetResourceBindingTier() const override;
     virtual ShaderModel GetShaderModel() const override;
-
-    u32 GetMaxRootSignatureDWORDSize() const;
+    virtual u32 GetMaxLocalConstantsByteSize() const override;
 
     static FeatureLevel ConvertDX12FeatureLevelToFeatureLevel(D3D_FEATURE_LEVEL featureLevel);
     static D3D_FEATURE_LEVEL ConvertFeatureLevelToDX12FeatureLevel(FeatureLevel featureLevel);

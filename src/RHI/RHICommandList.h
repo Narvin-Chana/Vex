@@ -21,7 +21,7 @@ struct RHITextureBinding;
 struct RHIBufferBinding;
 struct InputAssembly;
 
-class RHICommandListInterface
+class RHICommandListBase
 {
 public:
     virtual bool IsOpen() const = 0;
@@ -36,13 +36,7 @@ public:
     virtual void SetPipelineState(const RHIGraphicsPipelineState& graphicsPipelineState) = 0;
     virtual void SetPipelineState(const RHIComputePipelineState& computePipelineState) = 0;
 
-    virtual void SetLayout(RHIResourceLayout& layout) = 0;
-    virtual void SetLayoutLocalConstants(const RHIResourceLayout& layout,
-                                         std::span<const ConstantBinding> constants) = 0;
-    virtual void SetLayoutResources(const RHIResourceLayout& layout,
-                                    std::span<RHITextureBinding> textures,
-                                    std::span<RHIBufferBinding> buffers,
-                                    RHIDescriptorPool& descriptorPool) = 0;
+    virtual void SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& descriptorPool) = 0;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) = 0;
     virtual void SetInputAssembly(InputAssembly inputAssembly) = 0;
 

@@ -38,7 +38,7 @@ VEX_MAKE_HASHABLE(vex::dx12::BufferViewCacheKey,
 namespace vex::dx12
 {
 
-class DX12Buffer final : public RHIBufferInterface
+class DX12Buffer final : public RHIBufferBase
 {
 public:
     DX12Buffer(ComPtr<DX12Device>& device, const BufferDescription& desc);

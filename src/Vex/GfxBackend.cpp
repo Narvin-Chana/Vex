@@ -15,7 +15,6 @@
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHICommandPool.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
-#include <Vex/RHIImpl/RHIFence.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RenderExtension.h>
@@ -34,7 +33,6 @@ GfxBackend::GfxBackend(const BackendDescription& description)
     , textureRegistry(DefaultRegistrySize)
     , bufferRegistry(DefaultRegistrySize)
 {
-    VEX_LOG(Info, "Graphics API Support:\n\tDX12: {} Vulkan: {}", VEX_DX12, VEX_VULKAN);
     std::string vexTargetName;
     if (VEX_DEBUG)
     {
@@ -78,27 +76,33 @@ GfxBackend::GfxBackend(const BackendDescription& description)
             description.platformWindow.width,
             description.platformWindow.height);
 
-    for (auto queueType : magic_enum::enum_values<CommandQueueType>())
-    {
-        queueFrameFences[queueType] = rhi.CreateFence(std::to_underlying(description.frameBuffering));
-    }
-
-    commandPools.ForEach([this](UniqueHandle<RHICommandPool>& el) { el = rhi.CreateCommandPool(); });
+    commandPools.ForEach([&rhi = rhi](UniqueHandle<RHICommandPool>& el) { el = rhi.CreateCommandPool(); });
 
     descriptorPool = rhi.CreateDescriptorPool();
 
     psCache = PipelineStateCache(&rhi, *descriptorPool, &resourceCleanup, description.shaderCompilerSettings);
 
-    swapChain = rhi.CreateSwapChain({ .format = description.swapChainFormat,
-                                      .frameBuffering = description.frameBuffering,
-                                      .useVSync = description.useVSync },
-                                    description.platformWindow);
+    swapChain = rhi.CreateSwapChain(
+        {
+            .format = description.swapChainFormat,
+            .frameBuffering = description.frameBuffering,
+            .useVSync = description.useVSync,
+        },
+        description.platformWindow);
 
     CreateBackBuffers();
 }
 
 GfxBackend::~GfxBackend()
 {
+    if (isInMiddleOfFrame)
+    {
+        VEX_LOG(Warning,
+                "Destroying Vex GfxBackend in the middle of a frame, this is valid, although not recommended. Make "
+                "sure each StartFrame has a matching EndFrame.");
+        EndFrame(false);
+        isInMiddleOfFrame = false;
+    }
     // Wait for work to be done before starting the deletion of resources.
     FlushGPU();
 
@@ -107,18 +111,26 @@ GfxBackend::~GfxBackend()
         renderExtension->Destroy();
     }
 
-    // Clear the physical device.
+    // Clear the global physical device.
     GPhysicalDevice = nullptr;
 }
 
 void GfxBackend::StartFrame()
 {
-    swapChain->AcquireNextBackbuffer(currentFrameIndex);
+    rhi.AcquireNextFrame(*swapChain, currentFrameIndex, GetRHITexture(GetCurrentBackBuffer().handle));
+
+    // Flush all resources that were queued up for deletion.
+    resourceCleanup.FlushResources(1, *descriptorPool);
+
+    // Release the memory occupied by the command lists that are done.
+    GetCurrentCommandPool().ReclaimAllCommandListMemory();
 
     for (auto& renderExtension : renderExtensions)
     {
         renderExtension->OnFrameStart();
     }
+
+    isInMiddleOfFrame = true;
 }
 
 void GfxBackend::EndFrame(bool isFullscreenMode)
@@ -140,34 +152,17 @@ void GfxBackend::EndFrame(bool isFullscreenMode)
         queuedCommandLists.push_back(cmdList);
     }
 
-    FlushCommandListQueue();
+    rhi.SubmitAndPresent(queuedCommandLists, *swapChain, currentFrameIndex, isFullscreenMode);
+    queuedCommandLists.clear();
 
-    swapChain->Present(isFullscreenMode);
-
-    // Signal all queue fences.
-    for (auto queueType : magic_enum::enum_values<CommandQueueType>())
-    {
-        rhi.SignalFence(queueType, *queueFrameFences[queueType], currentFrameIndex);
-    }
-
-    u32 nextFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
-
-    // Wait for the fences nextFrameIndex value for all queue fences.
-    for (auto queueType : magic_enum::enum_values<CommandQueueType>())
-    {
-        queueFrameFences[queueType]->WaitCPUAndIncrementNextFenceIndex(currentFrameIndex, nextFrameIndex);
-    }
-
-    currentFrameIndex = nextFrameIndex;
-
-    // Flush all resources that were queued up for deletion.
-    resourceCleanup.FlushResources(1, *descriptorPool);
-
-    // Release the memory occupied by the command lists that are done.
-    GetCurrentCommandPool().ReclaimAllCommandListMemory();
+    currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
 
     // Send all shader errors to the user, only done on frame end, not on GPU flush.
     psCache.GetShaderCompiler().FlushCompilationErrors();
+
+    ++frameCounter;
+
+    isInMiddleOfFrame = false;
 }
 
 CommandContext GfxBackend::BeginScopedCommandContext(CommandQueueType queueType)
@@ -189,8 +184,10 @@ Texture GfxBackend::CreateTexture(TextureDescription description, ResourceLifeti
 {
     if (lifetime == ResourceLifetime::Dynamic)
     {
-        // TODO: handle dynamic resources, includes specifying that the resource when bound should use dynamic bindless
-        // indices and self-cleanup of the RHITexture should occur after the current frame ends.
+        // TODO(https://trello.com/c/K2jgp9ax): handle dynamic resources, includes specifying that the resource when
+        // bound should use dynamic bindless indices and self-cleanup of the RHITexture should occur after the current
+        // frame ends, would be used for transient resources inside our memory allocation strategy (avoids constant
+        // reallocations).
         VEX_NOT_YET_IMPLEMENTED();
     }
 
@@ -204,8 +201,10 @@ Buffer GfxBackend::CreateBuffer(BufferDescription description, ResourceLifetime 
 
     if (lifetime == ResourceLifetime::Dynamic)
     {
-        // TODO: handle dynamic resources, includes specifying that the resource when bound should use dynamic bindless
-        // indices and self-cleanup of the RHITexture should occur after the current frame ends.
+        // TODO(https://trello.com/c/K2jgp9ax): handle dynamic resources, includes specifying that the resource when
+        // bound should use dynamic bindless indices and self-cleanup of the RHITexture should occur after the current
+        // frame ends, would be used for transient resources inside our memory allocation strategy (avoids constant
+        // reallocations).
         VEX_NOT_YET_IMPLEMENTED();
     }
 
@@ -259,28 +258,26 @@ void GfxBackend::FlushGPU()
 {
     VEX_LOG(Info, "Forcing a GPU flush...");
 
-    // Rid ourselves of the currently queued up command lists.
-    FlushCommandListQueue();
-
-    for (auto queueType : magic_enum::enum_values<CommandQueueType>())
+    // In the case we're in the middle of a frame, we still want to submit all currently queued up work.
+    if (isInMiddleOfFrame)
     {
-        // Increment fence values before signaling to ensure we're waiting on new values.
-        ++queueFrameFences[queueType]->GetFenceValue(currentFrameIndex);
-        // Signal fences with incremented value.
-        rhi.SignalFence(queueType, *queueFrameFences[queueType], currentFrameIndex);
+        EndFrame(false);
     }
 
-    // Wait for the currentFrameIndex we just signaled to be done for all queue fences.
-    for (auto queueType : magic_enum::enum_values<CommandQueueType>())
-    {
-        queueFrameFences[queueType]->WaitCPU(currentFrameIndex);
-    }
+    rhi.FlushGPU();
 
     // Release all stale resource now that the GPU is done with them.
     resourceCleanup.FlushResources(std::to_underlying(description.frameBuffering), *descriptorPool);
 
-    // Release the memory occupied by the command lists that are done.
+    // Release the memory that is occupied by all our command lists.
     commandPools.ForEach([](auto& el) { el->ReclaimAllCommandListMemory(); });
+
+    // Keep this transparent for the user, by starting up another frame automatically.
+    if (isInMiddleOfFrame)
+    {
+        StartFrame();
+        isInMiddleOfFrame = false;
+    }
 
     VEX_LOG(Info, "GPU flush done.");
 }
@@ -423,12 +420,6 @@ void GfxBackend::CreateBackBuffers()
     // Recreating the backbuffers means resetting the current frame index to 0 (as if we've just started the application
     // from scratch).
     currentFrameIndex = 0;
-}
-
-void GfxBackend::FlushCommandListQueue()
-{
-    rhi.ExecuteCommandLists(queuedCommandLists);
-    queuedCommandLists.clear();
 }
 
 } // namespace vex

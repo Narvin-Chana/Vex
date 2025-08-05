@@ -7,6 +7,7 @@
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/Platform/Windows/HResult.h>
+#include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/ResourceBindingSet.h>
 
 #include <DX12/DX12TextureSampler.h>
@@ -22,13 +23,6 @@ DX12ResourceLayout::DX12ResourceLayout(ComPtr<DX12Device>& device)
 
 DX12ResourceLayout::~DX12ResourceLayout() = default;
 
-u32 DX12ResourceLayout::GetMaxLocalConstantSize() const
-{
-    return reinterpret_cast<DX12FeatureChecker*>(GPhysicalDevice->featureChecker.get())
-               ->GetMaxRootSignatureDWORDSize() *
-           static_cast<u32>(sizeof(DWORD));
-}
-
 ComPtr<ID3D12RootSignature>& DX12ResourceLayout::GetRootSignature()
 {
     if (isDirty)
@@ -42,16 +36,19 @@ ComPtr<ID3D12RootSignature>& DX12ResourceLayout::GetRootSignature()
 
 void DX12ResourceLayout::CompileRootSignature()
 {
-    u32 rootSignatureDWORDCount = GetMaxLocalConstantSize() / sizeof(DWORD);
+    u32 rootSignatureDWORDCount = GPhysicalDevice->featureChecker->GetMaxLocalConstantsByteSize() / sizeof(DWORD);
 
     std::vector<CD3DX12_ROOT_PARAMETER> rootParameters;
 
-    CD3DX12_ROOT_PARAMETER rootConstants;
-    // Root constants are always bound at the beginning of the root parameters (in slot & space 0).
-    rootConstants.InitAsConstants(rootSignatureDWORDCount, 0, 0);
-    rootParameters.push_back(std::move(rootConstants));
+    CD3DX12_ROOT_PARAMETER rootCBV;
+    // Root constant buffer is bound at the first slot (for Vex's internal bindless mapping).
+    rootCBV.InitAsConstantBufferView(0);
+    rootParameters.push_back(std::move(rootCBV));
 
-    // TODO: consider descriptor tables?
+    CD3DX12_ROOT_PARAMETER rootConstants;
+    // Root constants are always bound at slot 1 of the root parameters (in space 0).
+    rootConstants.InitAsConstants(rootSignatureDWORDCount - 2, 1);
+    rootParameters.push_back(std::move(rootConstants));
 
     std::vector<D3D12_STATIC_SAMPLER_DESC> dxSamplers =
         GraphicsPipeline::GetDX12StaticSamplersFromTextureSamplers(samplers);

@@ -30,8 +30,6 @@ function(setup_vulkan_backend TARGET)
         "src/Vulkan/RHI/VkResourceLayout.cpp"
         "src/Vulkan/RHI/VkDescriptorPool.h"
         "src/Vulkan/RHI/VkDescriptorPool.cpp"
-        "src/Vulkan/RHI/VkFence.cpp"
-        "src/Vulkan/RHI/VkFence.h"
         "src/Vulkan/RHI/VkTexture.h"
         "src/Vulkan/RHI/VkTexture.cpp"
         "src/Vulkan/RHI/VkBuffer.h"

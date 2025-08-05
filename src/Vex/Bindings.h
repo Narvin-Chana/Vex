@@ -22,7 +22,9 @@ struct ConstantBinding
     const void* data;
     u32 size;
 
-    static std::vector<u8> ConcatConstantBindings(std::span<const ConstantBinding> constantBindings, u32 maxBufferSize);
+    // Concatenates all constant binding data into the writeableRange passed in as a parameter.
+    // Returns the total byte size of all bindings concatenated together.
+    static u32 ConcatConstantBindings(std::span<const ConstantBinding> constantBindings, std::span<u8> writableRange);
 };
 
 // clang-format off

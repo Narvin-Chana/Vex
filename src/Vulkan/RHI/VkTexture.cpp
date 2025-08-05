@@ -73,6 +73,7 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescri
     , image{ backbufferImage }
 {
     description = std::move(inDescription);
+    currentState = RHITextureState::Common;
 }
 
 VkTexture::VkTexture(const NonNullPtr<VkGPUContext> ctx,
@@ -306,8 +307,6 @@ namespace vex::TextureUtil
 
     switch (flags)
     {
-    case Common:
-        return eUndefined;
     case RenderTarget:
         return eColorAttachmentOptimal;
     case ShaderReadWrite:
@@ -324,10 +323,13 @@ namespace vex::TextureUtil
         return eTransferDstOptimal;
     case Present:
         return ePresentSrcKHR;
+    case Common:
+        return eUndefined;
     default:
-        VEX_LOG(Fatal, "Flag to layout conversion not supported");
+        VEX_ASSERT(false, "Flag to layout conversion not supported");
+        return eUndefined;
     };
-    std::unreachable();
+    return eUndefined;
 }
 
 } // namespace vex::TextureUtil

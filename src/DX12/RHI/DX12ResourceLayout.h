@@ -10,13 +10,11 @@
 namespace vex::dx12
 {
 
-class DX12ResourceLayout final : public RHIResourceLayoutInterface
+class DX12ResourceLayout final : public RHIResourceLayoutBase
 {
 public:
     DX12ResourceLayout(ComPtr<DX12Device>& device);
     ~DX12ResourceLayout();
-
-    virtual u32 GetMaxLocalConstantSize() const override;
 
     ComPtr<ID3D12RootSignature>& GetRootSignature();
 

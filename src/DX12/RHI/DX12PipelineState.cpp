@@ -17,7 +17,7 @@ namespace vex::dx12
 {
 
 DX12GraphicsPipelineState::DX12GraphicsPipelineState(const ComPtr<DX12Device>& device, const Key& key)
-    : RHIGraphicsPipelineStateInterface(key)
+    : RHIGraphicsPipelineStateBase(key)
     , device(device)
 {
 }

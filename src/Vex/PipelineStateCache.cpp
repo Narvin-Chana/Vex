@@ -49,7 +49,8 @@ const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(con
     pipelineStateStale |= vertexShader->version > ps.vertexShaderVersion;
     pipelineStateStale |= pixelShader->version > ps.pixelShaderVersion;
     pipelineStateStale |= resourceLayout->version > ps.rootSignatureVersion;
-    // TODO: add other fields, maybe via custom == func? Or just accept new slot in cache?
+    // TODO(https://trello.com/c/qdCLRSHl): add other fields, maybe via a custom == func?
+    // Or just accept new slot in the cache?
     if (pipelineStateStale)
     {
         // Avoids PSO being destroyed while frame is in flight.

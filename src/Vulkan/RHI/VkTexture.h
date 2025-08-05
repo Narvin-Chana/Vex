@@ -56,7 +56,7 @@ namespace vex::vk
 struct VkGPUContext;
 class VkDescriptorPool;
 
-class VkTexture : public RHITextureInterface
+class VkTexture : public RHITextureBase
 {
 public:
     // BackBuffer constructor:

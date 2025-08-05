@@ -172,4 +172,11 @@ ShaderModel VkFeatureChecker::GetShaderModel() const
     return maxShaderModel;
 }
 
+u32 VkFeatureChecker::GetMaxLocalConstantsByteSize() const
+{
+    // TODO(https://trello.com/c/DvEwoTUy): Query hardware to obtain the actual max size.
+    // 128 bytes (or 32 DWORDs) is the theoretical max push constant size Vulkan allows.
+    return 128;
+}
+
 } // namespace vex::vk

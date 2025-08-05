@@ -6,7 +6,7 @@
 namespace vex
 {
 
-class RHICommandPoolInterface
+class RHICommandPoolBase
 {
 public:
     virtual RHICommandList* CreateCommandList(CommandQueueType queueType) = 0;

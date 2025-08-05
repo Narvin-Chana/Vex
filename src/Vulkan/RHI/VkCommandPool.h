@@ -11,7 +11,7 @@
 
 namespace vex::vk
 {
-class VkCommandPool final : public RHICommandPoolInterface
+class VkCommandPool final : public RHICommandPoolBase
 {
 public:
     VkCommandPool(NonNullPtr<VkGPUContext> ctx,

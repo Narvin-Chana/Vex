@@ -45,7 +45,8 @@ public:
     GfxBackend(const BackendDescription& description);
     ~GfxBackend();
 
-    // Start of the frame, sets up the swapchain and backbuffers.
+    // Start of the frame, sets up the swapchain and backbuffers and blocks until the GPU is ready to accept a new
+    // frame. Since this is blocking, you generally want to call this as late as possible to reduce CPU starvation.
     void StartFrame();
 
     // Ends the frame by presenting to the swapchain. Contains a CPU-blocking wait until the next backbuffer is
@@ -85,7 +86,7 @@ public:
                                            BufferBindingUsage usage,
                                            u32 stride = 0);
 
-    // Flushes all current GPU commands.
+    // Flushes all currently submitted GPU commands.
     void FlushGPU();
 
     // Enables or disables vsync when presenting.
@@ -122,14 +123,13 @@ private:
     RHIBuffer& GetRHIBuffer(BufferHandle bufferHandle);
 
     void CreateBackBuffers();
-    // Executes all currently queued up command lists.
-    void FlushCommandListQueue();
 
     // Index of the current frame, possible values depends on buffering:
     //  {0} if single buffering
     //  {0, 1} if double buffering
     //  {0, 1, 2} if triple buffering
     u8 currentFrameIndex = 0;
+    u64 frameCounter = 0;
 
     RHI rhi;
 
@@ -142,9 +142,6 @@ private:
     // =================================================
     //  RHI RESOURCES (should be destroyed before rhi)
     // =================================================
-
-    // Synchronisation fence for each backbuffer frame (one per queue type).
-    std::array<UniqueHandle<RHIFence>, CommandQueueTypes::Count> queueFrameFences;
 
     FrameResource<UniqueHandle<RHICommandPool>> commandPools;
 
@@ -162,6 +159,8 @@ private:
     std::vector<RHICommandList*> queuedCommandLists;
 
     std::vector<UniqueHandle<RenderExtension>> renderExtensions;
+
+    bool isInMiddleOfFrame = false;
 
     static constexpr u32 DefaultRegistrySize = 1024;
 

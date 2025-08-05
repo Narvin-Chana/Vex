@@ -92,69 +92,15 @@ VkSwapChain::VkSwapChain(NonNullPtr<VkGPUContext> ctx,
 
     InitSwapchainResource(platformWindow.width, platformWindow.height);
 
-    std::ranges::generate_n(std::back_inserter(backbufferAcquisition),
-                            requestedImageCount,
-                            [&] { return VEX_VK_CHECK <<= ctx->device.createSemaphoreUnique({}); });
-}
-
-void VkSwapChain::AcquireNextBackbuffer(u8 frameIndex)
-{
-    VEX_VK_CHECK << ctx->device.acquireNextImageKHR(*swapchain,
-                                                    std::numeric_limits<u64>::max(),
-                                                    *backbufferAcquisition[frameIndex],
-                                                    nullptr,
-                                                    &currentBackbufferId);
-
-    auto& cmdQueue = ctx->graphicsPresentQueue;
-
-    ::vk::SemaphoreSubmitInfo semWaitInfo{
-        .semaphore = *backbufferAcquisition[frameIndex],
+    auto BinarySemaphoreCreator = [&ctx]
+    {
+        ::vk::SemaphoreTypeCreateInfoKHR createInfo{ .semaphoreType = ::vk::SemaphoreType::eBinary };
+        return VEX_VK_CHECK <<= ctx->device.createSemaphoreUnique(::vk::SemaphoreCreateInfo{
+                   .pNext = &createInfo,
+               });
     };
-
-    ::vk::SemaphoreSubmitInfo semSignalInfo{
-        .semaphore = *cmdQueue.waitSemaphore,
-        .value = ++cmdQueue.waitValue,
-    };
-
-    ::vk::SubmitInfo2KHR submitInfo{ .waitSemaphoreInfoCount = 1,
-                                     .pWaitSemaphoreInfos = &semWaitInfo,
-                                     .signalSemaphoreInfoCount = 1,
-                                     .pSignalSemaphoreInfos = &semSignalInfo };
-
-    VEX_VK_CHECK << cmdQueue.queue.submit2KHR(submitInfo);
-}
-
-void VkSwapChain::Present(bool isFullscreenMode)
-{
-    auto& cmdQueue = ctx->graphicsPresentQueue;
-
-    ::vk::SemaphoreSubmitInfo semWaitInfo{
-        .semaphore = *cmdQueue.waitSemaphore,
-        .value = cmdQueue.waitValue,
-    };
-
-    ::vk::SemaphoreSubmitInfo semSignalInfo{
-        .semaphore = *presentSemaphore[currentBackbufferId],
-    };
-
-    ::vk::SubmitInfo2KHR submitInfo{ .waitSemaphoreInfoCount = 1,
-                                     .pWaitSemaphoreInfos = &semWaitInfo,
-                                     .signalSemaphoreInfoCount = 1,
-                                     .pSignalSemaphoreInfos = &semSignalInfo };
-
-    VEX_VK_CHECK << cmdQueue.queue.submit2KHR(submitInfo);
-
-    ::vk::SwapchainKHR swapChains[] = { *swapchain };
-
-    ::vk::PresentInfoKHR presentInfo{
-        .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &*presentSemaphore[currentBackbufferId],
-        .swapchainCount = 1,
-        .pSwapchains = swapChains,
-        .pImageIndices = &currentBackbufferId,
-    };
-
-    VEX_VK_CHECK << cmdQueue.queue.presentKHR(presentInfo);
+    std::ranges::generate_n(std::back_inserter(backbufferAcquisition), requestedImageCount, BinarySemaphoreCreator);
+    std::ranges::generate_n(std::back_inserter(presentSemaphore), requestedImageCount, BinarySemaphoreCreator);
 }
 
 void VkSwapChain::Resize(u32 width, u32 height)
@@ -221,12 +167,6 @@ void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
     if (newImages.size() != swapChainCreateInfo.minImageCount)
     {
         VEX_LOG(Warning, "Swapchain returned more images than requested for. This might cause instabilities");
-    }
-
-    presentSemaphore.resize(newImages.size());
-    for (size_t i = 0; i < newImages.size(); ++i)
-    {
-        presentSemaphore[i] = VEX_VK_CHECK <<= ctx->device.createSemaphoreUnique({});
     }
 }
 
