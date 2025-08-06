@@ -111,6 +111,7 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
     }
 
     BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
+    auto cpuHandle = descriptorPool.GetCPUDescriptor(handle);
 
     if (isCBV)
     {
@@ -118,7 +119,6 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
         cbvDesc.BufferLocation = buffer->GetGPUVirtualAddress();
         cbvDesc.SizeInBytes = BufferHelpers_Internal::RaiseToMultipleOf(desc.byteSize, 256u);
 
-        auto cpuHandle = descriptorPool.GetCPUDescriptor(handle);
         device->CreateConstantBufferView(&cbvDesc, cpuHandle);
     }
     else if (isSRV)
@@ -149,7 +149,6 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
             break;
         }
 
-        auto cpuHandle = descriptorPool.GetCPUDescriptor(handle);
         device->CreateShaderResourceView(buffer.Get(), &srvDesc, cpuHandle);
     }
     else // if (isUAVView)
@@ -179,7 +178,6 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
             break;
         }
 
-        auto cpuHandle = descriptorPool.GetCPUDescriptor(handle);
         device->CreateUnorderedAccessView(buffer.Get(), nullptr, &uavDesc, cpuHandle);
     }
 

@@ -128,13 +128,15 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
     }
 
     auto localConstantsData = layout.GetLocalConstantsData();
+    auto& bindlessBuffer = layout.internalConstantBuffers.Get(layout.FrameIndex);
+
+    Transition(*bindlessBuffer, RHIBufferState::UniformResource);
+
     switch (type)
     {
     case CommandQueueType::Graphics:
         // Set bindless cbuffer (in first slot of root signature).
-        commandList->SetGraphicsRootConstantBufferView(
-            0,
-            layout.internalConstantBuffers.Get(layout.FrameIndex)->GetRawBuffer()->GetGPUVirtualAddress());
+        commandList->SetGraphicsRootConstantBufferView(0, bindlessBuffer->GetRawBuffer()->GetGPUVirtualAddress());
         // Set local constants (in second slot of root signature).
         commandList->SetGraphicsRoot32BitConstants(1,
                                                    static_cast<u32>(localConstantsData.size()),
@@ -142,9 +144,7 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
                                                    0);
     case CommandQueueType::Compute:
         // Set bindless cbuffer (in first slot of root signature).
-        commandList->SetComputeRootConstantBufferView(
-            0,
-            layout.internalConstantBuffers.Get(layout.FrameIndex)->GetRawBuffer()->GetGPUVirtualAddress());
+        commandList->SetComputeRootConstantBufferView(0, bindlessBuffer->GetRawBuffer()->GetGPUVirtualAddress());
         // Set local constants (in second slot of root signature).
         commandList->SetComputeRoot32BitConstants(1,
                                                   static_cast<u32>(localConstantsData.size()),

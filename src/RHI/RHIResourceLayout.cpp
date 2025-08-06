@@ -23,6 +23,8 @@ void RHIResourceLayoutBase::SetLayoutResources(std::span<const ConstantBinding> 
                                                std::span<RHIBufferBinding> buffers,
                                                RHIDescriptorPool& descriptorPool)
 {
+    FrameIndex = (FrameIndex + 1) % 6;
+
     localConstantsData.resize(maxLocalConstantsByteSize);
 #if !VEX_SHIPPING
     // Fill the buffer with FF to mark as garbage.
@@ -64,8 +66,6 @@ void RHIResourceLayoutBase::SetLayoutResources(std::span<const ConstantBinding> 
             .SetData(
                 std::span<u8>{ reinterpret_cast<u8*>(bindlessHandles.data()), bindlessHandles.size() * sizeof(u32) });
     }
-
-    FrameIndex = (FrameIndex + 1) % 6;
 }
 
 void RHIResourceLayoutBase::SetSamplers(std::span<TextureSampler> newSamplers)
