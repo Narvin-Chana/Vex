@@ -209,7 +209,9 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
 
 void VkGraphicsPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    auto cleanupPSO = MakeUnique<VkGraphicsPipelineState>(key, device, PSOCache);
+    std::swap(cleanupPSO->graphicsPipeline, graphicsPipeline);
+    resourceCleanup.CleanupResource(std::move(cleanupPSO));
 }
 
 VkComputePipelineState::VkComputePipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache)
