@@ -79,7 +79,7 @@ void VkCommandList::SetScissor(i32 x, i32 y, u32 width, u32 height)
 
 void VkCommandList::SetPipelineState(const RHIGraphicsPipelineState& graphicsPipelineState)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    commandBuffer->bindPipeline(::vk::PipelineBindPoint::eGraphics, *graphicsPipelineState.graphicsPipeline);
 }
 
 void VkCommandList::SetPipelineState(const RHIComputePipelineState& computePipelineState)
@@ -144,7 +144,8 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
 
     for (auto& [binding, buffer] : buffers)
     {
-        const BindlessHandle handle = buffer->GetOrCreateBindlessView(binding.bufferUsage, binding.bufferStride, descriptorPool);
+        const BindlessHandle handle =
+            buffer->GetOrCreateBindlessView(binding.bufferUsage, binding.bufferStride, descriptorPool);
         bindlessHandleIndices.push_back(handle.GetIndex());
     }
 
@@ -187,7 +188,8 @@ void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIReso
 
 void VkCommandList::SetInputAssembly(InputAssembly inputAssembly)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    commandBuffer->setPrimitiveRestartEnable(inputAssembly.primitiveRestartEnabled);
+    commandBuffer->setPrimitiveTopology(GraphicsPiplineUtils::InputTopologyToVkTopology(inputAssembly.topology));
 }
 
 void VkCommandList::ClearTexture(RHITexture& rhiTexture,

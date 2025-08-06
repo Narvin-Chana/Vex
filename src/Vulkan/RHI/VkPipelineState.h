@@ -7,15 +7,25 @@
 namespace vex::vk
 {
 
+namespace GraphicsPiplineUtils
+{
+::vk::PrimitiveTopology InputTopologyToVkTopology(InputTopology topo);
+}
+
 class VkGraphicsPipelineState final : public RHIGraphicsPipelineStateInterface
 {
+    ::vk::PipelineCache PSOCache;
+    ::vk::Device device;
+
 public:
-    VkGraphicsPipelineState(const Key& key);
+    VkGraphicsPipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache);
     ~VkGraphicsPipelineState();
     virtual void Compile(const Shader& vertexShader,
                          const Shader& pixelShader,
                          RHIResourceLayout& resourceLayout) override;
     virtual void Cleanup(ResourceCleanup& resourceCleanup) override;
+
+    ::vk::UniquePipeline graphicsPipeline;
 };
 
 class VkComputePipelineState final : public RHIComputePipelineStateInterface
