@@ -9,7 +9,7 @@ namespace vex::vk
 
 namespace GraphicsPiplineUtils
 {
-::vk::PrimitiveTopology InputTopologyToVkTopology(InputTopology topo);
+::vk::PrimitiveTopology InputTopologyToVkTopology(InputTopology val);
 }
 
 class VkGraphicsPipelineState final : public RHIGraphicsPipelineStateInterface

@@ -224,6 +224,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     ::vk::PhysicalDeviceVulkan13Features features13;
     features13.synchronization2 = true;
     features13.pNext = &featuresRobustness;
+    features13.dynamicRendering = true;
 
     ::vk::PhysicalDeviceVulkan12Features features12;
     features12.pNext = &features13;
@@ -305,7 +306,7 @@ UniqueHandle<RHICommandPool> VkRHI::CreateCommandPool()
 
 UniqueHandle<RHIGraphicsPipelineState> VkRHI::CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key)
 {
-    return MakeUnique<VkGraphicsPipelineState>(key);
+    return MakeUnique<VkGraphicsPipelineState>(key, *device, *PSOCache);
 }
 
 UniqueHandle<RHIComputePipelineState> VkRHI::CreateComputePipelineState(const ComputePipelineStateKey& key)

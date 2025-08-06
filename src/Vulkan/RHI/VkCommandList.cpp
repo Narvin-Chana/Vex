@@ -10,6 +10,21 @@
 #include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkErrorHandler.h>
 
+#include "Vex/DrawHelpers.h"
+
+namespace vex
+{
+template <class T>
+struct U32Alloc : std::allocator<T>
+{
+    using size_type = u32;
+};
+
+template <class T>
+using vector = std::vector<T, U32Alloc<T>>;
+
+} // namespace vex
+
 namespace vex::vk
 {
 
@@ -53,7 +68,7 @@ void VkCommandList::SetViewport(float x, float y, float width, float height, flo
     // different apis).
     // This consists of moving the (x=0, y=0) point from the bottom-left (vk convention) to the top-left (dx, metal and
     // console convention).
-    ::vk::Viewport viewport{
+    cachedViewport = {
         .x = x,
         .y = y + height,
         .width = width,
@@ -61,20 +76,14 @@ void VkCommandList::SetViewport(float x, float y, float width, float height, flo
         .minDepth = minDepth,
         .maxDepth = maxDepth,
     };
-
-    VEX_ASSERT(commandBuffer, "CommandBuffer must exist to set viewport");
-    commandBuffer->setViewport(0, 1, &viewport);
 }
 
 void VkCommandList::SetScissor(i32 x, i32 y, u32 width, u32 height)
 {
-    ::vk::Rect2D scissor{
+    cachedScissor = {
         .offset = { .x = x, .y = y },
         .extent = { .width = width, .height = height },
     };
-
-    VEX_ASSERT(commandBuffer, "CommandBuffer must exist to set scissor");
-    commandBuffer->setScissor(0, 1, &scissor);
 }
 
 void VkCommandList::SetPipelineState(const RHIGraphicsPipelineState& graphicsPipelineState)
@@ -140,6 +149,12 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
             const BindlessHandle handle = texture->GetOrCreateBindlessView(binding, usage, descriptorPool);
             bindlessHandleIndices.push_back(handle.GetIndex());
         }
+        else if (usage & TextureUsage::RenderTarget)
+        {
+        }
+        else if (usage & TextureUsage::DepthStencil)
+        {
+        }
     }
 
     for (auto& [binding, buffer] : buffers)
@@ -147,6 +162,11 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
         const BindlessHandle handle =
             buffer->GetOrCreateBindlessView(binding.bufferUsage, binding.bufferStride, descriptorPool);
         bindlessHandleIndices.push_back(handle.GetIndex());
+    }
+
+    if (bindlessHandleIndices.empty())
+    {
+        return;
     }
 
     ::vk::ShaderStageFlags stageFlags;
@@ -196,7 +216,68 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
                                  const ResourceBinding& clearBinding,
                                  const TextureClearValue& clearValue)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    const TextureDescription& desc = rhiTexture.GetDescription();
+
+    u32 layerCount = clearBinding.sliceCount == 0 ? desc.depthOrArraySize : clearBinding.sliceCount;
+    u32 mipCount = clearBinding.mipCount == 0 ? desc.mips : clearBinding.mipCount;
+    //
+    // if (desc.usage & TextureUsage::RenderTarget && clearValue.flags & TextureClear::ClearColor)
+    // {
+    //     ::vk::ClearAttachment clearAttachment{
+    //         .aspectMask = static_cast<::vk::ImageAspectFlagBits>(clearValue.flags),
+    //         .colorAttachment = 0, // TODO: replace with correct attachment index?
+    //         .clearValue{
+    //             .color = ::vk::ClearColorValue{
+    //                 .float32 = clearValue.color
+    //             }
+    //         }
+    //     };
+    //
+    //     ::vk::ClearRect clearRect{
+    //         .rect = ::vk::Rect2D{
+    //             .offset = ::vk::Offset2D{ 0, 0 },
+    //             .extent = ::vk::Extent2D{ desc.width, desc.height }
+    //         },
+    //         .baseArrayLayer = clearBinding.startSlice,
+    //         .layerCount = layerCount,
+    //     };
+    //
+    //     commandBuffer->clearAttachments(1, &clearAttachment, 1, &clearRect);
+    // }
+    // else
+
+    if (desc.usage & TextureUsage::DepthStencil &&
+        clearValue.flags & (TextureClear::ClearDepth | TextureClear::ClearStencil))
+    {
+        ::vk::ClearDepthStencilValue clearVal{
+            .depth = clearValue.depth,
+            .stencil = clearValue.stencil,
+        };
+
+        ::vk::ImageSubresourceRange ranges{
+            .aspectMask = static_cast<::vk::ImageAspectFlagBits>(clearValue.flags),
+            .baseMipLevel = clearBinding.mipBias,
+            .levelCount = mipCount,
+            .baseArrayLayer = clearBinding.startSlice,
+            .layerCount = layerCount,
+        };
+
+        commandBuffer->clearDepthStencilImage(rhiTexture.GetResource(), rhiTexture.GetLayout(), &clearVal, 1, &ranges);
+    }
+    else
+    {
+        ::vk::ClearColorValue clearVal{ .float32 = clearValue.color };
+
+        ::vk::ImageSubresourceRange ranges{
+            .aspectMask = static_cast<::vk::ImageAspectFlagBits>(clearValue.flags),
+            .baseMipLevel = clearBinding.mipBias,
+            .levelCount = mipCount,
+            .baseArrayLayer = clearBinding.startSlice,
+            .layerCount = layerCount,
+        };
+
+        commandBuffer->clearColorImage(rhiTexture.GetResource(), rhiTexture.GetLayout(), &clearVal, 1, &ranges);
+    }
 }
 
 // This only changes the access mask of the texture
@@ -245,6 +326,10 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
     case ImageLayout::ePresentSrcKHR:
         barrier.srcAccessMask = AccessFlagBits2::eMemoryRead | AccessFlagBits2::eMemoryWrite;
         barrier.srcStageMask = PipelineStageFlagBits2::eAllCommands;
+        break;
+    case ImageLayout::eColorAttachmentOptimal:
+        barrier.dstAccessMask = AccessFlagBits2::eShaderWrite;
+        barrier.dstStageMask = PipelineStageFlagBits2::eAllGraphics | PipelineStageFlagBits2::eComputeShader;
         break;
     default:
         VEX_ASSERT(false, "Transition source image layout not supported");
@@ -390,8 +475,71 @@ void VkCommandList::Transition(std::span<std::pair<RHIBuffer&, RHIBufferState::F
     }
 }
 
+void VkCommandList::BeginRendering(const RHIDrawResources& resources)
+{
+    ::vk::Rect2D maxArea{ { 0, 0 }, { 0, 0 } };
+    for (auto& renderTargets : resources.renderTargets)
+    {
+        maxArea.extent.width = std::max(renderTargets.texture->GetDescription().width, maxArea.extent.width);
+        maxArea.extent.height = std::max(renderTargets.texture->GetDescription().height, maxArea.extent.height);
+    }
+
+    vector<::vk::RenderingAttachmentInfo> colorAttachmentsInfo(resources.renderTargets.size());
+    std::ranges::transform(
+        resources.renderTargets,
+        colorAttachmentsInfo.begin(),
+        [](const RHITextureBinding& rtBindings)
+        {
+            return ::vk::RenderingAttachmentInfo{
+                .imageView = rtBindings.texture->GetOrCreateImageView(rtBindings.binding, TextureUsage::RenderTarget),
+                .imageLayout = rtBindings.texture->GetLayout(),
+            };
+        });
+
+    std::optional<::vk::RenderingAttachmentInfo> depthInfo;
+    if (resources.depthStencil && resources.depthStencil->texture->GetDescription().usage & TextureUsage::DepthStencil)
+    {
+        depthInfo = ::vk::RenderingAttachmentInfo{
+            .imageView = resources.depthStencil->texture->GetOrCreateImageView(resources.depthStencil->binding,
+                                                                               TextureUsage::DepthStencil),
+            .imageLayout = resources.depthStencil->texture->GetLayout(),
+        };
+    };
+
+    const ::vk::RenderingInfo info{
+        .renderArea = maxArea,
+        .layerCount = 1,
+        .viewMask = 0,
+        .colorAttachmentCount = colorAttachmentsInfo.size(),
+        .pColorAttachments = colorAttachmentsInfo.data(),
+        .pDepthAttachment = depthInfo ? &*depthInfo : nullptr,
+        .pStencilAttachment = depthInfo ? &*depthInfo : nullptr,
+    };
+
+    commandBuffer->beginRendering(info);
+    isRendering = true;
+}
+
+void VkCommandList::EndRendering()
+{
+    isRendering = false;
+    commandBuffer->endRendering();
+}
+
 void VkCommandList::Draw(u32 vertexCount)
 {
+    if (!cachedViewport || !cachedScissor)
+    {
+        VEX_LOG(Fatal, "SetScissor and SetViewport need to be called before Draw is ever called")
+    }
+
+    if (!isRendering)
+    {
+        VEX_LOG(Fatal, "You need to call BeginRendering before calling any draw commands")
+    }
+
+    commandBuffer->setViewport(0, 1, &*cachedViewport);
+    commandBuffer->setScissor(0, 1, &*cachedScissor);
     commandBuffer->draw(vertexCount, 1, 0, 0);
 }
 

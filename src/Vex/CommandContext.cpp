@@ -97,22 +97,7 @@ void CommandContext::ClearTexture(ResourceBinding binding,
         VEX_LOG(Fatal, "ClearTexture can only take in a texture.");
     }
     RHITexture& texture = backend->GetRHITexture(binding.texture.handle);
-    RHITextureState::Type newState;
-    if (binding.texture.description.usage & TextureUsage::RenderTarget)
-    {
-        newState = RHITextureState::RenderTarget;
-    }
-    else if (binding.texture.description.usage & TextureUsage::DepthStencil)
-    {
-        newState = RHITextureState::DepthWrite;
-    }
-    else
-    {
-        VEX_LOG(Fatal,
-                "Invalid texture passed to ClearTexture, your texture must allow for either RenderTarget usage or "
-                "DepthStencil usage.");
-    }
-    cmdList->Transition(texture, newState);
+    cmdList->Transition(texture, texture.GetClearTextureState());
     cmdList->ClearTexture(
         texture,
         binding,
@@ -251,7 +236,25 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
 
     // TODO: Validate draw vertex count (eg: versus the currently used index buffer size)
 
+    RHIDrawResources rhiDrawRes;
+
+    std::ranges::copy_if(rhiTextureBindings,
+                         std::back_inserter(rhiDrawRes.renderTargets),
+                         [](const auto& rhiTexBinding) { return rhiTexBinding.usage == TextureUsage::RenderTarget; });
+
+    if (auto it = std::ranges::find_if(rhiTextureBindings,
+                                       [](const auto& rhiTexBinding)
+                                       { return rhiTexBinding.usage == TextureUsage::DepthStencil; });
+        it != rhiTextureBindings.end())
+    {
+        rhiDrawRes.depthStencil = *it;
+    }
+
+    cmdList->BeginRendering(rhiDrawRes);
+
     cmdList->Draw(vertexCount);
+
+    cmdList->EndRendering();
 }
 
 void CommandContext::Dispatch(const ShaderKey& shader,

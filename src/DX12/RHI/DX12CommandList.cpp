@@ -388,6 +388,15 @@ void DX12CommandList::Transition(std::span<std::pair<RHIBuffer&, RHIBufferState:
         commandList->ResourceBarrier(transitionBarriers.size(), transitionBarriers.data());
     }
 }
+void DX12CommandList::BeginRendering(const RHIDrawResources& resources)
+{
+    // Nothing to do here
+}
+
+void DX12CommandList::EndRendering()
+{
+    // Nothing to do here
+}
 
 void DX12CommandList::Draw(u32 vertexCount)
 {
