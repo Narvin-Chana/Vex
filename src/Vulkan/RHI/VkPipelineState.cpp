@@ -199,7 +199,10 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
         .blendConstants = key.colorBlendState.blendConstants,
     };
 
-    std::array dynamicStates = { ::vk::DynamicState::eViewport, ::vk::DynamicState::eScissor };
+    std::array dynamicStates = { ::vk::DynamicState::eViewportWithCount,
+                                 ::vk::DynamicState::eScissorWithCount,
+                                 ::vk::DynamicState::ePrimitiveTopology,
+                                 ::vk::DynamicState::ePrimitiveRestartEnable };
 
     ::vk::PipelineDynamicStateCreateInfo dynamicStateInfo{
         .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
@@ -214,12 +217,19 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
         .pColorAttachmentFormats = attachmentFormats.data(),
     };
 
+    ::vk::PipelineViewportStateCreateInfo viewportStateCI{
+        .viewportCount = 0,
+        .pViewports = nullptr,
+        .scissorCount = 0,
+        .pScissors = nullptr,
+    };
+
     ::vk::GraphicsPipelineCreateInfo graphicsPipelineCI{ .pNext = &pipelineRenderingCI,
                                                          .stageCount = stages.size(),
                                                          .pStages = stages.data(),
                                                          .pVertexInputState = &pipelineVertexInputStateCI,
                                                          .pInputAssemblyState = &inputAssemblyState,
-                                                         .pViewportState = nullptr, // TODO ?
+                                                         .pViewportState = &viewportStateCI,
                                                          .pRasterizationState = &rasterCI,
                                                          .pMultisampleState = &multisamplingStateCI,
                                                          .pDepthStencilState = &depthStateCI,

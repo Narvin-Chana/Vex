@@ -538,8 +538,8 @@ void VkCommandList::Draw(u32 vertexCount)
         VEX_LOG(Fatal, "You need to call BeginRendering before calling any draw commands")
     }
 
-    commandBuffer->setViewport(0, 1, &*cachedViewport);
-    commandBuffer->setScissor(0, 1, &*cachedScissor);
+    commandBuffer->setViewportWithCount(1, &*cachedViewport);
+    commandBuffer->setScissorWithCount(1, &*cachedScissor);
     commandBuffer->draw(vertexCount, 1, 0, 0);
 }
 
