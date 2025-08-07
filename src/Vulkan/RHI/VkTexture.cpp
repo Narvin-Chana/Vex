@@ -78,6 +78,7 @@ VkBackbufferTexture::VkBackbufferTexture(VkGPUContext& ctx,
     , image{ backbufferImage }
 {
     description = std::move(inDescription);
+    currentState = RHITextureState::Common;
 }
 
 VkImageTexture::VkImageTexture(VkGPUContext& ctx, const TextureDescription& inDescription, ::vk::UniqueImage rawImage)
@@ -227,40 +228,32 @@ namespace vex::TextureUtil
 ::vk::ImageLayout TextureStateFlagToImageLayout(RHITextureState::Flags flags)
 {
     using namespace RHITextureState;
+    using namespace ::vk;
 
     switch (flags)
     {
     case Common:
-        return ::vk::ImageLayout::eUndefined;
-        break;
+        return ImageLayout::eUndefined;
     case RenderTarget:
-        return ::vk::ImageLayout::eColorAttachmentOptimal;
-        break;
+        return ImageLayout::eColorAttachmentOptimal;
     case ShaderReadWrite:
-        return ::vk::ImageLayout::eGeneral;
-        break;
+        return ImageLayout::eGeneral;
     case ShaderResource:
-        return ::vk::ImageLayout::eShaderReadOnlyOptimal;
-        break;
+        return ImageLayout::eShaderReadOnlyOptimal;
     case DepthRead:
-        return ::vk::ImageLayout::eDepthReadOnlyOptimal;
-        break;
+        return ImageLayout::eDepthReadOnlyOptimal;
     case DepthWrite:
-        return ::vk::ImageLayout::eDepthAttachmentOptimal;
-        break;
+        return ImageLayout::eDepthAttachmentOptimal;
     case CopySource:
-        return ::vk::ImageLayout::eTransferSrcOptimal;
-        break;
+        return ImageLayout::eTransferSrcOptimal;
     case CopyDest:
-        return ::vk::ImageLayout::eTransferDstOptimal;
-        break;
+        return ImageLayout::eTransferDstOptimal;
     case Present:
-        return ::vk::ImageLayout::ePresentSrcKHR;
-        break;
+        return ImageLayout::ePresentSrcKHR;
     default:
         VEX_ASSERT(false, "Flag to layout conversion not supported");
+        return ImageLayout::eUndefined;
     };
-    return ::vk::ImageLayout::eUndefined;
 }
 
 } // namespace vex::TextureUtil

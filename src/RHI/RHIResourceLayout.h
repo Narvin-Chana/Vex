@@ -19,6 +19,7 @@ class RHIResourceLayoutBase
 {
 public:
     RHIResourceLayoutBase();
+    ~RHIResourceLayoutBase();
     void SetLayoutResources(std::span<const ConstantBinding> constants,
                             std::span<RHITextureBinding> textures,
                             std::span<RHIBufferBinding> buffers,

@@ -156,13 +156,7 @@ UniqueHandle<RHIDescriptorPool> DX12RHI::CreateDescriptorPool()
     return MakeUnique<DX12DescriptorPool>(device);
 }
 
-void DX12RHI::ExecuteCommandList(RHICommandList& commandList)
-{
-    ID3D12CommandList* p = commandList.GetNativeCommandList().Get();
-    queues[commandList.GetType()]->ExecuteCommandLists(1, &p);
-}
-
-void DX12RHI::ExecuteCommandLists(std::span<RHICommandList*> commandLists)
+void DX12RHI::ExecuteCommandLists(std::span<RHICommandList*> commandLists, RHISwapChain& swapChain)
 {
     std::array<std::vector<ID3D12CommandList*>, CommandQueueTypes::Count> rawCommandListsPerQueue;
     for (RHICommandList* cmdList : commandLists)

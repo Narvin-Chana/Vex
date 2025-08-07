@@ -87,19 +87,20 @@ void VkCommandList::SetPipelineState(const RHIComputePipelineState& computePipel
     commandBuffer->bindPipeline(::vk::PipelineBindPoint::eCompute, *computePipelineState.computePipeline);
 }
 
-void VkCommandList::SetLayout(RHIResourceLayout& layout)
+void VkCommandList::SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& descriptorPool)
 {
-    // nothing to do here i think
-}
+    auto& bindlessBuffer = layout.internalConstantBuffers.Get(layout.FrameIndex);
+    Transition(*bindlessBuffer, RHIBufferState::UniformResource);
+    u32 bindlessBufferHandleIndex =
+        bindlessBuffer->GetOrCreateBindlessView(BufferBindingUsage::ConstantBuffer, 0, descriptorPool).GetIndex();
 
-void VkCommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout, std::span<const ConstantBinding> constants)
-{
-    if (constants.empty())
-    {
-        return;
-    }
+    auto localConstantsData = layout.GetLocalConstantsData();
 
-    auto constantData = layout.GetLocalConstantsData();
+    // First element of the push constants is a bindless index of the constant buffer of bindless indices.
+    std::vector<u8> totalData;
+    totalData.resize(sizeof(u32) + localConstantsData.size_bytes());
+    std::memcpy(totalData.data(), reinterpret_cast<u8*>(&bindlessBufferHandleIndex), sizeof(u32));
+    std::memcpy(totalData.data() + sizeof(u32), localConstantsData.data(), localConstantsData.size_bytes());
 
     ::vk::ShaderStageFlags stageFlags;
     switch (type)
@@ -113,58 +114,13 @@ void VkCommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout, std
         VEX_ASSERT(false, "Operation not supported on this queue type");
     }
 
-    commandBuffer->pushConstants(*layout.pipelineLayout,
-                                 stageFlags,
-                                 0, // Local constants start at 0
-                                 constantData.size(),
-                                 constantData.data());
+    commandBuffer->pushConstants(*layout.pipelineLayout, stageFlags, 0, totalData.size(), totalData.data());
 }
 
-void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
-                                       std::span<RHITextureBinding> textures,
-                                       std::span<RHIBufferBinding> buffers,
-                                       RHIDescriptorPool& descriptorPool)
+void VkCommandList::SetRenderTargetsAndDepthStencil(std::span<RHITextureBinding> renderTargets,
+                                                    std::optional<RHITextureBinding> depthStencil)
 {
-    if (textures.empty() && buffers.empty())
-    {
-        return;
-    }
-
-    std::vector<u32> bindlessHandleIndices;
-    bindlessHandleIndices.reserve(textures.size() + buffers.size());
-
-    for (auto& [binding, usage, texture] : textures)
-    {
-        if (usage & TextureUsage::ShaderRead || usage & TextureUsage::ShaderReadWrite)
-        {
-            const BindlessHandle handle = texture->GetOrCreateBindlessView(binding, usage, descriptorPool);
-            bindlessHandleIndices.push_back(handle.GetIndex());
-        }
-    }
-
-    for (auto& [binding, buffer] : buffers)
-    {
-        const BindlessHandle handle = buffer->GetOrCreateBindlessView(binding.bufferUsage, binding.bufferStride, descriptorPool);
-        bindlessHandleIndices.push_back(handle.GetIndex());
-    }
-
-    ::vk::ShaderStageFlags stageFlags;
-    switch (type)
-    {
-    case CommandQueueTypes::Graphics:
-        stageFlags |= ::vk::ShaderStageFlagBits::eAllGraphics;
-    case CommandQueueTypes::Compute:
-        stageFlags |= ::vk::ShaderStageFlagBits::eCompute;
-        break;
-    default:
-        VEX_ASSERT(false, "Operation not supported on this queue type");
-    }
-
-    commandBuffer->pushConstants(*layout.pipelineLayout,
-                                 stageFlags,
-                                 0,
-                                 bindlessHandleIndices.size() * sizeof(u32),
-                                 bindlessHandleIndices.data());
+    VEX_NOT_YET_IMPLEMENTED();
 }
 
 void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)
@@ -309,7 +265,6 @@ void VkCommandList::Transition(RHITexture& texture, RHITextureState::Flags newSt
     }
 
     auto memBarrier = GetMemoryBarrierFrom(texture, newState);
-
     commandBuffer->pipelineBarrier2({ .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &memBarrier });
 
     texture.SetCurrentState(newState);

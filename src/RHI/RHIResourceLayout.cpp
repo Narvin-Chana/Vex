@@ -18,6 +18,8 @@ RHIResourceLayoutBase::RHIResourceLayoutBase()
 {
 }
 
+RHIResourceLayoutBase::~RHIResourceLayoutBase() = default;
+
 void RHIResourceLayoutBase::SetLayoutResources(std::span<const ConstantBinding> constants,
                                                std::span<RHITextureBinding> textures,
                                                std::span<RHIBufferBinding> buffers,
@@ -58,7 +60,7 @@ void RHIResourceLayoutBase::SetLayoutResources(std::span<const ConstantBinding> 
     // Tmp buffer for uploading the bindless constants.. this doesn't scale for more than one type of pass per frame...
     // Ideally we'd allocate a BAB (big-ass-buffer) and then use subsections in it (or even better, have an allocation
     // strategy that allocates huge chunks of memory and create as many buffers as we want in it). Instead we just
-    // oscillate between 3 hardcoded buffers for now.
+    // oscillate between multiple hardcoded buffers for now.
     if (!bindlessHandles.empty())
     {
         internalConstantBuffers.Get(FrameIndex)

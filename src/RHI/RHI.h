@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <Vex/CommandQueueType.h>
+#include <Vex/FrameResource.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/Types.h>
 #include <Vex/UniqueHandle.h>
@@ -39,8 +40,7 @@ struct RHIBase
 
     virtual UniqueHandle<RHIDescriptorPool> CreateDescriptorPool() = 0;
 
-    virtual void ExecuteCommandList(RHICommandList& commandList) = 0;
-    virtual void ExecuteCommandLists(std::span<RHICommandList*> commandLists) = 0;
+    virtual void ExecuteCommandLists(std::span<RHICommandList*> commandLists, RHISwapChain& swapChain) = 0;
 
     virtual UniqueHandle<RHIFence> CreateFence(u32 numFenceIndices) = 0;
     virtual void SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) = 0;

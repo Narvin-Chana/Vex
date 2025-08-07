@@ -111,7 +111,7 @@ void DX12CommandList::SetPipelineState(const RHIComputePipelineState& computePip
     commandList->SetPipelineState(computePipelineState.computePSO.Get());
 }
 
-void DX12CommandList::SetLayout(RHIResourceLayout& layout)
+void DX12CommandList::SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& descriptorPool)
 {
     ID3D12RootSignature* globalRootSignature = layout.GetRootSignature().Get();
 

@@ -24,7 +24,7 @@ public:
     virtual void SetPipelineState(const RHIGraphicsPipelineState& graphicsPipelineState) override;
     virtual void SetPipelineState(const RHIComputePipelineState& computePipelineState) override;
 
-    virtual void SetLayout(RHIResourceLayout& layout) override;
+    virtual void SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& descriptorPool) override;
     virtual void SetRenderTargetsAndDepthStencil(std::span<RHITextureBinding> renderTargets,
                                                  std::optional<RHITextureBinding> depthStencil) override;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) override;

@@ -2,8 +2,10 @@
 
 #include <array>
 #include <mutex>
+#include <utility>
 #include <vector>
 
+#include <Vex/FrameResource.h>
 #include <Vex/UniqueHandle.h>
 
 #include <RHI/RHI.h>
@@ -26,8 +28,6 @@ public:
 private:
     std::vector<UniqueHandle<DX12CommandList>>& GetAvailableCommandLists(CommandQueueType queueType);
     std::vector<UniqueHandle<DX12CommandList>>& GetOccupiedCommandLists(CommandQueueType queueType);
-
-    std::mutex poolMutex;
 
     ComPtr<DX12Device> device;
     std::array<std::vector<UniqueHandle<DX12CommandList>>, CommandQueueTypes::Count> perQueueAvailableCommandLists;

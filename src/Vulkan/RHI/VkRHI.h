@@ -46,8 +46,7 @@ public:
 
     virtual UniqueHandle<RHIDescriptorPool> CreateDescriptorPool() override;
 
-    virtual void ExecuteCommandList(RHICommandList& commandList) override;
-    virtual void ExecuteCommandLists(std::span<RHICommandList*> commandLists) override;
+    virtual void ExecuteCommandLists(std::span<RHICommandList*> commandLists, RHISwapChain& swapChain) override;
 
     virtual UniqueHandle<RHIFence> CreateFence(u32 numFenceIndices) override;
     virtual void SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) override;
@@ -55,9 +54,16 @@ public:
     virtual void ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
                                                  std::vector<ShaderDefine>& defines) override;
 
+    void AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex);
+    void SubmitAndPresent(std::span<RHICommandList*> commandLists, RHISwapChain& swapChain, u32 currentFrameIndex);
+
 private:
     VkGPUContext& GetGPUContext();
     void InitWindow(const PlatformWindowHandle& windowHandle);
+    void SubmitCommandListBatch(std::span<RHICommandList*> commandLists,
+                                CommandQueueType queueType,
+                                RHISwapChain& swapChain);
+    u32 currentFrameIndex = 0;
 
     ::vk::UniqueInstance instance;
     ::vk::UniqueSurfaceKHR surface;

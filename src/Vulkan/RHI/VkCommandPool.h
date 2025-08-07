@@ -1,6 +1,9 @@
 ﻿#pragma once
 
+#include <utility>
+
 #include <Vex/CommandQueueType.h>
+#include <Vex/FrameResource.h>
 
 #include <RHI/RHICommandPool.h>
 

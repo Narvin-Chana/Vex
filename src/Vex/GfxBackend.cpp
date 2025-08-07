@@ -85,7 +85,7 @@ GfxBackend::GfxBackend(const BackendDescription& description)
         queueFrameFences[queueType] = rhi.CreateFence(std::to_underlying(description.frameBuffering));
     }
 
-    commandPools.ForEach([this](UniqueHandle<RHICommandPool>& el) { el = rhi.CreateCommandPool(); });
+    commandPools.ForEach([&rhi = rhi](UniqueHandle<RHICommandPool>& el) { el = rhi.CreateCommandPool(); });
 
     descriptorPool = rhi.CreateDescriptorPool();
 
@@ -115,7 +115,8 @@ GfxBackend::~GfxBackend()
 
 void GfxBackend::StartFrame()
 {
-    swapChain->AcquireNextBackbuffer(currentFrameIndex);
+    // swapChain->AcquireNextBackbuffer(currentFrameIndex);
+    rhi.AcquireNextFrame(*swapChain, currentFrameIndex);
 
     for (auto& renderExtension : renderExtensions)
     {
@@ -142,34 +143,24 @@ void GfxBackend::EndFrame(bool isFullscreenMode)
         queuedCommandLists.push_back(cmdList);
     }
 
-    FlushCommandListQueue();
+    rhi.SubmitAndPresent(queuedCommandLists, *swapChain, currentFrameIndex);
+    queuedCommandLists.clear();
 
-    swapChain->Present(isFullscreenMode);
-
-    // Signal all queue fences.
-    for (auto queueType : magic_enum::enum_values<CommandQueueType>())
-    {
-        rhi.SignalFence(queueType, *queueFrameFences[queueType], currentFrameIndex);
-    }
-
-    u32 nextFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
-
-    // Wait for the fences nextFrameIndex value for all queue fences.
-    for (auto queueType : magic_enum::enum_values<CommandQueueType>())
-    {
-        queueFrameFences[queueType]->WaitCPUAndIncrementNextFenceIndex(currentFrameIndex, nextFrameIndex);
-    }
-
-    currentFrameIndex = nextFrameIndex;
+    currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
 
     // Flush all resources that were queued up for deletion.
     resourceCleanup.FlushResources(1, *descriptorPool);
 
-    // Release the memory occupied by the command lists that are done.
-    GetCurrentCommandPool().ReclaimAllCommandListMemory();
+    if (frameCounter >= std::to_underlying(description.frameBuffering))
+    {
+        // Release the memory occupied by the command lists that are done.
+        GetCurrentCommandPool().ReclaimAllCommandListMemory();
+    }
 
     // Send all shader errors to the user, only done on frame end, not on GPU flush.
     psCache.GetShaderCompiler().FlushCompilationErrors();
+
+    ++frameCounter;
 }
 
 CommandContext GfxBackend::BeginScopedCommandContext(CommandQueueType queueType)
@@ -248,7 +239,9 @@ BindlessHandle GfxBackend::GetTextureBindlessHandle(const ResourceBinding& bindl
     return texture.GetOrCreateBindlessView(bindlessResource, usage, *descriptorPool);
 }
 
-BindlessHandle GfxBackend::GetBufferBindlessHandle(const ResourceBinding& bindlessResource, BufferBindingUsage usage, u32 stride)
+BindlessHandle GfxBackend::GetBufferBindlessHandle(const ResourceBinding& bindlessResource,
+                                                   BufferBindingUsage usage,
+                                                   u32 stride)
 {
     if (!bindlessResource.IsBuffer())
     {
@@ -263,22 +256,17 @@ void GfxBackend::FlushGPU()
 {
     VEX_LOG(Info, "Forcing a GPU flush...");
 
-    // Rid ourselves of the currently queued up command lists.
-    FlushCommandListQueue();
+    rhi.AcquireNextFrame(*swapChain, currentFrameIndex);
+    rhi.SubmitAndPresent({}, *swapChain, currentFrameIndex);
+    currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
 
-    for (auto queueType : magic_enum::enum_values<CommandQueueType>())
-    {
-        // Increment fence values before signaling to ensure we're waiting on new values.
-        ++queueFrameFences[queueType]->GetFenceValue(currentFrameIndex);
-        // Signal fences with incremented value.
-        rhi.SignalFence(queueType, *queueFrameFences[queueType], currentFrameIndex);
-    }
+    rhi.AcquireNextFrame(*swapChain, currentFrameIndex);
+    rhi.SubmitAndPresent({}, *swapChain, currentFrameIndex);
+    currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
 
-    // Wait for the currentFrameIndex we just signaled to be done for all queue fences.
-    for (auto queueType : magic_enum::enum_values<CommandQueueType>())
-    {
-        queueFrameFences[queueType]->WaitCPU(currentFrameIndex);
-    }
+    rhi.AcquireNextFrame(*swapChain, currentFrameIndex);
+    rhi.SubmitAndPresent({}, *swapChain, currentFrameIndex);
+    currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
 
     // Release all stale resource now that the GPU is done with them.
     resourceCleanup.FlushResources(std::to_underlying(description.frameBuffering), *descriptorPool);
@@ -431,7 +419,8 @@ void GfxBackend::CreateBackBuffers()
 
 void GfxBackend::FlushCommandListQueue()
 {
-    rhi.ExecuteCommandLists(queuedCommandLists);
+    // rhi.ExecuteCommandLists(queuedCommandLists, *swapChain);
+    rhi.SubmitAndPresent(queuedCommandLists, *swapChain, currentFrameIndex);
     queuedCommandLists.clear();
 }
 

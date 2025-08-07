@@ -79,7 +79,9 @@ public:
 
     BindlessHandle GetTextureBindlessHandle(const ResourceBinding& bindlessResource, TextureUsage::Type usage);
     // Stride needs to be set if usage == StructuredBuffer
-    BindlessHandle GetBufferBindlessHandle(const ResourceBinding& bindlessResource,  BufferBindingUsage usage, u32 stride = 0);
+    BindlessHandle GetBufferBindlessHandle(const ResourceBinding& bindlessResource,
+                                           BufferBindingUsage usage,
+                                           u32 stride = 0);
 
     // Flushes all current GPU commands.
     void FlushGPU();
@@ -126,6 +128,7 @@ private:
     //  {0, 1} if double buffering
     //  {0, 1, 2} if triple buffering
     u8 currentFrameIndex = 0;
+    u64 frameCounter = 0;
 
     RHI rhi;
 

@@ -8,11 +8,12 @@ namespace vex::vk
 {
 class VkFeatureChecker;
 class VkDescriptorPool;
+struct VkGPUContext;
 
 class VkResourceLayout final : public RHIResourceLayoutBase
 {
 public:
-    VkResourceLayout(::vk::Device device, const VkDescriptorPool& descriptorPool);
+    VkResourceLayout(VkGPUContext& ctx, const VkDescriptorPool& descriptorPool);
 
     ::vk::UniquePipelineLayout pipelineLayout;
 };

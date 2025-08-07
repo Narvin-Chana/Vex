@@ -52,14 +52,18 @@ private:
     SwapChainDescription description;
 
     ::vk::UniqueSwapchainKHR swapchain;
-    std::vector<::vk::UniqueSemaphore> presentSemaphore;
 
+    // Used to wait for acquisition of the next frame's backbuffer image.
     std::vector<::vk::UniqueSemaphore> backbufferAcquisition;
+    // Used to wait for all command lists to finish before presenting.
+    std::vector<::vk::UniqueSemaphore> presentSemaphore;
 
     u32 currentBackbufferId;
     u32 width, height;
 
     VkGPUContext& ctx;
+
+    friend class VkRHI;
 };
 
 } // namespace vex::vk

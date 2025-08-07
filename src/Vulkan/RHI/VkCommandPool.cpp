@@ -33,11 +33,16 @@ RHICommandList* VkCommandPool::CreateCommandList(CommandQueueType queueType)
 
 void VkCommandPool::ReclaimCommandListMemory(CommandQueueType queueType)
 {
+    // Decrement lifespan of all allocated buffers.
+    auto& commandBuffers = allocatedCommandBuffers[std::to_underlying(queueType)];
     VEX_LOG(Verbose,
             "Reclaimed {} command list(s) for \"{}\" type",
-            allocatedCommandBuffers[std::to_underlying(queueType)].size(),
+            commandBuffers.size(),
             magic_enum::enum_name(queueType));
-    allocatedCommandBuffers[std::to_underlying(queueType)].clear();
+
+    // Release underlying command buffers now that they are assuredly no longer in flight.
+    commandBuffers.clear();
+    VEX_VK_CHECK << ctx.device.resetCommandPool(*commandPoolPerQueueType[std::to_underlying(queueType)]);
 }
 
 void VkCommandPool::ReclaimAllCommandListMemory()

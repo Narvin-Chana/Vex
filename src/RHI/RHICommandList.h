@@ -34,7 +34,7 @@ public:
     virtual void SetPipelineState(const RHIGraphicsPipelineState& graphicsPipelineState) = 0;
     virtual void SetPipelineState(const RHIComputePipelineState& computePipelineState) = 0;
 
-    virtual void SetLayout(RHIResourceLayout& layout) = 0;
+    virtual void SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& descriptorPool) = 0;
     virtual void SetRenderTargetsAndDepthStencil(std::span<RHITextureBinding> renderTargets,
                                                  std::optional<RHITextureBinding> depthStencil) = 0;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) = 0;

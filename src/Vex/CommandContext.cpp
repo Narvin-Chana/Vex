@@ -254,23 +254,7 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
                                       rhiBufferBindings,
                                       *backend->descriptorPool);
 
-    // TMP: setup buffer and copy data correctly
-    std::vector<std::pair<RHIBuffer&, RHIBufferState::Flags>> bufferStagingCopyTransitions;
-    auto& tempBuf = resourceLayout.internalConstantBuffers.Get(resourceLayout.FrameIndex);
-    if (tempBuf->NeedsStagingBufferCopy())
-    {
-        bufferStagingCopyTransitions.emplace_back(*tempBuf, RHIBufferState::CopyDest);
-        bufferStagingCopyTransitions.emplace_back(*tempBuf->GetStagingBuffer(), RHIBufferState::CopySource);
-    }
-    cmdList->Transition(bufferStagingCopyTransitions);
-    for (int i = 0; i < bufferStagingCopyTransitions.size() / 2; ++i)
-    {
-        auto& buffer = bufferStagingCopyTransitions[i * 2].first;
-        cmdList->Copy(*buffer.GetStagingBuffer(), buffer);
-        buffer.SetNeedsStagingBufferCopy(false);
-    }
-
-    cmdList->SetLayout(resourceLayout);
+    cmdList->SetLayout(resourceLayout, *backend->descriptorPool);
     cmdList->SetRenderTargetsAndDepthStencil(rhiTextureBindings, {});
     if (!cachedInputAssembly || drawDesc.inputAssembly != cachedInputAssembly)
     {
@@ -374,7 +358,7 @@ void CommandContext::Dispatch(const ShaderKey& shader,
                                       rhiTextureBindings,
                                       rhiBufferBindings,
                                       *backend->descriptorPool);
-    cmdList->SetLayout(resourceLayout);
+    cmdList->SetLayout(resourceLayout, *backend->descriptorPool);
 
     // Validate dispatch (vs platform/api constraints)
     // backend->ValidateDispatch(groupCount);
