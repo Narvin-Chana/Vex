@@ -196,8 +196,11 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
         barrier.dstStageMask = PipelineStageFlagBits2::eAllGraphics | PipelineStageFlagBits2::eComputeShader;
         break;
     case ImageLayout::eGeneral:
-    case ImageLayout::ePresentSrcKHR:
         barrier.srcAccessMask = AccessFlagBits2::eMemoryRead | AccessFlagBits2::eMemoryWrite;
+        barrier.srcStageMask = PipelineStageFlagBits2::eAllCommands;
+        break;
+    case ImageLayout::ePresentSrcKHR:
+        barrier.srcAccessMask = AccessFlagBits2::eNone;
         barrier.srcStageMask = PipelineStageFlagBits2::eAllCommands;
         break;
     default:
@@ -224,8 +227,11 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
         barrier.dstStageMask = PipelineStageFlagBits2::eAllGraphics | PipelineStageFlagBits2::eComputeShader;
         break;
     case ImageLayout::eGeneral:
-    case ImageLayout::ePresentSrcKHR:
         barrier.dstAccessMask = AccessFlagBits2::eMemoryRead | AccessFlagBits2::eMemoryWrite;
+        barrier.dstStageMask = PipelineStageFlagBits2::eAllCommands;
+        break;
+    case ImageLayout::ePresentSrcKHR:
+        barrier.dstAccessMask = AccessFlagBits2::eNone;
         barrier.dstStageMask = PipelineStageFlagBits2::eAllCommands;
         break;
     case ImageLayout::eColorAttachmentOptimal:

@@ -117,6 +117,16 @@ void GfxBackend::StartFrame()
 {
     // swapChain->AcquireNextBackbuffer(currentFrameIndex);
     rhi.AcquireNextFrame(*swapChain, currentFrameIndex);
+    // ---
+    // Vulkan specific hack, swapchain is in eUnknown after acquisition.
+    GetRHITexture(GetCurrentBackBuffer().handle).SetCurrentState(RHITextureState::Common);
+    // ---
+
+    // Flush all resources that were queued up for deletion.
+    resourceCleanup.FlushResources(1, *descriptorPool);
+
+    // Release the memory occupied by the command lists that are done.
+    GetCurrentCommandPool().ReclaimAllCommandListMemory();
 
     for (auto& renderExtension : renderExtensions)
     {
@@ -147,15 +157,6 @@ void GfxBackend::EndFrame(bool isFullscreenMode)
     queuedCommandLists.clear();
 
     currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
-
-    // Flush all resources that were queued up for deletion.
-    resourceCleanup.FlushResources(1, *descriptorPool);
-
-    if (frameCounter >= std::to_underlying(description.frameBuffering))
-    {
-        // Release the memory occupied by the command lists that are done.
-        GetCurrentCommandPool().ReclaimAllCommandListMemory();
-    }
 
     // Send all shader errors to the user, only done on frame end, not on GPU flush.
     psCache.GetShaderCompiler().FlushCompilationErrors();
@@ -256,17 +257,17 @@ void GfxBackend::FlushGPU()
 {
     VEX_LOG(Info, "Forcing a GPU flush...");
 
-    rhi.AcquireNextFrame(*swapChain, currentFrameIndex);
-    rhi.SubmitAndPresent({}, *swapChain, currentFrameIndex);
-    currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
+    // rhi.AcquireNextFrame(*swapChain, currentFrameIndex);
+    // rhi.SubmitAndPresent({}, *swapChain, currentFrameIndex);
+    // currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
 
-    rhi.AcquireNextFrame(*swapChain, currentFrameIndex);
-    rhi.SubmitAndPresent({}, *swapChain, currentFrameIndex);
-    currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
+    // rhi.AcquireNextFrame(*swapChain, currentFrameIndex);
+    // rhi.SubmitAndPresent({}, *swapChain, currentFrameIndex);
+    // currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
 
-    rhi.AcquireNextFrame(*swapChain, currentFrameIndex);
-    rhi.SubmitAndPresent({}, *swapChain, currentFrameIndex);
-    currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
+    // rhi.AcquireNextFrame(*swapChain, currentFrameIndex);
+    // rhi.SubmitAndPresent({}, *swapChain, currentFrameIndex);
+    // currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
 
     // Release all stale resource now that the GPU is done with them.
     resourceCleanup.FlushResources(std::to_underlying(description.frameBuffering), *descriptorPool);

@@ -64,18 +64,36 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
         .apiVersion = GetHighestApiVersionDevice().apiVersion,
     };
 
-    ::vk::DebugUtilsMessengerCreateInfoEXT* debugCreateInfoPtr = nullptr;
+    ::vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo;
+    ::vk::ValidationFeaturesEXT validationFeatures;
+    std::vector<::vk::ValidationFeatureEnableEXT> enables;
 
+    if (enableGPUBasedValidation)
+    {
+        // Enable all validation layer features.
+        enables = {
+            ::vk::ValidationFeatureEnableEXT::eGpuAssisted,
+            ::vk::ValidationFeatureEnableEXT::eGpuAssistedReserveBindingSlot,
+            ::vk::ValidationFeatureEnableEXT::eBestPractices,
+            ::vk::ValidationFeatureEnableEXT::eDebugPrintf,
+            ::vk::ValidationFeatureEnableEXT::eSynchronizationValidation,
+        };
+        validationFeatures = {
+            .enabledValidationFeatureCount = static_cast<u32>(enables.size()),
+            .pEnabledValidationFeatures = enables.data(),
+        };
+    }
     if (enableGPUDebugLayer)
     {
+        // Enable custom message callback.
         using Severity = ::vk::DebugUtilsMessageSeverityFlagBitsEXT;
         using MessageType = ::vk::DebugUtilsMessageTypeFlagBitsEXT;
-        ::vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo{
+        debugCreateInfo = {
+            .pNext = enableGPUBasedValidation ? &validationFeatures : nullptr,
             .messageSeverity = Severity::eVerbose | Severity::eWarning | Severity::eError,
             .messageType = MessageType::eGeneral | MessageType::eValidation | MessageType::ePerformance,
             .pfnUserCallback = debugCallback,
         };
-        debugCreateInfoPtr = &debugCreateInfo;
     }
 
     std::vector<const char*> requiredInstanceExtensions = GetRequiredInstanceExtensions(enableGPUDebugLayer);
@@ -85,7 +103,8 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
 
     ::vk::InstanceCreateInfo instanceCI{
         .sType = ::vk::StructureType::eInstanceCreateInfo,
-        .pNext = debugCreateInfoPtr,
+        .pNext = enableGPUDebugLayer ? static_cast<void*>(&debugCreateInfo)
+                                     : (enableGPUBasedValidation ? static_cast<void*>(&validationFeatures) : nullptr),
         .flags = {},
         .pApplicationInfo = &appInfo,
         .enabledLayerCount = static_cast<u32>(validationLayers.size()),
@@ -402,7 +421,6 @@ void VkRHI::AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex)
                                                 *swapChain.backbufferAcquisition[currentFrameIndex],
                                                 VK_NULL_HANDLE,
                                                 &swapChain.currentBackbufferId);
-
 }
 
 void VkRHI::SubmitAndPresent(std::span<RHICommandList*> commandLists, RHISwapChain& swapChain, u32 currentFrameIndex)
@@ -470,27 +488,13 @@ void VkRHI::SubmitAndPresent(std::span<RHICommandList*> commandLists, RHISwapCha
             ::vk::SubmitInfo2 submitInfo = {
                 .waitSemaphoreInfoCount = 1,
                 .pWaitSemaphoreInfos = &acquireWaitInfo,
-                .commandBufferInfoCount = 0,
-                .pCommandBufferInfos = nullptr,
-                //.commandBufferInfoCount = static_cast<u32>(graphicsCmdLists.size()),
-                //.pCommandBufferInfos = graphicsCmdLists.data(),
+                //.commandBufferInfoCount = 0,
+                //.pCommandBufferInfos = nullptr,
+                .commandBufferInfoCount = static_cast<u32>(graphicsCmdLists.size()),
+                .pCommandBufferInfos = graphicsCmdLists.data(),
                 .signalSemaphoreInfoCount = static_cast<u32>(signalInfos.size()),
                 .pSignalSemaphoreInfos = signalInfos.data(),
             };
-
-            //::vk::SemaphoreSubmitInfo timelineSignalInfo = {
-            //    .semaphore = *cmdQueue.timelineSemaphore,
-            //    .value = signalValue,
-            //    .stageMask = ::vk::PipelineStageFlagBits2::eAllCommands,
-            //};
-            //::vk::SubmitInfo2 submit = {
-            //    .waitSemaphoreInfoCount = 0,
-            //    .pWaitSemaphoreInfos = nullptr,
-            //    .commandBufferInfoCount = 0, // No command buffers
-            //    .pCommandBufferInfos = nullptr,
-            //    .signalSemaphoreInfoCount = 1,
-            //    .pSignalSemaphoreInfos = &timelineSignalInfo,
-            //};
 
             auto result = cmdQueue.queue.submit2(submitInfo);
 
