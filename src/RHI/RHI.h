@@ -24,7 +24,7 @@ struct PlatformWindow;
 struct RHIBase
 {
     virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() = 0;
-    virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice, FrameBuffering frameBuffering) = 0;
+    virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) = 0;
 
     virtual UniqueHandle<RHISwapChain> CreateSwapChain(const SwapChainDescription& description,
                                                        const PlatformWindow& platformWindow) = 0;

@@ -23,9 +23,9 @@ namespace vex::dx12
 namespace DX12RHI_Internal
 {
 
-static std::array<DX12Fence, CommandQueueTypes::Count> CreateFences(u32 numFences, ComPtr<DX12Device>& device)
+static std::array<DX12Fence, CommandQueueTypes::Count> CreateFences(ComPtr<DX12Device>& device)
 {
-    return { DX12Fence(numFences, device), DX12Fence(numFences, device), DX12Fence(numFences, device) };
+    return { DX12Fence(device), DX12Fence(device), DX12Fence(device) };
 }
 
 } // namespace DX12RHI_Internal
@@ -84,7 +84,7 @@ std::vector<UniqueHandle<PhysicalDevice>> DX12RHI::EnumeratePhysicalDevices()
     return physicalDevices;
 }
 
-void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice, FrameBuffering frameBuffering)
+void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
 {
     device = DXGIFactory::CreateDeviceStrict(
         static_cast<DX12PhysicalDevice*>(physicalDevice.get())->adapter.Get(),
@@ -121,7 +121,7 @@ void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice, FrameBuff
         chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetNativeQueue(CommandQueueType::Copy)));
     }
 
-    fences = DX12RHI_Internal::CreateFences(std::to_underlying(frameBuffering), device);
+    fences = DX12RHI_Internal::CreateFences(device);
 }
 
 UniqueHandle<RHISwapChain> DX12RHI::CreateSwapChain(const SwapChainDescription& description,
@@ -179,10 +179,12 @@ void DX12RHI::AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex, R
     for (u32 i = 0; i < CommandQueueTypes::Count; ++i)
     {
         CommandQueueType queueType = static_cast<CommandQueueType>(i);
-        auto& fence = fences[queueType];
-        fence.WaitCPUAndIncrementNextFenceIndex(
-            currentFrameIndex,
-            (currentFrameIndex + 1) % std::to_underlying(swapChain.description.frameBuffering));
+        auto& fence = (*fences)[queueType];
+        // Don't wait for the first few frames (the first time use of each frame buffer has no dependencies).
+        if (fence.nextSignalValue > std::to_underlying(swapChain.description.frameBuffering))
+        {
+            fence.WaitCPU(fence.nextSignalValue - std::to_underlying(swapChain.description.frameBuffering));
+        }
     }
 }
 
@@ -212,9 +214,9 @@ void DX12RHI::SubmitAndPresent(std::span<RHICommandList*> commandLists,
     for (u32 i = 0; i < CommandQueueTypes::Count; ++i)
     {
         CommandQueueType queueType = static_cast<CommandQueueType>(i);
-        auto& fence = fences[queueType];
-        VEX_LOG(Info, "Signaling fence {}", fence.GetFenceValue(currentFrameIndex));
-        chk << GetNativeQueue(queueType)->Signal(fence.fence.Get(), fence.GetFenceValue(currentFrameIndex));
+        auto& fence = (*fences)[queueType];
+        u64 signalValue = fence.nextSignalValue++;
+        chk << GetNativeQueue(queueType)->Signal(fence.fence.Get(), signalValue);
     }
 }
 
@@ -223,7 +225,8 @@ void DX12RHI::FlushGPU()
     for (u32 i = 0; i < CommandQueueTypes::Count; ++i)
     {
         CommandQueueType queueType = static_cast<CommandQueueType>(i);
-        auto& fence = fences[queueType];
+        auto& fence = (*fences)[queueType];
+        fence.Flush();
     }
 }
 

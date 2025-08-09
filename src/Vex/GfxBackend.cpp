@@ -71,7 +71,7 @@ GfxBackend::GfxBackend(const BackendDescription& description)
 #endif
 
     // Initializes RHI which includes creating logical device and swapchain
-    rhi.Init(GPhysicalDevice, description.frameBuffering);
+    rhi.Init(GPhysicalDevice);
 
     VEX_LOG(Info,
             "Created graphics backend with width {} and height {}.",

@@ -25,7 +25,7 @@ public:
     ~DX12RHI();
 
     virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() override;
-    virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice, FrameBuffering frameBuffering) override;
+    virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) override;
 
     virtual UniqueHandle<RHISwapChain> CreateSwapChain(const SwapChainDescription& description,
                                                        const PlatformWindow& platformWindow) override;
@@ -69,7 +69,7 @@ private:
     ComPtr<DX12Device> device;
 
     std::array<ComPtr<ID3D12CommandQueue>, CommandQueueTypes::Count> queues;
-    std::array<DX12Fence, CommandQueueTypes::Count> fences;
+    std::optional<std::array<DX12Fence, CommandQueueTypes::Count>> fences;
 };
 
 } // namespace vex::dx12

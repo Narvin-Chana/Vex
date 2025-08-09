@@ -167,7 +167,7 @@ std::vector<UniqueHandle<PhysicalDevice>> VkRHI::EnumeratePhysicalDevices()
     return physicalDevices;
 }
 
-void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice, FrameBuffering frameBuffering)
+void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
 {
     physDevice = static_cast<VkPhysicalDevice*>(vexPhysicalDevice.get())->physicalDevice;
 
@@ -283,26 +283,32 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice, FrameBuf
         VEX_LOG(Fatal, "Unable to create graphics queue on device!");
     }
     commandQueues[CommandQueueTypes::Graphics] = VkCommandQueue{
-        CommandQueueTypes::Graphics, static_cast<u32>(graphicsQueueFamily), device->getQueue(graphicsQueueFamily, 0), 1,
-        createTimelineSemaphore(),
+        .type = CommandQueueTypes::Graphics,
+        .family = static_cast<u32>(graphicsQueueFamily),
+        .queue = device->getQueue(graphicsQueueFamily, 0),
+        .nextSignalValue = 1,
+        .timelineSemaphore = createTimelineSemaphore(),
     };
 
     if (computeQueueFamily != -1)
     {
         commandQueues[CommandQueueTypes::Compute] = VkCommandQueue{
-            CommandQueueTypes::Compute,
-            static_cast<u32>(computeQueueFamily),
-            device->getQueue(computeQueueFamily, 0),
-            1,
-            createTimelineSemaphore(),
+            .type = CommandQueueTypes::Compute,
+            .family = static_cast<u32>(computeQueueFamily),
+            .queue = device->getQueue(computeQueueFamily, 0),
+            .nextSignalValue = 1,
+            .timelineSemaphore = createTimelineSemaphore(),
         };
     }
 
     if (copyQueueFamily != -1)
     {
         commandQueues[CommandQueueTypes::Copy] = VkCommandQueue{
-            CommandQueueTypes::Copy,   static_cast<u32>(copyQueueFamily), device->getQueue(copyQueueFamily, 0), 1,
-            createTimelineSemaphore(),
+            .type = CommandQueueTypes::Copy,
+            .family = static_cast<u32>(copyQueueFamily),
+            .queue = device->getQueue(copyQueueFamily, 0),
+            .nextSignalValue = 1,
+            .timelineSemaphore = createTimelineSemaphore(),
         };
     }
 
@@ -387,6 +393,8 @@ void VkRHI::AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex, RHI
     }
 
     // Acquire the next image
+    // TODO: handle state from this function, potentially this could require a recreation of the swapchain
+    // (KHR_OutOfDate).
     VEX_VK_CHECK << device->acquireNextImageKHR(*swapChain.swapchain,
                                                 std::numeric_limits<u64>::max(),
                                                 *swapChain.backbufferAcquisition[currentFrameIndex],

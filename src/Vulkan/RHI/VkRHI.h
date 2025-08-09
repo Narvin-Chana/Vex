@@ -28,7 +28,7 @@ public:
     ~VkRHI();
 
     virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() override;
-    virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice, FrameBuffering frameBuffering) override;
+    virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) override;
 
     virtual UniqueHandle<RHISwapChain> CreateSwapChain(const SwapChainDescription& description,
                                                        const PlatformWindow& platformWindow) override;
