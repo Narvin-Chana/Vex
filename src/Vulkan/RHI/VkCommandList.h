@@ -4,6 +4,10 @@
 
 #include <Vulkan/VkHeaders.h>
 
+namespace vex
+{
+struct RHIDrawResources;
+}
 namespace vex::vk
 {
 struct VkGPUContext;
@@ -45,6 +49,9 @@ public:
     virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs) override;
     virtual void Transition(std::span<std::pair<RHIBuffer&, RHIBufferState::Flags>> bufferNewStatePairs) override;
 
+    virtual void BeginRendering(const RHIDrawResources& resources) override;
+    virtual void EndRendering() override;
+
     virtual void Draw(u32 vertexCount) override;
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount) override;
@@ -59,6 +66,11 @@ private:
     ::vk::UniqueCommandBuffer commandBuffer;
     CommandQueueType type;
     bool isOpen = false;
+
+    bool isRendering = false;
+
+    std::optional<::vk::Viewport> cachedViewport{};
+    std::optional<::vk::Rect2D> cachedScissor{};
 
     friend class VkRHI;
 };

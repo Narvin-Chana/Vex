@@ -1,6 +1,7 @@
 ﻿#include "VkTexture.h"
 
 #include <Vex/Bindings.h>
+#include <Vex/RHIBindings.h>
 
 #include <Vulkan/RHI/VkCommandPool.h>
 #include <Vulkan/RHI/VkDescriptorPool.h>
@@ -114,7 +115,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const ResourceBinding& binding
         .startSlice = binding.startSlice,
         .sliceCount = (binding.sliceCount == 0) ? description.depthOrArraySize : binding.sliceCount,
     };
-    if (auto it = cache.find(view); it != cache.end() && descriptorPool.IsValid(it->second.handle))
+    if (auto it = bindlessCache.find(view); it != bindlessCache.end() && descriptorPool.IsValid(it->second.handle))
     {
         return it->second.handle;
     }
@@ -139,21 +140,65 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const ResourceBinding& binding
         ::vk::DescriptorImageInfo{ .sampler = nullptr, .imageView = *imageView, .imageLayout = GetLayout() },
         view.usage & TextureUsage::ShaderReadWrite);
 
-    cache[view] = { .handle = handle, .view = std::move(imageView) };
+    bindlessCache[view] = { .handle = handle, .view = std::move(imageView) };
 
     return handle;
 }
 
+::vk::ImageView VkTexture::GetOrCreateImageView(const ResourceBinding& binding, TextureUsage::Type usage)
+{
+    VkTextureViewDesc view{
+        .viewType = TextureUtil::GetTextureViewType(binding),
+        .format = TextureUtil::GetTextureFormat(binding),
+        .usage = usage,
+        .mipBias = binding.mipBias,
+        .mipCount = (binding.mipCount == 0) ? description.mips : binding.mipCount,
+        .startSlice = binding.startSlice,
+        .sliceCount = (binding.sliceCount == 0) ? description.depthOrArraySize : binding.sliceCount,
+    };
+    if (auto it = viewCache.find(view); it != viewCache.end())
+    {
+        return *it->second;
+    }
+
+    const ::vk::ImageViewCreateInfo viewCreate{ .image = GetResource(),
+                                                .viewType = TextureTypeToVulkan(view.viewType),
+                                                .format = TextureFormatToVulkan(view.format),
+                                                .subresourceRange = {
+                                                    .aspectMask = ::vk::ImageAspectFlagBits::eColor,
+                                                    .baseMipLevel = view.mipBias,
+                                                    .levelCount = view.mipCount,
+                                                    .baseArrayLayer = view.startSlice,
+                                                    .layerCount = view.sliceCount,
+                                                } };
+
+    ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx.device.createImageViewUnique(viewCreate);
+
+    ::vk::ImageView ret = *imageView;
+    viewCache[view] = std::move(imageView);
+    return ret;
+}
+
+RHITextureState::Type VkTexture::GetClearTextureState()
+{
+    if (description.usage & TextureUsage::DepthStencil)
+    {
+        return RHITextureState::DepthWrite;
+    }
+
+    return RHITextureState::ShaderReadWrite;
+}
+
 void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 {
-    for (const auto& [handle, view] : cache | std::views::values)
+    for (const auto& [handle, view] : bindlessCache | std::views::values)
     {
         if (handle != GInvalidBindlessHandle)
         {
             descriptorPool.FreeStaticDescriptor(handle);
         }
     }
-    cache.clear();
+    bindlessCache.clear();
 }
 
 void VkImageTexture::CreateImage(VkGPUContext& ctx)
@@ -227,40 +272,32 @@ namespace vex::TextureUtil
 ::vk::ImageLayout TextureStateFlagToImageLayout(RHITextureState::Flags flags)
 {
     using namespace RHITextureState;
+    using enum ::vk::ImageLayout;
 
     switch (flags)
     {
     case Common:
-        return ::vk::ImageLayout::eUndefined;
-        break;
+        return eUndefined;
     case RenderTarget:
-        return ::vk::ImageLayout::eColorAttachmentOptimal;
-        break;
+        return eColorAttachmentOptimal;
     case ShaderReadWrite:
-        return ::vk::ImageLayout::eGeneral;
-        break;
+        return eGeneral;
     case ShaderResource:
-        return ::vk::ImageLayout::eShaderReadOnlyOptimal;
-        break;
+        return eShaderReadOnlyOptimal;
     case DepthRead:
-        return ::vk::ImageLayout::eDepthReadOnlyOptimal;
-        break;
+        return eDepthReadOnlyOptimal;
     case DepthWrite:
-        return ::vk::ImageLayout::eDepthAttachmentOptimal;
-        break;
+        return eDepthAttachmentOptimal;
     case CopySource:
-        return ::vk::ImageLayout::eTransferSrcOptimal;
-        break;
+        return eTransferSrcOptimal;
     case CopyDest:
-        return ::vk::ImageLayout::eTransferDstOptimal;
-        break;
+        return eTransferDstOptimal;
     case Present:
-        return ::vk::ImageLayout::ePresentSrcKHR;
-        break;
+        return ePresentSrcKHR;
     default:
-        VEX_ASSERT(false, "Flag to layout conversion not supported");
+        VEX_LOG(Fatal, "Flag to layout conversion not supported");
     };
-    return ::vk::ImageLayout::eUndefined;
+    std::unreachable();
 }
 
 } // namespace vex::TextureUtil

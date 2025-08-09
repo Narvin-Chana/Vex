@@ -21,4 +21,10 @@ struct RHIBufferBinding
     RHIBuffer* buffer;
 };
 
+struct RHIDrawResources
+{
+    std::vector<RHITextureBinding> renderTargets;
+    std::optional<RHITextureBinding> depthStencil;
+};
+
 } // namespace vex

@@ -66,6 +66,7 @@ public:
                                                    TextureUsage::Type usage,
                                                    RHIDescriptorPool& descriptorPool) override;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
+    virtual RHITextureState::Type GetClearTextureState() override;
 
     ID3D12Resource* GetRawTexture()
     {

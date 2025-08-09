@@ -55,13 +55,12 @@ std::vector<const char*> GetDefaultValidationLayers(bool enableGPUBasedValidatio
 
 std::vector<const char*> GetDefaultDeviceExtensions()
 {
-    return {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-        VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
-        VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
-        VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
-        VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME,
-    };
+    return { VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+             VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
+             VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+             VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+             VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME,
+             VK_EXT_ROBUSTNESS_2_EXTENSION_NAME };
 }
 
 std::vector<const char*> FilterSupportedValidationLayers(const std::vector<const char*>& layers)

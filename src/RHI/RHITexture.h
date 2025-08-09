@@ -32,6 +32,7 @@ public:
                                                    TextureUsage::Type usage,
                                                    RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
+    virtual RHITextureState::Type GetClearTextureState() = 0;
 
     const TextureDescription& GetDescription() const
     {
