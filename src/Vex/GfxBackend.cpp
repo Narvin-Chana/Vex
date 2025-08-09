@@ -36,7 +36,6 @@ GfxBackend::GfxBackend(const BackendDescription& description)
     , textureRegistry(DefaultRegistrySize)
     , bufferRegistry(DefaultRegistrySize)
 {
-    VEX_LOG(Info, "Graphics API Support:\n\tDX12: {} Vulkan: {}", VEX_DX12, VEX_VULKAN);
     std::string vexTargetName;
     if (VEX_DEBUG)
     {
@@ -101,6 +100,14 @@ GfxBackend::GfxBackend(const BackendDescription& description)
 
 GfxBackend::~GfxBackend()
 {
+    if (isInMiddleOfFrame)
+    {
+        VEX_LOG(Warning,
+                "Destroying Vex GfxBackend in the middle of a frame, this is valid, although not recommended. Make "
+                "sure each StartFrame has a matching EndFrame.");
+        EndFrame(false);
+        isInMiddleOfFrame = false;
+    }
     // Wait for work to be done before starting the deletion of resources.
     FlushGPU();
 
@@ -109,18 +116,13 @@ GfxBackend::~GfxBackend()
         renderExtension->Destroy();
     }
 
-    // Clear the physical device.
+    // Clear the global physical device.
     GPhysicalDevice = nullptr;
 }
 
 void GfxBackend::StartFrame()
 {
-    // swapChain->AcquireNextBackbuffer(currentFrameIndex);
-    rhi.AcquireNextFrame(*swapChain, currentFrameIndex);
-    // ---
-    // Vulkan specific hack, swapchain is in eUnknown after acquisition.
-    GetRHITexture(GetCurrentBackBuffer().handle).SetCurrentState(RHITextureState::Common);
-    // ---
+    rhi.AcquireNextFrame(*swapChain, currentFrameIndex, GetRHITexture(GetCurrentBackBuffer().handle));
 
     // Flush all resources that were queued up for deletion.
     resourceCleanup.FlushResources(1, *descriptorPool);
@@ -132,6 +134,8 @@ void GfxBackend::StartFrame()
     {
         renderExtension->OnFrameStart();
     }
+
+    isInMiddleOfFrame = true;
 }
 
 void GfxBackend::EndFrame(bool isFullscreenMode)
@@ -153,7 +157,7 @@ void GfxBackend::EndFrame(bool isFullscreenMode)
         queuedCommandLists.push_back(cmdList);
     }
 
-    rhi.SubmitAndPresent(queuedCommandLists, *swapChain, currentFrameIndex);
+    rhi.SubmitAndPresent(queuedCommandLists, *swapChain, currentFrameIndex, isFullscreenMode);
     queuedCommandLists.clear();
 
     currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
@@ -162,6 +166,8 @@ void GfxBackend::EndFrame(bool isFullscreenMode)
     psCache.GetShaderCompiler().FlushCompilationErrors();
 
     ++frameCounter;
+
+    isInMiddleOfFrame = false;
 }
 
 CommandContext GfxBackend::BeginScopedCommandContext(CommandQueueType queueType)
@@ -257,23 +263,26 @@ void GfxBackend::FlushGPU()
 {
     VEX_LOG(Info, "Forcing a GPU flush...");
 
-    // rhi.AcquireNextFrame(*swapChain, currentFrameIndex);
-    // rhi.SubmitAndPresent({}, *swapChain, currentFrameIndex);
-    // currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
+    // In the case we're in the middle of a frame, we still want to submit all currently queued up work.
+    if (isInMiddleOfFrame)
+    {
+        EndFrame(false);
+    }
 
-    // rhi.AcquireNextFrame(*swapChain, currentFrameIndex);
-    // rhi.SubmitAndPresent({}, *swapChain, currentFrameIndex);
-    // currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
-
-    // rhi.AcquireNextFrame(*swapChain, currentFrameIndex);
-    // rhi.SubmitAndPresent({}, *swapChain, currentFrameIndex);
-    // currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
+    rhi.FlushGPU();
 
     // Release all stale resource now that the GPU is done with them.
     resourceCleanup.FlushResources(std::to_underlying(description.frameBuffering), *descriptorPool);
 
-    // Release the memory occupied by the command lists that are done.
+    // Release the memory that is occupied by all our command lists.
     commandPools.ForEach([](auto& el) { el->ReclaimAllCommandListMemory(); });
+
+    // Keep this transparent for the user, by starting up another frame automatically.
+    if (isInMiddleOfFrame)
+    {
+        StartFrame();
+        isInMiddleOfFrame = false;
+    }
 
     VEX_LOG(Info, "GPU flush done.");
 }
@@ -416,13 +425,6 @@ void GfxBackend::CreateBackBuffers()
     // Recreating the backbuffers means resetting the current frame index to 0 (as if we've just started the application
     // from scratch).
     currentFrameIndex = 0;
-}
-
-void GfxBackend::FlushCommandListQueue()
-{
-    // rhi.ExecuteCommandLists(queuedCommandLists, *swapChain);
-    rhi.SubmitAndPresent(queuedCommandLists, *swapChain, currentFrameIndex);
-    queuedCommandLists.clear();
 }
 
 } // namespace vex

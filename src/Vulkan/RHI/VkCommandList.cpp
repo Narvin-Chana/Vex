@@ -26,7 +26,7 @@ void VkCommandList::Open()
         return;
     }
 
-    VEX_VK_CHECK << commandBuffer->reset();
+    // VEX_VK_CHECK << commandBuffer->reset();
 
     constexpr ::vk::CommandBufferBeginInfo beginInfo{};
     VEX_VK_CHECK << commandBuffer->begin(beginInfo);
@@ -153,21 +153,20 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-// This only changes the access mask of the texture
 ::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITextureState::Flags flags)
 {
-    ::vk::ImageLayout prevLayout = texture.GetLayout();
-    ::vk::ImageLayout nextLayout = TextureUtil::TextureStateFlagToImageLayout(flags);
+    using namespace ::vk;
+    ImageLayout prevLayout = texture.GetLayout();
+    ImageLayout nextLayout = TextureUtil::TextureStateFlagToImageLayout(flags);
 
-    ::vk::ImageMemoryBarrier2 barrier{
-        // not the best stage mask. Should be more precise for better sync
+    ImageMemoryBarrier2 barrier{
         .oldLayout = prevLayout,
         .newLayout = nextLayout,
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .image = texture.GetResource(),
         .subresourceRange = {
-            .aspectMask = ::vk::ImageAspectFlagBits::eColor,
+            .aspectMask = ImageAspectFlagBits::eColor, // TODO: Support depth/stencil (will probably be fixed in merge w/ Vk graphics pipeline).
             .baseMipLevel = 0,
             .levelCount = 1,
             .baseArrayLayer = 0,
@@ -175,47 +174,63 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
         },
     };
 
-    using namespace ::vk;
+    bool isBackbufferImage = dynamic_cast<VkBackbufferTexture*>(&texture) != nullptr;
 
+    // === SOURCE STAGE AND ACCESS ===
     switch (prevLayout)
     {
     case ImageLayout::eUndefined:
+        // Undefined layout means no previous access, so no source access mask needed
         barrier.srcAccessMask = AccessFlagBits2::eNone;
-        barrier.srcStageMask = PipelineStageFlagBits2::eTopOfPipe;
+        // Swapchain images need to sync with acquire operation
+        // Regular textures can start from top of pipe
+        barrier.srcStageMask =
+            isBackbufferImage ? PipelineStageFlagBits2::eColorAttachmentOutput : PipelineStageFlagBits2::eTopOfPipe;
         break;
-    case ImageLayout::eTransferDstOptimal:
-        barrier.srcAccessMask = AccessFlagBits2::eTransferWrite;
-        barrier.srcStageMask = PipelineStageFlagBits2::eTransfer;
+    case ImageLayout::eColorAttachmentOptimal:
+        barrier.srcAccessMask = AccessFlagBits2::eColorAttachmentWrite;
+        barrier.srcStageMask = PipelineStageFlagBits2::eColorAttachmentOutput;
+        break;
+    case ImageLayout::eDepthStencilAttachmentOptimal:
+        barrier.srcAccessMask =
+            AccessFlagBits2::eDepthStencilAttachmentRead | AccessFlagBits2::eDepthStencilAttachmentWrite;
+        barrier.srcStageMask = PipelineStageFlagBits2::eEarlyFragmentTests | PipelineStageFlagBits2::eLateFragmentTests;
+        break;
+    case ImageLayout::eShaderReadOnlyOptimal:
+        barrier.srcAccessMask = AccessFlagBits2::eShaderRead;
+        barrier.srcStageMask = PipelineStageFlagBits2::eVertexShader | PipelineStageFlagBits2::eFragmentShader |
+                               PipelineStageFlagBits2::eComputeShader;
         break;
     case ImageLayout::eTransferSrcOptimal:
         barrier.srcAccessMask = AccessFlagBits2::eTransferRead;
         barrier.srcStageMask = PipelineStageFlagBits2::eTransfer;
         break;
-    case ImageLayout::eShaderReadOnlyOptimal:
-        barrier.dstAccessMask = AccessFlagBits2::eShaderRead;
-        barrier.dstStageMask = PipelineStageFlagBits2::eAllGraphics | PipelineStageFlagBits2::eComputeShader;
+    case ImageLayout::eTransferDstOptimal:
+        barrier.srcAccessMask = AccessFlagBits2::eTransferWrite;
+        barrier.srcStageMask = PipelineStageFlagBits2::eTransfer;
+        break;
+    case ImageLayout::ePresentSrcKHR:
+        // Present layout has no specific access requirements
+        barrier.srcAccessMask = AccessFlagBits2::eNone;
+        barrier.srcStageMask =
+            isBackbufferImage ? PipelineStageFlagBits2::eColorAttachmentOutput : PipelineStageFlagBits2::eAllCommands;
         break;
     case ImageLayout::eGeneral:
+        // General layout allows any access
         barrier.srcAccessMask = AccessFlagBits2::eMemoryRead | AccessFlagBits2::eMemoryWrite;
         barrier.srcStageMask = PipelineStageFlagBits2::eAllCommands;
         break;
-    case ImageLayout::ePresentSrcKHR:
-        barrier.srcAccessMask = AccessFlagBits2::eNone;
-        barrier.srcStageMask = PipelineStageFlagBits2::eAllCommands;
-        break;
     default:
-        VEX_ASSERT(false, "Transition source image layout not supported");
+        VEX_ASSERT(false, "Unsupported source image layout: {}", to_string(prevLayout));
+        break;
     }
 
+    // === DESTINATION STAGE AND ACCESS ===
     switch (nextLayout)
     {
-    case ImageLayout::eTransferDstOptimal:
-        barrier.dstAccessMask = AccessFlagBits2::eTransferWrite;
-        barrier.dstStageMask = PipelineStageFlagBits2::eTransfer;
-        break;
-    case ImageLayout::eTransferSrcOptimal:
-        barrier.dstAccessMask = AccessFlagBits2::eTransferRead;
-        barrier.dstStageMask = PipelineStageFlagBits2::eTransfer;
+    case ImageLayout::eColorAttachmentOptimal:
+        barrier.dstAccessMask = AccessFlagBits2::eColorAttachmentWrite;
+        barrier.dstStageMask = PipelineStageFlagBits2::eColorAttachmentOutput;
         break;
     case ImageLayout::eDepthStencilAttachmentOptimal:
         barrier.dstAccessMask =
@@ -224,23 +239,47 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
         break;
     case ImageLayout::eShaderReadOnlyOptimal:
         barrier.dstAccessMask = AccessFlagBits2::eShaderRead;
-        barrier.dstStageMask = PipelineStageFlagBits2::eAllGraphics | PipelineStageFlagBits2::eComputeShader;
+        barrier.dstStageMask = PipelineStageFlagBits2::eVertexShader | PipelineStageFlagBits2::eFragmentShader |
+                               PipelineStageFlagBits2::eComputeShader;
+        break;
+    case ImageLayout::eTransferSrcOptimal:
+        barrier.dstAccessMask = AccessFlagBits2::eTransferRead;
+        barrier.dstStageMask = PipelineStageFlagBits2::eTransfer;
+        break;
+    case ImageLayout::eTransferDstOptimal:
+        barrier.dstAccessMask = AccessFlagBits2::eTransferWrite;
+        barrier.dstStageMask = PipelineStageFlagBits2::eTransfer;
+        break;
+    case ImageLayout::ePresentSrcKHR:
+        // Present layout preparation
+        barrier.dstAccessMask = AccessFlagBits2::eNone;
+        // Swapchain images need to sync with present operation
+        barrier.dstStageMask =
+            isBackbufferImage ? PipelineStageFlagBits2::eColorAttachmentOutput : PipelineStageFlagBits2::eAllCommands;
         break;
     case ImageLayout::eGeneral:
+        // General layout allows any access
         barrier.dstAccessMask = AccessFlagBits2::eMemoryRead | AccessFlagBits2::eMemoryWrite;
         barrier.dstStageMask = PipelineStageFlagBits2::eAllCommands;
         break;
-    case ImageLayout::ePresentSrcKHR:
-        barrier.dstAccessMask = AccessFlagBits2::eNone;
-        barrier.dstStageMask = PipelineStageFlagBits2::eAllCommands;
-        break;
-    case ImageLayout::eColorAttachmentOptimal:
-        barrier.dstAccessMask = AccessFlagBits2::eMemoryWrite;
-        barrier.dstStageMask = PipelineStageFlagBits2::eAllGraphics;
+    case ImageLayout::eUndefined:
+        // Should never transition TO undefined
+        VEX_ASSERT(false, "Cannot transition TO undefined layout");
         break;
     default:
-        VEX_ASSERT(false, "Transition source image layout not supported");
+        VEX_ASSERT(false, "Unsupported destination image layout: {}", to_string(nextLayout));
+        break;
     }
+
+    // VEX_LOG(Info,
+    //         "Image transition for {}: {} -> {} (isBackbuffer={})",
+    //         texture.GetDescription().name,
+    //         to_string(prevLayout),
+    //         to_string(nextLayout),
+    //         isBackbufferImage);
+    // VEX_LOG(Info, "  Source: access={}, stage={}", to_string(barrier.srcAccessMask),
+    // to_string(barrier.srcStageMask)); VEX_LOG(Info, "  Dest:   access={}, stage={}",
+    // to_string(barrier.dstAccessMask), to_string(barrier.dstStageMask));
 
     return barrier;
 }
@@ -285,7 +324,6 @@ void VkCommandList::Transition(RHIBuffer& buffer, RHIBufferState::Flags newState
     }
 
     auto memBarrier = GetBufferBarrierFrom(buffer, newState);
-
     commandBuffer->pipelineBarrier2({ .bufferMemoryBarrierCount = 1, .pBufferMemoryBarriers = &memBarrier });
 
     buffer.SetCurrentState(newState);

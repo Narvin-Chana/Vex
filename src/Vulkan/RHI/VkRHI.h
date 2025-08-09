@@ -54,8 +54,12 @@ public:
     virtual void ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
                                                  std::vector<ShaderDefine>& defines) override;
 
-    void AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex);
-    void SubmitAndPresent(std::span<RHICommandList*> commandLists, RHISwapChain& swapChain, u32 currentFrameIndex);
+    void AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex, RHITexture& currentBackbuffer);
+    void SubmitAndPresent(std::span<RHICommandList*> commandLists,
+                          RHISwapChain& swapChain,
+                          u32 currentFrameIndex,
+                          bool isFullscreenMode);
+    void FlushGPU();
 
 private:
     VkGPUContext& GetGPUContext();

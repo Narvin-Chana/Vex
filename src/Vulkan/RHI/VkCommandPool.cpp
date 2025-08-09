@@ -42,7 +42,6 @@ void VkCommandPool::ReclaimCommandListMemory(CommandQueueType queueType)
 
     // Release underlying command buffers now that they are assuredly no longer in flight.
     commandBuffers.clear();
-    VEX_VK_CHECK << ctx.device.resetCommandPool(*commandPoolPerQueueType[std::to_underlying(queueType)]);
 }
 
 void VkCommandPool::ReclaimAllCommandListMemory()
@@ -60,7 +59,10 @@ VkCommandPool::VkCommandPool(VkGPUContext& ctx,
     for (u8 i = 0; i < CommandQueueTypes::Count; ++i)
     {
         commandPoolPerQueueType[i] = VEX_VK_CHECK <<= ctx.device.createCommandPoolUnique({
-            .flags = ::vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+            // TODO: currently we have a weird mix between reusing and not reusing command buffers,
+            // If we reuse buffers, we should store them and redistribute them instead of just allocating a new buffer
+            // every time we request one.
+            //.flags = ::vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
             .queueFamilyIndex = commandQueues[i].family,
         });
     }

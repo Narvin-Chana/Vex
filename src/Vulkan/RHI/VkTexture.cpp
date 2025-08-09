@@ -232,8 +232,6 @@ namespace vex::TextureUtil
 
     switch (flags)
     {
-    case Common:
-        return ImageLayout::eUndefined;
     case RenderTarget:
         return ImageLayout::eColorAttachmentOptimal;
     case ShaderReadWrite:
@@ -250,6 +248,8 @@ namespace vex::TextureUtil
         return ImageLayout::eTransferDstOptimal;
     case Present:
         return ImageLayout::ePresentSrcKHR;
+    case Common:
+        return ImageLayout::eUndefined;
     default:
         VEX_ASSERT(false, "Flag to layout conversion not supported");
         return ImageLayout::eUndefined;

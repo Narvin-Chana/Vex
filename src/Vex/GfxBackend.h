@@ -83,7 +83,7 @@ public:
                                            BufferBindingUsage usage,
                                            u32 stride = 0);
 
-    // Flushes all current GPU commands.
+    // Flushes all currently submitted GPU commands.
     void FlushGPU();
 
     // Enables or disables vsync when presenting.
@@ -120,8 +120,6 @@ private:
     RHIBuffer& GetRHIBuffer(BufferHandle bufferHandle);
 
     void CreateBackBuffers();
-    // Executes all currently queued up command lists.
-    void FlushCommandListQueue();
 
     // Index of the current frame, possible values depends on buffering:
     //  {0} if single buffering
@@ -161,6 +159,8 @@ private:
     std::vector<RHICommandList*> queuedCommandLists;
 
     std::vector<UniqueHandle<RenderExtension>> renderExtensions;
+
+    bool isInMiddleOfFrame = false;
 
     static constexpr u32 DefaultRegistrySize = 1024;
 

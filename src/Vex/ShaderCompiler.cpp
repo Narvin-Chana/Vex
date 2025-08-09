@@ -2,6 +2,7 @@
 
 #include <istream>
 #include <ranges>
+#include <regex>
 #include <string>
 
 #include <magic_enum/magic_enum.hpp>
@@ -61,6 +62,167 @@ static std::wstring GetTargetFromShaderType(ShaderType type)
 
     return highestSupportedShaderModel;
 }
+
+struct LocalConstantsParser
+{
+    enum ParseError
+    {
+        NoLocalConstants,
+        MultipleDeclarations,
+        EmptyType,
+        EmptyName,
+        InvalidIdentifier,
+    };
+
+    struct ParseResult
+    {
+        // Name of the type the user uses for their local constants.
+        std::string typeName;
+        // Name of the variable the user uses to access their local constants.
+        std::string varName;
+        // Start position of the 'V' in VEX_LOCAL_CONSTANTS(type, name)
+        std::size_t position;
+    };
+
+    static bool IsValidIdentifier(const std::string& str)
+    {
+        // Regex to validate C++ identifiers
+        static const std::regex ValidIdentifierRegex{ R"(^[a-zA-Z_][a-zA-Z0-9_]*$)" };
+        return std::regex_match(str, ValidIdentifierRegex);
+    }
+
+    static std::string Trim(const std::string& str)
+    {
+        const auto start = str.find_first_not_of(" \t\r\n");
+        if (start == std::string::npos)
+            return "";
+
+        const auto end = str.find_last_not_of(" \t\r\n");
+        return str.substr(start, end - start + 1);
+    }
+
+    static std::expected<ParseResult, ParseError> Parse(const std::string& userShaderCode)
+    {
+        // Regex to match VEX_LOCAL_CONSTANTS(type, name) with optional whitespace and semicolon
+        static const std::regex LocalConstantsRegex{
+            R"(VEX_LOCAL_CONSTANTS\s*\(\s*([^,\s][^,]*?)\s*,\s*([^)\s][^)]*?)\s*\)\s*;?)"
+        };
+
+        // Find all matches
+        std::vector<std::smatch> matches;
+        std::sregex_iterator iter(userShaderCode.begin(), userShaderCode.end(), LocalConstantsRegex);
+        std::sregex_iterator end;
+
+        for (; iter != end; ++iter)
+        {
+            matches.push_back(*iter);
+        }
+
+        // Check if no local constants found
+        if (matches.empty())
+        {
+            return std::unexpected(NoLocalConstants);
+        }
+
+        // Check for multiple declarations
+        if (matches.size() > 1)
+        {
+            return std::unexpected(MultipleDeclarations);
+        }
+
+        // Process the single match
+        const auto& match = matches[0];
+
+        // Extract and validate type
+        std::string rawType = match[1].str();
+        std::string cleanType = Trim(rawType);
+
+        if (cleanType.empty())
+        {
+            return std::unexpected(EmptyType);
+        }
+
+        // Extract and validate name
+        std::string rawName = match[2].str();
+        std::string cleanName = Trim(rawName);
+
+        if (cleanName.empty())
+        {
+            return std::unexpected(EmptyName);
+        }
+
+        // Validate that name is a valid identifier
+        if (!IsValidIdentifier(cleanName))
+        {
+            return std::unexpected(InvalidIdentifier);
+        }
+
+        // Store results
+        return ParseResult{
+            .typeName = cleanType,
+            .varName = cleanName,
+            .position = static_cast<std::size_t>(match.position()),
+        };
+    }
+
+    // Check if a type is a built-in HLSL primitive type
+    static bool IsPrimitiveType(const ParseResult& parseResult)
+    {
+        // Common HLSL primitive types that don't need forward declarations
+        // clang-format off
+        static constexpr auto primitives =
+        {
+            // Scalar types
+            "bool", "int", "uint", "float", "double",
+            // Vector types
+            "float2", "float3", "float4", 
+            "int2", "int3", "int4",
+            "uint2", "uint3", "uint4",
+            "bool2", "bool3", "bool4",
+            "double2", "double3", "double4",
+            // Matrix types
+            "float2x2", "float3x3", "float4x4",
+            "float2x3", "float2x4", "float3x2", "float3x4", "float4x2", "float4x3",
+            "int2x2", "int3x3", "int4x4",
+            "uint2x2", "uint3x3", "uint4x4",
+            "bool2x2", "bool3x3", "bool4x4",
+            "double2x2", "double3x3", "double4x4",
+            // Alternative matrix syntax
+            "matrix", "vector"
+        };
+        // clang-format on
+
+        // Check exact match first
+        for (const auto& primitive : primitives)
+        {
+            if (parseResult.typeName == primitive)
+            {
+                return true;
+            }
+        }
+
+        // Check for templated types like matrix<float, 4, 4>
+        if (parseResult.typeName.find("matrix<") == 0 || parseResult.typeName.find("vector<") == 0)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    static void ReplaceLocalConstantsMacro(const ParseResult& parseResult, std::string& userShaderCode)
+    {
+        // Regex to match VEX_LOCAL_CONSTANTS(type, name) with optional whitespace and semicolon
+        static const std::regex LocalConstantsRegex{
+            R"(VEX_LOCAL_CONSTANTS\s*\(\s*([^,\s][^,]*?)\s*,\s*([^)\s][^)]*?)\s*\)\s*;?)"
+        };
+
+        userShaderCode = std::regex_replace(
+            userShaderCode,
+            LocalConstantsRegex,
+            std::format("#define {} (zzzZZZ___PushConstants.userLocalConstants)\n", parseResult.varName));
+    }
+};
 
 } // namespace ShaderCompiler_Internal
 
@@ -176,13 +338,81 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
         shader.hash = *newHash;
     }
 
+    // Manually read the user shader file.
     std::stringstream buffer;
     {
         std::ifstream shaderFile{ shader.key.path.c_str() };
         buffer << shaderFile.rdbuf();
     }
+    std::string userShaderCode = buffer.str();
 
-    std::string shaderFileStr{ ShaderGenGeneralMacros };
+    std::string shaderFileStr;
+
+#if VEX_VULKAN
+    using ShaderCompiler_Internal::LocalConstantsParser;
+    // Now, in the case of Vulkan, we have to deduce local constants to facilitate our bindless strategy.
+    // This is because we cannot use multiple ConstantBuffer push constant declarations in Vulkan HLSL.
+    // A potential future solution could be to hard-code the bindless index for the bindless buffer, allowing us to just
+    // hardcode it in every shader (the issue is that this depends on the number of passes a shader has, when we have a
+    // better handling of our GPU allocations this will be simplified).
+    auto res = LocalConstantsParser::Parse(userShaderCode);
+    if (!res.has_value())
+    {
+        switch (res.error())
+        {
+        case LocalConstantsParser::NoLocalConstants:
+            VEX_LOG(Verbose,
+                    "LocalConstantsParser was unable to find any local constants in the final user shader ({}).",
+                    shader.key);
+            // Define zzzZZZ___VEX_LOCAL_CONSTANTS_STRUCT to collapse into nothing.
+            shaderFileStr.append(std::format("\n#define {}(name) \n", ShaderGenVulkanLocalConstantsStructMacroName));
+            break;
+        case LocalConstantsParser::MultipleDeclarations:
+            return std::unexpected(
+                "ShaderCompiler: When parsing for local constants, multiple uses of the VEX_LOCAL_CONSTANTS macro were "
+                "found. Make sure to only use it once (including all your local constants in it).");
+        case LocalConstantsParser::EmptyType:
+            return std::unexpected(
+                "ShaderCompiler: When parsing for local constants, a usage of VEX_LOCAL_CONSTANTS was detected with an "
+                "empty type. Make sure to fill in the type of VEX_LOCAL_CONSTANTS(type, name)!");
+        case LocalConstantsParser::EmptyName:
+            return std::unexpected(
+                "ShaderCompiler: When parsing for local constants, a usage of VEX_LOCAL_CONSTANTS was detected with an "
+                "empty variable name. Make sure to fill in the name of VEX_LOCAL_CONSTANTS(type, name)!");
+        case LocalConstantsParser::InvalidIdentifier:
+            return std::unexpected("ShaderCompiler: When parsing for local constants, a usage of VEX_LOCAL_CONSTANTS "
+                                   "was detected with an invalid name (must be a valid C++ identifier).");
+        }
+    }
+    else
+    {
+        const auto& parseResult = res.value();
+        // If we obtain a valid parse result, we can add the following to the beginning of the file,
+        // only forward declaring if the user type is not a primitive type:
+        //
+        //      struct parseResult.typeName;\n
+        //      #define zzzZZZ___VEX_LOCAL_CONSTANTS_STRUCT parseResult.typeName
+        //
+        if (!LocalConstantsParser::IsPrimitiveType(parseResult))
+        {
+            shaderFileStr.append(std::format("struct {};\n", parseResult.typeName));
+        }
+        shaderFileStr.append(std::format("\n#define {}(name) {} name;\n",
+                                         ShaderGenVulkanLocalConstantsStructMacroName,
+                                         parseResult.typeName));
+
+        // And for the invocation "VEX_LOCAL_CONSTANTS(MyStruct, MyStructName);" we will replace it with the following:
+        //      #define MyStructName (zzzZZZ___PushConstants.userLocalConstants)
+        //
+        LocalConstantsParser::ReplaceLocalConstantsMacro(parseResult, userShaderCode);
+
+        // This gives completely transparent usage for the user (as long as they only use one invocation of
+        // VEX_LOCAL_CONSTANTS().
+    }
+#endif
+
+    // Add general macros for shadergen.
+    shaderFileStr.append(ShaderGenGeneralMacros);
 
     // Auto-generate shader static sampler bindings.
     shaderFileStr.append("// SAMPLERS -------------------------\n");
@@ -201,17 +431,15 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
         std::replace(name.begin(), name.end(), ' ', '_');
         shaderFileStr.append(std::format("uint {}_bindlessIndex;\n", name));
     }
-    // For now we suppose that the register b0 is used for the generated constants buffer (since local constants aren't
-    // yet supported).
-    shaderFileStr.append(std::format(
-        "}};\n{} ConstantBuffer<zzzZZZ___GeneratedConstants> zzzZZZ___GeneratedConstantsCB: register(b0);\n",
-        ShaderGenLocalConstantName));
+    // Close the shader constant bindings struct.
+    shaderFileStr.append("};\n");
 
-    // VEX_GLOBAL_RESOURCE and VEX_RESOURCE is how users will access resources, include macros that generate these.
+    // VEX_GLOBAL_RESOURCE and VEX_GET_BINDLESS_RESOURCE is how users will access resources, include macros
+    // that generate these.
     shaderFileStr.append(ShaderGenBindingMacros);
 
     // Append the actual shader file contents to the str.
-    shaderFileStr.append(buffer.str());
+    shaderFileStr.append(std::move(userShaderCode));
 
 #if !VEX_SHIPPING
     VEX_LOG(Verbose, "Shader {} file dump: {}", shader.key, shaderFileStr);
@@ -287,8 +515,8 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
     if (HRESULT hrError = shaderCompilationResults->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
         FAILED(hrError))
     {
-        return std::unexpected(
-            "Failed to compile shader due to unknown reasons, the DXC compilation error was unable to be obtained.");
+        return std::unexpected("Failed to compile shader due to unknown reasons, the DXC compilation error "
+                               "was unable to be obtained.");
     }
     if (errors != nullptr && errors->GetStringLength() != 0)
     {
@@ -310,7 +538,8 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
     {
         // ComPtr<IDxcBlob> reflectionBlob;
         // HRESULT reflectionResult =
-        //     shaderCompilationResults->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(&reflectionBlob), nullptr);
+        //     shaderCompilationResults->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(&reflectionBlob),
+        //     nullptr);
         // if (FAILED(reflectionResult))
         // {
         //     return std::unexpected("Unable to get the shader reflection blob after compilation.");
@@ -416,7 +645,8 @@ void ShaderCompiler::MarkShaderDirty(const ShaderKey& key)
     if (shader == shaderCache.end())
     {
         VEX_LOG(Error,
-                "The shader key passed did not yield any valid shaders in the shader cache (key {}). Unable to mark it "
+                "The shader key passed did not yield any valid shaders in the shader cache (key {}). "
+                "Unable to mark it "
                 "as dirty.",
                 key);
         return;
@@ -461,7 +691,8 @@ void ShaderCompiler::SetCompilationErrorsCallback(std::function<ShaderCompileErr
 
 void ShaderCompiler::FlushCompilationErrors()
 {
-    // If user requests a recompilation (depends on the callback), remove the isErrored flag from all errored shaders.
+    // If user requests a recompilation (depends on the callback), remove the isErrored flag from all
+    // errored shaders.
     if (errorsCallback && errorsCallback(compilationErrors))
     {
         for (auto& [key, error] : compilationErrors)

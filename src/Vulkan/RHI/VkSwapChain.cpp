@@ -103,34 +103,6 @@ VkSwapChain::VkSwapChain(VkGPUContext& ctx,
     std::ranges::generate_n(std::back_inserter(presentSemaphore), requestedImageCount, BinarySemaphoreCreator);
 }
 
-void VkSwapChain::AcquireNextBackbuffer(u8 frameIndex)
-{
-    // VEX_VK_CHECK << ctx.device.acquireNextImageKHR(*swapchain,
-    //                                                std::numeric_limits<u64>::max(),
-    //                                                *backbufferAcquisition[frameIndex],
-    //                                                nullptr,
-    //                                                &currentBackbufferId);
-
-    // currentAcquisitionSemaphore = &backbufferAcquisition[frameIndex];
-    // currentPresentSemaphore = &presentSemaphore[frameIndex];
-}
-
-void VkSwapChain::Present(bool isFullscreenMode)
-{
-    // auto& cmdQueue = ctx.graphicsPresentQueue;
-
-    //::vk::SwapchainKHR swapChains[] = { *swapchain };
-    //::vk::PresentInfoKHR presentInfo{
-    //    .waitSemaphoreCount = 1,
-    //    .pWaitSemaphores = &*presentSemaphore[currentBackbufferId],
-    //    .swapchainCount = 1,
-    //    .pSwapchains = swapChains,
-    //    .pImageIndices = &currentBackbufferId,
-    //};
-
-    // VEX_VK_CHECK << cmdQueue.queue.presentKHR(presentInfo);
-}
-
 void VkSwapChain::Resize(u32 width, u32 height)
 {
     swapchain.reset();
