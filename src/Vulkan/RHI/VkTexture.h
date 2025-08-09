@@ -1,7 +1,5 @@
 ﻿#pragma once
 
-#include "VkMacros.h"
-
 #include <Vex/Hash.h>
 
 #include <RHI/RHIDescriptorPool.h>
@@ -9,6 +7,7 @@
 
 #include <Vulkan/RHI/VkDescriptorPool.h>
 #include <Vulkan/VkHeaders.h>
+#include <Vulkan/VkMacros.h>
 
 namespace vex
 {

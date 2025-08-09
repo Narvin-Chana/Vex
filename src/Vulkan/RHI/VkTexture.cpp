@@ -1,6 +1,7 @@
 ﻿#include "VkTexture.h"
 
 #include <Vex/Bindings.h>
+#include <Vex/RHIBindings.h>
 
 #include <Vulkan/RHI/VkCommandPool.h>
 #include <Vulkan/RHI/VkDescriptorPool.h>
@@ -8,8 +9,6 @@
 #include <Vulkan/VkFormats.h>
 #include <Vulkan/VkGPUContext.h>
 #include <Vulkan/VkMemory.h>
-
-#include "Vex/RHIBindings.h"
 
 namespace vex::vk
 {

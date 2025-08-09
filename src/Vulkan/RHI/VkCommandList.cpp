@@ -10,20 +10,8 @@
 #include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkErrorHandler.h>
 
+#include "Vex/Containers/StdContainers.h"
 #include "Vex/DrawHelpers.h"
-
-namespace vex
-{
-template <class T>
-struct U32Alloc : std::allocator<T>
-{
-    using size_type = u32;
-};
-
-template <class T>
-using vector = std::vector<T, U32Alloc<T>>;
-
-} // namespace vex
 
 namespace vex::vk
 {
@@ -148,12 +136,6 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
         {
             const BindlessHandle handle = texture->GetOrCreateBindlessView(binding, usage, descriptorPool);
             bindlessHandleIndices.push_back(handle.GetIndex());
-        }
-        else if (usage & TextureUsage::RenderTarget)
-        {
-        }
-        else if (usage & TextureUsage::DepthStencil)
-        {
         }
     }
 
@@ -484,7 +466,7 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
         maxArea.extent.height = std::max(renderTargets.texture->GetDescription().height, maxArea.extent.height);
     }
 
-    vector<::vk::RenderingAttachmentInfo> colorAttachmentsInfo(resources.renderTargets.size());
+    std::vector<::vk::RenderingAttachmentInfo> colorAttachmentsInfo(resources.renderTargets.size());
     std::ranges::transform(
         resources.renderTargets,
         colorAttachmentsInfo.begin(),
@@ -510,7 +492,7 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
         .renderArea = maxArea,
         .layerCount = 1,
         .viewMask = 0,
-        .colorAttachmentCount = colorAttachmentsInfo.size(),
+        .colorAttachmentCount = static_cast<uint32_t>(colorAttachmentsInfo.size()),
         .pColorAttachments = colorAttachmentsInfo.data(),
         .pDepthAttachment = depthInfo ? &*depthInfo : nullptr,
         .pStencilAttachment = depthInfo ? &*depthInfo : nullptr,

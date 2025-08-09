@@ -1,4 +1,3 @@
-#include "VkMacros.h"
 #include "VkPipelineState.h"
 
 #include <ranges>
@@ -11,6 +10,7 @@
 #include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkErrorHandler.h>
 
+#include "../VkMacros.h"
 #include "Vulkan/VkFormats.h"
 
 namespace vex::vk
