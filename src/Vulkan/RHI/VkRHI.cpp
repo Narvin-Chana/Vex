@@ -8,12 +8,10 @@
 #include <Vex/PlatformWindow.h>
 
 #include <RHI/RHICommandPool.h>
-#include <RHI/RHIFence.h>
 
 #include <Vulkan/RHI/VkBuffer.h>
 #include <Vulkan/RHI/VkCommandPool.h>
 #include <Vulkan/RHI/VkDescriptorPool.h>
-#include <Vulkan/RHI/VkFence.h>
 #include <Vulkan/RHI/VkPipelineState.h>
 #include <Vulkan/RHI/VkResourceLayout.h>
 #include <Vulkan/RHI/VkSwapChain.h>
@@ -169,7 +167,7 @@ std::vector<UniqueHandle<PhysicalDevice>> VkRHI::EnumeratePhysicalDevices()
     return physicalDevices;
 }
 
-void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
+void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice, FrameBuffering frameBuffering)
 {
     physDevice = static_cast<VkPhysicalDevice*>(vexPhysicalDevice.get())->physicalDevice;
 
@@ -353,29 +351,6 @@ UniqueHandle<RHIBuffer> VkRHI::CreateBuffer(const BufferDescription& description
 UniqueHandle<RHIDescriptorPool> VkRHI::CreateDescriptorPool()
 {
     return MakeUnique<VkDescriptorPool>(*device);
-}
-
-void VkRHI::SubmitCommandListBatch(std::span<RHICommandList*> commandLists,
-                                   CommandQueueType queueType,
-                                   RHISwapChain& swapChain)
-{
-}
-
-void VkRHI::ExecuteCommandLists(std::span<RHICommandList*> commandLists, RHISwapChain& swapChain)
-{
-}
-
-UniqueHandle<RHIFence> VkRHI::CreateFence(u32 numFenceIndices)
-{
-    return MakeUnique<VkFence>(numFenceIndices, *device);
-}
-
-void VkRHI::SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
-{
-}
-
-void VkRHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
-{
 }
 
 void VkRHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args, std::vector<ShaderDefine>& defines)

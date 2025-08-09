@@ -11,7 +11,7 @@
 namespace vex::dx12
 {
 
-DX12SwapChain::DX12SwapChain(const ComPtr<DX12Device>& device,
+DX12SwapChain::DX12SwapChain(ComPtr<DX12Device>& device,
                              SwapChainDescription desc,
                              const ComPtr<ID3D12CommandQueue>& commandQueue,
                              const PlatformWindow& platformWindow)
@@ -48,11 +48,6 @@ DX12SwapChain::DX12SwapChain(const ComPtr<DX12Device>& device,
 }
 
 DX12SwapChain::~DX12SwapChain() = default;
-
-void DX12SwapChain::AcquireNextBackbuffer(u8 frameIndex)
-{
-    // Nothing to do, DX12 makes the next backbuffer available directly (as long as fences are correctly handled).
-}
 
 void DX12SwapChain::Present(bool isFullscreenMode)
 {

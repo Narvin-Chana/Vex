@@ -16,7 +16,6 @@
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHICommandPool.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
-#include <Vex/RHIImpl/RHIFence.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITexture.h>
@@ -72,17 +71,12 @@ GfxBackend::GfxBackend(const BackendDescription& description)
 #endif
 
     // Initializes RHI which includes creating logical device and swapchain
-    rhi.Init(GPhysicalDevice);
+    rhi.Init(GPhysicalDevice, description.frameBuffering);
 
     VEX_LOG(Info,
             "Created graphics backend with width {} and height {}.",
             description.platformWindow.width,
             description.platformWindow.height);
-
-    for (auto queueType : magic_enum::enum_values<CommandQueueType>())
-    {
-        queueFrameFences[queueType] = rhi.CreateFence(std::to_underlying(description.frameBuffering));
-    }
 
     commandPools.ForEach([&rhi = rhi](UniqueHandle<RHICommandPool>& el) { el = rhi.CreateCommandPool(); });
 
@@ -90,10 +84,13 @@ GfxBackend::GfxBackend(const BackendDescription& description)
 
     psCache = PipelineStateCache(&rhi, *descriptorPool, &resourceCleanup, description.shaderCompilerSettings);
 
-    swapChain = rhi.CreateSwapChain({ .format = description.swapChainFormat,
-                                      .frameBuffering = description.frameBuffering,
-                                      .useVSync = description.useVSync },
-                                    description.platformWindow);
+    swapChain = rhi.CreateSwapChain(
+        {
+            .format = description.swapChainFormat,
+            .frameBuffering = description.frameBuffering,
+            .useVSync = description.useVSync,
+        },
+        description.platformWindow);
 
     CreateBackBuffers();
 }

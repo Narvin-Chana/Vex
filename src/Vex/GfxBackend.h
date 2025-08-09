@@ -43,7 +43,8 @@ public:
     GfxBackend(const BackendDescription& description);
     ~GfxBackend();
 
-    // Start of the frame, sets up the swapchain and backbuffers.
+    // Start of the frame, sets up the swapchain and backbuffers and blocks until the GPU is ready to accept a new
+    // frame. Since this is blocking, you generally want to call this as late as possible to reduce CPU starvation.
     void StartFrame();
 
     // Ends the frame by presenting to the swapchain. Contains a CPU-blocking wait until the next backbuffer is
@@ -139,9 +140,6 @@ private:
     // =================================================
     //  RHI RESOURCES (should be destroyed before rhi)
     // =================================================
-
-    // Synchronisation fence for each backbuffer frame (one per queue type).
-    std::array<UniqueHandle<RHIFence>, CommandQueueTypes::Count> queueFrameFences;
 
     FrameResource<UniqueHandle<RHICommandPool>> commandPools;
 

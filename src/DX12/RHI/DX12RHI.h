@@ -8,6 +8,7 @@
 #include <RHI/RHI.h>
 
 #include <DX12/DX12FeatureChecker.h>
+#include <DX12/DX12Fence.h>
 
 namespace vex
 {
@@ -24,7 +25,7 @@ public:
     ~DX12RHI();
 
     virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() override;
-    virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) override;
+    virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice, FrameBuffering frameBuffering) override;
 
     virtual UniqueHandle<RHISwapChain> CreateSwapChain(const SwapChainDescription& description,
                                                        const PlatformWindow& platformWindow) override;
@@ -41,13 +42,17 @@ public:
 
     virtual UniqueHandle<RHIDescriptorPool> CreateDescriptorPool() override;
 
-    virtual void ExecuteCommandLists(std::span<RHICommandList*> commandLists, RHISwapChain& swapChain) override;
-
-    virtual UniqueHandle<RHIFence> CreateFence(u32 numFenceIndices) override;
-    virtual void SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) override;
-    virtual void WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) override;
     virtual void ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
                                                  std::vector<ShaderDefine>& defines) override;
+
+    virtual void AcquireNextFrame(RHISwapChain& swapChain,
+                                  u32 currentFrameIndex,
+                                  RHITexture& currentBackbuffer) override;
+    virtual void SubmitAndPresent(std::span<RHICommandList*> commandLists,
+                                  RHISwapChain& swapChain,
+                                  u32 currentFrameIndex,
+                                  bool isFullscreenMode) override;
+    virtual void FlushGPU() override;
 
     ComPtr<DX12Device>& GetNativeDevice();
     ComPtr<ID3D12CommandQueue>& GetNativeQueue(CommandQueueType queueType);
@@ -64,6 +69,7 @@ private:
     ComPtr<DX12Device> device;
 
     std::array<ComPtr<ID3D12CommandQueue>, CommandQueueTypes::Count> queues;
+    std::array<DX12Fence, CommandQueueTypes::Count> fences;
 };
 
 } // namespace vex::dx12
