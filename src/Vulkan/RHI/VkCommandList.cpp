@@ -10,8 +10,8 @@
 #include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkErrorHandler.h>
 
-#include "Vex/Containers/StdContainers.h"
-#include "Vex/DrawHelpers.h"
+#include <Vex/Containers/StdContainers.h>
+#include <Vex/DrawHelpers.h>
 
 namespace vex::vk
 {
