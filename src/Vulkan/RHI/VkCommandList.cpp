@@ -1,7 +1,6 @@
 ﻿#include "VkCommandList.h"
 
 #include <Vex/Bindings.h>
-#include <Vex/Containers/StdContainers.h>
 #include <Vex/DrawHelpers.h>
 #include <Vex/RHIBindings.h>
 
@@ -12,9 +11,6 @@
 #include <Vulkan/RHI/VkResourceLayout.h>
 #include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkErrorHandler.h>
-
-#include <Vex/Containers/StdContainers.h>
-#include <Vex/DrawHelpers.h>
 
 namespace vex::vk
 {

@@ -388,6 +388,7 @@ void DX12Texture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
     }
     viewCache.clear();
 }
+
 RHITextureState::Type DX12Texture::GetClearTextureState()
 {
     if (description.usage & TextureUsage::RenderTarget)
@@ -403,6 +404,7 @@ RHITextureState::Type DX12Texture::GetClearTextureState()
     VEX_LOG(Fatal,
             "Invalid texture passed to ClearTexture, your texture must allow for either RenderTarget usage or "
             "DepthStencil usage.");
+    std::unreachable();
 }
 
 CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(DX12TextureView view)
