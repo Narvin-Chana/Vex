@@ -7,11 +7,6 @@
 namespace vex::vk
 {
 
-namespace GraphicsPiplineUtils
-{
-::vk::PrimitiveTopology InputTopologyToVkTopology(InputTopology val);
-}
-
 class VkGraphicsPipelineState final : public RHIGraphicsPipelineStateInterface
 {
     ::vk::PipelineCache PSOCache;

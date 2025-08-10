@@ -1,78 +1,25 @@
 #include "VkPipelineState.h"
 
-#include <ranges>
-
 #include <Vex/Containers/ResourceCleanup.h>
-#include <Vex/Debug.h>
 
-#include <Vulkan/RHI/VkBuffer.h>
+#include <Vulkan/RHI/VkGraphicsPipeline.h>
 #include <Vulkan/RHI/VkResourceLayout.h>
-#include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkErrorHandler.h>
-
-#include "../VkMacros.h"
-#include "Vulkan/VkFormats.h"
+#include <Vulkan/VkFormats.h>
+// These are necessary for ResourceCleanup
+#include <Vulkan/RHI/VkBuffer.h>
+#include <Vulkan/RHI/VkGraphicsPipeline.h>
+#include <Vulkan/RHI/VkTexture.h>
 
 namespace vex::vk
 {
-
-namespace GraphicsPiplineUtils
-{
-
-VEX_VK_BEGIN_ENUM_MAPPING(InputTopology, InputTopology, ::vk::PrimitiveTopology, VkTopology)
-VEX_VK_ENUM_MAPPING_ENTRY(TriangleFan, eTriangleFan)
-VEX_VK_ENUM_MAPPING_ENTRY(TriangleList, eTriangleList)
-VEX_VK_ENUM_MAPPING_ENTRY(TriangleStrip, eTriangleStrip)
-VEX_VK_END_ENUM_MAPPING
-
-VEX_VK_BEGIN_ENUM_MAPPING_STATIC(VertexInputLayout::InputRate, InputRate, ::vk::VertexInputRate, VkInputRate)
-VEX_VK_ENUM_MAPPING_ENTRY(PerInstance, eInstance)
-VEX_VK_ENUM_MAPPING_ENTRY(PerVertex, eVertex)
-VEX_VK_END_ENUM_MAPPING
-
-VEX_VK_BEGIN_ENUM_MAPPING_FLAGS_STATIC(CullMode, CullMode, ::vk::CullMode, VkCullMode)
-VEX_VK_ENUM_MAPPING_ENTRY(Back, eBack)
-VEX_VK_ENUM_MAPPING_ENTRY(Front, eFront)
-VEX_VK_ENUM_MAPPING_ENTRY(None, eNone)
-VEX_VK_END_ENUM_MAPPING
-
-VEX_VK_BEGIN_ENUM_MAPPING_STATIC(Winding, Winding, ::vk::FrontFace, VkFrontFace)
-VEX_VK_ENUM_MAPPING_ENTRY(Clockwise, eClockwise)
-VEX_VK_ENUM_MAPPING_ENTRY(CounterClockwise, eCounterClockwise)
-VEX_VK_END_ENUM_MAPPING
-
-VEX_VK_BEGIN_ENUM_MAPPING_STATIC(PolygonMode, PolygonMode, ::vk::PolygonMode, VkPolygonMode)
-VEX_VK_ENUM_MAPPING_ENTRY(Fill, eFill)
-VEX_VK_ENUM_MAPPING_ENTRY(Line, eLine)
-VEX_VK_ENUM_MAPPING_ENTRY(Point, ePoint)
-VEX_VK_END_ENUM_MAPPING
-
-} // namespace GraphicsPiplineUtils
-
-namespace GraphicsPipeline_Internal
-{
-
-::vk::StencilOpState StencilOpStateToVkStencilOpState(DepthStencilState::StencilOpState op)
-{
-    const auto& [failOp, passOp, depthFailOp, compareOp, readMask, writeMask, ref] = op;
-    return ::vk::StencilOpState{
-        .failOp = static_cast<::vk::StencilOp>(failOp),
-        .passOp = static_cast<::vk::StencilOp>(passOp),
-        .depthFailOp = static_cast<::vk::StencilOp>(depthFailOp),
-        .compareOp = static_cast<::vk::CompareOp>(compareOp),
-        .compareMask = readMask,
-        .writeMask = writeMask,
-        .reference = ref,
-    };
-}
-
-} // namespace GraphicsPipeline_Internal
 
 VkGraphicsPipelineState::VkGraphicsPipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache)
     : RHIGraphicsPipelineStateInterface(key)
     , device{ device }
     , PSOCache{ PSOCache }
 {
+    GraphicsPiplineUtils::ValidateGraphicsPipeline(key);
 }
 
 VkGraphicsPipelineState::~VkGraphicsPipelineState() = default;
@@ -167,8 +114,8 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
         .depthCompareOp = static_cast<::vk::CompareOp>(key.depthStencilState.depthCompareOp),
         .depthBoundsTestEnable = key.depthStencilState.depthBoundsTestEnabled,
         .stencilTestEnable = key.depthStencilState.stencilTestEnabled,
-        .front = GraphicsPipeline_Internal::StencilOpStateToVkStencilOpState(key.depthStencilState.front),
-        .back = GraphicsPipeline_Internal::StencilOpStateToVkStencilOpState(key.depthStencilState.back),
+        .front = GraphicsPiplineUtils::StencilOpStateToVkStencilOpState(key.depthStencilState.front),
+        .back = GraphicsPiplineUtils::StencilOpStateToVkStencilOpState(key.depthStencilState.back),
         .minDepthBounds = key.depthStencilState.minDepthBounds,
         .maxDepthBounds = key.depthStencilState.maxDepthBounds,
     };
@@ -253,8 +200,8 @@ void VkGraphicsPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
 
 VkComputePipelineState::VkComputePipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache)
     : RHIComputePipelineStateInterface(key)
-    , device{ device }
     , PSOCache{ PSOCache }
+    , device{ device }
 {
 }
 

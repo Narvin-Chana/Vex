@@ -1,9 +1,9 @@
 #include "PipelineStateCache.h"
 
-#include <Vex/Logger.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/Shader.h>
+#include <Vex/ShaderResourceContext.h>
 
 namespace vex
 {

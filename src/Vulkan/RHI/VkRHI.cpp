@@ -13,6 +13,7 @@
 #include <Vulkan/RHI/VkCommandPool.h>
 #include <Vulkan/RHI/VkDescriptorPool.h>
 #include <Vulkan/RHI/VkFence.h>
+#include <Vulkan/RHI/VkGraphicsPipeline.h>
 #include <Vulkan/RHI/VkPipelineState.h>
 #include <Vulkan/RHI/VkResourceLayout.h>
 #include <Vulkan/RHI/VkSwapChain.h>

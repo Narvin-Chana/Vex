@@ -1,10 +1,13 @@
 ﻿#include "VkCommandList.h"
 
 #include <Vex/Bindings.h>
+#include <Vex/Containers/StdContainers.h>
+#include <Vex/DrawHelpers.h>
 #include <Vex/RHIBindings.h>
 
 #include <Vulkan/RHI/VkBuffer.h>
 #include <Vulkan/RHI/VkDescriptorPool.h>
+#include <Vulkan/RHI/VkGraphicsPipeline.h>
 #include <Vulkan/RHI/VkPipelineState.h>
 #include <Vulkan/RHI/VkResourceLayout.h>
 #include <Vulkan/RHI/VkTexture.h>
@@ -459,11 +462,11 @@ void VkCommandList::Transition(std::span<std::pair<RHIBuffer&, RHIBufferState::F
 
 void VkCommandList::BeginRendering(const RHIDrawResources& resources)
 {
-    ::vk::Rect2D maxArea{ { 0, 0 }, { 0, 0 } };
+    ::vk::Rect2D maxArea{ { 0, 0 }, { std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max() } };
     for (auto& renderTargets : resources.renderTargets)
     {
-        maxArea.extent.width = std::max(renderTargets.texture->GetDescription().width, maxArea.extent.width);
-        maxArea.extent.height = std::max(renderTargets.texture->GetDescription().height, maxArea.extent.height);
+        maxArea.extent.width = std::min(renderTargets.texture->GetDescription().width, maxArea.extent.width);
+        maxArea.extent.height = std::min(renderTargets.texture->GetDescription().height, maxArea.extent.height);
     }
 
     std::vector<::vk::RenderingAttachmentInfo> colorAttachmentsInfo(resources.renderTargets.size());

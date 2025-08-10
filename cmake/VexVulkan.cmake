@@ -36,6 +36,8 @@ function(setup_vulkan_backend TARGET)
         "src/Vulkan/RHI/VkTexture.cpp"
         "src/Vulkan/RHI/VkBuffer.h"
         "src/Vulkan/RHI/VkBuffer.cpp"
+        "src/Vulkan/RHI/VkGraphicsPipeline.h"
+        "src/Vulkan/RHI/VkGraphicsPipeline.cpp"
         # Vulkan API
         "src/Vulkan/VkFormats.h" 
         "src/Vulkan/VkFeatureChecker.h"

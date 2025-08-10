@@ -1,14 +1,13 @@
 #pragma once
 
-#include <span>
 #include <unordered_map>
 
-#include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/ShaderCompiler.h>
-#include <Vex/ShaderResourceContext.h>
 #include <Vex/UniqueHandle.h>
+
+#include <Vulkan/RHI/VkGraphicsPipeline.h>
 
 namespace vex
 {
