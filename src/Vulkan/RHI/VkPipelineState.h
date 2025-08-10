@@ -14,6 +14,8 @@ class VkGraphicsPipelineState final : public RHIGraphicsPipelineStateInterface
 
 public:
     VkGraphicsPipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache);
+    VkGraphicsPipelineState(VkGraphicsPipelineState&&) = default;
+    VkGraphicsPipelineState& operator=(VkGraphicsPipelineState&&) = default;
     ~VkGraphicsPipelineState();
     virtual void Compile(const Shader& vertexShader,
                          const Shader& pixelShader,
@@ -30,6 +32,8 @@ class VkComputePipelineState final : public RHIComputePipelineStateInterface
 
 public:
     VkComputePipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache);
+    VkComputePipelineState(VkComputePipelineState&&) = default;
+    VkComputePipelineState& operator=(VkComputePipelineState&&) = default;
     ~VkComputePipelineState();
     virtual void Compile(const Shader& computeShader, RHIResourceLayout& resourceLayout) override;
     virtual void Cleanup(ResourceCleanup& resourceCleanup) override;

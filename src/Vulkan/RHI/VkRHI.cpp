@@ -305,14 +305,14 @@ UniqueHandle<RHICommandPool> VkRHI::CreateCommandPool()
     return MakeUnique<VkCommandPool>(GetGPUContext(), commandQueues);
 }
 
-UniqueHandle<RHIGraphicsPipelineState> VkRHI::CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key)
+RHIGraphicsPipelineState VkRHI::CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key)
 {
-    return MakeUnique<VkGraphicsPipelineState>(key, *device, *PSOCache);
+    return { key, *device, *PSOCache };
 }
 
-UniqueHandle<RHIComputePipelineState> VkRHI::CreateComputePipelineState(const ComputePipelineStateKey& key)
+RHIComputePipelineState VkRHI::CreateComputePipelineState(const ComputePipelineStateKey& key)
 {
-    return MakeUnique<VkComputePipelineState>(key, *device, *PSOCache);
+    return { key, *device, *PSOCache };
 }
 
 UniqueHandle<RHIResourceLayout> VkRHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool)

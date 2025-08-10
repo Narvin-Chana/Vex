@@ -7,8 +7,6 @@
 #include <Vex/ShaderCompiler.h>
 #include <Vex/UniqueHandle.h>
 
-#include <Vulkan/RHI/VkGraphicsPipeline.h>
-
 namespace vex
 {
 
@@ -46,8 +44,8 @@ private:
 
     ShaderCompiler shaderCompiler;
     UniqueHandle<RHIResourceLayout> resourceLayout;
-    std::unordered_map<RHIGraphicsPipelineState::Key, UniqueHandle<RHIGraphicsPipelineState>> graphicsPSCache;
-    std::unordered_map<RHIComputePipelineState::Key, UniqueHandle<RHIComputePipelineState>> computePSCache;
+    std::unordered_map<RHIGraphicsPipelineState::Key, RHIGraphicsPipelineState> graphicsPSCache;
+    std::unordered_map<RHIComputePipelineState::Key, RHIComputePipelineState> computePSCache;
 };
 
 } // namespace vex

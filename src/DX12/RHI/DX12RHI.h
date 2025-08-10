@@ -30,10 +30,8 @@ public:
                                                        const PlatformWindow& platformWindow) override;
 
     virtual UniqueHandle<RHICommandPool> CreateCommandPool() override;
-    virtual UniqueHandle<RHIGraphicsPipelineState> CreateGraphicsPipelineState(
-        const GraphicsPipelineStateKey& key) override;
-    virtual UniqueHandle<RHIComputePipelineState> CreateComputePipelineState(
-        const ComputePipelineStateKey& key) override;
+    virtual RHIGraphicsPipelineState CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key) override;
+    virtual RHIComputePipelineState CreateComputePipelineState(const ComputePipelineStateKey& key) override;
     virtual UniqueHandle<RHIResourceLayout> CreateResourceLayout(RHIDescriptorPool& descriptorPool) override;
 
     virtual UniqueHandle<RHITexture> CreateTexture(const TextureDescription& description) override;

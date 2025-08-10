@@ -32,12 +32,12 @@ const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(con
     RHIGraphicsPipelineState* ps;
     if (graphicsPSCache.contains(key))
     {
-        ps = graphicsPSCache[key].get();
+        ps = &graphicsPSCache.at(key);
     }
     else
     {
-        graphicsPSCache[key] = rhi->CreateGraphicsPipelineState(key);
-        ps = graphicsPSCache[key].get();
+        graphicsPSCache.insert({ key, rhi->CreateGraphicsPipelineState(key) });
+        ps = &graphicsPSCache.at(key);
     }
 
     // Add samplers to the resourceContext
@@ -71,12 +71,12 @@ const RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const
     RHIComputePipelineState* ps;
     if (computePSCache.contains(key))
     {
-        ps = computePSCache[key].get();
+        ps = &computePSCache.at(key);
     }
     else
     {
-        computePSCache[key] = rhi->CreateComputePipelineState(key);
-        ps = computePSCache[key].get();
+        computePSCache.insert({ key, rhi->CreateComputePipelineState(key) });
+        ps = &computePSCache.at(key);
     }
 
     // Add samplers to the resourceContext

@@ -123,17 +123,17 @@ UniqueHandle<RHICommandPool> DX12RHI::CreateCommandPool()
     return MakeUnique<DX12CommandPool>(device);
 }
 
-UniqueHandle<RHIGraphicsPipelineState> DX12RHI::CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key)
+RHIGraphicsPipelineState DX12RHI::CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key)
 {
     GraphicsPipelineStateKey keyCopy = key;
     // Will clear out unsupported fields/validate that the user is not expecting invalid features.
     DX12GraphicsPipelineState::ClearUnsupportedKeyFields(keyCopy);
-    return MakeUnique<DX12GraphicsPipelineState>(device, std::move(keyCopy));
+    return { device, keyCopy };
 }
 
-UniqueHandle<RHIComputePipelineState> DX12RHI::CreateComputePipelineState(const ComputePipelineStateKey& key)
+RHIComputePipelineState DX12RHI::CreateComputePipelineState(const ComputePipelineStateKey& key)
 {
-    return MakeUnique<DX12ComputePipelineState>(device, key);
+    return { device, key };
 }
 
 UniqueHandle<RHIResourceLayout> DX12RHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool)
