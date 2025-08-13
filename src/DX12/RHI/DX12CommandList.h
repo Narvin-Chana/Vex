@@ -28,8 +28,8 @@ public:
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) override;
     virtual void SetInputAssembly(InputAssembly inputAssembly) override;
 
-    virtual void ClearTexture(RHITexture& rhiTexture,
-                              const ResourceBinding& clearBinding,
+    virtual void ClearTexture(const RHITextureBinding& rhiTexture,
+                              TextureUsage::Type usage,
                               const TextureClearValue& clearValue) override;
 
     virtual void Transition(RHITexture& texture, RHITextureState::Flags newState) override;

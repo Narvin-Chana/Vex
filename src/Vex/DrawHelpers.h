@@ -26,13 +26,7 @@ struct DrawResources
     // Local constants bound to the root/push constants of your pass.
     std::span<const ConstantBinding> constants;
     // Read-only resources.
-    std::span<const ResourceBinding> readResources;
-    // Read / Write resources.
-    std::span<const ResourceBinding> unorderedAccessResources;
-    // Write-only resources.
-    std::span<const ResourceBinding> renderTargets;
-    // Write-only resource (optional).
-    std::optional<ResourceBinding> depthStencil = std::nullopt;
+    std::span<const ResourceBinding> resourceBindings;
 };
 
 } // namespace vex

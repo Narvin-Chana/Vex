@@ -37,8 +37,8 @@ public:
     virtual void SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& descriptorPool) override;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) override;
     virtual void SetInputAssembly(InputAssembly inputAssembly) override;
-    virtual void ClearTexture(RHITexture& rhiTexture,
-                              const ResourceBinding& clearBinding,
+    virtual void ClearTexture(const RHITextureBinding& binding,
+                              TextureUsage::Type usage,
                               const TextureClearValue& clearValue) override;
 
     virtual void Transition(RHITexture& texture, RHITextureState::Flags newState) override;

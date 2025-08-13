@@ -46,18 +46,15 @@ void RHIResourceLayoutBase::SetLayoutResources(RHI& rhi,
     std::vector<u32> bindlessHandles;
     // Allocate for worst-case scenario.
     bindlessHandles.reserve(textures.size() + buffers.size());
-    for (auto& [binding, usage, texture] : textures)
+    for (auto& [binding, texture] : textures)
     {
-        if ((usage == TextureUsage::ShaderRead) || (usage == TextureUsage::ShaderReadWrite))
-        {
-            bindlessHandles.push_back(texture->GetOrCreateBindlessView(binding, usage, descriptorPool).GetIndex());
-        }
+        bindlessHandles.push_back(texture->GetOrCreateBindlessView(binding, static_cast<TextureUsage::Type>(binding.usage), descriptorPool).GetIndex());
     }
 
     for (auto& [binding, buffer] : buffers)
     {
         bindlessHandles.push_back(
-            buffer->GetOrCreateBindlessView(binding.bufferUsage, binding.bufferStride, descriptorPool).GetIndex());
+            buffer->GetOrCreateBindlessView(binding.usage, binding.stride, descriptorPool).GetIndex());
     }
 
     // Tmp buffer for uploading the bindless constants.. this doesn't scale well...

@@ -77,11 +77,11 @@ public:
         return isBackBuffer;
     }
 
-    virtual BindlessHandle GetOrCreateBindlessView(const ResourceBinding& binding,
+    virtual BindlessHandle GetOrCreateBindlessView(const TextureBinding& binding,
                                                    TextureUsage::Type usage,
                                                    RHIDescriptorPool& descriptorPool) override;
 
-    ::vk::ImageView GetOrCreateImageView(const ResourceBinding& binding, TextureUsage::Type usage);
+    ::vk::ImageView GetOrCreateImageView(const TextureBinding& binding, TextureUsage::Type usage);
 
     virtual RHITextureState::Type GetClearTextureState() override;
 

@@ -126,7 +126,7 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescri
     return returnVal;
 }
 
-BindlessHandle VkTexture::GetOrCreateBindlessView(const ResourceBinding& binding,
+BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
                                                   TextureUsage::Type usage,
                                                   RHIDescriptorPool& descriptorPool)
 {
@@ -168,7 +168,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const ResourceBinding& binding
     return handle;
 }
 
-::vk::ImageView VkTexture::GetOrCreateImageView(const ResourceBinding& binding, TextureUsage::Type usage)
+::vk::ImageView VkTexture::GetOrCreateImageView(const TextureBinding& binding, TextureUsage::Type usage)
 {
     VkTextureViewDesc view{
         .viewType = TextureUtil::GetTextureViewType(binding),

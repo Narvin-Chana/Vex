@@ -2,6 +2,7 @@
 
 #include <optional>
 
+#include <Vex/RHIBindings.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/ShaderKey.h>
 #include <Vex/Types.h>
@@ -13,7 +14,6 @@
 namespace vex
 {
 
-class ResourceBindingSet;
 class GfxBackend;
 struct ConstantBinding;
 struct ResourceBinding;
@@ -22,6 +22,7 @@ struct Buffer;
 struct TextureClearValue;
 struct DrawDescription;
 struct DrawResources;
+struct ComputeResources;
 
 class CommandContext
 {
@@ -39,10 +40,14 @@ public:
     void SetScissor(i32 x, i32 y, u32 width, u32 height);
 
     // Clears a texture, by default will use the texture's ClearColor.
-    void ClearTexture(ResourceBinding binding,
-                      TextureClearValue* optionalTextureClearValue =
+    void ClearTexture(const TextureBinding& binding,
+                      TextureUsage::Type clearUsage,
+                      const TextureClearValue* optionalTextureClearValue =
                           nullptr, // Use ptr instead of optional to allow for fwd declaration of type.
                       std::optional<std::array<float, 4>> clearRect = std::nullopt);
+
+    void BeginRendering(const DrawResourceBinding& drawBindings);
+    void EndRendering();
 
     void Draw(const DrawDescription& drawDesc, const DrawResources& drawResources, u32 vertexCount);
 
@@ -53,14 +58,13 @@ public:
     {
     }
 
-    void Dispatch(const ShaderKey& shader, const ResourceBindingSet& resourceBindingSet, std::array<u32, 3> groupCount);
+    void Dispatch(const ShaderKey& shader,
+                  std::span<const ResourceBinding> resourceBindings,
+                  std::span<const ConstantBinding> constantBindings,
+                  std::array<u32, 3> groupCount);
 
     void Copy(const Texture& source, const Texture& destination);
     void Copy(const Buffer& source, const Buffer& destination);
-
-    // Manually sets a target as the current render target.
-    // Is done automatically by draw calls, so its generally not necessary to call this.
-    void SetRenderTarget(const ResourceBinding& renderTarget);
 
     // Allows you to transition the passed in texture to the correct state. Usually this is done automatically by Vex
     // before any draws or dispatches for the resources you pass in.
@@ -96,6 +100,8 @@ private:
     std::optional<GraphicsPipelineStateKey> cachedGraphicsPSOKey = std::nullopt;
     std::optional<ComputePipelineStateKey> cachedComputePSOKey = std::nullopt;
     std::optional<InputAssembly> cachedInputAssembly = std::nullopt;
+
+    std::optional<RHIDrawResources> currentDrawResources;
 };
 
 } // namespace vex

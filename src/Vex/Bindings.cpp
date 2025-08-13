@@ -63,185 +63,161 @@ u32 ConstantBinding::ConcatConstantBindings(std::span<const ConstantBinding> con
     return total;
 }
 
-void ResourceBinding::ValidateResourceBindings(std::span<const ResourceBinding> bindings,
-                                               TextureUsage::Flags validTextureUsageFlags,
-                                               BufferUsage::Flags validBufferUsageFlags)
+void BufferBinding::ValidateForUse(BufferUsage::Flags validBufferUsageFlags) const
 {
-    bool depthStencilAlreadyFound = false;
+    Validate();
 
-    for (const auto& resource : bindings)
+    if (!(buffer.description.usage & validBufferUsageFlags))
     {
-        if (!Bindings_Internal::IsValidHLSLResourceName(resource.name))
-        {
-            VEX_LOG(Fatal, "Invalid binding: You must specify a non-empty name that is valid for HLSL usage.");
-        }
+        VEX_LOG(Fatal,
+                "Invalid binding for resource \"{}\": The specified buffer cannot be bound for this type of "
+                "operation. Check the usage flags of your resource at creation.",
+                name);
+    }
+}
 
-        if (!resource.IsBuffer() && !resource.IsTexture())
+void BufferBinding::Validate() const
+{
+    if (!Bindings_Internal::IsValidHLSLResourceName(name))
+    {
+        VEX_LOG(Fatal,
+                "Invalid binding for buffer \"{}\": You must specify a non-empty name that is valid for HLSL usage.",
+                buffer.description.name);
+    }
+
+    if (usage == BufferBindingUsage::Invalid)
+    {
+        VEX_LOG(Fatal,
+                "Invalid binding for resource \"{}\": The binding's usage must be set to something and therefore not "
+                "be invalid",
+                name);
+    }
+
+    if (!IsBindingUsageCompatibleWithBufferUsage(buffer.description.usage, usage))
+    {
+        VEX_LOG(Fatal,
+                "Invalid binding for resource \"{}\": Binding usage must be compatible with buffer description "
+                "usage.",
+                name);
+    }
+}
+
+void TextureBinding::ValidateForUse(TextureUsage::Flags validTextureUsageFlags) const
+{
+    Validate();
+
+    if (!(texture.description.usage & validTextureUsageFlags))
+    {
+        VEX_LOG(Fatal,
+                "Invalid binding for resource \"{}\": The specified texture cannot be bound for this type of "
+                "operation. Check the usage flags of your resource at creation.",
+                name);
+    }
+
+    if ((validTextureUsageFlags & TextureUsage::DepthStencil) &&
+        !FormatIsDepthStencilCompatible(texture.description.format))
+    {
+        VEX_LOG(Fatal, "Invalid binding for resource \"{}\": texture cannot be bound as depth stencil", name);
+    }
+}
+void TextureBinding::Validate() const
+{
+    if (!Bindings_Internal::IsValidHLSLResourceName(name))
+    {
+        VEX_LOG(Fatal,
+                "Invalid binding for texture \"{}\": You must specify a non-empty name that is valid for HLSL usage.",
+                texture.description.name);
+    }
+
+    if (usage == TextureBindingUsage::Invalid)
+    {
+        VEX_LOG(Fatal,
+                "Invalid binding for resource \"{}\": The binding's usage must be set to something and therefore not "
+                "be invalid",
+                name);
+    }
+
+    if (mipCount > texture.description.mips)
+    {
+        VEX_LOG(Fatal,
+                "Invalid binding for resource \"{}\": The binding's mip count ({}) cannot be larger than the "
+                "actual texture's mip count ({}).",
+                name,
+                mipCount,
+                texture.description.mips);
+    }
+
+    if (mipBias >= texture.description.mips)
+    {
+        VEX_LOG(Fatal,
+                "Invalid binding for resource \"{}\": The binding's mip bias ({}) cannot be larger than the "
+                "actual texture's mip count ({}).",
+                name,
+                mipBias,
+                texture.description.mips);
+    }
+
+    if (texture.description.depthOrArraySize > 1 && sliceCount > texture.description.depthOrArraySize)
+    {
+        VEX_LOG(Fatal,
+                "Invalid binding for resource \"{}\": The binding's slice count ({}) cannot be larger than the "
+                "actual texture's depth ({}).",
+                name,
+                sliceCount,
+                texture.description.depthOrArraySize);
+    }
+
+    if (texture.description.depthOrArraySize > 1 && startSlice >= texture.description.depthOrArraySize)
+    {
+        VEX_LOG(Fatal,
+                "Invalid binding for resource \"{}\": The binding's starting slice ({}) cannot be larger than the "
+                "actual texture's depth ({}).",
+                name,
+                startSlice,
+                texture.description.depthOrArraySize);
+    }
+
+    if (flags & TextureBindingFlags::SRGB)
+    {
+        if (!FormatHasSRGBEquivalent(texture.description.format))
         {
             VEX_LOG(Fatal,
-                    "Invalid binding for resource \"{}\": You must specify either a buffer or texture.",
-                    resource.name);
+                    "Invalid binding for resource \"{}\": Texture's format ({}) does not allow for an SRGB "
+                    "binding.",
+                    name,
+                    magic_enum::enum_name(texture.description.format));
         }
+    }
 
-        if (resource.IsTexture())
-        {
-            if (!(resource.texture.description.usage & validTextureUsageFlags))
-            {
-                VEX_LOG(Fatal,
-                        "Invalid binding for resource \"{}\": The specified texture cannot be bound for this type of "
-                        "operation. Check the usage flags of your resource at creation.",
-                        resource.name);
-            }
+    if (FormatIsDepthStencilCompatible(texture.description.format) &&
+        !(texture.description.usage & TextureUsage::DepthStencil))
+    {
+        VEX_LOG(Fatal,
+                "Invalid binding for resource \"{}\": Texture's format ({}) requires the depth stencil usage "
+                "upon creation.",
+                name,
+                magic_enum::enum_name(texture.description.format));
+    }
 
-            if (resource.mipCount > resource.texture.description.mips)
-            {
-                VEX_LOG(Fatal,
-                        "Invalid binding for resource \"{}\": The binding's mip count ({}) cannot be larger than the "
-                        "actual texture's mip count ({}).",
-                        resource.name,
-                        resource.mipCount,
-                        resource.texture.description.mips);
-            }
+    if (!IsTextureBindingUsageCompatibleWithTextureUsage(texture.description.usage, usage))
+    {
+        VEX_LOG(Fatal,
+                "Invalid binding for resource \"{}\": Binding usage must be compatible with texture description's"
+                "usage.",
+                name);
+    }
+}
 
-            if (resource.mipBias >= resource.texture.description.mips)
-            {
-                VEX_LOG(Fatal,
-                        "Invalid binding for resource \"{}\": The binding's mip bias ({}) cannot be larger than the "
-                        "actual texture's mip count ({}).",
-                        resource.name,
-                        resource.mipBias,
-                        resource.texture.description.mips);
-            }
+void DrawResourceBinding::Validate() const
+{
+    for (const auto& binding : renderTargets)
+    {
+        binding.ValidateForUse(TextureUsage::RenderTarget);
+    }
 
-            if (resource.texture.description.depthOrArraySize > 1 &&
-                resource.sliceCount > resource.texture.description.depthOrArraySize)
-            {
-                VEX_LOG(Fatal,
-                        "Invalid binding for resource \"{}\": The binding's slice count ({}) cannot be larger than the "
-                        "actual texture's depth ({}).",
-                        resource.name,
-                        resource.sliceCount,
-                        resource.texture.description.depthOrArraySize);
-            }
-
-            if (resource.texture.description.depthOrArraySize > 1 &&
-                resource.startSlice >= resource.texture.description.depthOrArraySize)
-            {
-                VEX_LOG(
-                    Fatal,
-                    "Invalid binding for resource \"{}\": The binding's starting slice ({}) cannot be larger than the "
-                    "actual texture's depth ({}).",
-                    resource.name,
-                    resource.startSlice,
-                    resource.texture.description.depthOrArraySize);
-            }
-
-            if (resource.textureFlags & TextureBinding::SRGB)
-            {
-                if (!FormatHasSRGBEquivalent(resource.texture.description.format))
-                {
-                    VEX_LOG(Fatal,
-                            "Invalid binding for resource \"{}\": Texture's format ({}) does not allow for an SRGB "
-                            "binding.",
-                            resource.name,
-                            magic_enum::enum_name(resource.texture.description.format));
-                }
-            }
-
-            if (FormatIsDepthStencilCompatible(resource.texture.description.format) &&
-                !(resource.texture.description.usage & TextureUsage::DepthStencil))
-            {
-                VEX_LOG(Fatal,
-                        "Invalid binding for resource \"{}\": Texture's format ({}) requires the depth stencil usage "
-                        "upon creation.",
-                        resource.name,
-                        magic_enum::enum_name(resource.texture.description.format));
-            }
-
-            if (FormatIsDepthStencilCompatible(resource.texture.description.format) &&
-                (validTextureUsageFlags & TextureUsage::DepthStencil))
-            {
-                if (depthStencilAlreadyFound)
-                {
-                    VEX_LOG(Fatal,
-                            "Invalid binding for resource \"{}\": Cannot bind multiple depth stencils to the graphics "
-                            "pipeline.",
-                            resource.name);
-                }
-                depthStencilAlreadyFound = true;
-            }
-
-            if (resource.bufferUsage != BufferBindingUsage::None)
-            {
-                VEX_LOG(
-                    Warning,
-                    "Invalid binding for resource \"{}\": buffer binding flags is set. These are ignored for textures.",
-                    resource.name);
-            }
-        }
-
-        if (resource.IsBuffer())
-        {
-            if (!(resource.buffer.description.usage & validBufferUsageFlags))
-            {
-                VEX_LOG(Fatal,
-                        "Invalid binding for resource \"{}\": The specified buffer cannot be bound for this type of "
-                        "operation. Check the usage flags of your resource at creation.",
-                        resource.name);
-            }
-
-            if (!IsBindingUsageCompatibleWithBufferUsage(resource.buffer.description.usage, resource.bufferUsage))
-            {
-                VEX_LOG(Fatal,
-                        "Invalid binding for resource \"{}\": Binding usage must be compatible with buffer description "
-                        "usage.",
-                        resource.name);
-            }
-
-            if (resource.mipBias != 0)
-            {
-                VEX_LOG(
-                    Warning,
-                    "Invalid binding for resource \"{}\": mipBias is set to {}. This parameter is ignored for buffers.",
-                    resource.name,
-                    resource.mipBias);
-            }
-
-            if (resource.mipCount != 0)
-            {
-                VEX_LOG(Warning,
-                        "Invalid binding for resource \"{}\": mipCount is set to {}. This parameter is ignored for "
-                        "buffers.",
-                        resource.name,
-                        resource.mipCount);
-            }
-
-            if (resource.startSlice != 0)
-            {
-                VEX_LOG(Warning,
-                        "Invalid binding for resource \"{}\": startSlice is set to {}. This parameter is ignored for "
-                        "buffers.",
-                        resource.name,
-                        resource.startSlice);
-            }
-
-            if (resource.sliceCount != 0)
-            {
-                VEX_LOG(Warning,
-                        "Invalid binding for resource \"{}\": sliceCount is set to {}. This parameter is ignored for "
-                        "buffers.",
-                        resource.name,
-                        resource.sliceCount);
-            }
-
-            if (resource.textureFlags != TextureBinding::None)
-            {
-                VEX_LOG(
-                    Warning,
-                    "Invalid binding for resource \"{}\": texture binding flags is set. These are ignored for buffers.",
-                    resource.name);
-            }
-        }
+    if (depthStencil)
+    {
+        depthStencil->ValidateForUse(TextureUsage::DepthStencil);
     }
 }
 

@@ -118,15 +118,15 @@ void ImGuiRenderExtension::OnFrameEnd()
     {
         vex::CommandContext ctx = graphics.BeginScopedCommandContext(vex::CommandQueueType::Graphics);
 
-        vex::ResourceBinding backBufferBinding = { .texture = graphics.GetCurrentBackBuffer() };
+        vex::TextureBinding backBufferBinding = { .texture = graphics.GetCurrentBackBuffer() };
 
         vex::TextureClearValue clearValue{ .flags = vex::TextureClear::ClearColor, .color = { 0, 0, 0, 0 } };
-        ctx.ClearTexture(backBufferBinding, &clearValue);
+        ctx.ClearTexture(backBufferBinding, vex::TextureUsage::RenderTarget, &clearValue);
 
         // ImGui renders to the texture that is currently set as render target.
         // We have to manually set the render target we want ImGui to render to (in this case we want to render
         // directly to the backbuffer).
-        ctx.SetRenderTarget(backBufferBinding);
+        ctx.BeginRendering({ .renderTargets = std::initializer_list{ backBufferBinding } });
 
 #if VEX_VULKAN
         VEX_NOT_YET_IMPLEMENTED();
@@ -134,5 +134,7 @@ void ImGuiRenderExtension::OnFrameEnd()
         ImGui::Render();
         ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), ctx.GetRHICommandList().GetNativeCommandList().Get());
 #endif
+
+        ctx.EndRendering();
     }
 }

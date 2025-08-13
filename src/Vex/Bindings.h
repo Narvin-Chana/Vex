@@ -1,6 +1,7 @@
 #pragma once
 
 #include <span>
+#include <variant>
 
 #include <Vex/Buffer.h>
 #include <Vex/EnumFlags.h>
@@ -29,34 +30,39 @@ struct ConstantBinding
 
 // clang-format off
 
-// Flags for a buffer binding.
-BEGIN_VEX_ENUM_FLAGS(BufferBinding, u8)
-    None,
-END_VEX_ENUM_FLAGS();
-
 // Flags for a texture binding.
-BEGIN_VEX_ENUM_FLAGS(TextureBinding, u8)
+BEGIN_VEX_ENUM_FLAGS(TextureBindingFlags, u8)
     None,
     SRGB = 1,
 END_VEX_ENUM_FLAGS();
 
 // clang-format on
 
-struct ResourceBinding
+struct BufferBinding
 {
     // Name of the resource used inside the shader.
     // eg: VEX_RESOURCE(Texture2D<float3>, MyName);
     std::string name;
-
     // The buffer to bind
     Buffer buffer;
     // The usage to use in this binding. Needs to be part of the usages of the buffer description
-    BufferBindingUsage bufferUsage;
+    BufferBindingUsage usage = BufferBindingUsage::Invalid;
+    // Optional: Stride of the buffer when using StructuredBuffer usage
+    u32 stride = 0;
 
+    void ValidateForUse(BufferUsage::Flags validBufferUsageFlags) const;
+    void Validate() const;
+};
+
+struct TextureBinding
+{
+    // Name of the resource used inside the shader.
+    // eg: VEX_RESOURCE(Texture2D<float3>, MyName);
+    std::string name;
     // The texture to bind
     Texture texture;
-    // Flags for binding the texture
-    TextureBinding::Flags textureFlags;
+    TextureBindingUsage usage = TextureBindingUsage::Invalid;
+    TextureBindingFlags::Flags flags = TextureBindingFlags::None;
 
     u32 mipBias = 0;
     // 0 means to use every mip.
@@ -66,23 +72,44 @@ struct ResourceBinding
     // 0 means to use every slice.
     u32 sliceCount = 0;
 
-    // Stride of the buffer if necessary
-    u32 bufferStride = 0;
+    void ValidateForUse(TextureUsage::Flags validTextureUsageFlags) const;
+    void Validate() const;
+};
+
+struct ResourceBinding
+{
+    ResourceBinding(const TextureBinding& binding)
+        : binding{ binding } {};
+    ResourceBinding(const BufferBinding& binding)
+        : binding{ binding } {};
+
+    std::variant<TextureBinding, BufferBinding> binding;
+
+    [[nodiscard]] bool IsTexture() const
+    {
+        return std::holds_alternative<TextureBinding>(binding);
+    }
+    [[nodiscard]] const TextureBinding& GetTextureBinding() const
+    {
+        return std::get<TextureBinding>(binding);
+    }
 
     [[nodiscard]] bool IsBuffer() const
     {
-        return buffer.handle != GInvalidBufferHandle;
+        return std::holds_alternative<BufferBinding>(binding);
     }
-    [[nodiscard]] bool IsTexture() const
+    [[nodiscard]] const BufferBinding& GetBufferBinding() const
     {
-        return texture.handle != GInvalidTextureHandle;
+        return std::get<BufferBinding>(binding);
     }
+};
 
-    // Takes in an array of bindings and does some validation on them
-    // the passed in flags assure that the bindings can be used according to those flags
-    static void ValidateResourceBindings(std::span<const ResourceBinding> bindings,
-                                         TextureUsage::Flags validUsageFlags,
-                                         BufferUsage::Flags validBufferUsageFlags = BufferUsage::GenericBuffer);
+struct DrawResourceBinding
+{
+    std::span<const TextureBinding> renderTargets;
+    std::optional<const TextureBinding> depthStencil;
+
+    void Validate() const;
 };
 
 } // namespace vex

@@ -164,9 +164,7 @@ add_library(Vex STATIC
     "src/Vex/ShaderCompiler.h"
     "src/Vex/ShaderCompiler.cpp"
     "src/Vex/Formattable.h"
-    "src/Vex/ResourceBindingSet.cpp"
-    "src/Vex/ResourceBindingSet.h"
-    "src/Vex/ShaderResourceContext.h"
+        "src/Vex/ShaderResourceContext.h"
     "src/Vex/ShaderResourceContext.cpp"
     "src/Vex/ShaderGen.h"
     "src/Vex/TextureSampler.h"
@@ -175,6 +173,7 @@ add_library(Vex STATIC
     "src/Vex/ShaderCompilerSettings.h"
     "src/Vex/RenderExtension.h"
     "src/Vex/RenderExtension.cpp"
+    "src/Vex/ResourceBindingUtils.cpp"
     "src/Vex/MaybeUninitialized.h"
     "src/Vex/NonNullPtr.h"
 )

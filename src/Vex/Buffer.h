@@ -32,12 +32,12 @@ END_VEX_ENUM_FLAGS();
 // shader to access the buffer
 enum class BufferBindingUsage : u8
 {
-    None,
     ConstantBuffer,
     StructuredBuffer,
     RWStructuredBuffer,
     ByteAddressBuffer,
-    RWByteAddressBuffer
+    RWByteAddressBuffer,
+    Invalid = 0xFF
 };
 
 inline bool IsBindingUsageCompatibleWithBufferUsage(BufferUsage::Flags usages, BufferBindingUsage bindingUsage)
@@ -69,19 +69,6 @@ struct BufferDescription
     ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly;
 };
 
-inline void ValidateBufferDescription(const BufferDescription& desc)
-{
-    if (desc.name.empty())
-    {
-        VEX_LOG(Fatal, "The buffer needs a name on creation.");
-    }
-
-    if (desc.byteSize == 0)
-    {
-        VEX_LOG(Fatal, "Buffer \"{}\" must have a size bigger than 0", desc.name);
-    }
-}
-
 // Strongly defined type represents a buffer.
 // We use a struct (instead of a typedef/using) to enforce compile-time correctness of handles.
 struct BufferHandle : public Handle<BufferHandle>
@@ -95,5 +82,21 @@ struct Buffer final
     BufferHandle handle;
     BufferDescription description;
 };
+
+namespace BufferUtil
+{
+inline void ValidateBufferDescription(const BufferDescription& desc)
+{
+    if (desc.name.empty())
+    {
+        VEX_LOG(Fatal, "The buffer needs a name on creation.");
+    }
+
+    if (desc.byteSize == 0)
+    {
+        VEX_LOG(Fatal, "Buffer \"{}\" must have a size bigger than 0", desc.name);
+    }
+}
+} // namespace BufferUtil
 
 } // namespace vex

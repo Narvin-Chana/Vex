@@ -10,14 +10,13 @@ namespace vex
 
 struct RHITextureBinding
 {
-    ResourceBinding binding;
-    TextureUsage::Type usage;
+    TextureBinding binding;
     RHITexture* texture;
 };
 
 struct RHIBufferBinding
 {
-    ResourceBinding binding;
+    BufferBinding binding;
     RHIBuffer* buffer;
 };
 

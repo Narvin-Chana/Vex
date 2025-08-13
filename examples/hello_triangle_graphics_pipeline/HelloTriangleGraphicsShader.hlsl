@@ -3,12 +3,17 @@ struct MyStruct
     float time;
 };
 
+struct Colors
+{
+    float4 cols;
+};
+
 VEX_SHADER
 {
-    VEX_LOCAL_CONSTANTS(
-        MyStruct,
-        MyLocalConstants
-    );
+VEX_LOCAL_CONSTANTS(
+    MyStruct,
+    MyLocalConstants
+);
 }
 
 void ComputeTriangleVertex(in uint vertexID, out float4 position, out float2 uv)

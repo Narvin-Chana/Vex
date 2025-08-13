@@ -1,7 +1,6 @@
-﻿#include "Texture.h"
-
-#include "Bindings.h"
+﻿#include "Bindings.h"
 #include "Logger.h"
+#include "Texture.h"
 
 namespace vex
 {
@@ -9,7 +8,7 @@ namespace vex
 namespace TextureUtil
 {
 
-TextureViewType GetTextureViewType(const ResourceBinding& binding)
+TextureViewType GetTextureViewType(const TextureBinding& binding)
 {
     switch (binding.texture.description.type)
     {
@@ -27,7 +26,7 @@ TextureViewType GetTextureViewType(const ResourceBinding& binding)
     std::unreachable();
 }
 
-TextureFormat GetTextureFormat(const ResourceBinding& binding)
+TextureFormat GetTextureFormat(const TextureBinding& binding)
 {
     if (!IsFormatSRGB(binding.texture.description.format) &&
         !FormatHasSRGBEquivalent(binding.texture.description.format))
@@ -35,12 +34,23 @@ TextureFormat GetTextureFormat(const ResourceBinding& binding)
         return TextureFormat::UNKNOWN;
     }
 
-    if (binding.textureFlags & TextureBinding::SRGB)
+    if (binding.flags & TextureBindingFlags::SRGB)
     {
         return GetSRGBEquivalentFormat(binding.texture.description.format);
     }
 
     return binding.texture.description.format;
+}
+
+void ValidateTextureDescription(const TextureDescription& description)
+{
+    if (FormatIsDepthStencilCompatible(description.format) && (description.usage & TextureUsage::DepthStencil))
+    {
+        VEX_LOG(Fatal,
+                "Invalid Texture description for texture \"{}\": A texture that has a DepthStencil usage must has a "
+                "format that supports it",
+                description.name);
+    }
 }
 
 } // namespace TextureUtil

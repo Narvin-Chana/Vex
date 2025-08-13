@@ -5,9 +5,9 @@ struct Colors
 
 VEX_SHADER
 {
-VEX_GLOBAL_RESOURCE(RWTexture2D<float4>, OutputTexture);
-VEX_GLOBAL_RESOURCE(RWStructuredBuffer<float4>, CommBuffer);
-VEX_GLOBAL_RESOURCE(ConstantBuffer<Colors>, ColorBuffer);
+    VEX_GLOBAL_RESOURCE(RWTexture2D<float4>, OutputTexture);
+    VEX_GLOBAL_RESOURCE(RWStructuredBuffer<float4>, CommBuffer);
+    VEX_GLOBAL_RESOURCE(ConstantBuffer<Colors>, ColorBuffer);
 }
 
 // Sourced from IQuilez SDF functions
