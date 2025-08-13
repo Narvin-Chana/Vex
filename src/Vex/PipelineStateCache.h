@@ -1,13 +1,10 @@
 #pragma once
 
-#include <span>
 #include <unordered_map>
 
-#include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/ShaderCompiler.h>
-#include <Vex/ShaderResourceContext.h>
 #include <Vex/UniqueHandle.h>
 
 namespace vex
@@ -47,8 +44,8 @@ private:
 
     ShaderCompiler shaderCompiler;
     UniqueHandle<RHIResourceLayout> resourceLayout;
-    std::unordered_map<RHIGraphicsPipelineState::Key, UniqueHandle<RHIGraphicsPipelineState>> graphicsPSCache;
-    std::unordered_map<RHIComputePipelineState::Key, UniqueHandle<RHIComputePipelineState>> computePSCache;
+    std::unordered_map<RHIGraphicsPipelineState::Key, RHIGraphicsPipelineState> graphicsPSCache;
+    std::unordered_map<RHIComputePipelineState::Key, RHIComputePipelineState> computePSCache;
 };
 
 } // namespace vex

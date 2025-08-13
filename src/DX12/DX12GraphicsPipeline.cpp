@@ -162,8 +162,7 @@ D3D12_DEPTH_STENCIL_DESC GetDX12DepthStencilStateFromDepthStencilState(const Dep
     desc.DepthFunc = GetD3D12ComparisonFuncFromCompareOp(depthStencilState.depthCompareOp);
 
     // Stencil test
-    desc.StencilEnable = (depthStencilState.front.compareOp != CompareOp::Always ||
-                          depthStencilState.back.compareOp != CompareOp::Always);
+    desc.StencilEnable = depthStencilState.stencilTestEnabled;
     desc.StencilReadMask = static_cast<UINT8>(depthStencilState.front.readMask);
     desc.StencilWriteMask = static_cast<UINT8>(depthStencilState.front.writeMask);
 

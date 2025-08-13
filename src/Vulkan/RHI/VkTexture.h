@@ -8,6 +8,10 @@
 #include <Vulkan/RHI/VkDescriptorPool.h>
 #include <Vulkan/VkHeaders.h>
 
+namespace vex
+{
+struct RHITextureBinding;
+}
 namespace vex::vk
 {
 
@@ -59,9 +63,11 @@ public:
     virtual BindlessHandle GetOrCreateBindlessView(const ResourceBinding& binding,
                                                    TextureUsage::Type usage,
                                                    RHIDescriptorPool& descriptorPool) override;
-    BindlessHandle GetOrCreateBindlessView(VkGPUContext& device,
-                                           const VkTextureViewDesc& view,
-                                           VkDescriptorPool& descriptorPool);
+
+    ::vk::ImageView GetOrCreateImageView(const ResourceBinding& binding, TextureUsage::Type usage);
+
+    virtual RHITextureState::Type GetClearTextureState() override;
+
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
 
     [[nodiscard]] ::vk::ImageLayout GetLayout() const
@@ -74,7 +80,8 @@ public:
         BindlessHandle handle = GInvalidBindlessHandle;
         ::vk::UniqueImageView view;
     };
-    std::unordered_map<VkTextureViewDesc, CacheEntry> cache;
+    std::unordered_map<VkTextureViewDesc, CacheEntry> bindlessCache;
+    std::unordered_map<VkTextureViewDesc, ::vk::UniqueImageView> viewCache;
 
 protected:
     VkGPUContext& ctx;

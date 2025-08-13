@@ -21,6 +21,8 @@
 #include <Vex/GfxBackend.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
+
+#include "Vex/Bindings.h"
 #if VEX_DX12
 #include <DX12/DX12Formats.h>
 #endif

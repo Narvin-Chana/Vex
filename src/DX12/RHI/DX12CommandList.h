@@ -43,6 +43,9 @@ public:
     virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs) override;
     virtual void Transition(std::span<std::pair<RHIBuffer&, RHIBufferState::Flags>> bufferNewStatePairs) override;
 
+    virtual void BeginRendering(const RHIDrawResources& resources) override;
+    virtual void EndRendering() override;
+
     virtual void Draw(u32 vertexCount) override;
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount) override;

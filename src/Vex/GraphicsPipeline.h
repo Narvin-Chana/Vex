@@ -142,6 +142,7 @@ struct DepthStencilState
     bool depthWriteEnabled = false;
     CompareOp depthCompareOp = CompareOp::None;
     bool depthBoundsTestEnabled = false; // Vulkan only
+    bool stencilTestEnabled = false;
     struct StencilOpState
     {
         StencilOp failOp = StencilOp::Keep;

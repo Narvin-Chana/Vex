@@ -13,6 +13,7 @@
 #include <Vulkan/RHI/VkCommandPool.h>
 #include <Vulkan/RHI/VkDescriptorPool.h>
 #include <Vulkan/RHI/VkFence.h>
+#include <Vulkan/RHI/VkGraphicsPipeline.h>
 #include <Vulkan/RHI/VkPipelineState.h>
 #include <Vulkan/RHI/VkResourceLayout.h>
 #include <Vulkan/RHI/VkSwapChain.h>
@@ -224,6 +225,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     ::vk::PhysicalDeviceVulkan13Features features13;
     features13.synchronization2 = true;
     features13.pNext = &featuresRobustness;
+    features13.dynamicRendering = true;
 
     ::vk::PhysicalDeviceVulkan12Features features12;
     features12.pNext = &features13;
@@ -303,14 +305,14 @@ UniqueHandle<RHICommandPool> VkRHI::CreateCommandPool()
     return MakeUnique<VkCommandPool>(GetGPUContext(), commandQueues);
 }
 
-UniqueHandle<RHIGraphicsPipelineState> VkRHI::CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key)
+RHIGraphicsPipelineState VkRHI::CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key)
 {
-    return MakeUnique<VkGraphicsPipelineState>(key);
+    return { key, *device, *PSOCache };
 }
 
-UniqueHandle<RHIComputePipelineState> VkRHI::CreateComputePipelineState(const ComputePipelineStateKey& key)
+RHIComputePipelineState VkRHI::CreateComputePipelineState(const ComputePipelineStateKey& key)
 {
-    return MakeUnique<VkComputePipelineState>(key, *device, *PSOCache);
+    return { key, *device, *PSOCache };
 }
 
 UniqueHandle<RHIResourceLayout> VkRHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool)

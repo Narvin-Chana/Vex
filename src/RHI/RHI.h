@@ -30,8 +30,8 @@ struct RenderHardwareInterface
 
     virtual UniqueHandle<RHICommandPool> CreateCommandPool() = 0;
 
-    virtual UniqueHandle<RHIGraphicsPipelineState> CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key) = 0;
-    virtual UniqueHandle<RHIComputePipelineState> CreateComputePipelineState(const ComputePipelineStateKey& key) = 0;
+    virtual RHIGraphicsPipelineState CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key) = 0;
+    virtual RHIComputePipelineState CreateComputePipelineState(const ComputePipelineStateKey& key) = 0;
     virtual UniqueHandle<RHIResourceLayout> CreateResourceLayout(RHIDescriptorPool& descriptorPool) = 0;
 
     virtual UniqueHandle<RHITexture> CreateTexture(const TextureDescription& description) = 0;
