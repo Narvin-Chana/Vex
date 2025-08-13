@@ -29,60 +29,49 @@ RHIResourceLayout& PipelineStateCache::GetResourceLayout()
 const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(const RHIGraphicsPipelineState::Key& key,
                                                                              ShaderResourceContext resourceContext)
 {
-    RHIGraphicsPipelineState* ps;
-    if (graphicsPSCache.contains(key))
-    {
-        ps = &graphicsPSCache.at(key);
-    }
-    else
-    {
-        graphicsPSCache.insert({ key, rhi->CreateGraphicsPipelineState(key) });
-        ps = &graphicsPSCache.at(key);
-    }
+    const auto it = graphicsPSCache.find(key);
+    RHIGraphicsPipelineState& ps =
+        it != graphicsPSCache.end()
+            ? it->second
+            : graphicsPSCache.insert({ key, rhi->CreateGraphicsPipelineState(key) }).first->second;
 
     // Add samplers to the resourceContext
     resourceContext.samplers = resourceLayout->GetStaticSamplers();
 
-    auto vertexShader = shaderCompiler.GetShader(ps->key.vertexShader, resourceContext);
-    auto pixelShader = shaderCompiler.GetShader(ps->key.pixelShader, resourceContext);
+    auto vertexShader = shaderCompiler.GetShader(ps.key.vertexShader, resourceContext);
+    auto pixelShader = shaderCompiler.GetShader(ps.key.pixelShader, resourceContext);
     if (!vertexShader->IsValid() || !pixelShader->IsValid())
     {
         return nullptr;
     }
 
     bool pipelineStateStale = false;
-    pipelineStateStale |= vertexShader->version > ps->vertexShaderVersion;
-    pipelineStateStale |= pixelShader->version > ps->pixelShaderVersion;
-    pipelineStateStale |= resourceLayout->version > ps->rootSignatureVersion;
+    pipelineStateStale |= vertexShader->version > ps.vertexShaderVersion;
+    pipelineStateStale |= pixelShader->version > ps.pixelShaderVersion;
+    pipelineStateStale |= resourceLayout->version > ps.rootSignatureVersion;
     // TODO: add other fields, maybe via custom == func? Or just accept new slot in cache?
     if (pipelineStateStale)
     {
         // Avoids PSO being destroyed while frame is in flight.
-        ps->Cleanup(*resourceCleanup);
-        ps->Compile(*vertexShader, *pixelShader, *resourceLayout);
+        ps.Cleanup(*resourceCleanup);
+        ps.Compile(*vertexShader, *pixelShader, *resourceLayout);
     }
 
-    return ps;
+    return &ps;
 }
 
 const RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const RHIComputePipelineState::Key& key,
                                                                            ShaderResourceContext resourceContext)
 {
-    RHIComputePipelineState* ps;
-    if (computePSCache.contains(key))
-    {
-        ps = &computePSCache.at(key);
-    }
-    else
-    {
-        computePSCache.insert({ key, rhi->CreateComputePipelineState(key) });
-        ps = &computePSCache.at(key);
-    }
+    const auto it = computePSCache.find(key);
+    RHIComputePipelineState& ps =
+        it != computePSCache.end() ? it->second
+                                   : computePSCache.insert({ key, rhi->CreateComputePipelineState(key) }).first->second;
 
     // Add samplers to the resourceContext
     resourceContext.samplers = resourceLayout->GetStaticSamplers();
 
-    auto shader = shaderCompiler.GetShader(ps->key.computeShader, resourceContext);
+    const auto shader = shaderCompiler.GetShader(ps.key.computeShader, resourceContext);
     if (!shader->IsValid())
     {
         return nullptr;
@@ -90,16 +79,16 @@ const RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const
 
     // Recompile PSO if any associated data has changed.
     bool pipelineStateStale = false;
-    pipelineStateStale |= shader->version > ps->computeShaderVersion;
-    pipelineStateStale |= resourceLayout->version > ps->rootSignatureVersion;
+    pipelineStateStale |= shader->version > ps.computeShaderVersion;
+    pipelineStateStale |= resourceLayout->version > ps.rootSignatureVersion;
     if (pipelineStateStale)
     {
         // Avoids PSO being destroyed while frame is in flight.
-        ps->Cleanup(*resourceCleanup);
-        ps->Compile(*shader, *resourceLayout);
+        ps.Cleanup(*resourceCleanup);
+        ps.Compile(*shader, *resourceLayout);
     }
 
-    return ps;
+    return &ps;
 }
 
 ShaderCompiler& PipelineStateCache::GetShaderCompiler()
