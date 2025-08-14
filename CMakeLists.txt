@@ -177,7 +177,8 @@ add_library(Vex STATIC
     "src/Vex/ShaderCompilerSettings.h"
     "src/Vex/RenderExtension.h"
     "src/Vex/RenderExtension.cpp"
-    "src/Vex/Containers/MaybeUninitialized.h"
+    "src/Vex/MaybeUninitialized.h"
+    "src/Vex/NonNullPtr.h"
 )
 
 

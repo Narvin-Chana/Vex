@@ -38,7 +38,7 @@ static ::vk::ImageViewType TextureTypeToVulkan(TextureViewType type)
     std::unreachable();
 }
 //
-// ::vk::Sampler GetOrCreateAnisotropicSamplers(VkGPUContext& ctx)
+// ::vk::Sampler GetOrCreateAnisotropicSamplers(NonNullPtr<VkGPUContext> ctx)
 // {
 //     static ::vk::UniqueSampler sampler = [&]()
 //     {
@@ -67,32 +67,34 @@ static ::vk::ImageViewType TextureTypeToVulkan(TextureViewType type)
 //     return *sampler;
 // }
 
-VkTexture::VkTexture(VkGPUContext& ctx, TextureDescription&& inDescription, ::vk::Image backbufferImage)
-    : ctx(&ctx)
+VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescription, ::vk::Image backbufferImage)
+    : ctx(ctx)
     , type(BackBuffer)
     , image{ backbufferImage }
 {
     description = std::move(inDescription);
 }
 
-VkTexture::VkTexture(VkGPUContext& ctx, const TextureDescription& inDescription, ::vk::UniqueImage rawImage)
-    : ctx(&ctx)
+VkTexture::VkTexture(const NonNullPtr<VkGPUContext> ctx,
+                     const TextureDescription& inDescription,
+                     ::vk::UniqueImage rawImage)
+    : ctx(ctx)
     , type(Image)
     , image{ std::move(rawImage) }
 {
     description = inDescription;
 }
 
-VkTexture::VkTexture(VkGPUContext& ctx, TextureDescription&& inDescription, ::vk::UniqueImage rawImage)
-    : ctx(&ctx)
+VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescription, ::vk::UniqueImage rawImage)
+    : ctx(ctx)
     , type(Image)
     , image{ std::move(rawImage) }
 {
     description = std::move(inDescription);
 }
 
-VkTexture::VkTexture(VkGPUContext& ctx, TextureDescription&& inDescription)
-    : ctx(&ctx)
+VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescription)
+    : ctx(ctx)
     , type(Image)
 {
     description = std::move(inDescription);
@@ -156,7 +158,6 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const ResourceBinding& binding
     const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
 
     descriptorPool.UpdateDescriptor(
-        *ctx,
         handle,
         ::vk::DescriptorImageInfo{ .sampler = nullptr, .imageView = *imageView, .imageLayout = GetLayout() },
         view.usage & TextureUsage::ShaderReadWrite);

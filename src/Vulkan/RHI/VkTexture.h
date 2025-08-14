@@ -3,6 +3,7 @@
 #include <variant>
 
 #include <Vex/Hash.h>
+#include <Vex/NonNullPtr.h>
 
 #include <RHI/RHIDescriptorPool.h>
 #include <RHI/RHITexture.h>
@@ -59,15 +60,15 @@ class VkTexture : public RHITextureInterface
 {
 public:
     // BackBuffer constructor:
-    VkTexture(VkGPUContext& ctx, TextureDescription&& description, ::vk::Image backbufferImage);
+    VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& description, ::vk::Image backbufferImage);
 
     // UniqueImage constructors:
     // Takes ownership of the image
-    VkTexture(VkGPUContext& ctx, const TextureDescription& description, ::vk::UniqueImage rawImage);
-    VkTexture(VkGPUContext& ctx, TextureDescription&& description, ::vk::UniqueImage rawImage);
+    VkTexture(const NonNullPtr<VkGPUContext> ctx, const TextureDescription& description, ::vk::UniqueImage rawImage);
+    VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& description, ::vk::UniqueImage rawImage);
 
     // Creates a new image from the description
-    VkTexture(VkGPUContext& ctx, TextureDescription&& description);
+    VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& description);
 
     [[nodiscard]] ::vk::Image GetResource();
 
@@ -102,7 +103,7 @@ public:
 private:
     void CreateImage();
 
-    VkGPUContext* ctx;
+    NonNullPtr<VkGPUContext> ctx;
 
     enum Type : u8
     {

@@ -71,15 +71,15 @@ static ::vk::Extent2D GetBestSwapExtent(const VkSwapChainSupportDetails& details
     return actualExtent;
 }
 
-VkSwapChain::VkSwapChain(VkGPUContext& ctx,
+VkSwapChain::VkSwapChain(NonNullPtr<VkGPUContext> ctx,
                          const SwapChainDescription& description,
                          const PlatformWindow& platformWindow)
-    : description{ description }
-    , ctx{ ctx }
+    : ctx{ ctx }
+    , description{ description }
 {
-    VEX_ASSERT(IsSwapChainSupported(ctx.physDevice, ctx.surface));
+    VEX_ASSERT(IsSwapChainSupported(ctx->physDevice, ctx->surface));
 
-    supportDetails = GetSwapChainSupportDetails(ctx.physDevice, ctx.surface);
+    supportDetails = GetSwapChainSupportDetails(ctx->physDevice, ctx->surface);
     surfaceFormat = GetBestSurfaceFormat(supportDetails, TextureFormatToVulkan(description.format));
     presentMode = GetBestPresentMode(supportDetails, description.useVSync);
 
@@ -94,18 +94,18 @@ VkSwapChain::VkSwapChain(VkGPUContext& ctx,
 
     std::ranges::generate_n(std::back_inserter(backbufferAcquisition),
                             requestedImageCount,
-                            [&] { return VEX_VK_CHECK <<= ctx.device.createSemaphoreUnique({}); });
+                            [&] { return VEX_VK_CHECK <<= ctx->device.createSemaphoreUnique({}); });
 }
 
 void VkSwapChain::AcquireNextBackbuffer(u8 frameIndex)
 {
-    VEX_VK_CHECK << ctx.device.acquireNextImageKHR(*swapchain,
-                                                   std::numeric_limits<u64>::max(),
-                                                   *backbufferAcquisition[frameIndex],
-                                                   nullptr,
-                                                   &currentBackbufferId);
+    VEX_VK_CHECK << ctx->device.acquireNextImageKHR(*swapchain,
+                                                    std::numeric_limits<u64>::max(),
+                                                    *backbufferAcquisition[frameIndex],
+                                                    nullptr,
+                                                    &currentBackbufferId);
 
-    auto& cmdQueue = ctx.graphicsPresentQueue;
+    auto& cmdQueue = ctx->graphicsPresentQueue;
 
     ::vk::SemaphoreSubmitInfo semWaitInfo{
         .semaphore = *backbufferAcquisition[frameIndex],
@@ -126,7 +126,7 @@ void VkSwapChain::AcquireNextBackbuffer(u8 frameIndex)
 
 void VkSwapChain::Present(bool isFullscreenMode)
 {
-    auto& cmdQueue = ctx.graphicsPresentQueue;
+    auto& cmdQueue = ctx->graphicsPresentQueue;
 
     ::vk::SemaphoreSubmitInfo semWaitInfo{
         .semaphore = *cmdQueue.waitSemaphore,
@@ -177,7 +177,7 @@ bool VkSwapChain::NeedsFlushForVSyncToggle()
 
 RHITexture VkSwapChain::CreateBackBuffer(u8 backBufferIndex)
 {
-    auto backbufferImages = VEX_VK_CHECK <<= ctx.device.getSwapchainImagesKHR(*swapchain);
+    auto backbufferImages = VEX_VK_CHECK <<= ctx->device.getSwapchainImagesKHR(*swapchain);
 
     TextureDescription desc{ .name = std::format("backbuffer_{}", backBufferIndex),
                              .type = TextureType::Texture2D,
@@ -197,7 +197,7 @@ void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
     height = inHeight;
     ::vk::Extent2D extent = GetBestSwapExtent(supportDetails, width, height);
 
-    ::vk::SwapchainCreateInfoKHR swapChainCreateInfo{ .surface = ctx.surface,
+    ::vk::SwapchainCreateInfoKHR swapChainCreateInfo{ .surface = ctx->surface,
                                                       .minImageCount = std::to_underlying(description.frameBuffering),
                                                       .imageFormat = surfaceFormat.format,
                                                       .imageColorSpace = surfaceFormat.colorSpace,
@@ -215,9 +215,9 @@ void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
                                                       .clipped = ::vk::True,
                                                       .oldSwapchain = {} };
 
-    swapchain = VEX_VK_CHECK <<= ctx.device.createSwapchainKHRUnique(swapChainCreateInfo);
+    swapchain = VEX_VK_CHECK <<= ctx->device.createSwapchainKHRUnique(swapChainCreateInfo);
 
-    auto newImages = VEX_VK_CHECK <<= ctx.device.getSwapchainImagesKHR(*swapchain);
+    auto newImages = VEX_VK_CHECK <<= ctx->device.getSwapchainImagesKHR(*swapchain);
     if (newImages.size() != swapChainCreateInfo.minImageCount)
     {
         VEX_LOG(Warning, "Swapchain returned more images than requested for. This might cause instabilities");
@@ -226,7 +226,7 @@ void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
     presentSemaphore.resize(newImages.size());
     for (size_t i = 0; i < newImages.size(); ++i)
     {
-        presentSemaphore[i] = VEX_VK_CHECK <<= ctx.device.createSemaphoreUnique({});
+        presentSemaphore[i] = VEX_VK_CHECK <<= ctx->device.createSemaphoreUnique({});
     }
 }
 

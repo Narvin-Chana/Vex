@@ -2,6 +2,7 @@
 
 #include <span>
 
+#include <Vex/NonNullPtr.h>
 #include <Vex/Types.h>
 
 #include <RHI/RHIBuffer.h>
@@ -27,7 +28,7 @@ struct VkDirectBufferMemory;
 class VkBuffer final : public RHIBufferInterface
 {
 public:
-    VkBuffer(VkGPUContext& ctx, const BufferDescription& desc);
+    VkBuffer(NonNullPtr<VkGPUContext> ctx, const BufferDescription& desc);
 
     virtual BindlessHandle GetOrCreateBindlessView(BufferBindingUsage usage,
                                                    u32 stride,
@@ -42,9 +43,10 @@ public:
 private:
     UniqueHandle<VkBuffer> CreateStagingBuffer() override;
 
+    NonNullPtr<VkGPUContext> ctx;
+
     ::vk::UniqueBuffer buffer;
     ::vk::UniqueDeviceMemory memory;
-    VkGPUContext* ctx;
 
     std::optional<BindlessHandle> bufferHandle;
 

@@ -14,7 +14,7 @@ RHICommandList* VkCommandPool::CreateCommandList(CommandQueueType queueType)
 {
     ::vk::UniqueCommandPool& commandPool = commandPoolPerQueueType[std::to_underlying(queueType)];
 
-    auto allocatedBuffers = VEX_VK_CHECK <<= ctx.device.allocateCommandBuffersUnique({
+    auto allocatedBuffers = VEX_VK_CHECK <<= ctx->device.allocateCommandBuffersUnique({
         .commandPool = *commandPool,
         .level = ::vk::CommandBufferLevel::ePrimary,
         .commandBufferCount = 1,
@@ -48,13 +48,13 @@ void VkCommandPool::ReclaimAllCommandListMemory()
     }
 }
 
-VkCommandPool::VkCommandPool(VkGPUContext& ctx,
+VkCommandPool::VkCommandPool(NonNullPtr<VkGPUContext> ctx,
                              const std::array<VkCommandQueue, CommandQueueTypes::Count>& commandQueues)
     : ctx{ ctx }
 {
     for (u8 i = 0; i < CommandQueueTypes::Count; ++i)
     {
-        commandPoolPerQueueType[i] = VEX_VK_CHECK <<= ctx.device.createCommandPoolUnique({
+        commandPoolPerQueueType[i] = VEX_VK_CHECK <<= ctx->device.createCommandPoolUnique({
             .flags = ::vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
             .queueFamilyIndex = commandQueues[i].family,
         });

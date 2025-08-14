@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Vex/NonNullPtr.h>
 #include <Vex/RHIFwd.h>
 
 #include <RHI/RHI.h>
@@ -54,7 +55,7 @@ public:
                                                  std::vector<ShaderDefine>& defines) override;
 
 private:
-    VkGPUContext& GetGPUContext();
+    NonNullPtr<VkGPUContext> GetGPUContext();
     void InitWindow(const PlatformWindowHandle& windowHandle);
 
     ::vk::UniqueInstance instance;

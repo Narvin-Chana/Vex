@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-#include <Vex/Containers/MaybeUninitialized.h>
+#include <Vex/MaybeUninitialized.h>
 #include <Vex/Debug.h>
 #include <Vex/Types.h>
 

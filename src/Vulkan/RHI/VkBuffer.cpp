@@ -60,9 +60,9 @@ static ::vk::MemoryPropertyFlags GetMemoryPropsFromDesc(const BufferDescription&
     std::unreachable();
 }
 
-VkBuffer::VkBuffer(VkGPUContext& ctx, const BufferDescription& desc)
+VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, const BufferDescription& desc)
     : RHIBufferInterface{ desc }
-    , ctx{ &ctx }
+    , ctx{ ctx }
 {
     auto bufferUsage = GetVkBufferUsageFromDesc(desc);
     auto memoryProps = GetMemoryPropsFromDesc(desc);
@@ -74,19 +74,19 @@ VkBuffer::VkBuffer(VkGPUContext& ctx, const BufferDescription& desc)
     }
 
     buffer = VEX_VK_CHECK <<=
-        ctx.device.createBufferUnique({ .size = desc.byteSize,
-                                        .usage = bufferUsage,
-                                        .sharingMode = ::vk::SharingMode::eExclusive,
-                                        .queueFamilyIndexCount = 1,
-                                        .pQueueFamilyIndices = &ctx.graphicsPresentQueue.family });
+        ctx->device.createBufferUnique({ .size = desc.byteSize,
+                                         .usage = bufferUsage,
+                                         .sharingMode = ::vk::SharingMode::eExclusive,
+                                         .queueFamilyIndexCount = 1,
+                                         .pQueueFamilyIndices = &ctx->graphicsPresentQueue.family });
 
-    const ::vk::MemoryRequirements reqs = ctx.device.getBufferMemoryRequirements(*buffer);
+    const ::vk::MemoryRequirements reqs = ctx->device.getBufferMemoryRequirements(*buffer);
 
-    memory = VEX_VK_CHECK <<= ctx.device.allocateMemoryUnique(
+    memory = VEX_VK_CHECK <<= ctx->device.allocateMemoryUnique(
         { .allocationSize = reqs.size,
-          .memoryTypeIndex = GetBestMemoryType(ctx.physDevice, reqs.memoryTypeBits, memoryProps) });
+          .memoryTypeIndex = GetBestMemoryType(ctx->physDevice, reqs.memoryTypeBits, memoryProps) });
 
-    VEX_VK_CHECK << ctx.device.bindBufferMemory(*buffer, *memory, 0);
+    VEX_VK_CHECK << ctx->device.bindBufferMemory(*buffer, *memory, 0);
 }
 
 BindlessHandle VkBuffer::GetOrCreateBindlessView(BufferBindingUsage usage,
@@ -101,7 +101,6 @@ BindlessHandle VkBuffer::GetOrCreateBindlessView(BufferBindingUsage usage,
     const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
 
     descriptorPool.UpdateDescriptor(
-        *ctx,
         handle,
         desc.usage == BufferUsage::UniformBuffer ? ::vk::DescriptorType::eUniformBuffer
                                                  : ::vk::DescriptorType::eStorageBuffer,
@@ -128,7 +127,7 @@ void VkBuffer::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 
 UniqueHandle<VkBuffer> VkBuffer::CreateStagingBuffer()
 {
-    return MakeUnique<VkBuffer>(*ctx,
+    return MakeUnique<VkBuffer>(ctx,
                                 BufferDescription{ .name = desc.name + "_StagingBuffer",
                                                    .byteSize = desc.byteSize,
                                                    .usage = BufferUsage::None,

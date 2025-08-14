@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Vex/NonNullPtr.h>
 #include <Vex/RHIFwd.h>
 
 #include <RHI/RHIDescriptorPool.h>
@@ -13,20 +14,16 @@ struct VkGPUContext;
 class VkDescriptorPool final : public RHIDescriptorPoolInterface
 {
 public:
-    VkDescriptorPool(::vk::Device device);
+    VkDescriptorPool(NonNullPtr<VkGPUContext> ctx);
     virtual void CopyNullDescriptor(u32 slotIndex) override;
 
-    void UpdateDescriptor(VkGPUContext& ctx,
-                          BindlessHandle targetDescriptor,
-                          ::vk::DescriptorImageInfo createInfo,
-                          bool writeAccess);
-    void UpdateDescriptor(VkGPUContext& ctx,
-                          BindlessHandle targetDescriptor,
+    void UpdateDescriptor(BindlessHandle targetDescriptor, ::vk::DescriptorImageInfo createInfo, bool writeAccess);
+    void UpdateDescriptor(BindlessHandle targetDescriptor,
                           ::vk::DescriptorType descType,
                           ::vk::DescriptorBufferInfo createInfo);
 
 private:
-    ::vk::Device device;
+    NonNullPtr<VkGPUContext> ctx;
     ::vk::UniqueDescriptorPool descriptorPool;
     ::vk::UniqueDescriptorSet bindlessSet; // Single global set for bindless resources
     ::vk::UniqueDescriptorSetLayout bindlessLayout;

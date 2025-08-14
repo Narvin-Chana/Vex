@@ -3,7 +3,7 @@
 #include <variant>
 #include <vector>
 
-#include <Vex/Containers/MaybeUninitialized.h>
+#include <Vex/MaybeUninitialized.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHITexture.h>

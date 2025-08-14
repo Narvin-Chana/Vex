@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include <Vex/NonNullPtr.h>
+
 #include <RHI/RHICommandList.h>
 
 #include <Vulkan/VkHeaders.h>
@@ -8,6 +10,7 @@ namespace vex
 {
 struct RHIDrawResources;
 }
+
 namespace vex::vk
 {
 struct VkGPUContext;
@@ -17,7 +20,7 @@ class VkTexture;
 class VkCommandList final : public RHICommandListInterface
 {
 public:
-    VkCommandList(VkGPUContext& ctx, ::vk::UniqueCommandBuffer&& commandBuffer, CommandQueueType type);
+    VkCommandList(NonNullPtr<VkGPUContext> ctx, ::vk::UniqueCommandBuffer&& commandBuffer, CommandQueueType type);
 
     virtual bool IsOpen() const override;
 
@@ -62,7 +65,7 @@ public:
     virtual CommandQueueType GetType() const override;
 
 private:
-    VkGPUContext& ctx;
+    NonNullPtr<VkGPUContext> ctx;
     ::vk::UniqueCommandBuffer commandBuffer;
     CommandQueueType type;
     bool isOpen = false;
