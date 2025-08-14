@@ -7,10 +7,7 @@ namespace vex
 {
 
 // All underlying types of the ResourceCleanup must be move assignable.
-static_assert(std::is_move_assignable_v<MaybeUninitialized<RHITexture>>);
-static_assert(std::is_move_assignable_v<RHITexture>);
-static_assert(std::is_move_assignable_v<MaybeUninitialized<RHIBuffer>>);
-static_assert(std::is_move_assignable_v<RHIBuffer>);
+static_assert(std::is_move_assignable_v<ResourceCleanup::CleanupVariant>);
 
 ResourceCleanup::ResourceCleanup(i8 bufferingCount)
     : defaultLifespan(bufferingCount)
