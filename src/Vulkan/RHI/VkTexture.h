@@ -74,7 +74,7 @@ public:
 
     [[nodiscard]] bool IsBackBufferTexture() const
     {
-        return type == BackBuffer;
+        return isBackBuffer;
     }
 
     virtual BindlessHandle GetOrCreateBindlessView(const ResourceBinding& binding,
@@ -105,11 +105,7 @@ private:
 
     NonNullPtr<VkGPUContext> ctx;
 
-    enum Type : u8
-    {
-        Image = 0,
-        BackBuffer = 1,
-    } type;
+    bool isBackBuffer;
     std::variant<::vk::Image, ::vk::UniqueImage> image;
 
     // Only valid if type == UniqueImage.

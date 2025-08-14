@@ -69,7 +69,7 @@ static ::vk::ImageViewType TextureTypeToVulkan(TextureViewType type)
 
 VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescription, ::vk::Image backbufferImage)
     : ctx(ctx)
-    , type(BackBuffer)
+    , isBackBuffer(true)
     , image{ backbufferImage }
 {
     description = std::move(inDescription);
@@ -79,7 +79,7 @@ VkTexture::VkTexture(const NonNullPtr<VkGPUContext> ctx,
                      const TextureDescription& inDescription,
                      ::vk::UniqueImage rawImage)
     : ctx(ctx)
-    , type(Image)
+    , isBackBuffer(false)
     , image{ std::move(rawImage) }
 {
     description = inDescription;
@@ -87,7 +87,7 @@ VkTexture::VkTexture(const NonNullPtr<VkGPUContext> ctx,
 
 VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescription, ::vk::UniqueImage rawImage)
     : ctx(ctx)
-    , type(Image)
+    , isBackBuffer(false)
     , image{ std::move(rawImage) }
 {
     description = std::move(inDescription);
@@ -95,7 +95,7 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescri
 
 VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescription)
     : ctx(ctx)
-    , type(Image)
+    , isBackBuffer(false)
 {
     description = std::move(inDescription);
     CreateImage();
@@ -225,9 +225,9 @@ void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 
 void VkTexture::CreateImage()
 {
-    if (type != Image)
+    if (isBackBuffer)
     {
-        VEX_LOG(Fatal, "Calling create texture with an unsupported type is not valid behavior.");
+        VEX_LOG(Fatal, "Calling create texture with a backbuffer is not valid behavior.");
         return;
     }
 
