@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <vector>
 
+#include <Vex/Containers/MaybeUninitialized.h>
 #include <Vex/Debug.h>
 #include <Vex/Types.h>
 
@@ -71,7 +72,6 @@ struct FreeListAllocator
 // Free list implementation allowing for allocating and deallocating elements. Handles also store generations, to avoid
 // cases of use-after-free.
 template <class T, class HandleT>
-    requires std::is_default_constructible_v<T>
 class FreeList
 {
 public:
@@ -85,13 +85,15 @@ public:
     T& operator[](HandleT handle)
     {
         VEX_ASSERT(IsValid(handle));
-        return values[handle.GetIndex()];
+        VEX_ASSERT(values[handle.GetIndex()].has_value());
+        return *values[handle.GetIndex()];
     }
 
     const T& operator[](HandleT handle) const
     {
         VEX_ASSERT(IsValid(handle));
-        return values[handle.GetIndex()];
+        VEX_ASSERT(values[handle.GetIndex()].has_value());
+        return *values[handle.GetIndex()];
     }
 
     bool IsValid(HandleT handle) const
@@ -106,18 +108,31 @@ public:
             Resize(static_cast<u32>(values.size()) * 2);
         }
 
-        u32 index = allocator.Allocate();
-        values[index] = std::move(elem);
+        u32 idx = allocator.Allocate();
+        VEX_ASSERT(!values[idx].has_value());
+        values[idx].emplace(std::move(elem));
 
-        return HandleT::CreateHandle(index, generations[index]);
+        return HandleT::CreateHandle(idx, generations[idx]);
     }
 
+    // Removes an element and destroys it.
     void FreeElement(HandleT handle)
     {
         auto idx = handle.GetIndex();
-        values[idx] = T{};
+        VEX_ASSERT(values[idx].has_value());
+        values[idx].reset();
         generations[idx]++;
         allocator.Deallocate(idx);
+    }
+
+    // Extracts an element, removing it from the freelist without destroying it.
+    MaybeUninitialized<T> ExtractElement(HandleT handle)
+    {
+        auto idx = handle.GetIndex();
+        generations[idx]++;
+        allocator.Deallocate(idx);
+        VEX_ASSERT(values[idx].has_value());
+        return std::exchange(values[idx], std::nullopt);
     }
 
 private:
@@ -127,7 +142,7 @@ private:
         values.resize(size);
     }
 
-    std::vector<T> values;
+    std::vector<MaybeUninitialized<T>> values;
     std::vector<u8> generations;
     FreeListAllocator allocator;
 };

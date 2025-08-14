@@ -62,7 +62,7 @@ static ::vk::MemoryPropertyFlags GetMemoryPropsFromDesc(const BufferDescription&
 
 VkBuffer::VkBuffer(VkGPUContext& ctx, const BufferDescription& desc)
     : RHIBufferInterface{ desc }
-    , ctx{ ctx }
+    , ctx{ &ctx }
 {
     auto bufferUsage = GetVkBufferUsageFromDesc(desc);
     auto memoryProps = GetMemoryPropsFromDesc(desc);
@@ -89,7 +89,9 @@ VkBuffer::VkBuffer(VkGPUContext& ctx, const BufferDescription& desc)
     VEX_VK_CHECK << ctx.device.bindBufferMemory(*buffer, *memory, 0);
 }
 
-BindlessHandle VkBuffer::GetOrCreateBindlessView(BufferBindingUsage usage, u32 stride, RHIDescriptorPool& descriptorPool)
+BindlessHandle VkBuffer::GetOrCreateBindlessView(BufferBindingUsage usage,
+                                                 u32 stride,
+                                                 RHIDescriptorPool& descriptorPool)
 {
     if (bufferHandle)
     {
@@ -99,7 +101,7 @@ BindlessHandle VkBuffer::GetOrCreateBindlessView(BufferBindingUsage usage, u32 s
     const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
 
     descriptorPool.UpdateDescriptor(
-        ctx,
+        *ctx,
         handle,
         desc.usage == BufferUsage::UniformBuffer ? ::vk::DescriptorType::eUniformBuffer
                                                  : ::vk::DescriptorType::eStorageBuffer,
@@ -126,7 +128,7 @@ void VkBuffer::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 
 UniqueHandle<VkBuffer> VkBuffer::CreateStagingBuffer()
 {
-    return MakeUnique<VkBuffer>(ctx,
+    return MakeUnique<VkBuffer>(*ctx,
                                 BufferDescription{ .name = desc.name + "_StagingBuffer",
                                                    .byteSize = desc.byteSize,
                                                    .usage = BufferUsage::None,
@@ -135,13 +137,13 @@ UniqueHandle<VkBuffer> VkBuffer::CreateStagingBuffer()
 
 std::span<u8> VkBuffer::Map()
 {
-    void* ptr = VEX_VK_CHECK <<= ctx.device.mapMemory(*memory, 0, desc.byteSize);
+    void* ptr = VEX_VK_CHECK <<= ctx->device.mapMemory(*memory, 0, desc.byteSize);
     return { static_cast<u8*>(ptr), desc.byteSize };
 }
 
 void VkBuffer::Unmap()
 {
-    ctx.device.unmapMemory(*memory);
+    ctx->device.unmapMemory(*memory);
 }
 
 } // namespace vex::vk

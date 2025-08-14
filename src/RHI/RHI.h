@@ -34,8 +34,8 @@ struct RenderHardwareInterface
     virtual RHIComputePipelineState CreateComputePipelineState(const ComputePipelineStateKey& key) = 0;
     virtual UniqueHandle<RHIResourceLayout> CreateResourceLayout(RHIDescriptorPool& descriptorPool) = 0;
 
-    virtual UniqueHandle<RHITexture> CreateTexture(const TextureDescription& description) = 0;
-    virtual UniqueHandle<RHIBuffer> CreateBuffer(const BufferDescription& description) = 0;
+    virtual RHITexture CreateTexture(const TextureDescription& description) = 0;
+    virtual RHIBuffer CreateBuffer(const BufferDescription& description) = 0;
 
     virtual UniqueHandle<RHIDescriptorPool> CreateDescriptorPool() = 0;
 

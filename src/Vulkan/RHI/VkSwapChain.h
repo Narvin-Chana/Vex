@@ -40,7 +40,7 @@ public:
     virtual void SetVSync(bool enableVSync) override;
     virtual bool NeedsFlushForVSyncToggle() override;
 
-    virtual UniqueHandle<RHITexture> CreateBackBuffer(u8 backBufferIndex) override;
+    virtual RHITexture CreateBackBuffer(u8 backBufferIndex) override;
 
 private:
     void InitSwapchainResource(u32 width, u32 height);

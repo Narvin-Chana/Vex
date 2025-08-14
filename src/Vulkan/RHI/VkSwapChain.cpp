@@ -175,7 +175,7 @@ bool VkSwapChain::NeedsFlushForVSyncToggle()
     return true;
 }
 
-UniqueHandle<RHITexture> VkSwapChain::CreateBackBuffer(u8 backBufferIndex)
+RHITexture VkSwapChain::CreateBackBuffer(u8 backBufferIndex)
 {
     auto backbufferImages = VEX_VK_CHECK <<= ctx.device.getSwapchainImagesKHR(*swapchain);
 
@@ -188,7 +188,7 @@ UniqueHandle<RHITexture> VkSwapChain::CreateBackBuffer(u8 backBufferIndex)
                              .format = VulkanToTextureFormat(surfaceFormat.format),
                              .usage = TextureUsage::RenderTarget | TextureUsage::ShaderRead };
 
-    return MakeUnique<VkBackbufferTexture>(ctx, std::move(desc), backbufferImages[backBufferIndex]);
+    return VkTexture(ctx, std::move(desc), backbufferImages[backBufferIndex]);
 }
 
 void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)

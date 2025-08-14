@@ -320,14 +320,14 @@ UniqueHandle<RHIResourceLayout> VkRHI::CreateResourceLayout(RHIDescriptorPool& d
     return MakeUnique<VkResourceLayout>(*device, descriptorPool);
 }
 
-UniqueHandle<RHITexture> VkRHI::CreateTexture(const TextureDescription& description)
+RHITexture VkRHI::CreateTexture(const TextureDescription& description)
 {
-    return MakeUnique<VkImageTexture>(GetGPUContext(), TextureDescription(description));
+    return VkTexture(GetGPUContext(), TextureDescription(description));
 }
 
-UniqueHandle<RHIBuffer> VkRHI::CreateBuffer(const BufferDescription& description)
+RHIBuffer VkRHI::CreateBuffer(const BufferDescription& description)
 {
-    return MakeUnique<VkBuffer>(GetGPUContext(), description);
+    return VkBuffer(GetGPUContext(), description);
 }
 
 UniqueHandle<RHIDescriptorPool> VkRHI::CreateDescriptorPool()

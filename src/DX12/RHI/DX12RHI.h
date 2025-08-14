@@ -34,8 +34,8 @@ public:
     virtual RHIComputePipelineState CreateComputePipelineState(const ComputePipelineStateKey& key) override;
     virtual UniqueHandle<RHIResourceLayout> CreateResourceLayout(RHIDescriptorPool& descriptorPool) override;
 
-    virtual UniqueHandle<RHITexture> CreateTexture(const TextureDescription& description) override;
-    virtual UniqueHandle<RHIBuffer> CreateBuffer(const BufferDescription& description) override;
+    virtual RHITexture CreateTexture(const TextureDescription& description) override;
+    virtual RHIBuffer CreateBuffer(const BufferDescription& description) override;
 
     virtual UniqueHandle<RHIDescriptorPool> CreateDescriptorPool() override;
 

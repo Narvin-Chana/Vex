@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include <variant>
+
 #include <Vex/Hash.h>
 
 #include <RHI/RHIDescriptorPool.h>
@@ -56,9 +58,23 @@ class VkDescriptorPool;
 class VkTexture : public RHITextureInterface
 {
 public:
-    VkTexture(VkGPUContext& ctx);
-    virtual ~VkTexture() = default;
-    virtual ::vk::Image GetResource() = 0;
+    // BackBuffer constructor:
+    VkTexture(VkGPUContext& ctx, TextureDescription&& description, ::vk::Image backbufferImage);
+
+    // UniqueImage constructors:
+    // Takes ownership of the image
+    VkTexture(VkGPUContext& ctx, const TextureDescription& description, ::vk::UniqueImage rawImage);
+    VkTexture(VkGPUContext& ctx, TextureDescription&& description, ::vk::UniqueImage rawImage);
+
+    // Creates a new image from the description
+    VkTexture(VkGPUContext& ctx, TextureDescription&& description);
+
+    [[nodiscard]] ::vk::Image GetResource();
+
+    [[nodiscard]] bool IsBackBufferTexture() const
+    {
+        return type == BackBuffer;
+    }
 
     virtual BindlessHandle GetOrCreateBindlessView(const ResourceBinding& binding,
                                                    TextureUsage::Type usage,
@@ -83,42 +99,22 @@ public:
     std::unordered_map<VkTextureViewDesc, CacheEntry> bindlessCache;
     std::unordered_map<VkTextureViewDesc, ::vk::UniqueImageView> viewCache;
 
-protected:
-    VkGPUContext& ctx;
-};
-
-class VkBackbufferTexture final : public VkTexture
-{
-public:
-    VkBackbufferTexture(VkGPUContext& ctx, TextureDescription&& description, ::vk::Image backbufferImage);
-
-    virtual ::vk::Image GetResource() override
-    {
-        return image;
-    }
-
-    ::vk::Image image;
-};
-
-class VkImageTexture final : public VkTexture
-{
-public:
-    // Takes ownership of the image
-    VkImageTexture(VkGPUContext& ctx, const TextureDescription& description, ::vk::UniqueImage rawImage);
-    VkImageTexture(VkGPUContext& ctx, TextureDescription&& description, ::vk::UniqueImage rawImage);
-
-    // Creates a new image from the description
-    VkImageTexture(VkGPUContext& ctx, TextureDescription&& description);
-
-    virtual ::vk::Image GetResource() override
-    {
-        return *image;
-    };
-
 private:
-    void CreateImage(VkGPUContext& ctx);
-    ::vk::UniqueImage image;
+    void CreateImage();
+
+    VkGPUContext* ctx;
+
+    enum Type : u8
+    {
+        Image = 0,
+        BackBuffer = 1,
+    } type;
+    std::variant<::vk::Image, ::vk::UniqueImage> image;
+
+    // Only valid if type == UniqueImage.
     ::vk::UniqueDeviceMemory memory;
+
+    std::unordered_map<VkTextureViewDesc, CacheEntry> cache;
 
     friend class VkCommandList;
 };

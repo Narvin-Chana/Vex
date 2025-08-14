@@ -29,7 +29,9 @@ class VkBuffer final : public RHIBufferInterface
 public:
     VkBuffer(VkGPUContext& ctx, const BufferDescription& desc);
 
-    virtual BindlessHandle GetOrCreateBindlessView(BufferBindingUsage usage, u32 stride, RHIDescriptorPool& descriptorPool) override;
+    virtual BindlessHandle GetOrCreateBindlessView(BufferBindingUsage usage,
+                                                   u32 stride,
+                                                   RHIDescriptorPool& descriptorPool) override;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
 
     ::vk::Buffer GetNativeBuffer();
@@ -42,7 +44,7 @@ private:
 
     ::vk::UniqueBuffer buffer;
     ::vk::UniqueDeviceMemory memory;
-    VkGPUContext& ctx;
+    VkGPUContext* ctx;
 
     std::optional<BindlessHandle> bufferHandle;
 

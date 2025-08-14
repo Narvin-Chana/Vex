@@ -32,7 +32,7 @@ public:
     virtual void SetVSync(bool enableVSync) override;
     virtual bool NeedsFlushForVSyncToggle() override;
 
-    virtual UniqueHandle<RHITexture> CreateBackBuffer(u8 backBufferIndex) override;
+    virtual RHITexture CreateBackBuffer(u8 backBufferIndex) override;
 
 private:
     static u8 GetBackBufferCount(FrameBuffering frameBuffering);

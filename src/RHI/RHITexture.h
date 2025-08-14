@@ -28,6 +28,16 @@ END_VEX_ENUM_FLAGS();
 class RHITextureInterface
 {
 public:
+    RHITextureInterface() = default;
+
+    RHITextureInterface(const RHITextureInterface&) = delete;
+    RHITextureInterface& operator=(const RHITextureInterface&) = delete;
+
+    RHITextureInterface(RHITextureInterface&&) = default;
+    RHITextureInterface& operator=(RHITextureInterface&&) = default;
+
+    ~RHITextureInterface() = default;
+
     virtual BindlessHandle GetOrCreateBindlessView(const ResourceBinding& binding,
                                                    TextureUsage::Type usage,
                                                    RHIDescriptorPool& descriptorPool) = 0;
