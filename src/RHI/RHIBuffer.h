@@ -48,6 +48,13 @@ private:
 class RHIBufferInterface
 {
 public:
+    RHIBufferInterface() = default;
+    RHIBufferInterface(const RHIBufferInterface&) = delete;
+    RHIBufferInterface& operator=(const RHIBufferInterface&) = delete;
+    RHIBufferInterface(RHIBufferInterface&&) = default;
+    RHIBufferInterface& operator=(RHIBufferInterface&&) = default;
+    ~RHIBufferInterface() = default;
+
     // RAII safe version to access buffer memory
     MappedMemory GetMappedMemory();
 
@@ -55,7 +62,9 @@ public:
     virtual UniqueHandle<RHIBuffer> CreateStagingBuffer() = 0;
     virtual std::span<u8> Map() = 0;
     virtual void Unmap() = 0;
-    virtual BindlessHandle GetOrCreateBindlessView(BufferBindingUsage usage, u32 stride, RHIDescriptorPool& descriptorPool) = 0;
+    virtual BindlessHandle GetOrCreateBindlessView(BufferBindingUsage usage,
+                                                   u32 stride,
+                                                   RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
 
     [[nodiscard]] bool NeedsStagingBufferCopy() const noexcept

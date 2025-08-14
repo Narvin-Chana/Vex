@@ -13,7 +13,7 @@
 namespace vex::vk
 {
 
-::vk::ImageViewType TextureTypeToVulkan(TextureViewType type)
+static ::vk::ImageViewType TextureTypeToVulkan(TextureViewType type)
 {
     switch (type)
     {
@@ -38,7 +38,7 @@ namespace vex::vk
     std::unreachable();
 }
 //
-// ::vk::Sampler GetOrCreateAnisotropicSamplers(VkGPUContext& ctx)
+// ::vk::Sampler GetOrCreateAnisotropicSamplers(NonNullPtr<VkGPUContext> ctx)
 // {
 //     static ::vk::UniqueSampler sampler = [&]()
 //     {
@@ -67,39 +67,62 @@ namespace vex::vk
 //     return *sampler;
 // }
 
-VkTexture::VkTexture(VkGPUContext& ctx)
+VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescription, ::vk::Image backbufferImage)
     : ctx(ctx)
-{
-}
-
-VkBackbufferTexture::VkBackbufferTexture(VkGPUContext& ctx,
-                                         TextureDescription&& inDescription,
-                                         ::vk::Image backbufferImage)
-    : VkTexture(ctx)
+    , isBackBuffer(true)
     , image{ backbufferImage }
 {
     description = std::move(inDescription);
 }
 
-VkImageTexture::VkImageTexture(VkGPUContext& ctx, const TextureDescription& inDescription, ::vk::UniqueImage rawImage)
-    : VkTexture(ctx)
+VkTexture::VkTexture(const NonNullPtr<VkGPUContext> ctx,
+                     const TextureDescription& inDescription,
+                     ::vk::UniqueImage rawImage)
+    : ctx(ctx)
+    , isBackBuffer(false)
     , image{ std::move(rawImage) }
 {
     description = inDescription;
 }
 
-VkImageTexture::VkImageTexture(VkGPUContext& ctx, TextureDescription&& inDescription, ::vk::UniqueImage rawImage)
-    : VkTexture(ctx)
+VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescription, ::vk::UniqueImage rawImage)
+    : ctx(ctx)
+    , isBackBuffer(false)
     , image{ std::move(rawImage) }
 {
     description = std::move(inDescription);
 }
 
-VkImageTexture::VkImageTexture(VkGPUContext& ctx, TextureDescription&& inDescription)
-    : VkTexture(ctx)
+VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescription)
+    : ctx(ctx)
+    , isBackBuffer(false)
 {
     description = std::move(inDescription);
-    CreateImage(ctx);
+    CreateImage();
+}
+
+::vk::Image VkTexture::GetResource()
+{
+    ::vk::Image returnVal;
+    std::visit(
+        [this, &returnVal](auto& val)
+        {
+            using T = std::remove_cvref_t<decltype(val)>;
+            if constexpr (std::is_same_v<T, ::vk::UniqueImage>)
+            {
+                returnVal = *val;
+            }
+            else if constexpr (std::is_same_v<T, ::vk::Image>)
+            {
+                returnVal = val;
+            }
+            else
+            {
+                VEX_LOG(Fatal, "Unsupported type for VkTexture::GetResource()");
+            }
+        },
+        image);
+    return returnVal;
 }
 
 BindlessHandle VkTexture::GetOrCreateBindlessView(const ResourceBinding& binding,
@@ -131,11 +154,10 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const ResourceBinding& binding
                                                     .layerCount = view.sliceCount,
                                                 } };
 
-    ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx.device.createImageViewUnique(viewCreate);
+    ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx->device.createImageViewUnique(viewCreate);
     const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
 
     descriptorPool.UpdateDescriptor(
-        ctx,
         handle,
         ::vk::DescriptorImageInfo{ .sampler = nullptr, .imageView = *imageView, .imageLayout = GetLayout() },
         view.usage & TextureUsage::ShaderReadWrite);
@@ -172,7 +194,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const ResourceBinding& binding
                                                     .layerCount = view.sliceCount,
                                                 } };
 
-    ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx.device.createImageViewUnique(viewCreate);
+    ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx->device.createImageViewUnique(viewCreate);
 
     ::vk::ImageView ret = *imageView;
     viewCache[view] = std::move(imageView);
@@ -201,8 +223,14 @@ void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
     bindlessCache.clear();
 }
 
-void VkImageTexture::CreateImage(VkGPUContext& ctx)
+void VkTexture::CreateImage()
 {
+    if (isBackBuffer)
+    {
+        VEX_LOG(Fatal, "Calling create texture with a backbuffer is not valid behavior.");
+        return;
+    }
+
     ::vk::ImageCreateInfo createInfo{};
     createInfo.format = TextureFormatToVulkan(description.format);
     createInfo.sharingMode = ::vk::SharingMode::eExclusive;
@@ -249,19 +277,21 @@ void VkImageTexture::CreateImage(VkGPUContext& ctx)
     createInfo.usage |= ::vk::ImageUsageFlagBits::eTransferDst;
     createInfo.usage |= ::vk::ImageUsageFlagBits::eTransferSrc;
 
-    image = VEX_VK_CHECK <<= ctx.device.createImageUnique(createInfo);
+    ::vk::UniqueImage imageTmp = VEX_VK_CHECK <<= ctx->device.createImageUnique(createInfo);
 
-    ::vk::MemoryRequirements imageMemoryReq = ctx.device.getImageMemoryRequirements(*image);
+    ::vk::MemoryRequirements imageMemoryReq = ctx->device.getImageMemoryRequirements(*imageTmp);
 
     // memory allocation should be done elsewhere in a central place
     ::vk::MemoryAllocateInfo allocateInfo{
         .allocationSize = imageMemoryReq.size,
-        .memoryTypeIndex = GetBestMemoryType(ctx.physDevice,
+        .memoryTypeIndex = GetBestMemoryType(ctx->physDevice,
                                              imageMemoryReq.memoryTypeBits,
                                              ::vk::MemoryPropertyFlagBits::eDeviceLocal),
     };
-    memory = VEX_VK_CHECK <<= ctx.device.allocateMemoryUnique(allocateInfo);
-    VEX_VK_CHECK << ctx.device.bindImageMemory(*image, *memory, 0);
+    memory = VEX_VK_CHECK <<= ctx->device.allocateMemoryUnique(allocateInfo);
+    VEX_VK_CHECK << ctx->device.bindImageMemory(*imageTmp, *memory, 0);
+
+    image = std::move(imageTmp);
 }
 
 } // namespace vex::vk

@@ -141,14 +141,14 @@ UniqueHandle<RHIResourceLayout> DX12RHI::CreateResourceLayout(RHIDescriptorPool&
     return MakeUnique<DX12ResourceLayout>(device);
 }
 
-UniqueHandle<RHITexture> DX12RHI::CreateTexture(const TextureDescription& description)
+RHITexture DX12RHI::CreateTexture(const TextureDescription& description)
 {
-    return MakeUnique<DX12Texture>(device, description);
+    return DX12Texture(device, description);
 }
 
-UniqueHandle<RHIBuffer> DX12RHI::CreateBuffer(const BufferDescription& description)
+RHIBuffer DX12RHI::CreateBuffer(const BufferDescription& description)
 {
-    return MakeUnique<DX12Buffer>(device, description);
+    return DX12Buffer(device, description);
 }
 
 UniqueHandle<RHIDescriptorPool> DX12RHI::CreateDescriptorPool()

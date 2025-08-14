@@ -13,6 +13,8 @@
 #include <Vex/PlatformWindow.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/RHIImpl/RHI.h>
+#include <Vex/RHIImpl/RHIBuffer.h>
+#include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/Resource.h>
 #include <Vex/Texture.h>
 #include <Vex/UniqueHandle.h>
@@ -79,7 +81,9 @@ public:
 
     BindlessHandle GetTextureBindlessHandle(const ResourceBinding& bindlessResource, TextureUsage::Type usage);
     // Stride needs to be set if usage == StructuredBuffer
-    BindlessHandle GetBufferBindlessHandle(const ResourceBinding& bindlessResource,  BufferBindingUsage usage, u32 stride = 0);
+    BindlessHandle GetBufferBindlessHandle(const ResourceBinding& bindlessResource,
+                                           BufferBindingUsage usage,
+                                           u32 stride = 0);
 
     // Flushes all current GPU commands.
     void FlushGPU();
@@ -151,8 +155,8 @@ private:
     std::vector<Texture> backBuffers;
 
     // Converts from the Handle to the actual underlying RHI resource.
-    FreeList<UniqueHandle<RHITexture>, TextureHandle> textureRegistry;
-    FreeList<UniqueHandle<RHIBuffer>, BufferHandle> bufferRegistry;
+    FreeList<RHITexture, TextureHandle> textureRegistry;
+    FreeList<RHIBuffer, BufferHandle> bufferRegistry;
 
     // We submit our command lists in batch at the end of the frame, to reduce driver overhead.
     std::vector<RHICommandList*> queuedCommandLists;

@@ -333,10 +333,6 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
 #endif
 }
 
-DX12Texture::~DX12Texture()
-{
-}
-
 BindlessHandle DX12Texture::GetOrCreateBindlessView(const ResourceBinding& binding,
                                                     TextureUsage::Type usage,
                                                     RHIDescriptorPool& descriptorPool)

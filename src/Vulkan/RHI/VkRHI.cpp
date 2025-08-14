@@ -320,19 +320,19 @@ UniqueHandle<RHIResourceLayout> VkRHI::CreateResourceLayout(RHIDescriptorPool& d
     return MakeUnique<VkResourceLayout>(*device, descriptorPool);
 }
 
-UniqueHandle<RHITexture> VkRHI::CreateTexture(const TextureDescription& description)
+RHITexture VkRHI::CreateTexture(const TextureDescription& description)
 {
-    return MakeUnique<VkImageTexture>(GetGPUContext(), TextureDescription(description));
+    return VkTexture(GetGPUContext(), TextureDescription(description));
 }
 
-UniqueHandle<RHIBuffer> VkRHI::CreateBuffer(const BufferDescription& description)
+RHIBuffer VkRHI::CreateBuffer(const BufferDescription& description)
 {
-    return MakeUnique<VkBuffer>(GetGPUContext(), description);
+    return VkBuffer(GetGPUContext(), description);
 }
 
 UniqueHandle<RHIDescriptorPool> VkRHI::CreateDescriptorPool()
 {
-    return MakeUnique<VkDescriptorPool>(*device);
+    return MakeUnique<VkDescriptorPool>(GetGPUContext());
 }
 
 void VkRHI::ExecuteCommandList(RHICommandList& commandList)
@@ -416,10 +416,10 @@ void VkRHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args, s
     defines.emplace_back(L"VEX_VULKAN");
 }
 
-VkGPUContext& VkRHI::GetGPUContext()
+NonNullPtr<VkGPUContext> VkRHI::GetGPUContext()
 {
     static VkGPUContext ctx{ *device, physDevice, *surface, commandQueues[CommandQueueType::Graphics] };
-    return ctx;
+    return NonNullPtr(ctx);
 }
 
 } // namespace vex::vk

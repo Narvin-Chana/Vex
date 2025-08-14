@@ -3,7 +3,10 @@
 #include <variant>
 #include <vector>
 
+#include <Vex/MaybeUninitialized.h>
 #include <Vex/RHIFwd.h>
+#include <Vex/RHIImpl/RHIBuffer.h>
+#include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/Types.h>
 #include <Vex/UniqueHandle.h>
 
@@ -13,14 +16,14 @@ namespace vex
 class ResourceCleanup
 {
 public:
-    using CleanupVariant = std::variant<UniqueHandle<RHITexture>,
-                                        UniqueHandle<RHIBuffer>,
+    using CleanupVariant = std::variant<MaybeUninitialized<RHITexture>,
+                                        MaybeUninitialized<RHIBuffer>,
                                         UniqueHandle<RHIGraphicsPipelineState>,
                                         UniqueHandle<RHIComputePipelineState>>;
     ResourceCleanup(i8 bufferingCount);
 
-    void CleanupResource(CleanupVariant resource);
-    void CleanupResource(CleanupVariant resource, i8 lifespan);
+    void CleanupResource(CleanupVariant&& resource);
+    void CleanupResource(CleanupVariant&& resource, i8 lifespan);
     void FlushResources(i8 flushCount, RHIDescriptorPool& descriptorPool);
 
 private:

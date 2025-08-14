@@ -12,14 +12,12 @@
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHI.h>
-#include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHICommandPool.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
 #include <Vex/RHIImpl/RHIFence.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
-#include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/RenderExtension.h>
 
 namespace vex
@@ -196,8 +194,7 @@ Texture GfxBackend::CreateTexture(TextureDescription description, ResourceLifeti
         VEX_NOT_YET_IMPLEMENTED();
     }
 
-    auto rhiTexture = rhi.CreateTexture(description);
-    return Texture{ .handle = textureRegistry.AllocateElement(std::move(rhiTexture)),
+    return Texture{ .handle = textureRegistry.AllocateElement(std::move(rhi.CreateTexture(description))),
                     .description = std::move(description) };
 }
 
@@ -212,8 +209,7 @@ Buffer GfxBackend::CreateBuffer(BufferDescription description, ResourceLifetime 
         VEX_NOT_YET_IMPLEMENTED();
     }
 
-    auto rhiBuffer = rhi.CreateBuffer(description);
-    return Buffer{ .handle = bufferRegistry.AllocateElement(std::move(rhiBuffer)),
+    return Buffer{ .handle = bufferRegistry.AllocateElement(std::move(rhi.CreateBuffer(description))),
                    .description = std::move(description) };
 }
 
@@ -227,14 +223,12 @@ void GfxBackend::UpdateData(const Buffer& buffer, std::span<const u8> data)
 
 void GfxBackend::DestroyTexture(const Texture& texture)
 {
-    resourceCleanup.CleanupResource(std::move(textureRegistry[texture.handle]));
-    textureRegistry.FreeElement(texture.handle);
+    resourceCleanup.CleanupResource(textureRegistry.ExtractElement(texture.handle));
 }
 
 void GfxBackend::DestroyBuffer(const Buffer& buffer)
 {
-    resourceCleanup.CleanupResource(std::move(bufferRegistry[buffer.handle]));
-    bufferRegistry.FreeElement(buffer.handle);
+    resourceCleanup.CleanupResource(bufferRegistry.ExtractElement(buffer.handle));
 }
 
 BindlessHandle GfxBackend::GetTextureBindlessHandle(const ResourceBinding& bindlessResource, TextureUsage::Type usage)
@@ -248,7 +242,9 @@ BindlessHandle GfxBackend::GetTextureBindlessHandle(const ResourceBinding& bindl
     return texture.GetOrCreateBindlessView(bindlessResource, usage, *descriptorPool);
 }
 
-BindlessHandle GfxBackend::GetBufferBindlessHandle(const ResourceBinding& bindlessResource, BufferBindingUsage usage, u32 stride)
+BindlessHandle GfxBackend::GetBufferBindlessHandle(const ResourceBinding& bindlessResource,
+                                                   BufferBindingUsage usage,
+                                                   u32 stride)
 {
     if (!bindlessResource.IsBuffer())
     {
@@ -405,12 +401,12 @@ RHICommandPool& GfxBackend::GetCurrentCommandPool()
 
 RHITexture& GfxBackend::GetRHITexture(TextureHandle textureHandle)
 {
-    return *textureRegistry[textureHandle];
+    return textureRegistry[textureHandle];
 }
 
 RHIBuffer& GfxBackend::GetRHIBuffer(BufferHandle bufferHandle)
 {
-    return *bufferRegistry[bufferHandle];
+    return bufferRegistry[bufferHandle];
 }
 
 void GfxBackend::CreateBackBuffers()
@@ -418,8 +414,8 @@ void GfxBackend::CreateBackBuffers()
     backBuffers.resize(std::to_underlying(description.frameBuffering));
     for (u8 backBufferIndex = 0; backBufferIndex < std::to_underlying(description.frameBuffering); ++backBufferIndex)
     {
-        auto rhiTexture = swapChain->CreateBackBuffer(backBufferIndex);
-        const auto& rhiDesc = rhiTexture->GetDescription();
+        RHITexture rhiTexture = swapChain->CreateBackBuffer(backBufferIndex);
+        const auto& rhiDesc = rhiTexture.GetDescription();
         backBuffers[backBufferIndex] =
             Texture{ .handle = textureRegistry.AllocateElement(std::move(rhiTexture)), .description = rhiDesc };
     }

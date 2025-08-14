@@ -587,7 +587,7 @@ CommandQueueType VkCommandList::GetType() const
     return type;
 }
 
-VkCommandList::VkCommandList(VkGPUContext& ctx, ::vk::UniqueCommandBuffer&& commandBuffer, CommandQueueType type)
+VkCommandList::VkCommandList(NonNullPtr<VkGPUContext> ctx, ::vk::UniqueCommandBuffer&& commandBuffer, CommandQueueType type)
     : ctx{ ctx }
     , commandBuffer{ std::move(commandBuffer) }
     , type{ type }

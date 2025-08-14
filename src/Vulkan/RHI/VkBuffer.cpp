@@ -60,7 +60,7 @@ static ::vk::MemoryPropertyFlags GetMemoryPropsFromDesc(const BufferDescription&
     std::unreachable();
 }
 
-VkBuffer::VkBuffer(VkGPUContext& ctx, const BufferDescription& desc)
+VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, const BufferDescription& desc)
     : RHIBufferInterface{ desc }
     , ctx{ ctx }
 {
@@ -74,22 +74,24 @@ VkBuffer::VkBuffer(VkGPUContext& ctx, const BufferDescription& desc)
     }
 
     buffer = VEX_VK_CHECK <<=
-        ctx.device.createBufferUnique({ .size = desc.byteSize,
-                                        .usage = bufferUsage,
-                                        .sharingMode = ::vk::SharingMode::eExclusive,
-                                        .queueFamilyIndexCount = 1,
-                                        .pQueueFamilyIndices = &ctx.graphicsPresentQueue.family });
+        ctx->device.createBufferUnique({ .size = desc.byteSize,
+                                         .usage = bufferUsage,
+                                         .sharingMode = ::vk::SharingMode::eExclusive,
+                                         .queueFamilyIndexCount = 1,
+                                         .pQueueFamilyIndices = &ctx->graphicsPresentQueue.family });
 
-    const ::vk::MemoryRequirements reqs = ctx.device.getBufferMemoryRequirements(*buffer);
+    const ::vk::MemoryRequirements reqs = ctx->device.getBufferMemoryRequirements(*buffer);
 
-    memory = VEX_VK_CHECK <<= ctx.device.allocateMemoryUnique(
+    memory = VEX_VK_CHECK <<= ctx->device.allocateMemoryUnique(
         { .allocationSize = reqs.size,
-          .memoryTypeIndex = GetBestMemoryType(ctx.physDevice, reqs.memoryTypeBits, memoryProps) });
+          .memoryTypeIndex = GetBestMemoryType(ctx->physDevice, reqs.memoryTypeBits, memoryProps) });
 
-    VEX_VK_CHECK << ctx.device.bindBufferMemory(*buffer, *memory, 0);
+    VEX_VK_CHECK << ctx->device.bindBufferMemory(*buffer, *memory, 0);
 }
 
-BindlessHandle VkBuffer::GetOrCreateBindlessView(BufferBindingUsage usage, u32 stride, RHIDescriptorPool& descriptorPool)
+BindlessHandle VkBuffer::GetOrCreateBindlessView(BufferBindingUsage usage,
+                                                 u32 stride,
+                                                 RHIDescriptorPool& descriptorPool)
 {
     if (bufferHandle)
     {
@@ -99,7 +101,6 @@ BindlessHandle VkBuffer::GetOrCreateBindlessView(BufferBindingUsage usage, u32 s
     const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
 
     descriptorPool.UpdateDescriptor(
-        ctx,
         handle,
         desc.usage == BufferUsage::UniformBuffer ? ::vk::DescriptorType::eUniformBuffer
                                                  : ::vk::DescriptorType::eStorageBuffer,
@@ -135,13 +136,13 @@ UniqueHandle<VkBuffer> VkBuffer::CreateStagingBuffer()
 
 std::span<u8> VkBuffer::Map()
 {
-    void* ptr = VEX_VK_CHECK <<= ctx.device.mapMemory(*memory, 0, desc.byteSize);
+    void* ptr = VEX_VK_CHECK <<= ctx->device.mapMemory(*memory, 0, desc.byteSize);
     return { static_cast<u8*>(ptr), desc.byteSize };
 }
 
 void VkBuffer::Unmap()
 {
-    ctx.device.unmapMemory(*memory);
+    ctx->device.unmapMemory(*memory);
 }
 
 } // namespace vex::vk

@@ -14,8 +14,8 @@ static constexpr ::vk::DescriptorBufferInfo NullDescriptorBufferInfo{ .buffer = 
                                                                       .offset = 0,
                                                                       .range = VK_WHOLE_SIZE };
 
-VkDescriptorPool::VkDescriptorPool(::vk::Device device)
-    : device{ device }
+VkDescriptorPool::VkDescriptorPool(NonNullPtr<VkGPUContext> ctx)
+    : ctx{ ctx }
 {
     ::vk::DescriptorPoolSize poolSize{
         .type = ::vk::DescriptorType::eMutableEXT,
@@ -30,7 +30,7 @@ VkDescriptorPool::VkDescriptorPool(::vk::Device device)
         .pPoolSizes = &poolSize,
     };
 
-    descriptorPool = VEX_VK_CHECK <<= device.createDescriptorPoolUnique(descriptorPoolInfo);
+    descriptorPool = VEX_VK_CHECK <<= ctx->device.createDescriptorPoolUnique(descriptorPoolInfo);
 
     // Create a mutable descriptor binding set, this allows us to use the ResourceDescriptorHeap in HLSL shaders which
     // greatly simplifies the resulting code. It is important to know that this also disallows certain aspects:
@@ -94,7 +94,7 @@ VkDescriptorPool::VkDescriptorPool(::vk::Device device)
     };
 
     // Create layout
-    bindlessLayout = VEX_VK_CHECK <<= device.createDescriptorSetLayoutUnique(createInfo);
+    bindlessLayout = VEX_VK_CHECK <<= ctx->device.createDescriptorSetLayoutUnique(createInfo);
 
     ::vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo{
         .descriptorPool = *descriptorPool,
@@ -103,7 +103,7 @@ VkDescriptorPool::VkDescriptorPool(::vk::Device device)
     };
 
     std::vector<::vk::UniqueDescriptorSet> descSets = VEX_VK_CHECK <<=
-        device.allocateDescriptorSetsUnique(descriptorSetAllocateInfo);
+        ctx->device.allocateDescriptorSetsUnique(descriptorSetAllocateInfo);
 
     bindlessSet = std::move(descSets[0]);
 
@@ -125,11 +125,10 @@ void VkDescriptorPool::CopyNullDescriptor(u32 slotIndex)
         .pBufferInfo = &NullDescriptorBufferInfo,
         .pTexelBufferView = nullptr,
     };
-    device.updateDescriptorSets(1, &nullWriteDescriptorSet, 0, nullptr);
+    ctx->device.updateDescriptorSets(1, &nullWriteDescriptorSet, 0, nullptr);
 }
 
-void VkDescriptorPool::UpdateDescriptor(VkGPUContext& ctx,
-                                        BindlessHandle targetDescriptor,
+void VkDescriptorPool::UpdateDescriptor(BindlessHandle targetDescriptor,
                                         ::vk::DescriptorImageInfo createInfo,
                                         bool hasGPUWriteAccess)
 {
@@ -143,11 +142,10 @@ void VkDescriptorPool::UpdateDescriptor(VkGPUContext& ctx,
         .pImageInfo = &createInfo,
     };
 
-    ctx.device.updateDescriptorSets(1, &writeSet, 0, nullptr);
+    ctx->device.updateDescriptorSets(1, &writeSet, 0, nullptr);
 }
 
-void VkDescriptorPool::UpdateDescriptor(VkGPUContext& ctx,
-                                        BindlessHandle targetDescriptor,
+void VkDescriptorPool::UpdateDescriptor(BindlessHandle targetDescriptor,
                                         ::vk::DescriptorType descType,
                                         ::vk::DescriptorBufferInfo createInfo)
 {
@@ -160,7 +158,7 @@ void VkDescriptorPool::UpdateDescriptor(VkGPUContext& ctx,
         .pBufferInfo = &createInfo,
     };
 
-    ctx.device.updateDescriptorSets(1, &writeSet, 0, nullptr);
+    ctx->device.updateDescriptorSets(1, &writeSet, 0, nullptr);
 }
 
 } // namespace vex::vk

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Vex/NonNullPtr.h>
 #include <Vex/RHIFwd.h>
 
 #include <RHI/RHISwapChain.h>
@@ -31,7 +32,9 @@ class VkSwapChain final : public RHISwapChainInterface
 {
 
 public:
-    VkSwapChain(VkGPUContext& ctx, const SwapChainDescription& description, const PlatformWindow& platformWindow);
+    VkSwapChain(NonNullPtr<VkGPUContext> ctx,
+                const SwapChainDescription& description,
+                const PlatformWindow& platformWindow);
 
     virtual void AcquireNextBackbuffer(u8 frameIndex) override;
     virtual void Present(bool isFullscreenMode) override;
@@ -40,10 +43,11 @@ public:
     virtual void SetVSync(bool enableVSync) override;
     virtual bool NeedsFlushForVSyncToggle() override;
 
-    virtual UniqueHandle<RHITexture> CreateBackBuffer(u8 backBufferIndex) override;
+    virtual RHITexture CreateBackBuffer(u8 backBufferIndex) override;
 
 private:
     void InitSwapchainResource(u32 width, u32 height);
+    NonNullPtr<VkGPUContext> ctx;
 
     VkSwapChainSupportDetails supportDetails;
     ::vk::PresentModeKHR presentMode;
@@ -58,8 +62,6 @@ private:
 
     u32 currentBackbufferId;
     u32 width, height;
-
-    VkGPUContext& ctx;
 };
 
 } // namespace vex::vk

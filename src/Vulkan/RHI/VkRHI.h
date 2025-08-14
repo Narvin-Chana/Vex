@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Vex/NonNullPtr.h>
 #include <Vex/RHIFwd.h>
 
 #include <RHI/RHI.h>
@@ -39,8 +40,8 @@ public:
     virtual RHIComputePipelineState CreateComputePipelineState(const ComputePipelineStateKey& key) override;
     virtual UniqueHandle<RHIResourceLayout> CreateResourceLayout(RHIDescriptorPool& descriptorPool) override;
 
-    virtual UniqueHandle<RHITexture> CreateTexture(const TextureDescription& description) override;
-    virtual UniqueHandle<RHIBuffer> CreateBuffer(const BufferDescription& description) override;
+    virtual RHITexture CreateTexture(const TextureDescription& description) override;
+    virtual RHIBuffer CreateBuffer(const BufferDescription& description) override;
 
     virtual UniqueHandle<RHIDescriptorPool> CreateDescriptorPool() override;
 
@@ -54,7 +55,7 @@ public:
                                                  std::vector<ShaderDefine>& defines) override;
 
 private:
-    VkGPUContext& GetGPUContext();
+    NonNullPtr<VkGPUContext> GetGPUContext();
     void InitWindow(const PlatformWindowHandle& windowHandle);
 
     ::vk::UniqueInstance instance;
