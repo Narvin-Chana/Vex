@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <ranges>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include <Vex/Containers/MaybeUninitialized.h>
