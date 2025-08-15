@@ -41,6 +41,10 @@ D3D12_RESOURCE_STATES RHITextureStateToDX12State(RHITextureState::Flags state)
 D3D12_RESOURCE_STATES RHIBufferStateToDX12State(RHIBufferState::Flags state)
 {
     D3D12_RESOURCE_STATES outState = D3D12_RESOURCE_STATE_COMMON;
+    if (state & RHIBufferState::UniformResource)
+    {
+        outState |= D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+    }
     if (state & RHIBufferState::CopySource)
     {
         outState |= D3D12_RESOURCE_STATE_COPY_SOURCE;

@@ -34,12 +34,12 @@ void DX12ResourceLayout::CompileRootSignature()
 
     std::vector<CD3DX12_ROOT_PARAMETER> rootParameters;
 
-    CD3DX12_ROOT_PARAMETER rootCBV;
+    CD3DX12_ROOT_PARAMETER rootCBV{};
     // Root constant buffer is bound at the first slot (for Vex's internal bindless mapping).
     rootCBV.InitAsConstantBufferView(0);
     rootParameters.push_back(std::move(rootCBV));
 
-    CD3DX12_ROOT_PARAMETER rootConstants;
+    CD3DX12_ROOT_PARAMETER rootConstants{};
     // Root constants are always bound at slot 1 of the root parameters (in space 0).
     rootConstants.InitAsConstants(rootSignatureDWORDCount - 2, 1);
     rootParameters.push_back(std::move(rootConstants));
@@ -50,7 +50,7 @@ void DX12ResourceLayout::CompileRootSignature()
     CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc =
         CD3DX12_ROOT_SIGNATURE_DESC(static_cast<u32>(rootParameters.size()),
                                     rootParameters.data(),
-                                    dxSamplers.size(),
+                                    static_cast<u32>(dxSamplers.size()),
                                     dxSamplers.data(),
                                     D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
                                         D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED 

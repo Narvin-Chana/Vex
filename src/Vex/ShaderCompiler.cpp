@@ -455,6 +455,9 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
         // Generate structs.
         std::string codeGen = std::string(ShaderGenBindingMacros);
         codeGen.append("struct Vex_GeneratedGlobalResources\n{\n");
+        // TODO: Currently the order of HLSL and C++ resources MUST match (in order to have valid indices to descriptor
+        // heap). There are many solutions to this (sorting on both sides in the same manner, passing C++ sorting info
+        // to the shader compiler, ...) Would be worth it to discuss which sorting strategy we want to employ.
         for (const ShaderParser::GlobalResource& resource : shaderBlockInfo.globalResources)
         {
             codeGen.append(std::format("\t uint {}_BindlessIndex;\n", resource.name));

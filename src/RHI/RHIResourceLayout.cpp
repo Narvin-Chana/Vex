@@ -48,7 +48,7 @@ void RHIResourceLayoutBase::SetLayoutResources(RHI& rhi,
     bindlessHandles.reserve(textures.size() + buffers.size());
     for (auto& [binding, usage, texture] : textures)
     {
-        if (usage & TextureUsage::ShaderRead || usage & TextureUsage::ShaderReadWrite)
+        if ((usage == TextureUsage::ShaderRead) || (usage == TextureUsage::ShaderReadWrite))
         {
             bindlessHandles.push_back(texture->GetOrCreateBindlessView(binding, usage, descriptorPool).GetIndex());
         }
