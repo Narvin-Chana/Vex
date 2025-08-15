@@ -15,6 +15,8 @@
 #include <Vex.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 
+#include "Vulkan/VkFormats.h"
+
 #if VEX_DX12
 #include <DX12/DX12Formats.h>
 #endif
@@ -25,6 +27,7 @@ struct ImGui_ImplVex_InitInfo
     vex::RHIDescriptorPool* descriptorPool;
     vex::FrameBuffering buffering;
     vex::TextureFormat swapchainFormat;
+    vex::TextureFormat depthStencilFormat = vex::TextureFormat::UNKNOWN;
 };
 
 inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo* data)
@@ -40,9 +43,18 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo* data)
     initInfo.QueueFamily = commandQueue.family;
     initInfo.ImageCount = std::to_underlying(data->buffering);
     initInfo.MinImageCount = initInfo.ImageCount;
-
     initInfo.DescriptorPool = data->descriptorPool->GetNativeDescriptorPool();
-    initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    initInfo.PipelineCache = data->rhi->GetNativePSOCache();
+
+    initInfo.UseDynamicRendering = true;
+    ::vk::Format colorAttachmentFormat = vex::vk::TextureFormatToVulkan(data->swapchainFormat);
+    ::vk::Format depthStencilFormat = vex::vk::TextureFormatToVulkan(data->swapchainFormat);
+    initInfo.PipelineRenderingCreateInfo =
+        ::vk::PipelineRenderingCreateInfo{ .colorAttachmentCount = 1,
+                                           .pColorAttachmentFormats = &colorAttachmentFormat,
+                                           .depthAttachmentFormat = depthStencilFormat,
+                                           .stencilAttachmentFormat = depthStencilFormat };
+
     ImGui_ImplVulkan_Init(&initInfo);
 #elif VEX_DX12
     static struct DescriptorHelper
@@ -56,6 +68,7 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo* data)
     initInfo.CommandQueue = data->rhi->GetNativeQueue(vex::CommandQueueType::Graphics).Get();
     initInfo.NumFramesInFlight = std::to_underlying(data->buffering);
     initInfo.RTVFormat = vex::dx12::TextureFormatToDXGI(data->swapchainFormat);
+    initInfo.DSVFormat = vex::dx12::TextureFormatToDXGI(data->depthStencilFormat);
 
     // Descriptors callbacks to register and unregister handles.
     initInfo.SrvDescriptorHeap = helper.descriptorPool.GetNativeDescriptorHeap().Get();

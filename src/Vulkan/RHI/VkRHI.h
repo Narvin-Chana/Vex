@@ -64,6 +64,10 @@ public:
     {
         return physDevice;
     }
+    ::vk::PipelineCache GetNativePSOCache()
+    {
+        return *PSOCache;
+    }
 
     virtual void AcquireNextFrame(RHISwapChain& swapChain,
                                   u32 currentFrameIndex,
