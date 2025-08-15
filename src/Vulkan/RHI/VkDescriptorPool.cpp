@@ -27,7 +27,7 @@ VkDescriptorPool::VkDescriptorPool(NonNullPtr<VkGPUContext> ctx)
         .flags = ::vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind |
                  ::vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
         .maxSets =
-            1000, // External users might need to create more descriptor sets than the bindless one (ImGui for example)
+            1024, // External users might need to create more descriptor sets than the bindless one (ImGui for example)
         .poolSizeCount = 1,
         .pPoolSizes = &poolSize,
     };
