@@ -15,7 +15,7 @@
 #include <Vex.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 
-#include "Vulkan/VkFormats.h"
+#include <Vulkan/VkFormats.h>
 
 #if VEX_DX12
 #include <DX12/DX12Formats.h>
