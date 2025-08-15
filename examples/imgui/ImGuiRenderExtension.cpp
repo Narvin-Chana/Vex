@@ -47,11 +47,24 @@ void ImGuiRenderExtension::Initialize()
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
-#if VEX_VULKAN
-    VEX_NOT_YET_IMPLEMENTED();
-#elif VEX_DX12
     ImGui_ImplGlfw_InitForOther(window, true);
 
+#if VEX_VULKAN
+    ImGui_ImplVulkan_InitInfo initInfo{};
+    initInfo.Device = data.rhi->GetNativeDevice();
+    initInfo.Instance = data.rhi->GetNativeInstance();
+    initInfo.PhysicalDevice = data.rhi->GetNativePhysicalDevice();
+
+    const auto& commandQueue = data.rhi->GetCommandQueue(vex::CommandQueueType::Graphics);
+    initInfo.Queue = commandQueue.queue;
+    initInfo.QueueFamily = commandQueue.family;
+    initInfo.ImageCount = std::to_underlying(buffering);
+    initInfo.MinImageCount = initInfo.ImageCount;
+
+    initInfo.DescriptorPool = data.descriptorPool->GetNativeDescriptorPool();
+    initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    ImGui_ImplVulkan_Init(&initInfo);
+#elif VEX_DX12
     static struct DescriptorHelper
     {
         std::unordered_map<size_t, vex::BindlessHandle> descriptorsMap;
@@ -101,12 +114,12 @@ void ImGuiRenderExtension::Destroy()
 void ImGuiRenderExtension::OnFrameStart()
 {
 #if VEX_VULKAN
-    VEX_NOT_YET_IMPLEMENTED();
+    ImGui_ImplVulkan_NewFrame();
 #elif VEX_DX12
     ImGui_ImplDX12_NewFrame();
+#endif
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-#endif
 }
 
 void ImGuiRenderExtension::OnFrameEnd()
@@ -128,10 +141,10 @@ void ImGuiRenderExtension::OnFrameEnd()
         // directly to the backbuffer).
         ctx.BeginRendering({ .renderTargets = std::initializer_list{ backBufferBinding } });
 
-#if VEX_VULKAN
-        VEX_NOT_YET_IMPLEMENTED();
-#elif VEX_DX12
         ImGui::Render();
+#if VEX_VULKAN
+        ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), ctx.GetRHICommandList().GetNativeCommandList());
+#elif VEX_DX12
         ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), ctx.GetRHICommandList().GetNativeCommandList().Get());
 #endif
 

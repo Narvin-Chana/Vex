@@ -23,6 +23,11 @@ public:
                           ::vk::DescriptorType descType,
                           ::vk::DescriptorBufferInfo createInfo);
 
+    ::vk::DescriptorPool& GetNativeDescriptorPool()
+    {
+        return *descriptorPool;
+    }
+
 private:
     NonNullPtr<VkGPUContext> ctx;
     ::vk::UniqueDescriptorPool descriptorPool;

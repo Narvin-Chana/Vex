@@ -48,6 +48,23 @@ public:
     virtual void ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
                                                  std::vector<ShaderDefine>& defines) override;
 
+    ::vk::Instance GetNativeInstance()
+    {
+        return *instance;
+    }
+    ::vk::Device GetNativeDevice()
+    {
+        return *device;
+    }
+    const VkCommandQueue& GetCommandQueue(CommandQueueType queueType)
+    {
+        return commandQueues[std::to_underlying(queueType)];
+    }
+    ::vk::PhysicalDevice GetNativePhysicalDevice()
+    {
+        return physDevice;
+    }
+
     virtual void AcquireNextFrame(RHISwapChain& swapChain,
                                   u32 currentFrameIndex,
                                   RHITexture& currentBackbuffer) override;
