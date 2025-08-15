@@ -23,19 +23,12 @@ VkDescriptorPool::VkDescriptorPool(NonNullPtr<VkGPUContext> ctx)
         .descriptorCount = DefaultPoolSize,
     };
 
-    ::vk::DescriptorPoolSize uniformPoolSize{
-        .type = ::vk::DescriptorType::eUniformBuffer,
-        .descriptorCount = 1,
-    };
-
-    std::array poolSizes = { poolSize, uniformPoolSize };
-
     ::vk::DescriptorPoolCreateInfo descriptorPoolInfo{
         .flags = ::vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind |
                  ::vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
         .maxSets = 2,
-        .poolSizeCount = poolSizes.size(),
-        .pPoolSizes = poolSizes.data(),
+        .poolSizeCount = 1,
+        .pPoolSizes = &poolSize,
     };
 
     descriptorPool = VEX_VK_CHECK <<= ctx->device.createDescriptorPoolUnique(descriptorPoolInfo);
@@ -120,41 +113,6 @@ VkDescriptorPool::VkDescriptorPool(NonNullPtr<VkGPUContext> ctx)
     // TODO: The pool should be split into two sections, one for static descriptors (aka resources that we load in once
     // at startup or for streaming and reuse thereafter) and one section for dynamic descriptors (for resources that
     // are created and destroyed during the same frame, eg: temporary buffers).
-
-    // Create the bindlessMappingLayout and bindlessMappingSet.
-    // These are used to have a bound constant buffer slot who's purpose is to contain all global resources the user
-    // uses during the pass. This allows for them to still be used in a bindless manner via shader codegen, reducing
-    // CPU work as much as possible.
-    {
-        ::vk::DescriptorSetLayoutBinding binding = {
-            .binding = 0, // binding 0 in space 1
-            .descriptorType = ::vk::DescriptorType::eUniformBuffer,
-            .descriptorCount = 1,
-            .stageFlags = ::vk::ShaderStageFlagBits::eAll,
-        };
-        ::vk::DescriptorBindingFlagsEXT bindingFlags = ::vk::DescriptorBindingFlagBits::eUpdateAfterBind;
-        ::vk::DescriptorSetLayoutBindingFlagsCreateInfoEXT bindingFlagsInfo = {
-            .bindingCount = 1,
-            .pBindingFlags = &bindingFlags,
-        };
-        ::vk::DescriptorSetLayoutCreateInfo layoutInfo = {
-            .pNext = &bindingFlagsInfo,
-            .flags = ::vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool,
-            .bindingCount = 1,
-            .pBindings = &binding,
-        };
-        bindlessMappingLayout = VEX_VK_CHECK <<= ctx->device.createDescriptorSetLayoutUnique(layoutInfo);
-
-        ::vk::DescriptorSetAllocateInfo allocInfo = {
-            .descriptorPool = *descriptorPool,
-            .descriptorSetCount = 1,
-            .pSetLayouts = &*bindlessMappingLayout,
-        };
-        std::vector<::vk::UniqueDescriptorSet> descSets = VEX_VK_CHECK <<=
-            ctx->device.allocateDescriptorSetsUnique(allocInfo);
-
-        bindlessMappingSet = std::move(descSets[0]);
-    }
 }
 
 void VkDescriptorPool::CopyNullDescriptor(u32 slotIndex)
@@ -204,28 +162,6 @@ void VkDescriptorPool::UpdateDescriptor(BindlessHandle targetDescriptor,
     };
 
     ctx->device.updateDescriptorSets(1, &writeSet, 0, nullptr);
-}
-
-void VkDescriptorPool::UpdateBindlessMappingBuffer(RHIBuffer& bindlessMappingBuffer,
-                                                   ::vk::DeviceSize offset,
-                                                   ::vk::DeviceSize range)
-{
-    ::vk::DescriptorBufferInfo bufferInfo = {
-        .buffer = bindlessMappingBuffer.GetNativeBuffer(),
-        .offset = offset,
-        .range = range,
-    };
-
-    ::vk::WriteDescriptorSet writeDescriptorSet = {
-        .dstSet = *bindlessMappingSet,
-        .dstBinding = 0,
-        .dstArrayElement = 0,
-        .descriptorCount = 1,
-        .descriptorType = ::vk::DescriptorType::eUniformBuffer,
-        .pBufferInfo = &bufferInfo,
-    };
-
-    ctx->device.updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
 }
 
 } // namespace vex::vk

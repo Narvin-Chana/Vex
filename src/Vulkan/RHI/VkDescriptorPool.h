@@ -23,22 +23,12 @@ public:
                           ::vk::DescriptorType descType,
                           ::vk::DescriptorBufferInfo createInfo);
 
-    // Updates which buffer is bound as the global bindlessMapping buffer.
-    void UpdateBindlessMappingBuffer(RHIBuffer& bindlessMappingBuffer,
-                                     ::vk::DeviceSize offset = 0,
-                                     ::vk::DeviceSize range = VK_WHOLE_SIZE);
-
 private:
     NonNullPtr<VkGPUContext> ctx;
     ::vk::UniqueDescriptorPool descriptorPool;
-    // For bindless resources (the actual place where the bindless resources are present).
+    // For bindless resources.
     ::vk::UniqueDescriptorSet bindlessSet;
     ::vk::UniqueDescriptorSetLayout bindlessLayout;
-
-    // For the buffer that contains the indices of the current pass's resources (aka the indices into the previous
-    // set/layout).
-    ::vk::UniqueDescriptorSetLayout bindlessMappingLayout;
-    ::vk::UniqueDescriptorSet bindlessMappingSet;
 
     friend class VkCommandList;
     friend class VkResourceLayout;

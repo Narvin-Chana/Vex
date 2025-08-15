@@ -64,80 +64,178 @@ static std::wstring GetTargetFromShaderType(ShaderType type)
     return highestSupportedShaderModel;
 }
 
-struct LocalConstantsParser
+struct ShaderParser
 {
+    struct GlobalResource
+    {
+        std::string type;
+        std::string name;
+        std::string fullMatch;
+    };
+
+    struct LocalConstants
+    {
+        std::string type;
+        std::string name;
+        std::string fullMatch;
+    };
+
+    struct ShaderBlock
+    {
+        std::string fullShaderBlock;
+        std::vector<GlobalResource> globalResources;
+        std::optional<LocalConstants> localConstants;
+
+        // Position information for faster replacement.
+        size_t blockStartPos;
+        size_t blockEndPos;
+        size_t blockLength;
+    };
+
     enum ParseError
     {
-        MultipleDeclarations,
+        NoVexShaderFound,
+        MultipleVexShaders,
+        MultipleLocalConstants,
         EmptyType,
         UsingHLSLPrimitiveType,
         EmptyName,
         InvalidIdentifier,
     };
 
-    static std::expected<void, ParseError> ValidateLocalConstants(const std::string& userShaderCode)
+    // Matches with VEX_SHADER{} blocks.
+    static const std::regex ShaderBlockRegex()
     {
-        // Regex to match VEX_LOCAL_CONSTANTS(type, name) with optional whitespace and semicolon
-        static const std::regex LocalConstantsRegex{
-            R"(VEX_LOCAL_CONSTANTS\s*\(\s*([^,\s][^,]*?)\s*,\s*([^)\s][^)]*?)\s*\)\s*;?)"
-        };
+        // Matches VEX_SHADER followed by { ... } with proper brace matching
+        return std::regex{ R"(VEX_SHADER\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\})",
+                           /*std::regex_constants::multiline | */ std::regex_constants::ECMAScript };
+    }
 
-        // Find all matches
-        std::vector<std::smatch> matches;
-        std::sregex_iterator iter(userShaderCode.begin(), userShaderCode.end(), LocalConstantsRegex);
+    // Matches with VEX_GLOBAL_RESOURCE() calls.
+    static const std::regex GlobalResourceRegex()
+    {
+        // Captures: VEX_GLOBAL_RESOURCE(Type<Template> Name);
+        return std::regex{ R"(VEX_GLOBAL_RESOURCE\s*\(\s*([^,]+?)\s*,\s*([^)\s][^)]*?)\s*\)\s*;?)" };
+    }
+
+    // Matches with VEX_LOCAL_CONSTANTS() calls.
+    static const std::regex LocalConstantsRegex()
+    {
+        return std::regex{ R"(VEX_LOCAL_CONSTANTS\s*\(\s*([^,\s][^,]*?)\s*,\s*([^)\s][^)]*?)\s*\)\s*;?)" };
+    }
+
+    static std::expected<ShaderBlock, ParseError> ParseShader(const std::string& shaderCode)
+    {
+        ShaderBlock result;
+
+        // Step 1: Find the VEX_SHADER block
+        std::smatch shaderMatch;
+        auto shaderRegex = ShaderBlockRegex();
+
+        std::vector<std::smatch> shaderMatches;
+        std::sregex_iterator shaderIter(shaderCode.begin(), shaderCode.end(), shaderRegex);
         std::sregex_iterator end;
 
-        for (; iter != end; ++iter)
+        for (; shaderIter != end; ++shaderIter)
         {
-            matches.push_back(*iter);
+            shaderMatches.push_back(*shaderIter);
         }
 
-        // Check if no local constants found, having no local constants is valid.
-        if (matches.empty())
+        if (shaderMatches.empty())
         {
-            return std::expected<void, ParseError>();
+            return std::unexpected(NoVexShaderFound);
         }
 
-        // Check for multiple declarations
-        if (matches.size() > 1)
+        if (shaderMatches.size() > 1)
         {
-            return std::unexpected(MultipleDeclarations);
+            return std::unexpected(MultipleVexShaders);
         }
 
-        // Process the single match
-        const auto& match = matches[0];
+        const std::smatch& match = shaderMatches[0];
+        result.fullShaderBlock = match[0].str(); // Full match including VEX_SHADER{...}
+        result.blockStartPos = match[0].first - shaderCode.begin();
+        result.blockEndPos = match[0].second - shaderCode.begin();
+        result.blockLength = result.blockEndPos - result.blockStartPos;
+        std::string vexShaderBlockContent = match[1].str(); // Content inside braces
 
-        // Extract and validate type
-        std::string rawType = match[1].str();
-        std::string cleanType = Trim(rawType);
-
-        if (cleanType.empty())
+        // Step 2: Parse VEX_GLOBAL_RESOURCE declarations
+        auto globalRegex = GlobalResourceRegex();
+        std::sregex_iterator globalIter(vexShaderBlockContent.begin(), vexShaderBlockContent.end(), globalRegex);
+        for (; globalIter != end; ++globalIter)
         {
-            return std::unexpected(EmptyType);
+            const auto& globalMatch = *globalIter;
+            GlobalResource resource;
+            resource.fullMatch = globalMatch[0].str();
+            resource.type = Trim(globalMatch[1].str());
+            resource.name = Trim(globalMatch[2].str());
+            result.globalResources.push_back(resource);
         }
 
-        // Validate that the type is a struct (and not directly an HLSL primitive).
-        if (IsPrimitiveType(cleanType))
+        // Step 3: Parse VEX_LOCAL_CONSTANTS declaration
+        auto localRegex = LocalConstantsRegex();
+        std::sregex_iterator localIter(vexShaderBlockContent.begin(), vexShaderBlockContent.end(), localRegex);
+
+        for (; localIter != end; ++localIter)
         {
-            return std::unexpected(UsingHLSLPrimitiveType);
+            // Second pass means we've found more than one invocation of LocalConstants which is invalid.
+            if (result.localConstants.has_value())
+            {
+                return std::unexpected(MultipleLocalConstants);
+            }
+
+            const auto& localMatch = *localIter;
+            LocalConstants constants;
+            constants.fullMatch = localMatch[0].str();
+            constants.type = Trim(localMatch[1].str());
+            constants.name = Trim(localMatch[2].str());
+            result.localConstants = constants;
         }
 
-        // Extract and validate name
-        std::string rawName = match[2].str();
-        std::string cleanName = Trim(rawName);
-
-        if (cleanName.empty())
+        // Step 4: Additional validation for local constants if present
+        if (result.localConstants.has_value())
         {
-            return std::unexpected(EmptyName);
+            const auto& localConst = result.localConstants.value();
+
+            if (localConst.type.empty())
+            {
+                return std::unexpected(EmptyType);
+            }
+
+            if (IsPrimitiveType(localConst.type))
+            {
+                return std::unexpected(UsingHLSLPrimitiveType);
+            }
+
+            if (localConst.name.empty())
+            {
+                return std::unexpected(EmptyName);
+            }
+
+            if (!IsValidIdentifier(localConst.name))
+            {
+                return std::unexpected(InvalidIdentifier);
+            }
         }
 
-        // Validate that name is a valid identifier
-        if (!IsValidIdentifier(cleanName))
-        {
-            return std::unexpected(InvalidIdentifier);
-        }
+        return result;
+    }
 
-        return std::expected<void, ParseError>();
+    static std::string ReplaceVexShaderBlock(const std::string& originalCode,
+                                             const ShaderBlock& parsedBlock,
+                                             const std::string& replacementBlock)
+    {
+        // Pre-calculate final size to avoid reallocations
+        const size_t newSize = originalCode.length() - parsedBlock.blockLength + replacementBlock.length();
+
+        std::string result;
+        result.reserve(newSize);
+
+        // Copy parts: before block + replacement + after block
+        result.append(originalCode, 0, parsedBlock.blockStartPos);
+        result.append(replacementBlock);
+        result.append(originalCode, parsedBlock.blockEndPos, std::string::npos);
+
+        return result;
     }
 
 private:
@@ -321,73 +419,96 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
         std::ifstream shaderFile{ shader.key.path.c_str() };
         buffer << shaderFile.rdbuf();
     }
-    std::string userShaderCode = buffer.str();
+    std::string shaderFileStr = buffer.str();
 
-    std::string shaderFileStr;
-
-#if VEX_VULKAN
-    using ShaderCompiler_Internal::LocalConstantsParser;
+    using ShaderCompiler_Internal::ShaderParser;
     // We insert the local constants on the vulkan side by replacing the first declaration of VEX_LOCAL_CONSTANTS,
     // however this macro should only appear once and has some other constraints. This parser validates the usage of
     // VEX_LOCAL_CONSTANTS in the user shader code.
-    auto res = LocalConstantsParser::ValidateLocalConstants(userShaderCode);
+    auto res = ShaderParser::ParseShader(shaderFileStr);
     if (!res.has_value())
     {
         switch (res.error())
         {
-        case LocalConstantsParser::MultipleDeclarations:
+        case ShaderParser::NoVexShaderFound:
+            return std::unexpected("ShaderCompiler: When parsing for VEX_SHADER, no occurrences were found. Please "
+                                   "include a VEX_SHADER block for shader code-gen.");
+        case ShaderParser::MultipleVexShaders:
+            return std::unexpected("ShaderCompiler: When parsing for VEX_SHADER, multiple VEX_SHADER blocks were "
+                                   "found, only one occurrence of this block is allowed.");
+        case ShaderParser::MultipleLocalConstants:
             return std::unexpected(
                 "ShaderCompiler: When parsing for local constants, multiple uses of the VEX_LOCAL_CONSTANTS macro were "
                 "found. Make sure to only use it once (including all your local constants in it).");
-        case LocalConstantsParser::EmptyType:
+        case ShaderParser::EmptyType:
             return std::unexpected(
                 "ShaderCompiler: When parsing for local constants, a usage of VEX_LOCAL_CONSTANTS was detected with an "
                 "empty type. Make sure to fill in the type of VEX_LOCAL_CONSTANTS(type, name)!");
-        case LocalConstantsParser::UsingHLSLPrimitiveType:
+        case ShaderParser::UsingHLSLPrimitiveType:
             return std::unexpected(
                 "ShaderCompiler: Your VEX_LOCAL_CONSTANTS type cannot be a direct primitive type, instead you must "
                 "wrap it inside a custom struct. Eg: 'VEX_LOCAL_CONSTANTS(float2, myFloat)' is not valid, but 'struct "
                 "MyFloatS { float2 val }; VEX_LOCAL_CONSTANTS(MyFloatS, myFloat)' is valid.");
-        case LocalConstantsParser::EmptyName:
+        case ShaderParser::EmptyName:
             return std::unexpected(
                 "ShaderCompiler: When parsing for local constants, a usage of VEX_LOCAL_CONSTANTS was detected with an "
                 "empty variable name. Make sure to fill in the name of VEX_LOCAL_CONSTANTS(type, name)!");
-        case LocalConstantsParser::InvalidIdentifier:
+        case ShaderParser::InvalidIdentifier:
             return std::unexpected("ShaderCompiler: When parsing for local constants, a usage of VEX_LOCAL_CONSTANTS "
                                    "was detected with an invalid name (must be a valid C++ identifier).");
         }
     }
-#endif
-
-    // Auto-generate shader static sampler bindings.
-    shaderFileStr.append("// SAMPLERS -------------------------\n");
-    for (u32 i = 0; i < resourceContext.samplers.size(); ++i)
+    else
     {
-        const TextureSampler& sampler = resourceContext.samplers[i];
-        shaderFileStr.append(std::format("SamplerState {} : register(s{}, space0);\n", sampler.name, i));
+        const ShaderParser::ShaderBlock& shaderBlockInfo = res.value();
+        // Generate structs.
+        std::string codeGen = "struct Vex_GeneratedGlobalResources\n{\n";
+        for (const ShaderParser::GlobalResource& resource : shaderBlockInfo.globalResources)
+        {
+            codeGen.append(std::format("\tuint {}_BindlessIndex;\n", resource.name));
+        }
+        codeGen.append("};\n"
+                       "struct Vex_GeneratedCombinedResources\n"
+                       "{\n"
+                       "\tuint GlobalResourcesBindlessIndex;\n");
+        if (shaderBlockInfo.localConstants.has_value())
+        {
+            codeGen.append(std::format("\t{} UserData;\n", shaderBlockInfo.localConstants->type));
+        }
+        // Generate ConstantBuffers.
+        codeGen.append(
+            "};\n"
+            "[[vk::push_constant]] ConstantBuffer<Vex_GeneratedCombinedResources> Vex_GeneratedCombinedResourcesCB;\n"
+            "static ConstantBuffer<Vex_GeneratedGlobalResources> Vex_GeneratedGlobalResourcesCB = "
+            "ResourceDescriptorHeap[Vex_GeneratedCombinedResourcesCB.GlobalResourcesBindlessIndex];\n");
+        // Insert the macro to make the local binding transparent for the user.
+        if (shaderBlockInfo.localConstants.has_value())
+        {
+            codeGen.append(std::format("#define {} (Vex_GeneratedCombinedResourcesCB.UserData)\n",
+                                       shaderBlockInfo.localConstants->name));
+        }
+        // Insert static declarations for global resources.
+        for (const ShaderParser::GlobalResource& resource : shaderBlockInfo.globalResources)
+        {
+            codeGen.append(std::format(
+                "static {0} {1} = ResourceDescriptorHeap[Vex_GeneratedGlobalResourcesCB.{1}_BindlessIndex];\n",
+                resource.type,
+                resource.name));
+        }
+
+        // Auto-generate shader static sampler bindings.
+        for (u32 i = 0; i < resourceContext.samplers.size(); ++i)
+        {
+            const TextureSampler& sampler = resourceContext.samplers[i];
+            codeGen.append(std::format("SamplerState {} : register(s{}, space0);\n", sampler.name, i));
+        }
+
+        // Replace the VEX_SHADER block with our codegen.
+        shaderFileStr = ShaderParser::ReplaceVexShaderBlock(shaderFileStr, shaderBlockInfo, codeGen);
     }
-
-    // Auto-generate shader constants bindings.
-    shaderFileStr.append("// GENERATED CONSTANTS -------------------------\n");
-    shaderFileStr.append("struct zzzZZZ___GeneratedConstants\n{");
-    for (std::string& name : resourceContext.GenerateShaderBindings())
-    {
-        // Remove spaces, we suppose that the user will not use any tabs or other cursed characters.
-        std::replace(name.begin(), name.end(), ' ', '_');
-        shaderFileStr.append(std::format("uint {}_bindlessIndex;\n", name));
-    }
-    // Close the shader constant bindings struct.
-    shaderFileStr.append("};\n");
-
-    // VEX_GLOBAL_RESOURCE and VEX_GET_BINDLESS_RESOURCE is how users will access resources, include macros
-    // that generate these.
-    shaderFileStr.append(ShaderGenBindingMacros);
-
-    // Append the actual shader file contents to the str.
-    shaderFileStr.append(std::move(userShaderCode));
 
 #if !VEX_SHIPPING
-    VEX_LOG(Verbose, "Shader {} file dump: {}", shader.key, shaderFileStr);
+    VEX_LOG(Verbose, "Shader {}\nFile dump:\n{}", shader.key, shaderFileStr);
 #endif
 
     ComPtr<IDxcBlobEncoding> shaderBlob;

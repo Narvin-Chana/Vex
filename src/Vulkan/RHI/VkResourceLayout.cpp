@@ -22,11 +22,8 @@ VkResourceLayout::VkResourceLayout(NonNullPtr<VkGPUContext> ctx, const VkDescrip
                                    .offset = 0,
                                    .size = GPhysicalDevice->featureChecker->GetMaxLocalConstantsByteSize() };
 
-    std::array<::vk::DescriptorSetLayout, 2> setLayouts = { *descriptorPool.bindlessLayout,
-                                                            *descriptorPool.bindlessMappingLayout };
-
-    ::vk::PipelineLayoutCreateInfo createInfo{ .setLayoutCount = setLayouts.size(),
-                                               .pSetLayouts = setLayouts.data(),
+    ::vk::PipelineLayoutCreateInfo createInfo{ .setLayoutCount = 1,
+                                               .pSetLayouts = &*descriptorPool.bindlessLayout,
                                                .pushConstantRangeCount = 1,
                                                .pPushConstantRanges = &range };
 
