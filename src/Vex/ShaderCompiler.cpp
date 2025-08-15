@@ -70,14 +70,12 @@ struct ShaderParser
     {
         std::string type;
         std::string name;
-        std::string fullMatch;
     };
 
     struct LocalConstants
     {
         std::string type;
         std::string name;
-        std::string fullMatch;
     };
 
     struct ShaderBlock
@@ -103,24 +101,21 @@ struct ShaderParser
         InvalidIdentifier,
     };
 
-    // Matches with VEX_SHADER{} blocks.
+    // FYI: The following regex were generated with ChatGPT, there might be some weird edge cases we're not aware of.
     static const std::regex ShaderBlockRegex()
     {
         // Matches VEX_SHADER followed by { ... } with proper brace matching
         return std::regex{ R"(VEX_SHADER\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\})",
                            /*std::regex_constants::multiline | */ std::regex_constants::ECMAScript };
     }
-
-    // Matches with VEX_GLOBAL_RESOURCE() calls.
     static const std::regex GlobalResourceRegex()
     {
-        // Captures: VEX_GLOBAL_RESOURCE(Type<Template> Name);
+        // Captures: VEX_GLOBAL_RESOURCE(Type, Name);
         return std::regex{ R"(VEX_GLOBAL_RESOURCE\s*\(\s*([^,]+?)\s*,\s*([^)\s][^)]*?)\s*\)\s*;?)" };
     }
-
-    // Matches with VEX_LOCAL_CONSTANTS() calls.
     static const std::regex LocalConstantsRegex()
     {
+        // Captures: VEX_LOCAL_RESOURCE(Type, Name);
         return std::regex{ R"(VEX_LOCAL_CONSTANTS\s*\(\s*([^,\s][^,]*?)\s*,\s*([^)\s][^)]*?)\s*\)\s*;?)" };
     }
 
@@ -165,7 +160,6 @@ struct ShaderParser
         {
             const auto& globalMatch = *globalIter;
             GlobalResource resource;
-            resource.fullMatch = globalMatch[0].str();
             resource.type = Trim(globalMatch[1].str());
             resource.name = Trim(globalMatch[2].str());
             result.globalResources.push_back(resource);
@@ -185,7 +179,6 @@ struct ShaderParser
 
             const auto& localMatch = *localIter;
             LocalConstants constants;
-            constants.fullMatch = localMatch[0].str();
             constants.type = Trim(localMatch[1].str());
             constants.name = Trim(localMatch[2].str());
             result.localConstants = constants;
@@ -462,20 +455,22 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
     {
         const ShaderParser::ShaderBlock& shaderBlockInfo = res.value();
         // Generate structs.
-        std::string codeGen = "struct Vex_GeneratedGlobalResources\n{\n";
+        std::string codeGen = std::string(ShaderGenBindingMacros);
+        codeGen.append("struct Vex_GeneratedGlobalResources\n{\n");
         for (const ShaderParser::GlobalResource& resource : shaderBlockInfo.globalResources)
         {
-            codeGen.append(std::format("\tuint {}_BindlessIndex;\n", resource.name));
+            codeGen.append(std::format("\t uint {}_BindlessIndex;\n", resource.name));
         }
+// Generate ConstantBuffers.
+#if VEX_VULKAN
         codeGen.append("};\n"
                        "struct Vex_GeneratedCombinedResources\n"
                        "{\n"
-                       "\tuint GlobalResourcesBindlessIndex;\n");
+                       "\t uint GlobalResourcesBindlessIndex;\n");
         if (shaderBlockInfo.localConstants.has_value())
         {
             codeGen.append(std::format("\t{} UserData;\n", shaderBlockInfo.localConstants->type));
         }
-        // Generate ConstantBuffers.
         codeGen.append(
             "};\n"
             "[[vk::push_constant]] ConstantBuffer<Vex_GeneratedCombinedResources> Vex_GeneratedCombinedResourcesCB;\n"
@@ -487,6 +482,17 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
             codeGen.append(std::format("#define {} (Vex_GeneratedCombinedResourcesCB.UserData)\n",
                                        shaderBlockInfo.localConstants->name));
         }
+#elif VEX_DX12
+        codeGen.append(std::format(
+            "}};\nConstantBuffer<Vex_GeneratedGlobalResources> Vex_GeneratedGlobalResourcesCB : register(b0);\n"));
+        // Insert the macro to make the local binding transparent for the user.
+        if (shaderBlockInfo.localConstants.has_value())
+        {
+            codeGen.append(std::format("ConstantBuffer<{}> {} : register(b1);\n",
+                                       shaderBlockInfo.localConstants->type,
+                                       shaderBlockInfo.localConstants->name));
+        }
+#endif
         // Insert static declarations for global resources.
         for (const ShaderParser::GlobalResource& resource : shaderBlockInfo.globalResources)
         {
@@ -508,7 +514,7 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
     }
 
 #if !VEX_SHIPPING
-    VEX_LOG(Verbose, "Shader {}\nFile dump:\n{}", shader.key, shaderFileStr);
+    VEX_LOG(Info, "Shader {}\nFile dump:\n{}", shader.key, shaderFileStr);
 #endif
 
     ComPtr<IDxcBlobEncoding> shaderBlob;

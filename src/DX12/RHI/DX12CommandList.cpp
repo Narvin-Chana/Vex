@@ -148,6 +148,11 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& de
     }
 
     std::span<const u8> localConstantsData = layout.GetLocalConstantsData();
+    if (localConstantsData.empty())
+    {
+        return;
+    }
+
     switch (type)
     {
     case CommandQueueType::Graphics:

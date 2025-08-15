@@ -3,7 +3,7 @@ VEX_SHADER
     VEX_GLOBAL_RESOURCE(RWTexture2D<float4>, OutputTexture);
     VEX_GLOBAL_RESOURCE(Texture2D<float4>, SourceTexture);
     VEX_GLOBAL_RESOURCE(StructuredBuffer<float4>, CommBuffer);
-};
+}
 
 // Simple function to check if a point is inside a triangle
 bool IsInsideTriangle(float2 p, float2 v0, float2 v1, float2 v2)
