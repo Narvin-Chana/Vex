@@ -3,6 +3,7 @@
 #if VEX_VULKAN
 // ImGui uses vulkan.h headers, Vex uses vulkan.hpp,
 // vulkan.hpp only compiles correctly when included BEFORE vulkan.h.
+#include <Vulkan/VkFormats.h>
 #include <Vulkan/VkHeaders.h>
 #endif
 
@@ -14,8 +15,6 @@
 
 #include <Vex.h>
 #include <Vex/RHIImpl/RHICommandList.h>
-
-#include <Vulkan/VkFormats.h>
 
 #if VEX_DX12
 #include <DX12/DX12Formats.h>
