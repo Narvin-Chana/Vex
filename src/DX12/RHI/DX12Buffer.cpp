@@ -187,7 +187,7 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
 
 void DX12Buffer::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 {
-    for (BindlessHandle bindlessHandle : viewCache | std::views::values)
+    for (const auto& [cacheKey, bindlessHandle] : viewCache)
     {
         if (bindlessHandle != GInvalidBindlessHandle)
         {

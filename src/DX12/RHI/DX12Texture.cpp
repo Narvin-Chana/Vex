@@ -375,11 +375,11 @@ BindlessHandle DX12Texture::GetOrCreateBindlessView(const ResourceBinding& bindi
 
 void DX12Texture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 {
-    for (auto& [heapSlot, bindlessHandle] : viewCache | std::views::values)
+    for (auto& [view, entry] : viewCache)
     {
-        if (bindlessHandle != GInvalidBindlessHandle)
+        if (entry.bindlessHandle != GInvalidBindlessHandle)
         {
-            descriptorPool.FreeStaticDescriptor(bindlessHandle);
+            descriptorPool.FreeStaticDescriptor(entry.bindlessHandle);
         }
     }
     viewCache.clear();

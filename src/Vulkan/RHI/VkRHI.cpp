@@ -1,8 +1,6 @@
 #include "VkRHI.h"
 
-#include <ranges>
 #include <set>
-#include <thread>
 
 #include <Vex/Logger.h>
 #include <Vex/PlatformWindow.h>

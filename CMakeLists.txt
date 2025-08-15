@@ -103,8 +103,6 @@ add_library(Vex STATIC
     "src/Vex/RHIFwd.h"
     "src/RHI/RHI.h"  
     "src/RHI/RHICommandPool.h"
-    
-    
     "src/RHI/RHISwapChain.h"
     "src/RHI/RHITexture.h"
     "src/RHI/RHIBuffer.h"
@@ -122,7 +120,6 @@ add_library(Vex STATIC
     "src/Vex/RHIImpl/RHIPipelineState.h"
     "src/Vex/RHIImpl/RHISwapChain.h"
     "src/Vex/RHIImpl/RHIResourceLayout.h"
-    
     "src/Vex/RHIImpl/RHITexture.h"
     "src/Vex/RHIImpl/RHI.h"
     "src/Vex/RHIImpl/RHIBuffer.h"
@@ -159,6 +156,7 @@ add_library(Vex STATIC
     "src/Vex/Shader.cpp"
     "src/Vex/Hash.h"
     "src/Vex/Containers/FreeList.h"
+    "src/Vex/Containers/FreeList.cpp"
     "src/Vex/Handle.h"
     "src/Vex/Resource.h"
     "src/Vex/Containers/ResourceCleanup.h"

@@ -1,6 +1,5 @@
 ﻿#include "VkExtensions.h"
 
-#include <ranges>
 #include <unordered_set>
 
 #include <vulkan/vulkan_core.h>
@@ -70,8 +69,6 @@ std::vector<const char*> FilterSupportedValidationLayers(const std::vector<const
 
     std::vector<::vk::LayerProperties> availableLayers(layerCount);
     assert(::vk::enumerateInstanceLayerProperties(&layerCount, availableLayers.data()) == ::vk::Result::eSuccess);
-
-    auto requestedLayers = layers | std::ranges::to<std::unordered_set<std::string_view>>();
 
     std::unordered_set<std::string_view> availableLayerSet;
     for (const auto& prop : availableLayers)

@@ -1,7 +1,5 @@
 #include "ShaderCompiler.h"
 
-#include <istream>
-#include <ranges>
 #include <regex>
 #include <string>
 #include <string_view>
@@ -730,7 +728,7 @@ void ShaderCompiler::MarkShaderDirty(const ShaderKey& key)
 
 void ShaderCompiler::MarkAllShadersDirty()
 {
-    for (auto& shader : shaderCache | std::views::values)
+    for (auto& [key, shader] : shaderCache)
     {
         shader.MarkDirty();
         shader.isErrored = false;
@@ -742,7 +740,7 @@ void ShaderCompiler::MarkAllShadersDirty()
 void ShaderCompiler::MarkAllStaleShadersDirty()
 {
     u32 numStaleShaders = 0;
-    for (auto& shader : shaderCache | std::views::values)
+    for (auto& [key, shader] : shaderCache)
     {
         if (auto [isShaderStale, newShaderHash] = IsShaderStale(shader); isShaderStale || shader.isErrored)
         {

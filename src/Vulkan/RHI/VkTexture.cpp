@@ -214,11 +214,11 @@ RHITextureState::Type VkTexture::GetClearTextureState()
 
 void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 {
-    for (const auto& [handle, view] : bindlessCache | std::views::values)
+    for (const auto& [viewDesc, entry] : bindlessCache)
     {
-        if (handle != GInvalidBindlessHandle)
+        if (entry.handle != GInvalidBindlessHandle)
         {
-            descriptorPool.FreeStaticDescriptor(handle);
+            descriptorPool.FreeStaticDescriptor(entry.handle);
         }
     }
     bindlessCache.clear();

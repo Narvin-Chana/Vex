@@ -1,14 +1,8 @@
 #include "DX12ResourceLayout.h"
 
-#include <numeric>
-#include <ranges>
-#include <utility>
-
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/Platform/Windows/HResult.h>
-#include <Vex/RHIImpl/RHIBuffer.h>
-#include <Vex/ResourceBindingSet.h>
 
 #include <DX12/DX12TextureSampler.h>
 #include <DX12/HRChecker.h>
