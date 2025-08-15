@@ -6,12 +6,13 @@
 #include <RHI/RHIDescriptorPool.h>
 
 #include <Vulkan/VkHeaders.h>
+#include <Vulkan/VkRHIFwd.h>
 
 namespace vex::vk
 {
 struct VkGPUContext;
 
-class VkDescriptorPool final : public RHIDescriptorPoolInterface
+class VkDescriptorPool final : public RHIDescriptorPoolBase
 {
 public:
     VkDescriptorPool(NonNullPtr<VkGPUContext> ctx);
@@ -25,7 +26,8 @@ public:
 private:
     NonNullPtr<VkGPUContext> ctx;
     ::vk::UniqueDescriptorPool descriptorPool;
-    ::vk::UniqueDescriptorSet bindlessSet; // Single global set for bindless resources
+    // For bindless resources.
+    ::vk::UniqueDescriptorSet bindlessSet;
     ::vk::UniqueDescriptorSetLayout bindlessLayout;
 
     friend class VkCommandList;

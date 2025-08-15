@@ -33,11 +33,15 @@ RHICommandList* VkCommandPool::CreateCommandList(CommandQueueType queueType)
 
 void VkCommandPool::ReclaimCommandListMemory(CommandQueueType queueType)
 {
+    // Decrement lifespan of all allocated buffers.
+    auto& commandBuffers = allocatedCommandBuffers[std::to_underlying(queueType)];
     VEX_LOG(Verbose,
             "Reclaimed {} command list(s) for \"{}\" type",
-            allocatedCommandBuffers[std::to_underlying(queueType)].size(),
+            commandBuffers.size(),
             magic_enum::enum_name(queueType));
-    allocatedCommandBuffers[std::to_underlying(queueType)].clear();
+
+    // Release underlying command buffers now that they are assuredly no longer in flight.
+    commandBuffers.clear();
 }
 
 void VkCommandPool::ReclaimAllCommandListMemory()
@@ -55,7 +59,12 @@ VkCommandPool::VkCommandPool(NonNullPtr<VkGPUContext> ctx,
     for (u8 i = 0; i < CommandQueueTypes::Count; ++i)
     {
         commandPoolPerQueueType[i] = VEX_VK_CHECK <<= ctx->device.createCommandPoolUnique({
-            .flags = ::vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+            // TODO(https://trello.com/c/L4xZOEBK): currently the VkCommandPool has a weird mix between reusing and not
+            // reusing command buffers,
+            // If we reuse buffers, we should store them and redistribute them instead of just allocating a new buffer
+            // every time we request one.
+            // To address this I've temporarily made it so that buffers are never reused.
+            //.flags = ::vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
             .queueFamilyIndex = commandQueues[i].family,
         });
     }

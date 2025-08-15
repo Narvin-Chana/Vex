@@ -7,7 +7,7 @@
 namespace vex::dx12
 {
 
-class DX12GraphicsPipelineState final : public RHIGraphicsPipelineStateInterface
+class DX12GraphicsPipelineState final : public RHIGraphicsPipelineStateBase
 {
 public:
     DX12GraphicsPipelineState(const ComPtr<DX12Device>& device, const Key& key);

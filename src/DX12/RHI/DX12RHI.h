@@ -8,6 +8,7 @@
 #include <RHI/RHI.h>
 
 #include <DX12/DX12FeatureChecker.h>
+#include <DX12/DX12Fence.h>
 
 namespace vex
 {
@@ -17,7 +18,7 @@ struct PlatformWindowHandle;
 namespace vex::dx12
 {
 
-class DX12RHI final : public RenderHardwareInterface
+class DX12RHI final : public RHIBase
 {
 public:
     DX12RHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation);
@@ -39,14 +40,17 @@ public:
 
     virtual UniqueHandle<RHIDescriptorPool> CreateDescriptorPool() override;
 
-    virtual void ExecuteCommandList(RHICommandList& commandList) override;
-    virtual void ExecuteCommandLists(std::span<RHICommandList*> commandLists) override;
-
-    virtual UniqueHandle<RHIFence> CreateFence(u32 numFenceIndices) override;
-    virtual void SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) override;
-    virtual void WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) override;
     virtual void ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
                                                  std::vector<ShaderDefine>& defines) override;
+
+    virtual void AcquireNextFrame(RHISwapChain& swapChain,
+                                  u32 currentFrameIndex,
+                                  RHITexture& currentBackbuffer) override;
+    virtual void SubmitAndPresent(std::span<RHICommandList*> commandLists,
+                                  RHISwapChain& swapChain,
+                                  u32 currentFrameIndex,
+                                  bool isFullscreenMode) override;
+    virtual void FlushGPU() override;
 
     ComPtr<DX12Device>& GetNativeDevice();
     ComPtr<ID3D12CommandQueue>& GetNativeQueue(CommandQueueType queueType);
@@ -63,6 +67,7 @@ private:
     ComPtr<DX12Device> device;
 
     std::array<ComPtr<ID3D12CommandQueue>, CommandQueueTypes::Count> queues;
+    std::optional<std::array<DX12Fence, CommandQueueTypes::Count>> fences;
 };
 
 } // namespace vex::dx12

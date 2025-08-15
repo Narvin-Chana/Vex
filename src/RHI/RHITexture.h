@@ -25,18 +25,15 @@ END_VEX_ENUM_FLAGS();
 
 // clang-format on
 
-class RHITextureInterface
+class RHITextureBase
 {
 public:
-    RHITextureInterface() = default;
-
-    RHITextureInterface(const RHITextureInterface&) = delete;
-    RHITextureInterface& operator=(const RHITextureInterface&) = delete;
-
-    RHITextureInterface(RHITextureInterface&&) = default;
-    RHITextureInterface& operator=(RHITextureInterface&&) = default;
-
-    ~RHITextureInterface() = default;
+    RHITextureBase() = default;
+    RHITextureBase(const RHITextureBase&) = delete;
+    RHITextureBase& operator=(const RHITextureBase&) = delete;
+    RHITextureBase(RHITextureBase&&) = default;
+    RHITextureBase& operator=(RHITextureBase&&) = default;
+    ~RHITextureBase() = default;
 
     virtual BindlessHandle GetOrCreateBindlessView(const ResourceBinding& binding,
                                                    TextureUsage::Type usage,

@@ -1,13 +1,10 @@
 #pragma once
 
-#include <algorithm>
-#include <ranges>
-#include <type_traits>
 #include <utility>
 #include <vector>
 
-#include <Vex/MaybeUninitialized.h>
 #include <Vex/Debug.h>
+#include <Vex/MaybeUninitialized.h>
 #include <Vex/Types.h>
 
 namespace vex
@@ -16,55 +13,10 @@ namespace vex
 // Simple index allocator
 struct FreeListAllocator
 {
-    FreeListAllocator(u32 size = 0)
-        : size{ size }
-    {
-        freeIndices.reserve(size);
-        for (u32 i = 0; i < size; ++i)
-        {
-            freeIndices.push_back(size - 1 - i);
-        }
-    }
-
-    u32 Allocate()
-    {
-        auto idx = freeIndices.back();
-        freeIndices.pop_back();
-        return idx;
-    }
-
-    void Deallocate(u32 index)
-    {
-        freeIndices.push_back(index);
-        std::ranges::sort(freeIndices, std::greater{});
-    }
-
-    void Resize(u32 newSize)
-    {
-        if (newSize == size)
-        {
-            return;
-        }
-
-        u32 indicesPreviousSize = static_cast<u32>(freeIndices.size());
-
-        // We only support resizing up!
-        freeIndices.resize(indicesPreviousSize + newSize - size);
-
-        u32 idx = newSize - 1;
-        u32 value = newSize - size;
-        for (u32& handle : freeIndices)
-        {
-            if (idx == indicesPreviousSize - 1)
-            {
-                break;
-            }
-            handle = value;
-            idx--;
-            value--;
-        }
-        size = newSize;
-    }
+    FreeListAllocator(u32 size = 0);
+    u32 Allocate();
+    void Deallocate(u32 index);
+    void Resize(u32 newSize);
 
     u32 size;
     std::vector<u32> freeIndices;

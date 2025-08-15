@@ -110,14 +110,6 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
 
     ValidateDrawResources(drawResources);
 
-    RHIResourceLayout& resourceLayout = backend->GetPipelineStateCache().GetResourceLayout();
-
-    if (!drawResources.constants.empty())
-    {
-        // Constants not yet implemented!
-        VEX_NOT_YET_IMPLEMENTED();
-    }
-
     // Collect all underlying RHI textures.
     i32 totalSize =
         static_cast<i32>(drawResources.readResources.size() + drawResources.unorderedAccessResources.size() +
@@ -195,24 +187,8 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
                        RHIBufferState::ShaderReadWrite);
     }
 
-    // TODO(https://trello.com/c/IGxuLci9): Correctly integrate buffers here, including staging upload.
-
-    // Transition our resources to the correct states.
-    cmdList->Transition(textureStateTransitions);
-    cmdList->Transition(bufferStateTransitions);
-
-    // Bind the layout to the pipeline
-    cmdList->SetLayout(resourceLayout);
-
-    // Bind the layout to the pipeline
-    cmdList->SetLayout(resourceLayout);
-
-    // Transforms ResourceBinding into platform specific views, then binds them to the shader (preferably bindlessly).
-    cmdList->SetLayoutResources(resourceLayout, rhiTextureBindings, rhiBufferBindings, *backend->descriptorPool);
-
     auto graphicsPSOKey =
         GetGraphicsPSOKeyFromDrawDesc(drawDesc, drawResources.renderTargets, drawResources.depthStencil);
-
     if (!cachedGraphicsPSOKey || graphicsPSOKey != *cachedGraphicsPSOKey)
     {
         auto pipelineState = backend->GetPipelineStateCache().GetGraphicsPipelineState(
@@ -228,13 +204,52 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
         cachedGraphicsPSOKey = graphicsPSOKey;
     }
 
+    // Transition our resources to the correct states.
+    cmdList->Transition(textureStateTransitions);
+    cmdList->Transition(bufferStateTransitions);
+
+    // TODO(https://trello.com/c/IGxuLci9): Correctly integrate buffers here, including staging upload.
+    // std::vector<std::pair<RHIBuffer&, RHIBufferState::Flags>> bufferStagingCopyTransitions;
+    // for (u32 i = 0; i < rhiBufferBindings.size(); ++i)
+    //{
+    //     bufferStateTransitions.emplace_back(
+    //         *rhiBufferBindings[i].buffer,
+    //         i < bufferWriteCount ? RHIBufferState::ShaderReadWrite : RHIBufferState::ShaderResource);
+
+    //    if (rhiBufferBindings[i].buffer->NeedsStagingBufferCopy())
+    //    {
+    //        bufferStagingCopyTransitions.emplace_back(*rhiBufferBindings[i].buffer, RHIBufferState::CopyDest);
+    //        bufferStagingCopyTransitions.emplace_back(*rhiBufferBindings[i].buffer->GetStagingBuffer(),
+    //                                                  RHIBufferState::CopySource);
+    //    }
+    //}
+
+    // cmdList->Transition(bufferStagingCopyTransitions);
+    // for (int i = 0; i < bufferStagingCopyTransitions.size() / 2; ++i)
+    //{
+    //     auto& buffer = bufferStagingCopyTransitions[i * 2].first;
+    //     cmdList->Copy(*buffer.GetStagingBuffer(), buffer);
+    //     buffer.SetNeedsStagingBufferCopy(false);
+    // }
+
+    // Setup the layout for our pass.
+    RHIResourceLayout& resourceLayout = backend->GetPipelineStateCache().GetResourceLayout();
+    resourceLayout.SetLayoutResources(backend->rhi,
+                                      backend->resourceCleanup,
+                                      drawResources.constants,
+                                      rhiTextureBindings,
+                                      rhiBufferBindings,
+                                      *backend->descriptorPool);
+
+    cmdList->SetLayout(resourceLayout, *backend->descriptorPool);
+
     if (!cachedInputAssembly || drawDesc.inputAssembly != cachedInputAssembly)
     {
         cmdList->SetInputAssembly(drawDesc.inputAssembly);
         cachedInputAssembly = drawDesc.inputAssembly;
     }
 
-    // TODO: Validate draw vertex count (eg: versus the currently used index buffer size)
+    // TODO(https://trello.com/c/IGxuLci9): Validate draw vertex count (eg: versus the currently used index buffer size)
 
     RHIDrawResources rhiDrawRes;
 
@@ -263,51 +278,6 @@ void CommandContext::Dispatch(const ShaderKey& shader,
 {
     resourceBindingSet.ValidateBindings();
 
-    RHIResourceLayout& resourceLayout = backend->GetPipelineStateCache().GetResourceLayout();
-
-    // TODO: About resource binding logic!
-    //
-    // Currently constants and bindless indices are both bound as push/root constants, this could cause problems in DX12
-    // if the total size of local constants, textures and global constants, surpasses the total size of the root
-    // constants...
-    //
-    // A solution for this could be to bind bindless indices via a root constant buffer, which would allow us have an
-    // "infinite" amount of them (not really infinite, the max size of a cbuffer is 64'000 bytes, a bindless handle is
-    // 32 bits, so this gives us 16'000 resources that can be bound inside one shader! I believe this should be
-    // sufficient for most cases!). This could potentially even be done dynamically (so only if the root constants
-    // doesn't have enough space to fit all resources), this would allow us to avoid the additional indirection this has
-    // when few resources are bound!
-
-    // --------------------------------
-    // Current Resource Binding Logic:
-    // --------------------------------
-    //
-    // Iterate on ResourceBindings in reads/writes:
-    //      Collect RHITextures and RHIBuffers with their associated ResourceBinding.
-    // Pass the collected resource-binding pairs to the RHICommandList:
-    //      Create a platform-specific view from the resource-binding pair.
-    //      Determine if this view already exists in the underlying RHIResource's ViewCache.
-    //      Determine if the resource can be bound bindlessly or not:
-    //          If it is a non-bindless resource:
-    //              Bind it directly to the pipeline and we're done (eg: output images, depth stencil in graphics
-    //              pipeline).
-    //          Else:
-    //              Grab its bindless handle:
-    //                  Make sure its still valid:
-    //                      If so we can use it.
-    //                      Else create a new bindless handle that will be used (TODO: figure out logic for dynamic vs
-    //                      static resources, for now we only consider static resources).
-    //              Once the bindless handle has been obtained send it to the command list to be set as a push/root
-    //              constant.
-    //
-    //              Right now these constants will be "guessed" by the user in the shader-side (probably bound to slots
-    //              in the order of declaration on C++ side).
-    //
-    //              Then we send it to the pipeline state to make it accessible to the shader via some code gen upon
-    //              compilation. EG: in shaders for uniform bindless resources you'd declare VEX_RESOURCE(type,
-    //              name), and the shader compiler would arrange for this to correctly get the resource using the
-    //              bindless index.
-
     // Collect all underlying RHI textures.
     std::vector<RHITextureBinding> rhiTextureBindings;
     std::vector<RHIBufferBinding> rhiBufferBindings;
@@ -327,7 +297,7 @@ void CommandContext::Dispatch(const ShaderKey& shader,
                                             TextureUsage::ShaderRead,
                                             BufferUsage::UniformBuffer | BufferUsage::GenericBuffer);
 
-    // This code will be greatly simplied when we add caching of transitions until the next GPU operation.
+    // This code will be greatly simplified when we add caching of transitions until the next GPU operation.
     // See: https://trello.com/c/kJWhd2iu
 
     std::vector<std::pair<RHITexture&, RHITextureState::Flags>> textureStateTransitions;
@@ -366,21 +336,7 @@ void CommandContext::Dispatch(const ShaderKey& shader,
         buffer.SetNeedsStagingBufferCopy(false);
     }
 
-    // Transition our resources to the correct states.
-    cmdList->Transition(textureStateTransitions);
-    cmdList->Transition(bufferStateTransitions);
-
-    // Sets the resource layout to use for the dispatch
-    cmdList->SetLayout(resourceLayout);
-
-    // Upload local constants as push/root constants
-    // TODO: handle shader constants (validation, slot binding, etc...)!
-    cmdList->SetLayoutLocalConstants(resourceLayout, resourceBindingSet.GetConstantBindings());
-
-    cmdList->SetLayoutResources(resourceLayout, rhiTextureBindings, rhiBufferBindings, *backend->descriptorPool);
-
     ComputePipelineStateKey psoKey = { .computeShader = shader };
-
     if (!cachedComputePSOKey || psoKey != cachedComputePSOKey)
     {
         // Register shader and get Pipeline if exists (if not create it).
@@ -396,6 +352,20 @@ void CommandContext::Dispatch(const ShaderKey& shader,
         cmdList->SetPipelineState(*pipelineState);
         cachedComputePSOKey = psoKey;
     }
+
+    // Transition our resources to the correct states.
+    cmdList->Transition(textureStateTransitions);
+    cmdList->Transition(bufferStateTransitions);
+
+    // Sets the resource layout to use for the dispatch
+    RHIResourceLayout& resourceLayout = backend->GetPipelineStateCache().GetResourceLayout();
+    resourceLayout.SetLayoutResources(backend->rhi,
+                                      backend->resourceCleanup,
+                                      resourceBindingSet.GetConstantBindings(),
+                                      rhiTextureBindings,
+                                      rhiBufferBindings,
+                                      *backend->descriptorPool);
+    cmdList->SetLayout(resourceLayout, *backend->descriptorPool);
 
     // Validate dispatch (vs platform/api constraints)
     // backend->ValidateDispatch(groupCount);
@@ -440,8 +410,15 @@ void CommandContext::SetRenderTarget(const ResourceBinding& renderTarget)
     auto& rt = backend->GetRHITexture(renderTarget.texture.handle);
     cmdList->Transition(rt, RHITextureState::RenderTarget);
 
-    RHITextureBinding rtBinding{ .binding = renderTarget, .usage = TextureUsage::RenderTarget, .texture = &rt };
-    cmdList->SetLayoutResources(backend->psCache.GetResourceLayout(), { &rtBinding, 1 }, {}, *backend->descriptorPool);
+    cmdList->BeginRendering({ .renderTargets = { RHITextureBinding{ .binding = renderTarget,
+                                                                    .usage = TextureUsage::RenderTarget,
+                                                                    .texture = &rt } },
+                              .depthStencil = std::nullopt });
+#if VEX_VULKAN
+    // TODO: Figure out the logic behind the user-binding api for draw calls.
+    VEX_NOT_YET_IMPLEMENTED();
+#endif
+    cmdList->EndRendering();
 }
 
 void CommandContext::Transition(const Texture& texture, RHITextureState::Type newState)

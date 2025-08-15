@@ -1,3 +1,16 @@
+struct MyStruct
+{
+    float time;
+};
+
+VEX_SHADER
+{
+    VEX_LOCAL_CONSTANTS(
+        MyStruct,
+        MyLocalConstants
+    );
+}
+
 void ComputeTriangleVertex(in uint vertexID, out float4 position, out float2 uv)
 {
     uv = float2((vertexID << 1) & 2, vertexID & 2);
@@ -38,10 +51,13 @@ bool IsInsideTriangle(float2 p, float2 v0, float2 v1, float2 v2)
 float4 PSMain(VSOutput input)
     : SV_Target
 {
+    static const float moveSpeed = 0.2f;
+    float offset = sin(MyLocalConstants.time * moveSpeed) * 0.1;
+
     // Define triangle vertices in normalized space
-    float2 v0 = float2(0.5, 0.1); // Bottom center
-    float2 v1 = float2(0.9, 0.8); // Top right
-    float2 v2 = float2(0.1, 0.8); // Top left
+    float2 v0 = float2(0.5 + offset, 0.1); // Bottom center
+    float2 v1 = float2(0.9 + offset, 0.8); // Top right
+    float2 v2 = float2(0.1 + offset, 0.8); // Top left
 
     if (IsInsideTriangle(input.uv, v0, v1, v2))
     {

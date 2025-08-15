@@ -1,6 +1,5 @@
 #pragma once
 
-#include <algorithm>
 #include <expected>
 #include <source_location>
 #include <string>

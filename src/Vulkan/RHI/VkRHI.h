@@ -18,7 +18,7 @@ struct PlatformWindowHandle;
 namespace vex::vk
 {
 
-class VkRHI final : public RenderHardwareInterface
+class VkRHI final : public RHIBase
 {
 public:
     VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation);
@@ -45,14 +45,17 @@ public:
 
     virtual UniqueHandle<RHIDescriptorPool> CreateDescriptorPool() override;
 
-    virtual void ExecuteCommandList(RHICommandList& commandList) override;
-    virtual void ExecuteCommandLists(std::span<RHICommandList*> commandLists) override;
-
-    virtual UniqueHandle<RHIFence> CreateFence(u32 numFenceIndices) override;
-    virtual void SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) override;
-    virtual void WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) override;
     virtual void ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
                                                  std::vector<ShaderDefine>& defines) override;
+
+    virtual void AcquireNextFrame(RHISwapChain& swapChain,
+                                  u32 currentFrameIndex,
+                                  RHITexture& currentBackbuffer) override;
+    virtual void SubmitAndPresent(std::span<RHICommandList*> commandLists,
+                                  RHISwapChain& swapChain,
+                                  u32 currentFrameIndex,
+                                  bool isFullscreenMode) override;
+    virtual void FlushGPU() override;
 
 private:
     NonNullPtr<VkGPUContext> GetGPUContext();

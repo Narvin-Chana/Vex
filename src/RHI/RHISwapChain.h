@@ -16,11 +16,9 @@ struct SwapChainDescription
     bool useVSync = false;
 };
 
-class RHISwapChainInterface
+class RHISwapChainBase
 {
 public:
-    virtual void AcquireNextBackbuffer(u8 frameIndex) = 0;
-    virtual void Present(bool isFullscreenMode) = 0;
     virtual void Resize(u32 width, u32 height) = 0;
 
     // Could lead to recreating the swapchain (eg: for Vulkan).

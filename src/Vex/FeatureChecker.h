@@ -14,7 +14,7 @@ enum class Feature : u8
     // TODO: add other features to this list.
 };
 
-// TODO: add more specific ray tracing support flags
+// TODO(https://trello.com/c/KnVRsH9P): add more specific ray tracing support flags
 
 // IMPORTANT:
 // Currently unsupported feature levels could be added later! I believe to start out its easier if we reduce the feature
@@ -60,6 +60,7 @@ public:
     virtual FeatureLevel GetFeatureLevel() const = 0;
     virtual ResourceBindingTier GetResourceBindingTier() const = 0;
     virtual ShaderModel GetShaderModel() const = 0;
+    virtual u32 GetMaxLocalConstantsByteSize() const = 0;
 };
 
 } // namespace vex

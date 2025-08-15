@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdlib>
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -8,7 +7,6 @@
 #include <print>
 #include <string>
 #include <string_view>
-#include <utility>
 
 #include <Vex/Debug.h>
 #include <Vex/EnumFlags.h>

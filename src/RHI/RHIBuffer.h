@@ -45,15 +45,15 @@ private:
     bool useStagingBuffer;
 };
 
-class RHIBufferInterface
+class RHIBufferBase
 {
 public:
-    RHIBufferInterface() = default;
-    RHIBufferInterface(const RHIBufferInterface&) = delete;
-    RHIBufferInterface& operator=(const RHIBufferInterface&) = delete;
-    RHIBufferInterface(RHIBufferInterface&&) = default;
-    RHIBufferInterface& operator=(RHIBufferInterface&&) = default;
-    ~RHIBufferInterface() = default;
+    RHIBufferBase() = default;
+    RHIBufferBase(const RHIBufferBase&) = delete;
+    RHIBufferBase& operator=(const RHIBufferBase&) = delete;
+    RHIBufferBase(RHIBufferBase&&) = default;
+    RHIBufferBase& operator=(RHIBufferBase&&) = default;
+    ~RHIBufferBase() = default;
 
     // RAII safe version to access buffer memory
     MappedMemory GetMappedMemory();
@@ -95,7 +95,7 @@ public:
     RHIBuffer* GetStagingBuffer();
 
 protected:
-    explicit RHIBufferInterface(const BufferDescription& desc);
+    explicit RHIBufferBase(const BufferDescription& desc);
     bool ShouldUseStagingBuffer() const;
 
     BufferDescription desc;

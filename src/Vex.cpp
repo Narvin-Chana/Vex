@@ -16,6 +16,7 @@ UniqueHandle<GfxBackend> CreateGraphicsBackend(const BackendDescription& descrip
                 description.platformWindow.height);
         return nullptr;
     }
+    VEX_LOG(Info, "Creating Graphics Backend with API Support:\n\tDX12: {} Vulkan: {}", VEX_DX12, VEX_VULKAN);
 
     return MakeUnique<GfxBackend>(description);
 }

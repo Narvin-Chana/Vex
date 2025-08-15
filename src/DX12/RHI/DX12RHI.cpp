@@ -4,6 +4,7 @@
 #include <Vex/PlatformWindow.h>
 
 #include <DX12/DX12Debug.h>
+#include <DX12/DX12Fence.h>
 #include <DX12/DX12PhysicalDevice.h>
 #include <DX12/DXGIFactory.h>
 #include <DX12/HRChecker.h>
@@ -11,7 +12,6 @@
 #include <DX12/RHI/DX12CommandList.h>
 #include <DX12/RHI/DX12CommandPool.h>
 #include <DX12/RHI/DX12DescriptorPool.h>
-#include <DX12/RHI/DX12Fence.h>
 #include <DX12/RHI/DX12PipelineState.h>
 #include <DX12/RHI/DX12ResourceLayout.h>
 #include <DX12/RHI/DX12SwapChain.h>
@@ -19,6 +19,16 @@
 
 namespace vex::dx12
 {
+
+namespace DX12RHI_Internal
+{
+
+static std::array<DX12Fence, CommandQueueTypes::Count> CreateFences(ComPtr<DX12Device>& device)
+{
+    return { DX12Fence(device), DX12Fence(device), DX12Fence(device) };
+}
+
+} // namespace DX12RHI_Internal
 
 DX12RHI::DX12RHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation)
     : enableGPUDebugLayer(enableGPUDebugLayer)
@@ -110,6 +120,8 @@ void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
                                        .NodeMask = 0 };
         chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetNativeQueue(CommandQueueType::Copy)));
     }
+
+    fences = DX12RHI_Internal::CreateFences(device);
 }
 
 UniqueHandle<RHISwapChain> DX12RHI::CreateSwapChain(const SwapChainDescription& description,
@@ -156,13 +168,30 @@ UniqueHandle<RHIDescriptorPool> DX12RHI::CreateDescriptorPool()
     return MakeUnique<DX12DescriptorPool>(device);
 }
 
-void DX12RHI::ExecuteCommandList(RHICommandList& commandList)
+void DX12RHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args, std::vector<ShaderDefine>& defines)
 {
-    ID3D12CommandList* p = commandList.GetNativeCommandList().Get();
-    queues[commandList.GetType()]->ExecuteCommandLists(1, &p);
+    args.push_back(L"-Qstrip_reflect");
+    defines.emplace_back(L"VEX_DX12");
 }
 
-void DX12RHI::ExecuteCommandLists(std::span<RHICommandList*> commandLists)
+void DX12RHI::AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex, RHITexture& currentBackbuffer)
+{
+    for (u32 i = 0; i < CommandQueueTypes::Count; ++i)
+    {
+        CommandQueueType queueType = static_cast<CommandQueueType>(i);
+        auto& fence = (*fences)[queueType];
+        // Don't wait for the first few frames (the first time use of each frame buffer has no dependencies).
+        if (fence.nextSignalValue > std::to_underlying(swapChain.description.frameBuffering))
+        {
+            fence.WaitCPU(fence.nextSignalValue - std::to_underlying(swapChain.description.frameBuffering));
+        }
+    }
+}
+
+void DX12RHI::SubmitAndPresent(std::span<RHICommandList*> commandLists,
+                               RHISwapChain& swapChain,
+                               u32 currentFrameIndex,
+                               bool isFullscreenMode)
 {
     std::array<std::vector<ID3D12CommandList*>, CommandQueueTypes::Count> rawCommandListsPerQueue;
     for (RHICommandList* cmdList : commandLists)
@@ -179,27 +208,26 @@ void DX12RHI::ExecuteCommandLists(std::span<RHICommandList*> commandLists)
         }
         queues[i]->ExecuteCommandLists(rawCmdLists.size(), rawCmdLists.data());
     }
+
+    swapChain.Present(isFullscreenMode);
+
+    for (u32 i = 0; i < CommandQueueTypes::Count; ++i)
+    {
+        CommandQueueType queueType = static_cast<CommandQueueType>(i);
+        auto& fence = (*fences)[queueType];
+        u64 signalValue = fence.nextSignalValue++;
+        chk << GetNativeQueue(queueType)->Signal(fence.fence.Get(), signalValue);
+    }
 }
 
-UniqueHandle<RHIFence> DX12RHI::CreateFence(u32 numFenceIndices)
+void DX12RHI::FlushGPU()
 {
-    return MakeUnique<DX12Fence>(numFenceIndices, device);
-}
-
-void DX12RHI::SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
-{
-    chk << GetNativeQueue(queueType)->Signal(fence.fence.Get(), fence.GetFenceValue(fenceIndex));
-}
-
-void DX12RHI::WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex)
-{
-    chk << GetNativeQueue(queueType)->Wait(fence.fence.Get(), fence.GetFenceValue(fenceIndex));
-}
-
-void DX12RHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args, std::vector<ShaderDefine>& defines)
-{
-    args.push_back(L"-Qstrip_reflect");
-    defines.emplace_back(L"VEX_DX12");
+    for (u32 i = 0; i < CommandQueueTypes::Count; ++i)
+    {
+        CommandQueueType queueType = static_cast<CommandQueueType>(i);
+        auto& fence = (*fences)[queueType];
+        fence.Flush();
+    }
 }
 
 ComPtr<DX12Device>& DX12RHI::GetNativeDevice()

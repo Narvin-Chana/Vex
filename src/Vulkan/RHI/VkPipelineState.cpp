@@ -2,7 +2,6 @@
 
 #include <Vex/Containers/ResourceCleanup.h>
 
-#include <Vulkan/RHI/VkGraphicsPipeline.h>
 #include <Vulkan/RHI/VkResourceLayout.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkFormats.h>
@@ -15,7 +14,7 @@ namespace vex::vk
 {
 
 VkGraphicsPipelineState::VkGraphicsPipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache)
-    : RHIGraphicsPipelineStateInterface(key)
+    : RHIGraphicsPipelineStateBase(key)
     , device{ device }
     , PSOCache{ PSOCache }
 {

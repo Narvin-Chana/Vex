@@ -8,7 +8,7 @@
 namespace vex::dx12
 {
 
-class DX12CommandList final : public RHICommandListInterface
+class DX12CommandList final : public RHICommandListBase
 {
 public:
     DX12CommandList(const ComPtr<DX12Device>& device, CommandQueueType type);
@@ -24,13 +24,7 @@ public:
     virtual void SetPipelineState(const RHIGraphicsPipelineState& graphicsPipelineState) override;
     virtual void SetPipelineState(const RHIComputePipelineState& computePipelineState) override;
 
-    virtual void SetLayout(RHIResourceLayout& layout) override;
-    virtual void SetLayoutLocalConstants(const RHIResourceLayout& layout,
-                                         std::span<const ConstantBinding> constants) override;
-    virtual void SetLayoutResources(const RHIResourceLayout& layout,
-                                    std::span<RHITextureBinding> textures,
-                                    std::span<RHIBufferBinding> buffers,
-                                    RHIDescriptorPool& descriptorPool) override;
+    virtual void SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& descriptorPool) override;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) override;
     virtual void SetInputAssembly(InputAssembly inputAssembly) override;
 

@@ -15,15 +15,14 @@ DX12CommandPool::DX12CommandPool(const ComPtr<DX12Device>& device)
 
 RHICommandList* DX12CommandPool::CreateCommandList(CommandQueueType queueType)
 {
-    std::scoped_lock lock(poolMutex);
-
     UniqueHandle<DX12CommandList> cmdList = nullptr;
 
-    if (!GetAvailableCommandLists(queueType).empty())
+    auto& pool = GetAvailableCommandLists(queueType);
+    if (!pool.empty())
     {
         // Reserve available command list.
-        cmdList = std::move(GetAvailableCommandLists(queueType).back());
-        GetAvailableCommandLists(queueType).pop_back();
+        cmdList = std::move(pool.back());
+        pool.pop_back();
     }
     else
     {
@@ -34,27 +33,26 @@ RHICommandList* DX12CommandPool::CreateCommandList(CommandQueueType queueType)
 
     VEX_ASSERT(cmdList != nullptr);
 
-    GetOccupiedCommandLists(queueType).push_back(std::move(cmdList));
-    return GetOccupiedCommandLists(queueType).back().get();
+    auto& occupied = GetOccupiedCommandLists(queueType);
+    occupied.push_back(std::move(cmdList));
+    return occupied.back().get();
 }
 
 void DX12CommandPool::ReclaimCommandListMemory(CommandQueueType queueType)
 {
-    if (GetOccupiedCommandLists(queueType).size())
+    auto& occupied = GetOccupiedCommandLists(queueType);
+    if (occupied.empty())
     {
-        std::size_t availableCmdListSize = GetAvailableCommandLists(queueType).size();
-#if 0
-        VEX_LOG(Info,
-                "Reclaimed {} cmd lists for queue {}",
-                GetOccupiedCommandLists(queueType).size(),
-                magic_enum::enum_name(queueType));
-#endif
-        GetAvailableCommandLists(queueType).resize(availableCmdListSize + GetOccupiedCommandLists(queueType).size());
-        std::move(GetOccupiedCommandLists(queueType).begin(),
-                  GetOccupiedCommandLists(queueType).end(),
-                  GetAvailableCommandLists(queueType).data() + availableCmdListSize);
-        GetOccupiedCommandLists(queueType).clear();
+        return;
     }
+
+    auto& pool = GetAvailableCommandLists(queueType);
+    std::size_t availableCmdListSize = pool.size();
+    VEX_LOG(Verbose, "Reclaimed {} cmd lists for queue {}", occupied.size(), magic_enum::enum_name(queueType));
+
+    pool.resize(availableCmdListSize + occupied.size());
+    std::move(occupied.begin(), occupied.end(), pool.data() + availableCmdListSize);
+    occupied.clear();
 }
 
 void DX12CommandPool::ReclaimAllCommandListMemory()

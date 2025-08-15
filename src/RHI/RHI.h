@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <Vex/CommandQueueType.h>
+#include <Vex/FrameResource.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/Types.h>
 #include <Vex/UniqueHandle.h>
@@ -20,7 +21,7 @@ struct ComputePipelineStateKey;
 struct SwapChainDescription;
 struct PlatformWindow;
 
-struct RenderHardwareInterface
+struct RHIBase
 {
     virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() = 0;
     virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) = 0;
@@ -39,15 +40,15 @@ struct RenderHardwareInterface
 
     virtual UniqueHandle<RHIDescriptorPool> CreateDescriptorPool() = 0;
 
-    virtual void ExecuteCommandList(RHICommandList& commandList) = 0;
-    virtual void ExecuteCommandLists(std::span<RHICommandList*> commandLists) = 0;
-
-    virtual UniqueHandle<RHIFence> CreateFence(u32 numFenceIndices) = 0;
-    virtual void SignalFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) = 0;
-    virtual void WaitFence(CommandQueueType queueType, RHIFence& fence, u32 fenceIndex) = 0;
-
     virtual void ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
                                                  std::vector<ShaderDefine>& defines) = 0;
+
+    virtual void AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex, RHITexture& currentBackbuffer) = 0;
+    virtual void SubmitAndPresent(std::span<RHICommandList*> commandLists,
+                                  RHISwapChain& swapChain,
+                                  u32 currentFrameIndex,
+                                  bool isFullscreenMode) = 0;
+    virtual void FlushGPU() = 0;
 };
 
 } // namespace vex

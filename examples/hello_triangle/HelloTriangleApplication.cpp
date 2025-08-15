@@ -38,6 +38,7 @@ HelloTriangleApplication::HelloTriangleApplication()
     graphics = CreateGraphicsBackend(vex::BackendDescription{
         .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
         .swapChainFormat = vex::TextureFormat::RGBA8_UNORM,
+        .frameBuffering = vex::FrameBuffering::Triple,
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
 
@@ -148,20 +149,16 @@ void HelloTriangleApplication::Run()
                           "examples" / "hello_triangle" / "HelloTriangleShader.cs.hlsl",
                   .entryPoint = "CSMain",
                   .type = vex::ShaderType::ComputeShader },
-                {
-                    .reads = {
-                        { .name = "ColorBuffer", .buffer = colorBuffer, .bufferUsage = vex::BufferBindingUsage::ConstantBuffer },
-                    },
-                    .writes = {
-                        { .name = "OutputTexture", .texture = workingTexture },
-                        { .name = "CommBuffer",
-                            .buffer = commBuffer,
-                            .bufferUsage = vex::BufferBindingUsage::RWStructuredBuffer,
-                            .bufferStride = sizeof(float) * 4 }
-                    },
-                    .constants = {}
-                },
-                { static_cast<uint32_t>(width) / 8, static_cast<uint32_t>(height) / 8, 1 });
+                { .reads = { { .name = "ColorBuffer",
+                               .buffer = colorBuffer,
+                               .bufferUsage = vex::BufferBindingUsage::ConstantBuffer } },
+                  .writes = { { .name = "OutputTexture", .texture = workingTexture },
+                              { .name = "CommBuffer",
+                                .buffer = commBuffer,
+                                .bufferUsage = vex::BufferBindingUsage::RWStructuredBuffer,
+                                .bufferStride = sizeof(float) * 4 } },
+                  .constants = {} },
+                { static_cast<vex::u32>(width) / 8, static_cast<vex::u32>(height) / 8, 1 });
             ctx.Dispatch(
                 { .path = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() /
                           "examples" / "hello_triangle" / "HelloTriangleShader2.cs.hlsl",
@@ -174,8 +171,9 @@ void HelloTriangleApplication::Run()
                                  .bufferStride = sizeof(float) * 4 },
                                { .name = "SourceTexture", .texture = workingTexture } },
                     .writes = { { .name = "OutputTexture", .texture = finalOutputTexture } },
+                    .constants = {},
                 },
-                { static_cast<uint32_t>(width) / 8, static_cast<uint32_t>(height) / 8, 1 });
+                { static_cast<vex::u32>(width) / 8, static_cast<vex::u32>(height) / 8, 1 });
             ctx.Copy(finalOutputTexture, graphics->GetCurrentBackBuffer());
         }
 

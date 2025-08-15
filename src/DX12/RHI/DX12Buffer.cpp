@@ -17,7 +17,7 @@ static u32 RaiseToMultipleOf(u32 val, u32 multiple)
 } // namespace BufferHelpers_Internal
 
 DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, const BufferDescription& desc)
-    : RHIBufferInterface(desc)
+    : RHIBufferBase(desc)
     , device(device)
 {
     auto size = desc.byteSize;
@@ -111,6 +111,7 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
     }
 
     BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
+    auto cpuHandle = descriptorPool.GetCPUDescriptor(handle);
 
     if (isCBV)
     {
@@ -118,7 +119,6 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
         cbvDesc.BufferLocation = buffer->GetGPUVirtualAddress();
         cbvDesc.SizeInBytes = BufferHelpers_Internal::RaiseToMultipleOf(desc.byteSize, 256u);
 
-        auto cpuHandle = descriptorPool.GetCPUDescriptor(handle);
         device->CreateConstantBufferView(&cbvDesc, cpuHandle);
     }
     else if (isSRV)
@@ -149,7 +149,6 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
             break;
         }
 
-        auto cpuHandle = descriptorPool.GetCPUDescriptor(handle);
         device->CreateShaderResourceView(buffer.Get(), &srvDesc, cpuHandle);
     }
     else // if (isUAVView)
@@ -179,7 +178,6 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
             break;
         }
 
-        auto cpuHandle = descriptorPool.GetCPUDescriptor(handle);
         device->CreateUnorderedAccessView(buffer.Get(), nullptr, &uavDesc, cpuHandle);
     }
 
@@ -189,7 +187,7 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
 
 void DX12Buffer::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 {
-    for (BindlessHandle bindlessHandle : viewCache | std::views::values)
+    for (const auto& [cacheKey, bindlessHandle] : viewCache)
     {
         if (bindlessHandle != GInvalidBindlessHandle)
         {

@@ -4,27 +4,30 @@
 
 #include <Vex/Debug.h>
 #include <Vex/PhysicalDevice.h>
+#include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/ResourceBindingSet.h>
 
 #include <Vulkan/RHI/VkDescriptorPool.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkFeatureChecker.h>
+#include <Vulkan/VkGPUContext.h>
 
 namespace vex::vk
 {
-VkResourceLayout::VkResourceLayout(::vk::Device device, const VkDescriptorPool& descriptorPool)
+
+VkResourceLayout::VkResourceLayout(NonNullPtr<VkGPUContext> ctx, const VkDescriptorPool& descriptorPool)
 {
     ::vk::PushConstantRange range{ .stageFlags =
                                        ::vk::ShaderStageFlagBits::eAllGraphics | ::vk::ShaderStageFlagBits::eCompute,
                                    .offset = 0,
-                                   .size = VkResourceLayout::GetMaxLocalConstantSize() };
+                                   .size = GPhysicalDevice->featureChecker->GetMaxLocalConstantsByteSize() };
 
     ::vk::PipelineLayoutCreateInfo createInfo{ .setLayoutCount = 1,
                                                .pSetLayouts = &*descriptorPool.bindlessLayout,
                                                .pushConstantRangeCount = 1,
                                                .pPushConstantRanges = &range };
 
-    pipelineLayout = VEX_VK_CHECK <<= device.createPipelineLayoutUnique(createInfo);
+    pipelineLayout = VEX_VK_CHECK <<= ctx->device.createPipelineLayoutUnique(createInfo);
 
     // TODO(https://trello.com/c/SQBSUKw9): Add sampler support on the Vulkan side. This class contains the samplers,
     // now we just have to bind them.
@@ -32,10 +35,4 @@ VkResourceLayout::VkResourceLayout(::vk::Device device, const VkDescriptorPool& 
     version++;
 }
 
-u32 VkResourceLayout::GetMaxLocalConstantSize() const
-{
-    const u32 maxBytes =
-        reinterpret_cast<VkFeatureChecker*>(GPhysicalDevice->featureChecker.get())->GetMaxPushConstantSize();
-    return std::max<u32>(0, maxBytes);
-}
 } // namespace vex::vk

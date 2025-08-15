@@ -1,7 +1,6 @@
 #pragma once
 
-#include <vector>
-
+#include <Vex/CommandQueueType.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/UniqueHandle.h>
 
@@ -17,16 +16,14 @@ struct PlatformWindow;
 namespace vex::dx12
 {
 
-class DX12SwapChain final : public RHISwapChainInterface
+class DX12SwapChain final : public RHISwapChainBase
 {
 public:
-    DX12SwapChain(const ComPtr<DX12Device>& device,
+    DX12SwapChain(ComPtr<DX12Device>& device,
                   SwapChainDescription desc,
                   const ComPtr<ID3D12CommandQueue>& commandQueue,
                   const PlatformWindow& platformWindow);
     ~DX12SwapChain();
-    virtual void AcquireNextBackbuffer(u8 frameIndex) override;
-    virtual void Present(bool isFullscreenMode) override;
     virtual void Resize(u32 width, u32 height) override;
 
     virtual void SetVSync(bool enableVSync) override;
@@ -37,9 +34,13 @@ public:
 private:
     static u8 GetBackBufferCount(FrameBuffering frameBuffering);
 
+    void Present(bool isFullscreenMode);
+
     ComPtr<DX12Device> device;
     SwapChainDescription description;
     ComPtr<IDXGISwapChain4> swapChain;
+
+    friend class DX12RHI;
 };
 
 } // namespace vex::dx12

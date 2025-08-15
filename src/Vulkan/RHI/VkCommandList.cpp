@@ -28,7 +28,7 @@ void VkCommandList::Open()
         return;
     }
 
-    VEX_VK_CHECK << commandBuffer->reset();
+    // VEX_VK_CHECK << commandBuffer->reset();
 
     constexpr ::vk::CommandBufferBeginInfo beginInfo{};
     VEX_VK_CHECK << commandBuffer->begin(beginInfo);
@@ -83,71 +83,32 @@ void VkCommandList::SetPipelineState(const RHIComputePipelineState& computePipel
     commandBuffer->bindPipeline(::vk::PipelineBindPoint::eCompute, *computePipelineState.computePipeline);
 }
 
-void VkCommandList::SetLayout(RHIResourceLayout& layout)
+void VkCommandList::SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& descriptorPool)
 {
-    // nothing to do here i think
-}
-
-void VkCommandList::SetLayoutLocalConstants(const RHIResourceLayout& layout, std::span<const ConstantBinding> constants)
-{
-    if (constants.empty())
+    bool hasGlobalConstantsBuffer = layout.currentInternalConstantBuffer.has_value();
+    if (hasGlobalConstantsBuffer)
     {
-        return;
+        Transition(*layout.currentInternalConstantBuffer, RHIBufferState::UniformResource);
     }
+    std::span<const u8> localConstantsData = layout.GetLocalConstantsData();
 
-    auto constantData = ConstantBinding::ConcatConstantBindings(constants, layout.GetMaxLocalConstantSize());
+    size_t globalConstantsByteSize = sizeof(u32);
+    size_t finalDataByteSize = localConstantsData.size_bytes() + globalConstantsByteSize;
 
-    ::vk::ShaderStageFlags stageFlags;
-    switch (type)
+    std::vector<u8> finalData(finalDataByteSize);
+    std::memcpy(finalData.data() + globalConstantsByteSize, localConstantsData.data(), localConstantsData.size_bytes());
+    if (hasGlobalConstantsBuffer)
     {
-    case CommandQueueTypes::Graphics:
-        stageFlags |= ::vk::ShaderStageFlagBits::eAllGraphics;
-    case CommandQueueTypes::Compute:
-        stageFlags |= ::vk::ShaderStageFlagBits::eCompute;
-        break;
-    default:
-        VEX_ASSERT(false, "Operation not supported on this queue type");
+        u32 globalBindlessBuffer =
+            layout.currentInternalConstantBuffer
+                ->GetOrCreateBindlessView(BufferBindingUsage::ConstantBuffer, globalConstantsByteSize, descriptorPool)
+                .GetIndex();
+        std::memcpy(finalData.data(), reinterpret_cast<u8*>(&globalBindlessBuffer), globalConstantsByteSize);
     }
-
-    commandBuffer->pushConstants(*layout.pipelineLayout,
-                                 stageFlags,
-                                 0, // Local constants start at 0
-                                 constantData.size(),
-                                 constantData.data());
-}
-
-void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
-                                       std::span<RHITextureBinding> textures,
-                                       std::span<RHIBufferBinding> buffers,
-                                       RHIDescriptorPool& descriptorPool)
-{
-    if (textures.empty() && buffers.empty())
+    else
     {
-        return;
-    }
-
-    std::vector<u32> bindlessHandleIndices;
-    bindlessHandleIndices.reserve(textures.size() + buffers.size());
-
-    for (auto& [binding, usage, texture] : textures)
-    {
-        if (usage & TextureUsage::ShaderRead || usage & TextureUsage::ShaderReadWrite)
-        {
-            const BindlessHandle handle = texture->GetOrCreateBindlessView(binding, usage, descriptorPool);
-            bindlessHandleIndices.push_back(handle.GetIndex());
-        }
-    }
-
-    for (auto& [binding, buffer] : buffers)
-    {
-        const BindlessHandle handle =
-            buffer->GetOrCreateBindlessView(binding.bufferUsage, binding.bufferStride, descriptorPool);
-        bindlessHandleIndices.push_back(handle.GetIndex());
-    }
-
-    if (bindlessHandleIndices.empty())
-    {
-        return;
+        u32 invalidBindlessHandle = GInvalidBindlessHandle.GetIndex();
+        std::memcpy(finalData.data(), reinterpret_cast<u8*>(&invalidBindlessHandle), globalConstantsByteSize);
     }
 
     ::vk::ShaderStageFlags stageFlags;
@@ -162,29 +123,33 @@ void VkCommandList::SetLayoutResources(const RHIResourceLayout& layout,
         VEX_ASSERT(false, "Operation not supported on this queue type");
     }
 
-    commandBuffer->pushConstants(*layout.pipelineLayout,
-                                 stageFlags,
-                                 0,
-                                 bindlessHandleIndices.size() * sizeof(u32),
-                                 bindlessHandleIndices.data());
+    commandBuffer->pushConstants(*layout.pipelineLayout, stageFlags, 0, finalData.size(), finalData.data());
 }
 
 void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)
 {
-    commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eCompute,
-                                      *resourceLayout.pipelineLayout,
-                                      0,
-                                      1,
-                                      &*descriptorPool.bindlessSet,
-                                      0,
-                                      nullptr);
-    commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eGraphics,
-                                      *resourceLayout.pipelineLayout,
-                                      0,
-                                      1,
-                                      &*descriptorPool.bindlessSet,
-                                      0,
-                                      nullptr);
+    switch (type)
+    {
+    case CommandQueueTypes::Graphics:
+        commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eGraphics,
+                                          *resourceLayout.pipelineLayout,
+                                          0,
+                                          1,
+                                          &*descriptorPool.bindlessSet,
+                                          0,
+                                          nullptr);
+    case CommandQueueTypes::Compute:
+        commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eCompute,
+                                          *resourceLayout.pipelineLayout,
+                                          0,
+                                          1,
+                                          &*descriptorPool.bindlessSet,
+                                          0,
+                                          nullptr);
+        break;
+    default:
+        VEX_ASSERT(false, "Operation not supported on this queue type");
+    }
 }
 
 void VkCommandList::SetInputAssembly(InputAssembly inputAssembly)
@@ -261,21 +226,20 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
     }
 }
 
-// This only changes the access mask of the texture
 ::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITextureState::Flags flags)
 {
-    ::vk::ImageLayout prevLayout = texture.GetLayout();
-    ::vk::ImageLayout nextLayout = TextureUtil::TextureStateFlagToImageLayout(flags);
+    using namespace ::vk;
+    ImageLayout prevLayout = texture.GetLayout();
+    ImageLayout nextLayout = TextureUtil::TextureStateFlagToImageLayout(flags);
 
-    ::vk::ImageMemoryBarrier2 barrier{
-        // not the best stage mask. Should be more precise for better sync
+    ImageMemoryBarrier2 barrier{
         .oldLayout = prevLayout,
         .newLayout = nextLayout,
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .image = texture.GetResource(),
         .subresourceRange = {
-            .aspectMask = ::vk::ImageAspectFlagBits::eColor,
+            .aspectMask = ImageAspectFlagBits::eColor, // TODO(https://trello.com/c/whUAeix0): Support depth/stencil (will probably be fixed in merge w/ Vk graphics pipeline).
             .baseMipLevel = 0,
             .levelCount = 1,
             .baseArrayLayer = 0,
@@ -283,48 +247,63 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
         },
     };
 
-    using namespace ::vk;
+    const bool isBackbufferImage = texture.IsBackBufferTexture();
 
+    // === SOURCE STAGE AND ACCESS ===
     switch (prevLayout)
     {
     case ImageLayout::eUndefined:
+        // Undefined layout means no previous access, so no source access mask needed
         barrier.srcAccessMask = AccessFlagBits2::eNone;
-        barrier.srcStageMask = PipelineStageFlagBits2::eTopOfPipe;
+        // Swapchain images need to sync with acquire operation
+        // Regular textures can start from top of pipe
+        barrier.srcStageMask =
+            isBackbufferImage ? PipelineStageFlagBits2::eColorAttachmentOutput : PipelineStageFlagBits2::eTopOfPipe;
         break;
-    case ImageLayout::eTransferDstOptimal:
-        barrier.srcAccessMask = AccessFlagBits2::eTransferWrite;
-        barrier.srcStageMask = PipelineStageFlagBits2::eTransfer;
+    case ImageLayout::eColorAttachmentOptimal:
+        barrier.srcAccessMask = AccessFlagBits2::eColorAttachmentWrite | AccessFlagBits2::eColorAttachmentRead;
+        barrier.srcStageMask = PipelineStageFlagBits2::eColorAttachmentOutput;
+        break;
+    case ImageLayout::eDepthStencilAttachmentOptimal:
+        barrier.srcAccessMask =
+            AccessFlagBits2::eDepthStencilAttachmentRead | AccessFlagBits2::eDepthStencilAttachmentWrite;
+        barrier.srcStageMask = PipelineStageFlagBits2::eEarlyFragmentTests | PipelineStageFlagBits2::eLateFragmentTests;
+        break;
+    case ImageLayout::eShaderReadOnlyOptimal:
+        barrier.srcAccessMask = AccessFlagBits2::eShaderRead;
+        barrier.srcStageMask = PipelineStageFlagBits2::eVertexShader | PipelineStageFlagBits2::eFragmentShader |
+                               PipelineStageFlagBits2::eComputeShader;
         break;
     case ImageLayout::eTransferSrcOptimal:
         barrier.srcAccessMask = AccessFlagBits2::eTransferRead;
         barrier.srcStageMask = PipelineStageFlagBits2::eTransfer;
         break;
-    case ImageLayout::eShaderReadOnlyOptimal:
-        barrier.dstAccessMask = AccessFlagBits2::eShaderRead;
-        barrier.dstStageMask = PipelineStageFlagBits2::eAllGraphics | PipelineStageFlagBits2::eComputeShader;
+    case ImageLayout::eTransferDstOptimal:
+        barrier.srcAccessMask = AccessFlagBits2::eTransferWrite;
+        barrier.srcStageMask = PipelineStageFlagBits2::eTransfer;
+        break;
+    case ImageLayout::ePresentSrcKHR:
+        // Present layout has no specific access requirements
+        barrier.srcAccessMask = AccessFlagBits2::eNone;
+        barrier.srcStageMask =
+            isBackbufferImage ? PipelineStageFlagBits2::eColorAttachmentOutput : PipelineStageFlagBits2::eAllCommands;
         break;
     case ImageLayout::eGeneral:
-    case ImageLayout::ePresentSrcKHR:
+        // General layout allows any access
         barrier.srcAccessMask = AccessFlagBits2::eMemoryRead | AccessFlagBits2::eMemoryWrite;
         barrier.srcStageMask = PipelineStageFlagBits2::eAllCommands;
         break;
-    case ImageLayout::eColorAttachmentOptimal:
-        barrier.dstAccessMask = AccessFlagBits2::eShaderWrite;
-        barrier.dstStageMask = PipelineStageFlagBits2::eAllGraphics | PipelineStageFlagBits2::eComputeShader;
-        break;
     default:
-        VEX_ASSERT(false, "Transition source image layout not supported");
+        VEX_ASSERT(false, "Unsupported source image layout: {}", to_string(prevLayout));
+        break;
     }
 
+    // === DESTINATION STAGE AND ACCESS ===
     switch (nextLayout)
     {
-    case ImageLayout::eTransferDstOptimal:
-        barrier.dstAccessMask = AccessFlagBits2::eTransferWrite;
-        barrier.dstStageMask = PipelineStageFlagBits2::eTransfer;
-        break;
-    case ImageLayout::eTransferSrcOptimal:
-        barrier.dstAccessMask = AccessFlagBits2::eTransferRead;
-        barrier.dstStageMask = PipelineStageFlagBits2::eTransfer;
+    case ImageLayout::eColorAttachmentOptimal:
+        barrier.dstAccessMask = AccessFlagBits2::eColorAttachmentWrite | AccessFlagBits2::eColorAttachmentRead;
+        barrier.dstStageMask = PipelineStageFlagBits2::eColorAttachmentOutput;
         break;
     case ImageLayout::eDepthStencilAttachmentOptimal:
         barrier.dstAccessMask =
@@ -333,19 +312,36 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
         break;
     case ImageLayout::eShaderReadOnlyOptimal:
         barrier.dstAccessMask = AccessFlagBits2::eShaderRead;
-        barrier.dstStageMask = PipelineStageFlagBits2::eAllGraphics | PipelineStageFlagBits2::eComputeShader;
+        barrier.dstStageMask = PipelineStageFlagBits2::eVertexShader | PipelineStageFlagBits2::eFragmentShader |
+                               PipelineStageFlagBits2::eComputeShader;
+        break;
+    case ImageLayout::eTransferSrcOptimal:
+        barrier.dstAccessMask = AccessFlagBits2::eTransferRead;
+        barrier.dstStageMask = PipelineStageFlagBits2::eTransfer;
+        break;
+    case ImageLayout::eTransferDstOptimal:
+        barrier.dstAccessMask = AccessFlagBits2::eTransferWrite;
+        barrier.dstStageMask = PipelineStageFlagBits2::eTransfer;
+        break;
+    case ImageLayout::ePresentSrcKHR:
+        // Present layout preparation
+        barrier.dstAccessMask = AccessFlagBits2::eNone;
+        // Swapchain images need to sync with present operation
+        barrier.dstStageMask =
+            isBackbufferImage ? PipelineStageFlagBits2::eColorAttachmentOutput : PipelineStageFlagBits2::eAllCommands;
         break;
     case ImageLayout::eGeneral:
-    case ImageLayout::ePresentSrcKHR:
+        // General layout allows any access
         barrier.dstAccessMask = AccessFlagBits2::eMemoryRead | AccessFlagBits2::eMemoryWrite;
         barrier.dstStageMask = PipelineStageFlagBits2::eAllCommands;
         break;
-    case ImageLayout::eColorAttachmentOptimal:
-        barrier.dstAccessMask = AccessFlagBits2::eMemoryWrite;
-        barrier.dstStageMask = PipelineStageFlagBits2::eAllGraphics;
+    case ImageLayout::eUndefined:
+        // Should never transition TO undefined
+        VEX_ASSERT(false, "Cannot transition TO undefined layout");
         break;
     default:
-        VEX_ASSERT(false, "Transition source image layout not supported");
+        VEX_ASSERT(false, "Unsupported destination image layout: {}", to_string(nextLayout));
+        break;
     }
 
     return barrier;
@@ -377,7 +373,6 @@ void VkCommandList::Transition(RHITexture& texture, RHITextureState::Flags newSt
     }
 
     auto memBarrier = GetMemoryBarrierFrom(texture, newState);
-
     commandBuffer->pipelineBarrier2({ .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &memBarrier });
 
     texture.SetCurrentState(newState);
@@ -392,7 +387,6 @@ void VkCommandList::Transition(RHIBuffer& buffer, RHIBufferState::Flags newState
     }
 
     auto memBarrier = GetBufferBarrierFrom(buffer, newState);
-
     commandBuffer->pipelineBarrier2({ .bufferMemoryBarrierCount = 1, .pBufferMemoryBarriers = &memBarrier });
 
     buffer.SetCurrentState(newState);
@@ -587,7 +581,9 @@ CommandQueueType VkCommandList::GetType() const
     return type;
 }
 
-VkCommandList::VkCommandList(NonNullPtr<VkGPUContext> ctx, ::vk::UniqueCommandBuffer&& commandBuffer, CommandQueueType type)
+VkCommandList::VkCommandList(NonNullPtr<VkGPUContext> ctx,
+                             ::vk::UniqueCommandBuffer&& commandBuffer,
+                             CommandQueueType type)
     : ctx{ ctx }
     , commandBuffer{ std::move(commandBuffer) }
     , type{ type }

@@ -61,7 +61,7 @@ static ::vk::MemoryPropertyFlags GetMemoryPropsFromDesc(const BufferDescription&
 }
 
 VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, const BufferDescription& desc)
-    : RHIBufferInterface{ desc }
+    : RHIBufferBase{ desc }
     , ctx{ ctx }
 {
     auto bufferUsage = GetVkBufferUsageFromDesc(desc);
