@@ -4,7 +4,6 @@
 #include <ranges>
 #include <utility>
 
-#include <Vex/ComputeResources.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/Platform/Windows/HResult.h>
