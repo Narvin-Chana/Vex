@@ -127,16 +127,20 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& de
         break;
     }
 
-    if (RHIBuffer* bindlessBuffer = layout.currentInternalConstantBuffer.get())
+    if (layout.currentInternalConstantBuffer.has_value())
     {
-        Transition(*bindlessBuffer, RHIBufferState::UniformResource);
+        Transition(*layout.currentInternalConstantBuffer, RHIBufferState::UniformResource);
         // Set bindless cbuffer (in first slot of root signature).
         switch (type)
         {
         case CommandQueueType::Graphics:
-            commandList->SetGraphicsRootConstantBufferView(0, bindlessBuffer->GetRawBuffer()->GetGPUVirtualAddress());
+            commandList->SetGraphicsRootConstantBufferView(
+                0,
+                layout.currentInternalConstantBuffer->GetRawBuffer()->GetGPUVirtualAddress());
         case CommandQueueType::Compute:
-            commandList->SetComputeRootConstantBufferView(0, bindlessBuffer->GetRawBuffer()->GetGPUVirtualAddress());
+            commandList->SetComputeRootConstantBufferView(
+                0,
+                layout.currentInternalConstantBuffer->GetRawBuffer()->GetGPUVirtualAddress());
         case CommandQueueType::Copy:
         default:
             break;
