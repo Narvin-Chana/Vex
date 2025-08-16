@@ -47,7 +47,7 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
 
     initInfo.UseDynamicRendering = true;
     ::vk::Format colorAttachmentFormat = vex::vk::TextureFormatToVulkan(data.swapchainFormat);
-    ::vk::Format depthStencilFormat = vex::vk::TextureFormatToVulkan(data.swapchainFormat);
+    ::vk::Format depthStencilFormat = vex::vk::TextureFormatToVulkan(data.depthStencilFormat);
     initInfo.PipelineRenderingCreateInfo =
         ::vk::PipelineRenderingCreateInfo{ .colorAttachmentCount = 1,
                                            .pColorAttachmentFormats = &colorAttachmentFormat,
