@@ -8,21 +8,15 @@ std::vector<std::string> ShaderResourceContext::GenerateShaderBindings() const
     // Accumulate only the types of resources that are required to be named, these will require codegen to be bound
     // correctly to our shader. This will keep only SRV and UAVs.
     std::vector<std::string> names;
-    for (const auto& tex : textures)
-    {
-        if (tex.usage == TextureUsage::ShaderRead || tex.usage == TextureUsage::ShaderReadWrite)
-        {
-            names.emplace_back(tex.binding.name);
-        }
-    }
+    std::transform(textures.begin(),
+                   textures.end(),
+                   std::back_inserter(names),
+                   [](const auto& texBinding) { return texBinding.binding.name; });
 
-    for (const auto& buf : buffers)
-    {
-        if (buf.binding.bufferUsage != BufferBindingUsage::None)
-        {
-            names.emplace_back(buf.binding.name);
-        }
-    }
+    std::transform(buffers.begin(),
+                   buffers.end(),
+                   std::back_inserter(names),
+                   [](const auto& bufBinding) { return bufBinding.binding.name; });
 
     return names;
 }

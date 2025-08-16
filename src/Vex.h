@@ -5,9 +5,8 @@
 #include <Vex/DrawHelpers.h>
 #include <Vex/FeatureChecker.h>
 #include <Vex/GfxBackend.h>
-#include <Vex/Logger.h>
-#include <Vex/ResourceBindingSet.h>
 #include <Vex/GraphicsPipeline.h>
+#include <Vex/Logger.h>
 #include <Vex/TextureSampler.h>
 
 namespace vex

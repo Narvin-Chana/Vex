@@ -40,8 +40,8 @@ public:
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) = 0;
     virtual void SetInputAssembly(InputAssembly inputAssembly) = 0;
 
-    virtual void ClearTexture(RHITexture& rhiTexture,
-                              const ResourceBinding& clearBinding,
+    virtual void ClearTexture(const RHITextureBinding& binding,
+                              TextureUsage::Type usage,
                               const TextureClearValue& clearValue) = 0;
 
     virtual void Transition(RHITexture& texture, RHITextureState::Flags newState) = 0;

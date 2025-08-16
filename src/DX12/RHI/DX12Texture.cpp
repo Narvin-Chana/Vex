@@ -1,3 +1,4 @@
+#include "DX12DescriptorPool.h"
 #include "DX12Texture.h"
 
 #include <magic_enum/magic_enum.hpp>
@@ -333,11 +334,11 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
 #endif
 }
 
-BindlessHandle DX12Texture::GetOrCreateBindlessView(const ResourceBinding& binding,
+BindlessHandle DX12Texture::GetOrCreateBindlessView(const TextureBinding& binding,
                                                     TextureUsage::Type usage,
                                                     RHIDescriptorPool& descriptorPool)
 {
-    DX12TextureView view{ binding, description, usage };
+    DX12TextureView view{ binding, usage };
 
     using namespace Texture_Internal;
 
@@ -446,16 +447,14 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(DX12TextureView
     }
 }
 
-DX12TextureView::DX12TextureView(const ResourceBinding& binding,
-                                 const TextureDescription& description,
-                                 TextureUsage::Type usage)
+DX12TextureView::DX12TextureView(const TextureBinding& binding, TextureUsage::Flags usage)
     : usage{ usage }
     , dimension{ TextureUtil::GetTextureViewType(binding) }
     , format{ TextureFormatToDXGI(TextureUtil::GetTextureFormat(binding)) }
     , mipBias{ binding.mipBias }
-    , mipCount{ (binding.mipCount == 0) ? description.mips : binding.mipCount }
+    , mipCount{ (binding.mipCount == 0) ? binding.texture.description.mips : binding.mipCount }
     , startSlice{ binding.startSlice }
-    , sliceCount{ (binding.sliceCount == 0) ? description.depthOrArraySize : binding.sliceCount }
+    , sliceCount{ (binding.sliceCount == 0) ? binding.texture.description.depthOrArraySize : binding.sliceCount }
 {
 }
 

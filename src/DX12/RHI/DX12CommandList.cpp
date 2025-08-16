@@ -183,19 +183,19 @@ void DX12CommandList::SetInputAssembly(InputAssembly inputAssembly)
     commandList->IASetPrimitiveTopology(GraphicsPipeline::GetDX12PrimitiveTopologyFromInputAssembly(inputAssembly));
 }
 
-void DX12CommandList::ClearTexture(RHITexture& rhiTexture,
-                                   const ResourceBinding& clearBinding,
+void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
+                                   TextureUsage::Type usage,
                                    const TextureClearValue& clearValue)
 {
-    const TextureDescription& desc = rhiTexture.GetDescription();
+    const TextureBinding& clearBinding = binding.binding;
 
     // Clearing in DX12 allows for multiple slices to be cleared, however you cannot clear multiple mips with one
     // call.
     // Instead we iterate on the mips passed in by the user.
 
-    if (desc.usage & TextureUsage::RenderTarget)
+    if (usage == TextureUsage::RenderTarget)
     {
-        DX12TextureView dxTextureView{ clearBinding, desc, TextureUsage::RenderTarget };
+        DX12TextureView dxTextureView{ clearBinding, usage };
         dxTextureView.mipCount = 1;
 
         for (u32 mip = clearBinding.mipBias;
@@ -206,15 +206,15 @@ void DX12CommandList::ClearTexture(RHITexture& rhiTexture,
             VEX_ASSERT(clearValue.flags & TextureClear::ClearColor,
                        "Clearing the color requires the TextureClear::ClearColor flag for texture: {}.",
                        desc.name);
-            commandList->ClearRenderTargetView(rhiTexture.GetOrCreateRTVDSVView(dxTextureView),
+            commandList->ClearRenderTargetView(binding.texture->GetOrCreateRTVDSVView(dxTextureView),
                                                clearValue.color.data(),
                                                0,
                                                nullptr);
         }
     }
-    else if (desc.usage & TextureUsage::DepthStencil)
+    else if (usage == TextureUsage::DepthStencil)
     {
-        DX12TextureView dxTextureView{ clearBinding, desc, TextureUsage::DepthStencil };
+        DX12TextureView dxTextureView{ clearBinding, usage };
         dxTextureView.mipCount = 1;
         for (u32 mip = clearBinding.mipBias;
              mip < ((clearBinding.mipCount == 0) ? 1 : (clearBinding.mipBias + clearBinding.mipCount));
@@ -233,9 +233,9 @@ void DX12CommandList::ClearTexture(RHITexture& rhiTexture,
             VEX_ASSERT(std::to_underlying(clearFlags) != 0,
                        "Clear flags for the depth-stencil cannot be 0, you must either clear depth, stencil, or both "
                        "for texture: {}!",
-                       desc.name);
+                       clearBinding.texture.description.name);
 
-            commandList->ClearDepthStencilView(rhiTexture.GetOrCreateRTVDSVView(dxTextureView),
+            commandList->ClearDepthStencilView(binding.texture->GetOrCreateRTVDSVView(dxTextureView),
                                                clearFlags,
                                                clearValue.depth,
                                                clearValue.stencil,
@@ -245,7 +245,10 @@ void DX12CommandList::ClearTexture(RHITexture& rhiTexture,
     }
     else
     {
-        VEX_LOG(Fatal, "The passed in texture does not support the usage required to be cleared: {}.", desc.name);
+        VEX_LOG(Fatal,
+                "The usage of the passed binding \"{}\" doesn't support clearing. Make sure you specify "
+                "the correct usage.",
+                clearBinding.name);
     }
 }
 
@@ -344,17 +347,18 @@ void DX12CommandList::BeginRendering(const RHIDrawResources& resources)
 
     std::optional<CD3DX12_CPU_DESCRIPTOR_HANDLE> dsvHandle;
 
-    auto& depthStencil = resources.depthStencil;
-    if (depthStencil.has_value())
+    for (auto [binding, texture] : resources.renderTargets)
     {
-        dsvHandle = depthStencil->texture->GetOrCreateRTVDSVView(
-            DX12TextureView{ depthStencil->binding, depthStencil->texture->GetDescription(), depthStencil->usage });
+        rtvHandles.emplace_back(texture->GetOrCreateRTVDSVView(DX12TextureView{
+            binding,
+            TextureUsage::RenderTarget,
+        }));
     }
 
-    for (auto& [binding, usage, texture] : resources.renderTargets)
+    if (resources.depthStencil)
     {
-        rtvHandles.emplace_back(
-            texture->GetOrCreateRTVDSVView(DX12TextureView{ binding, texture->GetDescription(), usage }));
+        dsvHandle = resources.depthStencil->texture->GetOrCreateRTVDSVView(
+            DX12TextureView{ resources.depthStencil->binding, TextureUsage::DepthStencil });
     }
 
     // Bind RTV and DSVs

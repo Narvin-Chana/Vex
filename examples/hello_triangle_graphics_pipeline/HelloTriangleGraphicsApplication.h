@@ -18,4 +18,5 @@ protected:
 
 private:
     vex::Texture workingTexture;
+    vex::Buffer colorBuffer;
 };

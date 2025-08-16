@@ -1,6 +1,7 @@
 #include "HelloTriangleGraphicsApplication.h"
 
 #include <GLFW/glfw3.h>
+#include <math.h>
 #if defined(_WIN32)
 #define GLFW_EXPOSE_NATIVE_WIN32
 #elif defined(__linux__)
@@ -43,6 +44,13 @@ HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
     std::vector<vex::TextureSampler> samplers{ vex::TextureSampler{ .name = "MySampler" } };
     graphics->SetSamplers(samplers);
 
+    // Example of CPU accessible buffer
+    colorBuffer = graphics->CreateBuffer({ .name = "Color Buffer",
+                                           .byteSize = sizeof(float) * 4,
+                                           .usage = vex::BufferUsage::UniformBuffer,
+                                           .memoryLocality = vex::ResourceMemoryLocality::GPUOnly },
+                                         vex::ResourceLifetime::Static);
+
     workingTexture =
         graphics->CreateTexture({ .name = "Working Texture",
                                   .type = vex::TextureType::Texture2D,
@@ -55,7 +63,7 @@ HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
                                 vex::ResourceLifetime::Static);
 
 #if defined(_WIN32)
-    // Suggestion of an intrusive (à la Unreal) way to display errors.
+    // Suggestion of an intrusive (a la Unreal) way to display errors.
     // The handling of shader compilation errors is user choice.
     graphics->SetShaderCompilationErrorsCallback(
         [window = window](const std::vector<std::pair<vex::ShaderKey, std::string>>& errors) -> bool
@@ -106,40 +114,65 @@ void HelloTriangleGraphicsApplication::HandleKeyInput(int key, int scancode, int
 
 void HelloTriangleGraphicsApplication::Run()
 {
-    static std::filesystem::path shaderFolderPath =
-        std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() / "examples" /
-        "hello_triangle_graphics_pipeline";
-
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
 
-        const double currentTime = glfwGetTime();
-
         graphics->StartFrame();
 
+        // clang-format off
+
         {
+            const double currentTime = glfwGetTime();
+            float ocillatedColor = static_cast<float>(cos(currentTime) / 2 + 0.5);
+            float invOcillatedColor = 1 - ocillatedColor;
+            float color[4] = { invOcillatedColor, ocillatedColor, invOcillatedColor, 1.0 };
+            graphics->UpdateData(colorBuffer, color);
+
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
 
             ctx.SetScissor(0, 0, width, height);
 
             // Clear backbuffer.
             vex::TextureClearValue clearValue{ .flags = vex::TextureClear::ClearColor, .color = { 1, 0.5f, 1, 1 } };
-            ctx.ClearTexture(vex::ResourceBinding{ .name = "Backbuffer", .texture = graphics->GetCurrentBackBuffer() },
-                             &clearValue);
+            ctx.ClearTexture(vex::TextureBinding{
+                .name = "Backbuffer",
+                .texture = graphics->GetCurrentBackBuffer(),
+            }, vex::TextureUsage::RenderTarget, &clearValue);
+
+
+            std::array renderTargets = {
+                vex::TextureBinding{
+                    .name = "OutputTexture",
+                    .texture = graphics->GetCurrentBackBuffer(),
+                }
+            };
+
+            ctx.BeginRendering({ .renderTargets = renderTargets, .depthStencil = std::nullopt });
 
             // Setup our draw call's description...
+            static std::filesystem::path shaderFolderPath = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() / "examples" / "hello_triangle_graphics_pipeline";
             vex::DrawDescription drawDesc{
-                .vertexShader = { .path = shaderFolderPath / "HelloTriangleGraphicsShader.hlsl",
-                                  .entryPoint = "VSMain",
-                                  .type = vex::ShaderType::VertexShader },
-                .pixelShader = { .path = shaderFolderPath / "HelloTriangleGraphicsShader.hlsl",
-                                 .entryPoint = "PSMain",
-                                 .type = vex::ShaderType::PixelShader }
+                .vertexShader = {
+                    .path = shaderFolderPath / "HelloTriangleGraphicsShader.hlsl",
+                    .entryPoint = "VSMain",
+                    .type = vex::ShaderType::VertexShader
+                },
+                .pixelShader = {
+                    .path = shaderFolderPath / "HelloTriangleGraphicsShader.hlsl",
+                    .entryPoint = "PSMain",
+                    .type = vex::ShaderType::PixelShader
+                }
             };
             // ...and resources.
-            std::array<vex::ResourceBinding, 1> renderTargets = {
-                vex::ResourceBinding{ .name = "OutputTexture", .texture = graphics->GetCurrentBackBuffer() }
+
+            std::array<vex::ResourceBinding, 1> resourceBindings = {
+                vex::BufferBinding{
+                    .name = "ColorBuffer",
+                    .buffer = colorBuffer,
+                    .usage = vex::BufferBindingUsage::ConstantBuffer,
+                    .stride = sizeof(float) * 4,
+                }
             };
 
             // Cursed float overflow UB greatness.
@@ -148,16 +181,18 @@ void HelloTriangleGraphicsApplication::Run()
 
             vex::DrawResources drawResources{
                 .constants = { { vex::ConstantBinding(time) } },
-                .readResources = {},
-                .unorderedAccessResources = {},
-                .renderTargets = renderTargets,
+                .resourceBindings = resourceBindings,
             };
 
             ctx.SetViewport(0, 0, width / 2.0f, height);
             ctx.Draw(drawDesc, drawResources, 3);
             ctx.SetViewport(width / 2.0f, 0, width / 2.0f, height);
             ctx.Draw(drawDesc, drawResources, 3);
+
+            ctx.EndRendering();
         }
+
+        // clang-format on
 
         graphics->EndFrame(windowMode == Fullscreen);
     }

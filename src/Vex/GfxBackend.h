@@ -26,6 +26,7 @@ class CommandContext;
 struct PhysicalDevice;
 struct Texture;
 struct TextureSampler;
+struct BufferBinding;
 class RenderExtension;
 
 struct BackendDescription
@@ -80,11 +81,10 @@ public:
     // Once destroyed, the handle passed in is invalid and should no longer be used.
     void DestroyBuffer(const Buffer& buffer);
 
-    BindlessHandle GetTextureBindlessHandle(const ResourceBinding& bindlessResource, TextureUsage::Type usage);
-    // Stride needs to be set if usage == StructuredBuffer
-    BindlessHandle GetBufferBindlessHandle(const ResourceBinding& bindlessResource,
-                                           BufferBindingUsage usage,
-                                           u32 stride = 0);
+    // Allows users to fetch the bindless handles for a texture binding
+    BindlessHandle GetTextureBindlessHandle(const TextureBinding& bindlessResource, TextureUsage::Type usage);
+    // Allows users to fetch the bindless handles for a buffer binding
+    BindlessHandle GetBufferBindlessHandle(const BufferBinding& bindlessResource);
 
     // Flushes all currently submitted GPU commands.
     void FlushGPU();
@@ -165,7 +165,7 @@ private:
     static constexpr u32 DefaultRegistrySize = 1024;
 
     friend class CommandContext;
-    friend class ResourceBindingSet;
+    friend struct ResourceBindingUtils;
 };
 
 template <class T>

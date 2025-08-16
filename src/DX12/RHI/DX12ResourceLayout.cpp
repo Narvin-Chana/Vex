@@ -1,5 +1,9 @@
 #include "DX12ResourceLayout.h"
 
+#include <numeric>
+#include <ranges>
+#include <utility>
+
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/Platform/Windows/HResult.h>

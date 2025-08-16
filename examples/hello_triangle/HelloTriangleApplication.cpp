@@ -144,37 +144,75 @@ void HelloTriangleApplication::Run()
             graphics->UpdateData(colorBuffer, color);
 
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
+
+            // clang-format off
+
             ctx.Dispatch(
-                { .path = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() /
-                          "examples" / "hello_triangle" / "HelloTriangleShader.cs.hlsl",
-                  .entryPoint = "CSMain",
-                  .type = vex::ShaderType::ComputeShader },
-                { .reads = { { .name = "ColorBuffer",
-                               .buffer = colorBuffer,
-                               .bufferUsage = vex::BufferBindingUsage::ConstantBuffer } },
-                  .writes = { { .name = "OutputTexture", .texture = workingTexture },
-                              { .name = "CommBuffer",
-                                .buffer = commBuffer,
-                                .bufferUsage = vex::BufferBindingUsage::RWStructuredBuffer,
-                                .bufferStride = sizeof(float) * 4 } },
-                  .constants = {} },
-                { static_cast<vex::u32>(width) / 8, static_cast<vex::u32>(height) / 8, 1 });
-            ctx.Dispatch(
-                { .path = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() /
-                          "examples" / "hello_triangle" / "HelloTriangleShader2.cs.hlsl",
-                  .entryPoint = "CSMain",
-                  .type = vex::ShaderType::ComputeShader },
                 {
-                    .reads = { { .name = "CommBuffer",
-                                 .buffer = commBuffer,
-                                 .bufferUsage = vex::BufferBindingUsage::StructuredBuffer,
-                                 .bufferStride = sizeof(float) * 4 },
-                               { .name = "SourceTexture", .texture = workingTexture } },
-                    .writes = { { .name = "OutputTexture", .texture = finalOutputTexture } },
-                    .constants = {},
+                    .path = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() / "examples" / "hello_triangle" / "HelloTriangleShader.cs.hlsl",
+                    .entryPoint = "CSMain",
+                    .type = vex::ShaderType::ComputeShader
                 },
-                { static_cast<vex::u32>(width) / 8, static_cast<vex::u32>(height) / 8, 1 });
+                std::initializer_list<vex::ResourceBinding>{
+                    // WARNING: ORDER IS IMPORTANT HERE FOR NOW
+                    // Textures first, then buffers
+                    // Order must match shader declarations
+                    vex::TextureBinding{
+                        .name = "OutputTexture",
+                        .texture = workingTexture,
+                        .usage = vex::TextureBindingUsage::ShaderReadWrite,
+                    },
+                    vex::BufferBinding{
+                        .name = "CommBuffer",
+                        .buffer = commBuffer,
+                        .usage = vex::BufferBindingUsage::RWStructuredBuffer,
+                        .stride = sizeof(float) * 4
+                    },
+                    vex::BufferBinding{
+                        .name = "ColorBuffer",
+                        .buffer = colorBuffer,
+                        .usage = vex::BufferBindingUsage::ConstantBuffer
+                    },
+                },
+                {},
+                {
+                    static_cast<vex::u32>(width) / 8,
+                    static_cast<vex::u32>(height) / 8,
+                    1
+                });
+            ctx.Dispatch(
+                {
+                    .path = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() / "examples" / "hello_triangle" / "HelloTriangleShader2.cs.hlsl",
+                    .entryPoint = "CSMain",
+                    .type = vex::ShaderType::ComputeShader
+                },
+                std::initializer_list<vex::ResourceBinding>{
+                    vex::TextureBinding{
+                        .name = "OutputTexture",
+                        .texture = finalOutputTexture,
+                        .usage = vex::TextureBindingUsage::ShaderReadWrite,
+                    },
+                    vex::TextureBinding{
+                        .name = "SourceTexture",
+                        .texture = workingTexture,
+                        .usage = vex::TextureBindingUsage::ShaderRead,
+                    },
+                    vex::BufferBinding{
+                        .name = "CommBuffer",
+                        .buffer = commBuffer,
+                        .usage = vex::BufferBindingUsage::StructuredBuffer,
+                        .stride = sizeof(float) * 4
+                    },
+                },
+                {},
+                {
+                    static_cast<vex::u32>(width) / 8,
+                    static_cast<vex::u32>(height) / 8,
+                    1
+                });
             ctx.Copy(finalOutputTexture, graphics->GetCurrentBackBuffer());
+
+            // clang-format on
         }
 
         graphics->EndFrame(windowMode == Fullscreen);

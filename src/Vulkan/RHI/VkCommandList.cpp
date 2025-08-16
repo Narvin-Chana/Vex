@@ -158,14 +158,14 @@ void VkCommandList::SetInputAssembly(InputAssembly inputAssembly)
     commandBuffer->setPrimitiveTopology(GraphicsPiplineUtils::InputTopologyToVkTopology(inputAssembly.topology));
 }
 
-void VkCommandList::ClearTexture(RHITexture& rhiTexture,
-                                 const ResourceBinding& clearBinding,
+void VkCommandList::ClearTexture(const RHITextureBinding& binding,
+                                 TextureUsage::Type usage,
                                  const TextureClearValue& clearValue)
 {
-    const TextureDescription& desc = rhiTexture.GetDescription();
+    const TextureDescription& desc = binding.texture->GetDescription();
 
-    u32 layerCount = clearBinding.sliceCount == 0 ? desc.depthOrArraySize : clearBinding.sliceCount;
-    u32 mipCount = clearBinding.mipCount == 0 ? desc.mips : clearBinding.mipCount;
+    u32 layerCount = binding.binding.sliceCount == 0 ? desc.depthOrArraySize : binding.binding.sliceCount;
+    u32 mipCount = binding.binding.mipCount == 0 ? desc.mips : binding.binding.mipCount;
     //
     // if (desc.usage & TextureUsage::RenderTarget && clearValue.flags & TextureClear::ClearColor)
     // {
@@ -192,7 +192,7 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
     // }
     // else
 
-    if (desc.usage & TextureUsage::DepthStencil &&
+    if (usage == TextureUsage::DepthStencil &&
         clearValue.flags & (TextureClear::ClearDepth | TextureClear::ClearStencil))
     {
         ::vk::ClearDepthStencilValue clearVal{
@@ -202,13 +202,17 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
 
         ::vk::ImageSubresourceRange ranges{
             .aspectMask = static_cast<::vk::ImageAspectFlagBits>(clearValue.flags),
-            .baseMipLevel = clearBinding.mipBias,
+            .baseMipLevel = binding.binding.mipBias,
             .levelCount = mipCount,
-            .baseArrayLayer = clearBinding.startSlice,
+            .baseArrayLayer = binding.binding.startSlice,
             .layerCount = layerCount,
         };
 
-        commandBuffer->clearDepthStencilImage(rhiTexture.GetResource(), rhiTexture.GetLayout(), &clearVal, 1, &ranges);
+        commandBuffer->clearDepthStencilImage(binding.texture->GetResource(),
+                                              binding.texture->GetLayout(),
+                                              &clearVal,
+                                              1,
+                                              &ranges);
     }
     else
     {
@@ -216,13 +220,17 @@ void VkCommandList::ClearTexture(RHITexture& rhiTexture,
 
         ::vk::ImageSubresourceRange ranges{
             .aspectMask = static_cast<::vk::ImageAspectFlagBits>(clearValue.flags),
-            .baseMipLevel = clearBinding.mipBias,
+            .baseMipLevel = binding.binding.mipBias,
             .levelCount = mipCount,
-            .baseArrayLayer = clearBinding.startSlice,
+            .baseArrayLayer = binding.binding.startSlice,
             .layerCount = layerCount,
         };
 
-        commandBuffer->clearColorImage(rhiTexture.GetResource(), rhiTexture.GetLayout(), &clearVal, 1, &ranges);
+        commandBuffer->clearColorImage(binding.texture->GetResource(),
+                                       binding.texture->GetLayout(),
+                                       &clearVal,
+                                       1,
+                                       &ranges);
     }
 }
 

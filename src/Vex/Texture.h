@@ -10,7 +10,6 @@
 
 namespace vex
 {
-
 // clang-format off
 
 BEGIN_VEX_ENUM_FLAGS(TextureUsage, u8)
@@ -40,12 +39,24 @@ enum class TextureViewType : u8
     Texture3D,
 };
 
+enum class TextureBindingUsage : u8
+{
+    ShaderRead = TextureUsage::ShaderRead,
+    ShaderReadWrite = TextureUsage::ShaderReadWrite,
+    Invalid = 0xFF
+};
+
 struct ResourceBinding;
+struct TextureBinding;
+struct TextureDescription;
 
 namespace TextureUtil
 {
-TextureViewType GetTextureViewType(const ResourceBinding& binding);
-TextureFormat GetTextureFormat(const ResourceBinding& binding);
+TextureViewType GetTextureViewType(const TextureBinding& binding);
+TextureFormat GetTextureFormat(const TextureBinding& binding);
+
+void ValidateTextureDescription(const TextureDescription& description)
+;
 } // namespace TextureUtil
 
 // clang-format off
@@ -92,5 +103,21 @@ struct Texture final
     TextureHandle handle;
     TextureDescription description;
 };
+
+inline bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags usages,
+                                                            TextureBindingUsage bindingUsage)
+{
+    if (bindingUsage == TextureBindingUsage::ShaderRead)
+    {
+        return usages & TextureUsage::ShaderRead;
+    }
+
+    if (bindingUsage == TextureBindingUsage::ShaderReadWrite)
+    {
+        return usages & TextureUsage::ShaderReadWrite;
+    }
+
+    return false;
+}
 
 } // namespace vex

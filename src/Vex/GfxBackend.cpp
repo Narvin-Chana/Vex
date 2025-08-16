@@ -178,6 +178,8 @@ void GfxBackend::EndCommandContext(RHICommandList& cmdList)
 
 Texture GfxBackend::CreateTexture(TextureDescription description, ResourceLifetime lifetime)
 {
+    TextureUtil::ValidateTextureDescription(description);
+
     if (lifetime == ResourceLifetime::Dynamic)
     {
         // TODO(https://trello.com/c/K2jgp9ax): handle dynamic resources, includes specifying that the resource when
@@ -193,7 +195,7 @@ Texture GfxBackend::CreateTexture(TextureDescription description, ResourceLifeti
 
 Buffer GfxBackend::CreateBuffer(BufferDescription description, ResourceLifetime lifetime)
 {
-    ValidateBufferDescription(description);
+    BufferUtil::ValidateBufferDescription(description);
 
     if (lifetime == ResourceLifetime::Dynamic)
     {
@@ -226,28 +228,20 @@ void GfxBackend::DestroyBuffer(const Buffer& buffer)
     resourceCleanup.CleanupResource(bufferRegistry.ExtractElement(buffer.handle));
 }
 
-BindlessHandle GfxBackend::GetTextureBindlessHandle(const ResourceBinding& bindlessResource, TextureUsage::Type usage)
+BindlessHandle GfxBackend::GetTextureBindlessHandle(const TextureBinding& bindlessResource, TextureUsage::Type usage)
 {
-    if (!bindlessResource.IsTexture())
-    {
-        VEX_LOG(Fatal, "Your bindlessResource must have a texture set.");
-    }
+    bindlessResource.Validate();
 
     auto& texture = GetRHITexture(bindlessResource.texture.handle);
     return texture.GetOrCreateBindlessView(bindlessResource, usage, *descriptorPool);
 }
 
-BindlessHandle GfxBackend::GetBufferBindlessHandle(const ResourceBinding& bindlessResource,
-                                                   BufferBindingUsage usage,
-                                                   u32 stride)
+BindlessHandle GfxBackend::GetBufferBindlessHandle(const BufferBinding& bindlessResource)
 {
-    if (!bindlessResource.IsBuffer())
-    {
-        VEX_LOG(Fatal, "Your bindlessResource must have a buffer set.");
-    }
+    bindlessResource.Validate();
 
     auto& buffer = GetRHIBuffer(bindlessResource.buffer.handle);
-    return buffer.GetOrCreateBindlessView(usage, stride, *descriptorPool);
+    return buffer.GetOrCreateBindlessView(bindlessResource.usage, bindlessResource.stride, *descriptorPool);
 }
 
 void GfxBackend::FlushGPU()
