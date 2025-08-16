@@ -164,7 +164,7 @@ add_library(Vex STATIC
     "src/Vex/ShaderCompiler.h"
     "src/Vex/ShaderCompiler.cpp"
     "src/Vex/Formattable.h"
-        "src/Vex/ShaderResourceContext.h"
+    "src/Vex/ShaderResourceContext.h"
     "src/Vex/ShaderResourceContext.cpp"
     "src/Vex/ShaderGen.h"
     "src/Vex/TextureSampler.h"
@@ -177,7 +177,6 @@ add_library(Vex STATIC
     "src/Vex/MaybeUninitialized.h"
     "src/Vex/NonNullPtr.h"
 )
-
 
 if(WIN32)
     target_sources(Vex PRIVATE

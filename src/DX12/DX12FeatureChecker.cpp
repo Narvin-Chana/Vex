@@ -26,6 +26,7 @@ DX12FeatureChecker::DX12FeatureChecker(const ComPtr<ID3D12Device>& device)
     }
 
     // Initialize feature level check data
+    // Vex requires a minimum feature level of 12_1.
     static const D3D_FEATURE_LEVEL d3dFeatureLevels[] = { D3D_FEATURE_LEVEL_12_2, D3D_FEATURE_LEVEL_12_1 };
     featureLevels.NumFeatureLevels = _countof(d3dFeatureLevels);
     featureLevels.pFeatureLevelsRequested = d3dFeatureLevels;
@@ -53,7 +54,10 @@ DX12FeatureChecker::DX12FeatureChecker(const ComPtr<ID3D12Device>& device)
         }
     }
 
-    if (shaderModel.HighestShaderModel < D3D_SHADER_MODEL_6_6)
+    // For correctness, RT requires SM_6_3+.
+    rayTracingSupported &= shaderModel.HighestShaderModel >= D3D_SHADER_MODEL_6_3;
+
+    if (!shaderModelFound || shaderModel.HighestShaderModel < D3D_SHADER_MODEL_6_6)
     {
         VEX_LOG(Fatal,
                 "Vex's DX12 implementation requires at least SM_6_6 for the untyped ResourceDescriptorHeap feature.");

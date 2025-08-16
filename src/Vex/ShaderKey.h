@@ -13,13 +13,27 @@
 namespace vex
 {
 
-enum class ShaderType
+enum class ShaderType : u8
 {
+    // Graphics Pipeline Shaders
     VertexShader,
     PixelShader,
+    // Compute Pipeline Shaders
     ComputeShader,
-    // ...
+    // Ray Tracing Shaders
+    RayGenerationShader,
+    RayMissShader,
+    RayClosestHitShader,
+    RayAnyHitShader,
+    RayIntersectionShader,
+    RayCallableShader,
+    // ... Amplification, Task, Geometry, Hull, Domain are currently not supported...
 };
+
+inline bool IsRayTracingShader(ShaderType shaderType)
+{
+    return shaderType >= ShaderType::RayGenerationShader && shaderType <= ShaderType::RayCallableShader;
+}
 
 struct ShaderDefine
 {
