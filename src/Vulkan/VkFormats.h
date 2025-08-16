@@ -2,9 +2,9 @@
 
 #include <utility>
 
-#include <vulkan/vulkan_core.h>
-
 #include <Vex/Formats.h>
+
+#include <Vulkan/VkHeaders.h>
 
 namespace vex::vk
 {

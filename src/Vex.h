@@ -7,6 +7,7 @@
 #include <Vex/GfxBackend.h>
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
+#include <Vex/NonNullPtr.h>
 #include <Vex/TextureSampler.h>
 
 namespace vex

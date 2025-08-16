@@ -58,6 +58,11 @@ public:
 
     virtual CommandQueueType GetType() const override;
 
+    ::vk::CommandBuffer GetNativeCommandList()
+    {
+        return *commandBuffer;
+    }
+
 private:
     NonNullPtr<VkGPUContext> ctx;
     ::vk::UniqueCommandBuffer commandBuffer;

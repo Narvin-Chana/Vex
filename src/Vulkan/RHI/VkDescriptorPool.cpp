@@ -26,7 +26,8 @@ VkDescriptorPool::VkDescriptorPool(NonNullPtr<VkGPUContext> ctx)
     ::vk::DescriptorPoolCreateInfo descriptorPoolInfo{
         .flags = ::vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind |
                  ::vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-        .maxSets = 2,
+        .maxSets =
+            1024, // External users might need to create more descriptor sets than the bindless one (ImGui for example)
         .poolSizeCount = 1,
         .pPoolSizes = &poolSize,
     };
@@ -51,7 +52,7 @@ VkDescriptorPool::VkDescriptorPool(NonNullPtr<VkGPUContext> ctx)
     //
     // I believe this trade off is worth it given it greatly simplifies our code.
     {
-        std::vector<::vk::DescriptorType> descriptorTypes = {
+        std::vector descriptorTypes = {
             ::vk::DescriptorType::eSampledImage,       ::vk::DescriptorType::eStorageImage,
             ::vk::DescriptorType::eUniformTexelBuffer, ::vk::DescriptorType::eStorageTexelBuffer,
             ::vk::DescriptorType::eUniformBuffer,      ::vk::DescriptorType::eStorageBuffer,
