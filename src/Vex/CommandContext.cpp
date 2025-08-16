@@ -322,6 +322,9 @@ void CommandContext::TraceRays(const ShaderKey& rayGenerationShader, std::array<
     }
 
     auto shader = backend->psCache.GetShaderCompiler().GetShader(rayGenerationShader, {});
+
+    // TODO(https://trello.com/c/N8gRfaLP): Implement RT PSO fetching and the actual API code to dispatch the rays.
+    VEX_NOT_YET_IMPLEMENTED();
 }
 
 void CommandContext::Copy(const Texture& source, const Texture& destination)
