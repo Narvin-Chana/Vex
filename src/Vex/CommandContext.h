@@ -63,6 +63,8 @@ public:
                   std::span<const ConstantBinding> constantBindings,
                   std::array<u32, 3> groupCount);
 
+    void TraceRays(const ShaderKey& rayGenerationShader, std::array<u32, 3> widthHeightDepth);
+
     void Copy(const Texture& source, const Texture& destination);
     void Copy(const Buffer& source, const Buffer& destination);
 
