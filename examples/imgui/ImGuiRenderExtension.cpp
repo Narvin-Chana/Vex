@@ -36,7 +36,7 @@ void ImGuiRenderExtension::Initialize()
                                      .descriptorPool = vex::NonNullPtr(data.descriptorPool),
                                      .buffering = buffering,
                                      .swapchainFormat = swapchainFormat };
-    ImGui_ImplVex_Init(&initInfo);
+    ImGui_ImplVex_Init(initInfo);
 }
 
 void ImGuiRenderExtension::Destroy()
