@@ -39,24 +39,34 @@ static std::wstring GetTargetFromShaderType(ShaderType type)
     std::wstring highestSupportedShaderModel =
         StringToWString(std::string(magic_enum::enum_name(featureChecker->GetShaderModel())));
 
+    using enum ShaderType;
+
     // First char changes depending on shader type.
     switch (type)
     {
-    case ShaderType::VertexShader:
+    case VertexShader:
         highestSupportedShaderModel[0] = L'v';
         break;
-    case ShaderType::PixelShader:
+    case PixelShader:
         highestSupportedShaderModel[0] = L'p';
         break;
-    case ShaderType::ComputeShader:
+    case ComputeShader:
         highestSupportedShaderModel[0] = L'c';
         break;
+    // Raytracing shaders use "lib_*" target profile
+    case ShaderType::RayGenerationShader:
+    case ShaderType::RayMissShader:
+    case ShaderType::RayClosestHitShader:
+    case ShaderType::RayAnyHitShader:
+    case ShaderType::RayIntersectionShader:
+    case ShaderType::RayCallableShader:
+        return L"lib" + highestSupportedShaderModel.substr(2);
     default:
         VEX_LOG(Fatal, "Unsupported shader type for the Vex ShaderCompiler.");
         break;
     }
 
-    // Second character is always 's'.
+    // Second character is always 's' for non-RT shaders.
     highestSupportedShaderModel[1] = L's';
 
     return highestSupportedShaderModel;
@@ -117,6 +127,7 @@ struct ShaderParser
         return std::regex{ R"(VEX_LOCAL_CONSTANTS\s*\(\s*([^,\s][^,]*?)\s*,\s*([^)\s][^)]*?)\s*\)\s*;?)" };
     }
 
+    // Can't use string_view as <regex> requires a non-const bidirectional iterator...
     static std::expected<ShaderBlock, ParseError> ParseShader(const std::string& shaderCode)
     {
         ShaderBlock result;
@@ -358,60 +369,9 @@ void ShaderCompiler::FillInAdditionalIncludeDirectories(std::vector<LPCWSTR>& ar
     }
 }
 
-CompilerUtil& ShaderCompiler::GetCompilerUtil()
+std::expected<std::string, std::string> ShaderCompiler::ProcessShaderCodeGen(
+    const std::string& shaderFileStr, const ShaderResourceContext& resourceContext)
 {
-    thread_local CompilerUtil GCompilerUtil;
-    return GCompilerUtil;
-}
-
-std::optional<std::size_t> ShaderCompiler::GetShaderHash(const Shader& shader) const
-{
-    ComPtr<IDxcBlobEncoding> shaderBlobUTF8;
-    u32 codePage = CP_UTF8;
-    if (HRESULT hr = GetCompilerUtil().utils->LoadFile(shader.key.path.wstring().c_str(), &codePage, &shaderBlobUTF8);
-        FAILED(hr))
-    {
-        VEX_LOG(Error, "Unable to get shader hash, failed to load shader from filepath: {}", shader.key.path.string());
-        return std::nullopt;
-    }
-
-    if (ComPtr<IDxcResult> preprocessingResult = GetPreprocessedShader(shader, shaderBlobUTF8))
-    {
-        ComPtr<IDxcBlob> preprocessedShader;
-        if (HRESULT hr = preprocessingResult->GetOutput(DXC_OUT_HLSL, IID_PPV_ARGS(&preprocessedShader), nullptr);
-            SUCCEEDED(hr))
-        {
-            std::string_view finalSourceView{ static_cast<const char*>(preprocessedShader->GetBufferPointer()),
-                                              preprocessedShader->GetBufferSize() };
-            return std::hash<std::string_view>{}(finalSourceView);
-        }
-    }
-
-    return std::nullopt;
-}
-
-std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
-                                                               const ShaderResourceContext& resourceContext)
-{
-    // Generate the hash if this is the first time we've compiled this shader.
-    if (shader.version == 0)
-    {
-        std::optional<std::size_t> newHash = GetShaderHash(shader);
-        if (!newHash)
-        {
-            return std::unexpected("Failed to generate shader hash.");
-        }
-        shader.hash = *newHash;
-    }
-
-    // Manually read the user shader file.
-    std::stringstream buffer;
-    {
-        std::ifstream shaderFile{ shader.key.path.c_str() };
-        buffer << shaderFile.rdbuf();
-    }
-    std::string shaderFileStr = buffer.str();
-
     using ShaderCompiler_Internal::ShaderParser;
     // We insert the local constants on the vulkan side by replacing the first declaration of VEX_LOCAL_CONSTANTS,
     // however this macro should only appear once and has some other constraints. This parser validates the usage of
@@ -449,71 +409,138 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
                                    "was detected with an invalid name (must be a valid C++ identifier).");
         }
     }
-    else
+
+    ShaderParser::ShaderBlock& shaderBlockInfo = res.value();
+    // Generate structs.
+    std::string codeGen = std::string(ShaderGenBindingMacros);
+    codeGen.append("struct Vex_GeneratedGlobalResources\n{\n");
+    // Sort from A-Z to ensure constant bindings matches the order of ResourceLayout's bindless buffer.
+    std::sort(shaderBlockInfo.globalResources.begin(),
+        shaderBlockInfo.globalResources.end(),
+        [](const ShaderParser::GlobalResource& lh, const ShaderParser::GlobalResource& rh)
+        { return lh.name < rh.name; });
+    for (const ShaderParser::GlobalResource& resource : shaderBlockInfo.globalResources)
     {
-        ShaderParser::ShaderBlock& shaderBlockInfo = res.value();
-        // Generate structs.
-        std::string codeGen = std::string(ShaderGenBindingMacros);
-        codeGen.append("struct Vex_GeneratedGlobalResources\n{\n");
-        // Sort from A-Z to ensure constant bindings matches the order of ResourceLayout's bindless buffer.
-        std::sort(shaderBlockInfo.globalResources.begin(),
-                  shaderBlockInfo.globalResources.end(),
-                  [](const ShaderParser::GlobalResource& lh, const ShaderParser::GlobalResource& rh)
-                  { return lh.name < rh.name; });
-        for (const ShaderParser::GlobalResource& resource : shaderBlockInfo.globalResources)
-        {
-            codeGen.append(std::format("\t uint {}_BindlessIndex;\n", resource.name));
-        }
+        codeGen.append(std::format("\t uint {}_BindlessIndex;\n", resource.name));
+    }
 // Generate ConstantBuffers.
 #if VEX_VULKAN
-        codeGen.append("};\n"
-                       "struct Vex_GeneratedCombinedResources\n"
-                       "{\n"
-                       "\t uint GlobalResourcesBindlessIndex;\n");
-        if (shaderBlockInfo.localConstants.has_value())
-        {
-            codeGen.append(std::format("\t{} UserData;\n", shaderBlockInfo.localConstants->type));
-        }
-        codeGen.append(
-            "};\n"
-            "[[vk::push_constant]] ConstantBuffer<Vex_GeneratedCombinedResources> Vex_GeneratedCombinedResourcesCB;\n"
-            "static ConstantBuffer<Vex_GeneratedGlobalResources> Vex_GeneratedGlobalResourcesCB = "
-            "ResourceDescriptorHeap[Vex_GeneratedCombinedResourcesCB.GlobalResourcesBindlessIndex];\n");
-        // Insert the macro to make the local binding transparent for the user.
-        if (shaderBlockInfo.localConstants.has_value())
-        {
-            codeGen.append(std::format("#define {} (Vex_GeneratedCombinedResourcesCB.UserData)\n",
-                                       shaderBlockInfo.localConstants->name));
-        }
+    codeGen.append("};\n"
+                   "struct Vex_GeneratedCombinedResources\n"
+                   "{\n"
+                   "\t uint GlobalResourcesBindlessIndex;\n");
+    if (shaderBlockInfo.localConstants.has_value())
+    {
+        codeGen.append(std::format("\t{} UserData;\n", shaderBlockInfo.localConstants->type));
+    }
+    codeGen.append(
+        "};\n"
+        "[[vk::push_constant]] ConstantBuffer<Vex_GeneratedCombinedResources> Vex_GeneratedCombinedResourcesCB;\n"
+        "static ConstantBuffer<Vex_GeneratedGlobalResources> Vex_GeneratedGlobalResourcesCB = "
+        "ResourceDescriptorHeap[Vex_GeneratedCombinedResourcesCB.GlobalResourcesBindlessIndex];\n");
+    // Insert the macro to make the local binding transparent for the user.
+    if (shaderBlockInfo.localConstants.has_value())
+    {
+        codeGen.append(std::format("#define {} (Vex_GeneratedCombinedResourcesCB.UserData)\n",
+                                   shaderBlockInfo.localConstants->name));
+    }
 #elif VEX_DX12
-        codeGen.append(std::format(
-            "}};\nConstantBuffer<Vex_GeneratedGlobalResources> Vex_GeneratedGlobalResourcesCB : register(b0);\n"));
-        // Insert the macro to make the local binding transparent for the user.
-        if (shaderBlockInfo.localConstants.has_value())
-        {
-            codeGen.append(std::format("ConstantBuffer<{}> {} : register(b1);\n",
-                                       shaderBlockInfo.localConstants->type,
-                                       shaderBlockInfo.localConstants->name));
-        }
+    codeGen.append(std::format(
+        "}};\nConstantBuffer<Vex_GeneratedGlobalResources> Vex_GeneratedGlobalResourcesCB : register(b0);\n"));
+    // Insert the macro to make the local binding transparent for the user.
+    if (shaderBlockInfo.localConstants.has_value())
+    {
+        codeGen.append(std::format("ConstantBuffer<{}> {} : register(b1);\n",
+                                   shaderBlockInfo.localConstants->type,
+                                   shaderBlockInfo.localConstants->name));
+    }
 #endif
-        // Insert static declarations for global resources.
-        for (const ShaderParser::GlobalResource& resource : shaderBlockInfo.globalResources)
-        {
-            codeGen.append(std::format(
-                "static {0} {1} = ResourceDescriptorHeap[Vex_GeneratedGlobalResourcesCB.{1}_BindlessIndex];\n",
-                resource.type,
-                resource.name));
-        }
+    // Insert static declarations for global resources.
+    for (const ShaderParser::GlobalResource& resource : shaderBlockInfo.globalResources)
+    {
+        codeGen.append(
+            std::format("static {0} {1} = ResourceDescriptorHeap[Vex_GeneratedGlobalResourcesCB.{1}_BindlessIndex];\n",
+                        resource.type,
+                        resource.name));
+    }
 
-        // Auto-generate shader static sampler bindings.
-        for (u32 i = 0; i < resourceContext.samplers.size(); ++i)
-        {
-            const TextureSampler& sampler = resourceContext.samplers[i];
-            codeGen.append(std::format("SamplerState {} : register(s{}, space0);\n", sampler.name, i));
-        }
+    // Auto-generate shader static sampler bindings.
+    for (u32 i = 0; i < resourceContext.samplers.size(); ++i)
+    {
+        const TextureSampler& sampler = resourceContext.samplers[i];
+        codeGen.append(std::format("SamplerState {} : register(s{}, space0);\n", sampler.name, i));
+    }
 
-        // Replace the VEX_SHADER block with our codegen.
-        shaderFileStr = ShaderParser::ReplaceVexShaderBlock(shaderFileStr, shaderBlockInfo, codeGen);
+    // Replace the VEX_SHADER block with our codegen.
+    return ShaderParser::ReplaceVexShaderBlock(shaderFileStr, shaderBlockInfo, codeGen);
+}
+
+CompilerUtil& ShaderCompiler::GetCompilerUtil()
+{
+    static thread_local CompilerUtil GCompilerUtil;
+    return GCompilerUtil;
+}
+
+std::optional<std::size_t> ShaderCompiler::GetShaderHash(const Shader& shader) const
+{
+    ComPtr<IDxcBlobEncoding> shaderBlobUTF8;
+    u32 codePage = CP_UTF8;
+    if (HRESULT hr = GetCompilerUtil().utils->LoadFile(shader.key.path.wstring().c_str(), &codePage, &shaderBlobUTF8);
+        FAILED(hr))
+    {
+        VEX_LOG(Error, "Unable to get shader hash, failed to load shader from filepath: {}", shader.key.path.string());
+        return std::nullopt;
+    }
+
+    if (ComPtr<IDxcResult> preprocessingResult = GetPreprocessedShader(shader, shaderBlobUTF8))
+    {
+        ComPtr<IDxcBlob> preprocessedShader;
+        if (HRESULT hr = preprocessingResult->GetOutput(DXC_OUT_HLSL, IID_PPV_ARGS(&preprocessedShader), nullptr);
+            SUCCEEDED(hr))
+        {
+            std::string_view finalSourceView{ static_cast<const char*>(preprocessedShader->GetBufferPointer()),
+                                              preprocessedShader->GetBufferSize() };
+            return std::hash<std::string_view>{}(finalSourceView);
+        }
+    }
+
+    return std::nullopt;
+}
+
+std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
+                                                               const ShaderResourceContext& resourceContext)
+{
+    if (!GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::BindlessResources))
+    {
+        VEX_LOG(Fatal, "Vex requires BindlessResources in order to bind global resources.");
+    }
+
+    // Generate the hash if this is the first time we've compiled this shader.
+    if (shader.version == 0)
+    {
+        std::optional<std::size_t> newHash = GetShaderHash(shader);
+        if (!newHash)
+        {
+            return std::unexpected("Failed to generate shader hash.");
+        }
+        shader.hash = *newHash;
+    }
+
+    // Manually read the user shader file.
+    std::stringstream buffer;
+    {
+        std::ifstream shaderFile{ shader.key.path.c_str() };
+        buffer << shaderFile.rdbuf();
+    }
+    std::string shaderFileStr = buffer.str();
+
+    {
+        auto res = ProcessShaderCodeGen(shaderFileStr, resourceContext);
+        if (!res.has_value())
+        {
+            return std::unexpected(res.error());
+        }
+        shaderFileStr = std::move(res.value());
     }
 
 #if !VEX_SHIPPING
@@ -527,7 +554,7 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
                                                                    &shaderBlob);
         FAILED(hr))
     {
-        return std::unexpected("Failed to load shader from filesystem.");
+        return std::unexpected("Failed to create blob from shader.");
     }
 
     DxcBuffer shaderSource = {};
@@ -535,13 +562,14 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
     shaderSource.Size = shaderBlob->GetBufferSize();
     shaderSource.Encoding = DXC_CP_ACP; // Assume BOM says UTF8 or UTF16 or this is ANSI text.
 
-    std::vector<LPCWSTR> args;
-
     std::vector<ShaderDefine> shaderDefines = shader.key.defines;
-
     shaderDefines.emplace_back(L"VEX_DEBUG", std::to_wstring(VEX_DEBUG));
     shaderDefines.emplace_back(L"VEX_DEVELOPMENT", std::to_wstring(VEX_DEVELOPMENT));
     shaderDefines.emplace_back(L"VEX_SHIPPING", std::to_wstring(VEX_SHIPPING));
+    shaderDefines.emplace_back(L"VEX_RAYTRACING",
+                               GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing) ? L"1" : L"0");
+
+    std::vector<LPCWSTR> args;
     rhi->ModifyShaderCompilerEnvironment(args, shaderDefines);
 
     if (compilerSettings.enableShaderDebugging)
@@ -557,16 +585,24 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
 
     if (compilerSettings.enableHLSL202xFeatures)
     {
-        args.insert(args.end(), HLSL202xFlags);
+        args.insert(args.end(), HLSL202xFlags.begin(), HLSL202xFlags.end());
     }
 
     FillInAdditionalIncludeDirectories(args);
 
     std::vector<DxcDefine> defines = ShaderCompiler_Internal::ConvertDefinesToDxcDefine(shaderDefines);
+
+    std::wstring entryPoint;
+    // RT Shaders are compiled differently to other shader types, the entry point should be null.
+    if (!IsRayTracingShader(shader.key.type))
+    {
+        entryPoint = StringToWString(shader.key.entryPoint);
+    }
+
     ComPtr<IDxcCompilerArgs> compilerArgs;
     if (HRESULT hr = GetCompilerUtil().utils->BuildArguments(
             shader.key.path.wstring().c_str(),
-            StringToWString(shader.key.entryPoint).c_str(),
+            entryPoint.empty() ? nullptr : entryPoint.c_str(),
             ShaderCompiler_Internal::GetTargetFromShaderType(shader.key.type).c_str(),
             args.data(),
             static_cast<u32>(args.size()),
