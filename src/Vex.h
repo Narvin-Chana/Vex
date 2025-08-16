@@ -8,6 +8,7 @@
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
 #include <Vex/TextureSampler.h>
+#include <Vex/UniqueHandle.h>
 
 namespace vex
 {

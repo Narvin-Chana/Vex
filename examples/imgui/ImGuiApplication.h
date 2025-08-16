@@ -5,9 +5,6 @@
 struct ImGuiApplication : public ExampleApplication
 {
     ImGuiApplication();
-    virtual ~ImGuiApplication() override;
-    virtual void HandleKeyInput(int key, int scancode, int action, int mods) override;
-
     void Run();
 
 protected:

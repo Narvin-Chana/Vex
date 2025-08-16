@@ -1,6 +1,5 @@
 #include "Logger.h"
 
-#include <algorithm>
 #include <ctime>
 
 namespace vex

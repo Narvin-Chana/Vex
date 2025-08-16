@@ -5,6 +5,7 @@
 
 #include <Vex/Buffer.h>
 #include <Vex/EnumFlags.h>
+#include <Vex/RHIFwd.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
 
@@ -14,6 +15,7 @@ namespace vex
 struct ConstantBinding
 {
     template <typename T>
+        requires(sizeof(T) <= MaxTheoreticalLocalConstantsByteSize)
     ConstantBinding(const T& data)
         : data{ static_cast<const void*>(&data) }
         , size{ sizeof(T) }
@@ -22,10 +24,6 @@ struct ConstantBinding
 
     const void* data;
     u32 size;
-
-    // Concatenates all constant binding data into the writeableRange passed in as a parameter.
-    // Returns the total byte size of all bindings concatenated together.
-    static u32 ConcatConstantBindings(std::span<const ConstantBinding> constantBindings, std::span<u8> writableRange);
 };
 
 // clang-format off

@@ -8,9 +8,6 @@ class HelloTriangleGraphicsApplication : public ExampleApplication
 {
 public:
     HelloTriangleGraphicsApplication();
-    virtual ~HelloTriangleGraphicsApplication() override;
-    virtual void HandleKeyInput(int key, int scancode, int action, int mods) override;
-
     void Run();
 
 protected:

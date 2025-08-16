@@ -1,30 +1,7 @@
 #include "ImGuiApplication.h"
 
-#include <GLFW/glfw3.h>
-#if defined(_WIN32)
-#define GLFW_EXPOSE_NATIVE_WIN32
-#elif defined(__linux__)
-#define GLFW_EXPOSE_NATIVE_X11
-#endif
-#if defined(__linux__)
-// Undefine/define problematic X11 macros
-#ifdef Always
-#undef Always
-#endif
-#ifdef None
-#undef None
-#endif
-#ifdef Success
-#undef Success
-#endif
-#ifndef Bool
-#define Bool bool
-#endif
-#endif
-#include <GLFW/glfw3native.h>
+#include <../GLFWIncludes.h>
 #include <ImGuiRenderExtension.h>
-
-#include <Vex/UniqueHandle.h>
 
 ImGuiApplication::ImGuiApplication()
     : ExampleApplication("ImGuiApplication")
@@ -42,14 +19,7 @@ ImGuiApplication::ImGuiApplication()
 
     graphics->RegisterRenderExtension(
         vex::MakeUnique<ImGuiRenderExtension>(*graphics, window, FrameBuffering, SwapchainFormat));
-}
-
-ImGuiApplication::~ImGuiApplication()
-{
-}
-
-void ImGuiApplication::HandleKeyInput(int key, int scancode, int action, int mods)
-{
+    SetupShaderErrorHandling();
 }
 
 void ImGuiApplication::Run()
