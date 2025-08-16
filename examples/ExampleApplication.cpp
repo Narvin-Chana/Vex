@@ -1,7 +1,8 @@
 #include "ExampleApplication.h"
-#include "GLFWIncludes.h"
 
 #include <functional>
+
+#include <GLFWIncludes.h>
 
 ExampleApplication::ExampleApplication(std::string_view windowName)
 {
