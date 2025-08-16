@@ -9,10 +9,23 @@ namespace vex::vk
 
 class VkGraphicsPipelineState final : public RHIGraphicsPipelineStateBase
 {
-    ::vk::PipelineCache PSOCache;
-    ::vk::Device device;
-
 public:
+    using Hasher = decltype([](const Key& key) -> std::size_t
+    {
+        // TODO(https://trello.com/c/2KeJ2cXy): Determine which keys are not needed in Vulkan. 
+        // I'll let @alexandreLBarrett handle this since you implemented the Vk graphics code.
+        std::size_t seed = 0;
+        VEX_HASH_COMBINE(seed, key.vertexShader);
+        VEX_HASH_COMBINE(seed, key.pixelShader);
+        VEX_HASH_COMBINE(seed, key.vertexInputLayout);
+        // Input assembly is bound dynamically.
+        VEX_HASH_COMBINE(seed, key.rasterizerState);
+        VEX_HASH_COMBINE(seed, key.depthStencilState);
+        VEX_HASH_COMBINE(seed, key.colorBlendState);
+        VEX_HASH_COMBINE(seed, key.renderTargetState);
+        return seed;
+    });
+
     VkGraphicsPipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache);
     VkGraphicsPipelineState(VkGraphicsPipelineState&&) = default;
     VkGraphicsPipelineState& operator=(VkGraphicsPipelineState&&) = default;
@@ -23,13 +36,14 @@ public:
     virtual void Cleanup(ResourceCleanup& resourceCleanup) override;
 
     ::vk::UniquePipeline graphicsPipeline;
+
+private:
+    ::vk::Device device;
+    ::vk::PipelineCache PSOCache;
 };
 
 class VkComputePipelineState final : public RHIComputePipelineStateInterface
 {
-    ::vk::PipelineCache PSOCache;
-    ::vk::Device device;
-
 public:
     VkComputePipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache);
     VkComputePipelineState(VkComputePipelineState&&) = default;
@@ -39,6 +53,10 @@ public:
     virtual void Cleanup(ResourceCleanup& resourceCleanup) override;
 
     ::vk::UniquePipeline computePipeline;
+
+private:
+    ::vk::Device device;
+    ::vk::PipelineCache PSOCache;
 };
 
 } // namespace vex::vk
