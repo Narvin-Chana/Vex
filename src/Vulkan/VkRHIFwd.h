@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 
 namespace vex::vk
 {
@@ -18,6 +19,9 @@ class VkRHI;
 
 namespace vex
 {
+
+// Vulkan limit is a max of 128, but could be potentially less depending on the device.
+static constexpr std::size_t MaxTheoreticalLocalConstantsByteSize = 128;
 
 using RHICommandList = vk::VkCommandList;
 using RHICommandPool = vk::VkCommandPool;

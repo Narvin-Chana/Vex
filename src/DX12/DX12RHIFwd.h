@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 namespace vex::dx12
 {
 
@@ -18,6 +20,9 @@ class DX12RHI;
 
 namespace vex
 {
+
+// DX12 always has a root constants limit of 256 bytes.
+static constexpr std::size_t MaxTheoreticalLocalConstantsByteSize = 256;
 
 using RHICommandList = dx12::DX12CommandList;
 using RHICommandPool = dx12::DX12CommandPool;

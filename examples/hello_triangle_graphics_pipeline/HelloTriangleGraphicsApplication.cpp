@@ -1,30 +1,6 @@
 #include "HelloTriangleGraphicsApplication.h"
 
-#include <GLFW/glfw3.h>
-#include <math.h>
-#if defined(_WIN32)
-#define GLFW_EXPOSE_NATIVE_WIN32
-#elif defined(__linux__)
-#define GLFW_EXPOSE_NATIVE_X11
-#endif
-
-#if defined(__linux__)
-// Undefine/define problematic X11 macros
-#ifdef Always
-#undef Always
-#endif
-#ifdef None
-#undef None
-#endif
-#ifdef Success
-#undef Success
-#endif
-#ifndef Bool
-#define Bool bool
-#endif
-#endif
-
-#include <GLFW/glfw3native.h>
+#include <GLFWIncludes.h>
 
 HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
     : ExampleApplication("HelloTriangleGraphicsApplication")
@@ -40,6 +16,7 @@ HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
         .swapChainFormat = vex::TextureFormat::RGBA8_UNORM,
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
+    SetupShaderErrorHandling();
 
     std::vector<vex::TextureSampler> samplers{ vex::TextureSampler{ .name = "MySampler" } };
     graphics->SetSamplers(samplers);
@@ -51,6 +28,7 @@ HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
                                            .memoryLocality = vex::ResourceMemoryLocality::GPUOnly },
                                          vex::ResourceLifetime::Static);
 
+    // Working texture we'll fill in then copy to the backbuffer.
     workingTexture =
         graphics->CreateTexture({ .name = "Working Texture",
                                   .type = vex::TextureType::Texture2D,
@@ -61,55 +39,6 @@ HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
                                   .format = vex::TextureFormat::RGBA8_UNORM,
                                   .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
                                 vex::ResourceLifetime::Static);
-
-#if defined(_WIN32)
-    // Suggestion of an intrusive (a la Unreal) way to display errors.
-    // The handling of shader compilation errors is user choice.
-    graphics->SetShaderCompilationErrorsCallback(
-        [window = window](const std::vector<std::pair<vex::ShaderKey, std::string>>& errors) -> bool
-        {
-            if (!errors.empty())
-            {
-                std::string totalErrorMessage = "Error compiling shader(s):\n";
-                for (auto& [key, err] : errors)
-                {
-                    totalErrorMessage.append(std::format("Shader: {} - Error: {}\n", key, err));
-                }
-                totalErrorMessage.append("\nDo you want to retry?");
-
-                vex::i32 result = MessageBox(NULL,
-                                             totalErrorMessage.c_str(),
-                                             "Shader Compilation Error",
-                                             MB_ICONERROR | MB_YESNO | MB_DEFBUTTON2);
-                if (result == IDYES)
-                {
-                    return true;
-                }
-                else if (result == IDNO)
-                {
-                    VEX_LOG(vex::Error, "Unable to continue with shader errors. Closing application.");
-                    glfwSetWindowShouldClose(window, true);
-                }
-            }
-
-            return false;
-        });
-#endif
-}
-
-HelloTriangleGraphicsApplication::~HelloTriangleGraphicsApplication()
-{
-}
-
-void HelloTriangleGraphicsApplication::HandleKeyInput(int key, int scancode, int action, int mods)
-{
-    if (action == GLFW_PRESS)
-    {
-        if (key == GLFW_KEY_R)
-        {
-            graphics->RecompileChangedShaders();
-        }
-    }
 }
 
 void HelloTriangleGraphicsApplication::Run()
@@ -124,11 +53,12 @@ void HelloTriangleGraphicsApplication::Run()
 
         {
             const double currentTime = glfwGetTime();
-            float ocillatedColor = static_cast<float>(cos(currentTime) / 2 + 0.5);
-            float invOcillatedColor = 1 - ocillatedColor;
-            float color[4] = { invOcillatedColor, ocillatedColor, invOcillatedColor, 1.0 };
+            float oscillatedColor = static_cast<float>(cos(currentTime) / 2 + 0.5);
+            float invOscillatedColor = 1 - oscillatedColor;
+            float color[4] = { invOscillatedColor, oscillatedColor, invOscillatedColor, 1.0 };
             graphics->UpdateData(colorBuffer, color);
 
+            // Scoped command context will submit commands automatically upon destruction.
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
 
             ctx.SetScissor(0, 0, width, height);
@@ -138,9 +68,10 @@ void HelloTriangleGraphicsApplication::Run()
             ctx.ClearTexture(vex::TextureBinding{
                 .name = "Backbuffer",
                 .texture = graphics->GetCurrentBackBuffer(),
-            }, vex::TextureUsage::RenderTarget, &clearValue);
+            }, vex::TextureUsage::RenderTarget, clearValue);
 
 
+            // Setup our rendering pass.
             std::array renderTargets = {
                 vex::TextureBinding{
                     .name = "OutputTexture",
@@ -148,6 +79,7 @@ void HelloTriangleGraphicsApplication::Run()
                 }
             };
 
+            // Allows for rendering to these render targets!
             ctx.BeginRendering({ .renderTargets = renderTargets, .depthStencil = std::nullopt });
 
             // Setup our draw call's description...
@@ -180,7 +112,7 @@ void HelloTriangleGraphicsApplication::Run()
             time += static_cast<float>(currentTime / 1000.0);
 
             vex::DrawResources drawResources{
-                .constants = { { vex::ConstantBinding(time) } },
+                .constants = time,
                 .resourceBindings = resourceBindings,
             };
 
@@ -189,6 +121,7 @@ void HelloTriangleGraphicsApplication::Run()
             ctx.SetViewport(width / 2.0f, 0, width / 2.0f, height);
             ctx.Draw(drawDesc, drawResources, 3);
 
+            // Ends the rendering pass, MUST be called.
             ctx.EndRendering();
         }
 

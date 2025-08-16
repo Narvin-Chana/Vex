@@ -9,9 +9,9 @@
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
+#include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITexture.h>
-#include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/ResourceBindingUtils.h>
 #include <Vex/ShaderResourceContext.h>
 
@@ -110,6 +110,12 @@ CommandContext::CommandContext(GfxBackend* backend, RHICommandList* cmdList)
 
 CommandContext::~CommandContext()
 {
+    if (currentDrawResources.has_value())
+    {
+        VEX_LOG(Fatal,
+                "The command context was closed with a still open rendering pass! You might have forgotten to call "
+                "EndRendering()!");
+    }
     backend->EndCommandContext(*cmdList);
 }
 
@@ -125,7 +131,7 @@ void CommandContext::SetScissor(i32 x, i32 y, u32 width, u32 height)
 
 void CommandContext::ClearTexture(const TextureBinding& binding,
                                   TextureUsage::Type clearUsage,
-                                  const TextureClearValue* optionalTextureClearValue,
+                                  std::optional<TextureClearValue> textureClearValue,
                                   std::optional<std::array<float, 4>> clearRect)
 {
     if (!(binding.texture.description.usage & clearUsage))
@@ -135,10 +141,9 @@ void CommandContext::ClearTexture(const TextureBinding& binding,
 
     RHITexture& texture = backend->GetRHITexture(binding.texture.handle);
     cmdList->Transition(texture, texture.GetClearTextureState());
-    cmdList->ClearTexture(
-        { binding, &texture },
-        clearUsage,
-        optionalTextureClearValue ? *optionalTextureClearValue : binding.texture.description.clearValue);
+    cmdList->ClearTexture({ binding, &texture },
+                          clearUsage,
+                          textureClearValue.value_or(binding.texture.description.clearValue));
 }
 void CommandContext::BeginRendering(const DrawResourceBinding& drawBindings)
 {
@@ -219,7 +224,6 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
         cachedGraphicsPSOKey = graphicsPSOKey;
     }
 
-
     // Setup the layout for our pass.
     RHIResourceLayout& resourceLayout = backend->GetPipelineStateCache().GetResourceLayout();
     resourceLayout.SetLayoutResources(backend->rhi,
@@ -244,7 +248,7 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
 
 void CommandContext::Dispatch(const ShaderKey& shader,
                               std::span<const ResourceBinding> resourceBindings,
-                              std::span<const ConstantBinding> constantBindings,
+                              const std::optional<ConstantBinding>& constants,
                               std::array<u32, 3> groupCount)
 {
     using namespace CommandContext_Internal;
@@ -281,7 +285,7 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     RHIResourceLayout& resourceLayout = backend->GetPipelineStateCache().GetResourceLayout();
     resourceLayout.SetLayoutResources(backend->rhi,
                                       backend->resourceCleanup,
-                                      constantBindings,
+                                      constants,
                                       rhiTextureBindings,
                                       rhiBufferBindings,
                                       *backend->descriptorPool);

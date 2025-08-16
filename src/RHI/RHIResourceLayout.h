@@ -25,7 +25,7 @@ public:
     ~RHIResourceLayoutBase();
     void SetLayoutResources(RHI& rhi,
                             ResourceCleanup& resourceCleanup,
-                            std::span<const ConstantBinding> constants,
+                            const std::optional<ConstantBinding>& constants,
                             std::span<RHITextureBinding> textures,
                             std::span<RHIBufferBinding> buffers,
                             RHIDescriptorPool& descriptorPool);

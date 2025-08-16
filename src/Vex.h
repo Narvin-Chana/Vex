@@ -9,6 +9,7 @@
 #include <Vex/Logger.h>
 #include <Vex/NonNullPtr.h>
 #include <Vex/TextureSampler.h>
+#include <Vex/UniqueHandle.h>
 
 namespace vex
 {
