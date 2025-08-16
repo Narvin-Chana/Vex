@@ -44,7 +44,8 @@ private:
 
     ShaderCompiler shaderCompiler;
     UniqueHandle<RHIResourceLayout> resourceLayout;
-    std::unordered_map<RHIGraphicsPipelineState::Key, RHIGraphicsPipelineState> graphicsPSCache;
+    std::unordered_map<RHIGraphicsPipelineState::Key, RHIGraphicsPipelineState, RHIGraphicsPipelineState::Hasher>
+        graphicsPSCache;
     std::unordered_map<RHIComputePipelineState::Key, RHIComputePipelineState> computePSCache;
 };
 

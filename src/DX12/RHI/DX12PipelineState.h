@@ -1,5 +1,9 @@
 #pragma once
 
+#include <cstddef>
+
+#include <Vex/Hash.h>
+
 #include <RHI/RHIPipelineState.h>
 
 #include <DX12/DX12Headers.h>
@@ -10,6 +14,20 @@ namespace vex::dx12
 class DX12GraphicsPipelineState final : public RHIGraphicsPipelineStateBase
 {
 public:
+    using Hasher = decltype([](const Key& key) -> std::size_t
+    {
+        std::size_t seed = 0;
+        VEX_HASH_COMBINE(seed, key.vertexShader);
+        VEX_HASH_COMBINE(seed, key.pixelShader);
+        VEX_HASH_COMBINE(seed, key.vertexInputLayout);
+        VEX_HASH_COMBINE(seed, key.inputAssembly);
+        VEX_HASH_COMBINE(seed, key.rasterizerState);
+        VEX_HASH_COMBINE(seed, key.depthStencilState);
+        VEX_HASH_COMBINE(seed, key.colorBlendState);
+        VEX_HASH_COMBINE(seed, key.renderTargetState);
+        return seed;
+    });
+
     DX12GraphicsPipelineState(const ComPtr<DX12Device>& device, const Key& key);
     ~DX12GraphicsPipelineState();
 
