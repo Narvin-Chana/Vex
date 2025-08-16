@@ -187,6 +187,19 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
         VEX_LOG(Fatal, "BeginRender must be called before any draw call is executed");
     }
 
+    if (drawDesc.vertexShader.type != ShaderType::VertexShader)
+    {
+        VEX_LOG(Fatal,
+                "Invalid type passed to Draw call for vertex shader: {}",
+                magic_enum::enum_name(drawDesc.vertexShader.type));
+    }
+    if (drawDesc.pixelShader.type != ShaderType::PixelShader)
+    {
+        VEX_LOG(Fatal,
+                "Invalid type passed to Draw call for pixel shader: {}",
+                magic_enum::enum_name(drawDesc.pixelShader.type));
+    }
+
     ResourceBindingUtils::ValidateResourceBindings(drawResources.resourceBindings);
 
     // Collect all underlying RHI textures.
@@ -251,6 +264,11 @@ void CommandContext::Dispatch(const ShaderKey& shader,
                               const std::optional<ConstantBinding>& constants,
                               std::array<u32, 3> groupCount)
 {
+    if (shader.type != ShaderType::ComputeShader)
+    {
+        VEX_LOG(Fatal, "Invalid shader type passed to Dispatch call: {}", magic_enum::enum_name(shader.type));
+    }
+
     using namespace CommandContext_Internal;
 
     // Collect all underlying RHI textures.
@@ -297,6 +315,21 @@ void CommandContext::Dispatch(const ShaderKey& shader,
 
     // Perform dispatch
     cmdList->Dispatch(groupCount);
+}
+
+void CommandContext::TraceRays(const ShaderKey& rayGenerationShader, std::array<u32, 3> widthHeightDepth)
+{
+    if (rayGenerationShader.type != ShaderType::RayGenerationShader)
+    {
+        VEX_LOG(Fatal,
+                "Invalid type passed to TraceRays call for RayGenerationShader: {}",
+                magic_enum::enum_name(rayGenerationShader.type));
+    }
+
+    auto shader = backend->psCache.GetShaderCompiler().GetShader(rayGenerationShader, {});
+
+    // TODO(https://trello.com/c/N8gRfaLP): Implement RT PSO fetching and the actual API code to dispatch the rays.
+    VEX_NOT_YET_IMPLEMENTED();
 }
 
 void CommandContext::Copy(const Texture& source, const Texture& destination)

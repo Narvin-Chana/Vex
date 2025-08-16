@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <expected>
 #include <utility>
 #include <vector>
@@ -83,7 +84,7 @@ struct ShaderCompiler
     void FlushCompilationErrors();
 
 private:
-    static constexpr auto HLSL202xFlags = {
+    static constexpr std::array HLSL202xFlags{
         L"-HV 202x", L"-Wconversion", L"-Wdouble-promotion", L"-Whlsl-legacy-literal"
     };
 
@@ -91,6 +92,9 @@ private:
     std::optional<std::size_t> GetShaderHash(const Shader& shader) const;
     ComPtr<IDxcResult> GetPreprocessedShader(const Shader& shader, const ComPtr<IDxcBlobEncoding>& shaderBlob) const;
     void FillInAdditionalIncludeDirectories(std::vector<LPCWSTR>& args) const;
+
+    std::expected<std::string, std::string> ProcessShaderCodeGen(const std::string& shaderFileStr,
+                                                                 const ShaderResourceContext& resourceContext);
 
     static CompilerUtil& GetCompilerUtil();
 
