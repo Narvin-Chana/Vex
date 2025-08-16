@@ -158,6 +158,7 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
     std::vector<::vk::Format> attachmentFormats(key.renderTargetState.colorFormats.size());
     std::ranges::transform(key.renderTargetState.colorFormats, attachmentFormats.begin(), TextureFormatToVulkan);
 
+    // TODO(https://trello.com/c/2KeJ2cXy): Add depthAttachmentFormat and stencilAttachmentFormat support.
     const ::vk::PipelineRenderingCreateInfoKHR pipelineRenderingCI{
         .colorAttachmentCount = static_cast<u32>(attachmentFormats.size()),
         .pColorAttachmentFormats = attachmentFormats.data(),
@@ -199,8 +200,8 @@ void VkGraphicsPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
 
 VkComputePipelineState::VkComputePipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache)
     : RHIComputePipelineStateInterface(key)
-    , PSOCache{ PSOCache }
     , device{ device }
+    , PSOCache{ PSOCache }
 {
 }
 
