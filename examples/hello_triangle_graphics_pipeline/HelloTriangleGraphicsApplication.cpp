@@ -1,6 +1,6 @@
 #include "HelloTriangleGraphicsApplication.h"
 
-#include <../GLFWIncludes.h>
+#include <GLFWIncludes.h>
 
 HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
     : ExampleApplication("HelloTriangleGraphicsApplication")

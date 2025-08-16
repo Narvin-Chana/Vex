@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../ExampleApplication.h"
+#include <ExampleApplication.h>
 
 struct ImGuiApplication : public ExampleApplication
 {

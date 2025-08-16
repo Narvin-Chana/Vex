@@ -1,6 +1,6 @@
 #include "ImGuiApplication.h"
 
-#include <../GLFWIncludes.h>
+#include <GLFWIncludes.h>
 #include <ImGuiRenderExtension.h>
 
 ImGuiApplication::ImGuiApplication()

@@ -2,7 +2,7 @@
 
 #include <Vex.h>
 
-#include "../ExampleApplication.h"
+#include <ExampleApplication.h>
 
 class GLFWwindow;
 
