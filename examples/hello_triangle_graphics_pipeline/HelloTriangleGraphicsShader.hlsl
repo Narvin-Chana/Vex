@@ -10,10 +10,11 @@ struct Colors
 
 VEX_SHADER
 {
-VEX_LOCAL_CONSTANTS(
-    MyStruct,
-    MyLocalConstants
-);
+    VEX_LOCAL_CONSTANTS(
+        MyStruct,
+        MyLocalConstants
+    );
+    VEX_GLOBAL_RESOURCE(ConstantBuffer<Colors>, ColorBuffer);
 }
 
 void ComputeTriangleVertex(in uint vertexID, out float4 position, out float2 uv)
@@ -67,7 +68,7 @@ float4 PSMain(VSOutput input)
     if (IsInsideTriangle(input.uv, v0, v1, v2))
     {
         float3 color = float3(input.uv.x, input.uv.y, 1 - input.uv.x * input.uv.y);
-        return float4(color, 1);
+        return float4(color * ColorBuffer.cols.rgb, 1);
     }
     else
     {

@@ -118,8 +118,6 @@ void HelloTriangleGraphicsApplication::Run()
     {
         glfwPollEvents();
 
-        const double currentTime = glfwGetTime();
-
         graphics->StartFrame();
 
         // clang-format off

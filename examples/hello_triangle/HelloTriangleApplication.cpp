@@ -154,11 +154,9 @@ void HelloTriangleApplication::Run()
                     .type = vex::ShaderType::ComputeShader
                 },
                 std::initializer_list<vex::ResourceBinding>{
-                    vex::BufferBinding{
-                        .name = "ColorBuffer",
-                        .buffer = colorBuffer,
-                        .usage = vex::BufferBindingUsage::ConstantBuffer
-                    },
+                    // WARNING: ORDER IS IMPORTANT HERE FOR NOW
+                    // Textures first, then buffers
+                    // Order must match shader declarations
                     vex::TextureBinding{
                         .name = "OutputTexture",
                         .texture = workingTexture,
@@ -169,7 +167,12 @@ void HelloTriangleApplication::Run()
                         .buffer = commBuffer,
                         .usage = vex::BufferBindingUsage::RWStructuredBuffer,
                         .stride = sizeof(float) * 4
-                    }
+                    },
+                    vex::BufferBinding{
+                        .name = "ColorBuffer",
+                        .buffer = colorBuffer,
+                        .usage = vex::BufferBindingUsage::ConstantBuffer
+                    },
                 },
                 {},
                 {
@@ -184,21 +187,21 @@ void HelloTriangleApplication::Run()
                     .type = vex::ShaderType::ComputeShader
                 },
                 std::initializer_list<vex::ResourceBinding>{
-                    vex::BufferBinding{
-                        .name = "CommBuffer",
-                        .buffer = commBuffer,
-                        .usage = vex::BufferBindingUsage::StructuredBuffer,
-                        .stride = sizeof(float) * 4
+                    vex::TextureBinding{
+                        .name = "OutputTexture",
+                        .texture = finalOutputTexture,
+                        .usage = vex::TextureBindingUsage::ShaderReadWrite,
                     },
                     vex::TextureBinding{
                         .name = "SourceTexture",
                         .texture = workingTexture,
                         .usage = vex::TextureBindingUsage::ShaderRead,
                     },
-                    vex::TextureBinding{
-                        .name = "OutputTexture",
-                        .texture = finalOutputTexture,
-                        .usage = vex::TextureBindingUsage::ShaderReadWrite,
+                    vex::BufferBinding{
+                        .name = "CommBuffer",
+                        .buffer = commBuffer,
+                        .usage = vex::BufferBindingUsage::StructuredBuffer,
+                        .stride = sizeof(float) * 4
                     },
                 },
                 {},
