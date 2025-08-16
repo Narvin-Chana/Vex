@@ -22,8 +22,8 @@
 
 struct ImGui_ImplVex_InitInfo
 {
-    vex::RHI* rhi;
-    vex::RHIDescriptorPool* descriptorPool;
+    vex::NonNullPtr<vex::RHI> rhi;
+    vex::NonNullPtr<vex::RHIDescriptorPool> descriptorPool;
     vex::FrameBuffering buffering;
     vex::TextureFormat swapchainFormat;
     vex::TextureFormat depthStencilFormat = vex::TextureFormat::UNKNOWN;
