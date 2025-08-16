@@ -451,13 +451,15 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
     }
     else
     {
-        const ShaderParser::ShaderBlock& shaderBlockInfo = res.value();
+        ShaderParser::ShaderBlock& shaderBlockInfo = res.value();
         // Generate structs.
         std::string codeGen = std::string(ShaderGenBindingMacros);
         codeGen.append("struct Vex_GeneratedGlobalResources\n{\n");
-        // TODO: Currently the order of HLSL and C++ resources MUST match (in order to have valid indices to descriptor
-        // heap). There are many solutions to this (sorting on both sides in the same manner, passing C++ sorting info
-        // to the shader compiler, ...) Would be worth it to discuss which sorting strategy we want to employ.
+        // Sort from A-Z to ensure constant bindings matches the order of ResourceLayout's bindless buffer.
+        std::sort(shaderBlockInfo.globalResources.begin(),
+                  shaderBlockInfo.globalResources.end(),
+                  [](const ShaderParser::GlobalResource& lh, const ShaderParser::GlobalResource& rh)
+                  { return lh.name < rh.name; });
         for (const ShaderParser::GlobalResource& resource : shaderBlockInfo.globalResources)
         {
             codeGen.append(std::format("\t uint {}_BindlessIndex;\n", resource.name));
@@ -515,7 +517,7 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
     }
 
 #if !VEX_SHIPPING
-    VEX_LOG(Info, "Shader {}\nFile dump:\n{}", shader.key, shaderFileStr);
+    VEX_LOG(Verbose, "Shader {}\nFile dump:\n{}", shader.key, shaderFileStr);
 #endif
 
     ComPtr<IDxcBlobEncoding> shaderBlob;

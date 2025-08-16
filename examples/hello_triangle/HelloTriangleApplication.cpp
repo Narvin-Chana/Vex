@@ -1,30 +1,6 @@
 #include "HelloTriangleApplication.h"
 
-#include <GLFW/glfw3.h>
-#include <math.h>
-#if defined(_WIN32)
-#define GLFW_EXPOSE_NATIVE_WIN32
-#elif defined(__linux__)
-#define GLFW_EXPOSE_NATIVE_X11
-#endif
-
-#if defined(__linux__)
-// Undefine/define problematic X11 macros
-#ifdef Always
-#undef Always
-#endif
-#ifdef None
-#undef None
-#endif
-#ifdef Success
-#undef Success
-#endif
-#ifndef Bool
-#define Bool bool
-#endif
-#endif
-
-#include <GLFW/glfw3native.h>
+#include <../GLFWIncludes.h>
 
 HelloTriangleApplication::HelloTriangleApplication()
     : ExampleApplication("HelloTriangleApplication")
@@ -41,6 +17,8 @@ HelloTriangleApplication::HelloTriangleApplication()
         .frameBuffering = vex::FrameBuffering::Triple,
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
+
+    SetupShaderErrorHandling();
 
     workingTexture =
         graphics->CreateTexture({ .name = "Working Texture",
@@ -76,55 +54,6 @@ HelloTriangleApplication::HelloTriangleApplication()
                                           .usage = vex::BufferUsage::ReadWriteBuffer | vex::BufferUsage::GenericBuffer,
                                           .memoryLocality = vex::ResourceMemoryLocality::GPUOnly },
                                         vex::ResourceLifetime::Static);
-
-#if defined(_WIN32)
-    // Suggestion of an intrusive (a la Unreal) way to display errors.
-    // The handling of shader compilation errors is user choice.
-    graphics->SetShaderCompilationErrorsCallback(
-        [window = window](const std::vector<std::pair<vex::ShaderKey, std::string>>& errors) -> bool
-        {
-            if (!errors.empty())
-            {
-                std::string totalErrorMessage = "Error compiling shader(s):\n";
-                for (auto& [key, err] : errors)
-                {
-                    totalErrorMessage.append(std::format("Shader: {} - Error: {}\n", key, err));
-                }
-                totalErrorMessage.append("\nDo you want to retry?");
-
-                vex::i32 result = MessageBox(NULL,
-                                             totalErrorMessage.c_str(),
-                                             "Shader Compilation Error",
-                                             MB_ICONERROR | MB_YESNO | MB_DEFBUTTON2);
-                if (result == IDYES)
-                {
-                    return true;
-                }
-                else if (result == IDNO)
-                {
-                    VEX_LOG(vex::Error, "Unable to continue with shader errors. Closing application.");
-                    glfwSetWindowShouldClose(window, true);
-                }
-            }
-
-            return false;
-        });
-#endif
-}
-
-HelloTriangleApplication::~HelloTriangleApplication()
-{
-}
-
-void HelloTriangleApplication::HandleKeyInput(int key, int scancode, int action, int mods)
-{
-    if (action == GLFW_PRESS)
-    {
-        if (key == GLFW_KEY_R)
-        {
-            graphics->RecompileChangedShaders();
-        }
-    }
 }
 
 void HelloTriangleApplication::Run()
@@ -138,9 +67,9 @@ void HelloTriangleApplication::Run()
         graphics->StartFrame();
 
         {
-            float ocillatedColor = static_cast<float>(cos(currentTime) / 2 + 0.5);
-            float invOcillatedColor = 1 - ocillatedColor;
-            float color[4] = { invOcillatedColor, ocillatedColor, invOcillatedColor, 1.0 };
+            float oscillatedColor = static_cast<float>(cos(currentTime) / 2 + 0.5);
+            float invOscillatedColor = 1 - oscillatedColor;
+            float color[4] = { invOscillatedColor, oscillatedColor, invOscillatedColor, 1.0 };
             graphics->UpdateData(colorBuffer, color);
 
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
@@ -154,13 +83,10 @@ void HelloTriangleApplication::Run()
                     .type = vex::ShaderType::ComputeShader
                 },
                 std::initializer_list<vex::ResourceBinding>{
-                    // WARNING: ORDER IS IMPORTANT HERE FOR NOW
-                    // Textures first, then buffers
-                    // Order must match shader declarations
-                    vex::TextureBinding{
-                        .name = "OutputTexture",
-                        .texture = workingTexture,
-                        .usage = vex::TextureBindingUsage::ShaderReadWrite,
+                    vex::BufferBinding{
+                        .name = "ColorBuffer",
+                        .buffer = colorBuffer,
+                        .usage = vex::BufferBindingUsage::ConstantBuffer
                     },
                     vex::BufferBinding{
                         .name = "CommBuffer",
@@ -168,10 +94,10 @@ void HelloTriangleApplication::Run()
                         .usage = vex::BufferBindingUsage::RWStructuredBuffer,
                         .stride = sizeof(float) * 4
                     },
-                    vex::BufferBinding{
-                        .name = "ColorBuffer",
-                        .buffer = colorBuffer,
-                        .usage = vex::BufferBindingUsage::ConstantBuffer
+                    vex::TextureBinding{
+                        .name = "OutputTexture",
+                        .texture = workingTexture,
+                        .usage = vex::TextureBindingUsage::ShaderReadWrite,
                     },
                 },
                 {},
@@ -192,16 +118,16 @@ void HelloTriangleApplication::Run()
                         .texture = finalOutputTexture,
                         .usage = vex::TextureBindingUsage::ShaderReadWrite,
                     },
-                    vex::TextureBinding{
-                        .name = "SourceTexture",
-                        .texture = workingTexture,
-                        .usage = vex::TextureBindingUsage::ShaderRead,
-                    },
                     vex::BufferBinding{
                         .name = "CommBuffer",
                         .buffer = commBuffer,
                         .usage = vex::BufferBindingUsage::StructuredBuffer,
                         .stride = sizeof(float) * 4
+                    },
+                    vex::TextureBinding{
+                        .name = "SourceTexture",
+                        .texture = workingTexture,
+                        .usage = vex::TextureBindingUsage::ShaderRead,
                     },
                 },
                 {},

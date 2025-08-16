@@ -42,11 +42,13 @@ public:
     // Clears a texture, by default will use the texture's ClearColor.
     void ClearTexture(const TextureBinding& binding,
                       TextureUsage::Type clearUsage,
-                      const TextureClearValue* optionalTextureClearValue =
-                          nullptr, // Use ptr instead of optional to allow for fwd declaration of type.
+                      std::optional<TextureClearValue> textureClearValue = std::nullopt,
                       std::optional<std::array<float, 4>> clearRect = std::nullopt);
 
+    // Starts a graphics rendering pass, setting up the graphics pipeline for your specific draw bindings.
+    // Once called you must eventually have a matching EndRendering call.
     void BeginRendering(const DrawResourceBinding& drawBindings);
+    // Marks the end of a graphics rendering pass. Must have previously called BeginRendering.
     void EndRendering();
 
     void Draw(const DrawDescription& drawDesc, const DrawResources& drawResources, u32 vertexCount);
@@ -60,7 +62,7 @@ public:
 
     void Dispatch(const ShaderKey& shader,
                   std::span<const ResourceBinding> resourceBindings,
-                  std::span<const ConstantBinding> constantBindings,
+                  const std::optional<ConstantBinding>& constants,
                   std::array<u32, 3> groupCount);
 
     void Copy(const Texture& source, const Texture& destination);
@@ -97,9 +99,9 @@ private:
     // Used to avoid resetting the same state multiple times which can be costly on certain hardware.
     // In general draws and dispatches are recommended to be grouped by PSO, so this caching can be very efficient
     // versus binding everything each time.
-    std::optional<GraphicsPipelineStateKey> cachedGraphicsPSOKey = std::nullopt;
-    std::optional<ComputePipelineStateKey> cachedComputePSOKey = std::nullopt;
-    std::optional<InputAssembly> cachedInputAssembly = std::nullopt;
+    std::optional<GraphicsPipelineStateKey> cachedGraphicsPSOKey;
+    std::optional<ComputePipelineStateKey> cachedComputePSOKey;
+    std::optional<InputAssembly> cachedInputAssembly;
 
     std::optional<RHIDrawResources> currentDrawResources;
 };

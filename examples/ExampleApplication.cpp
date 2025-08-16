@@ -1,29 +1,7 @@
 #include "ExampleApplication.h"
+#include "GLFWIncludes.h"
 
 #include <functional>
-
-#include <GLFW/glfw3.h>
-#if defined(_WIN32)
-#define GLFW_EXPOSE_NATIVE_WIN32
-#elif defined(__linux__)
-#define GLFW_EXPOSE_NATIVE_X11
-#endif
-#if defined(__linux__)
-// Undefine/define problematic X11 macros
-#ifdef Always
-#undef Always
-#endif
-#ifdef None
-#undef None
-#endif
-#ifdef Success
-#undef Success
-#endif
-#ifndef Bool
-#define Bool bool
-#endif
-#endif
-#include <GLFW/glfw3native.h>
 
 ExampleApplication::ExampleApplication(std::string_view windowName)
 {
@@ -80,6 +58,14 @@ ExampleApplication::~ExampleApplication()
     glfwTerminate();
 }
 
+void ExampleApplication::HandleKeyInput(int key, int scancode, int action, int mods)
+{
+    if (action == GLFW_PRESS && key == GLFW_KEY_R && graphics)
+    {
+        graphics->RecompileChangedShaders();
+    }
+}
+
 void ExampleApplication::OnResize(GLFWwindow* window, uint32_t newWidth, uint32_t newHeight)
 {
     width = newWidth;
@@ -117,4 +103,42 @@ void ExampleApplication::ToggleFullscreen()
                              0);
         windowMode = Windowed;
     }
+}
+
+void ExampleApplication::SetupShaderErrorHandling()
+{
+#if defined(_WIN32)
+    VEX_ASSERT(graphics, "Graphics backend must be defined!");
+    // Suggestion of an intrusive (a la Unreal) way to display errors.
+    // The handling of shader compilation errors is user choice.
+    graphics->SetShaderCompilationErrorsCallback(
+        [window = window](const std::vector<std::pair<vex::ShaderKey, std::string>>& errors) -> bool
+        {
+            if (!errors.empty())
+            {
+                std::string totalErrorMessage = "Error compiling shader(s):\n";
+                for (auto& [key, err] : errors)
+                {
+                    totalErrorMessage.append(std::format("Shader: {} - Error: {}\n", key, err));
+                }
+                totalErrorMessage.append("\nDo you want to retry?");
+
+                vex::i32 result = MessageBox(NULL,
+                                             totalErrorMessage.c_str(),
+                                             "Shader Compilation Error",
+                                             MB_ICONERROR | MB_YESNO | MB_DEFBUTTON2);
+                if (result == IDYES)
+                {
+                    return true;
+                }
+                else if (result == IDNO)
+                {
+                    VEX_LOG(vex::Error, "Unable to continue with shader errors. Closing application.");
+                    glfwSetWindowShouldClose(window, true);
+                }
+            }
+
+            return false;
+        });
+#endif
 }
