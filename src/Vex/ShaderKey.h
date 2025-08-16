@@ -9,6 +9,7 @@
 
 #include <Vex/Formattable.h>
 #include <Vex/Hash.h>
+#include <Vex/Types.h>
 
 namespace vex
 {
