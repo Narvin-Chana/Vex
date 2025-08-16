@@ -71,16 +71,16 @@ public:
 
 // clang-format off
 
-VEX_MAKE_HASHABLE(vex::GraphicsPipelineStateKey, 
-    VEX_HASH_COMBINE(seed, obj.vertexShader);
-    VEX_HASH_COMBINE(seed, obj.pixelShader);
-    VEX_HASH_COMBINE(seed, obj.vertexInputLayout);
-    VEX_HASH_COMBINE(seed, obj.inputAssembly);
-    VEX_HASH_COMBINE(seed, obj.rasterizerState);
-    VEX_HASH_COMBINE(seed, obj.depthStencilState);
-    VEX_HASH_COMBINE(seed, obj.colorBlendState);
-    VEX_HASH_COMBINE(seed, obj.renderTargetState);
-);
+//VEX_MAKE_HASHABLE(vex::GraphicsPipelineStateKey, 
+//    VEX_HASH_COMBINE(seed, obj.vertexShader);
+//    VEX_HASH_COMBINE(seed, obj.pixelShader);
+//    VEX_HASH_COMBINE(seed, obj.vertexInputLayout);
+//    VEX_HASH_COMBINE(seed, obj.inputAssembly);
+//    VEX_HASH_COMBINE(seed, obj.rasterizerState);
+//    VEX_HASH_COMBINE(seed, obj.depthStencilState);
+//    VEX_HASH_COMBINE(seed, obj.colorBlendState);
+//    VEX_HASH_COMBINE(seed, obj.renderTargetState);
+//);
 
 VEX_MAKE_HASHABLE(vex::ComputePipelineStateKey, 
     VEX_HASH_COMBINE(seed, obj.computeShader);
@@ -88,6 +88,10 @@ VEX_MAKE_HASHABLE(vex::ComputePipelineStateKey,
 
 VEX_FORMATTABLE(vex::GraphicsPipelineStateKey, "GraphicsPipelineKey(\n\tVS: \"{}\"\n\tPS: \"{}\"\n\t",
     obj.vertexShader, obj.pixelShader
+);
+
+VEX_FORMATTABLE(vex::ComputePipelineStateKey, "ComputePipelineKey(\n\tCS: \"{}\"\n\t",
+    obj.computeShader
 );
 
 // clang-format on
