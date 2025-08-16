@@ -68,7 +68,7 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
             message(STATUS "  - ${FILE}")
         endforeach()
         
-        add_executable(${EXAMPLE_NAME} ${EXAMPLE_SOURCES} "ExampleApplication.cpp")
+        add_executable(${EXAMPLE_NAME} ${EXAMPLE_SOURCES} "ExampleApplication.h" "ExampleApplication.cpp" "GLFWIncludes.h")
 
         # Setup the runtime dependencies of Vex
         vex_setup_runtime(${EXAMPLE_NAME})
@@ -79,7 +79,7 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
 
         # Link the example
         target_link_libraries(${EXAMPLE_NAME} PRIVATE ${EXAMPLES_COMMON_LIBS})
-        target_include_directories(${EXAMPLE_NAME} PRIVATE "${EXAMPLE_DIR}" "${CMAKE_SOURCE_DIR}/src")
+        target_include_directories(${EXAMPLE_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${EXAMPLE_DIR}" "${CMAKE_SOURCE_DIR}/src")
     endif()
   endif()
 endforeach()

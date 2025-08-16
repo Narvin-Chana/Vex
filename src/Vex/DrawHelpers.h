@@ -24,7 +24,7 @@ struct DrawDescription
 struct DrawResources
 {
     // Local constants bound to the root/push constants of your pass.
-    std::span<const ConstantBinding> constants;
+    std::optional<ConstantBinding> constants;
     // Read-only resources.
     std::span<const ResourceBinding> resourceBindings;
 };

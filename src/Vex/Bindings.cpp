@@ -39,30 +39,6 @@ static bool IsValidHLSLResourceName(const std::string& name)
 }
 } // namespace Bindings_Internal
 
-u32 ConstantBinding::ConcatConstantBindings(std::span<const ConstantBinding> constantBindings,
-                                            std::span<u8> writableRange)
-{
-    const u32 total = std::accumulate(constantBindings.begin(),
-                                      constantBindings.end(),
-                                      0u,
-                                      [](u32 acc, const ConstantBinding& binding) { return acc + binding.size; });
-
-    if (total > writableRange.size())
-    {
-        VEX_LOG(Fatal,
-                "Unable to create local constants buffer, you have surpassed the limit allowed for local constants.");
-    }
-
-    u8 currentIndex = 0;
-    for (const auto& binding : constantBindings)
-    {
-        std::uninitialized_copy_n(static_cast<const u8*>(binding.data), binding.size, &writableRange[currentIndex]);
-        currentIndex += binding.size;
-    }
-
-    return total;
-}
-
 void BufferBinding::ValidateForUse(BufferUsage::Flags validBufferUsageFlags) const
 {
     Validate();
