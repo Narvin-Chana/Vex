@@ -179,6 +179,9 @@ add_library(Vex STATIC
     "src/Vex/ResourceBindingUtils.cpp"
     "src/Vex/MaybeUninitialized.h"
     "src/Vex/NonNullPtr.h"
+    "src/Vex/RayTracing.h"
+    "src/Vex/RayTracing.cpp"
+    "src/Vex/ByteUtils.h"
 )
 
 if(WIN32)

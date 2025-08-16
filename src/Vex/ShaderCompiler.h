@@ -32,6 +32,7 @@ using ComPtr = CComPtr<T>;
 
 #endif
 
+#include <Vex/NonNullPtr.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/ShaderCompilerSettings.h>
 #include <Vex/ShaderKey.h>
@@ -68,7 +69,7 @@ struct ShaderCompiler
     ShaderCompiler& operator=(ShaderCompiler&&) = default;
 
     std::expected<void, std::string> CompileShader(Shader& shader, const ShaderResourceContext& resourceContext);
-    Shader* GetShader(const ShaderKey& key, const ShaderResourceContext& resourceContext);
+    NonNullPtr<Shader> GetShader(const ShaderKey& key, const ShaderResourceContext& resourceContext);
 
     // Checks if the shader's hash is different compared to the last time it was compiled. Returns if the shader is
     // stale or not and the shader's latest hash (which can potentially be the same as the original).

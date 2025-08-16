@@ -19,7 +19,8 @@ public:
     using CleanupVariant = std::variant<MaybeUninitialized<RHITexture>,
                                         MaybeUninitialized<RHIBuffer>,
                                         UniqueHandle<RHIGraphicsPipelineState>,
-                                        UniqueHandle<RHIComputePipelineState>>;
+                                        UniqueHandle<RHIComputePipelineState>,
+                                        UniqueHandle<RHIRayTracingPipelineState>>;
     ResourceCleanup(i8 bufferingCount);
 
     void CleanupResource(CleanupVariant&& resource);

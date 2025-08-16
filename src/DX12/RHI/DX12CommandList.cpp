@@ -111,6 +111,11 @@ void DX12CommandList::SetPipelineState(const RHIComputePipelineState& computePip
     commandList->SetPipelineState(computePipelineState.computePSO.Get());
 }
 
+void DX12CommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTracingPipelineState)
+{
+    commandList->SetPipelineState1(rayTracingPipelineState.stateObject.Get());
+}
+
 void DX12CommandList::SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& descriptorPool)
 {
     ID3D12RootSignature* globalRootSignature = layout.GetRootSignature().Get();
@@ -398,6 +403,29 @@ void DX12CommandList::Dispatch(const std::array<u32, 3>& groupCount)
     case CommandQueueType::Graphics:
     case CommandQueueType::Compute:
         commandList->Dispatch(groupCount[0], groupCount[1], groupCount[2]);
+    case CommandQueueType::Copy:
+    default:
+        break;
+    }
+}
+
+void DX12CommandList::TraceRays(const std::array<u32, 3>& widthHeightDepth,
+                                const RHIRayTracingPipelineState& rayTracingPipelineState)
+{
+    // Attach shader record and tables.
+    D3D12_DISPATCH_RAYS_DESC rayDesc{
+        .Width = widthHeightDepth[0],
+        .Height = widthHeightDepth[1],
+        .Depth = widthHeightDepth[2],
+    };
+
+    rayTracingPipelineState.PrepareDispatchRays(rayDesc);
+
+    switch (type)
+    {
+    case CommandQueueType::Graphics:
+    case CommandQueueType::Compute:
+        commandList->DispatchRays(&rayDesc);
     case CommandQueueType::Copy:
     default:
         break;

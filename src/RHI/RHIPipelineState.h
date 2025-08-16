@@ -3,6 +3,7 @@
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Hash.h>
 #include <Vex/RHIFwd.h>
+#include <Vex/RayTracing.h>
 #include <Vex/Shader.h>
 #include <Vex/ShaderKey.h>
 #include <Vex/Types.h>
@@ -67,14 +68,45 @@ public:
     u32 computeShaderVersion = 0;
 };
 
+using RayTracingPipelineStateKey = RayTracingPassDescription;
+
+class RHIRayTracingPipelineStateInterface
+{
+public:
+    using Key = RayTracingPipelineStateKey;
+
+    RHIRayTracingPipelineStateInterface(const Key& key)
+        : key{ key }
+    {
+    }
+    virtual void Compile(const RayTracingShaderCollection& shaderCollection,
+                         RHIResourceLayout& resourceLayout,
+                         ResourceCleanup& resourceCleanup) = 0;
+    virtual void Cleanup(ResourceCleanup& resourceCleanup) = 0;
+
+    Key key;
+    u32 rootSignatureVersion = 0;
+    u32 rayGenerationShaderVersion = 0;
+    std::vector<u32> rayMissShaderVersions;
+    struct HitGroupVersions
+    {
+        u32 rayClosestHitVersion = 0;
+        std::optional<u32> rayAnyHitVersion;
+        std::optional<u32> rayIntersectionVersion;
+        std::optional<u32> rayCallableVersion;
+    };
+    std::vector<HitGroupVersions> hitGroupVersions;
+    std::vector<u32> rayCallableShaderVersions;
+};
+
 } // namespace vex
 
 // clang-format off
 
-
 VEX_MAKE_HASHABLE(vex::ComputePipelineStateKey, 
     VEX_HASH_COMBINE(seed, obj.computeShader);
 );
+
 
 VEX_FORMATTABLE(vex::GraphicsPipelineStateKey, "GraphicsPipelineKey(\n\tVS: \"{}\"\n\tPS: \"{}\"\n\t",
     obj.vertexShader, obj.pixelShader

@@ -85,6 +85,11 @@ void VkCommandList::SetPipelineState(const RHIComputePipelineState& computePipel
     commandBuffer->bindPipeline(::vk::PipelineBindPoint::eCompute, *computePipelineState.computePipeline);
 }
 
+void VkCommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTracingPipelineState)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
 void VkCommandList::SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& descriptorPool)
 {
     bool hasGlobalConstantsBuffer = layout.currentInternalConstantBuffer.has_value();
@@ -533,6 +538,12 @@ void VkCommandList::Draw(u32 vertexCount)
 void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount)
 {
     commandBuffer->dispatch(groupCount[0], groupCount[1], groupCount[2]);
+}
+
+void VkCommandList::TraceRays(const std::array<u32, 3>& widthHeightDepth,
+                              const RHIRayTracingPipelineState& rayTracingPipelineState)
+{
+    VEX_NOT_YET_IMPLEMENTED();
 }
 
 void VkCommandList::Copy(RHITexture& src, RHITexture& dst)

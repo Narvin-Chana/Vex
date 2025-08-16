@@ -14,6 +14,7 @@
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITexture.h>
+#include <Vex/RayTracing.h>
 #include <Vex/ResourceBindingUtils.h>
 #include <Vex/ShaderResourceContext.h>
 
@@ -107,7 +108,7 @@ CommandContext::CommandContext(GfxBackend* backend, RHICommandList* cmdList)
     , cmdList(cmdList)
 {
     cmdList->Open();
-    cmdList->SetDescriptorPool(*backend->descriptorPool, backend->GetPipelineStateCache().GetResourceLayout());
+    cmdList->SetDescriptorPool(*backend->descriptorPool, backend->psCache.GetResourceLayout());
 }
 
 CommandContext::~CommandContext()
@@ -236,9 +237,9 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
 
     if (!cachedGraphicsPSOKey || graphicsPSOKey != *cachedGraphicsPSOKey)
     {
-        auto pipelineState = backend->GetPipelineStateCache().GetGraphicsPipelineState(
-            graphicsPSOKey,
-            ShaderResourceContext{ rhiTextureBindings, rhiBufferBindings });
+        const RHIGraphicsPipelineState* pipelineState =
+            backend->psCache.GetGraphicsPipelineState(graphicsPSOKey,
+                                                      ShaderResourceContext{ rhiTextureBindings, rhiBufferBindings });
         // No valid PSO means we cannot proceed.
         if (!pipelineState)
         {
@@ -250,7 +251,7 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
     }
 
     // Setup the layout for our pass.
-    RHIResourceLayout& resourceLayout = backend->GetPipelineStateCache().GetResourceLayout();
+    RHIResourceLayout& resourceLayout = backend->psCache.GetResourceLayout();
     resourceLayout.SetLayoutResources(backend->rhi,
                                       backend->resourceCleanup,
                                       drawResources.constants,
@@ -299,8 +300,8 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     if (!cachedComputePSOKey || psoKey != cachedComputePSOKey)
     {
         // Register shader and get Pipeline if exists (if not create it).
-        auto pipelineState =
-            backend->GetPipelineStateCache().GetComputePipelineState(psoKey, { rhiTextureBindings, rhiBufferBindings });
+        const RHIComputePipelineState* pipelineState =
+            backend->psCache.GetComputePipelineState(psoKey, { rhiTextureBindings, rhiBufferBindings });
 
         // Nothing more to do if the PSO is invalid.
         if (!pipelineState)
@@ -312,8 +313,8 @@ void CommandContext::Dispatch(const ShaderKey& shader,
         cachedComputePSOKey = psoKey;
     }
 
-    // Sets the resource layout to use for the dispatch
-    RHIResourceLayout& resourceLayout = backend->GetPipelineStateCache().GetResourceLayout();
+    // Sets the resource layout to use for the dispatch.
+    RHIResourceLayout& resourceLayout = backend->psCache.GetResourceLayout();
     resourceLayout.SetLayoutResources(backend->rhi,
                                       backend->resourceCleanup,
                                       constants,
@@ -331,19 +332,50 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     cmdList->Dispatch(groupCount);
 }
 
-void CommandContext::TraceRays(const ShaderKey& rayGenerationShader, std::array<u32, 3> widthHeightDepth)
+void CommandContext::TraceRays(const RayTracingPassDescription& rayTracingPassDescription,
+                               std::span<const ResourceBinding> resourceBindings,
+                               const std::optional<ConstantBinding>& constants,
+                               std::array<u32, 3> widthHeightDepth)
 {
-    if (rayGenerationShader.type != ShaderType::RayGenerationShader)
+    RayTracingPassDescription::ValidateShaderTypes(rayTracingPassDescription);
+
+    using namespace CommandContext_Internal;
+
+    // Collect all underlying RHI textures.
+    std::vector<RHITextureBinding> rhiTextureBindings;
+    std::vector<RHIBufferBinding> rhiBufferBindings;
+    ResourceBindingUtils::CollectRHIResources(*backend, resourceBindings, rhiTextureBindings, rhiBufferBindings);
+
+    // This code will be greatly simplified when we add caching of transitions until the next GPU operation.
+    // See: https://trello.com/c/kJWhd2iu
+    TransitionAndCopyFromStaging(*cmdList, rhiBufferBindings);
+    TransitionBindings(*cmdList, rhiTextureBindings);
+    TransitionBindings(*cmdList, rhiBufferBindings);
+
+    const RHIRayTracingPipelineState* pipelineState =
+        backend->psCache.GetRayTracingPipelineState(rayTracingPassDescription, {});
+    if (!pipelineState)
     {
-        VEX_LOG(Fatal,
-                "Invalid type passed to TraceRays call for RayGenerationShader: {}",
-                magic_enum::enum_name(rayGenerationShader.type));
+        VEX_LOG(Error, "PSO cache returned an invalid pipeline state, unable to continue dispatch...");
+        return;
     }
+    cmdList->SetPipelineState(*pipelineState);
 
-    auto shader = backend->psCache.GetShaderCompiler().GetShader(rayGenerationShader, {});
+    // Sets the resource layout to use for the ray trace.
+    RHIResourceLayout& resourceLayout = backend->psCache.GetResourceLayout();
+    resourceLayout.SetLayoutResources(backend->rhi,
+                                      backend->resourceCleanup,
+                                      constants,
+                                      rhiTextureBindings,
+                                      rhiBufferBindings,
+                                      *backend->descriptorPool);
 
-    // TODO(https://trello.com/c/N8gRfaLP): Implement RT PSO fetching and the actual API code to dispatch the rays.
-    VEX_NOT_YET_IMPLEMENTED();
+    cmdList->SetLayout(resourceLayout, *backend->descriptorPool);
+
+    // Validate ray trace (vs platform/api constraints)
+    // backend->ValidateTraceRays(widthHeightDepth);
+
+    cmdList->TraceRays(widthHeightDepth, *pipelineState);
 }
 
 void CommandContext::Copy(const Texture& source, const Texture& destination)
