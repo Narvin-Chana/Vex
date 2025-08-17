@@ -12,12 +12,13 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(::vk::DebugUtilsMessageSeverityFlag
                                              void* pUserData);
 
 #if defined(VEX_DEBUG) or defined(VEX_DEVELOPMENT)
+// Only pass Vk types
 template <class T>
 void SetDebugName(::vk::Device device, const T& object, const char* name)
 {
     ::vk::DebugUtilsObjectNameInfoEXT debugNameInfo{
         .objectType = T::objectType,
-        .objectHandle = reinterpret_cast<uint64_t>(T::NativeType(object)),
+        .objectHandle = reinterpret_cast<uint64_t>(typename T::NativeType(object)),
         .pObjectName = name,
     };
     VEX_VK_CHECK << device.setDebugUtilsObjectNameEXT(debugNameInfo);
