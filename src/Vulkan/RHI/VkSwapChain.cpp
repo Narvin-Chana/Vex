@@ -106,6 +106,7 @@ VkSwapChain::VkSwapChain(NonNullPtr<VkGPUContext> ctx,
 void VkSwapChain::Resize(u32 width, u32 height)
 {
     swapchain.reset();
+    supportDetails = GetSwapChainSupportDetails(ctx->physDevice, ctx->surface);
     InitSwapchainResource(width, height);
 }
 

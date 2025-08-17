@@ -69,8 +69,8 @@ void ExampleApplication::HandleKeyInput(int key, int scancode, int action, int m
 
 void ExampleApplication::OnResize(GLFWwindow* window, uint32_t newWidth, uint32_t newHeight)
 {
-    width = newWidth;
-    height = newHeight;
+    width = static_cast<int32_t>(newWidth);
+    height = static_cast<int32_t>(newHeight);
     if (graphics)
     {
         graphics->OnWindowResized(newWidth, newHeight);
