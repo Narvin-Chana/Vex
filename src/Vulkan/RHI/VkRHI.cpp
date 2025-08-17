@@ -178,7 +178,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     u32 i = 0;
     for (const auto& property : queueFamilies)
     {
-        bool presentSupported = VEX_VK_CHECK <<= physDevice.getSurfaceSupportKHR(static_cast<uint32_t>(i), *surface);
+        bool presentSupported = VEX_VK_CHECK <<= physDevice.getSurfaceSupportKHR(i, *surface);
 
         if (graphicsQueueFamily == -1 && presentSupported && property.queueFlags & ::vk::QueueFlagBits::eGraphics)
         {
@@ -290,6 +290,8 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
         .timelineSemaphore = createTimelineSemaphore(),
     };
 
+    SetDebugName(*device, device->getQueue(graphicsQueueFamily, 0), "Graphics Queue");
+
     if (computeQueueFamily != -1)
     {
         commandQueues[CommandQueueTypes::Compute] = VkCommandQueue{
@@ -299,6 +301,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
             .nextSignalValue = 1,
             .timelineSemaphore = createTimelineSemaphore(),
         };
+        SetDebugName(*device, device->getQueue(computeQueueFamily, 0), "Compute Queue");
     }
 
     if (copyQueueFamily != -1)
@@ -310,6 +313,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
             .nextSignalValue = 1,
             .timelineSemaphore = createTimelineSemaphore(),
         };
+        SetDebugName(*device, device->getQueue(copyQueueFamily, 0), "Copy Queue");
     }
 
     PSOCache = VEX_VK_CHECK <<= device->createPipelineCacheUnique({});
