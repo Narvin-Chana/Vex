@@ -28,11 +28,11 @@ private:
 
     ComPtr<DX12Device> device;
 
-    DX12DescriptorHeap<HeapType::CBV_SRV_UAV, HeapFlags::SHADER_VISIBLE> gpuHeap;
+    DX12DescriptorHeap<DX12HeapType::CBV_SRV_UAV, HeapFlags::SHADER_VISIBLE> gpuHeap;
 
     // Used to store a null descriptor, useful for avoiding invalid texture usage (and avoiding gpu hangs) if a shader
     // ever tries to access an invalid resource.
-    DX12DescriptorHeap<HeapType::CBV_SRV_UAV, HeapFlags::NONE> nullHeap;
+    DX12DescriptorHeap<DX12HeapType::CBV_SRV_UAV, HeapFlags::NONE> nullHeap;
 
     friend class DX12CommandList;
 };

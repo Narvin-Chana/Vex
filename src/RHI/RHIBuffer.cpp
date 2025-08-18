@@ -1,5 +1,7 @@
 #include "RHIBuffer.h"
 
+#include <utility>
+
 #include <Vex/RHIImpl/RHIBuffer.h>
 
 namespace vex
@@ -28,6 +30,7 @@ MappedMemory::~MappedMemory()
 void MappedMemory::SetData(std::span<const u8> inData)
 {
     VEX_ASSERT(data.size() >= inData.size());
+    // This function is defined in <utility> which is more lightweight than <ranges>/<algorithm>.
     std::ranges::copy(inData, data.begin());
 }
 

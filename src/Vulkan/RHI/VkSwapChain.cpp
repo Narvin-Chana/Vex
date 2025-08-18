@@ -1,5 +1,8 @@
 #include "VkSwapChain.h"
 
+#include <algorithm>
+#include <utility>
+
 #include <Vex/PlatformWindow.h>
 
 #include <Vulkan/RHI/VkTexture.h>
@@ -41,14 +44,14 @@ static ::vk::SurfaceFormatKHR GetBestSurfaceFormat(const VkSwapChainSupportDetai
     return {};
 }
 
-// currently looks for mailbox which allows to always take the most recent image
-// fallsback on FIFO
-// if VSync is off, take immediate mode
+// Looks for mailbox which allows to always take the most recent image. Falls back to FIFO. If VSync is off, we instead
+// take immediate mode.
 static ::vk::PresentModeKHR GetBestPresentMode(const VkSwapChainSupportDetails& details, bool useVSync)
 {
     if (useVSync)
         return ::vk::PresentModeKHR::eImmediate;
 
+    // Included in <utility>, which is more light-weight versus <algorithm>/<ranges>.
     auto it = std::ranges::find(details.presentModes, ::vk::PresentModeKHR::eMailbox);
     return it != details.presentModes.end() ? *it : ::vk::PresentModeKHR::eFifo;
 }
@@ -98,6 +101,7 @@ VkSwapChain::VkSwapChain(NonNullPtr<VkGPUContext> ctx,
                    .pNext = &createInfo,
                });
     };
+    // Requires including the heavy <algorithm>
     std::ranges::generate_n(std::back_inserter(backbufferAcquisition), requestedImageCount, BinarySemaphoreCreator);
     std::ranges::generate_n(std::back_inserter(presentSemaphore), requestedImageCount, BinarySemaphoreCreator);
 }

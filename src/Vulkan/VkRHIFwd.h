@@ -4,6 +4,7 @@
 namespace vex::vk
 {
 
+class VkAllocator;
 class VkCommandList;
 class VkCommandPool;
 class VkDescriptorPool;
@@ -23,6 +24,7 @@ namespace vex
 // Vulkan limit is a max of 128, but could be potentially less depending on the device.
 static constexpr std::size_t MaxTheoreticalLocalConstantsByteSize = 128;
 
+using RHIAllocator = vk::VkAllocator;
 using RHICommandList = vk::VkCommandList;
 using RHICommandPool = vk::VkCommandPool;
 using RHIDescriptorPool = vk::VkDescriptorPool;

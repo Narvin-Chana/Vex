@@ -9,7 +9,7 @@
 namespace vex::dx12
 {
 
-enum class HeapType : u8
+enum class DX12HeapType : u8
 {
     CBV_SRV_UAV = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
     SAMPLER = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
@@ -23,11 +23,11 @@ enum class HeapFlags : u8
     SHADER_VISIBLE = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
 };
 
-template <HeapType Type, HeapFlags Flags = HeapFlags::NONE>
+template <DX12HeapType Type, HeapFlags Flags = HeapFlags::NONE>
 class DX12DescriptorHeap
 {
     using enum HeapFlags;
-    using enum HeapType;
+    using enum DX12HeapType;
 
 public:
     DX12DescriptorHeap() = default;

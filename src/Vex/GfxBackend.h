@@ -13,6 +13,7 @@
 #include <Vex/PlatformWindow.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/RHIImpl/RHI.h>
+#include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/Resource.h>
@@ -150,6 +151,8 @@ private:
 
     UniqueHandle<RHISwapChain> swapChain;
     std::vector<Texture> backBuffers;
+
+    MaybeUninitialized<RHIAllocator> allocator;
 
     // Converts from the Handle to the actual underlying RHI resource.
     FreeList<RHITexture, TextureHandle> textureRegistry;

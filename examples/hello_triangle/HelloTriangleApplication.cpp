@@ -72,8 +72,8 @@ void HelloTriangleApplication::Run()
             float color[4] = { invOscillatedColor, oscillatedColor, invOscillatedColor, 1.0 };
             graphics->UpdateData(colorBuffer, color);
 
-            // Debug to test allocations
-#define VEX_TEST_ALLOCS 1
+// Debug to test allocations
+#define VEX_TEST_ALLOCS 0
 #if VEX_TEST_ALLOCS
             {
                 std::vector<vex::Texture> textures;

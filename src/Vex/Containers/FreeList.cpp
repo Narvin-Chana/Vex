@@ -17,6 +17,11 @@ FreeListAllocator::FreeListAllocator(u32 size)
 
 u32 FreeListAllocator::Allocate()
 {
+    if (freeIndices.empty())
+    {
+        Resize(std::max<u32>(size * 2, 1));
+    }
+
     auto idx = freeIndices.back();
     freeIndices.pop_back();
     return idx;
@@ -25,6 +30,8 @@ u32 FreeListAllocator::Allocate()
 void FreeListAllocator::Deallocate(u32 index)
 {
     freeIndices.push_back(index);
+    // TODO(https://trello.com/c/6zFzIeVc): investigate whether a quicksort code snippet exists online, to avoid having
+    // to include <algorithm> just for it. All current uses of <algorithm> in Vex are only for sorting purposes.
     std::sort(freeIndices.begin(), freeIndices.end(), std::greater{});
 }
 
@@ -35,23 +42,18 @@ void FreeListAllocator::Resize(u32 newSize)
         return;
     }
 
-    u32 indicesPreviousSize = static_cast<u32>(freeIndices.size());
+    u32 numNewIndices = newSize - size;
+    freeIndices.reserve(freeIndices.size() + numNewIndices);
 
-    // We only support resizing up!
-    freeIndices.resize(indicesPreviousSize + newSize - size);
-
-    u32 idx = newSize - 1;
-    u32 value = newSize - size;
-    for (u32& handle : freeIndices)
+    // Add new indices
+    for (u32 i = size; i < newSize; ++i)
     {
-        if (idx == indicesPreviousSize - 1)
-        {
-            break;
-        }
-        handle = value;
-        idx--;
-        value--;
+        freeIndices.push_back(i);
     }
+
+    // Re-sort to maintain largest-to-smallest order.
+    std::sort(freeIndices.begin(), freeIndices.end(), std::greater{});
+
     size = newSize;
 }
 

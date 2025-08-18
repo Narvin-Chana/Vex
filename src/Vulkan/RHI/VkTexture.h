@@ -86,6 +86,7 @@ public:
     virtual RHITextureState::Type GetClearTextureState() override;
 
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
+    virtual void FreeAllocation(RHIAllocator& allocator) override;
 
     [[nodiscard]] ::vk::ImageLayout GetLayout() const
     {

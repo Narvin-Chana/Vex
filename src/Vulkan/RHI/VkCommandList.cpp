@@ -1,5 +1,7 @@
 ﻿#include "VkCommandList.h"
 
+#include <algorithm>
+
 #include <Vex/Bindings.h>
 #include <Vex/DrawHelpers.h>
 #include <Vex/RHIBindings.h>
@@ -468,6 +470,8 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
     }
 
     std::vector<::vk::RenderingAttachmentInfo> colorAttachmentsInfo(resources.renderTargets.size());
+
+    // Requires including the heavy <algorithm>
     std::ranges::transform(
         resources.renderTargets,
         colorAttachmentsInfo.begin(),

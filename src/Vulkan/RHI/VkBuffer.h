@@ -34,6 +34,7 @@ public:
                                                    u32 stride,
                                                    RHIDescriptorPool& descriptorPool) override;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
+    virtual void FreeAllocation(RHIAllocator& allocator) override;
 
     ::vk::Buffer GetNativeBuffer();
 

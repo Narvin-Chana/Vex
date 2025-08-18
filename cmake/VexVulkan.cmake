@@ -36,6 +36,8 @@ function(setup_vulkan_backend TARGET)
         "src/Vulkan/RHI/VkBuffer.cpp"
         "src/Vulkan/RHI/VkGraphicsPipeline.h"
         "src/Vulkan/RHI/VkGraphicsPipeline.cpp"
+        "src/Vulkan/RHI/VkAllocator.h"
+        "src/Vulkan/RHI/VkAllocator.cpp"
         # Vulkan API
         "src/Vulkan/VkFormats.h" 
         "src/Vulkan/VkFeatureChecker.h"
@@ -49,7 +51,7 @@ function(setup_vulkan_backend TARGET)
         "src/Vulkan/VkCommandQueue.h"
         "src/Vulkan/VkGPUContext.h"
         "src/Vulkan/VkMemory.h"
-    )
+     )
 
     # Add Vulkan sources to target
     target_sources(${TARGET} PRIVATE ${VEX_VULKAN_SOURCES})
