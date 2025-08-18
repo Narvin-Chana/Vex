@@ -11,7 +11,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(::vk::DebugUtilsMessageSeverityFlag
                                              const ::vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData,
                                              void* pUserData);
 
-#if defined(VEX_DEBUG) or defined(VEX_DEVELOPMENT)
+#if !VEX_SHIPPING
 // Only pass Vk types
 template <class T>
 void SetDebugName(::vk::Device device, const T& object, const char* name)
