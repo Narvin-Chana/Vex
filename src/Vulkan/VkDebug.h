@@ -24,6 +24,7 @@ void SetDebugName(::vk::Device device, const T& object, const char* name)
     VEX_VK_CHECK << device.setDebugUtilsObjectNameEXT(debugNameInfo);
 }
 #else
+template <class T>
 void SetDebugName(::vk::Device device, const T& object, const char* name) {};
 #endif
 
