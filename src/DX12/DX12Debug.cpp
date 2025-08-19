@@ -136,6 +136,7 @@ void InitializeDebugLayer(bool enableGPUDebugLayer, bool enableGPUBasedValidatio
         debugInterface->EnableDebugLayer();
     }
 
+    debugInterface->SetEnableAutoName(true);
     debugInterface->SetEnableGPUBasedValidation(enableGPUBasedValidation);
     debugInterface->SetEnableSynchronizedCommandQueueValidation(enableGPUBasedValidation);
 }

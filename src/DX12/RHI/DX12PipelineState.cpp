@@ -105,6 +105,9 @@ void DX12ComputePipelineState::Compile(const Shader& computeShader, RHIResourceL
         .Flags = D3D12_PIPELINE_STATE_FLAG_NONE,
     };
     chk << device->CreateComputePipelineState(&desc, IID_PPV_ARGS(&computePSO));
+
+    computeShaderVersion = computeShader.version;
+    rootSignatureVersion = resourceLayout.version;
 }
 
 void DX12ComputePipelineState::Cleanup(ResourceCleanup& resourceCleanup)
