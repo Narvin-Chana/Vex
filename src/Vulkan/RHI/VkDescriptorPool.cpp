@@ -5,6 +5,7 @@
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/UniqueHandle.h>
 
+#include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkGPUContext.h>
 
@@ -109,6 +110,8 @@ VkDescriptorPool::VkDescriptorPool(NonNullPtr<VkGPUContext> ctx)
             ctx->device.allocateDescriptorSetsUnique(descriptorSetAllocateInfo);
 
         bindlessSet = std::move(descSets[0]);
+
+        SetDebugName(ctx->device, *bindlessSet, "Bindless Descriptor Set");
     }
 
     // TODO: The pool should be split into two sections, one for static descriptors (aka resources that we load in once

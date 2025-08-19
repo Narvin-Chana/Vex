@@ -3,7 +3,6 @@
 #include <Vex/PlatformWindow.h>
 
 #include <Vulkan/RHI/VkTexture.h>
-#include <Vulkan/VkCommandQueue.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkFormats.h>
 #include <Vulkan/VkGPUContext.h>
@@ -135,7 +134,7 @@ RHITexture VkSwapChain::CreateBackBuffer(u8 backBufferIndex)
                              .format = VulkanToTextureFormat(surfaceFormat.format),
                              .usage = TextureUsage::RenderTarget | TextureUsage::ShaderRead };
 
-    return VkTexture(ctx, std::move(desc), backbufferImages[backBufferIndex]);
+    return { ctx, std::move(desc), backbufferImages[backBufferIndex] };
 }
 
 void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
