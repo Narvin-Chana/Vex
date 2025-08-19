@@ -48,7 +48,7 @@ struct BufferBinding
     // Optional: Stride of the buffer when using StructuredBuffer usage
     u32 stride = 0;
 
-    void ValidateForUse(BufferUsage::Flags validBufferUsageFlags) const;
+    void ValidateForShaderUse(BufferUsage::Flags validBufferUsageFlags) const;
     void Validate() const;
 };
 
@@ -59,7 +59,7 @@ struct TextureBinding
     std::string name;
     // The texture to bind
     Texture texture;
-    TextureBindingUsage usage = TextureBindingUsage::Invalid;
+    TextureBindingUsage usage = TextureBindingUsage::None;
     TextureBindingFlags::Flags flags = TextureBindingFlags::None;
 
     u32 mipBias = 0;
@@ -70,7 +70,7 @@ struct TextureBinding
     // 0 means to use every slice.
     u32 sliceCount = 0;
 
-    void ValidateForUse(TextureUsage::Flags validTextureUsageFlags) const;
+    void ValidateForShaderUse(TextureUsage::Flags validTextureUsageFlags) const;
     void Validate() const;
 };
 

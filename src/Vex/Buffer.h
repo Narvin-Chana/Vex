@@ -58,7 +58,7 @@ inline bool IsBindingUsageCompatibleWithBufferUsage(BufferUsage::Flags usages, B
         return usages & BufferUsage::ReadWriteBuffer;
     }
 
-    return false;
+    return true;
 }
 
 struct BufferDescription

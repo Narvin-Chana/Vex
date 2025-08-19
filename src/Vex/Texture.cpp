@@ -44,10 +44,10 @@ TextureFormat GetTextureFormat(const TextureBinding& binding)
 
 void ValidateTextureDescription(const TextureDescription& description)
 {
-    if (FormatIsDepthStencilCompatible(description.format) && (description.usage & TextureUsage::DepthStencil))
+    if (FormatIsDepthStencilCompatible(description.format) && !(description.usage & TextureUsage::DepthStencil))
     {
         VEX_LOG(Fatal,
-                "Invalid Texture description for texture \"{}\": A texture that has a DepthStencil usage must has a "
+                "Invalid Texture description for texture \"{}\": A texture that has a DepthStencil usage must have a "
                 "format that supports it",
                 description.name);
     }

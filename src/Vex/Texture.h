@@ -41,9 +41,9 @@ enum class TextureViewType : u8
 
 enum class TextureBindingUsage : u8
 {
+    None = 0,
     ShaderRead = TextureUsage::ShaderRead,
     ShaderReadWrite = TextureUsage::ShaderReadWrite,
-    Invalid = 0xFF
 };
 
 struct ResourceBinding;
@@ -118,7 +118,7 @@ inline bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags 
         return usages & TextureUsage::ShaderReadWrite;
     }
 
-    return false;
+    return true;
 }
 
 } // namespace vex
