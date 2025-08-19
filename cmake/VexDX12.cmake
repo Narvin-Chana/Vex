@@ -10,10 +10,10 @@ function(setup_dx12_backend TARGET)
 
     # Download the NuGet package if not already downloaded
     if(NOT EXISTS "${AGILITY_SDK_DIR}/build")
-        message(STATUS "Downloading DX12 Agility SDK 1.${DX_AGILITY_VERSION}.0...")
+        message(STATUS "Downloading DX12 Agility SDK 1.${DX_AGILITY_VERSION}.1...")
 
         file(DOWNLOAD
-            "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.${DX_AGILITY_VERSION}.0"
+            "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.${DX_AGILITY_VERSION}.1"
             "${AGILITY_SDK_NUPKG}"
         )
 
