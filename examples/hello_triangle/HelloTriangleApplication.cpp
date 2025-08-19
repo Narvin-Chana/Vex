@@ -72,6 +72,32 @@ void HelloTriangleApplication::Run()
             float color[4] = { invOscillatedColor, oscillatedColor, invOscillatedColor, 1.0 };
             graphics->UpdateData(colorBuffer, color);
 
+            // Debug to test allocations
+#define VEX_TEST_ALLOCS 1
+#if VEX_TEST_ALLOCS
+            {
+                std::vector<vex::Texture> textures;
+                for (int i = 0; i < 100; i++)
+                {
+                    textures.push_back(graphics->CreateTexture(
+                        { .name = std::format("DebugAllocTexture_{}", i),
+                          .type = vex::TextureType::Texture2D,
+                          .width = DefaultWidth,
+                          .height = DefaultHeight,
+                          .depthOrArraySize = 1,
+                          .mips = 1,
+                          .format = vex::TextureFormat::RGBA8_UNORM,
+                          .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
+                        vex::ResourceLifetime::Static));
+                }
+
+                for (int i = 0; i < 100; i++)
+                {
+                    graphics->DestroyTexture(textures[i]);
+                }
+            }
+#endif // VEX_TEST_ALLOCS
+
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
 
             // clang-format off

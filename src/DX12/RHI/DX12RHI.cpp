@@ -51,6 +51,9 @@ DX12RHI::DX12RHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLa
 
 DX12RHI::~DX12RHI()
 {
+    // Must be done before removing the message callback.
+    liveObjectsReporter.reset();
+
     CleanupDebugMessageCallback(device);
 }
 
@@ -245,8 +248,7 @@ DX12RHI::LiveObjectsReporter::~LiveObjectsReporter()
     // Output all live (potentially leaked) objects to the debug console
     ComPtr<IDXGIDebug1> dxgiDebug = nullptr;
     chk << DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug));
-    dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL,
-                                 DXGI_DEBUG_RLO_FLAGS(DXGI_DEBUG_RLO_DETAIL | DXGI_DEBUG_RLO_IGNORE_INTERNAL));
+    dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
 }
 
 } // namespace vex::dx12
