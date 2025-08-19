@@ -372,7 +372,7 @@ void VkRHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args, s
     defines.emplace_back(L"VEX_VULKAN");
 }
 
-void VkRHI::AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex, RHITexture& currentBackbuffer)
+u32 VkRHI::AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex)
 {
     // Handle frames in flight - wait for this frame slot to be available
     auto& cmdQueue = commandQueues[CommandQueueType::Graphics];
@@ -407,14 +407,15 @@ void VkRHI::AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex, RHI
                                            &swapChain.currentBackbufferId);
     if (res == ::vk::Result::eErrorOutOfDateKHR)
     {
-        swapChain.Resize(swapChain.width, swapChain.height);
+        VEX_LOG(Fatal,
+                "Swapchain was OutOfDate which should never happen. "
+                "It should have been resized with the application window")
         res = ::vk::Result::eSuccess;
     }
 
     VEX_VK_CHECK << res;
 
-    // Transition to eUnknown
-    currentBackbuffer.SetCurrentState(RHITextureState::Common);
+    return swapChain.currentBackbufferId;
 }
 
 void VkRHI::SubmitAndPresent(std::span<RHICommandList*> commandLists,
@@ -524,7 +525,9 @@ void VkRHI::SubmitAndPresent(std::span<RHICommandList*> commandLists,
     auto res = commandQueues[CommandQueueType::Graphics].queue.presentKHR(presentInfo);
     if (res == ::vk::Result::eErrorOutOfDateKHR)
     {
-        swapChain.Resize(swapChain.width, swapChain.height);
+        VEX_LOG(Fatal,
+                "Swapchain was OutOfDate which should never happen. "
+                "It should have been resized with the application window")
         res = ::vk::Result::eSuccess;
     }
 

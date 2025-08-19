@@ -43,7 +43,7 @@ struct RHIBase
     virtual void ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
                                                  std::vector<ShaderDefine>& defines) = 0;
 
-    virtual void AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex, RHITexture& currentBackbuffer) = 0;
+    virtual u32 AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex) = 0;
     virtual void SubmitAndPresent(std::span<RHICommandList*> commandLists,
                                   RHISwapChain& swapChain,
                                   u32 currentFrameIndex,

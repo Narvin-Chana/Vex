@@ -113,7 +113,11 @@ GfxBackend::~GfxBackend()
 
 void GfxBackend::StartFrame()
 {
-    rhi.AcquireNextFrame(*swapChain, currentFrameIndex, GetRHITexture(GetCurrentBackBuffer().handle));
+    currentFrameIndex = rhi.AcquireNextFrame(*swapChain, currentFrameIndex);
+
+    // We cannot guarantee that the framebuffer is in the same state it was before.
+    // Therefore we set it to Common to make sure it's transitioned properly next time its used
+    GetRHITexture(GetCurrentBackBuffer().handle).SetCurrentState(RHITextureState::Common);
 
     // Flush all resources that were queued up for deletion.
     resourceCleanup.FlushResources(1, *descriptorPool);
