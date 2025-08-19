@@ -5,6 +5,7 @@
 
 #include <Vulkan/RHI/VkCommandPool.h>
 #include <Vulkan/RHI/VkDescriptorPool.h>
+#include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkFormats.h>
 #include <Vulkan/VkGPUContext.h>
@@ -74,6 +75,7 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescri
 {
     description = std::move(inDescription);
     currentState = RHITextureState::Common;
+    SetDebugName(ctx->device, backbufferImage, description.name.c_str());
 }
 
 VkTexture::VkTexture(const NonNullPtr<VkGPUContext> ctx,
@@ -84,6 +86,7 @@ VkTexture::VkTexture(const NonNullPtr<VkGPUContext> ctx,
     , image{ std::move(rawImage) }
 {
     description = inDescription;
+    SetDebugName(ctx->device, *rawImage, description.name.c_str());
 }
 
 VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescription, ::vk::UniqueImage rawImage)
@@ -92,6 +95,7 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescri
     , image{ std::move(rawImage) }
 {
     description = std::move(inDescription);
+    SetDebugName(ctx->device, *rawImage, description.name.c_str());
 }
 
 VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescription)
@@ -291,6 +295,9 @@ void VkTexture::CreateImage()
     };
     memory = VEX_VK_CHECK <<= ctx->device.allocateMemoryUnique(allocateInfo);
     VEX_VK_CHECK << ctx->device.bindImageMemory(*imageTmp, *memory, 0);
+
+    SetDebugName(ctx->device, imageTmp.get(), description.name.c_str());
+    SetDebugName(ctx->device, *memory, std::format("{}_Memory", description.name).c_str());
 
     image = std::move(imageTmp);
 }

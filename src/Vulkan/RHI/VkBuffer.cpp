@@ -5,6 +5,7 @@
 #include <Vex/Buffer.h>
 
 #include <Vulkan/VkCommandQueue.h>
+#include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkGPUContext.h>
 #include <Vulkan/VkMemory.h>
@@ -87,6 +88,9 @@ VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, const BufferDescription& desc)
           .memoryTypeIndex = GetBestMemoryType(ctx->physDevice, reqs.memoryTypeBits, memoryProps) });
 
     VEX_VK_CHECK << ctx->device.bindBufferMemory(*buffer, *memory, 0);
+
+    SetDebugName(ctx->device, *buffer, desc.name.c_str());
+    SetDebugName(ctx->device, *memory, std::format("{}_Memory", desc.name).c_str());
 }
 
 BindlessHandle VkBuffer::GetOrCreateBindlessView(BufferBindingUsage usage,
