@@ -36,7 +36,6 @@ public:
     ~RHITextureBase() = default;
 
     virtual BindlessHandle GetOrCreateBindlessView(const TextureBinding& binding,
-                                                   TextureUsage::Type usage,
                                                    RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeAllocation(RHIAllocator& allocator) = 0;

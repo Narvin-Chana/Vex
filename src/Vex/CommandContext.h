@@ -41,7 +41,6 @@ public:
 
     // Clears a texture, by default will use the texture's ClearColor.
     void ClearTexture(const TextureBinding& binding,
-                      TextureUsage::Type clearUsage,
                       std::optional<TextureClearValue> textureClearValue = std::nullopt,
                       std::optional<std::array<float, 4>> clearRect = std::nullopt);
 

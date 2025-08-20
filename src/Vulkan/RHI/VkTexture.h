@@ -22,7 +22,7 @@ struct VkTextureViewDesc
 {
     TextureViewType viewType = TextureViewType::Texture2D;
     TextureFormat format = TextureFormat::UNKNOWN;
-    TextureUsage::Flags usage = TextureUsage::None;
+    TextureUsage::Type usage = TextureUsage::None;
 
     u32 mipBias = 0;
     u32 mipCount = 1;
@@ -78,7 +78,6 @@ public:
     }
 
     virtual BindlessHandle GetOrCreateBindlessView(const TextureBinding& binding,
-                                                   TextureUsage::Type usage,
                                                    RHIDescriptorPool& descriptorPool) override;
 
     ::vk::ImageView GetOrCreateImageView(const TextureBinding& binding, TextureUsage::Type usage);
@@ -98,6 +97,7 @@ public:
         BindlessHandle handle = GInvalidBindlessHandle;
         ::vk::UniqueImageView view;
     };
+    // TODO: could potentially combine these?
     std::unordered_map<VkTextureViewDesc, CacheEntry> bindlessCache;
     std::unordered_map<VkTextureViewDesc, ::vk::UniqueImageView> viewCache;
 

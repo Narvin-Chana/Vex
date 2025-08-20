@@ -130,14 +130,12 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescri
     return returnVal;
 }
 
-BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
-                                                  TextureUsage::Type usage,
-                                                  RHIDescriptorPool& descriptorPool)
+BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding, RHIDescriptorPool& descriptorPool)
 {
     VkTextureViewDesc view{
         .viewType = TextureUtil::GetTextureViewType(binding),
         .format = TextureUtil::GetTextureFormat(binding),
-        .usage = usage,
+        .usage = static_cast<TextureUsage::Type>(binding.usage),
         .mipBias = binding.mipBias,
         .mipCount = (binding.mipCount == 0) ? description.mips : binding.mipCount,
         .startSlice = binding.startSlice,

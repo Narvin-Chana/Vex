@@ -83,7 +83,7 @@ public:
     void DestroyBuffer(const Buffer& buffer);
 
     // Allows users to fetch the bindless handles for a texture binding
-    BindlessHandle GetTextureBindlessHandle(const TextureBinding& bindlessResource, TextureUsage::Type usage);
+    BindlessHandle GetTextureBindlessHandle(const TextureBinding& bindlessResource);
     // Allows users to fetch the bindless handles for a buffer binding
     BindlessHandle GetBufferBindlessHandle(const BufferBinding& bindlessResource);
 

@@ -8,8 +8,8 @@ namespace vex
 
 enum class ResourceLifetime : u8
 {
-    Static,  // Lives across many frames.
-    Dynamic, // Valid only for the current frame.
+    Static,  // Lives for many frames.
+    Dynamic, // Is valid only for the current frame.
 };
 
 enum class ResourceMemoryLocality : u8

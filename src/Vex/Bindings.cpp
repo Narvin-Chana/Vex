@@ -39,9 +39,16 @@ static bool IsValidHLSLResourceName(const std::string& name)
 }
 } // namespace Bindings_Internal
 
-void BufferBinding::ValidateForUse(BufferUsage::Flags validBufferUsageFlags) const
+void BufferBinding::ValidateForShaderUse(BufferUsage::Flags validBufferUsageFlags) const
 {
     Validate();
+
+    if (!Bindings_Internal::IsValidHLSLResourceName(name))
+    {
+        VEX_LOG(Fatal,
+                "Invalid binding for buffer \"{}\": You must specify a non-empty name that is valid for HLSL usage.",
+                buffer.description.name);
+    }
 
     if (!(buffer.description.usage & validBufferUsageFlags))
     {
@@ -54,11 +61,12 @@ void BufferBinding::ValidateForUse(BufferUsage::Flags validBufferUsageFlags) con
 
 void BufferBinding::Validate() const
 {
-    if (!Bindings_Internal::IsValidHLSLResourceName(name))
+    if (!IsBindingUsageCompatibleWithBufferUsage(buffer.description.usage, usage))
     {
         VEX_LOG(Fatal,
-                "Invalid binding for buffer \"{}\": You must specify a non-empty name that is valid for HLSL usage.",
-                buffer.description.name);
+                "Invalid binding for resource \"{}\": Binding usage must be compatible with buffer description "
+                "usage.",
+                name);
     }
 
     if (usage == BufferBindingUsage::Invalid)
@@ -68,19 +76,18 @@ void BufferBinding::Validate() const
                 "be invalid",
                 name);
     }
-
-    if (!IsBindingUsageCompatibleWithBufferUsage(buffer.description.usage, usage))
-    {
-        VEX_LOG(Fatal,
-                "Invalid binding for resource \"{}\": Binding usage must be compatible with buffer description "
-                "usage.",
-                name);
-    }
 }
 
-void TextureBinding::ValidateForUse(TextureUsage::Flags validTextureUsageFlags) const
+void TextureBinding::ValidateForShaderUse(TextureUsage::Flags validTextureUsageFlags) const
 {
     Validate();
+
+    if (!Bindings_Internal::IsValidHLSLResourceName(name))
+    {
+        VEX_LOG(Fatal,
+                "Invalid binding for texture \"{}\": You must specify a non-empty name that is valid for HLSL usage.",
+                texture.description.name);
+    }
 
     if (!(texture.description.usage & validTextureUsageFlags))
     {
@@ -98,14 +105,7 @@ void TextureBinding::ValidateForUse(TextureUsage::Flags validTextureUsageFlags) 
 }
 void TextureBinding::Validate() const
 {
-    if (!Bindings_Internal::IsValidHLSLResourceName(name))
-    {
-        VEX_LOG(Fatal,
-                "Invalid binding for texture \"{}\": You must specify a non-empty name that is valid for HLSL usage.",
-                texture.description.name);
-    }
-
-    if (usage == TextureBindingUsage::Invalid)
+    if (usage == TextureBindingUsage::None)
     {
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": The binding's usage must be set to something and therefore not "
@@ -188,12 +188,12 @@ void DrawResourceBinding::Validate() const
 {
     for (const auto& binding : renderTargets)
     {
-        binding.ValidateForUse(TextureUsage::RenderTarget);
+        binding.ValidateForShaderUse(TextureUsage::RenderTarget);
     }
 
     if (depthStencil)
     {
-        depthStencil->ValidateForUse(TextureUsage::DepthStencil);
+        depthStencil->ValidateForShaderUse(TextureUsage::DepthStencil);
     }
 }
 

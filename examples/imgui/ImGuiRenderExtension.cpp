@@ -1,6 +1,6 @@
 #include "ImGuiRenderExtension.h"
-#include "VexImgui.h"
 
+#include <VexImgui.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 
@@ -63,9 +63,8 @@ void ImGuiRenderExtension::OnFrameEnd()
         vex::CommandContext ctx = graphics.BeginScopedCommandContext(vex::CommandQueueType::Graphics);
 
         vex::TextureBinding backBufferBinding = { .texture = graphics.GetCurrentBackBuffer() };
-
         vex::TextureClearValue clearValue{ .flags = vex::TextureClear::ClearColor, .color = { 0, 0, 0, 0 } };
-        ctx.ClearTexture(backBufferBinding, vex::TextureUsage::RenderTarget, clearValue);
+        ctx.ClearTexture(backBufferBinding, clearValue);
 
         // ImGui renders to the texture that is currently set as render target.
         // We have to manually set the render target we want ImGui to render to (in this case we want to render

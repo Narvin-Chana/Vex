@@ -344,11 +344,9 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
 #endif
 }
 
-BindlessHandle DX12Texture::GetOrCreateBindlessView(const TextureBinding& binding,
-                                                    TextureUsage::Type usage,
-                                                    RHIDescriptorPool& descriptorPool)
+BindlessHandle DX12Texture::GetOrCreateBindlessView(const TextureBinding& binding, RHIDescriptorPool& descriptorPool)
 {
-    DX12TextureView view{ binding, usage };
+    DX12TextureView view{ binding };
 
     using namespace Texture_Internal;
 
@@ -465,8 +463,9 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(DX12TextureView
     }
 }
 
-DX12TextureView::DX12TextureView(const TextureBinding& binding, TextureUsage::Flags usage)
-    : usage{ usage }
+DX12TextureView::DX12TextureView(const TextureBinding& binding)
+    : usage{ binding.usage != TextureBindingUsage::None ? static_cast<TextureUsage::Type>(binding.usage)
+                                                        : TextureUsage::None }
     , dimension{ TextureUtil::GetTextureViewType(binding) }
     , format{ TextureFormatToDXGI(TextureUtil::GetTextureFormat(binding)) }
     , mipBias{ binding.mipBias }
