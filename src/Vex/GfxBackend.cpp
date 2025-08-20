@@ -113,7 +113,7 @@ GfxBackend::~GfxBackend()
 
 void GfxBackend::StartFrame()
 {
-    currentFrameIndex = rhi.AcquireNextFrame(*swapChain, currentFrameIndex);
+    backbufferIndex = rhi.AcquireNextFrame(*swapChain, currentFrameIndex);
 
     // We cannot guarantee that the framebuffer is in the same state it was before.
     // Therefore we set it to Common to make sure it's transitioned properly next time its used
@@ -317,7 +317,7 @@ void GfxBackend::OnWindowResized(u32 newWidth, u32 newHeight)
 
 Texture GfxBackend::GetCurrentBackBuffer()
 {
-    return backBuffers[currentFrameIndex];
+    return backBuffers[backbufferIndex];
 }
 
 void GfxBackend::RecompileAllShaders()

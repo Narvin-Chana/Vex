@@ -129,6 +129,7 @@ private:
     //  {0, 1} if double buffering
     //  {0, 1, 2} if triple buffering
     u8 currentFrameIndex = 0;
+    u8 backbufferIndex = 0;
     u64 frameCounter = 0;
 
     RHI rhi;
