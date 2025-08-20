@@ -195,7 +195,8 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
 
     if (usage == TextureUsage::RenderTarget)
     {
-        DX12TextureView dxTextureView{ clearBinding, usage };
+        DX12TextureView dxTextureView{ clearBinding };
+        dxTextureView.usage = TextureUsage::RenderTarget;
         dxTextureView.mipCount = 1;
 
         for (u32 mip = clearBinding.mipBias;
@@ -214,7 +215,8 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
     }
     else if (usage == TextureUsage::DepthStencil)
     {
-        DX12TextureView dxTextureView{ clearBinding, usage };
+        DX12TextureView dxTextureView{ clearBinding };
+        dxTextureView.usage = TextureUsage::DepthStencil;
         dxTextureView.mipCount = 1;
         for (u32 mip = clearBinding.mipBias;
              mip < ((clearBinding.mipCount == 0) ? 1 : (clearBinding.mipBias + clearBinding.mipCount));
@@ -347,18 +349,18 @@ void DX12CommandList::BeginRendering(const RHIDrawResources& resources)
 
     std::optional<CD3DX12_CPU_DESCRIPTOR_HANDLE> dsvHandle;
 
-    for (auto [binding, texture] : resources.renderTargets)
+    for (const auto& [binding, texture] : resources.renderTargets)
     {
-        rtvHandles.emplace_back(texture->GetOrCreateRTVDSVView(DX12TextureView{
-            binding,
-            TextureUsage::RenderTarget,
-        }));
+        DX12TextureView rtvView{ binding };
+        rtvView.usage = TextureUsage::RenderTarget;
+        rtvHandles.emplace_back(texture->GetOrCreateRTVDSVView(rtvView));
     }
 
     if (resources.depthStencil)
     {
-        dsvHandle = resources.depthStencil->texture->GetOrCreateRTVDSVView(
-            DX12TextureView{ resources.depthStencil->binding, TextureUsage::DepthStencil });
+        DX12TextureView dsvView{ resources.depthStencil->binding };
+        dsvView.usage = TextureUsage::DepthStencil;
+        dsvHandle = resources.depthStencil->texture->GetOrCreateRTVDSVView(dsvView);
     }
 
     // Bind RTV and DSVs

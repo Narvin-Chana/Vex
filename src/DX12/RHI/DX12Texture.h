@@ -24,7 +24,7 @@ namespace vex::dx12
 
 struct DX12TextureView
 {
-    DX12TextureView(const TextureBinding& binding, TextureUsage::Flags usage);
+    DX12TextureView(const TextureBinding& binding);
     TextureUsage::Type usage;
     TextureViewType dimension;
     // Uses the underlying resource's format if set to DXGI_FORMAT_UNKNOWN (and if the texture's format is not
@@ -64,7 +64,6 @@ public:
     DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID3D12Resource> rawTex);
 
     virtual BindlessHandle GetOrCreateBindlessView(const TextureBinding& binding,
-                                                   TextureUsage::Type usage,
                                                    RHIDescriptorPool& descriptorPool) override;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
     virtual void FreeAllocation(RHIAllocator& allocator) override;

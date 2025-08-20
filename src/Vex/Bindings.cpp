@@ -50,14 +50,6 @@ void BufferBinding::ValidateForShaderUse(BufferUsage::Flags validBufferUsageFlag
                 buffer.description.name);
     }
 
-    if (usage == BufferBindingUsage::Invalid)
-    {
-        VEX_LOG(Fatal,
-                "Invalid binding for resource \"{}\": The binding's usage must be set to something and therefore not "
-                "be invalid",
-                name);
-    }
-
     if (!(buffer.description.usage & validBufferUsageFlags))
     {
         VEX_LOG(Fatal,
@@ -76,6 +68,14 @@ void BufferBinding::Validate() const
                 "usage.",
                 name);
     }
+
+    if (usage == BufferBindingUsage::Invalid)
+    {
+        VEX_LOG(Fatal,
+                "Invalid binding for resource \"{}\": The binding's usage must be set to something and therefore not "
+                "be invalid",
+                name);
+    }
 }
 
 void TextureBinding::ValidateForShaderUse(TextureUsage::Flags validTextureUsageFlags) const
@@ -87,14 +87,6 @@ void TextureBinding::ValidateForShaderUse(TextureUsage::Flags validTextureUsageF
         VEX_LOG(Fatal,
                 "Invalid binding for texture \"{}\": You must specify a non-empty name that is valid for HLSL usage.",
                 texture.description.name);
-    }
-
-    if (usage == TextureBindingUsage::None)
-    {
-        VEX_LOG(Fatal,
-                "Invalid binding for resource \"{}\": The binding's usage must be set to something and therefore not "
-                "be invalid",
-                name);
     }
 
     if (!(texture.description.usage & validTextureUsageFlags))
@@ -113,6 +105,14 @@ void TextureBinding::ValidateForShaderUse(TextureUsage::Flags validTextureUsageF
 }
 void TextureBinding::Validate() const
 {
+    if (usage == TextureBindingUsage::Invalid)
+    {
+        VEX_LOG(Fatal,
+                "Invalid binding for resource \"{}\": The binding's usage must be set to something and therefore not "
+                "be invalid",
+                name);
+    }
+
     if (mipCount > texture.description.mips)
     {
         VEX_LOG(Fatal,
