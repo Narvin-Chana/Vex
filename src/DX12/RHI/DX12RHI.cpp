@@ -2,20 +2,21 @@
 
 #include <Vex/Logger.h>
 #include <Vex/PlatformWindow.h>
+#include <Vex/RHIImpl/RHIAllocator.h>
+#include <Vex/RHIImpl/RHIBuffer.h>
+#include <Vex/RHIImpl/RHICommandList.h>
+#include <Vex/RHIImpl/RHICommandPool.h>
+#include <Vex/RHIImpl/RHIDescriptorPool.h>
+#include <Vex/RHIImpl/RHIPipelineState.h>
+#include <Vex/RHIImpl/RHIResourceLayout.h>
+#include <Vex/RHIImpl/RHISwapChain.h>
+#include <Vex/RHIImpl/RHITexture.h>
 
 #include <DX12/DX12Debug.h>
 #include <DX12/DX12Fence.h>
 #include <DX12/DX12PhysicalDevice.h>
 #include <DX12/DXGIFactory.h>
 #include <DX12/HRChecker.h>
-#include <DX12/RHI/DX12Buffer.h>
-#include <DX12/RHI/DX12CommandList.h>
-#include <DX12/RHI/DX12CommandPool.h>
-#include <DX12/RHI/DX12DescriptorPool.h>
-#include <DX12/RHI/DX12PipelineState.h>
-#include <DX12/RHI/DX12ResourceLayout.h>
-#include <DX12/RHI/DX12SwapChain.h>
-#include <DX12/RHI/DX12Texture.h>
 
 namespace vex::dx12
 {
@@ -156,19 +157,24 @@ UniqueHandle<RHIResourceLayout> DX12RHI::CreateResourceLayout(RHIDescriptorPool&
     return MakeUnique<DX12ResourceLayout>(device);
 }
 
-RHITexture DX12RHI::CreateTexture(const TextureDescription& description)
+RHITexture DX12RHI::CreateTexture(RHIAllocator& allocator, const TextureDescription& description)
 {
-    return DX12Texture(device, description);
+    return DX12Texture(device, allocator, description);
 }
 
-RHIBuffer DX12RHI::CreateBuffer(const BufferDescription& description)
+RHIBuffer DX12RHI::CreateBuffer(RHIAllocator& allocator, const BufferDescription& description)
 {
-    return DX12Buffer(device, description);
+    return DX12Buffer(device, allocator, description);
 }
 
 UniqueHandle<RHIDescriptorPool> DX12RHI::CreateDescriptorPool()
 {
     return MakeUnique<DX12DescriptorPool>(device);
+}
+
+RHIAllocator DX12RHI::CreateAllocator()
+{
+    return RHIAllocator(device);
 }
 
 void DX12RHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args, std::vector<ShaderDefine>& defines)

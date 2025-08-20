@@ -1,7 +1,5 @@
 #include "DX12ResourceLayout.h"
 
-#include <numeric>
-#include <ranges>
 #include <utility>
 
 #include <Vex/Logger.h>

@@ -1,4 +1,3 @@
-#include "DX12DescriptorPool.h"
 #include "DX12Texture.h"
 
 #include <magic_enum/magic_enum.hpp>
@@ -6,11 +5,15 @@
 #include <Vex/Bindings.h>
 #include <Vex/Logger.h>
 #include <Vex/Platform/Windows/WString.h>
+#include <Vex/RHIImpl/RHIAllocator.h>
+#include <Vex/RHIImpl/RHIDescriptorPool.h>
 
 #include <RHI/RHIDescriptorPool.h>
 
 #include <DX12/DX12Formats.h>
 #include <DX12/HRChecker.h>
+
+#define VEX_USE_CUSTOM_ALLOCATOR_TEXTURES 1
 
 namespace vex::dx12
 {
@@ -199,7 +202,7 @@ static D3D12_UNORDERED_ACCESS_VIEW_DESC CreateUnorderedAccessViewDesc(DX12Textur
 
 } // namespace Texture_Internal
 
-DX12Texture::DX12Texture(ComPtr<DX12Device>& device, const TextureDescription& desc)
+DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, const TextureDescription& desc)
     : texture(nullptr)
     , device(device)
     , rtvHeap(device, MaxViewCountPerHeap)
@@ -247,14 +250,13 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, const TextureDescription& d
 
     static const D3D12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 
-    D3D12_CLEAR_VALUE clearValue;
-    D3D12_CLEAR_VALUE* clearValuePtr = nullptr;
+    std::optional<D3D12_CLEAR_VALUE> clearValue;
     if (description.clearValue.flags != TextureClear::None)
     {
-        clearValue.Format = texDesc.Format;
-        std::memcpy(clearValue.Color, description.clearValue.color.data(), sizeof(float) * 4);
-        clearValue.DepthStencil = { .Depth = description.clearValue.depth, .Stencil = description.clearValue.stencil };
-        clearValuePtr = &clearValue;
+        clearValue = D3D12_CLEAR_VALUE();
+        clearValue->Format = texDesc.Format;
+        std::memcpy(clearValue->Color, description.clearValue.color.data(), sizeof(float) * 4);
+        clearValue->DepthStencil = { .Depth = description.clearValue.depth, .Stencil = description.clearValue.stencil };
     }
 
     // For SRGB handling in DX12, the texture should have a typeless format.
@@ -264,12 +266,20 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, const TextureDescription& d
         texDesc.Format = GetTypelessFormatForSRGBCompatibleDX12Format(texDesc.Format);
     }
 
+#if VEX_USE_CUSTOM_ALLOCATOR_TEXTURES
+    allocation = allocator.AllocateResource(texture,
+                                            texDesc,
+                                            description.memoryLocality,
+                                            D3D12_RESOURCE_STATE_COMMON,
+                                            clearValue);
+#else
     chk << device->CreateCommittedResource(&heapProps,
                                            D3D12_HEAP_FLAG_NONE,
                                            &texDesc,
                                            D3D12_RESOURCE_STATE_COMMON,
-                                           clearValuePtr,
+                                           clearValue.has_value() ? &clearValue.value() : nullptr,
                                            IID_PPV_ARGS(&texture));
+#endif
 
 #if !VEX_SHIPPING
     chk << texture->SetName(StringToWString(description.name).data());
@@ -384,6 +394,14 @@ void DX12Texture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
         }
     }
     viewCache.clear();
+}
+
+void DX12Texture::FreeAllocation(RHIAllocator& allocator)
+{
+    if (allocation.has_value())
+    {
+        allocator.FreeResource(*allocation);
+    }
 }
 
 RHITextureState::Type DX12Texture::GetClearTextureState()

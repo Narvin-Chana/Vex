@@ -114,6 +114,8 @@ add_library(Vex STATIC
     "src/RHI/RHIDescriptorPool.h"
     "src/RHI/RHIDescriptorPool.cpp"
     "src/RHI/RHICommandList.h"
+    "src/RHI/RHIAllocator.h"
+    "src/RHI/RHIAllocator.cpp"
     "src/Vex/RHIImpl/RHICommandList.h"
     "src/Vex/RHIImpl/RHICommandPool.h"
     "src/Vex/RHIImpl/RHIDescriptorPool.h"
@@ -123,6 +125,7 @@ add_library(Vex STATIC
     "src/Vex/RHIImpl/RHITexture.h"
     "src/Vex/RHIImpl/RHI.h"
     "src/Vex/RHIImpl/RHIBuffer.h"
+    "src/Vex/RHIImpl/RHIAllocator.h"
     # Vex API
     "src/Vex.h"
     "src/Vex.cpp"
@@ -247,20 +250,6 @@ if(WIN32)
     # Avoid windows polluting the code with macros.
     target_compile_definitions(Vex PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN)
 endif()
-
-# Remove MSVC's default exception handling flags
-if(MSVC)
-    string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-    string(REPLACE "/EHs" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-    string(REPLACE "/EHc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-endif()
-
-# Disable exceptions across the board.
-target_compile_options(Vex PRIVATE
-    $<$<CXX_COMPILER_ID:MSVC>:/EHs-c- /wd4530 /D_HAS_EXCEPTIONS=0>  # MSVC: disable exceptions, suppress warning for exception handler
-    $<$<CXX_COMPILER_ID:Clang>:-fno-exceptions>                     # Clang: disable exceptions
-    $<$<CXX_COMPILER_ID:GNU>:-fno-exceptions>                       # GCC: disable exceptions
-)
 
 # =========================================
 # INSTALLATION

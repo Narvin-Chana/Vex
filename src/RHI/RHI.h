@@ -35,10 +35,12 @@ struct RHIBase
     virtual RHIComputePipelineState CreateComputePipelineState(const ComputePipelineStateKey& key) = 0;
     virtual UniqueHandle<RHIResourceLayout> CreateResourceLayout(RHIDescriptorPool& descriptorPool) = 0;
 
-    virtual RHITexture CreateTexture(const TextureDescription& description) = 0;
-    virtual RHIBuffer CreateBuffer(const BufferDescription& description) = 0;
+    virtual RHITexture CreateTexture(RHIAllocator& allocator, const TextureDescription& description) = 0;
+    virtual RHIBuffer CreateBuffer(RHIAllocator& allocator, const BufferDescription& description) = 0;
 
     virtual UniqueHandle<RHIDescriptorPool> CreateDescriptorPool() = 0;
+
+    virtual RHIAllocator CreateAllocator() = 0;
 
     virtual void ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
                                                  std::vector<ShaderDefine>& defines) = 0;

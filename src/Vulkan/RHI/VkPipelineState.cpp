@@ -1,5 +1,7 @@
 #include "VkPipelineState.h"
 
+#include <algorithm>
+
 #include <Vex/Containers/ResourceCleanup.h>
 
 #include <Vulkan/RHI/VkResourceLayout.h>
@@ -50,6 +52,7 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
                                                             .pName = "PSMain" } };
 
     std::vector<::vk::VertexInputBindingDescription> bindings{ key.vertexInputLayout.bindings.size() };
+    // Requires including the heavy <algorithm>
     std::ranges::transform(key.vertexInputLayout.bindings,
                            bindings.begin(),
                            [](const VertexInputLayout::VertexBinding& binding)
@@ -62,6 +65,7 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
                            });
 
     std::vector<::vk::VertexInputAttributeDescription> attributes{ key.vertexInputLayout.attributes.size() };
+    // Requires including the heavy <algorithm>
     std::ranges::transform(
         key.vertexInputLayout.attributes,
         attributes.begin(),
@@ -120,6 +124,7 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
     };
 
     std::vector<::vk::PipelineColorBlendAttachmentState> colorAttachments(key.colorBlendState.attachments.size());
+    // Requires including the heavy <algorithm>
     std::ranges::transform(
         key.colorBlendState.attachments,
         colorAttachments.begin(),
@@ -156,6 +161,7 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
     };
 
     std::vector<::vk::Format> attachmentFormats(key.renderTargetState.colorFormats.size());
+    // Requires including the heavy <algorithm>
     std::ranges::transform(key.renderTargetState.colorFormats, attachmentFormats.begin(), TextureFormatToVulkan);
 
     // TODO(https://trello.com/c/2KeJ2cXy): Add depthAttachmentFormat and stencilAttachmentFormat support.

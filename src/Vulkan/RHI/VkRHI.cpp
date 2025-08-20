@@ -4,17 +4,18 @@
 
 #include <Vex/Logger.h>
 #include <Vex/PlatformWindow.h>
+#include <Vex/RHIImpl/RHIAllocator.h>
+#include <Vex/RHIImpl/RHIBuffer.h>
+#include <Vex/RHIImpl/RHICommandPool.h>
+#include <Vex/RHIImpl/RHIDescriptorPool.h>
+#include <Vex/RHIImpl/RHIPipelineState.h>
+#include <Vex/RHIImpl/RHIResourceLayout.h>
+#include <Vex/RHIImpl/RHISwapChain.h>
+#include <Vex/RHIImpl/RHITexture.h>
 
 #include <RHI/RHICommandPool.h>
 
-#include <Vulkan/RHI/VkBuffer.h>
-#include <Vulkan/RHI/VkCommandPool.h>
-#include <Vulkan/RHI/VkDescriptorPool.h>
 #include <Vulkan/RHI/VkGraphicsPipeline.h>
-#include <Vulkan/RHI/VkPipelineState.h>
-#include <Vulkan/RHI/VkResourceLayout.h>
-#include <Vulkan/RHI/VkSwapChain.h>
-#include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkCommandQueue.h>
 #include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
@@ -348,12 +349,12 @@ UniqueHandle<RHIResourceLayout> VkRHI::CreateResourceLayout(RHIDescriptorPool& d
     return MakeUnique<VkResourceLayout>(GetGPUContext(), descriptorPool);
 }
 
-RHITexture VkRHI::CreateTexture(const TextureDescription& description)
+RHITexture VkRHI::CreateTexture(RHIAllocator& allocator, const TextureDescription& description)
 {
     return VkTexture(GetGPUContext(), TextureDescription(description));
 }
 
-RHIBuffer VkRHI::CreateBuffer(const BufferDescription& description)
+RHIBuffer VkRHI::CreateBuffer(RHIAllocator& allocator, const BufferDescription& description)
 {
     return VkBuffer(GetGPUContext(), description);
 }
@@ -361,6 +362,11 @@ RHIBuffer VkRHI::CreateBuffer(const BufferDescription& description)
 UniqueHandle<RHIDescriptorPool> VkRHI::CreateDescriptorPool()
 {
     return MakeUnique<VkDescriptorPool>(GetGPUContext());
+}
+
+RHIAllocator VkRHI::CreateAllocator()
+{
+    return VkAllocator();
 }
 
 void VkRHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args, std::vector<ShaderDefine>& defines)

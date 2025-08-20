@@ -228,6 +228,12 @@ void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
     bindlessCache.clear();
 }
 
+void VkTexture::FreeAllocation(RHIAllocator& allocator)
+{
+    // VEX_NOT_YET_IMPLEMENTED();
+    // For now does nothing to stop the Vk impl from crashing.
+}
+
 void VkTexture::CreateImage()
 {
     if (isBackBuffer)
