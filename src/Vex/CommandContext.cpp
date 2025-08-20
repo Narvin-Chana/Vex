@@ -94,7 +94,7 @@ static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDescript
                                                    ? rhiDrawRes.depthStencil->binding.texture.description.format
                                                    : TextureFormat::UNKNOWN;
 
-    // Ensure each rendertarget has atleast a default color attachment (no blending, write all).
+    // Ensure each render target has atleast a default color attachment (no blending, write all).
     key.colorBlendState.attachments.resize(rhiDrawRes.renderTargets.size());
 
     return key;
@@ -132,19 +132,22 @@ void CommandContext::SetScissor(i32 x, i32 y, u32 width, u32 height)
 }
 
 void CommandContext::ClearTexture(const TextureBinding& binding,
-                                  TextureUsage::Type clearUsage,
                                   std::optional<TextureClearValue> textureClearValue,
                                   std::optional<std::array<float, 4>> clearRect)
 {
-    if (!(binding.texture.description.usage & clearUsage))
+    if (!(binding.texture.description.usage & (TextureUsage::RenderTarget | TextureUsage::DepthStencil)))
     {
-        VEX_LOG(Fatal, "ClearUsage not supported on this texture");
+        VEX_LOG(Fatal,
+                "ClearUsage not supported on this texture, it must be either usable as a render target or as a depth "
+                "stencil!");
     }
 
     RHITexture& texture = backend->GetRHITexture(binding.texture.handle);
     cmdList->Transition(texture, texture.GetClearTextureState());
     cmdList->ClearTexture({ binding, &texture },
-                          clearUsage,
+                          // This is a safe cast, textures can only contain one of the two usages (RT/DS).
+                          static_cast<TextureUsage::Type>(binding.texture.description.usage &
+                                                          (TextureUsage::RenderTarget | TextureUsage::DepthStencil)),
                           textureClearValue.value_or(binding.texture.description.clearValue));
 }
 void CommandContext::BeginRendering(const DrawResourceBinding& drawBindings)

@@ -48,9 +48,7 @@ void RHIResourceLayoutBase::SetLayoutResources(RHI& rhi,
     bindlessNamesAndHandles.reserve(textures.size() + buffers.size());
     for (auto& [binding, texture] : textures)
     {
-        bindlessNamesAndHandles.emplace_back(
-            binding.name,
-            texture->GetOrCreateBindlessView(binding, static_cast<TextureUsage::Type>(binding.usage), descriptorPool));
+        bindlessNamesAndHandles.emplace_back(binding.name, texture->GetOrCreateBindlessView(binding, descriptorPool));
     }
 
     for (auto& [binding, buffer] : buffers)

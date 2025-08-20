@@ -236,12 +236,12 @@ void GfxBackend::DestroyBuffer(const Buffer& buffer)
     resourceCleanup.CleanupResource(bufferRegistry.ExtractElement(buffer.handle));
 }
 
-BindlessHandle GfxBackend::GetTextureBindlessHandle(const TextureBinding& bindlessResource, TextureUsage::Type usage)
+BindlessHandle GfxBackend::GetTextureBindlessHandle(const TextureBinding& bindlessResource)
 {
     bindlessResource.Validate();
 
     auto& texture = GetRHITexture(bindlessResource.texture.handle);
-    return texture.GetOrCreateBindlessView(bindlessResource, usage, *descriptorPool);
+    return texture.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
 }
 
 BindlessHandle GfxBackend::GetBufferBindlessHandle(const BufferBinding& bindlessResource)

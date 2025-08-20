@@ -68,7 +68,7 @@ void HelloTriangleGraphicsApplication::Run()
             ctx.ClearTexture(vex::TextureBinding{
                 .name = "Backbuffer",
                 .texture = graphics->GetCurrentBackBuffer(),
-            }, vex::TextureUsage::RenderTarget, clearValue);
+            }, clearValue);
 
 
             // Setup our rendering pass.
