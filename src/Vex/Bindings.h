@@ -59,7 +59,7 @@ struct TextureBinding
     std::string name;
     // The texture to bind
     Texture texture;
-    TextureBindingUsage usage = TextureBindingUsage::Invalid;
+    TextureBindingUsage usage = TextureBindingUsage::None;
     TextureBindingFlags::Flags flags = TextureBindingFlags::None;
 
     u32 mipBias = 0;

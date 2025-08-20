@@ -464,8 +464,8 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(DX12TextureView
 }
 
 DX12TextureView::DX12TextureView(const TextureBinding& binding)
-    : usage{ binding.usage != TextureBindingUsage::Invalid ? static_cast<TextureUsage::Type>(binding.usage)
-                                                           : TextureUsage::None }
+    : usage{ binding.usage != TextureBindingUsage::None ? static_cast<TextureUsage::Type>(binding.usage)
+                                                        : TextureUsage::None }
     , dimension{ TextureUtil::GetTextureViewType(binding) }
     , format{ TextureFormatToDXGI(TextureUtil::GetTextureFormat(binding)) }
     , mipBias{ binding.mipBias }

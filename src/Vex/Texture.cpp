@@ -44,11 +44,28 @@ TextureFormat GetTextureFormat(const TextureBinding& binding)
 
 void ValidateTextureDescription(const TextureDescription& description)
 {
-    if (FormatIsDepthStencilCompatible(description.format) && !(description.usage & TextureUsage::DepthStencil))
+    bool isDepthStencilFormat = FormatIsDepthStencilCompatible(description.format);
+    if (isDepthStencilFormat && !(description.usage & TextureUsage::DepthStencil))
     {
         VEX_LOG(Fatal,
                 "Invalid Texture description for texture \"{}\": A texture that has a DepthStencil usage must have a "
                 "format that supports it",
+                description.name);
+    }
+
+    if (!isDepthStencilFormat && (description.usage & TextureUsage::DepthStencil))
+    {
+        VEX_LOG(Fatal,
+                "Invalid Texture description for texture \"{}\": A texture that has a non-depth-stencil compatible "
+                "format must allow for DepthStencil usage.",
+                description.name);
+    }
+
+    if ((description.usage & TextureUsage::RenderTarget) && (description.usage & TextureUsage::DepthStencil))
+    {
+        VEX_LOG(Fatal,
+                "Invalid Texture description for texture \"{}\": A texture cannot have both RenderTarget AND "
+                "DepthStencil usage.",
                 description.name);
     }
 }

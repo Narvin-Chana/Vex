@@ -105,7 +105,7 @@ void TextureBinding::ValidateForShaderUse(TextureUsage::Flags validTextureUsageF
 }
 void TextureBinding::Validate() const
 {
-    if (usage == TextureBindingUsage::Invalid)
+    if (usage == TextureBindingUsage::None)
     {
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": The binding's usage must be set to something and therefore not "
