@@ -158,19 +158,24 @@ void CommandContext::BeginRendering(const DrawResourceBinding& drawBindings)
     }
 
     currentDrawResources.emplace();
+    std::vector<std::pair<RHITexture&, RHITextureState::Flags>> transitions;
+    for (const auto& renderTarget : drawBindings.renderTargets)
+    {
+        transitions.emplace_back(backend->GetRHITexture(renderTarget.texture.handle), RHITextureState::RenderTarget);
+        currentDrawResources->renderTargets.emplace_back(renderTarget,
+                                                         &backend->GetRHITexture(renderTarget.texture.handle));
+    }
 
-    // Requires including the heavy <algorithm>
-    std::ranges::transform(drawBindings.renderTargets,
-                           std::back_inserter(currentDrawResources->renderTargets),
-                           [&](const TextureBinding& binding)
-                           { return RHITextureBinding{ binding, &backend->GetRHITexture(binding.texture.handle) }; });
 
     if (drawBindings.depthStencil)
     {
         currentDrawResources->depthStencil = { *drawBindings.depthStencil,
                                                &backend->GetRHITexture(drawBindings.depthStencil->texture.handle) };
+        transitions.emplace_back(backend->GetRHITexture(drawBindings.depthStencil->texture.handle),
+                                 RHITextureState::DepthWrite);
     }
 
+    cmdList->Transition(transitions);
     cmdList->BeginRendering(*currentDrawResources);
 }
 void CommandContext::EndRendering()

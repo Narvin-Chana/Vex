@@ -128,8 +128,8 @@ void HelloTriangleApplication::Run()
                 },
                 {},
                 {
-                    static_cast<vex::u32>(width) / 8,
-                    static_cast<vex::u32>(height) / 8,
+                    static_cast<vex::u32>(std::ceil(static_cast<float>(width) / 8.0f)),
+                    static_cast<vex::u32>(std::ceil(static_cast<float>(height) / 8.0f)),
                     1
                 });
             ctx.Dispatch(
@@ -158,8 +158,8 @@ void HelloTriangleApplication::Run()
                 },
                 {},
                 {
-                    static_cast<vex::u32>(width) / 8,
-                    static_cast<vex::u32>(height) / 8,
+                    static_cast<vex::u32>(std::ceil(static_cast<float>(width) / 8.0f)),
+                    static_cast<vex::u32>(std::ceil(static_cast<float>(height) / 8.0f)),
                     1
                 });
             ctx.Copy(finalOutputTexture, graphics->GetCurrentBackBuffer());

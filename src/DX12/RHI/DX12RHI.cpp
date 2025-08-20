@@ -183,7 +183,7 @@ void DX12RHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
     defines.emplace_back(L"VEX_DX12");
 }
 
-void DX12RHI::AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex, RHITexture& currentBackbuffer)
+u32 DX12RHI::AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex)
 {
     for (u32 i = 0; i < CommandQueueTypes::Count; ++i)
     {
@@ -195,6 +195,7 @@ void DX12RHI::AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex, R
             fence.WaitCPU(fence.nextSignalValue - std::to_underlying(swapChain.description.frameBuffering));
         }
     }
+    return currentFrameIndex;
 }
 
 void DX12RHI::SubmitAndPresent(std::span<RHICommandList*> commandLists,

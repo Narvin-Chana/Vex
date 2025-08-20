@@ -71,9 +71,7 @@ public:
         return *PSOCache;
     }
 
-    virtual void AcquireNextFrame(RHISwapChain& swapChain,
-                                  u32 currentFrameIndex,
-                                  RHITexture& currentBackbuffer) override;
+    virtual u32 AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex) override;
     virtual void SubmitAndPresent(std::span<RHICommandList*> commandLists,
                                   RHISwapChain& swapChain,
                                   u32 currentFrameIndex,

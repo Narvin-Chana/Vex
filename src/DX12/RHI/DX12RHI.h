@@ -45,9 +45,7 @@ public:
     virtual void ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
                                                  std::vector<ShaderDefine>& defines) override;
 
-    virtual void AcquireNextFrame(RHISwapChain& swapChain,
-                                  u32 currentFrameIndex,
-                                  RHITexture& currentBackbuffer) override;
+    virtual u32 AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex) override;
     virtual void SubmitAndPresent(std::span<RHICommandList*> commandLists,
                                   RHISwapChain& swapChain,
                                   u32 currentFrameIndex,
