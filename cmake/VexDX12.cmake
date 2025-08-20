@@ -57,6 +57,8 @@ function(setup_dx12_backend TARGET)
         "src/DX12/RHI/DX12ResourceLayout.cpp"
         "src/DX12/RHI/DX12DescriptorPool.h"
         "src/DX12/RHI/DX12DescriptorPool.cpp"
+        "src/DX12/RHI/DX12Allocator.h"
+        "src/DX12/RHI/DX12Allocator.cpp"
         # DX12 API
         "src/DX12/DX12DescriptorHeap.h"
         "src/DX12/DX12Headers.h"
@@ -77,7 +79,7 @@ function(setup_dx12_backend TARGET)
         "src/DX12/DX12States.cpp"
         "src/DX12/DX12GraphicsPipeline.h"
         "src/DX12/DX12GraphicsPipeline.cpp"
-    )
+     )
 
     # Add DX12 sources to target
     target_sources(${TARGET} PRIVATE ${VEX_DX12_SOURCES})

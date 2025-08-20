@@ -28,7 +28,8 @@ public:
                             const std::optional<ConstantBinding>& constants,
                             std::span<RHITextureBinding> textures,
                             std::span<RHIBufferBinding> buffers,
-                            RHIDescriptorPool& descriptorPool);
+                            RHIDescriptorPool& descriptorPool,
+                            RHIAllocator& allocator);
 
     void SetSamplers(std::span<TextureSampler> newSamplers);
     std::span<const TextureSampler> GetStaticSamplers() const;

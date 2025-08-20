@@ -24,7 +24,7 @@ void ResourceCleanup::CleanupResource(CleanupVariant&& resource, i8 lifespan)
     resourcesInFlight.emplace_back(std::move(resource), lifespan);
 }
 
-void ResourceCleanup::FlushResources(i8 flushCount, RHIDescriptorPool& descriptorPool)
+void ResourceCleanup::FlushResources(i8 flushCount, RHIDescriptorPool& descriptorPool, RHIAllocator& allocator)
 {
     for (size_t i = 0; i < resourcesInFlight.size(); ++i)
     {
@@ -33,14 +33,17 @@ void ResourceCleanup::FlushResources(i8 flushCount, RHIDescriptorPool& descripto
         if (lifespan <= 0)
         {
             std::visit(
-                [&descriptorPool](auto& val)
+                [&descriptorPool, &allocator](auto& val)
                 {
                     using T = std::remove_cvref_t<decltype(val)>;
                     if constexpr (std::is_same_v<MaybeUninitialized<RHITexture>, T> or
                                   std::is_same_v<MaybeUninitialized<RHIBuffer>, T>)
                     {
                         val->FreeBindlessHandles(descriptorPool);
+                        val->FreeAllocation(allocator);
                     }
+                    // Reset in any case, works with both UniqueHandle and MaybeUninitialized.
+                    val.reset();
                 },
                 resource);
         }

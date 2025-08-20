@@ -43,9 +43,10 @@ struct Handle
 } // namespace vex
 
 template <class T>
-struct std::hash<vex::Handle<T>>
+    requires std::derived_from<T, vex::Handle<T>>
+struct std::hash<T>
 {
-    size_t operator()(const vex::Handle<T>& obj) const
+    size_t operator()(const T& obj) const
     {
         size_t seed = 0;
         VEX_HASH_COMBINE(seed, obj.value);

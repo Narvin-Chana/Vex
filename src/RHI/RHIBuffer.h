@@ -3,7 +3,6 @@
 #include <span>
 
 #include <Vex/Buffer.h>
-#include <Vex/Debug.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/Resource.h>
 #include <Vex/Types.h>
@@ -66,6 +65,7 @@ public:
                                                    u32 stride,
                                                    RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
+    virtual void FreeAllocation(RHIAllocator& allocator) = 0;
 
     [[nodiscard]] bool NeedsStagingBufferCopy() const noexcept
     {

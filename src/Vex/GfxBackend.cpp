@@ -1,5 +1,7 @@
 #include "GfxBackend.h"
 
+#include <utility>
+
 #include <magic_enum/magic_enum.hpp>
 
 #include <Vex.h>
@@ -87,6 +89,8 @@ GfxBackend::GfxBackend(const BackendDescription& description)
         description.platformWindow);
 
     CreateBackBuffers();
+
+    allocator = rhi.CreateAllocator();
 }
 
 GfxBackend::~GfxBackend()
@@ -120,7 +124,7 @@ void GfxBackend::StartFrame()
     GetRHITexture(GetCurrentBackBuffer().handle).SetCurrentState(RHITextureState::Common);
 
     // Flush all resources that were queued up for deletion.
-    resourceCleanup.FlushResources(1, *descriptorPool);
+    resourceCleanup.FlushResources(1, *descriptorPool, *allocator);
 
     // Release the memory occupied by the command lists that are done.
     GetCurrentCommandPool().ReclaimAllCommandListMemory();
@@ -193,7 +197,7 @@ Texture GfxBackend::CreateTexture(TextureDescription description, ResourceLifeti
         VEX_NOT_YET_IMPLEMENTED();
     }
 
-    return Texture{ .handle = textureRegistry.AllocateElement(std::move(rhi.CreateTexture(description))),
+    return Texture{ .handle = textureRegistry.AllocateElement(std::move(rhi.CreateTexture(*allocator, description))),
                     .description = std::move(description) };
 }
 
@@ -210,7 +214,7 @@ Buffer GfxBackend::CreateBuffer(BufferDescription description, ResourceLifetime 
         VEX_NOT_YET_IMPLEMENTED();
     }
 
-    return Buffer{ .handle = bufferRegistry.AllocateElement(std::move(rhi.CreateBuffer(description))),
+    return Buffer{ .handle = bufferRegistry.AllocateElement(std::move(rhi.CreateBuffer(*allocator, description))),
                    .description = std::move(description) };
 }
 
@@ -261,7 +265,7 @@ void GfxBackend::FlushGPU()
     rhi.FlushGPU();
 
     // Release all stale resource now that the GPU is done with them.
-    resourceCleanup.FlushResources(std::to_underlying(description.frameBuffering), *descriptorPool);
+    resourceCleanup.FlushResources(std::to_underlying(description.frameBuffering), *descriptorPool, *allocator);
 
     // Release the memory that is occupied by all our command lists.
     commandPools.ForEach([](auto& el) { el->ReclaimAllCommandListMemory(); });
@@ -359,6 +363,7 @@ RenderExtension* GfxBackend::RegisterRenderExtension(UniqueHandle<RenderExtensio
 
 void GfxBackend::UnregisterRenderExtension(RenderExtension* renderExtension)
 {
+    // Included in <utility>, avoiding including heavy <algorithm>.
     auto el = std::ranges::find_if(renderExtensions,
                                    [renderExtension](const UniqueHandle<RenderExtension>& ext)
                                    { return ext.get() == renderExtension; });

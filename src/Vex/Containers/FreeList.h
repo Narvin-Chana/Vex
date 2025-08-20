@@ -58,7 +58,7 @@ public:
     {
         if (allocator.freeIndices.empty())
         {
-            Resize(static_cast<u32>(values.size()) * 2);
+            Resize(std::max<u32>(static_cast<u32>(values.size()) * 2, 1));
         }
 
         u32 idx = allocator.Allocate();
@@ -88,10 +88,91 @@ public:
         return std::exchange(values[idx], std::nullopt);
     }
 
+    // This iterator will skip over elements in values which have not been initialized.
+    template <bool IsConst>
+    class Iterator
+    {
+        using ListType = std::conditional_t<IsConst, const FreeList, FreeList>;
+        using ValueType = std::conditional_t<IsConst, const T, T>;
+
+    public:
+        using iterator_category = std::forward_iterator_tag;
+        using value_type = T;
+        using difference_type = std::ptrdiff_t;
+        using pointer = ValueType*;
+        using reference = ValueType&;
+
+        Iterator(ListType* list, u32 index)
+            : list(list)
+            , index(index)
+        {
+            SkipEmpty();
+        }
+
+        // Allows us to access the handle from the iterator.
+        HandleT GetHandle() const
+        {
+            return HandleT::CreateHandle(index, list->generations[index]);
+        }
+
+        reference operator*() const
+        {
+            return *list->values[index];
+        }
+        pointer operator->() const
+        {
+            return &(*list->values[index]);
+        }
+
+        Iterator& operator++()
+        {
+            ++index;
+            SkipEmpty();
+            return *this;
+        }
+
+        bool operator==(const Iterator& other) const
+        {
+            return index == other.index;
+        }
+
+    private:
+        void SkipEmpty()
+        {
+            while (index < list->values.size() && !list->values[index].has_value())
+                ++index;
+        }
+
+        ListType* list;
+        u32 index;
+    };
+
+    using iterator = Iterator<false>;
+    using const_iterator = Iterator<true>;
+
+    // Iterator interface
+    iterator begin()
+    {
+        return iterator(this, 0);
+    }
+    iterator end()
+    {
+        return iterator(this, static_cast<u32>(values.size()));
+    }
+    const_iterator begin() const
+    {
+        return const_iterator(this, 0);
+    }
+    const_iterator end() const
+    {
+        return const_iterator(this, static_cast<u32>(values.size()));
+    }
+
 private:
     void Resize(u32 size)
     {
         allocator.Resize(size);
+        generations.resize(size);
         values.resize(size);
     }
 

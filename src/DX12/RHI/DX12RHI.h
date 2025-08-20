@@ -35,10 +35,12 @@ public:
     virtual RHIComputePipelineState CreateComputePipelineState(const ComputePipelineStateKey& key) override;
     virtual UniqueHandle<RHIResourceLayout> CreateResourceLayout(RHIDescriptorPool& descriptorPool) override;
 
-    virtual RHITexture CreateTexture(const TextureDescription& description) override;
-    virtual RHIBuffer CreateBuffer(const BufferDescription& description) override;
+    virtual RHITexture CreateTexture(RHIAllocator& allocator, const TextureDescription& description) override;
+    virtual RHIBuffer CreateBuffer(RHIAllocator& allocator, const BufferDescription& description) override;
 
     virtual UniqueHandle<RHIDescriptorPool> CreateDescriptorPool() override;
+
+    virtual RHIAllocator CreateAllocator() override;
 
     virtual void ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
                                                  std::vector<ShaderDefine>& defines) override;

@@ -1,5 +1,7 @@
 #include "CommandContext.h"
 
+#include <algorithm>
+
 #include <Vex/Debug.h>
 #include <Vex/DrawHelpers.h>
 #include <Vex/GfxBackend.h>
@@ -161,6 +163,7 @@ void CommandContext::BeginRendering(const DrawResourceBinding& drawBindings)
                                                          &backend->GetRHITexture(renderTarget.texture.handle));
     }
 
+
     if (drawBindings.depthStencil)
     {
         currentDrawResources->depthStencil = { *drawBindings.depthStencil,
@@ -250,7 +253,8 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
                                       drawResources.constants,
                                       rhiTextureBindings,
                                       rhiBufferBindings,
-                                      *backend->descriptorPool);
+                                      *backend->descriptorPool,
+                                      *backend->allocator);
 
     cmdList->SetLayout(resourceLayout, *backend->descriptorPool);
 
@@ -312,7 +316,8 @@ void CommandContext::Dispatch(const ShaderKey& shader,
                                       constants,
                                       rhiTextureBindings,
                                       rhiBufferBindings,
-                                      *backend->descriptorPool);
+                                      *backend->descriptorPool,
+                                      *backend->allocator);
 
     cmdList->SetLayout(resourceLayout, *backend->descriptorPool);
 
