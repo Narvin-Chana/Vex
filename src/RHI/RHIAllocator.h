@@ -37,14 +37,6 @@ struct MemoryRange
     }
 };
 
-// TODO: REMOVE WHEN RT PR GETS MERGED
-template <class T>
-    requires std::is_integral_v<T>
-T AlignUp(T value, T alignment)
-{
-    return (value + alignment - 1) & ~(alignment - 1);
-}
-
 struct MemoryPageInfo
 {
     // Vex allocates pages of a default size of 256MB.

@@ -65,7 +65,8 @@ public:
     VkRayTracingPipelineState& operator=(VkRayTracingPipelineState&&) = default;
     virtual void Compile(const RayTracingShaderCollection& shaderCollection,
                          RHIResourceLayout& resourceLayout,
-                         ResourceCleanup& resourceCleanup) override;
+                         ResourceCleanup& resourceCleanup,
+                         RHIAllocator& allocator) override;
     virtual void Cleanup(ResourceCleanup& resourceCleanup) override;
 };
 

@@ -4,11 +4,11 @@
 
 #include <Vex/Hash.h>
 #include <Vex/MaybeUninitialized.h>
-#include <Vex/RHIImpl/RHIBuffer.h>
 
 #include <RHI/RHIPipelineState.h>
 
 #include <DX12/DX12Headers.h>
+#include <DX12/DX12ShaderTable.h>
 
 namespace vex::dx12
 {
@@ -68,7 +68,8 @@ public:
 
     virtual void Compile(const RayTracingShaderCollection& shaderCollection,
                          RHIResourceLayout& resourceLayout,
-                         ResourceCleanup& resourceCleanup) override;
+                         ResourceCleanup& resourceCleanup,
+                         RHIAllocator& allocator) override;
     virtual void Cleanup(ResourceCleanup& resourceCleanup) override;
 
     void PrepareDispatchRays(D3D12_DISPATCH_RAYS_DESC& dispatchRaysDesc) const;
@@ -77,7 +78,7 @@ public:
 
 private:
     void GenerateIdentifiers(const RayTracingShaderCollection& shaderCollection);
-    void CreateShaderTables(ResourceCleanup& resourceCleanup);
+    void CreateShaderTables(ResourceCleanup& resourceCleanup, RHIAllocator& allocator);
     void UpdateVersions(const RayTracingShaderCollection& shaderCollection, RHIResourceLayout& resourceLayout);
 
     static constexpr u32 ShaderIdentifierSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
@@ -90,10 +91,10 @@ private:
     std::vector<void*> hitGroupIdentifiers;
     std::vector<void*> rayCallableIdentifiers;
 
-    MaybeUninitialized<RHIBuffer> rayGenerationShaderTable;
-    MaybeUninitialized<RHIBuffer> rayMissShaderTable;
-    MaybeUninitialized<RHIBuffer> hitGroupShaderTable;
-    MaybeUninitialized<RHIBuffer> rayCallableShaderTable;
+    MaybeUninitialized<DX12ShaderTable> rayGenerationShaderTable;
+    MaybeUninitialized<DX12ShaderTable> rayMissShaderTable;
+    MaybeUninitialized<DX12ShaderTable> hitGroupShaderTable;
+    MaybeUninitialized<DX12ShaderTable> rayCallableShaderTable;
 };
 
 } // namespace vex::dx12

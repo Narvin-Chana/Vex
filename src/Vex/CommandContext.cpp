@@ -167,7 +167,6 @@ void CommandContext::BeginRendering(const DrawResourceBinding& drawBindings)
                                                          &backend->GetRHITexture(renderTarget.texture.handle));
     }
 
-
     if (drawBindings.depthStencil)
     {
         currentDrawResources->depthStencil = { *drawBindings.depthStencil,
@@ -353,7 +352,9 @@ void CommandContext::TraceRays(const RayTracingPassDescription& rayTracingPassDe
     TransitionBindings(*cmdList, rhiBufferBindings);
 
     const RHIRayTracingPipelineState* pipelineState =
-        backend->psCache.GetRayTracingPipelineState(rayTracingPassDescription, {});
+        backend->psCache.GetRayTracingPipelineState(rayTracingPassDescription,
+                                                    { .textures = rhiTextureBindings, .buffers = rhiBufferBindings },
+                                                    *backend->allocator);
     if (!pipelineState)
     {
         VEX_LOG(Error, "PSO cache returned an invalid pipeline state, unable to continue dispatch...");
@@ -368,7 +369,8 @@ void CommandContext::TraceRays(const RayTracingPassDescription& rayTracingPassDe
                                       constants,
                                       rhiTextureBindings,
                                       rhiBufferBindings,
-                                      *backend->descriptorPool);
+                                      *backend->descriptorPool,
+                                      *backend->allocator);
 
     cmdList->SetLayout(resourceLayout, *backend->descriptorPool);
 

@@ -81,7 +81,8 @@ public:
     }
     virtual void Compile(const RayTracingShaderCollection& shaderCollection,
                          RHIResourceLayout& resourceLayout,
-                         ResourceCleanup& resourceCleanup) = 0;
+                         ResourceCleanup& resourceCleanup,
+                         RHIAllocator& allocator) = 0;
     virtual void Cleanup(ResourceCleanup& resourceCleanup) = 0;
 
     Key key;

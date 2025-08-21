@@ -36,7 +36,8 @@ public:
     const RHIComputePipelineState* GetComputePipelineState(const RHIComputePipelineState::Key& key,
                                                            ShaderResourceContext resourceContext);
     const RHIRayTracingPipelineState* GetRayTracingPipelineState(const RHIRayTracingPipelineState::Key& key,
-                                                                 ShaderResourceContext resourceContext);
+                                                                 ShaderResourceContext resourceContext,
+                                                                 RHIAllocator& allocator);
 
     ShaderCompiler& GetShaderCompiler();
 

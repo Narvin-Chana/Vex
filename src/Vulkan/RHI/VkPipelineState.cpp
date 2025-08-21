@@ -247,7 +247,8 @@ VkRayTracingPipelineState::VkRayTracingPipelineState(const Key& key, ::vk::Devic
 
 void VkRayTracingPipelineState::Compile(const RayTracingShaderCollection& shaderCollection,
                                         RHIResourceLayout& resourceLayout,
-                                        ResourceCleanup& resourceCleanup)
+                                        ResourceCleanup& resourceCleanup,
+                                        RHIAllocator& allocator)
 {
     VEX_NOT_YET_IMPLEMENTED();
 }

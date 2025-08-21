@@ -129,7 +129,8 @@ DX12RayTracingPipelineState::DX12RayTracingPipelineState(const ComPtr<DX12Device
 
 void DX12RayTracingPipelineState::Compile(const RayTracingShaderCollection& shaderCollection,
                                           RHIResourceLayout& resourceLayout,
-                                          ResourceCleanup& resourceCleanup)
+                                          ResourceCleanup& resourceCleanup,
+                                          RHIAllocator& allocator)
 {
     CD3DX12_STATE_OBJECT_DESC raytracingPipeline{ D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE };
 
@@ -238,7 +239,7 @@ void DX12RayTracingPipelineState::Compile(const RayTracingShaderCollection& shad
 
     GenerateIdentifiers(shaderCollection);
 
-    CreateShaderTables(resourceCleanup);
+    CreateShaderTables(resourceCleanup, allocator);
 
     UpdateVersions(shaderCollection, resourceLayout);
 }
@@ -261,29 +262,22 @@ void DX12RayTracingPipelineState::PrepareDispatchRays(D3D12_DISPATCH_RAYS_DESC& 
 {
     if (rayGenerationShaderTable)
     {
-        dispatchRaysDesc.RayGenerationShaderRecord.StartAddress = rayGenerationShaderTable->GetGPUVirtualAddress();
-        dispatchRaysDesc.RayGenerationShaderRecord.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+        dispatchRaysDesc.RayGenerationShaderRecord = rayGenerationShaderTable->GetVirtualAddressRange();
     }
 
     if (rayMissShaderTable)
     {
-        dispatchRaysDesc.MissShaderTable.StartAddress = rayMissShaderTable->GetGPUVirtualAddress();
-        dispatchRaysDesc.MissShaderTable.SizeInBytes = rayMissShaderTable->GetDescription().byteSize;
-        dispatchRaysDesc.MissShaderTable.StrideInBytes = rayMissShaderTable->GetShaderTableStride();
+        dispatchRaysDesc.MissShaderTable = rayMissShaderTable->GetVirtualAddressRangeAndStride();
     }
 
     if (hitGroupShaderTable)
     {
-        dispatchRaysDesc.HitGroupTable.StartAddress = hitGroupShaderTable->GetGPUVirtualAddress();
-        dispatchRaysDesc.HitGroupTable.SizeInBytes = hitGroupShaderTable->GetDescription().byteSize;
-        dispatchRaysDesc.HitGroupTable.StrideInBytes = hitGroupShaderTable->GetShaderTableStride();
+        dispatchRaysDesc.HitGroupTable = hitGroupShaderTable->GetVirtualAddressRangeAndStride();
     }
 
     if (rayCallableShaderTable)
     {
-        dispatchRaysDesc.CallableShaderTable.StartAddress = rayCallableShaderTable->GetGPUVirtualAddress();
-        dispatchRaysDesc.CallableShaderTable.SizeInBytes = rayCallableShaderTable->GetDescription().byteSize;
-        dispatchRaysDesc.CallableShaderTable.StrideInBytes = rayCallableShaderTable->GetShaderTableStride();
+        dispatchRaysDesc.CallableShaderTable = rayCallableShaderTable->GetVirtualAddressRangeAndStride();
     }
 }
 
@@ -316,23 +310,23 @@ void DX12RayTracingPipelineState::GenerateIdentifiers(const RayTracingShaderColl
     }
 }
 
-void DX12RayTracingPipelineState::CreateShaderTables(ResourceCleanup& resourceCleanup)
+void DX12RayTracingPipelineState::CreateShaderTables(ResourceCleanup& resourceCleanup, RHIAllocator& allocator)
 {
     if (rayGenerationShaderTable.has_value())
     {
-        resourceCleanup.CleanupResource(std::move(rayGenerationShaderTable));
+        resourceCleanup.CleanupResource(std::move(rayGenerationShaderTable->buffer));
     }
     if (rayMissShaderTable.has_value())
     {
-        resourceCleanup.CleanupResource(std::move(rayMissShaderTable));
+        resourceCleanup.CleanupResource(std::move(rayMissShaderTable->buffer));
     }
     if (hitGroupShaderTable.has_value())
     {
-        resourceCleanup.CleanupResource(std::move(hitGroupShaderTable));
+        resourceCleanup.CleanupResource(std::move(hitGroupShaderTable->buffer));
     }
     if (rayCallableShaderTable.has_value())
     {
-        resourceCleanup.CleanupResource(std::move(rayCallableShaderTable));
+        resourceCleanup.CleanupResource(std::move(rayCallableShaderTable->buffer));
     }
 
     BufferDescription shaderTableDescription{
@@ -342,8 +336,8 @@ void DX12RayTracingPipelineState::CreateShaderTables(ResourceCleanup& resourceCl
 
     shaderTableDescription.name = "RayGenerationShaderTable";
     shaderTableDescription.byteSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-    rayGenerationShaderTable = RHIBuffer(device, shaderTableDescription);
-    rayGenerationShaderTable->WriteShaderTable({ &rayGenerationIdentifier, 1 });
+    rayGenerationShaderTable =
+        DX12ShaderTable(device, allocator, shaderTableDescription, { &rayGenerationIdentifier, 1 });
 
     if (!rayMissIdentifiers.empty())
     {
@@ -351,8 +345,7 @@ void DX12RayTracingPipelineState::CreateShaderTables(ResourceCleanup& resourceCl
         shaderTableDescription.byteSize =
             AlignUp(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT) *
             rayMissIdentifiers.size();
-        rayMissShaderTable = RHIBuffer(device, shaderTableDescription);
-        rayMissShaderTable->WriteShaderTable(rayMissIdentifiers);
+        rayMissShaderTable = DX12ShaderTable(device, allocator, shaderTableDescription, rayMissIdentifiers);
     }
 
     if (!hitGroupIdentifiers.empty())
@@ -361,8 +354,7 @@ void DX12RayTracingPipelineState::CreateShaderTables(ResourceCleanup& resourceCl
         shaderTableDescription.byteSize =
             AlignUp(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT) *
             hitGroupIdentifiers.size();
-        hitGroupShaderTable = RHIBuffer(device, shaderTableDescription);
-        hitGroupShaderTable->WriteShaderTable(hitGroupIdentifiers);
+        hitGroupShaderTable = DX12ShaderTable(device, allocator, shaderTableDescription, hitGroupIdentifiers);
     }
 
     if (!rayCallableIdentifiers.empty())
@@ -372,8 +364,7 @@ void DX12RayTracingPipelineState::CreateShaderTables(ResourceCleanup& resourceCl
             AlignUp(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT) *
             rayCallableIdentifiers.size();
 
-        rayCallableShaderTable = RHIBuffer(device, shaderTableDescription);
-        rayCallableShaderTable->WriteShaderTable(rayCallableIdentifiers);
+        rayCallableShaderTable = DX12ShaderTable(device, allocator, shaderTableDescription, rayCallableIdentifiers);
     }
 }
 

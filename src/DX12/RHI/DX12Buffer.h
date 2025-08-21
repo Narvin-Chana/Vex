@@ -55,10 +55,6 @@ public:
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
     virtual void FreeAllocation(RHIAllocator& allocator) override;
 
-    void WriteShaderTable(std::span<void*> shaderIdentifiers,
-                          u64 shaderIdentifierSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
-                          u64 recordStride = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-
     ID3D12Resource* GetRawBuffer()
     {
         return buffer.Get();
@@ -67,11 +63,6 @@ public:
     D3D12_GPU_VIRTUAL_ADDRESS GetGPUVirtualAddress() const
     {
         return buffer->GetGPUVirtualAddress();
-    }
-
-    u64 GetShaderTableStride() const
-    {
-        return shaderTableStride;
     }
 
 private:
@@ -86,8 +77,6 @@ private:
 
     // Always should be defined.
     Allocation allocation;
-
-    u64 shaderTableStride = 0;
 };
 
 } // namespace vex::dx12

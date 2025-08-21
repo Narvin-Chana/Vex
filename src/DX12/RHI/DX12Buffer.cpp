@@ -214,39 +214,4 @@ void DX12Buffer::FreeAllocation(RHIAllocator& allocator)
 #endif
 }
 
-void DX12Buffer::WriteShaderTable(std::span<void*> shaderIdentifiers, u64 shaderIdentifierSize, u64 recordStride)
-{
-    VEX_ASSERT(desc.memoryLocality == ResourceMemoryLocality::CPUWrite,
-               "Buffers used as shader tables must be CPUWriteable.");
-
-    if (shaderIdentifiers.empty())
-    {
-        return;
-    }
-
-    // Ensures proper alignment - shader records must be aligned to D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT (32
-    // bytes)
-    u64 alignedRecordStride = AlignUp<u64>(recordStride, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
-    shaderTableStride = alignedRecordStride;
-
-    std::span<u8> mappedData = Map();
-
-    // Write each shader identifier.
-    for (u64 i = 0; i < shaderIdentifiers.size(); ++i)
-    {
-        u64 offset = i * alignedRecordStride;
-
-        // Copy the shader identifier.
-        memcpy(mappedData.data() + offset, shaderIdentifiers[i], shaderIdentifierSize);
-
-        // Zero out any padding.
-        if (alignedRecordStride > shaderIdentifierSize)
-        {
-            memset(mappedData.data() + offset + shaderIdentifierSize, 0, alignedRecordStride - shaderIdentifierSize);
-        }
-    }
-
-    Unmap();
-}
-
 } // namespace vex::dx12

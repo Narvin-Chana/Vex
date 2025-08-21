@@ -260,7 +260,7 @@ std::optional<RayTracingShaderCollection> PipelineStateCache::GetRayTracingShade
 }
 
 const RHIRayTracingPipelineState* PipelineStateCache::GetRayTracingPipelineState(
-    const RHIRayTracingPipelineState::Key& key, ShaderResourceContext resourceContext)
+    const RHIRayTracingPipelineState::Key& key, ShaderResourceContext resourceContext, RHIAllocator& allocator)
 {
     const auto it = rayTracingPSCache.find(key);
     RHIRayTracingPipelineState& ps =
@@ -285,7 +285,7 @@ const RHIRayTracingPipelineState* PipelineStateCache::GetRayTracingPipelineState
     {
         // Avoids PSO being destroyed while frame is in flight.
         ps.Cleanup(*resourceCleanup);
-        ps.Compile(std::move(*rtShaderCollection), *resourceLayout, *resourceCleanup);
+        ps.Compile(std::move(*rtShaderCollection), *resourceLayout, *resourceCleanup, allocator);
     }
 
     return &ps;
