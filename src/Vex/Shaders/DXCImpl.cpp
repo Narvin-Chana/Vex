@@ -1,5 +1,7 @@
 #include "DXCImpl.h"
 
+#include <algorithm>
+
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/Shaders/Shader.h>
@@ -61,10 +63,10 @@ static std::vector<DxcDefine> ConvertDefinesToDxcDefine(const std::vector<Shader
 {
     std::vector<DxcDefine> dxcDefines;
     dxcDefines.reserve(defines.size());
-    for (auto& d : defines)
-    {
-        dxcDefines.emplace_back(DxcDefine{ .Name = d.name.c_str(), .Value = d.value.c_str() });
-    }
+    std::ranges::transform(defines,
+                           std::back_inserter(dxcDefines),
+                           [](const ShaderDefine& d)
+                           { return DxcDefine{ .Name = d.name.c_str(), .Value = d.value.c_str() }; });
     return dxcDefines;
 }
 
@@ -147,10 +149,9 @@ std::expected<std::vector<u8>, std::string> DXCCompilerImpl::CompileShader(
 
     std::vector<LPCWSTR> args;
     args.reserve(shaderEnv.args.size());
-    for (const std::wstring& arg : shaderEnv.args)
-    {
-        args.emplace_back(arg.c_str());
-    }
+    std::ranges::transform(shaderEnv.args,
+                           std::back_inserter(args),
+                           [](const std::wstring& arg) { return arg.c_str(); });
 
     if (compilerSettings.enableShaderDebugging)
     {
