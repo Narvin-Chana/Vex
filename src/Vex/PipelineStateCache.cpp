@@ -2,8 +2,8 @@
 
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
-#include <Vex/Shader.h>
-#include <Vex/ShaderResourceContext.h>
+#include <Vex/Shaders/Shader.h>
+#include <Vex/Shaders/ShaderResourceContext.h>
 
 namespace vex
 {
@@ -99,6 +99,9 @@ static bool IsShaderCollectionStale(const RayTracingShaderCollection& shaderColl
 }
 
 } // namespace PipelineStateCache_Internal
+
+
+PipelineStateCache::PipelineStateCache() = default;
 
 PipelineStateCache::PipelineStateCache(RHI* rhi,
                                        RHIDescriptorPool& descriptorPool,

@@ -7,7 +7,7 @@
 #include <Vex/Platform/Platform.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHITexture.h>
-#include <Vex/Shader.h>
+#include <Vex/Shaders/Shader.h>
 
 #include <DX12/DX12Formats.h>
 #include <DX12/DX12GraphicsPipeline.h>

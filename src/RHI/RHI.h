@@ -22,6 +22,8 @@ struct RayTracingPassDescription;
 using RayTracingPipelineStateKey = RayTracingPassDescription;
 struct SwapChainDescription;
 struct PlatformWindow;
+enum class ShaderCompilerBackend : u8;
+struct ShaderEnvironment;
 
 struct RHIBase
 {
@@ -45,8 +47,8 @@ struct RHIBase
 
     virtual RHIAllocator CreateAllocator() = 0;
 
-    virtual void ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
-                                                 std::vector<ShaderDefine>& defines) = 0;
+    virtual void ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBackend,
+                                                 ShaderEnvironment& shaderEnv) = 0;
 
     virtual u32 AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex) = 0;
     virtual void SubmitAndPresent(std::span<RHICommandList*> commandLists,

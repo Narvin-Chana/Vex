@@ -5,60 +5,25 @@
 #include <utility>
 #include <vector>
 
-// Include dependencies required by DXC.
-#if defined(_WIN32)
-#include <Unknwn.h>
-#include <dxcapi.h>
-#include <windows.h>
-#include <wrl/client.h>
-
-namespace vex
-{
-template <class T>
-using ComPtr = Microsoft::WRL::ComPtr<T>;
-}
-
-#elif defined(__linux__)
-#define __EMULATE_UUID 1
-// DXC exposes an adapter for non-windows platforms.
-#include <dxc/WinAdapter.h>
-#include <dxc/dxcapi.h>
-
-namespace vex
-{
-template <class T>
-using ComPtr = CComPtr<T>;
-}
-
-#endif
-
-#include <Vex/NonNullPtr.h>
 #include <Vex/RHIFwd.h>
-#include <Vex/ShaderCompilerSettings.h>
-#include <Vex/ShaderKey.h>
+#include <Vex/Shaders/CompilerInterface.h>
+#include <Vex/Shaders/ShaderCompilerSettings.h>
+#include <Vex/Shaders/ShaderKey.h>
 #include <Vex/UniqueHandle.h>
+#include <Vex/NonNullPtr.h>
 
 namespace vex
 {
 
 struct ShaderResourceContext;
 class Shader;
-
-struct CompilerUtil
-{
-    CompilerUtil();
-    ~CompilerUtil();
-
-    ComPtr<IDxcCompiler3> compiler;
-    ComPtr<IDxcUtils> utils;
-    ComPtr<IDxcIncludeHandler> defaultIncludeHandler;
-};
+struct ShaderEnvironment;
 
 using ShaderCompileErrorsCallback = bool(const std::vector<std::pair<ShaderKey, std::string>>& errors);
 
 struct ShaderCompiler
 {
-    ShaderCompiler() = default;
+    ShaderCompiler();
     ShaderCompiler(RHI* rhi, const ShaderCompilerSettings& compilerSettings);
     ~ShaderCompiler();
 
@@ -85,22 +50,14 @@ struct ShaderCompiler
     void FlushCompilationErrors();
 
 private:
-    static constexpr std::array HLSL202xFlags{
-        L"-HV 202x", L"-Wconversion", L"-Wdouble-promotion", L"-Whlsl-legacy-literal"
-    };
-
-    // Obtains a hash of the preprocessed shader, allowing us to verify if the shader's content has changed.
-    std::optional<std::size_t> GetShaderHash(const Shader& shader) const;
-    ComPtr<IDxcResult> GetPreprocessedShader(const Shader& shader, const ComPtr<IDxcBlobEncoding>& shaderBlob) const;
-    void FillInAdditionalIncludeDirectories(std::vector<LPCWSTR>& args) const;
-
     std::expected<std::string, std::string> ProcessShaderCodeGen(const std::string& shaderFileStr,
                                                                  const ShaderResourceContext& resourceContext);
 
-    static CompilerUtil& GetCompilerUtil();
+    ShaderEnvironment CreateShaderEnvironment();
 
     RHI* rhi;
     ShaderCompilerSettings compilerSettings;
+    UniqueHandle<CompilerInterface> compilerImpl;
 
     std::vector<std::filesystem::path> additionalIncludeDirectories;
 

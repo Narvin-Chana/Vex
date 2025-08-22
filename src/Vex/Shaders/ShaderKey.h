@@ -39,7 +39,7 @@ inline bool IsRayTracingShader(ShaderType shaderType)
 struct ShaderDefine
 {
     std::wstring name;
-    std::wstring value;
+    std::wstring value = L"1";
     bool operator==(const ShaderDefine& other) const = default;
 };
 

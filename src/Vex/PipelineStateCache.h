@@ -5,7 +5,7 @@
 #include <Vex/NonNullPtr.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
-#include <Vex/ShaderCompiler.h>
+#include <Vex/Shaders/ShaderCompiler.h>
 #include <Vex/UniqueHandle.h>
 
 namespace vex
@@ -16,7 +16,7 @@ class FeatureChecker;
 class PipelineStateCache
 {
 public:
-    PipelineStateCache() = default;
+    PipelineStateCache();
     PipelineStateCache(RHI* rhi,
                        RHIDescriptorPool& descriptorPool,
                        ResourceCleanup* resourceCleanup,
