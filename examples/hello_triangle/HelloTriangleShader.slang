@@ -1,4 +1,4 @@
-#include <Vex.hlsli>
+import Vex;
 
 struct Colors
 {
@@ -20,28 +20,31 @@ float sdf(float2 p)
     return sqrt(min(dot2(p - float2(0.00, 1.00)), dot2(p - 0.5f * max(p.x + p.y, 0.0f)))) * sign(p.x - p.y);
 }
 
-struct UniformStruct
+
+struct UniformsStruct
 {
-    uint colorBufferHandle;
-    uint commBufferHandle;
-    uint outputTextureHandle;
+    uint ColorBuffer;
+    uint CommBuffer;
+    uint OutputTexture;
 };
 
-VEX_UNIFORMS(UniformStruct, Uniforms);
+// Global way of mapping local constant bindless handles to resources.
+// 'uniform' keyword automatically uses the declaration order to access from local constants.
+uniform UniformsStruct Uniforms;
 
-// HLSL way of declaring global resources:
-static const RWTexture2D<float4> OutputTexture = GetBindlessResource(Uniforms.outputTextureHandle);
-static const ConstantBuffer<Colors> ColorBuffer = GetBindlessResource(Uniforms.colorBufferHandle);
-static const RWStructuredBuffer<float4> CommBuffer = GetBindlessResource(Uniforms.commBufferHandle);
-
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void CSMain(uint3 dtid : SV_DispatchThreadID)
 {
+    let ColorBuffer = GetBindlessResource<ConstantBuffer<Colors>>(Uniforms.ColorBuffer);
+    let CommBuffer = GetBindlessResource<RWStructuredBuffer<float4>>(Uniforms.CommBuffer);
+    let OutputTexture = GetBindlessResource<RWTexture2D<float4>>(Uniforms.OutputTexture);
+
     uint width, height;
     OutputTexture.GetDimensions(width, height);
 
-    // HLSL writes to the left side of the screen.
-    if (dtid.x > width / 2.0f)
+    // Slang writes to the right side of the screen.
+    if (dtid.x <= width / 2.0f)
     {
         return;
     }
@@ -49,7 +52,7 @@ void CSMain(uint3 dtid : SV_DispatchThreadID)
     // Convert pixel coordinates to normalized space for opengl-based sdf function (-1 to 1)
     float2 uv = float2(dtid.xy) / max(width, height).xx * 2 - 1;
 
-    float4 color = ColorBuffer.cols;
+    float4 color = (*ColorBuffer).cols;
     CommBuffer[0] = float4(1, 1, 1, 1) - color;
 
     uv.y += 0.25f;
@@ -58,10 +61,10 @@ void CSMain(uint3 dtid : SV_DispatchThreadID)
 
     if (sdf(uv) < 0)
     {
-        OutputTexture[dtid.xy] = float4(color.rgb, 1.0f);
+        OutputTexture[dtid.xy] = float4(1.0f - color.rgb, 1.0f);
     }
     else
     {
-        OutputTexture[dtid.xy] = float4(0.2f, 0.2f, 0.2f, 1.0f);
+        OutputTexture[dtid.xy] = float4(0.2f, 0.1f, 0.1f, 1.0f);
     }
 }

@@ -116,7 +116,7 @@ void DX12CommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTrac
     commandList->SetPipelineState1(rayTracingPipelineState.stateObject.Get());
 }
 
-void DX12CommandList::SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& descriptorPool)
+void DX12CommandList::SetLayout(RHIResourceLayout& layout)
 {
     ID3D12RootSignature* globalRootSignature = layout.GetRootSignature().Get();
 
@@ -132,26 +132,6 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& de
         break;
     }
 
-    if (layout.currentInternalConstantBuffer.has_value())
-    {
-        Transition(*layout.currentInternalConstantBuffer, RHIBufferState::UniformResource);
-        // Set bindless cbuffer (in first slot of root signature).
-        switch (type)
-        {
-        case CommandQueueType::Graphics:
-            commandList->SetGraphicsRootConstantBufferView(
-                0,
-                layout.currentInternalConstantBuffer->GetRawBuffer()->GetGPUVirtualAddress());
-        case CommandQueueType::Compute:
-            commandList->SetComputeRootConstantBufferView(
-                0,
-                layout.currentInternalConstantBuffer->GetRawBuffer()->GetGPUVirtualAddress());
-        case CommandQueueType::Copy:
-        default:
-            break;
-        }
-    }
-
     std::span<const u8> localConstantsData = layout.GetLocalConstantsData();
     if (localConstantsData.empty())
     {
@@ -161,14 +141,14 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& de
     switch (type)
     {
     case CommandQueueType::Graphics:
-        // Set local constants (in second slot of root signature).
-        commandList->SetGraphicsRoot32BitConstants(1,
+        // Set local constants (in first slot of root signature).
+        commandList->SetGraphicsRoot32BitConstants(0,
                                                    static_cast<u32>(localConstantsData.size()),
                                                    localConstantsData.data(),
                                                    0);
     case CommandQueueType::Compute:
-        // Set local constants (in second slot of root signature).
-        commandList->SetComputeRoot32BitConstants(1,
+        // Set local constants (in first slot of root signature).
+        commandList->SetComputeRoot32BitConstants(0,
                                                   static_cast<u32>(localConstantsData.size()),
                                                   localConstantsData.data(),
                                                   0);
@@ -255,7 +235,7 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
         VEX_LOG(Fatal,
                 "The usage of the passed binding \"{}\" doesn't support clearing. Make sure you specify "
                 "the correct usage.",
-                clearBinding.name);
+                clearBinding.texture.description.name);
     }
 }
 
@@ -350,7 +330,7 @@ void DX12CommandList::Transition(std::span<std::pair<RHIBuffer&, RHIBufferState:
 void DX12CommandList::BeginRendering(const RHIDrawResources& resources)
 {
     std::vector<CD3DX12_CPU_DESCRIPTOR_HANDLE> rtvHandles;
-    rtvHandles.reserve(8);
+    rtvHandles.reserve(D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT);
 
     std::optional<CD3DX12_CPU_DESCRIPTOR_HANDLE> dsvHandle;
 

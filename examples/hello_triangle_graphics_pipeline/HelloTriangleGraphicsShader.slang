@@ -1,12 +1,4 @@
-#include <Vex.hlsli>
-
-struct UniformStruct
-{
-    uint colorBufferHandle;
-    float time;
-};
-
-VEX_UNIFORMS(UniformStruct, Uniforms);
+import Vex;
 
 struct Colors
 {
@@ -25,6 +17,7 @@ struct VSOutput
     float2 uv : TEXCOORD0;
 };
 
+[shader("vertex")]
 VSOutput VSMain(in uint vertexID : SV_VertexID)
 {
     VSOutput vs;
@@ -50,13 +43,14 @@ bool IsInsideTriangle(float2 p, float2 v0, float2 v1, float2 v2)
     return (c0 >= 0 && c1 >= 0 && c2 >= 0) || (c0 <= 0 && c1 <= 0 && c2 <= 0);
 }
 
-float4 PSMain(VSOutput input)
+[shader("pixel")]
+float4 PSMain(VSOutput input, uniform uint colorBufferHandle, uniform float time)
     : SV_Target
 {
-    ConstantBuffer<Colors> ColorBuffer = GetBindlessResource(Uniforms.colorBufferHandle);
+    let ColorBuffer = GetBindlessResource<ConstantBuffer<Colors>>(colorBufferHandle);
 
     static const float moveSpeed = 0.2f;
-    float offset = sin(Uniforms.time * moveSpeed) * 0.1;
+    float offset = sin(time * moveSpeed) * 0.1;
 
     // Define triangle vertices in normalized space
     float2 v0 = float2(0.5 + offset, 0.1); // Bottom center
@@ -66,7 +60,7 @@ float4 PSMain(VSOutput input)
     if (IsInsideTriangle(input.uv, v0, v1, v2))
     {
         float3 color = float3(input.uv.x, input.uv.y, 1 - input.uv.x * input.uv.y);
-        return float4(color * ColorBuffer.cols.rgb, 1);
+        return float4(color * (*ColorBuffer).cols.rgb, 1);
     }
     else
     {

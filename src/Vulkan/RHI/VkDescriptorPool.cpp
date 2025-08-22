@@ -53,11 +53,9 @@ VkDescriptorPool::VkDescriptorPool(NonNullPtr<VkGPUContext> ctx)
     //
     // I believe this trade off is worth it given it greatly simplifies our code.
     {
-        std::vector descriptorTypes = {
-            ::vk::DescriptorType::eSampledImage,       ::vk::DescriptorType::eStorageImage,
-            ::vk::DescriptorType::eUniformTexelBuffer, ::vk::DescriptorType::eStorageTexelBuffer,
-            ::vk::DescriptorType::eUniformBuffer,      ::vk::DescriptorType::eStorageBuffer,
-        };
+        using enum ::vk::DescriptorType;
+        std::vector descriptorTypes{ eSampledImage,       eStorageImage,  eUniformTexelBuffer,
+                                     eStorageTexelBuffer, eUniformBuffer, eStorageBuffer };
         if (GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing))
         {
             descriptorTypes.push_back(::vk::DescriptorType::eAccelerationStructureKHR);

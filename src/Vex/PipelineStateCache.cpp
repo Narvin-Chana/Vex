@@ -3,7 +3,6 @@
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/Shaders/Shader.h>
-#include <Vex/Shaders/ShaderResourceContext.h>
 
 namespace vex
 {
@@ -100,7 +99,6 @@ static bool IsShaderCollectionStale(const RayTracingShaderCollection& shaderColl
 
 } // namespace PipelineStateCache_Internal
 
-
 PipelineStateCache::PipelineStateCache() = default;
 
 PipelineStateCache::PipelineStateCache(RHI* rhi,
@@ -121,8 +119,7 @@ RHIResourceLayout& PipelineStateCache::GetResourceLayout()
     return *resourceLayout;
 }
 
-const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(const RHIGraphicsPipelineState::Key& key,
-                                                                             ShaderResourceContext resourceContext)
+const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(const RHIGraphicsPipelineState::Key& key)
 {
     const auto it = graphicsPSCache.find(key);
     RHIGraphicsPipelineState& ps =
@@ -130,11 +127,8 @@ const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(con
             ? it->second
             : graphicsPSCache.insert({ key, rhi->CreateGraphicsPipelineState(key) }).first->second;
 
-    // Add samplers to the resourceContext
-    resourceContext.samplers = resourceLayout->GetStaticSamplers();
-
-    const NonNullPtr<Shader> vertexShader = shaderCompiler.GetShader(ps.key.vertexShader, resourceContext);
-    const NonNullPtr<Shader> pixelShader = shaderCompiler.GetShader(ps.key.pixelShader, resourceContext);
+    const NonNullPtr<Shader> vertexShader = shaderCompiler.GetShader(ps.key.vertexShader);
+    const NonNullPtr<Shader> pixelShader = shaderCompiler.GetShader(ps.key.pixelShader);
     if (!vertexShader->IsValid() || !pixelShader->IsValid())
     {
         return nullptr;
@@ -154,18 +148,14 @@ const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(con
     return &ps;
 }
 
-const RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const RHIComputePipelineState::Key& key,
-                                                                           ShaderResourceContext resourceContext)
+const RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const RHIComputePipelineState::Key& key)
 {
     const auto it = computePSCache.find(key);
     RHIComputePipelineState& ps =
         it != computePSCache.end() ? it->second
                                    : computePSCache.insert({ key, rhi->CreateComputePipelineState(key) }).first->second;
 
-    // Add samplers to the resourceContext
-    resourceContext.samplers = resourceLayout->GetStaticSamplers();
-
-    const NonNullPtr<Shader> computeShader = shaderCompiler.GetShader(ps.key.computeShader, resourceContext);
+    const NonNullPtr<Shader> computeShader = shaderCompiler.GetShader(ps.key.computeShader);
     if (!computeShader->IsValid())
     {
         return nullptr;
@@ -186,9 +176,9 @@ const RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const
 }
 
 std::optional<RayTracingShaderCollection> PipelineStateCache::GetRayTracingShaderCollection(
-    const RHIRayTracingPipelineState::Key& key, ShaderResourceContext resourceContext)
+    const RHIRayTracingPipelineState::Key& key)
 {
-    const NonNullPtr<Shader> rayGenerationShader = shaderCompiler.GetShader(key.rayGenerationShader, resourceContext);
+    const NonNullPtr<Shader> rayGenerationShader = shaderCompiler.GetShader(key.rayGenerationShader);
     if (!rayGenerationShader->IsValid())
     {
         VEX_LOG(Error, "Unable to obtain valid rayGenerationShader: {}", key.rayGenerationShader);
@@ -199,7 +189,7 @@ std::optional<RayTracingShaderCollection> PipelineStateCache::GetRayTracingShade
     collection.rayMissShaders.reserve(key.rayMissShaders.size());
     for (const ShaderKey& key : key.rayMissShaders)
     {
-        const NonNullPtr<Shader> rayMissShader = shaderCompiler.GetShader(key, resourceContext);
+        const NonNullPtr<Shader> rayMissShader = shaderCompiler.GetShader(key);
         if (!rayMissShader->IsValid())
         {
             VEX_LOG(Error, "Unable to obtain valid rayMissShader: {}", key);
@@ -211,8 +201,7 @@ std::optional<RayTracingShaderCollection> PipelineStateCache::GetRayTracingShade
     collection.hitGroupShaders.reserve(key.hitGroups.size());
     for (const HitGroup& hitGroup : key.hitGroups)
     {
-        const NonNullPtr<Shader> rayClosestHitShader =
-            shaderCompiler.GetShader(hitGroup.rayClosestHitShader, resourceContext);
+        const NonNullPtr<Shader> rayClosestHitShader = shaderCompiler.GetShader(hitGroup.rayClosestHitShader);
         if (!rayClosestHitShader->IsValid())
         {
             VEX_LOG(Error, "Unable to obtain valid rayClosestHitShader: {}", hitGroup.rayClosestHitShader);
@@ -222,8 +211,7 @@ std::optional<RayTracingShaderCollection> PipelineStateCache::GetRayTracingShade
 
         if (hitGroup.rayAnyHitShader.has_value())
         {
-            const NonNullPtr<Shader> rayAnyHitShader =
-                shaderCompiler.GetShader(*hitGroup.rayAnyHitShader, resourceContext);
+            const NonNullPtr<Shader> rayAnyHitShader = shaderCompiler.GetShader(*hitGroup.rayAnyHitShader);
             if (!rayAnyHitShader->IsValid())
             {
                 VEX_LOG(Error, "Unable to obtain valid rayAnyHitShader: {}", *hitGroup.rayAnyHitShader);
@@ -234,8 +222,7 @@ std::optional<RayTracingShaderCollection> PipelineStateCache::GetRayTracingShade
 
         if (hitGroup.rayIntersectionShader.has_value())
         {
-            const NonNullPtr<Shader> rayIntersectionShader =
-                shaderCompiler.GetShader(*hitGroup.rayIntersectionShader, resourceContext);
+            const NonNullPtr<Shader> rayIntersectionShader = shaderCompiler.GetShader(*hitGroup.rayIntersectionShader);
             if (!rayIntersectionShader->IsValid())
             {
                 VEX_LOG(Error, "Unable to obtain valid rayIntersectionShader: {}", *hitGroup.rayIntersectionShader);
@@ -250,7 +237,7 @@ std::optional<RayTracingShaderCollection> PipelineStateCache::GetRayTracingShade
     collection.rayCallableShaders.reserve(key.rayCallableShaders.size());
     for (const ShaderKey& key : key.rayCallableShaders)
     {
-        const NonNullPtr<Shader> rayCallableShader = shaderCompiler.GetShader(key, resourceContext);
+        const NonNullPtr<Shader> rayCallableShader = shaderCompiler.GetShader(key);
         if (!rayCallableShader->IsValid())
         {
             VEX_LOG(Error, "Unable to obtain valid rayCallableShader: {}", key);
@@ -263,7 +250,7 @@ std::optional<RayTracingShaderCollection> PipelineStateCache::GetRayTracingShade
 }
 
 const RHIRayTracingPipelineState* PipelineStateCache::GetRayTracingPipelineState(
-    const RHIRayTracingPipelineState::Key& key, ShaderResourceContext resourceContext, RHIAllocator& allocator)
+    const RHIRayTracingPipelineState::Key& key, RHIAllocator& allocator)
 {
     const auto it = rayTracingPSCache.find(key);
     RHIRayTracingPipelineState& ps =
@@ -271,10 +258,7 @@ const RHIRayTracingPipelineState* PipelineStateCache::GetRayTracingPipelineState
             ? it->second
             : rayTracingPSCache.insert({ key, rhi->CreateRayTracingPipelineState(key) }).first->second;
 
-    // Add samplers to the resourceContext
-    resourceContext.samplers = resourceLayout->GetStaticSamplers();
-
-    std::optional<RayTracingShaderCollection> rtShaderCollection = GetRayTracingShaderCollection(key, resourceContext);
+    std::optional<RayTracingShaderCollection> rtShaderCollection = GetRayTracingShaderCollection(key);
     if (!rtShaderCollection)
     {
         return nullptr;

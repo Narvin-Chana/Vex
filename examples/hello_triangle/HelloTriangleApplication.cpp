@@ -71,100 +71,112 @@ void HelloTriangleApplication::Run()
             float invOscillatedColor = 1 - oscillatedColor;
             float color[4] = { invOscillatedColor, oscillatedColor, invOscillatedColor, 1.0 };
 
-// Debug to test allocations
-#define VEX_TEST_ALLOCS 0
-#if VEX_TEST_ALLOCS
-            {
-                std::vector<vex::Texture> textures;
-                for (int i = 0; i < 100; i++)
-                {
-                    textures.push_back(graphics->CreateTexture(
-                        { .name = std::format("DebugAllocTexture_{}", i),
-                          .type = vex::TextureType::Texture2D,
-                          .width = DefaultWidth,
-                          .height = DefaultHeight,
-                          .depthOrArraySize = 1,
-                          .mips = 1,
-                          .format = vex::TextureFormat::RGBA8_UNORM,
-                          .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
-                        vex::ResourceLifetime::Static));
-                }
-
-                for (int i = 0; i < 100; i++)
-                {
-                    graphics->DestroyTexture(textures[i]);
-                }
-            }
-#endif // VEX_TEST_ALLOCS
-
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
 
-            // clang-format off
+            // Create the bindings and obtain the bindless handles we need for our compute passes.
+            std::array<vex::ResourceBinding, 3> pass1Bindings{
+                vex::BufferBinding{
+                    .buffer = colorBuffer,
+                    .usage = vex::BufferBindingUsage::ConstantBuffer,
+                },
+                vex::BufferBinding{
+                    .buffer = commBuffer,
+                    .usage = vex::BufferBindingUsage::RWStructuredBuffer,
+                    .stride = static_cast<vex::u32>(sizeof(float) * 4),
+                },
+                vex::TextureBinding{
+                    .texture = workingTexture,
+                    .usage = vex::TextureBindingUsage::ShaderReadWrite,
+                },
+            };
+            std::vector<vex::BindlessHandle> pass1Handles = ctx.GetBindlessHandles(pass1Bindings);
+
+            std::array<vex::ResourceBinding, 3> pass2Bindings{
+                vex::TextureBinding{
+                    .texture = finalOutputTexture,
+                    .usage = vex::TextureBindingUsage::ShaderReadWrite,
+                },
+                vex::BufferBinding{
+                    .buffer = commBuffer,
+                    .usage = vex::BufferBindingUsage::StructuredBuffer,
+                    .stride = static_cast<vex::u32>(sizeof(float) * 4),
+                },
+                vex::TextureBinding{
+                    .texture = workingTexture,
+                    .usage = vex::TextureBindingUsage::ShaderRead,
+                },
+            };
+            std::vector<vex::BindlessHandle> pass2Handles = ctx.GetBindlessHandles(pass2Bindings);
+
             ctx.EnqueueDataUpload(colorBuffer, color);
 
-            ctx.Dispatch(
-                {
-                    .path = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() / "examples" / "hello_triangle" / "HelloTriangleShader.cs.hlsl",
-                    .entryPoint = "CSMain",
-                    .type = vex::ShaderType::ComputeShader
-                },
-                std::initializer_list<vex::ResourceBinding>{
-                    vex::BufferBinding{
-                        .name = "ColorBuffer",
-                        .buffer = colorBuffer,
-                        .usage = vex::BufferBindingUsage::ConstantBuffer
-                    },
-                    vex::BufferBinding{
-                        .name = "CommBuffer",
-                        .buffer = commBuffer,
-                        .usage = vex::BufferBindingUsage::RWStructuredBuffer,
-                        .stride = sizeof(float) * 4
-                    },
-                    vex::TextureBinding{
-                        .name = "OutputTexture",
-                        .texture = workingTexture,
-                        .usage = vex::TextureBindingUsage::ShaderReadWrite,
-                    },
-                },
-                {},
-                {
-                    static_cast<vex::u32>(std::ceil(static_cast<float>(width) / 8.0f)),
-                    static_cast<vex::u32>(std::ceil(static_cast<float>(height) / 8.0f)),
-                    1
-                });
-            ctx.Dispatch(
-                {
-                    .path = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() / "examples" / "hello_triangle" / "HelloTriangleShader2.cs.hlsl",
-                    .entryPoint = "CSMain",
-                    .type = vex::ShaderType::ComputeShader
-                },
-                std::initializer_list<vex::ResourceBinding>{
-                    vex::TextureBinding{
-                        .name = "OutputTexture",
-                        .texture = finalOutputTexture,
-                        .usage = vex::TextureBindingUsage::ShaderReadWrite,
-                    },
-                    vex::BufferBinding{
-                        .name = "CommBuffer",
-                        .buffer = commBuffer,
-                        .usage = vex::BufferBindingUsage::StructuredBuffer,
-                        .stride = sizeof(float) * 4
-                    },
-                    vex::TextureBinding{
-                        .name = "SourceTexture",
-                        .texture = workingTexture,
-                        .usage = vex::TextureBindingUsage::ShaderRead,
-                    },
-                },
-                {},
-                {
-                    static_cast<vex::u32>(std::ceil(static_cast<float>(width) / 8.0f)),
-                    static_cast<vex::u32>(std::ceil(static_cast<float>(height) / 8.0f)),
-                    1
-                });
-            ctx.Copy(finalOutputTexture, graphics->GetCurrentBackBuffer());
+            // Draw the first pass, first with an HLSL shader, then with a Slang shader (if available).
+            {
+                ctx.TransitionBindings(pass1Bindings);
 
-            // clang-format on
+                ctx.Dispatch(
+                    {
+                        .path = ExamplesDir / "hello_triangle" / "HelloTriangleShader.cs.hlsl",
+                        .entryPoint = "CSMain",
+                        .type = vex::ShaderType::ComputeShader,
+                    },
+                    vex::ConstantBinding(pass1Handles.data(), pass1Handles.size() * sizeof(vex::BindlessHandle)),
+                    {
+                        (width + 7u) / 8u,
+                        (height + 7u) / 8u,
+                        1u,
+                    });
+
+#if VEX_SLANG
+                ctx.Dispatch(
+                    {
+                        .path = ExamplesDir / "hello_triangle" / "HelloTriangleShader.slang",
+                        .entryPoint = "CSMain",
+                        .type = vex::ShaderType::ComputeShader,
+                    },
+                    vex::ConstantBinding(pass1Handles.data(), pass1Handles.size() * sizeof(vex::BindlessHandle)),
+                    {
+                        (width + 7u) / 8u,
+                        (height + 7u) / 8u,
+                        1u,
+                    });
+#endif
+            }
+
+            // Draw the second pass, first with an HLSL shader, then with a Slang shader (if available).
+            {
+                ctx.TransitionBindings(pass2Bindings);
+
+                ctx.Dispatch(
+                    {
+                        .path = ExamplesDir / "hello_triangle" / "HelloTriangleShader2.cs.hlsl",
+                        .entryPoint = "CSMain",
+                        .type = vex::ShaderType::ComputeShader,
+                    },
+                    vex::ConstantBinding(pass2Handles.data(), pass2Handles.size() * sizeof(vex::BindlessHandle)),
+                    {
+                        (width + 7u) / 8u,
+                        (height + 7u) / 8u,
+                        1u,
+                    });
+
+#if VEX_SLANG
+                ctx.Dispatch(
+                    {
+                        .path = ExamplesDir / "hello_triangle" / "HelloTriangleShader2.slang",
+                        .entryPoint = "CSMain",
+                        .type = vex::ShaderType::ComputeShader,
+                    },
+                    vex::ConstantBinding(pass2Handles.data(), pass2Handles.size() * sizeof(vex::BindlessHandle)),
+                    {
+                        (width + 7u) / 8u,
+                        (height + 7u) / 8u,
+                        1u,
+                    });
+#endif
+            }
+
+            ctx.Copy(finalOutputTexture, graphics->GetCurrentBackBuffer());
         }
 
         graphics->EndFrame(windowMode == Fullscreen);

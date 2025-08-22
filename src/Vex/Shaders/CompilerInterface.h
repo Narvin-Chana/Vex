@@ -12,7 +12,6 @@ namespace vex
 {
 
 class Shader;
-struct ShaderResourceContext;
 struct ShaderCompilerSettings;
 struct ShaderDefine;
 struct ShaderEnvironment;

@@ -1,6 +1,8 @@
 #pragma once
 
+#include <filesystem>
 #include <span>
+#include <unordered_set>
 #include <vector>
 
 #include <Vex/Shaders/ShaderKey.h>
@@ -29,9 +31,9 @@ private:
     // Errored shaders are set in stasis while awaiting a confirmation of whether to launch a recompilation.
     bool isErrored = false;
     std::vector<u8> blob;
-    std::size_t hash = 0;
 
     friend struct ShaderCompiler;
+    friend struct SlangCompilerImpl;
 };
 
 } // namespace vex

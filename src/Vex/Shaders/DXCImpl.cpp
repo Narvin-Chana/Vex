@@ -1,6 +1,7 @@
 #include "DXCImpl.h"
 
 #include <algorithm>
+#include <string_view>
 
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
@@ -59,29 +60,10 @@ static std::wstring GetTargetFromShaderType(ShaderType type)
     return highestSupportedShaderModel;
 }
 
-static std::vector<DxcDefine> ConvertDefinesToDxcDefine(const std::vector<ShaderDefine>& defines)
-{
-    std::vector<DxcDefine> dxcDefines;
-    dxcDefines.reserve(defines.size());
-    std::ranges::transform(defines,
-                           std::back_inserter(dxcDefines),
-                           [](const ShaderDefine& d)
-                           { return DxcDefine{ .Name = d.name.c_str(), .Value = d.value.c_str() }; });
-    return dxcDefines;
-}
-
-static void FillInAdditionalIncludeDirectories(std::vector<LPCWSTR>& args,
-                                               std::span<const std::filesystem::path> additionalIncludeDirectories)
-{
-    for (auto& additionalIncludeFolder : additionalIncludeDirectories)
-    {
-        args.insert(args.end(), { L"-I", StringToWString(additionalIncludeFolder.string()).c_str() });
-    }
-}
-
 } // namespace DXCImpl_Internal
 
-DXCCompilerImpl::DXCCompilerImpl()
+DXCCompilerImpl::DXCCompilerImpl(std::vector<std::filesystem::path> includeDirectories)
+    : CompilerBase(std::move(includeDirectories))
 {
     // Create compiler and utils.
     HRESULT hr1 = DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler));
@@ -103,43 +85,17 @@ DXCCompilerImpl::DXCCompilerImpl()
 
 DXCCompilerImpl::~DXCCompilerImpl() = default;
 
-ComPtr<IDxcResult> DXCCompilerImpl::GetPreprocessedShader(
-    const Shader& shader,
-    const ComPtr<IDxcBlobEncoding>& shaderBlobUTF8,
-    std::span<const std::filesystem::path> additionalIncludeDirectories) const
-{
-    std::vector<LPCWSTR> args = { L"-P" }; // -P gives us the preprocessor output of the shader.
-    DXCImpl_Internal::FillInAdditionalIncludeDirectories(args, additionalIncludeDirectories);
-
-    DxcBuffer buffer = { .Ptr = shaderBlobUTF8->GetBufferPointer(),
-                         .Size = shaderBlobUTF8->GetBufferSize(),
-                         .Encoding = CP_UTF8 };
-
-    ComPtr<IDxcResult> result;
-    if (HRESULT hr =
-            compiler->Compile(&buffer, args.data(), static_cast<u32>(args.size()), nullptr, IID_PPV_ARGS(&result));
-        FAILED(hr))
-    {
-        return nullptr;
-    }
-
-    return result;
-}
-
 std::expected<std::vector<u8>, std::string> DXCCompilerImpl::CompileShader(
-    std::string& shaderFileStr,
-    ShaderEnvironment& shaderEnv,
-    std::span<const std::filesystem::path> additionalIncludeDirectories,
-    const ShaderCompilerSettings& compilerSettings,
-    const Shader& shader) const
+    const Shader& shader, ShaderEnvironment& shaderEnv, const ShaderCompilerSettings& compilerSettings) const
 {
     using namespace DXCImpl_Internal;
 
     ComPtr<IDxcBlobEncoding> shaderBlob;
-    if (HRESULT hr = utils->CreateBlobFromPinned(shaderFileStr.c_str(), shaderFileStr.size(), CP_UTF8, &shaderBlob);
-        FAILED(hr))
+    std::wstring shaderPath = StringToWString(shader.key.path.string());
+    if (HRESULT hr = utils->LoadFile(shaderPath.c_str(), nullptr, &shaderBlob); FAILED(hr))
     {
-        return std::unexpected("Failed to create blob from shader.");
+        return std::unexpected(
+            std::format("Failed to load shader from filesystem at path: {}.", shader.key.path.string()));
     }
 
     DxcBuffer shaderSource = {};
@@ -169,9 +125,21 @@ std::expected<std::vector<u8>, std::string> DXCCompilerImpl::CompileShader(
         args.insert(args.end(), HLSL202xFlags.begin(), HLSL202xFlags.end());
     }
 
-    FillInAdditionalIncludeDirectories(args, additionalIncludeDirectories);
+    std::vector<std::wstring> wStringPaths;
+    FillInIncludeDirectories(args, wStringPaths);
 
-    std::vector<DxcDefine> dxcDefines = ConvertDefinesToDxcDefine(shaderEnv.defines);
+    std::vector<DxcDefine> dxcDefines;
+    std::vector<std::pair<std::wstring, std::wstring>> defineWStrings;
+    dxcDefines.reserve(shaderEnv.defines.size());
+    defineWStrings.reserve(shaderEnv.defines.size());
+    std::ranges::transform(shaderEnv.defines,
+                           std::back_inserter(defineWStrings),
+                           [](const ShaderDefine& d) -> std::pair<std::wstring, std::wstring>
+                           { return { StringToWString(d.name), StringToWString(d.value) }; });
+    std::ranges::transform(defineWStrings,
+                           std::back_inserter(dxcDefines),
+                           [](const std::pair<std::wstring, std::wstring>& d)
+                           { return DxcDefine{ .Name = d.first.c_str(), .Value = d.second.c_str() }; });
 
     std::wstring entryPoint;
     // RT Shaders are compiled differently to other shader types, the entry point should be null.
@@ -226,80 +194,21 @@ std::expected<std::vector<u8>, std::string> DXCCompilerImpl::CompileShader(
     finalShaderBlob.resize(shaderBytecode->GetBufferSize());
     std::memcpy(finalShaderBlob.data(), shaderBytecode->GetBufferPointer(), finalShaderBlob.size() * sizeof(u8));
 
-    // TODO(https://trello.com/c/9D3KOgHr): Reflection blob, to be implemented later on.
-    {
-        // ComPtr<IDxcBlob> reflectionBlob;
-        // HRESULT reflectionResult =
-        //     shaderCompilationResults->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(&reflectionBlob),
-        //     nullptr);
-        // if (FAILED(reflectionResult))
-        // {
-        //     return std::unexpected("Unable to get the shader reflection blob after compilation.");
-        // }
-        //
-        // DxcBuffer reflectionBuffer;
-        // reflectionBuffer.Encoding = DXC_CP_ACP;
-        // reflectionBuffer.Ptr = reflectionBlob->GetBufferPointer();
-        // reflectionBuffer.Size = reflectionBlob->GetBufferSize();
-
-        // ComPtr<ID3D12ShaderReflection> reflectionData;
-        // chk << compilerUtil.utils->CreateReflection(&reflectionBuffer, IID_PPV_ARGS(&reflectionData));
-
-        // D3D12_SHADER_DESC reflectionDesc;
-        // reflectionData->GetDesc(&reflectionDesc);
-        // for (uint32 i = 0; i < reflectionDesc.BoundResources; ++i)
-        //{
-        //     D3D12_SHADER_INPUT_BIND_DESC bindDesc;
-        //     reflectionData->GetResourceBindingDesc(i, &bindDesc);
-
-        //    switch (bindDesc.Type)
-        //    {
-        //    case D3D_SIT_CBUFFER:
-        //    case D3D_SIT_TEXTURE:
-        //    case D3D_SIT_STRUCTURED:
-        //    case D3D_SIT_BYTEADDRESS:
-        //    case D3D_SIT_UAV_RWTYPED:
-        //    case D3D_SIT_UAV_RWSTRUCTURED:
-        //    case D3D_SIT_UAV_RWBYTEADDRESS:
-        //        cbvSrvUavReflectionMap[std::string(bindDesc.Name)] = bindDesc.BindPoint;
-        //        break;
-        //    case D3D_SIT_SAMPLER:
-        //        samplerReflectionMap[std::string(bindDesc.Name)] = bindDesc.BindPoint;
-        //        break;
-        //    default:
-        //        break;
-        //    }
-        //}
-    }
-
     return finalShaderBlob;
 }
 
-std::optional<std::size_t> DXCCompilerImpl::GetShaderHash(
-    const Shader& shader, std::span<const std::filesystem::path> additionalIncludeDirectories) const
+void DXCCompilerImpl::FillInIncludeDirectories(std::vector<LPCWSTR>& args, std::vector<std::wstring>& wStrings) const
 {
-    ComPtr<IDxcBlobEncoding> shaderBlobUTF8;
-    u32 codePage = CP_UTF8;
-    if (HRESULT hr = utils->LoadFile(shader.key.path.wstring().c_str(), &codePage, &shaderBlobUTF8); FAILED(hr))
+    wStrings.reserve(includeDirectories.size() + 1);
+    for (auto& additionalIncludeFolder : includeDirectories)
     {
-        VEX_LOG(Error, "Unable to get shader hash, failed to load shader from filepath: {}", shader.key.path.string());
-        return std::nullopt;
+        wStrings.emplace_back(StringToWString(additionalIncludeFolder.string()));
+        args.insert(args.end(), { L"-I", wStrings.back().c_str() });
     }
 
-    if (ComPtr<IDxcResult> preprocessingResult =
-            GetPreprocessedShader(shader, shaderBlobUTF8, additionalIncludeDirectories))
-    {
-        ComPtr<IDxcBlob> preprocessedShader;
-        if (HRESULT hr = preprocessingResult->GetOutput(DXC_OUT_HLSL, IID_PPV_ARGS(&preprocessedShader), nullptr);
-            SUCCEEDED(hr))
-        {
-            std::string_view finalSourceView{ static_cast<const char*>(preprocessedShader->GetBufferPointer()),
-                                              preprocessedShader->GetBufferSize() };
-            return std::hash<std::string_view>{}(finalSourceView);
-        }
-    }
-
-    return std::nullopt;
+    // Also adds the current working directory for the Vex.hlsli file.
+    wStrings.emplace_back(StringToWString(std::filesystem::current_path().string()));
+    args.insert(args.end(), { L"-I", wStrings.back().c_str() });
 }
 
 } // namespace vex

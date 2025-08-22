@@ -378,12 +378,15 @@ RHIAllocator VkRHI::CreateAllocator()
 
 void VkRHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBackend, ShaderEnvironment& shaderEnv)
 {
-    shaderEnv.args.emplace_back(L"-spirv");
-    shaderEnv.args.emplace_back(L"-fvk-bind-resource-heap");
-    shaderEnv.args.emplace_back(L"0");
-    shaderEnv.args.emplace_back(L"0");
+    if (compilerBackend == ShaderCompilerBackend::DXC)
+    {
+        shaderEnv.args.emplace_back(L"-spirv");
+        shaderEnv.args.emplace_back(L"-fvk-bind-resource-heap");
+        shaderEnv.args.emplace_back(L"0");
+        shaderEnv.args.emplace_back(L"0");
+    }
 
-    shaderEnv.defines.emplace_back(L"VEX_VULKAN");
+    shaderEnv.defines.emplace_back("VEX_VULKAN");
 }
 
 u32 VkRHI::AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex)

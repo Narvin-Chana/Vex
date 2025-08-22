@@ -8,7 +8,6 @@
 
 namespace vex::vk
 {
-class VkFeatureChecker;
 class VkDescriptorPool;
 struct VkGPUContext;
 

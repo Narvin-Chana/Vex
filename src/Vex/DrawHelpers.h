@@ -21,12 +21,4 @@ struct DrawDescription
     ColorBlendState colorBlendState;
 };
 
-struct DrawResources
-{
-    // Local constants bound to the root/push constants of your pass.
-    std::optional<ConstantBinding> constants;
-    // Read-only resources.
-    std::span<const ResourceBinding> resourceBindings;
-};
-
 } // namespace vex

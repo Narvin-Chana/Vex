@@ -90,32 +90,12 @@ void VkCommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTracin
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-void VkCommandList::SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& descriptorPool)
+void VkCommandList::SetLayout(RHIResourceLayout& layout)
 {
-    bool hasGlobalConstantsBuffer = layout.currentInternalConstantBuffer.has_value();
-    if (hasGlobalConstantsBuffer)
-    {
-        Transition(*layout.currentInternalConstantBuffer, RHIBufferState::UniformResource);
-    }
     std::span<const u8> localConstantsData = layout.GetLocalConstantsData();
-
-    size_t globalConstantsByteSize = sizeof(u32);
-    size_t finalDataByteSize = localConstantsData.size_bytes() + globalConstantsByteSize;
-
-    std::vector<u8> finalData(finalDataByteSize);
-    std::memcpy(finalData.data() + globalConstantsByteSize, localConstantsData.data(), localConstantsData.size_bytes());
-    if (hasGlobalConstantsBuffer)
+    if (localConstantsData.empty())
     {
-        u32 globalBindlessBuffer =
-            layout.currentInternalConstantBuffer
-                ->GetOrCreateBindlessView(BufferBindingUsage::ConstantBuffer, globalConstantsByteSize, descriptorPool)
-                .GetIndex();
-        std::memcpy(finalData.data(), reinterpret_cast<u8*>(&globalBindlessBuffer), globalConstantsByteSize);
-    }
-    else
-    {
-        u32 invalidBindlessHandle = GInvalidBindlessHandle.GetIndex();
-        std::memcpy(finalData.data(), reinterpret_cast<u8*>(&invalidBindlessHandle), globalConstantsByteSize);
+        return;
     }
 
     ::vk::ShaderStageFlags stageFlags;
@@ -130,7 +110,11 @@ void VkCommandList::SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& desc
         VEX_ASSERT(false, "Operation not supported on this queue type");
     }
 
-    commandBuffer->pushConstants(*layout.pipelineLayout, stageFlags, 0, finalData.size(), finalData.data());
+    commandBuffer->pushConstants(*layout.pipelineLayout,
+                                 stageFlags,
+                                 0,
+                                 localConstantsData.size(),
+                                 localConstantsData.data());
 }
 
 void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)
