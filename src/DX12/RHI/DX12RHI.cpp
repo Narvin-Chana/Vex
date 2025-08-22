@@ -11,6 +11,8 @@
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITexture.h>
+#include <Vex/Shaders/ShaderCompilerSettings.h>
+#include <Vex/Shaders/ShaderEnvironment.h>
 
 #include <DX12/DX12Debug.h>
 #include <DX12/DX12Fence.h>
@@ -182,10 +184,14 @@ RHIAllocator DX12RHI::CreateAllocator()
     return RHIAllocator(device);
 }
 
-void DX12RHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args, std::vector<ShaderDefine>& defines)
+void DX12RHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBackend, ShaderEnvironment& shaderEnv)
 {
-    args.push_back(L"-Qstrip_reflect");
-    defines.emplace_back(L"VEX_DX12");
+    if (compilerBackend == ShaderCompilerBackend::DXC)
+    {
+        shaderEnv.args.emplace_back(L"-Qstrip_reflect");
+    }
+
+    shaderEnv.defines.emplace_back(L"VEX_DX12");
 }
 
 u32 DX12RHI::AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex)

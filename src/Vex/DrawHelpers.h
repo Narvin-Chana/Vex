@@ -5,7 +5,7 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/GraphicsPipeline.h>
-#include <Vex/ShaderKey.h>
+#include <Vex/Shaders/ShaderKey.h>
 
 namespace vex
 {

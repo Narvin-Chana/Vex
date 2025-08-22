@@ -3,7 +3,7 @@
 #include <span>
 #include <vector>
 
-#include <Vex/ShaderKey.h>
+#include <Vex/Shaders/ShaderKey.h>
 #include <Vex/Types.h>
 
 namespace vex

@@ -48,8 +48,8 @@ public:
 
     virtual RHIAllocator CreateAllocator() override;
 
-    virtual void ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args,
-                                                 std::vector<ShaderDefine>& defines) override;
+    virtual void ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBackend,
+                                                 ShaderEnvironment& shaderEnv) override;
 
     ::vk::Instance GetNativeInstance()
     {

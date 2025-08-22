@@ -4,7 +4,7 @@
 
 #include <Vex/RHIBindings.h>
 #include <Vex/RHIFwd.h>
-#include <Vex/ShaderKey.h>
+#include <Vex/Shaders/ShaderKey.h>
 #include <Vex/Types.h>
 
 #include <RHI/RHIBuffer.h>

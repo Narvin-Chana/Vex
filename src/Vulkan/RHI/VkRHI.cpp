@@ -12,6 +12,8 @@
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITexture.h>
+#include <Vex/Shaders/ShaderCompilerSettings.h>
+#include <Vex/Shaders/ShaderEnvironment.h>
 
 #include <RHI/RHICommandPool.h>
 
@@ -374,13 +376,14 @@ RHIAllocator VkRHI::CreateAllocator()
     return VkAllocator();
 }
 
-void VkRHI::ModifyShaderCompilerEnvironment(std::vector<const wchar_t*>& args, std::vector<ShaderDefine>& defines)
+void VkRHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBackend, ShaderEnvironment& shaderEnv)
 {
-    args.push_back(L"-spirv");
-    args.push_back(L"-fvk-bind-resource-heap");
-    args.push_back(L"0");
-    args.push_back(L"0");
-    defines.emplace_back(L"VEX_VULKAN");
+    shaderEnv.args.emplace_back(L"-spirv");
+    shaderEnv.args.emplace_back(L"-fvk-bind-resource-heap");
+    shaderEnv.args.emplace_back(L"0");
+    shaderEnv.args.emplace_back(L"0");
+
+    shaderEnv.defines.emplace_back(L"VEX_VULKAN");
 }
 
 u32 VkRHI::AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex)

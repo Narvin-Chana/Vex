@@ -16,7 +16,7 @@
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/RayTracing.h>
 #include <Vex/ResourceBindingUtils.h>
-#include <Vex/ShaderResourceContext.h>
+#include <Vex/Shaders/ShaderResourceContext.h>
 
 namespace vex
 {
