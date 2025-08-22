@@ -416,9 +416,9 @@ std::expected<std::string, std::string> ShaderCompiler::ProcessShaderCodeGen(
     codeGen.append("struct Vex_GeneratedGlobalResources\n{\n");
     // Sort from A-Z to ensure constant bindings matches the order of ResourceLayout's bindless buffer.
     std::sort(shaderBlockInfo.globalResources.begin(),
-        shaderBlockInfo.globalResources.end(),
-        [](const ShaderParser::GlobalResource& lh, const ShaderParser::GlobalResource& rh)
-        { return lh.name < rh.name; });
+              shaderBlockInfo.globalResources.end(),
+              [](const ShaderParser::GlobalResource& lh, const ShaderParser::GlobalResource& rh)
+              { return lh.name < rh.name; });
     for (const ShaderParser::GlobalResource& resource : shaderBlockInfo.globalResources)
     {
         codeGen.append(std::format("\t uint {}_BindlessIndex;\n", resource.name));
@@ -697,7 +697,7 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader,
     return {};
 }
 
-Shader* ShaderCompiler::GetShader(const ShaderKey& key, const ShaderResourceContext& resourceContext)
+NonNullPtr<Shader> ShaderCompiler::GetShader(const ShaderKey& key, const ShaderResourceContext& resourceContext)
 {
     Shader* shaderPtr;
     if (auto el = shaderCache.find(key); el != shaderCache.end())
@@ -729,7 +729,7 @@ Shader* ShaderCompiler::GetShader(const ShaderKey& key, const ShaderResourceCont
         }
     }
 
-    return shaderPtr;
+    return NonNullPtr(shaderPtr);
 }
 
 std::pair<bool, std::size_t> ShaderCompiler::IsShaderStale(const Shader& shader) const

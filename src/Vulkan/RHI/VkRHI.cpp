@@ -344,6 +344,11 @@ RHIComputePipelineState VkRHI::CreateComputePipelineState(const ComputePipelineS
     return { key, *device, *PSOCache };
 }
 
+RHIRayTracingPipelineState VkRHI::CreateRayTracingPipelineState(const RayTracingPipelineStateKey& key)
+{
+    return { key, *device, *PSOCache };
+}
+
 UniqueHandle<RHIResourceLayout> VkRHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool)
 {
     return MakeUnique<VkResourceLayout>(GetGPUContext(), descriptorPool);

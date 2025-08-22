@@ -23,6 +23,7 @@ public:
 
     virtual void SetPipelineState(const RHIGraphicsPipelineState& graphicsPipelineState) override;
     virtual void SetPipelineState(const RHIComputePipelineState& computePipelineState) override;
+    virtual void SetPipelineState(const RHIRayTracingPipelineState& rayTracingPipelineState) override;
 
     virtual void SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& descriptorPool) override;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) override;
@@ -43,6 +44,9 @@ public:
     virtual void Draw(u32 vertexCount) override;
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount) override;
+
+    virtual void TraceRays(const std::array<u32, 3>& widthHeightDepth,
+                           const RHIRayTracingPipelineState& rayTracingPipelineState) override;
 
     virtual void Copy(RHITexture& src, RHITexture& dst) override;
     virtual void Copy(RHIBuffer& src, RHIBuffer& dst) override;

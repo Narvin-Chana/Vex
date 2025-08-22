@@ -152,6 +152,11 @@ RHIComputePipelineState DX12RHI::CreateComputePipelineState(const ComputePipelin
     return { device, key };
 }
 
+RHIRayTracingPipelineState DX12RHI::CreateRayTracingPipelineState(const RayTracingPipelineStateKey& key)
+{
+    return { device, key };
+}
+
 UniqueHandle<RHIResourceLayout> DX12RHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool)
 {
     return MakeUnique<DX12ResourceLayout>(device);

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include <Vex/ByteUtils.h>
 #include <Vex/Logger.h>
 
 namespace vex

@@ -3,10 +3,12 @@
 #include <cstddef>
 
 #include <Vex/Hash.h>
+#include <Vex/MaybeUninitialized.h>
 
 #include <RHI/RHIPipelineState.h>
 
 #include <DX12/DX12Headers.h>
+#include <DX12/DX12ShaderTable.h>
 
 namespace vex::dx12
 {
@@ -29,7 +31,6 @@ public:
     });
 
     DX12GraphicsPipelineState(const ComPtr<DX12Device>& device, const Key& key);
-    ~DX12GraphicsPipelineState();
 
     virtual void Compile(const Shader& vertexShader,
                          const Shader& pixelShader,
@@ -50,7 +51,6 @@ class DX12ComputePipelineState final : public RHIComputePipelineStateInterface
 {
 public:
     DX12ComputePipelineState(const ComPtr<DX12Device>& device, const Key& key);
-    ~DX12ComputePipelineState();
 
     virtual void Compile(const Shader& computeShader, RHIResourceLayout& resourceLayout) override;
     virtual void Cleanup(ResourceCleanup& resourceCleanup) override;
@@ -59,6 +59,42 @@ public:
 
 private:
     ComPtr<DX12Device> device;
+};
+
+class DX12RayTracingPipelineState final : public RHIRayTracingPipelineStateInterface
+{
+public:
+    DX12RayTracingPipelineState(const ComPtr<DX12Device>& device, const Key& key);
+
+    virtual void Compile(const RayTracingShaderCollection& shaderCollection,
+                         RHIResourceLayout& resourceLayout,
+                         ResourceCleanup& resourceCleanup,
+                         RHIAllocator& allocator) override;
+    virtual void Cleanup(ResourceCleanup& resourceCleanup) override;
+
+    void PrepareDispatchRays(D3D12_DISPATCH_RAYS_DESC& dispatchRaysDesc) const;
+
+    ComPtr<ID3D12StateObject> stateObject;
+
+private:
+    void GenerateIdentifiers(const RayTracingShaderCollection& shaderCollection);
+    void CreateShaderTables(ResourceCleanup& resourceCleanup, RHIAllocator& allocator);
+    void UpdateVersions(const RayTracingShaderCollection& shaderCollection, RHIResourceLayout& resourceLayout);
+
+    static constexpr u32 ShaderIdentifierSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    static constexpr u32 ShaderTableAlignment = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
+
+    ComPtr<DX12Device> device;
+
+    void* rayGenerationIdentifier = nullptr;
+    std::vector<void*> rayMissIdentifiers;
+    std::vector<void*> hitGroupIdentifiers;
+    std::vector<void*> rayCallableIdentifiers;
+
+    MaybeUninitialized<DX12ShaderTable> rayGenerationShaderTable;
+    MaybeUninitialized<DX12ShaderTable> rayMissShaderTable;
+    MaybeUninitialized<DX12ShaderTable> hitGroupShaderTable;
+    MaybeUninitialized<DX12ShaderTable> rayCallableShaderTable;
 };
 
 } // namespace vex::dx12

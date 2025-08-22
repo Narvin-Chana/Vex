@@ -29,7 +29,6 @@ public:
     VkGraphicsPipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache);
     VkGraphicsPipelineState(VkGraphicsPipelineState&&) = default;
     VkGraphicsPipelineState& operator=(VkGraphicsPipelineState&&) = default;
-    ~VkGraphicsPipelineState();
     virtual void Compile(const Shader& vertexShader,
                          const Shader& pixelShader,
                          RHIResourceLayout& resourceLayout) override;
@@ -48,7 +47,6 @@ public:
     VkComputePipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache);
     VkComputePipelineState(VkComputePipelineState&&) = default;
     VkComputePipelineState& operator=(VkComputePipelineState&&) = default;
-    ~VkComputePipelineState();
     virtual void Compile(const Shader& computeShader, RHIResourceLayout& resourceLayout) override;
     virtual void Cleanup(ResourceCleanup& resourceCleanup) override;
 
@@ -57,6 +55,19 @@ public:
 private:
     ::vk::Device device;
     ::vk::PipelineCache PSOCache;
+};
+
+class VkRayTracingPipelineState final : public RHIRayTracingPipelineStateInterface
+{
+public:
+    VkRayTracingPipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache);
+    VkRayTracingPipelineState(VkRayTracingPipelineState&&) = default;
+    VkRayTracingPipelineState& operator=(VkRayTracingPipelineState&&) = default;
+    virtual void Compile(const RayTracingShaderCollection& shaderCollection,
+                         RHIResourceLayout& resourceLayout,
+                         ResourceCleanup& resourceCleanup,
+                         RHIAllocator& allocator) override;
+    virtual void Cleanup(ResourceCleanup& resourceCleanup) override;
 };
 
 } // namespace vex::vk

@@ -51,8 +51,7 @@ public:
     // frame. Since this is blocking, you generally want to call this as late as possible to reduce CPU starvation.
     void StartFrame();
 
-    // Ends the frame by presenting to the swapchain. Contains a CPU-blocking wait until the next backbuffer is
-    // available.
+    // Ends the frame by presenting to the swapchain.
     void EndFrame(bool isFullscreenMode);
 
     // Begin a scoped CommandContext in which GPU commands can be submitted. The command context will automatically

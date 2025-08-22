@@ -14,6 +14,6 @@ void RayGenMain()
     float2 clipPos = float2((float(launchIndex.x) + 0.5f) * 2.0f / float(launchDimensions.x) - 1.0f,
                             1.0f - (float(launchIndex.y) + 0.5f) * 2.0f / float(launchDimensions.y));
 
-    // Write output
-    OutputTexture[launchIndex] = float4(clipPos, 1.0f, 1.0f);
+    // Write to output
+    OutputTexture[launchIndex] = float4(1.0f, clipPos, 1.0f);
 }

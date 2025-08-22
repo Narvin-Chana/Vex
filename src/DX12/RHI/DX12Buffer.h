@@ -60,6 +60,11 @@ public:
         return buffer.Get();
     }
 
+    D3D12_GPU_VIRTUAL_ADDRESS GetGPUVirtualAddress() const
+    {
+        return buffer->GetGPUVirtualAddress();
+    }
+
 private:
     virtual UniqueHandle<RHIBuffer> CreateStagingBuffer() override;
 

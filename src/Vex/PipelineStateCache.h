@@ -2,6 +2,7 @@
 
 #include <unordered_map>
 
+#include <Vex/NonNullPtr.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/ShaderCompiler.h>
@@ -34,10 +35,19 @@ public:
                                                              ShaderResourceContext resourceContext);
     const RHIComputePipelineState* GetComputePipelineState(const RHIComputePipelineState::Key& key,
                                                            ShaderResourceContext resourceContext);
+    const RHIRayTracingPipelineState* GetRayTracingPipelineState(const RHIRayTracingPipelineState::Key& key,
+                                                                 ShaderResourceContext resourceContext,
+                                                                 RHIAllocator& allocator);
 
     ShaderCompiler& GetShaderCompiler();
 
 private:
+    // Converts a RayTracingPSOKey into the mirrored version of itself which contains all required shaders.
+    std::optional<RayTracingShaderCollection> GetRayTracingShaderCollection(const RHIRayTracingPipelineState::Key& key,
+                                                                            ShaderResourceContext resourceContext);
+
+    // Can't use NonNullPtr, as this field can potentially be empty during the time it takes for the RHI to be
+    // initialized.
     RHI* rhi;
 
     ResourceCleanup* resourceCleanup;
@@ -47,6 +57,7 @@ private:
     std::unordered_map<RHIGraphicsPipelineState::Key, RHIGraphicsPipelineState, RHIGraphicsPipelineState::Hasher>
         graphicsPSCache;
     std::unordered_map<RHIComputePipelineState::Key, RHIComputePipelineState> computePSCache;
+    std::unordered_map<RHIRayTracingPipelineState::Key, RHIRayTracingPipelineState> rayTracingPSCache;
 };
 
 } // namespace vex

@@ -23,8 +23,6 @@ VkGraphicsPipelineState::VkGraphicsPipelineState(const Key& key, ::vk::Device de
     GraphicsPiplineUtils::ValidateGraphicsPipeline(key);
 }
 
-VkGraphicsPipelineState::~VkGraphicsPipelineState() = default;
-
 void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
                                       const Shader& pixelShader,
                                       RHIResourceLayout& resourceLayout)
@@ -211,8 +209,6 @@ VkComputePipelineState::VkComputePipelineState(const Key& key, ::vk::Device devi
 {
 }
 
-VkComputePipelineState::~VkComputePipelineState() = default;
-
 void VkComputePipelineState::Compile(const Shader& computeShader, RHIResourceLayout& resourceLayout)
 {
     std::span<const u8> shaderCode = computeShader.GetBlob();
@@ -241,6 +237,25 @@ void VkComputePipelineState::Cleanup(ResourceCleanup& resourceCleanup)
     auto cleanupPSO = MakeUnique<VkComputePipelineState>(key, device, PSOCache);
     std::swap(cleanupPSO->computePipeline, computePipeline);
     resourceCleanup.CleanupResource(std::move(cleanupPSO));
+}
+
+VkRayTracingPipelineState::VkRayTracingPipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache)
+    : RHIRayTracingPipelineStateInterface(key)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
+void VkRayTracingPipelineState::Compile(const RayTracingShaderCollection& shaderCollection,
+                                        RHIResourceLayout& resourceLayout,
+                                        ResourceCleanup& resourceCleanup,
+                                        RHIAllocator& allocator)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
+void VkRayTracingPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
+{
+    VEX_NOT_YET_IMPLEMENTED();
 }
 
 } // namespace vex::vk

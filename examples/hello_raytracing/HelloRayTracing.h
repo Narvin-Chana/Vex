@@ -1,17 +1,11 @@
 #pragma once
 
-#include <Vex.h>
-
-#include "../ExampleApplication.h"
-
-class GLFWwindow;
+#include <ExampleApplication.h>
 
 class HelloRayTracing : public ExampleApplication
 {
 public:
     HelloRayTracing();
-    virtual void HandleKeyInput(int key, int scancode, int action, int mods) override;
-
     void Run();
 
 protected:

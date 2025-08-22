@@ -23,6 +23,7 @@ struct TextureClearValue;
 struct DrawDescription;
 struct DrawResources;
 struct ComputeResources;
+struct RayTracingPassDescription;
 
 class CommandContext
 {
@@ -64,7 +65,10 @@ public:
                   const std::optional<ConstantBinding>& constants,
                   std::array<u32, 3> groupCount);
 
-    void TraceRays(const ShaderKey& rayGenerationShader, std::array<u32, 3> widthHeightDepth);
+    void TraceRays(const RayTracingPassDescription& rayTracingPassDescription,
+                   std::span<const ResourceBinding> resourceBindings,
+                   const std::optional<ConstantBinding>& constants,
+                   std::array<u32, 3> widthHeightDepth);
 
     void Copy(const Texture& source, const Texture& destination);
     void Copy(const Buffer& source, const Buffer& destination);
