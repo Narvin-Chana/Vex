@@ -4,7 +4,7 @@
 
 #include <Vex/Hash.h>
 #include <Vex/NonNullPtr.h>
-#include <Vex/ShaderKey.h>
+#include <Vex/Shaders/ShaderKey.h>
 #include <Vex/Types.h>
 
 namespace vex
