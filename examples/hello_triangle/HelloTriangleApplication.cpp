@@ -112,13 +112,15 @@ void HelloTriangleApplication::Run()
                     vex::BufferBinding{
                         .name = "ColorBuffer",
                         .buffer = colorBuffer,
-                        .usage = vex::BufferBindingUsage::ConstantBuffer
+                        .usage = vex::BufferBindingUsage::ConstantBuffer,
+                        .typeName = "Colors",
                     },
                     vex::BufferBinding{
                         .name = "CommBuffer",
                         .buffer = commBuffer,
                         .usage = vex::BufferBindingUsage::RWStructuredBuffer,
-                        .stride = sizeof(float) * 4
+                        .typeName = "float4",
+                        .stride = static_cast<vex::u32>(sizeof(float) * 4),
                     },
                     vex::TextureBinding{
                         .name = "OutputTexture",
@@ -148,7 +150,8 @@ void HelloTriangleApplication::Run()
                         .name = "CommBuffer",
                         .buffer = commBuffer,
                         .usage = vex::BufferBindingUsage::StructuredBuffer,
-                        .stride = sizeof(float) * 4
+                        .typeName = "float4",
+                        .stride = static_cast<vex::u32>(sizeof(float) * 4),
                     },
                     vex::TextureBinding{
                         .name = "SourceTexture",

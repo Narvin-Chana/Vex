@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <span>
 #include <variant>
 
@@ -16,13 +17,20 @@ struct ConstantBinding
 {
     template <typename T>
         requires(sizeof(T) <= MaxTheoreticalLocalConstantsByteSize)
-    ConstantBinding(const T& data)
-        : data{ static_cast<const void*>(&data) }
+    ConstantBinding(std::string typeName, const T& data)
+        : typeName(std::move(typeName))
+        , data{ static_cast<const void*>(&data) }
         , size{ sizeof(T) }
     {
     }
 
+    // Shader struct type to use for the constant binding.
+    std::string typeName;
+
+    // Constant binding data.
     const void* data;
+
+    // Byte size of the local constant binding.
     u32 size;
 };
 
@@ -39,14 +47,16 @@ END_VEX_ENUM_FLAGS();
 struct BufferBinding
 {
     // Name of the resource used inside the shader.
-    // eg: VEX_RESOURCE(Texture2D<float3>, MyName);
     std::string name;
     // The buffer to bind
     Buffer buffer;
     // The usage to use in this binding. Needs to be part of the usages of the buffer description
     BufferBindingUsage usage = BufferBindingUsage::Invalid;
+    // Optional: The name of the underlying shader type, only required for typed buffers such as StructuredBuffer or
+    // ConstantBuffer.
+    std::optional<std::string> typeName;
     // Optional: Stride of the buffer when using StructuredBuffer usage
-    u32 stride = 0;
+    std::optional<u32> stride = 0;
 
     void ValidateForShaderUse(BufferUsage::Flags validBufferUsageFlags) const;
     void Validate() const;
@@ -55,11 +65,16 @@ struct BufferBinding
 struct TextureBinding
 {
     // Name of the resource used inside the shader.
-    // eg: VEX_RESOURCE(Texture2D<float3>, MyName);
     std::string name;
     // The texture to bind
     Texture texture;
+    // The usage of the texture.
     TextureBindingUsage usage = TextureBindingUsage::None;
+    // The underlying shader type to use for the texture.
+    // Only valid HLSL/Slang primitives are accepted.
+    // Not passing a texture typename will default to float4.
+    // eg: "float4" for an RGBA texture, "uint" for a R8_UINT texture, etc...
+    std::string typeName = "float4";
     TextureBindingFlags::Flags flags = TextureBindingFlags::None;
 
     u32 mipBias = 0;

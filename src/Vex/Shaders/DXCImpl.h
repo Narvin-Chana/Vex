@@ -29,31 +29,27 @@ using ComPtr = CComPtr<T>;
 }
 #endif
 
-#include <Vex/Shaders/CompilerInterface.h>
+#include <Vex/Shaders/CompilerBase.h>
 
 namespace vex
 {
 
-struct DXCCompilerImpl : public CompilerInterface
+struct ShaderDefine;
+
+struct DXCCompilerImpl : public CompilerBase
 {
-    DXCCompilerImpl();
+    DXCCompilerImpl(std::vector<std::filesystem::path> includeDirectories);
     virtual ~DXCCompilerImpl() override;
 
-    // Obtains a hash of the preprocessed shader, allowing us to verify if the shader's content has changed.
-    virtual std::optional<std::size_t> GetShaderHash(
-        const Shader& shader, std::span<const std::filesystem::path> additionalIncludeDirectories) const override;
-
     virtual std::expected<std::vector<u8>, std::string> CompileShader(
-        std::string& shaderFileStr,
+        const Shader& shader,
         ShaderEnvironment& shaderEnv,
-        std::span<const std::filesystem::path> additionalIncludeDirectories,
         const ShaderCompilerSettings& compilerSettings,
-        const Shader& shader) const override;
+        const ShaderResourceContext& resourceContext) const override;
 
 private:
-    ComPtr<IDxcResult> GetPreprocessedShader(const Shader& shader,
-                                             const ComPtr<IDxcBlobEncoding>& shaderBlob,
-                                             std::span<const std::filesystem::path> additionalIncludeDirectories) const;
+    void FillInIncludeDirectories(std::vector<LPCWSTR>& args) const;
+    void GenerateVexBindings(std::vector<ShaderDefine>& defines, const ShaderResourceContext& resourceContext) const;
 
     ComPtr<IDxcCompiler3> compiler;
     ComPtr<IDxcUtils> utils;

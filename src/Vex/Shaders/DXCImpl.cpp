@@ -1,6 +1,6 @@
 #include "DXCImpl.h"
 
-#include <algorithm>
+#include <string_view>
 
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
@@ -8,6 +8,7 @@
 #include <Vex/Shaders/ShaderCompilerSettings.h>
 #include <Vex/Shaders/ShaderEnvironment.h>
 #include <Vex/Shaders/ShaderKey.h>
+#include <Vex/Shaders/ShaderResourceContext.h>
 
 namespace vex
 {
@@ -70,18 +71,10 @@ static std::vector<DxcDefine> ConvertDefinesToDxcDefine(const std::vector<Shader
     return dxcDefines;
 }
 
-static void FillInAdditionalIncludeDirectories(std::vector<LPCWSTR>& args,
-                                               std::span<const std::filesystem::path> additionalIncludeDirectories)
-{
-    for (auto& additionalIncludeFolder : additionalIncludeDirectories)
-    {
-        args.insert(args.end(), { L"-I", StringToWString(additionalIncludeFolder.string()).c_str() });
-    }
-}
-
 } // namespace DXCImpl_Internal
 
-DXCCompilerImpl::DXCCompilerImpl()
+DXCCompilerImpl::DXCCompilerImpl(std::vector<std::filesystem::path> includeDirectories)
+    : CompilerBase(std::move(includeDirectories))
 {
     // Create compiler and utils.
     HRESULT hr1 = DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler));
@@ -103,43 +96,19 @@ DXCCompilerImpl::DXCCompilerImpl()
 
 DXCCompilerImpl::~DXCCompilerImpl() = default;
 
-ComPtr<IDxcResult> DXCCompilerImpl::GetPreprocessedShader(
-    const Shader& shader,
-    const ComPtr<IDxcBlobEncoding>& shaderBlobUTF8,
-    std::span<const std::filesystem::path> additionalIncludeDirectories) const
-{
-    std::vector<LPCWSTR> args = { L"-P" }; // -P gives us the preprocessor output of the shader.
-    DXCImpl_Internal::FillInAdditionalIncludeDirectories(args, additionalIncludeDirectories);
-
-    DxcBuffer buffer = { .Ptr = shaderBlobUTF8->GetBufferPointer(),
-                         .Size = shaderBlobUTF8->GetBufferSize(),
-                         .Encoding = CP_UTF8 };
-
-    ComPtr<IDxcResult> result;
-    if (HRESULT hr =
-            compiler->Compile(&buffer, args.data(), static_cast<u32>(args.size()), nullptr, IID_PPV_ARGS(&result));
-        FAILED(hr))
-    {
-        return nullptr;
-    }
-
-    return result;
-}
-
 std::expected<std::vector<u8>, std::string> DXCCompilerImpl::CompileShader(
-    std::string& shaderFileStr,
+    const Shader& shader,
     ShaderEnvironment& shaderEnv,
-    std::span<const std::filesystem::path> additionalIncludeDirectories,
     const ShaderCompilerSettings& compilerSettings,
-    const Shader& shader) const
+    const ShaderResourceContext& resourceContext) const
 {
     using namespace DXCImpl_Internal;
 
     ComPtr<IDxcBlobEncoding> shaderBlob;
-    if (HRESULT hr = utils->CreateBlobFromPinned(shaderFileStr.c_str(), shaderFileStr.size(), CP_UTF8, &shaderBlob);
-        FAILED(hr))
+    if (HRESULT hr = utils->LoadFile(shader.key.path.c_str(), nullptr, &shaderBlob); FAILED(hr))
     {
-        return std::unexpected("Failed to create blob from shader.");
+        return std::unexpected(
+            std::format("Failed to load shader from filesystem at path: {}.", WStringToString(shader.key.path)));
     }
 
     DxcBuffer shaderSource = {};
@@ -149,6 +118,10 @@ std::expected<std::vector<u8>, std::string> DXCCompilerImpl::CompileShader(
 
     std::vector<LPCWSTR> args;
     args.reserve(shaderEnv.args.size());
+    for (const std::wstring& arg : shaderEnv.args)
+    {
+        args.emplace_back(arg.c_str());
+    }
     std::ranges::transform(shaderEnv.args,
                            std::back_inserter(args),
                            [](const std::wstring& arg) { return arg.c_str(); });
@@ -169,7 +142,10 @@ std::expected<std::vector<u8>, std::string> DXCCompilerImpl::CompileShader(
         args.insert(args.end(), HLSL202xFlags.begin(), HLSL202xFlags.end());
     }
 
-    FillInAdditionalIncludeDirectories(args, additionalIncludeDirectories);
+    FillInIncludeDirectories(args);
+
+    // Add in the shader bindings for the user requested resources.
+    GenerateVexBindings(shaderEnv.defines, resourceContext);
 
     std::vector<DxcDefine> dxcDefines = ConvertDefinesToDxcDefine(shaderEnv.defines);
 
@@ -226,80 +202,212 @@ std::expected<std::vector<u8>, std::string> DXCCompilerImpl::CompileShader(
     finalShaderBlob.resize(shaderBytecode->GetBufferSize());
     std::memcpy(finalShaderBlob.data(), shaderBytecode->GetBufferPointer(), finalShaderBlob.size() * sizeof(u8));
 
-    // TODO(https://trello.com/c/9D3KOgHr): Reflection blob, to be implemented later on.
-    {
-        // ComPtr<IDxcBlob> reflectionBlob;
-        // HRESULT reflectionResult =
-        //     shaderCompilationResults->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(&reflectionBlob),
-        //     nullptr);
-        // if (FAILED(reflectionResult))
-        // {
-        //     return std::unexpected("Unable to get the shader reflection blob after compilation.");
-        // }
-        //
-        // DxcBuffer reflectionBuffer;
-        // reflectionBuffer.Encoding = DXC_CP_ACP;
-        // reflectionBuffer.Ptr = reflectionBlob->GetBufferPointer();
-        // reflectionBuffer.Size = reflectionBlob->GetBufferSize();
-
-        // ComPtr<ID3D12ShaderReflection> reflectionData;
-        // chk << compilerUtil.utils->CreateReflection(&reflectionBuffer, IID_PPV_ARGS(&reflectionData));
-
-        // D3D12_SHADER_DESC reflectionDesc;
-        // reflectionData->GetDesc(&reflectionDesc);
-        // for (uint32 i = 0; i < reflectionDesc.BoundResources; ++i)
-        //{
-        //     D3D12_SHADER_INPUT_BIND_DESC bindDesc;
-        //     reflectionData->GetResourceBindingDesc(i, &bindDesc);
-
-        //    switch (bindDesc.Type)
-        //    {
-        //    case D3D_SIT_CBUFFER:
-        //    case D3D_SIT_TEXTURE:
-        //    case D3D_SIT_STRUCTURED:
-        //    case D3D_SIT_BYTEADDRESS:
-        //    case D3D_SIT_UAV_RWTYPED:
-        //    case D3D_SIT_UAV_RWSTRUCTURED:
-        //    case D3D_SIT_UAV_RWBYTEADDRESS:
-        //        cbvSrvUavReflectionMap[std::string(bindDesc.Name)] = bindDesc.BindPoint;
-        //        break;
-        //    case D3D_SIT_SAMPLER:
-        //        samplerReflectionMap[std::string(bindDesc.Name)] = bindDesc.BindPoint;
-        //        break;
-        //    default:
-        //        break;
-        //    }
-        //}
-    }
-
     return finalShaderBlob;
 }
 
-std::optional<std::size_t> DXCCompilerImpl::GetShaderHash(
-    const Shader& shader, std::span<const std::filesystem::path> additionalIncludeDirectories) const
+void DXCCompilerImpl::FillInIncludeDirectories(std::vector<LPCWSTR>& args) const
 {
-    ComPtr<IDxcBlobEncoding> shaderBlobUTF8;
-    u32 codePage = CP_UTF8;
-    if (HRESULT hr = utils->LoadFile(shader.key.path.wstring().c_str(), &codePage, &shaderBlobUTF8); FAILED(hr))
+    for (auto& additionalIncludeFolder : includeDirectories)
     {
-        VEX_LOG(Error, "Unable to get shader hash, failed to load shader from filepath: {}", shader.key.path.string());
-        return std::nullopt;
+        args.insert(args.end(), { L"-I", StringToWString(additionalIncludeFolder.string()).c_str() });
     }
+}
 
-    if (ComPtr<IDxcResult> preprocessingResult =
-            GetPreprocessedShader(shader, shaderBlobUTF8, additionalIncludeDirectories))
+void DXCCompilerImpl::GenerateVexBindings(std::vector<ShaderDefine>& defines,
+                                          const ShaderResourceContext& resourceContext) const
+{
+    std::wstring shaderBindings;
+
+    // TODO: Should ensure no duplicate binding names... this should be done in CommandContext
+    // Will be done in a second PR.
+
+    shaderBindings.append(L"struct Vex_GeneratedGlobalResources {");
+    for (const auto& [binding, _] : resourceContext.textures)
     {
-        ComPtr<IDxcBlob> preprocessedShader;
-        if (HRESULT hr = preprocessingResult->GetOutput(DXC_OUT_HLSL, IID_PPV_ARGS(&preprocessedShader), nullptr);
-            SUCCEEDED(hr))
+        if (binding.usage == TextureBindingUsage::None)
         {
-            std::string_view finalSourceView{ static_cast<const char*>(preprocessedShader->GetBufferPointer()),
-                                              preprocessedShader->GetBufferSize() };
-            return std::hash<std::string_view>{}(finalSourceView);
+            continue;
         }
+
+        shaderBindings.append(std::format(L"    uint {}_BindlessIndex; ", StringToWString(binding.name)));
+    }
+    for (const auto& [binding, _] : resourceContext.buffers)
+    {
+        if (binding.usage == BufferBindingUsage::Invalid)
+        {
+            continue;
+        }
+
+        shaderBindings.append(std::format(L"    uint {}_BindlessIndex; ", StringToWString(binding.name)));
     }
 
-    return std::nullopt;
+    static constexpr std::wstring_view LocalConstantsShaderName = L"LocalConstants";
+
+#if VEX_VULKAN
+    shaderBindings.append(L"};"
+                          "struct Vex_GeneratedCombinedResources"
+                          "{"
+                          "    uint GlobalResourcesBindlessIndex;");
+
+    if (resourceContext.constantBinding.has_value())
+    {
+        std::wstring typeName = StringToWString(resourceContext.constantBinding->typeName);
+        shaderBindings.append(std::format(L"\t{} UserData;", typeName));
+
+        // Connects the LocalConstantsShaderName to the actual data stored inside the push constants.
+        defines.emplace_back(std::wstring(LocalConstantsShaderName),
+                             std::format(L"{} (Vex_GeneratedCombinedResourcesCB.UserData)", typeName));
+    }
+    shaderBindings.append(
+        L"}; "
+        "[[vk::push_constant]] ConstantBuffer<Vex_GeneratedCombinedResources> Vex_GeneratedCombinedResourcesCB; "
+        "static ConstantBuffer<Vex_GeneratedGlobalResources> Vex_GeneratedGlobalResourcesCB = "
+        "ResourceDescriptorHeap[Vex_GeneratedCombinedResourcesCB.GlobalResourcesBindlessIndex]; ");
+
+#elif VEX_DX12
+    shaderBindings.append(std::format(
+        L"}}; ConstantBuffer<Vex_GeneratedGlobalResources> Vex_GeneratedGlobalResourcesCB : register(b0); "));
+
+    if (resourceContext.constantBinding.has_value())
+    {
+        shaderBindings.append(std::format(L"ConstantBuffer<{}> {} : register(b1); ",
+                                          StringToWString(resourceContext.constantBinding->typeName),
+                                          LocalConstantsShaderName));
+    }
+#endif
+
+    auto GetTextureHLSLDeclarationFromBinding = [](TextureBinding binding) -> std::wstring
+    {
+        std::wstring typeName;
+        switch (binding.usage)
+        {
+        case TextureBindingUsage::ShaderRead:
+        {
+            typeName = L"Texture";
+            break;
+        }
+        case TextureBindingUsage::ShaderReadWrite:
+        {
+            typeName = L"RWTexture";
+            break;
+        }
+        default:
+            VEX_LOG(Fatal, "Unsupported texture binding usage for DXC shader compiler...");
+        }
+
+        std::wstring textureDimension;
+        switch (binding.texture.description.type)
+        {
+        case TextureType::Texture2D:
+        {
+            if (binding.texture.description.depthOrArraySize <= 1)
+            {
+                textureDimension = L"2D";
+            }
+            else
+            {
+                textureDimension = L"2DArray";
+            }
+            break;
+        }
+        case TextureType::TextureCube:
+        {
+            if (binding.texture.description.depthOrArraySize <= 1)
+            {
+                textureDimension = L"Cube";
+            }
+            else
+            {
+                textureDimension = L"CubeArray";
+            }
+            break;
+        }
+        case TextureType::Texture3D:
+        {
+            textureDimension = L"3D";
+            // Texture3DArray doesn't exist in HLSL.
+            break;
+        }
+        }
+
+        return std::format(
+            L"static {0}{1}<{2}> {3} = ResourceDescriptorHeap[Vex_GeneratedGlobalResourcesCB.{3}_BindlessIndex];",
+            typeName,
+            textureDimension,
+            StringToWString(binding.typeName),
+            StringToWString(binding.name));
+    };
+    for (const auto& [binding, _] : resourceContext.textures)
+    {
+        if (binding.usage == TextureBindingUsage::None)
+        {
+            continue;
+        }
+
+        shaderBindings.append(GetTextureHLSLDeclarationFromBinding(binding));
+    }
+
+    auto GetBufferHLSLDeclarationFromBinding = [](BufferBinding binding) -> std::wstring
+    {
+        std::wstring typeName;
+        switch (binding.usage)
+        {
+        case BufferBindingUsage::ConstantBuffer:
+            typeName = L"ConstantBuffer";
+            break;
+        case BufferBindingUsage::StructuredBuffer:
+            typeName = L"StructuredBuffer";
+            break;
+        case BufferBindingUsage::RWStructuredBuffer:
+            typeName = L"RWStructuredBuffer";
+            break;
+        case BufferBindingUsage::ByteAddressBuffer:
+            typeName = L"ByteAddressBuffer";
+            break;
+        case BufferBindingUsage::RWByteAddressBuffer:
+            typeName = L"RWByteAddressBuffer";
+            break;
+        default:
+            VEX_LOG(Fatal, "Unsupported buffer binding usage for DXC shader compiler...");
+        }
+        if (binding.typeName.has_value())
+        {
+            return std::format(
+                L"static {0}<{1}> {2} = ResourceDescriptorHeap[Vex_GeneratedGlobalResourcesCB.{2}_BindlessIndex];",
+                typeName,
+                StringToWString(binding.typeName.value()),
+                StringToWString(binding.name));
+        }
+        else
+        {
+            return std::format(
+                L"static {0} {1} = ResourceDescriptorHeap[Vex_GeneratedGlobalResourcesCB.{1}_BindlessIndex];",
+                typeName,
+                StringToWString(binding.name));
+        }
+    };
+    for (const auto& [binding, _] : resourceContext.buffers)
+    {
+        if (binding.usage == BufferBindingUsage::Invalid)
+        {
+            continue;
+        }
+
+        shaderBindings.append(GetBufferHLSLDeclarationFromBinding(binding));
+    }
+
+    // Auto-generate shader static sampler bindings.
+    for (u32 i = 0; i < resourceContext.samplers.size(); ++i)
+    {
+        const TextureSampler& sampler = resourceContext.samplers[i];
+        shaderBindings.append(
+            std::format(L"SamplerState {} : register(s{}, space0); ", StringToWString(sampler.name), i));
+    }
+
+    defines.emplace_back(L"VEX_SHADER_BINDINGS", shaderBindings);
+
+    // Defines for obtaining bindless resources directly from an index.
+    defines.emplace_back(L"VEX_GET_BINDLESS_RESOURCE(index)", L"ResourceDescriptorHeap[index]");
 }
 
 } // namespace vex

@@ -103,7 +103,8 @@ void HelloTriangleGraphicsApplication::Run()
                     .name = "ColorBuffer",
                     .buffer = colorBuffer,
                     .usage = vex::BufferBindingUsage::ConstantBuffer,
-                    .stride = sizeof(float) * 4,
+                    .typeName = "Colors",
+                    .stride = static_cast<vex::u32>(sizeof(float) * 4),
                 }
             };
 
@@ -112,7 +113,7 @@ void HelloTriangleGraphicsApplication::Run()
             time += static_cast<float>(currentTime / 1000.0);
 
             vex::DrawResources drawResources{
-                .constants = time,
+                .constants = vex::ConstantBinding("MyStruct", time),
                 .resourceBindings = resourceBindings,
             };
 

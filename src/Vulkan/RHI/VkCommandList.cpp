@@ -106,10 +106,11 @@ void VkCommandList::SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& desc
     std::memcpy(finalData.data() + globalConstantsByteSize, localConstantsData.data(), localConstantsData.size_bytes());
     if (hasGlobalConstantsBuffer)
     {
-        u32 globalBindlessBuffer =
-            layout.currentInternalConstantBuffer
-                ->GetOrCreateBindlessView(BufferBindingUsage::ConstantBuffer, globalConstantsByteSize, descriptorPool)
-                .GetIndex();
+        u32 globalBindlessBuffer = layout.currentInternalConstantBuffer
+                                       ->GetOrCreateBindlessView(BufferBindingUsage::ConstantBuffer,
+                                                                 /* Stride is unused in VkRHI */ {},
+                                                                 descriptorPool)
+                                       .GetIndex();
         std::memcpy(finalData.data(), reinterpret_cast<u8*>(&globalBindlessBuffer), globalConstantsByteSize);
     }
     else

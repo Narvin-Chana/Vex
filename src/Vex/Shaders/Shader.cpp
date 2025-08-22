@@ -8,9 +8,7 @@ Shader::Shader(const ShaderKey& key)
 {
 }
 
-Shader::~Shader()
-{
-}
+Shader::~Shader() = default;
 
 std::span<const u8> Shader::GetBlob() const
 {

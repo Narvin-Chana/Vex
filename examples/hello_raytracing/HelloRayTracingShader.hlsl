@@ -1,7 +1,4 @@
-VEX_SHADER
-{
-    VEX_GLOBAL_RESOURCE(RWTexture2D<float4>, OutputTexture);
-}
+VEX_SHADER_BINDINGS
 
 [shader("raygeneration")]
 void RayGenMain()
