@@ -1,5 +1,6 @@
 #include "DXCImpl.h"
 
+#include <algorithm>
 #include <string_view>
 
 #include <Vex/Logger.h>
@@ -105,10 +106,11 @@ std::expected<std::vector<u8>, std::string> DXCCompilerImpl::CompileShader(
     using namespace DXCImpl_Internal;
 
     ComPtr<IDxcBlobEncoding> shaderBlob;
-    if (HRESULT hr = utils->LoadFile(shader.key.path.c_str(), nullptr, &shaderBlob); FAILED(hr))
+    std::wstring shaderPath = StringToWString(shader.key.path.string());
+    if (HRESULT hr = utils->LoadFile(shaderPath.c_str(), nullptr, &shaderBlob); FAILED(hr))
     {
         return std::unexpected(
-            std::format("Failed to load shader from filesystem at path: {}.", WStringToString(shader.key.path)));
+            std::format("Failed to load shader from filesystem at path: {}.", shader.key.path.string()));
     }
 
     DxcBuffer shaderSource = {};
