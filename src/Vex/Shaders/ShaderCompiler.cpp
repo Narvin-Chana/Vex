@@ -15,8 +15,11 @@
 #include <Vex/Shaders/Shader.h>
 #include <Vex/Shaders/ShaderEnvironment.h>
 #include <Vex/Shaders/ShaderResourceContext.h>
-#include <Vex/Shaders/SlangImpl.h>
 #include <Vex/TextureSampler.h>
+
+#if VEX_SLANG
+#include <Vex/Shaders/SlangImpl.h>
+#endif
 
 namespace vex
 {
