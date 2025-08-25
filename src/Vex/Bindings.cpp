@@ -76,6 +76,17 @@ void BufferBinding::Validate() const
                 "be invalid",
                 name);
     }
+
+    if (usage == BufferBindingUsage::StructuredBuffer || usage == BufferBindingUsage::RWStructuredBuffer)
+    {
+        if (!stride.has_value())
+        {
+            VEX_LOG(Fatal,
+                    "Invalid binding for resource \"{}\": In order to use a binding as a structured buffer, you must "
+                    "pass in a valid stride.",
+                    name);
+        }
+    }
 }
 
 void TextureBinding::ValidateForShaderUse(TextureUsage::Flags validTextureUsageFlags) const

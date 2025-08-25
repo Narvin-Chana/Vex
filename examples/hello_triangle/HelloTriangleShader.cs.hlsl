@@ -3,12 +3,9 @@ struct Colors
     float4 cols;
 };
 
-VEX_SHADER
-{
-    VEX_GLOBAL_RESOURCE(RWTexture2D<float4>, OutputTexture);
-    VEX_GLOBAL_RESOURCE(RWStructuredBuffer<float4>, CommBuffer);
-    VEX_GLOBAL_RESOURCE(ConstantBuffer<Colors>, ColorBuffer);
-}
+// Must be declared after the declaration of the 'Colors' struct, as we use a structured buffer of this type.
+// Must also be declared before any code uses the bound global resources.
+VEX_SHADER_BINDINGS
 
 // Sourced from IQuilez SDF functions
 float dot2(float2 v)

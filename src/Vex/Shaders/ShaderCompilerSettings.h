@@ -7,13 +7,19 @@ namespace vex
 
 enum class ShaderCompilerBackend : u8
 {
-    DXC,
+    DXC, // DirectX Shader Compiler
+#if VEX_SLANG
+    Slang,
+#endif
 };
 
 struct ShaderCompilerSettings
 {
     // Determines which compilation backend to use in the shader compiler.
     ShaderCompilerBackend compilerBackend = ShaderCompilerBackend::DXC;
+
+    // Additional directories in which to search for shaders (on top of the current working directory).
+    std::vector<std::filesystem::path> shaderIncludeDirectories;
 
     // Determines if shaders should be compiled with debug symbols.
     // Defaults to true in non-shipping builds and false in shipping.

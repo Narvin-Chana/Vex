@@ -5,12 +5,12 @@
 #include <utility>
 #include <vector>
 
+#include <Vex/NonNullPtr.h>
 #include <Vex/RHIFwd.h>
-#include <Vex/Shaders/CompilerInterface.h>
+#include <Vex/Shaders/CompilerBase.h>
 #include <Vex/Shaders/ShaderCompilerSettings.h>
 #include <Vex/Shaders/ShaderKey.h>
 #include <Vex/UniqueHandle.h>
-#include <Vex/NonNullPtr.h>
 
 namespace vex
 {
@@ -36,10 +36,6 @@ struct ShaderCompiler
     std::expected<void, std::string> CompileShader(Shader& shader, const ShaderResourceContext& resourceContext);
     NonNullPtr<Shader> GetShader(const ShaderKey& key, const ShaderResourceContext& resourceContext);
 
-    // Checks if the shader's hash is different compared to the last time it was compiled. Returns if the shader is
-    // stale or not and the shader's latest hash (which can potentially be the same as the original).
-    std::pair<bool, std::size_t> IsShaderStale(const Shader& shader) const;
-
     void MarkShaderDirty(const ShaderKey& key);
     void MarkAllShadersDirty();
 
@@ -50,16 +46,14 @@ struct ShaderCompiler
     void FlushCompilationErrors();
 
 private:
-    std::expected<std::string, std::string> ProcessShaderCodeGen(const std::string& shaderFileStr,
-                                                                 const ShaderResourceContext& resourceContext);
-
+    // Checks if the shader's hash is different compared to the last time it was compiled. Returns if the shader is
+    // stale or not and the shader's latest hash (which can potentially be the same as the original).
+    std::pair<bool, std::size_t> IsShaderStale(const Shader& shader) const;
     ShaderEnvironment CreateShaderEnvironment();
 
     RHI* rhi;
     ShaderCompilerSettings compilerSettings;
-    UniqueHandle<CompilerInterface> compilerImpl;
-
-    std::vector<std::filesystem::path> additionalIncludeDirectories;
+    UniqueHandle<CompilerBase> compilerImpl;
 
     std::unordered_map<ShaderKey, Shader> shaderCache;
 

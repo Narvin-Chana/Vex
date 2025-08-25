@@ -66,13 +66,13 @@ void ResourceBindingUtils::CollectRHIResources(GfxBackend& backend,
     {
         std::visit(Visitor{ [&](const BufferBinding& bufferBinding)
                             {
-                                auto& buffer = backend.GetRHIBuffer(bufferBinding.buffer.handle);
-                                bufferBindings.emplace_back(bufferBinding, &buffer);
+                                RHIBuffer& buffer = backend.GetRHIBuffer(bufferBinding.buffer.handle);
+                                bufferBindings.emplace_back(bufferBinding, buffer);
                             },
                             [&](const TextureBinding& texBinding)
                             {
-                                auto& texture = backend.GetRHITexture(texBinding.texture.handle);
-                                textureBindings.emplace_back(texBinding, &texture);
+                                RHITexture& texture = backend.GetRHITexture(texBinding.texture.handle);
+                                textureBindings.emplace_back(texBinding, texture);
                             } },
                    binding.binding);
     }

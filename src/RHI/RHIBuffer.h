@@ -62,7 +62,7 @@ public:
     virtual std::span<u8> Map() = 0;
     virtual void Unmap() = 0;
     virtual BindlessHandle GetOrCreateBindlessView(BufferBindingUsage usage,
-                                                   u32 stride,
+                                                   std::optional<u32> stride,
                                                    RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeAllocation(RHIAllocator& allocator) = 0;

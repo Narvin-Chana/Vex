@@ -23,6 +23,8 @@ public:
     virtual ShaderModel GetShaderModel() const override;
     virtual u32 GetMaxLocalConstantsByteSize() const override;
 
+    std::string_view GetMaxSupportedSpirVVersion() const;
+
 private:
     ::vk::PhysicalDeviceProperties deviceProperties;
     ::vk::PhysicalDeviceFeatures deviceFeatures;

@@ -102,7 +102,7 @@ void DX12Buffer::Unmap()
 }
 
 BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
-                                                   u32 stride,
+                                                   std::optional<u32> stride,
                                                    DX12DescriptorPool& descriptorPool)
 {
     bool isCBV = usage == BufferBindingUsage::ConstantBuffer;
@@ -142,8 +142,8 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.Buffer.FirstElement = 0;
-            srvDesc.Buffer.NumElements = desc.byteSize / stride;
-            srvDesc.Buffer.StructureByteStride = stride;
+            srvDesc.Buffer.NumElements = desc.byteSize / *stride;
+            srvDesc.Buffer.StructureByteStride = *stride;
             srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
             break;
         case BufferBindingUsage::ByteAddressBuffer:
@@ -171,8 +171,8 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
             uavDesc.Format = DXGI_FORMAT_UNKNOWN;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
             uavDesc.Buffer.FirstElement = 0;
-            uavDesc.Buffer.NumElements = desc.byteSize / stride;
-            uavDesc.Buffer.StructureByteStride = stride;
+            uavDesc.Buffer.NumElements = desc.byteSize / *stride;
+            uavDesc.Buffer.StructureByteStride = *stride;
             uavDesc.Buffer.CounterOffsetInBytes = 0;
             uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
             break;
@@ -184,6 +184,7 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
             uavDesc.Buffer.StructureByteStride = 0;
             uavDesc.Buffer.CounterOffsetInBytes = 0;
             uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+            break;
         default:
             break;
         }

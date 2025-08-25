@@ -145,12 +145,13 @@ void CommandContext::ClearTexture(const TextureBinding& binding,
 
     RHITexture& texture = backend->GetRHITexture(binding.texture.handle);
     cmdList->Transition(texture, texture.GetClearTextureState());
-    cmdList->ClearTexture({ binding, &texture },
+    cmdList->ClearTexture({ binding, texture },
                           // This is a safe cast, textures can only contain one of the two usages (RT/DS).
                           static_cast<TextureUsage::Type>(binding.texture.description.usage &
                                                           (TextureUsage::RenderTarget | TextureUsage::DepthStencil)),
                           textureClearValue.value_or(binding.texture.description.clearValue));
 }
+
 void CommandContext::BeginRendering(const DrawResourceBinding& drawBindings)
 {
     if (currentDrawResources.has_value())
@@ -164,13 +165,13 @@ void CommandContext::BeginRendering(const DrawResourceBinding& drawBindings)
     {
         transitions.emplace_back(backend->GetRHITexture(renderTarget.texture.handle), RHITextureState::RenderTarget);
         currentDrawResources->renderTargets.emplace_back(renderTarget,
-                                                         &backend->GetRHITexture(renderTarget.texture.handle));
+                                                         backend->GetRHITexture(renderTarget.texture.handle));
     }
 
     if (drawBindings.depthStencil)
     {
         currentDrawResources->depthStencil = { *drawBindings.depthStencil,
-                                               &backend->GetRHITexture(drawBindings.depthStencil->texture.handle) };
+                                               backend->GetRHITexture(drawBindings.depthStencil->texture.handle) };
         transitions.emplace_back(backend->GetRHITexture(drawBindings.depthStencil->texture.handle),
                                  RHITextureState::DepthWrite);
     }
@@ -178,6 +179,7 @@ void CommandContext::BeginRendering(const DrawResourceBinding& drawBindings)
     cmdList->Transition(transitions);
     cmdList->BeginRendering(*currentDrawResources);
 }
+
 void CommandContext::EndRendering()
 {
     if (!currentDrawResources.has_value())
@@ -236,9 +238,9 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
 
     if (!cachedGraphicsPSOKey || graphicsPSOKey != *cachedGraphicsPSOKey)
     {
-        const RHIGraphicsPipelineState* pipelineState =
-            backend->psCache.GetGraphicsPipelineState(graphicsPSOKey,
-                                                      ShaderResourceContext{ rhiTextureBindings, rhiBufferBindings });
+        const RHIGraphicsPipelineState* pipelineState = backend->psCache.GetGraphicsPipelineState(
+            graphicsPSOKey,
+            ShaderResourceContext{ rhiTextureBindings, rhiBufferBindings, drawResources.constants });
         // No valid PSO means we cannot proceed.
         if (!pipelineState)
         {
@@ -299,8 +301,9 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     if (!cachedComputePSOKey || psoKey != cachedComputePSOKey)
     {
         // Register shader and get Pipeline if exists (if not create it).
-        const RHIComputePipelineState* pipelineState =
-            backend->psCache.GetComputePipelineState(psoKey, { rhiTextureBindings, rhiBufferBindings });
+        const RHIComputePipelineState* pipelineState = backend->psCache.GetComputePipelineState(
+            psoKey,
+            { .textures = rhiTextureBindings, .buffers = rhiBufferBindings, .constantBinding = constants });
 
         // Nothing more to do if the PSO is invalid.
         if (!pipelineState)
@@ -351,10 +354,10 @@ void CommandContext::TraceRays(const RayTracingPassDescription& rayTracingPassDe
     TransitionBindings(*cmdList, rhiTextureBindings);
     TransitionBindings(*cmdList, rhiBufferBindings);
 
-    const RHIRayTracingPipelineState* pipelineState =
-        backend->psCache.GetRayTracingPipelineState(rayTracingPassDescription,
-                                                    { .textures = rhiTextureBindings, .buffers = rhiBufferBindings },
-                                                    *backend->allocator);
+    const RHIRayTracingPipelineState* pipelineState = backend->psCache.GetRayTracingPipelineState(
+        rayTracingPassDescription,
+        { .textures = rhiTextureBindings, .buffers = rhiBufferBindings, .constantBinding = constants },
+        *backend->allocator);
     if (!pipelineState)
     {
         VEX_LOG(Error, "PSO cache returned an invalid pipeline state, unable to continue dispatch...");

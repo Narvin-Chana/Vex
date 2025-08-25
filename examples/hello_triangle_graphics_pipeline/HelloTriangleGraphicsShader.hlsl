@@ -8,14 +8,7 @@ struct Colors
     float4 cols;
 };
 
-VEX_SHADER
-{
-    VEX_LOCAL_CONSTANTS(
-        MyStruct,
-        MyLocalConstants
-    );
-    VEX_GLOBAL_RESOURCE(ConstantBuffer<Colors>, ColorBuffer);
-}
+VEX_SHADER_BINDINGS
 
 void ComputeTriangleVertex(in uint vertexID, out float4 position, out float2 uv)
 {
@@ -58,7 +51,7 @@ float4 PSMain(VSOutput input)
     : SV_Target
 {
     static const float moveSpeed = 0.2f;
-    float offset = sin(MyLocalConstants.time * moveSpeed) * 0.1;
+    float offset = sin(LocalConstants.time * moveSpeed) * 0.1;
 
     // Define triangle vertices in normalized space
     float2 v0 = float2(0.5 + offset, 0.1); // Bottom center

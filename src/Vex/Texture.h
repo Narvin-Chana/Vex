@@ -42,8 +42,8 @@ enum class TextureViewType : u8
 enum class TextureBindingUsage : u8
 {
     None = 0,
-    ShaderRead = TextureUsage::ShaderRead,
-    ShaderReadWrite = TextureUsage::ShaderReadWrite,
+    ShaderRead = TextureUsage::ShaderRead,           // Equivalent to SRV in DX12.
+    ShaderReadWrite = TextureUsage::ShaderReadWrite, // Equivalent to UAV in DX12.
 };
 
 struct ResourceBinding;

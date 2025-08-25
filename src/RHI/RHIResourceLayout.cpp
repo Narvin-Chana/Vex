@@ -58,12 +58,6 @@ void RHIResourceLayoutBase::SetLayoutResources(RHI& rhi,
             buffer->GetOrCreateBindlessView(binding.usage, binding.stride, descriptorPool));
     }
 
-    // Accumulate then sort, to have a deterministic order.
-    std::sort(bindlessNamesAndHandles.begin(),
-              bindlessNamesAndHandles.end(),
-              [](const std::pair<std::string, BindlessHandle>& lh, const std::pair<std::string, BindlessHandle>& rh)
-              { return lh.first < rh.first; });
-
     std::vector<u32> bindlessHandleIndexData;
     bindlessHandleIndexData.reserve(bindlessNamesAndHandles.size());
     for (auto& [name, handle] : bindlessNamesAndHandles)
