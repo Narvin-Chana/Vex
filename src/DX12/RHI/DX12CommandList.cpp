@@ -448,6 +448,11 @@ void DX12CommandList::Copy(RHIBuffer& src, RHIBuffer& dst)
     commandList->CopyBufferRegion(dst.GetRawBuffer(), 0, src.GetRawBuffer(), 0, src.GetDescription().byteSize);
 }
 
+void DX12CommandList::Copy(RHIBuffer& src, RHITexture& dst)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
 CommandQueueType DX12CommandList::GetType() const
 {
     return type;

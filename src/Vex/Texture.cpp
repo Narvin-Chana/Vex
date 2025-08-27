@@ -72,4 +72,10 @@ void ValidateTextureDescription(const TextureDescription& description)
 
 } // namespace TextureUtil
 
+u32 TextureDescription::GetTextureByteSize() const
+{
+    // TODO: Implement this correctly...
+    // Very generous and not at all accurate. Especially with mips
+    return width * height * depthOrArraySize * (4 * sizeof(float));
+}
 } // namespace vex

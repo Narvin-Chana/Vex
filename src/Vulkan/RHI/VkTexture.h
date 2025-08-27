@@ -5,10 +5,8 @@
 #include <Vex/Hash.h>
 #include <Vex/NonNullPtr.h>
 
-#include <RHI/RHIDescriptorPool.h>
 #include <RHI/RHITexture.h>
 
-#include <Vulkan/RHI/VkDescriptorPool.h>
 #include <Vulkan/VkHeaders.h>
 
 namespace vex
@@ -68,7 +66,7 @@ public:
     VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& description, ::vk::UniqueImage rawImage);
 
     // Creates a new image from the description
-    VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& description);
+    VkTexture(NonNullPtr<VkGPUContext> ctx, RHIAllocator& allocator, TextureDescription&& description);
 
     [[nodiscard]] ::vk::Image GetResource();
 
@@ -92,6 +90,9 @@ public:
         return TextureUtil::TextureStateFlagToImageLayout(GetCurrentState());
     }
 
+    virtual std::span<u8> Map() override;
+    virtual void Unmap() override;
+
     struct CacheEntry
     {
         BindlessHandle handle = GInvalidBindlessHandle;
@@ -102,15 +103,17 @@ public:
     std::unordered_map<VkTextureViewDesc, ::vk::UniqueImageView> viewCache;
 
 private:
-    void CreateImage();
+    void CreateImage(RHIAllocator& allocator);
 
     NonNullPtr<VkGPUContext> ctx;
 
     bool isBackBuffer;
     std::variant<::vk::Image, ::vk::UniqueImage> image;
 
+#if !VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
     // Only valid if type == UniqueImage.
     ::vk::UniqueDeviceMemory memory;
+#endif
 
     std::unordered_map<VkTextureViewDesc, CacheEntry> cache;
 

@@ -56,10 +56,11 @@ void HelloTriangleGraphicsApplication::Run()
             float oscillatedColor = static_cast<float>(cos(currentTime) / 2 + 0.5);
             float invOscillatedColor = 1 - oscillatedColor;
             float color[4] = { invOscillatedColor, oscillatedColor, invOscillatedColor, 1.0 };
-            graphics->UpdateData(colorBuffer, color);
 
             // Scoped command context will submit commands automatically upon destruction.
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
+
+            graphics->MapResource(ctx, colorBuffer).SetData(color);
 
             ctx.SetScissor(0, 0, width, height);
 

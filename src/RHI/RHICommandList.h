@@ -64,6 +64,7 @@ public:
 
     virtual void Copy(RHITexture& src, RHITexture& dst) = 0;
     virtual void Copy(RHIBuffer& src, RHIBuffer& dst) = 0;
+    virtual void Copy(RHIBuffer& src, RHITexture& dst) = 0;
 
     virtual CommandQueueType GetType() const = 0;
 };

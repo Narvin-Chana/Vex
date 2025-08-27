@@ -1,10 +1,9 @@
 #pragma once
 
-#include <type_traits>
 #include <vector>
 
 #include <Vex/Containers/FreeList.h>
-#include <Vex/Resource.h>
+#include <Vex/Handle.h>
 #include <Vex/Types.h>
 
 #if defined(_WIN32)
@@ -15,8 +14,6 @@
 
 namespace vex
 {
-
-using HeapType = ResourceMemoryLocality;
 
 struct MemoryRange
 {
@@ -42,7 +39,7 @@ struct MemoryPageInfo
     // Vex allocates pages of a default size of 256MB.
     static constexpr u64 DefaultPageByteSize = 256 * 1024 * 1024;
 
-    MemoryPageInfo(HeapType heapType, u64 pageByteSize = DefaultPageByteSize);
+    MemoryPageInfo(u32 memoryTypeIndex, u64 pageByteSize = DefaultPageByteSize);
 
     std::optional<MemoryRange> Allocate(u64 size, u64 alignment);
     void Free(const MemoryRange& range);
@@ -67,7 +64,7 @@ private:
     // memory range.
     std::optional<MemoryRange> FindFreeSpace(u64 size, u64 alignment);
 
-    HeapType heapType;
+    u32 memoryTypeIndex;
     u64 pageByteSize;
     std::vector<MemoryRange> allocatedRanges;
 };
@@ -80,7 +77,7 @@ static constexpr PageHandle GInvalidPageHandle;
 
 struct Allocation
 {
-    HeapType heapType;
+    u32 memoryTypeIndex;
     PageHandle pageHandle = GInvalidPageHandle;
     MemoryRange memoryRange;
 };
@@ -90,14 +87,16 @@ struct Allocation
 class RHIAllocatorBase
 {
 protected:
-    Allocation Allocate(u64 size, u64 alignment, HeapType heapType);
+    RHIAllocatorBase(u32 memoryTypeCount);
+
+    Allocation Allocate(u64 size, u64 alignment, u32 memoryTypeIndex);
     void Free(const Allocation& allocation);
 
     // Will perform the actual API calls to allocate/deallocate pages.
-    virtual void OnPageAllocated(PageHandle handle, HeapType heapType) = 0;
-    virtual void OnPageFreed(PageHandle handle, HeapType heapType) = 0;
+    virtual void OnPageAllocated(PageHandle handle, u32 memoryTypeIndex) = 0;
+    virtual void OnPageFreed(PageHandle handle, u32 memoryTypeIndexs) = 0;
 
-    std::array<FreeList<MemoryPageInfo, PageHandle>, magic_enum::enum_count<HeapType>()> pageInfos;
+    std::vector<FreeList<MemoryPageInfo, PageHandle>> pageInfos;
 };
 
 } // namespace vex

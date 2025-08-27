@@ -6,6 +6,8 @@
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
 
+#include <RHI/RHIAllocator.h>
+
 namespace vex
 {
 
@@ -25,10 +27,12 @@ END_VEX_ENUM_FLAGS();
 
 // clang-format on
 
-class RHITextureBase
+class RHITextureBase : public IMappableResource
 {
 public:
     RHITextureBase() = default;
+    RHITextureBase(RHIAllocator& allocator)
+        : allocator{ &allocator } {};
     RHITextureBase(const RHITextureBase&) = delete;
     RHITextureBase& operator=(const RHITextureBase&) = delete;
     RHITextureBase(RHITextureBase&&) = default;
@@ -57,9 +61,17 @@ public:
         currentState = newState;
     }
 
+    const Allocation& GetAllocation() const noexcept
+    {
+        return allocation;
+    }
+
 protected:
     TextureDescription description;
     RHITextureState::Flags currentState = RHITextureState::Common;
+
+    RHIAllocator* allocator{};
+    Allocation allocation;
 };
 
 } // namespace vex

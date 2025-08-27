@@ -90,6 +90,8 @@ struct TextureDescription
     TextureUsage::Flags usage = TextureUsage::ShaderRead;
     TextureClearValue clearValue;
     ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly;
+
+    u32 GetTextureByteSize() const;
 };
 
 // Strongly defined type represents a texture.

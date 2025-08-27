@@ -83,9 +83,9 @@ void RHIResourceLayoutBase::SetLayoutResources(RHI& rhi,
                                .byteSize = static_cast<u32>(bindlessHandleIndexData.size() * sizeof(u32)),
                                .usage = BufferUsage::UniformBuffer,
                                .memoryLocality = ResourceMemoryLocality::CPUWrite });
-        currentInternalConstantBuffer->GetMappedMemory().SetData(
-            std::span{ reinterpret_cast<u8*>(bindlessHandleIndexData.data()),
-                       bindlessHandleIndexData.size() * sizeof(u32) });
+        ResourceMappedMemory(*currentInternalConstantBuffer)
+            .SetData(std::span{ reinterpret_cast<const u8*>(bindlessHandleIndexData.data()),
+                                bindlessHandleIndexData.size() * sizeof(u32) });
     }
 }
 

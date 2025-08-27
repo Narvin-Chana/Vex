@@ -1,67 +1,19 @@
 #include "RHIBuffer.h"
 
-#include <utility>
-
 #include <Vex/RHIImpl/RHIBuffer.h>
 
 namespace vex
 {
 
-MappedMemory::MappedMemory(RHIBuffer& buffer, bool useStagingBuffer)
-    : buffer(buffer)
-    , useStagingBuffer(useStagingBuffer)
+RHIBufferBase::RHIBufferBase(RHIAllocator& allocator)
+    : allocator{ allocator }
 {
-    data = useStagingBuffer ? buffer.GetStagingBuffer()->Map() : buffer.Map();
 }
 
-MappedMemory::~MappedMemory()
-{
-    if (!useStagingBuffer)
-    {
-        buffer.Unmap();
-    }
-    else
-    {
-        buffer.GetStagingBuffer()->Unmap();
-        buffer.SetNeedsStagingBufferCopy(true);
-    }
-}
-
-void MappedMemory::SetData(std::span<const u8> inData)
-{
-    VEX_ASSERT(data.size() >= inData.size());
-    // This function is defined in <utility> which is more lightweight than <ranges>/<algorithm>.
-    std::ranges::copy(inData, data.begin());
-}
-
-MappedMemory RHIBufferBase::GetMappedMemory()
-{
-    if (ShouldUseStagingBuffer())
-    {
-        if (!stagingBuffer)
-        {
-            stagingBuffer = CreateStagingBuffer();
-        }
-        return MappedMemory(*static_cast<RHIBuffer*>(this), true);
-    }
-    return MappedMemory(*static_cast<RHIBuffer*>(this), false);
-}
-
-RHIBufferBase::RHIBufferBase(const BufferDescription& desc)
+RHIBufferBase::RHIBufferBase(RHIAllocator& allocator, const BufferDescription& desc)
     : desc{ desc }
+    , allocator{ allocator }
 {
-}
-
-bool RHIBufferBase::ShouldUseStagingBuffer() const
-{
-    // Any buffer which does not have CPUWrite requires a staging buffer for the upload of data.
-    return desc.memoryLocality != ResourceMemoryLocality::CPUWrite;
-}
-
-RHIBuffer* RHIBufferBase::GetStagingBuffer()
-{
-    VEX_ASSERT(stagingBuffer);
-    return stagingBuffer.get();
 }
 
 } // namespace vex

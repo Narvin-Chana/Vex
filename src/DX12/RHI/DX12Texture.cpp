@@ -203,7 +203,8 @@ static D3D12_UNORDERED_ACCESS_VIEW_DESC CreateUnorderedAccessViewDesc(DX12Textur
 } // namespace Texture_Internal
 
 DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, const TextureDescription& desc)
-    : texture(nullptr)
+    : RHITextureBase(allocator)
+    , texture(nullptr)
     , device(device)
     , rtvHeap(device, MaxViewCountPerHeap)
     , dsvHeap(device, MaxViewCountPerHeap)
@@ -461,6 +462,17 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(DX12TextureView
 
         return dsvDescriptor;
     }
+}
+
+std::span<u8> DX12Texture::Map()
+{
+    VEX_NOT_YET_IMPLEMENTED();
+    return {};
+}
+
+void DX12Texture::Unmap()
+{
+    VEX_NOT_YET_IMPLEMENTED();
 }
 
 DX12TextureView::DX12TextureView(const TextureBinding& binding)

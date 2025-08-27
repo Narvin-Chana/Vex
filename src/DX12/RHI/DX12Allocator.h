@@ -2,12 +2,16 @@
 
 #include <unordered_map>
 
+#include <Vex/Resource.h>
+
 #include <RHI/RHIAllocator.h>
 
 #include <DX12/DX12Headers.h>
 
 namespace vex::dx12
 {
+
+using HeapType = ResourceMemoryLocality;
 
 class DX12Allocator : public RHIAllocatorBase
 {
@@ -22,8 +26,8 @@ public:
     void FreeResource(const Allocation& allocation);
 
 protected:
-    virtual void OnPageAllocated(PageHandle pageHandle, HeapType heapType) override;
-    virtual void OnPageFreed(PageHandle pageHandle, HeapType heapType) override;
+    virtual void OnPageAllocated(PageHandle pageHandle, u32 heapIndex) override;
+    virtual void OnPageFreed(PageHandle pageHandle, u32 heapIndex) override;
 
 private:
     ComPtr<DX12Device> device;

@@ -5,6 +5,7 @@
 #include <Vex/NonNullPtr.h>
 #include <Vex/Types.h>
 
+#include <RHI/RHIAllocator.h>
 #include <RHI/RHIBuffer.h>
 
 #include <Vulkan/RHI/VkDescriptorPool.h>
@@ -28,7 +29,7 @@ struct VkDirectBufferMemory;
 class VkBuffer final : public RHIBufferBase
 {
 public:
-    VkBuffer(NonNullPtr<VkGPUContext> ctx, const BufferDescription& desc);
+    VkBuffer(NonNullPtr<VkGPUContext> ctx, VkAllocator& allocator, const BufferDescription& desc);
 
     virtual BindlessHandle GetOrCreateBindlessView(BufferBindingUsage usage,
                                                    u32 stride,
@@ -42,14 +43,15 @@ public:
     virtual void Unmap() override;
 
 private:
-    UniqueHandle<VkBuffer> CreateStagingBuffer() override;
-
     NonNullPtr<VkGPUContext> ctx;
 
     ::vk::UniqueBuffer buffer;
-    ::vk::UniqueDeviceMemory memory;
 
     std::optional<BindlessHandle> bufferHandle;
+
+#if !VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
+    ::vk::UniqueDeviceMemory memory;
+#endif
 
     friend struct VkStagedBufferMemory;
     friend struct VkDirectBufferMemory;

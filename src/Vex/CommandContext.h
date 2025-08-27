@@ -72,6 +72,7 @@ public:
 
     void Copy(const Texture& source, const Texture& destination);
     void Copy(const Buffer& source, const Buffer& destination);
+    void Copy(const Buffer& source, const Texture& destination);
 
     // Allows you to transition the passed in texture to the correct state. Usually this is done automatically by Vex
     // before any draws or dispatches for the resources you pass in.

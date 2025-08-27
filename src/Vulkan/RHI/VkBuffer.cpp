@@ -1,14 +1,14 @@
-﻿#include "VkBuffer.h"
+﻿#include "VkAllocator.h"
 
 #include <magic_enum/magic_enum.hpp>
 
 #include <Vex/Buffer.h>
 
+#include <Vulkan/RHI/VkBuffer.h>
 #include <Vulkan/VkCommandQueue.h>
 #include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkGPUContext.h>
-#include <Vulkan/VkMemory.h>
 
 namespace vex::vk
 {
@@ -43,32 +43,13 @@ static ::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDescription& 
     return flags;
 }
 
-static ::vk::MemoryPropertyFlags GetMemoryPropsFromDesc(const BufferDescription& desc)
-{
-    using enum ::vk::MemoryPropertyFlagBits;
-
-    switch (desc.memoryLocality)
-    {
-    case ResourceMemoryLocality::GPUOnly:
-        return eDeviceLocal;
-    case ResourceMemoryLocality::CPURead:
-    case ResourceMemoryLocality::CPUWrite:
-        return eHostCoherent | eHostVisible;
-    default:
-        VEX_LOG(Fatal, "Unable to deduce memory properties from BufferDescription of {}", desc.name);
-    }
-
-    std::unreachable();
-}
-
-VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, const BufferDescription& desc)
-    : RHIBufferBase{ desc }
+VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, VkAllocator& allocator, const BufferDescription& desc)
+    : RHIBufferBase{ allocator, desc }
     , ctx{ ctx }
 {
     auto bufferUsage = GetVkBufferUsageFromDesc(desc);
-    auto memoryProps = GetMemoryPropsFromDesc(desc);
 
-    if (memoryProps & ::vk::MemoryPropertyFlagBits::eDeviceLocal)
+    if (desc.memoryLocality == ResourceMemoryLocality::GPUOnly)
     {
         // Needs to get its data from somewhere. Will therefore always need a transfer dest usage
         bufferUsage |= ::vk::BufferUsageFlagBits::eTransferDst;
@@ -83,14 +64,21 @@ VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, const BufferDescription& desc)
 
     const ::vk::MemoryRequirements reqs = ctx->device.getBufferMemoryRequirements(*buffer);
 
+#if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
+    auto allocResult = allocator.AllocateResource(desc.memoryLocality, reqs);
+    allocation = allocResult.second;
+    VEX_VK_CHECK << ctx->device.bindBufferMemory(*buffer, allocResult.first, allocation.memoryRange.offset);
+#else
+    ::vk::MemoryPropertyFlags memPropFlags = GetMemoryPropsFromLocality(memLocality);
     memory = VEX_VK_CHECK <<= ctx->device.allocateMemoryUnique(
         { .allocationSize = reqs.size,
           .memoryTypeIndex = GetBestMemoryType(ctx->physDevice, reqs.memoryTypeBits, memoryProps) });
 
+    SetDebugName(ctx->device, *memory, std::format("{}_Memory", desc.name).c_str());
     VEX_VK_CHECK << ctx->device.bindBufferMemory(*buffer, *memory, 0);
+#endif
 
     SetDebugName(ctx->device, *buffer, desc.name.c_str());
-    SetDebugName(ctx->device, *memory, std::format("{}_Memory", desc.name).c_str());
 }
 
 BindlessHandle VkBuffer::GetOrCreateBindlessView(BufferBindingUsage usage,
@@ -126,8 +114,7 @@ void VkBuffer::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 
 void VkBuffer::FreeAllocation(RHIAllocator& allocator)
 {
-    // VEX_NOT_YET_IMPLEMENTED();
-    // For now does nothing to stop the Vk impl from crashing.
+    allocator.FreeResource(allocation);
 }
 
 ::vk::Buffer VkBuffer::GetNativeBuffer()
@@ -135,24 +122,14 @@ void VkBuffer::FreeAllocation(RHIAllocator& allocator)
     return *buffer;
 }
 
-UniqueHandle<VkBuffer> VkBuffer::CreateStagingBuffer()
-{
-    return MakeUnique<VkBuffer>(ctx,
-                                BufferDescription{ .name = desc.name + "_StagingBuffer",
-                                                   .byteSize = desc.byteSize,
-                                                   .usage = BufferUsage::None,
-                                                   .memoryLocality = ResourceMemoryLocality::CPUWrite });
-}
-
 std::span<u8> VkBuffer::Map()
 {
-    void* ptr = VEX_VK_CHECK <<= ctx->device.mapMemory(*memory, 0, desc.byteSize);
-    return { static_cast<u8*>(ptr), desc.byteSize };
+    return allocator->MapAllocation(allocation);
 }
 
 void VkBuffer::Unmap()
 {
-    ctx->device.unmapMemory(*memory);
+    allocator->UnmapAllocation(allocation);
 }
 
 } // namespace vex::vk

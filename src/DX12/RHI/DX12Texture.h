@@ -79,6 +79,9 @@ public:
 
     D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
 
+    virtual std::span<u8> Map() override;
+    virtual void Unmap() override;
+
 private:
     ComPtr<ID3D12Resource> texture;
 

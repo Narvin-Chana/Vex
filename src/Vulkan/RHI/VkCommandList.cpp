@@ -599,6 +599,11 @@ void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst)
     commandBuffer->copyBuffer(src.GetNativeBuffer(), dst.GetNativeBuffer(), 1, &copy);
 }
 
+void VkCommandList::Copy(RHIBuffer& src, RHITexture& dst)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
 CommandQueueType VkCommandList::GetType() const
 {
     return type;

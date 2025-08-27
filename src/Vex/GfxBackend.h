@@ -64,14 +64,14 @@ public:
     // Creates a new buffer with specified description, the buffer will be refered using the Buffer object returned
     Buffer CreateBuffer(BufferDescription description, ResourceLifetime lifetime);
 
-    // Sends data to the buffer. If your buffer is not CPU resident, it will use a staging buffer to upload the data
-    // (with additionnal cost)
-    void UpdateData(const Buffer& buffer, std::span<const u8> data);
+    // Writes data to buffer memory. This only supports buffers with CPUWrite ResourceLocality
+    ResourceMappedMemory MapResource(const Buffer& buffer);
+    ResourceMappedMemory MapResource(const Texture& texture);
 
-    // Same as the non templated one to be easier to use
-    template <class T>
-        requires std::is_trivially_copyable_v<T>
-    void UpdateData(const Buffer& buffer, const T& data);
+    // Allows for automatic staging buffer upload. This will always upload immediately to buffer.
+    // Either via staging buffer if GPUOnly resource or directly if CPUWrite resource
+    ResourceMappedMemory MapResource(CommandContext& ctx, const Buffer& buffer);
+    ResourceMappedMemory MapResource(CommandContext& ctx, const Texture& texture);
 
     // Destroys a texture, the handle passed in must be the one obtained from calling CreateTexture earlier.
     // Once destroyed, the handle passed in is invalid and should no longer be used.
@@ -170,13 +170,5 @@ private:
     friend class CommandContext;
     friend struct ResourceBindingUtils;
 };
-
-template <class T>
-    requires std::is_trivially_copyable_v<T>
-void GfxBackend::UpdateData(const Buffer& buffer, const T& data)
-{
-    const u8* dataPtr = reinterpret_cast<const u8*>(&data);
-    UpdateData(buffer, std::span{ dataPtr, sizeof(T) });
-}
 
 } // namespace vex
