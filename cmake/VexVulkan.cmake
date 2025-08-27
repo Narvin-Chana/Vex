@@ -50,7 +50,6 @@ function(setup_vulkan_backend TARGET)
         "src/Vulkan/VkPhysicalDevice.cpp"
         "src/Vulkan/VkCommandQueue.h"
         "src/Vulkan/VkGPUContext.h"
-        "src/Vulkan/VkMemory.h"
      )
 
     # Add Vulkan sources to target
