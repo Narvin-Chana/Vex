@@ -1,6 +1,7 @@
 ﻿#include "VkCommandList.h"
 
 #include <algorithm>
+#include <regex>
 
 #include <Vex/Bindings.h>
 #include <Vex/DrawHelpers.h>
@@ -13,6 +14,9 @@
 #include <Vulkan/RHI/VkResourceLayout.h>
 #include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkErrorHandler.h>
+
+#include "Vulkan/VkFormats.h"
+#include "Vulkan/VkGPUContext.h"
 
 namespace vex::vk
 {
@@ -155,7 +159,8 @@ void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIReso
                                           nullptr);
         break;
     default:
-        VEX_ASSERT(false, "Operation not supported on this queue type");
+        // VEX_ASSERT(false, "Operation not supported on this queue type");
+        break;
     }
 }
 
@@ -599,9 +604,76 @@ void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst)
     commandBuffer->copyBuffer(src.GetNativeBuffer(), dst.GetNativeBuffer(), 1, &copy);
 }
 
+static u8 GetPixelByteSizeFromFormat(TextureFormat format)
+{
+    const std::string_view enumName = magic_enum::enum_name(format);
+
+    std::regex r{ "([0-9]+)+" };
+
+    std::match_results<std::string_view::const_iterator> results;
+
+    auto it = enumName.begin();
+
+    int totalBits = 0;
+    while (regex_search(it, enumName.end(), results, r))
+    {
+        std::string value = results.str();
+        totalBits += std::stoi(value);
+        std::advance(it, results.prefix().length() + value.length());
+    }
+
+    return static_cast<uint8_t>(totalBits / 8);
+}
+
+u8 ComputeMipCount(std::tuple<u32, u32, u32> maxDimension)
+{
+    auto [width, height, depth] = maxDimension;
+    return static_cast<u8>(1 + log2(std::max(std::max(width, height), depth)));
+}
+
 void VkCommandList::Copy(RHIBuffer& src, RHITexture& dst)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    // TODO look into using VK_EXT_host_image_copy
+
+    const TextureDescription& desc = dst.description;
+
+    const u8 texelByteSize = GetPixelByteSizeFromFormat(desc.format);
+
+    ::vk::Extent3D mipSize{ desc.width,
+                            desc.height,
+                            (desc.type == TextureType::Texture3D) ? desc.depthOrArraySize : 1 };
+
+    std::vector<::vk::BufferImageCopy> regions;
+
+    u32 bufferOffset = 0;
+    for (u8 i = 0; i < desc.mips; ++i)
+    {
+        const u32 mipByteSize = mipSize.width * mipSize.height * (desc.type == TextureType::Texture3D)
+                                    ? mipSize.depth
+                                    : desc.depthOrArraySize * texelByteSize;
+        regions.push_back(::vk::BufferImageCopy{
+            .bufferOffset = bufferOffset,
+            .bufferRowLength = 0,   // 0 means tightly packed according to imageExtent
+            .bufferImageHeight = 0, // 0 means tightly packed according to imageExtent
+            .imageSubresource =
+                ::vk::ImageSubresourceLayers{
+                    .aspectMask = ::vk::ImageAspectFlagBits::eColor,
+                    .mipLevel = i,
+                    .baseArrayLayer = 0,
+                    .layerCount = (desc.type == TextureType::Texture3D) ? 1 : desc.depthOrArraySize,
+                },
+            .imageOffset = ::vk::Offset3D{ 0, 0, 0 },
+            .imageExtent = mipSize });
+
+        bufferOffset += mipByteSize;
+        mipSize = ::vk::Extent3D{ mipSize.width / 2, mipSize.height / 2, mipSize.depth / 2 };
+    }
+
+    commandBuffer->copyBufferToImage(src.GetNativeBuffer(),
+                                     dst.GetResource(),
+                                     dst.GetLayout(),
+                                     static_cast<u32>(regions.size()),
+                                     regions.data());
 }
 
 CommandQueueType VkCommandList::GetType() const

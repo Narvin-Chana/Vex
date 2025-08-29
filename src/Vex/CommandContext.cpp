@@ -387,7 +387,11 @@ void CommandContext::Copy(const Buffer& source, const Buffer& destination)
 
 void CommandContext::Copy(const Buffer& source, const Texture& destination)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    RHIBuffer& sourceRHI = backend->GetRHIBuffer(source.handle);
+    RHITexture& destinationRHI = backend->GetRHITexture(destination.handle);
+    cmdList->Transition(sourceRHI, RHIBufferState::CopySource);
+    cmdList->Transition(destinationRHI, RHITextureState::CopyDest);
+    cmdList->Copy(sourceRHI, destinationRHI);
 }
 
 void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const u8> data)
@@ -427,7 +431,7 @@ void CommandContext::EnqueueDataUpload(const Texture& texture, std::span<const u
     ResourceMappedMemory(rhiStagingBuffer).SetData(data);
 
     cmdList->Transition(rhiStagingBuffer, RHIBufferState::CopySource);
-    cmdList->Transition(rhiDestTexture, RHIBufferState::CopyDest);
+    cmdList->Transition(rhiDestTexture, RHITextureState::CopyDest);
     cmdList->Copy(rhiStagingBuffer, rhiDestTexture);
 
     backend->DestroyBuffer(stagingBuffer);

@@ -2,6 +2,9 @@
 
 #include <GLFWIncludes.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <third_party/stb_image.h>
+
 HelloTriangleApplication::HelloTriangleApplication()
     : ExampleApplication("HelloTriangleApplication")
 {
@@ -58,6 +61,7 @@ HelloTriangleApplication::HelloTriangleApplication()
 
 void HelloTriangleApplication::Run()
 {
+    bool firstFrame = true;
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
@@ -99,6 +103,33 @@ void HelloTriangleApplication::Run()
 
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
 
+            if (firstFrame)
+            {
+                const std::filesystem::path uvImagePath =
+                    std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() /
+                    "examples" / "uv-guide.png";
+                int width, height, channels;
+                void* imageData = stbi_load(uvImagePath.string().c_str(), &width, &height, &channels, 4);
+
+                uvGuideTexture = graphics->CreateTexture(
+                    { .name = "UV Guide",
+                      .type = vex::TextureType::Texture2D,
+                      .width = static_cast<vex::u32>(width),
+                      .height = static_cast<vex::u32>(height),
+                      .depthOrArraySize = 1,
+                      .mips = 1,
+                      .format = vex::TextureFormat::RGBA8_UNORM,
+                      .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
+                    vex::ResourceLifetime::Static);
+
+                ctx.EnqueueDataUpload(
+                    uvGuideTexture,
+                    { static_cast<const vex::u8*>(imageData), static_cast<size_t>(width * height * channels) });
+
+                stbi_image_free(imageData);
+                firstFrame = false;
+            }
+
             // clang-format off
             ctx.EnqueueDataUpload(colorBuffer, color);
 
@@ -124,6 +155,11 @@ void HelloTriangleApplication::Run()
                         .name = "OutputTexture",
                         .texture = workingTexture,
                         .usage = vex::TextureBindingUsage::ShaderReadWrite,
+                    },
+                    vex::TextureBinding{
+                        .name = "UVTextureGuide",
+                        .texture = uvGuideTexture,
+                        .usage = vex::TextureBindingUsage::ShaderRead
                     },
                 },
                 {},

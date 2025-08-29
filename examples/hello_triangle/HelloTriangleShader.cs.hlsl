@@ -6,6 +6,7 @@ struct Colors
 VEX_SHADER
 {
     VEX_GLOBAL_RESOURCE(RWTexture2D<float4>, OutputTexture);
+    VEX_GLOBAL_RESOURCE(Texture2D<float4>, UVTextureGuide);
     VEX_GLOBAL_RESOURCE(RWStructuredBuffer<float4>, CommBuffer);
     VEX_GLOBAL_RESOURCE(ConstantBuffer<Colors>, ColorBuffer);
 }
@@ -46,6 +47,7 @@ float sdf(float2 p)
     }
     else
     {
-        OutputTexture[dtid.xy] = float4(0.2f, 0.2f, 0.2f, 1.0f);
+        float2 globalUV = float2(dtid.xy) / max(width, height);
+        OutputTexture[dtid.xy] = float4(0.2f, 0.2f, 0.2f, 1.0f) * UVTextureGuide.Load(int3(globalUV * 860, 0));
     }
 }
