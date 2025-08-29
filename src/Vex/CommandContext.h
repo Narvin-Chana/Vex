@@ -70,11 +70,18 @@ public:
                    const std::optional<ConstantBinding>& constants,
                    std::array<u32, 3> widthHeightDepth);
 
+    // Copies the entirety of source texture (all mips and array levels) to the destination texture
     void Copy(const Texture& source, const Texture& destination);
+    // Copies the entirety of source buffer to the destination buffer
     void Copy(const Buffer& source, const Buffer& destination);
+    // Copies the contents of a buffer to the specified texture according to API needs
     void Copy(const Buffer& source, const Texture& destination);
 
+    // Enqueues data to be uploaded to the specific buffer. If the buffer is mappable it will map it and directly write
+    // data to it. If the buffer isn't mappable a staging buffer is used implicitly
     void EnqueueDataUpload(const Buffer& buffer, std::span<const u8> data);
+
+    // Enqueues data to be uploaded to the specific texture with the use of a staging buffer.
     void EnqueueDataUpload(const Texture& buffer, std::span<const u8> data);
 
     template <class T>
