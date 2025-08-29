@@ -78,6 +78,16 @@ static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDescript
     return key;
 }
 
+static BufferDescription GetStagingBufferDescription(const std::string& name, u32 byteSize)
+{
+    BufferDescription description;
+    description.byteSize = byteSize;
+    description.name = std::string(name) + "_staging";
+    description.usage = BufferUsage::None;
+    description.memoryLocality = ResourceMemoryLocality::CPUWrite;
+    return description;
+}
+
 } // namespace CommandContext_Internal
 
 CommandContext::CommandContext(GfxBackend* backend, RHICommandList* cmdList)
@@ -380,16 +390,6 @@ void CommandContext::Copy(const Buffer& source, const Texture& destination)
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-static BufferDescription GetStagingBufferDescription(const std::string& name, u32 byteSize)
-{
-    BufferDescription description;
-    description.byteSize = byteSize;
-    description.name = std::string(name) + "_staging";
-    description.usage = BufferUsage::None;
-    description.memoryLocality = ResourceMemoryLocality::CPUWrite;
-    return description;
-}
-
 void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const u8> data)
 {
     RHIBuffer& rhiDestBuffer = backend->GetRHIBuffer(buffer.handle);
@@ -400,9 +400,9 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const u8>
         return;
     }
 
-    Buffer stagingBuffer =
-        backend->CreateBuffer(GetStagingBufferDescription(buffer.description.name, buffer.description.byteSize),
-                              ResourceLifetime::Static);
+    Buffer stagingBuffer = backend->CreateBuffer(
+        CommandContext_Internal::GetStagingBufferDescription(buffer.description.name, buffer.description.byteSize),
+        ResourceLifetime::Static);
     RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
 
     ResourceMappedMemory(rhiStagingBuffer).SetData(data);
@@ -419,7 +419,8 @@ void CommandContext::EnqueueDataUpload(const Texture& texture, std::span<const u
     RHITexture& rhiDestTexture = backend->GetRHITexture(texture.handle);
 
     Buffer stagingBuffer = backend->CreateBuffer(
-        GetStagingBufferDescription(texture.description.name, texture.description.GetTextureByteSize()),
+        CommandContext_Internal::GetStagingBufferDescription(texture.description.name,
+                                                             texture.description.GetTextureByteSize()),
         ResourceLifetime::Static);
     RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
 

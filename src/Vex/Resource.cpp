@@ -1,5 +1,7 @@
 ﻿#include "Resource.h"
 
+#include <utility>
+
 #include <Vex/Debug.h>
 
 namespace vex

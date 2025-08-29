@@ -1,12 +1,11 @@
 #pragma once
 
 #include <Vex/EnumFlags.h>
+#include <Vex/MemoryAllocation.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/Resource.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
-
-#include <RHI/RHIAllocator.h>
 
 namespace vex
 {

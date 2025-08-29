@@ -1,9 +1,9 @@
 #pragma once
 
 #include <Vex/Buffer.h>
+#include <Vex/MemoryAllocation.h>
 #include <Vex/NonNullPtr.h>
 #include <Vex/RHIFwd.h>
-#include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/Resource.h>
 #include <Vex/Types.h>
 
