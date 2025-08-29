@@ -18,41 +18,6 @@
 namespace vex
 {
 
-namespace SlangCompilerImpl_Internal
-{
-
-static SlangStage GetSlangStageFromShaderType(ShaderType type)
-{
-    using enum ShaderType;
-    using enum SlangStage;
-    switch (type)
-    {
-    case VertexShader:
-        return SLANG_STAGE_VERTEX;
-    case PixelShader:
-        return SLANG_STAGE_PIXEL;
-    case ComputeShader:
-        return SLANG_STAGE_COMPUTE;
-    case RayGenerationShader:
-        return SLANG_STAGE_RAY_GENERATION;
-    case RayMissShader:
-        return SLANG_STAGE_MISS;
-    case RayClosestHitShader:
-        return SLANG_STAGE_CLOSEST_HIT;
-    case RayAnyHitShader:
-        return SLANG_STAGE_ANY_HIT;
-    case RayIntersectionShader:
-        return SLANG_STAGE_INTERSECTION;
-    case RayCallableShader:
-        return SLANG_STAGE_CALLABLE;
-    default:
-        VEX_LOG(Fatal, "Invalid shader type: {}", magic_enum::enum_name(type));
-    }
-    std::unreachable();
-}
-
-} // namespace SlangCompilerImpl_Internal
-
 SlangCompilerImpl::SlangCompilerImpl(std::vector<std::filesystem::path> incDirs)
     : CompilerBase(std::move(incDirs))
 {
@@ -66,8 +31,6 @@ SlangCompilerImpl::~SlangCompilerImpl() = default;
 std::expected<std::vector<u8>, std::string> SlangCompilerImpl::CompileShader(
     const Shader& shader, ShaderEnvironment& shaderEnv, const ShaderCompilerSettings& compilerSettings) const
 {
-    using namespace SlangCompilerImpl_Internal;
-
     if (shader.key.path.extension() != ".slang")
     {
         VEX_LOG(Fatal,

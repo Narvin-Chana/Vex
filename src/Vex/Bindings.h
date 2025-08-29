@@ -13,6 +13,13 @@
 namespace vex
 {
 
+template <typename T>
+concept IsContainer = requires(T a) {
+    { a.begin() } -> std::input_or_output_iterator;
+    { a.end() } -> std::input_or_output_iterator;
+    typename T::value_type;
+};
+
 struct ConstantBinding
 {
     explicit ConstantBinding(const void* data, std::span<const u8>::size_type size)
@@ -21,8 +28,16 @@ struct ConstantBinding
     }
 
     template <typename T>
-        requires(sizeof(T) <= MaxTheoreticalLocalConstantsByteSize)
-    ConstantBinding(const T& data)
+    explicit ConstantBinding(std::span<T> data)
+        : ConstantBinding(static_cast<const void*>(data.data()), data.size_bytes())
+    {
+    }
+
+    // Avoids this constructor taking in a container, and thus polluting constant data with the container's data (eg: a
+    // vector's size/capacity).
+    template <typename T>
+        requires(sizeof(T) <= MaxTheoreticalLocalConstantsByteSize and not IsContainer<T>)
+    explicit ConstantBinding(const T& data)
         : ConstantBinding(static_cast<const void*>(&data), sizeof(T))
     {
     }

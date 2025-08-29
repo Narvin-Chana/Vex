@@ -326,10 +326,9 @@ void CommandContext::Copy(const Buffer& source, const Texture& destination)
 
 void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const u8> data)
 {
-    RHIBuffer& rhiDestBuffer = backend->GetRHIBuffer(buffer.handle);
-
     if (buffer.description.memoryLocality == ResourceMemoryLocality::CPUWrite)
     {
+        RHIBuffer& rhiDestBuffer = backend->GetRHIBuffer(buffer.handle);
         ResourceMappedMemory(rhiDestBuffer).SetData(data);
         return;
     }
@@ -337,6 +336,8 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const u8>
     Buffer stagingBuffer = backend->CreateBuffer(
         CommandContext_Internal::GetStagingBufferDescription(buffer.description.name, buffer.description.byteSize),
         ResourceLifetime::Static);
+
+    RHIBuffer& rhiDestBuffer = backend->GetRHIBuffer(buffer.handle);
     RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
 
     ResourceMappedMemory(rhiStagingBuffer).SetData(data);
@@ -350,13 +351,13 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const u8>
 
 void CommandContext::EnqueueDataUpload(const Texture& texture, std::span<const u8> data)
 {
-    RHITexture& rhiDestTexture = backend->GetRHITexture(texture.handle);
-
     Buffer stagingBuffer = backend->CreateBuffer(
         CommandContext_Internal::GetStagingBufferDescription(texture.description.name,
                                                              texture.description.GetTextureByteSize()),
         ResourceLifetime::Static);
+
     RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
+    RHITexture& rhiDestTexture = backend->GetRHITexture(texture.handle);
 
     ResourceMappedMemory(rhiStagingBuffer).SetData(data);
 
@@ -371,15 +372,9 @@ BindlessHandle CommandContext::GetBindlessHandle(const ResourceBinding& resource
 {
     vex::BindlessHandle handle;
     std::visit(Visitor{ [&handle, backend = backend](const BufferBinding& bufferBinding)
-                        {
-                            bufferBinding.Validate();
-                            handle = backend->GetBufferBindlessHandle(bufferBinding);
-                        },
+                        { handle = backend->GetBufferBindlessHandle(bufferBinding); },
                         [&handle, backend = backend](const TextureBinding& texBinding)
-                        {
-                            texBinding.Validate();
-                            handle = backend->GetTextureBindlessHandle(texBinding);
-                        } },
+                        { handle = backend->GetTextureBindlessHandle(texBinding); } },
                resourceBinding.binding);
     return handle;
 }

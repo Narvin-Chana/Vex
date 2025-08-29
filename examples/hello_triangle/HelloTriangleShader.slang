@@ -20,7 +20,6 @@ float sdf(float2 p)
     return sqrt(min(dot2(p - float2(0.00, 1.00)), dot2(p - 0.5f * max(p.x + p.y, 0.0f)))) * sign(p.x - p.y);
 }
 
-
 struct UniformsStruct
 {
     uint ColorBuffer;
@@ -30,7 +29,14 @@ struct UniformsStruct
 
 // Global way of mapping local constant bindless handles to resources.
 // 'uniform' keyword automatically uses the declaration order to access from local constants.
-uniform UniformsStruct Uniforms;
+// ----
+// HOWEVER, for Vulkan, global uniforms are not appended as push_constant, instead they are combined into a
+// "default" constant buffer that is bound to the first free slot.
+// So we have to extra explicit and add the push_constant attribute.
+// When compiling for DX12, the attribute is ignored (unlike hlsl which errors out).
+// Generally you should prefer using the shader entry point anyways in non-RT shaders as this also better isolates your code and 
+// stops uniforms from "leaking" into other entry points.
+[vk::push_constant] uniform UniformsStruct Uniforms;
 
 [shader("compute")]
 [numthreads(8, 8, 1)]

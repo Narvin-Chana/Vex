@@ -120,7 +120,7 @@ void HelloTriangleApplication::Run()
                         .entryPoint = "CSMain",
                         .type = vex::ShaderType::ComputeShader,
                     },
-                    vex::ConstantBinding(pass1Handles.data(), pass1Handles.size() * sizeof(vex::BindlessHandle)),
+                    vex::ConstantBinding(std::span(pass1Handles)),
                     {
                         (width + 7u) / 8u,
                         (height + 7u) / 8u,
@@ -134,7 +134,7 @@ void HelloTriangleApplication::Run()
                         .entryPoint = "CSMain",
                         .type = vex::ShaderType::ComputeShader,
                     },
-                    vex::ConstantBinding(pass1Handles.data(), pass1Handles.size() * sizeof(vex::BindlessHandle)),
+                    vex::ConstantBinding(std::span(pass1Handles)),
                     {
                         (width + 7u) / 8u,
                         (height + 7u) / 8u,
@@ -153,7 +153,7 @@ void HelloTriangleApplication::Run()
                         .entryPoint = "CSMain",
                         .type = vex::ShaderType::ComputeShader,
                     },
-                    vex::ConstantBinding(pass2Handles.data(), pass2Handles.size() * sizeof(vex::BindlessHandle)),
+                    vex::ConstantBinding(std::span(pass2Handles)),
                     {
                         (width + 7u) / 8u,
                         (height + 7u) / 8u,
@@ -167,7 +167,7 @@ void HelloTriangleApplication::Run()
                         .entryPoint = "CSMain",
                         .type = vex::ShaderType::ComputeShader,
                     },
-                    vex::ConstantBinding(pass2Handles.data(), pass2Handles.size() * sizeof(vex::BindlessHandle)),
+                    vex::ConstantBinding(std::span(pass2Handles)),
                     {
                         (width + 7u) / 8u,
                         (height + 7u) / 8u,

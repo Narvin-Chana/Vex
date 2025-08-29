@@ -49,7 +49,7 @@ void HelloRayTracing::Run()
             };
 
             ctx.TransitionBindings({ { outputTextureBinding } });
-            ctx.GetBindlessHandles({ { outputTextureBinding } });
+            vex::BindlessHandle handle = ctx.GetBindlessHandle(outputTextureBinding);
 
             // Two ray invocations, one for the HLSL shader, and one for the Slang shader.
             ctx.TraceRays(
@@ -61,7 +61,7 @@ void HelloRayTracing::Run()
                         .type = vex::ShaderType::RayGenerationShader,
                     },
                 },
-                {},
+                vex::ConstantBinding(handle),
                 { static_cast<vex::u32>(width), static_cast<vex::u32>(height), 1 } // One ray per pixel.
             );
 
@@ -75,7 +75,7 @@ void HelloRayTracing::Run()
                         .type = vex::ShaderType::RayGenerationShader,
                     },
                 },
-                {},
+                vex::ConstantBinding(handle),
                 { static_cast<vex::u32>(width), static_cast<vex::u32>(height), 1 } // One ray per pixel.
             );
 #endif
