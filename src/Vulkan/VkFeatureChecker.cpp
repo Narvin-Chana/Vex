@@ -179,4 +179,22 @@ u32 VkFeatureChecker::GetMaxLocalConstantsByteSize() const
     return 128;
 }
 
+std::string_view VkFeatureChecker::GetMaxSupportedSpirVVersion() const
+{
+    // Based on Vulkan API version
+    if (deviceProperties.apiVersion >= VK_API_VERSION_1_3)
+    {
+        return "spirv_1_6";
+    }
+    else if (deviceProperties.apiVersion >= VK_API_VERSION_1_2)
+    {
+        return "spirv_1_5";
+    }
+    else if (deviceProperties.apiVersion >= VK_API_VERSION_1_1)
+    {
+        return "spirv_1_3";
+    }
+    return "spirv_1_0";
+}
+
 } // namespace vex::vk

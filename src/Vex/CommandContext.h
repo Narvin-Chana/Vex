@@ -51,7 +51,7 @@ public:
     // Marks the end of a graphics rendering pass. Must have previously called BeginRendering.
     void EndRendering();
 
-    void Draw(const DrawDescription& drawDesc, const DrawResources& drawResources, u32 vertexCount);
+    void Draw(const DrawDescription& drawDesc, std::optional<ConstantBinding> constants, u32 vertexCount);
 
     void DrawIndexed()
     {
@@ -61,12 +61,10 @@ public:
     }
 
     void Dispatch(const ShaderKey& shader,
-                  std::span<const ResourceBinding> resourceBindings,
                   const std::optional<ConstantBinding>& constants,
                   std::array<u32, 3> groupCount);
 
     void TraceRays(const RayTracingPassDescription& rayTracingPassDescription,
-                   std::span<const ResourceBinding> resourceBindings,
                    const std::optional<ConstantBinding>& constants,
                    std::array<u32, 3> widthHeightDepth);
 
@@ -88,6 +86,11 @@ public:
     void EnqueueDataUpload(const Texture& texture, const T& data);
     template <class T>
     void EnqueueDataUpload(const Buffer& buffer, const T& data);
+
+    BindlessHandle GetBindlessHandle(const ResourceBinding& resourceBinding);
+    std::vector<BindlessHandle> GetBindlessHandles(std::span<const ResourceBinding> resourceBindings);
+
+    void TransitionBindings(std::span<const ResourceBinding> resourceBindings);
 
     // Allows you to transition the passed in texture to the correct state. Usually this is done automatically by Vex
     // before any draws or dispatches for the resources you pass in.

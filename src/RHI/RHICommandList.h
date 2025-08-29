@@ -37,7 +37,7 @@ public:
     virtual void SetPipelineState(const RHIComputePipelineState& computePipelineState) = 0;
     virtual void SetPipelineState(const RHIRayTracingPipelineState& rayTracingPipelineState) = 0;
 
-    virtual void SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& descriptorPool) = 0;
+    virtual void SetLayout(RHIResourceLayout& layout) = 0;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) = 0;
     virtual void SetInputAssembly(InputAssembly inputAssembly) = 0;
 

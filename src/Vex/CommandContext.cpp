@@ -1,7 +1,9 @@
 #include "CommandContext.h"
 
 #include <algorithm>
+#include <variant>
 
+#include <Vex/Containers/Utils.h>
 #include <Vex/Debug.h>
 #include <Vex/DrawHelpers.h>
 #include <Vex/GfxBackend.h>
@@ -16,7 +18,6 @@
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/RayTracing.h>
 #include <Vex/ResourceBindingUtils.h>
-#include <Vex/Shaders/ShaderResourceContext.h>
 
 namespace vex
 {
@@ -132,17 +133,18 @@ void CommandContext::ClearTexture(const TextureBinding& binding,
 
     RHITexture& texture = backend->GetRHITexture(binding.texture.handle);
     cmdList->Transition(texture, texture.GetClearTextureState());
-    cmdList->ClearTexture({ binding, &texture },
+    cmdList->ClearTexture({ binding, texture },
                           // This is a safe cast, textures can only contain one of the two usages (RT/DS).
                           static_cast<TextureUsage::Type>(binding.texture.description.usage &
                                                           (TextureUsage::RenderTarget | TextureUsage::DepthStencil)),
                           textureClearValue.value_or(binding.texture.description.clearValue));
 }
+
 void CommandContext::BeginRendering(const DrawResourceBinding& drawBindings)
 {
     if (currentDrawResources.has_value())
     {
-        VEX_LOG(Fatal, "BeginRendering must never be called twice without calling EndRendering first");
+        VEX_LOG(Fatal, "BeginRendering must never be called twice without calling EndRendering first.");
     }
 
     currentDrawResources.emplace();
@@ -151,13 +153,13 @@ void CommandContext::BeginRendering(const DrawResourceBinding& drawBindings)
     {
         transitions.emplace_back(backend->GetRHITexture(renderTarget.texture.handle), RHITextureState::RenderTarget);
         currentDrawResources->renderTargets.emplace_back(renderTarget,
-                                                         &backend->GetRHITexture(renderTarget.texture.handle));
+                                                         backend->GetRHITexture(renderTarget.texture.handle));
     }
 
     if (drawBindings.depthStencil)
     {
         currentDrawResources->depthStencil = { *drawBindings.depthStencil,
-                                               &backend->GetRHITexture(drawBindings.depthStencil->texture.handle) };
+                                               backend->GetRHITexture(drawBindings.depthStencil->texture.handle) };
         transitions.emplace_back(backend->GetRHITexture(drawBindings.depthStencil->texture.handle),
                                  RHITextureState::DepthWrite);
     }
@@ -165,6 +167,7 @@ void CommandContext::BeginRendering(const DrawResourceBinding& drawBindings)
     cmdList->Transition(transitions);
     cmdList->BeginRendering(*currentDrawResources);
 }
+
 void CommandContext::EndRendering()
 {
     if (!currentDrawResources.has_value())
@@ -177,10 +180,8 @@ void CommandContext::EndRendering()
     currentDrawResources.reset();
 }
 
-void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& drawResources, u32 vertexCount)
+void CommandContext::Draw(const DrawDescription& drawDesc, std::optional<ConstantBinding> constants, u32 vertexCount)
 {
-    using namespace vex::CommandContext_Internal;
-
     if (!currentDrawResources)
     {
         VEX_LOG(Fatal, "BeginRender must be called before any draw call is executed");
@@ -199,32 +200,11 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
                 magic_enum::enum_name(drawDesc.pixelShader.type));
     }
 
-    ResourceBindingUtils::ValidateResourceBindings(drawResources.resourceBindings);
-
-    // Collect all underlying RHI textures.
-    u32 totalSize = static_cast<u32>(drawResources.resourceBindings.size());
-
-    // Conservative allocation.
-    std::vector<RHITextureBinding> rhiTextureBindings;
-    rhiTextureBindings.reserve(totalSize);
-    std::vector<RHIBufferBinding> rhiBufferBindings;
-    rhiBufferBindings.reserve(totalSize);
-
-    ResourceBindingUtils::CollectRHIResources(*backend,
-                                              drawResources.resourceBindings,
-                                              rhiTextureBindings,
-                                              rhiBufferBindings);
-
-    TransitionBindings(*cmdList, rhiTextureBindings);
-    TransitionBindings(*cmdList, rhiBufferBindings);
-
-    auto graphicsPSOKey = GetGraphicsPSOKeyFromDrawDesc(drawDesc, *currentDrawResources);
+    auto graphicsPSOKey = CommandContext_Internal::GetGraphicsPSOKeyFromDrawDesc(drawDesc, *currentDrawResources);
 
     if (!cachedGraphicsPSOKey || graphicsPSOKey != *cachedGraphicsPSOKey)
     {
-        const RHIGraphicsPipelineState* pipelineState =
-            backend->psCache.GetGraphicsPipelineState(graphicsPSOKey,
-                                                      ShaderResourceContext{ rhiTextureBindings, rhiBufferBindings });
+        const RHIGraphicsPipelineState* pipelineState = backend->psCache.GetGraphicsPipelineState(graphicsPSOKey);
         // No valid PSO means we cannot proceed.
         if (!pipelineState)
         {
@@ -237,15 +217,9 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
 
     // Setup the layout for our pass.
     RHIResourceLayout& resourceLayout = backend->psCache.GetResourceLayout();
-    resourceLayout.SetLayoutResources(backend->rhi,
-                                      backend->resourceCleanup,
-                                      drawResources.constants,
-                                      rhiTextureBindings,
-                                      rhiBufferBindings,
-                                      *backend->descriptorPool,
-                                      *backend->allocator);
+    resourceLayout.SetLayoutResources(constants);
 
-    cmdList->SetLayout(resourceLayout, *backend->descriptorPool);
+    cmdList->SetLayout(resourceLayout);
 
     if (!cachedInputAssembly || drawDesc.inputAssembly != cachedInputAssembly)
     {
@@ -259,7 +233,6 @@ void CommandContext::Draw(const DrawDescription& drawDesc, const DrawResources& 
 }
 
 void CommandContext::Dispatch(const ShaderKey& shader,
-                              std::span<const ResourceBinding> resourceBindings,
                               const std::optional<ConstantBinding>& constants,
                               std::array<u32, 3> groupCount)
 {
@@ -270,22 +243,11 @@ void CommandContext::Dispatch(const ShaderKey& shader,
 
     using namespace CommandContext_Internal;
 
-    // Collect all underlying RHI textures.
-    std::vector<RHITextureBinding> rhiTextureBindings;
-    std::vector<RHIBufferBinding> rhiBufferBindings;
-    ResourceBindingUtils::CollectRHIResources(*backend, resourceBindings, rhiTextureBindings, rhiBufferBindings);
-
-    // This code will be greatly simplified when we add caching of transitions until the next GPU operation.
-    // See: https://trello.com/c/kJWhd2iu
-    TransitionBindings(*cmdList, rhiTextureBindings);
-    TransitionBindings(*cmdList, rhiBufferBindings);
-
     ComputePipelineStateKey psoKey = { .computeShader = shader };
     if (!cachedComputePSOKey || psoKey != cachedComputePSOKey)
     {
         // Register shader and get Pipeline if exists (if not create it).
-        const RHIComputePipelineState* pipelineState =
-            backend->psCache.GetComputePipelineState(psoKey, { rhiTextureBindings, rhiBufferBindings });
+        const RHIComputePipelineState* pipelineState = backend->psCache.GetComputePipelineState(psoKey);
 
         // Nothing more to do if the PSO is invalid.
         if (!pipelineState)
@@ -299,15 +261,8 @@ void CommandContext::Dispatch(const ShaderKey& shader,
 
     // Sets the resource layout to use for the dispatch.
     RHIResourceLayout& resourceLayout = backend->psCache.GetResourceLayout();
-    resourceLayout.SetLayoutResources(backend->rhi,
-                                      backend->resourceCleanup,
-                                      constants,
-                                      rhiTextureBindings,
-                                      rhiBufferBindings,
-                                      *backend->descriptorPool,
-                                      *backend->allocator);
-
-    cmdList->SetLayout(resourceLayout, *backend->descriptorPool);
+    resourceLayout.SetLayoutResources(constants);
+    cmdList->SetLayout(resourceLayout);
 
     // Validate dispatch (vs platform/api constraints)
     // backend->ValidateDispatch(groupCount);
@@ -317,28 +272,13 @@ void CommandContext::Dispatch(const ShaderKey& shader,
 }
 
 void CommandContext::TraceRays(const RayTracingPassDescription& rayTracingPassDescription,
-                               std::span<const ResourceBinding> resourceBindings,
                                const std::optional<ConstantBinding>& constants,
                                std::array<u32, 3> widthHeightDepth)
 {
     RayTracingPassDescription::ValidateShaderTypes(rayTracingPassDescription);
 
-    using namespace CommandContext_Internal;
-
-    // Collect all underlying RHI textures.
-    std::vector<RHITextureBinding> rhiTextureBindings;
-    std::vector<RHIBufferBinding> rhiBufferBindings;
-    ResourceBindingUtils::CollectRHIResources(*backend, resourceBindings, rhiTextureBindings, rhiBufferBindings);
-
-    // This code will be greatly simplified when we add caching of transitions until the next GPU operation.
-    // See: https://trello.com/c/kJWhd2iu
-    TransitionBindings(*cmdList, rhiTextureBindings);
-    TransitionBindings(*cmdList, rhiBufferBindings);
-
     const RHIRayTracingPipelineState* pipelineState =
-        backend->psCache.GetRayTracingPipelineState(rayTracingPassDescription,
-                                                    { .textures = rhiTextureBindings, .buffers = rhiBufferBindings },
-                                                    *backend->allocator);
+        backend->psCache.GetRayTracingPipelineState(rayTracingPassDescription, *backend->allocator);
     if (!pipelineState)
     {
         VEX_LOG(Error, "PSO cache returned an invalid pipeline state, unable to continue dispatch...");
@@ -348,15 +288,9 @@ void CommandContext::TraceRays(const RayTracingPassDescription& rayTracingPassDe
 
     // Sets the resource layout to use for the ray trace.
     RHIResourceLayout& resourceLayout = backend->psCache.GetResourceLayout();
-    resourceLayout.SetLayoutResources(backend->rhi,
-                                      backend->resourceCleanup,
-                                      constants,
-                                      rhiTextureBindings,
-                                      rhiBufferBindings,
-                                      *backend->descriptorPool,
-                                      *backend->allocator);
+    resourceLayout.SetLayoutResources(constants);
 
-    cmdList->SetLayout(resourceLayout, *backend->descriptorPool);
+    cmdList->SetLayout(resourceLayout);
 
     // Validate ray trace (vs platform/api constraints)
     // backend->ValidateTraceRays(widthHeightDepth);
@@ -392,10 +326,9 @@ void CommandContext::Copy(const Buffer& source, const Texture& destination)
 
 void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const u8> data)
 {
-    RHIBuffer& rhiDestBuffer = backend->GetRHIBuffer(buffer.handle);
-
     if (buffer.description.memoryLocality == ResourceMemoryLocality::CPUWrite)
     {
+        RHIBuffer& rhiDestBuffer = backend->GetRHIBuffer(buffer.handle);
         ResourceMappedMemory(rhiDestBuffer).SetData(data);
         return;
     }
@@ -403,6 +336,8 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const u8>
     Buffer stagingBuffer = backend->CreateBuffer(
         CommandContext_Internal::GetStagingBufferDescription(buffer.description.name, buffer.description.byteSize),
         ResourceLifetime::Static);
+
+    RHIBuffer& rhiDestBuffer = backend->GetRHIBuffer(buffer.handle);
     RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
 
     ResourceMappedMemory(rhiStagingBuffer).SetData(data);
@@ -416,13 +351,13 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const u8>
 
 void CommandContext::EnqueueDataUpload(const Texture& texture, std::span<const u8> data)
 {
-    RHITexture& rhiDestTexture = backend->GetRHITexture(texture.handle);
-
     Buffer stagingBuffer = backend->CreateBuffer(
         CommandContext_Internal::GetStagingBufferDescription(texture.description.name,
                                                              texture.description.GetTextureByteSize()),
         ResourceLifetime::Static);
+
     RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
+    RHITexture& rhiDestTexture = backend->GetRHITexture(texture.handle);
 
     ResourceMappedMemory(rhiStagingBuffer).SetData(data);
 
@@ -431,6 +366,47 @@ void CommandContext::EnqueueDataUpload(const Texture& texture, std::span<const u
     cmdList->Copy(rhiStagingBuffer, rhiDestTexture);
 
     backend->DestroyBuffer(stagingBuffer);
+}
+
+BindlessHandle CommandContext::GetBindlessHandle(const ResourceBinding& resourceBinding)
+{
+    vex::BindlessHandle handle;
+    std::visit(Visitor{ [&handle, backend = backend](const BufferBinding& bufferBinding)
+                        { handle = backend->GetBufferBindlessHandle(bufferBinding); },
+                        [&handle, backend = backend](const TextureBinding& texBinding)
+                        { handle = backend->GetTextureBindlessHandle(texBinding); } },
+               resourceBinding.binding);
+    return handle;
+}
+
+std::vector<BindlessHandle> CommandContext::GetBindlessHandles(std::span<const ResourceBinding> resourceBindings)
+{
+    std::vector<BindlessHandle> handles;
+    handles.reserve(resourceBindings.size());
+    for (const auto& binding : resourceBindings)
+    {
+        std::visit(Visitor{ [&handles, backend = backend](const BufferBinding& bufferBinding)
+                            { handles.emplace_back(backend->GetBufferBindlessHandle(bufferBinding)); },
+                            [&handles, backend = backend](const TextureBinding& texBinding)
+                            { handles.emplace_back(backend->GetTextureBindlessHandle(texBinding)); } },
+                   binding.binding);
+    }
+    return handles;
+}
+
+void CommandContext::TransitionBindings(std::span<const ResourceBinding> resourceBindings)
+{
+    // Collect all underlying RHI textures.
+    std::vector<RHITextureBinding> rhiTextureBindings;
+    rhiTextureBindings.reserve(resourceBindings.size());
+    std::vector<RHIBufferBinding> rhiBufferBindings;
+    rhiBufferBindings.reserve(resourceBindings.size());
+    ResourceBindingUtils::CollectRHIResources(*backend, resourceBindings, rhiTextureBindings, rhiBufferBindings);
+
+    // This code will be greatly simplified when we add caching of transitions until the next GPU operation.
+    // See: https://trello.com/c/kJWhd2iu
+    CommandContext_Internal::TransitionBindings(*cmdList, rhiTextureBindings);
+    CommandContext_Internal::TransitionBindings(*cmdList, rhiBufferBindings);
 }
 
 void CommandContext::Transition(const Texture& texture, RHITextureState::Type newState)

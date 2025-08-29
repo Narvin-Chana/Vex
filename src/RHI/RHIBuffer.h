@@ -42,7 +42,7 @@ public:
 
     // Raw direct access to buffer memory
     virtual BindlessHandle GetOrCreateBindlessView(BufferBindingUsage usage,
-                                                   u32 stride,
+                                                   std::optional<u32> stride,
                                                    RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeAllocation(RHIAllocator& allocator) = 0;

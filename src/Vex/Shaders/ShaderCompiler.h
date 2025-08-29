@@ -1,21 +1,23 @@
 #pragma once
 
-#include <array>
 #include <expected>
 #include <utility>
 #include <vector>
 
+#include <Vex/NonNullPtr.h>
 #include <Vex/RHIFwd.h>
-#include <Vex/Shaders/CompilerInterface.h>
+#include <Vex/Shaders/DXCImpl.h>
 #include <Vex/Shaders/ShaderCompilerSettings.h>
 #include <Vex/Shaders/ShaderKey.h>
 #include <Vex/UniqueHandle.h>
-#include <Vex/NonNullPtr.h>
+
+#if VEX_SLANG
+#include <Vex/Shaders/SlangImpl.h>
+#endif
 
 namespace vex
 {
 
-struct ShaderResourceContext;
 class Shader;
 struct ShaderEnvironment;
 
@@ -33,12 +35,8 @@ struct ShaderCompiler
     ShaderCompiler(ShaderCompiler&&) = default;
     ShaderCompiler& operator=(ShaderCompiler&&) = default;
 
-    std::expected<void, std::string> CompileShader(Shader& shader, const ShaderResourceContext& resourceContext);
-    NonNullPtr<Shader> GetShader(const ShaderKey& key, const ShaderResourceContext& resourceContext);
-
-    // Checks if the shader's hash is different compared to the last time it was compiled. Returns if the shader is
-    // stale or not and the shader's latest hash (which can potentially be the same as the original).
-    std::pair<bool, std::size_t> IsShaderStale(const Shader& shader) const;
+    std::expected<void, std::string> CompileShader(Shader& shader);
+    NonNullPtr<Shader> GetShader(const ShaderKey& key);
 
     void MarkShaderDirty(const ShaderKey& key);
     void MarkAllShadersDirty();
@@ -50,16 +48,17 @@ struct ShaderCompiler
     void FlushCompilationErrors();
 
 private:
-    std::expected<std::string, std::string> ProcessShaderCodeGen(const std::string& shaderFileStr,
-                                                                 const ShaderResourceContext& resourceContext);
-
-    ShaderEnvironment CreateShaderEnvironment();
+    // Checks if the shader's hash is different compared to the last time it was compiled. Returns if the shader is
+    // stale or not and the shader's latest hash (which can potentially be the same as the original).
+    std::pair<bool, std::size_t> IsShaderStale(const Shader& shader) const;
+    ShaderEnvironment CreateShaderEnvironment(ShaderCompilerBackend compiler);
 
     RHI* rhi;
     ShaderCompilerSettings compilerSettings;
-    UniqueHandle<CompilerInterface> compilerImpl;
-
-    std::vector<std::filesystem::path> additionalIncludeDirectories;
+    DXCCompilerImpl dxcCompilerImpl;
+#if VEX_SLANG
+    SlangCompilerImpl slangCompilerImpl;
+#endif
 
     std::unordered_map<ShaderKey, Shader> shaderCache;
 

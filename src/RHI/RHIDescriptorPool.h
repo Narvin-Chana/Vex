@@ -24,7 +24,7 @@ public:
     bool IsValid(BindlessHandle handle);
 
 protected:
-    static constexpr u32 DefaultPoolSize = 8192;
+    static constexpr u32 DefaultPoolSize = 65536;
 
     struct BindlessAllocation
     {

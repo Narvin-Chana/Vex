@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <span>
 #include <variant>
 
@@ -12,18 +13,36 @@
 namespace vex
 {
 
+template <typename T>
+concept IsContainer = requires(T a) {
+    { a.begin() } -> std::input_or_output_iterator;
+    { a.end() } -> std::input_or_output_iterator;
+    typename T::value_type;
+};
+
 struct ConstantBinding
 {
-    template <typename T>
-        requires(sizeof(T) <= MaxTheoreticalLocalConstantsByteSize)
-    ConstantBinding(const T& data)
-        : data{ static_cast<const void*>(&data) }
-        , size{ sizeof(T) }
+    explicit ConstantBinding(const void* data, std::span<const u8>::size_type size)
+        : data{ reinterpret_cast<const u8*>(data), size }
     {
     }
 
-    const void* data;
-    u32 size;
+    template <typename T>
+    explicit ConstantBinding(std::span<T> data)
+        : ConstantBinding(static_cast<const void*>(data.data()), data.size_bytes())
+    {
+    }
+
+    // Avoids this constructor taking in a container, and thus polluting constant data with the container's data (eg: a
+    // vector's size/capacity).
+    template <typename T>
+        requires(sizeof(T) <= MaxTheoreticalLocalConstantsByteSize and not IsContainer<T>)
+    explicit ConstantBinding(const T& data)
+        : ConstantBinding(static_cast<const void*>(&data), sizeof(T))
+    {
+    }
+
+    std::span<const u8> data;
 };
 
 // clang-format off
@@ -38,15 +57,12 @@ END_VEX_ENUM_FLAGS();
 
 struct BufferBinding
 {
-    // Name of the resource used inside the shader.
-    // eg: VEX_RESOURCE(Texture2D<float3>, MyName);
-    std::string name;
     // The buffer to bind
     Buffer buffer;
     // The usage to use in this binding. Needs to be part of the usages of the buffer description
     BufferBindingUsage usage = BufferBindingUsage::Invalid;
     // Optional: Stride of the buffer when using StructuredBuffer usage
-    u32 stride = 0;
+    std::optional<u32> stride = 0;
 
     void ValidateForShaderUse(BufferUsage::Flags validBufferUsageFlags) const;
     void Validate() const;
@@ -54,11 +70,9 @@ struct BufferBinding
 
 struct TextureBinding
 {
-    // Name of the resource used inside the shader.
-    // eg: VEX_RESOURCE(Texture2D<float3>, MyName);
-    std::string name;
     // The texture to bind
     Texture texture;
+    // The usage of the texture.
     TextureBindingUsage usage = TextureBindingUsage::None;
     TextureBindingFlags::Flags flags = TextureBindingFlags::None;
 

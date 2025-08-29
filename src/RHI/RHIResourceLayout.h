@@ -23,13 +23,7 @@ class RHIResourceLayoutBase
 public:
     RHIResourceLayoutBase();
     ~RHIResourceLayoutBase();
-    void SetLayoutResources(RHI& rhi,
-                            ResourceCleanup& resourceCleanup,
-                            const std::optional<ConstantBinding>& constants,
-                            std::span<RHITextureBinding> textures,
-                            std::span<RHIBufferBinding> buffers,
-                            RHIDescriptorPool& descriptorPool,
-                            RHIAllocator& allocator);
+    void SetLayoutResources(const std::optional<ConstantBinding>& constants);
 
     void SetSamplers(std::span<TextureSampler> newSamplers);
     std::span<const TextureSampler> GetStaticSamplers() const;
@@ -37,9 +31,6 @@ public:
     std::span<const u8> GetLocalConstantsData() const;
 
     u32 version = 0;
-
-    // TODO(https://trello.com/c/K2jgp9ax): temporary until we figure out buffer/memory allocation.
-    MaybeUninitialized<RHIBuffer> currentInternalConstantBuffer;
 
 protected:
     bool isDirty = true;

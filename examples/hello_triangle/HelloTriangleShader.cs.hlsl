@@ -1,14 +1,9 @@
+#include <Vex.hlsli>
+
 struct Colors
 {
     float4 cols;
 };
-
-VEX_SHADER
-{
-    VEX_GLOBAL_RESOURCE(RWTexture2D<float4>, OutputTexture);
-    VEX_GLOBAL_RESOURCE(RWStructuredBuffer<float4>, CommBuffer);
-    VEX_GLOBAL_RESOURCE(ConstantBuffer<Colors>, ColorBuffer);
-}
 
 // Sourced from IQuilez SDF functions
 float dot2(float2 v)
@@ -25,10 +20,31 @@ float sdf(float2 p)
     return sqrt(min(dot2(p - float2(0.00, 1.00)), dot2(p - 0.5f * max(p.x + p.y, 0.0f)))) * sign(p.x - p.y);
 }
 
-[numthreads(8, 8, 1)] void CSMain(uint3 dtid : SV_DispatchThreadID)
+struct UniformStruct
+{
+    uint colorBufferHandle;
+    uint commBufferHandle;
+    uint outputTextureHandle;
+};
+
+VEX_UNIFORMS(UniformStruct, Uniforms);
+
+// HLSL way of declaring global resources:
+static const RWTexture2D<float4> OutputTexture = GetBindlessResource(Uniforms.outputTextureHandle);
+static const ConstantBuffer<Colors> ColorBuffer = GetBindlessResource(Uniforms.colorBufferHandle);
+static const RWStructuredBuffer<float4> CommBuffer = GetBindlessResource(Uniforms.commBufferHandle);
+
+[numthreads(8, 8, 1)]
+void CSMain(uint3 dtid : SV_DispatchThreadID)
 {
     uint width, height;
     OutputTexture.GetDimensions(width, height);
+
+    // HLSL writes to the left side of the screen.
+    if (dtid.x > width / 2.0f)
+    {
+        return;
+    }
 
     // Convert pixel coordinates to normalized space for opengl-based sdf function (-1 to 1)
     float2 uv = float2(dtid.xy) / max(width, height).xx * 2 - 1;

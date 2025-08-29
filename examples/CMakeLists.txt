@@ -7,6 +7,7 @@ set(GLFW_BUILD_TESTS OFF CACHE BOOL "Build the GLFW test programs" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "Build the GLFW example programs" FORCE)
 set(GLFW_INSTALL OFF CACHE BOOL "Generate installation target" FORCE)
 
+# GLFW for windowing.
 FetchContent_Declare(
     glfw
     GIT_REPOSITORY https://github.com/glfw/glfw.git
@@ -14,6 +15,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glfw)
 
+# ImGui for the ImGui example.
 FetchContent_Declare(
     imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
@@ -29,7 +31,7 @@ add_library(imguiLib STATIC
     "${imgui_SOURCE_DIR}/imgui_widgets.cpp"
     "${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp"
 )
-# Backend files
+# ImGui Backend files (specific to graphics APIs)
 if(VEX_ENABLE_VULKAN)
     target_sources(imguiLib PRIVATE ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp)
 endif()
@@ -42,6 +44,10 @@ target_include_directories(imguiLib PUBLIC
      ${imgui_SOURCE_DIR}
      ${imgui_SOURCE_DIR}/backends
 )
+
+# Have to use FORCE, which is generally considered bad cmake practice. This is because our example are underneath Vex's CMakeLists.txt.
+# In typical examples, you would use 'add_subdirectory(external/path/to/Vex)', defining VEX_ENABLE_SLANG before adding Vex will work without FORCE.
+set(VEX_ENABLE_SLANG ON CACHE BOOL "Enable Slang support" FORCE)
 
 # Link ImGui with its dependencies
 target_link_libraries(imguiLib PUBLIC glfw Vex)

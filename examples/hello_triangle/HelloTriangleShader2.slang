@@ -1,4 +1,4 @@
-#include <Vex.hlsli>
+import Vex;
 
 // Simple function to check if a point is inside a triangle
 bool IsInsideTriangle(float2 p, float2 v0, float2 v1, float2 v2)
@@ -18,27 +18,25 @@ bool IsInsideTriangle(float2 p, float2 v0, float2 v1, float2 v2)
     return (c0 >= 0 && c1 >= 0 && c2 >= 0) || (c0 <= 0 && c1 <= 0 && c2 <= 0);
 }
 
-struct UniformStruct
+[shader("compute")]
+[numthreads(8, 8, 1)]
+void CSMain(
+    uint3 dtid : SV_DispatchThreadID,
+    // Uniforms passed in as entrypoint parameters are automatically appended as local constants by Slang!
+    uniform uint OutputTextureHandle,
+    uniform uint CommBufferHandle,
+    uniform uint SourceTextureHandle
+)
 {
-    uint outputTextureHandle;
-    uint commBufferHandle;
-    uint sourceTextureHandle;
-};
-
-VEX_UNIFORMS(UniformStruct, Uniforms);
-
-[numthreads(8, 8, 1)] void CSMain(uint3 dtid : SV_DispatchThreadID)
-{
-    // HLSL way of declaring local resources:
-    RWTexture2D<float4> OutputTexture = GetBindlessResource(Uniforms.outputTextureHandle);
-    Texture2D<float4> SourceTexture = GetBindlessResource(Uniforms.sourceTextureHandle);
-    StructuredBuffer<float4> CommBuffer = GetBindlessResource(Uniforms.commBufferHandle);
+    let OutputTexture = GetBindlessResource<RWTexture2D<float4>>(OutputTextureHandle); 
+    let CommBuffer = GetBindlessResource<StructuredBuffer<float4>>(CommBufferHandle);
+    let SourceTexture = GetBindlessResource<Texture2D<float4>>(SourceTextureHandle);
 
     uint width, height;
     OutputTexture.GetDimensions(width, height);
 
-    // HLSL writes to the left side of the screen.
-    if (dtid.x > width / 2.0f)
+    // Slang writes to the right side of the screen.
+    if (dtid.x <= width / 2.0f)
     {
         return;
     }

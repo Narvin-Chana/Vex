@@ -191,7 +191,7 @@ void DX12RHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBack
         shaderEnv.args.emplace_back(L"-Qstrip_reflect");
     }
 
-    shaderEnv.defines.emplace_back(L"VEX_DX12");
+    shaderEnv.defines.emplace_back("VEX_DX12");
 }
 
 u32 DX12RHI::AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex)

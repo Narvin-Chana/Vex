@@ -51,7 +51,7 @@ struct std::formatter<std::vector<T>>
     }
 };
 
-// This could be elsewehere
+// This could be elsewhere
 template <>
 struct std::formatter<std::wstring>
 {

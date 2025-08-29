@@ -27,7 +27,7 @@ public:
             VEX_LOG(Fatal, "NonNullPtr was passed a nullptr!");
         }
     }
-    explicit NonNullPtr(T& ref)
+    NonNullPtr(T& ref)
         : ptr(&ref)
     {
     }
@@ -57,20 +57,12 @@ public:
         return ptr;
     }
 
-    T& operator*()
-    {
-        return *ptr;
-    }
-    const T& operator*() const
+    T& operator*() const
     {
         return *ptr;
     }
 
-    T* operator->()
-    {
-        return ptr;
-    }
-    const T* operator->() const
+    T* operator->() const
     {
         return ptr;
     }

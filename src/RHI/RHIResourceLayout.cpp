@@ -22,70 +22,22 @@ RHIResourceLayoutBase::RHIResourceLayoutBase()
 
 RHIResourceLayoutBase::~RHIResourceLayoutBase() = default;
 
-void RHIResourceLayoutBase::SetLayoutResources(RHI& rhi,
-                                               ResourceCleanup& resourceCleanup,
-                                               const std::optional<ConstantBinding>& constants,
-                                               std::span<RHITextureBinding> textures,
-                                               std::span<RHIBufferBinding> buffers,
-                                               RHIDescriptorPool& descriptorPool,
-                                               RHIAllocator& allocator)
+void RHIResourceLayoutBase::SetLayoutResources(const std::optional<ConstantBinding>& constants)
 {
     if (constants.has_value())
     {
-        localConstantsData.resize(constants->size);
-        std::memcpy(localConstantsData.data(), constants->data, constants->size);
-    }
+        if (constants->data.size_bytes() > maxLocalConstantsByteSize)
+        {
+            VEX_LOG(Fatal,
+                    "Cannot pass in more bytes as local constants versus what your platform allows. You passed in {} "
+                    "bytes, your graphics API allows for {} bytes.",
+                    constants->data.size_bytes(),
+                    maxLocalConstantsByteSize)
+            return;
+        }
 
-    // Remove and mark for deletion the previous buffer (if any)
-    if (currentInternalConstantBuffer)
-    {
-        resourceCleanup.CleanupResource(std::move(currentInternalConstantBuffer));
-        currentInternalConstantBuffer = std::nullopt;
-    }
-
-    std::vector<std::pair<std::string, BindlessHandle>> bindlessNamesAndHandles;
-    // Allocate for worst-case scenario.
-    bindlessNamesAndHandles.reserve(textures.size() + buffers.size());
-    for (auto& [binding, texture] : textures)
-    {
-        bindlessNamesAndHandles.emplace_back(binding.name, texture->GetOrCreateBindlessView(binding, descriptorPool));
-    }
-
-    for (auto& [binding, buffer] : buffers)
-    {
-        bindlessNamesAndHandles.emplace_back(
-            binding.name,
-            buffer->GetOrCreateBindlessView(binding.usage, binding.stride, descriptorPool));
-    }
-
-    // Accumulate then sort, to have a deterministic order.
-    std::sort(bindlessNamesAndHandles.begin(),
-              bindlessNamesAndHandles.end(),
-              [](const std::pair<std::string, BindlessHandle>& lh, const std::pair<std::string, BindlessHandle>& rh)
-              { return lh.first < rh.first; });
-
-    std::vector<u32> bindlessHandleIndexData;
-    bindlessHandleIndexData.reserve(bindlessNamesAndHandles.size());
-    for (auto& [name, handle] : bindlessNamesAndHandles)
-    {
-        bindlessHandleIndexData.emplace_back(handle.GetIndex());
-    }
-
-    // Tmp buffer for uploading the bindless constants.. this doesn't scale well...
-    // Ideally we'd allocate a BAB (big-ass-buffer) and then use subsections in it (or even better, have an
-    // allocation strategy that allocates huge chunks of memory and create as many buffers as we want in it).
-    // Instead we just greedily allocate buffers for now that are automatically destroyed after use.
-    if (!bindlessNamesAndHandles.empty())
-    {
-        currentInternalConstantBuffer = rhi.CreateBuffer(
-            allocator,
-            BufferDescription{ .name = "BindlessIdxBuffer",
-                               .byteSize = static_cast<u32>(bindlessHandleIndexData.size() * sizeof(u32)),
-                               .usage = BufferUsage::UniformBuffer,
-                               .memoryLocality = ResourceMemoryLocality::CPUWrite });
-        ResourceMappedMemory(*currentInternalConstantBuffer)
-            .SetData(std::span{ reinterpret_cast<const u8*>(bindlessHandleIndexData.data()),
-                                bindlessHandleIndexData.size() * sizeof(u32) });
+        localConstantsData.resize(constants->data.size_bytes());
+        std::memcpy(localConstantsData.data(), constants->data.data(), constants->data.size_bytes());
     }
 }
 

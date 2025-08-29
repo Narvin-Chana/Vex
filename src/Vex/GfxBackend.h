@@ -1,9 +1,7 @@
 #pragma once
 
-#include <array>
 #include <vector>
 
-#include <Vex/Buffer.h>
 #include <Vex/CommandQueueType.h>
 #include <Vex/Containers/FreeList.h>
 #include <Vex/Containers/ResourceCleanup.h>
@@ -16,8 +14,6 @@
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHITexture.h>
-#include <Vex/Resource.h>
-#include <Vex/Texture.h>
 #include <Vex/UniqueHandle.h>
 
 namespace vex
