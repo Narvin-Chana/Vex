@@ -27,7 +27,7 @@ END_VEX_ENUM_FLAGS();
 
 // clang-format on
 
-class RHITextureBase : public IMappableResource
+class RHITextureBase : public MappableResourceInterface
 {
 public:
     RHITextureBase() = default;

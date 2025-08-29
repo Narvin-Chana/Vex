@@ -100,7 +100,7 @@ void HelloTriangleApplication::Run()
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
 
             // clang-format off
-            graphics->MapResource(ctx, colorBuffer).SetData(color);
+            ctx.EnqueueDataUpload(colorBuffer, color);
 
             ctx.Dispatch(
                 {

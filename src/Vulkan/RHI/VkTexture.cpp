@@ -1,4 +1,4 @@
-﻿#include "VkAllocator.h"
+﻿#include "VkTexture.h"
 
 #include <Vex/Bindings.h>
 #include <Vex/RHIBindings.h>
@@ -6,7 +6,6 @@
 #include <Vulkan/RHI/VkAllocator.h>
 #include <Vulkan/RHI/VkCommandPool.h>
 #include <Vulkan/RHI/VkDescriptorPool.h>
-#include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkFormats.h>
@@ -310,9 +309,9 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
     ::vk::MemoryRequirements imageMemoryReq = ctx->device.getImageMemoryRequirements(*imageTmp);
 
 #if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
-    auto allocResult = allocator.AllocateResource(description.memoryLocality, imageMemoryReq);
-    allocation = allocResult.second;
-    VEX_VK_CHECK << ctx->device.bindImageMemory(*imageTmp, allocResult.first, allocation.memoryRange.offset);
+    auto [memory, newAllocation] = allocator.AllocateResource(description.memoryLocality, imageMemoryReq);
+    allocation = newAllocation;
+    VEX_VK_CHECK << ctx->device.bindImageMemory(*imageTmp, memory, allocation.memoryRange.offset);
 #else
     // memory allocation should be done elsewhere in a central place
     ::vk::MemoryAllocateInfo allocateInfo{

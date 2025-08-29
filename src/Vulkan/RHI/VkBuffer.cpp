@@ -1,10 +1,10 @@
-﻿#include "VkAllocator.h"
+﻿#include "VkBuffer.h"
 
 #include <magic_enum/magic_enum.hpp>
 
 #include <Vex/Buffer.h>
 
-#include <Vulkan/RHI/VkBuffer.h>
+#include <Vulkan/RHI/VkAllocator.h>
 #include <Vulkan/VkCommandQueue.h>
 #include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
@@ -65,9 +65,9 @@ VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, VkAllocator& allocator, const B
     const ::vk::MemoryRequirements reqs = ctx->device.getBufferMemoryRequirements(*buffer);
 
 #if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
-    auto allocResult = allocator.AllocateResource(desc.memoryLocality, reqs);
-    allocation = allocResult.second;
-    VEX_VK_CHECK << ctx->device.bindBufferMemory(*buffer, allocResult.first, allocation.memoryRange.offset);
+    auto [memory, newAllocation] = allocator.AllocateResource(desc.memoryLocality, reqs);
+    allocation = newAllocation;
+    VEX_VK_CHECK << ctx->device.bindBufferMemory(*buffer, memory, allocation.memoryRange.offset);
 #else
     ::vk::MemoryPropertyFlags memPropFlags = GetMemoryPropsFromLocality(memLocality);
     memory = VEX_VK_CHECK <<= ctx->device.allocateMemoryUnique(

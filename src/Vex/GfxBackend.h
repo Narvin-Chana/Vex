@@ -68,11 +68,6 @@ public:
     ResourceMappedMemory MapResource(const Buffer& buffer);
     ResourceMappedMemory MapResource(const Texture& texture);
 
-    // Allows for automatic staging buffer upload. This will always upload immediately to buffer.
-    // Either via staging buffer if GPUOnly resource or directly if CPUWrite resource
-    ResourceMappedMemory MapResource(CommandContext& ctx, const Buffer& buffer);
-    ResourceMappedMemory MapResource(CommandContext& ctx, const Texture& texture);
-
     // Destroys a texture, the handle passed in must be the one obtained from calling CreateTexture earlier.
     // Once destroyed, the handle passed in is invalid and should no longer be used.
     void DestroyTexture(const Texture& texture);

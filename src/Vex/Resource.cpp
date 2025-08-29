@@ -1,54 +1,37 @@
 ﻿#include "Resource.h"
 
-#include <Vex/RHIImpl/RHIBuffer.h>
-#include <Vex/RHIImpl/RHITexture.h>
+#include <Vex/Debug.h>
 
 namespace vex
 {
 
-ResourceMappedMemory::ResourceMappedMemory(IMappableResource& resource, const std::function<void()>& inDeferredAction)
-    : ResourceMappedMemory(resource)
-{
-    deferredAction = inDeferredAction;
-}
-
 ResourceMappedMemory::ResourceMappedMemory(ResourceMappedMemory&& other) noexcept
-    : mappedData{ std::move(other.mappedData) }
+    : mappedData{ other.mappedData }
     , resource{ other.resource }
-    , mapped{ std::exchange(other.mapped, false) }
-    , deferredAction{ std::move(other.deferredAction) }
+    , isMapped{ std::exchange(other.isMapped, false) }
 {
 }
 
 ResourceMappedMemory& ResourceMappedMemory::operator=(ResourceMappedMemory&& other) noexcept
 {
     resource = other.resource;
-    mappedData = std::move(other.mappedData);
-    deferredAction = std::move(other.deferredAction);
-    mapped = std::exchange(other.mapped, false);
+    mappedData = other.mappedData;
+    isMapped = std::exchange(other.isMapped, false);
     return *this;
 }
 
-ResourceMappedMemory::ResourceMappedMemory(IMappableResource& resource)
+ResourceMappedMemory::ResourceMappedMemory(MappableResourceInterface& resource)
     : resource{ resource }
-    , mapped{ true }
+    , isMapped{ true }
 {
     mappedData = resource.Map();
 }
 
-ResourceMappedMemory::ResourceMappedMemory(IMappableResource& resource,
-                                           std::move_only_function<void()>&& inDeferredAction)
-    : ResourceMappedMemory(resource)
-{
-    deferredAction = std::move(inDeferredAction);
-}
-
 ResourceMappedMemory::~ResourceMappedMemory()
 {
-    if (mapped)
+    if (isMapped)
     {
         resource.Unmap();
-        deferredAction();
     }
 }
 

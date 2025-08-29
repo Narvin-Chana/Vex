@@ -380,6 +380,58 @@ void CommandContext::Copy(const Buffer& source, const Texture& destination)
     VEX_NOT_YET_IMPLEMENTED();
 }
 
+static BufferDescription GetStagingBufferDescription(const std::string& name, u32 byteSize)
+{
+    BufferDescription description;
+    description.byteSize = byteSize;
+    description.name = std::string(name) + "_staging";
+    description.usage = BufferUsage::None;
+    description.memoryLocality = ResourceMemoryLocality::CPUWrite;
+    return description;
+}
+
+void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const u8> data)
+{
+    RHIBuffer& rhiDestBuffer = backend->GetRHIBuffer(buffer.handle);
+
+    if (buffer.description.memoryLocality == ResourceMemoryLocality::CPUWrite)
+    {
+        ResourceMappedMemory(rhiDestBuffer).SetData(data);
+        return;
+    }
+
+    Buffer stagingBuffer =
+        backend->CreateBuffer(GetStagingBufferDescription(buffer.description.name, buffer.description.byteSize),
+                              ResourceLifetime::Static);
+    RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
+
+    ResourceMappedMemory(rhiStagingBuffer).SetData(data);
+
+    cmdList->Transition(rhiStagingBuffer, RHIBufferState::CopySource);
+    cmdList->Transition(rhiDestBuffer, RHIBufferState::CopyDest);
+    cmdList->Copy(rhiStagingBuffer, rhiDestBuffer);
+
+    backend->DestroyBuffer(stagingBuffer);
+}
+
+void CommandContext::EnqueueDataUpload(const Texture& texture, std::span<const u8> data)
+{
+    RHITexture& rhiDestTexture = backend->GetRHITexture(texture.handle);
+
+    Buffer stagingBuffer = backend->CreateBuffer(
+        GetStagingBufferDescription(texture.description.name, texture.description.GetTextureByteSize()),
+        ResourceLifetime::Static);
+    RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
+
+    ResourceMappedMemory(rhiStagingBuffer).SetData(data);
+
+    cmdList->Transition(rhiStagingBuffer, RHIBufferState::CopySource);
+    cmdList->Transition(rhiDestTexture, RHIBufferState::CopyDest);
+    cmdList->Copy(rhiStagingBuffer, rhiDestTexture);
+
+    backend->DestroyBuffer(stagingBuffer);
+}
+
 void CommandContext::Transition(const Texture& texture, RHITextureState::Type newState)
 {
     cmdList->Transition(backend->GetRHITexture(texture.handle), newState);

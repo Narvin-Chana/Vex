@@ -74,6 +74,14 @@ public:
     void Copy(const Buffer& source, const Buffer& destination);
     void Copy(const Buffer& source, const Texture& destination);
 
+    void EnqueueDataUpload(const Buffer& buffer, std::span<const u8> data);
+    void EnqueueDataUpload(const Texture& buffer, std::span<const u8> data);
+
+    template <class T>
+    void EnqueueDataUpload(const Texture& texture, const T& data);
+    template <class T>
+    void EnqueueDataUpload(const Buffer& buffer, const T& data);
+
     // Allows you to transition the passed in texture to the correct state. Usually this is done automatically by Vex
     // before any draws or dispatches for the resources you pass in.
     //
@@ -111,5 +119,17 @@ private:
 
     std::optional<RHIDrawResources> currentDrawResources;
 };
+
+template <class T>
+void CommandContext::EnqueueDataUpload(const Texture& texture, const T& data)
+{
+    EnqueueDataUpload(texture, std::span{ reinterpret_cast<const u8*>(&data), sizeof(T) });
+}
+
+template <class T>
+void CommandContext::EnqueueDataUpload(const Buffer& buffer, const T& data)
+{
+    EnqueueDataUpload(buffer, std::span{ reinterpret_cast<const u8*>(&data), sizeof(T) });
+}
 
 } // namespace vex

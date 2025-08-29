@@ -135,7 +135,7 @@ void RHIAllocatorBase::Free(const Allocation& allocation)
 {
     if (allocation.pageHandle == GInvalidPageHandle)
     {
-        return;
+        VEX_LOG(Fatal, "Invalid page handle was passed to RHIAllocatorBase::Free()")
     }
 
     auto& memoryPages = pageInfos[allocation.memoryTypeIndex];

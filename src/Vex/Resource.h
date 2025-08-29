@@ -1,17 +1,14 @@
 #pragma once
 
-#include <functional>
 #include <print>
 #include <span>
-#include <variant>
 
 #include <Vex/Handle.h>
-#include <Vex/RHIFwd.h>
 #include <Vex/Types.h>
 
-#include "RHI/RHIAllocator.h"
-
+#ifndef VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
 #define VEX_USE_CUSTOM_ALLOCATOR_BUFFERS 1
+#endif
 
 namespace vex
 {
@@ -36,11 +33,11 @@ struct BindlessHandle : Handle<BindlessHandle>
 
 static constexpr BindlessHandle GInvalidBindlessHandle;
 
-struct IMappableResource
+struct MappableResourceInterface
 {
     virtual std::span<u8> Map() = 0;
     virtual void Unmap() = 0;
-    virtual ~IMappableResource() = default;
+    virtual ~MappableResourceInterface() = default;
 };
 
 class ResourceMappedMemory
@@ -53,9 +50,7 @@ public:
     ResourceMappedMemory(ResourceMappedMemory&&) noexcept;
     ResourceMappedMemory& operator=(ResourceMappedMemory&&) noexcept;
 
-    ResourceMappedMemory(IMappableResource& resource);
-    ResourceMappedMemory(IMappableResource& resource, const std::function<void()>& deferredAction);
-    ResourceMappedMemory(IMappableResource& resource, std::move_only_function<void()>&& deferredAction);
+    ResourceMappedMemory(MappableResourceInterface& resource);
 
     ~ResourceMappedMemory();
     void SetData(std::span<const u8> inData);
@@ -67,11 +62,9 @@ public:
 private:
     std::span<u8> mappedData;
 
-    IMappableResource& resource;
+    MappableResourceInterface& resource;
 
-    bool mapped = false;
-
-    std::move_only_function<void()> deferredAction = [] {};
+    bool isMapped = false;
 };
 
 template <class T>

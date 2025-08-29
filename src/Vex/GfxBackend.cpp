@@ -242,67 +242,6 @@ ResourceMappedMemory GfxBackend::MapResource(const Texture& texture)
     return ResourceMappedMemory(rhiTexture);
 }
 
-BufferDescription GetStagingBufferDescription(const std::string& name, u32 byteSize)
-{
-    BufferDescription description;
-    description.byteSize = byteSize;
-    description.name = std::string(name) + "_staging";
-    description.usage = BufferUsage::None;
-    description.memoryLocality = ResourceMemoryLocality::CPUWrite;
-    return description;
-}
-
-ResourceMappedMemory GfxBackend::MapResource(CommandContext& ctx, const Buffer& buffer)
-{
-    if (buffer.description.memoryLocality == ResourceMemoryLocality::CPUWrite)
-    {
-        return MapResource(buffer);
-    }
-
-    Buffer stagingBuffer =
-        CreateBuffer(GetStagingBufferDescription(buffer.description.name, buffer.description.byteSize),
-                     ResourceLifetime::Static);
-    RHIBuffer& rhiStagingBuffer = GetRHIBuffer(stagingBuffer.handle);
-    std::move_only_function<void()> transitionAndUpload = [this,
-                                                           stagingBuffer,
-                                                           &cmdList = ctx.GetRHICommandList(),
-                                                           &rhiDestBuffer = GetRHIBuffer(buffer.handle),
-                                                           &rhiStagingBuffer = rhiStagingBuffer] mutable
-    {
-        cmdList.Transition(rhiStagingBuffer, RHIBufferState::CopySource);
-        cmdList.Transition(rhiDestBuffer, RHIBufferState::CopyDest);
-        cmdList.Copy(rhiStagingBuffer, rhiDestBuffer);
-        // Delete staging buffer at the end of the frame
-        resourceCleanup.CleanupResource(bufferRegistry.ExtractElement(stagingBuffer.handle));
-    };
-    return ResourceMappedMemory(rhiStagingBuffer, std::move(transitionAndUpload));
-}
-ResourceMappedMemory GfxBackend::MapResource(CommandContext& ctx, const Texture& texture)
-{
-    if (texture.description.memoryLocality == ResourceMemoryLocality::CPUWrite)
-    {
-        return MapResource(texture);
-    }
-
-    Buffer stagingBuffer =
-        CreateBuffer(GetStagingBufferDescription(texture.description.name, texture.description.GetTextureByteSize()),
-                     ResourceLifetime::Static);
-    RHIBuffer& rhiStagingBuffer = GetRHIBuffer(stagingBuffer.handle);
-    std::move_only_function<void()> transitionAndUpload = [this,
-                                                           stagingBuffer,
-                                                           &cmdList = ctx.GetRHICommandList(),
-                                                           &rhiDestTexture = GetRHITexture(texture.handle),
-                                                           &rhiStagingBuffer = rhiStagingBuffer] mutable
-    {
-        cmdList.Transition(rhiStagingBuffer, RHIBufferState::CopySource);
-        cmdList.Transition(rhiDestTexture, RHIBufferState::CopyDest);
-        cmdList.Copy(rhiStagingBuffer, rhiDestTexture);
-        // Delete staging buffer at the end of the frame
-        resourceCleanup.CleanupResource(bufferRegistry.ExtractElement(stagingBuffer.handle));
-    };
-    return ResourceMappedMemory(rhiStagingBuffer, std::move(transitionAndUpload));
-}
-
 void GfxBackend::DestroyTexture(const Texture& texture)
 {
     resourceCleanup.CleanupResource(textureRegistry.ExtractElement(texture.handle));

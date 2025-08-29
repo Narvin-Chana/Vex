@@ -60,7 +60,7 @@ void HelloTriangleGraphicsApplication::Run()
             // Scoped command context will submit commands automatically upon destruction.
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
 
-            graphics->MapResource(ctx, colorBuffer).SetData(color);
+            ctx.EnqueueDataUpload(colorBuffer, color);
 
             ctx.SetScissor(0, 0, width, height);
 

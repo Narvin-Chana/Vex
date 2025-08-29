@@ -44,12 +44,12 @@ struct MemoryPageInfo
     std::optional<MemoryRange> Allocate(u64 size, u64 alignment);
     void Free(const MemoryRange& range);
 
-    u64 GetByteSize() const
+    [[nodiscard]] u64 GetByteSize() const
     {
         return pageByteSize;
     }
 
-    u64 GetFreeSpace() const
+    [[nodiscard]] u64 GetFreeSpace() const
     {
         u64 totalAllocated = 0;
         for (const auto& range : allocatedRanges)

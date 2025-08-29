@@ -1,10 +1,9 @@
 #pragma once
 
-#include "RHIAllocator.h"
-
 #include <Vex/Buffer.h>
 #include <Vex/NonNullPtr.h>
 #include <Vex/RHIFwd.h>
+#include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/Resource.h>
 #include <Vex/Types.h>
 
@@ -31,7 +30,7 @@ END_VEX_ENUM_FLAGS();
 
 // clang-format on
 
-class RHIBufferBase : public IMappableResource
+class RHIBufferBase : public MappableResourceInterface
 {
 public:
     RHIBufferBase(RHIAllocator& allocator);
@@ -63,7 +62,7 @@ public:
         return desc;
     };
 
-    const Allocation& GetAllocation() const noexcept
+    [[nodiscard]] const Allocation& GetAllocation() const noexcept
     {
         return allocation;
     }
