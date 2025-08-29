@@ -82,7 +82,7 @@ void HelloTriangleApplication::Run()
                 vex::BufferBinding{
                     .buffer = commBuffer,
                     .usage = vex::BufferBindingUsage::RWStructuredBuffer,
-                    .stride = static_cast<vex::u32>(sizeof(float) * 4),
+                    .strideByteSize = static_cast<vex::u32>(sizeof(float) * 4),
                 },
                 vex::TextureBinding{
                     .texture = workingTexture,
@@ -99,7 +99,7 @@ void HelloTriangleApplication::Run()
                 vex::BufferBinding{
                     .buffer = commBuffer,
                     .usage = vex::BufferBindingUsage::StructuredBuffer,
-                    .stride = static_cast<vex::u32>(sizeof(float) * 4),
+                    .strideByteSize = static_cast<vex::u32>(sizeof(float) * 4),
                 },
                 vex::TextureBinding{
                     .texture = workingTexture,

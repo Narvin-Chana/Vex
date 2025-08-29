@@ -264,6 +264,7 @@ static ::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITex
         barrier.srcStageMask = PipelineStageFlagBits2::eColorAttachmentOutput;
         break;
     case ImageLayout::eDepthStencilAttachmentOptimal:
+    case ImageLayout::eDepthAttachmentOptimal:
         barrier.srcAccessMask =
             AccessFlagBits2::eDepthStencilAttachmentRead | AccessFlagBits2::eDepthStencilAttachmentWrite;
         barrier.srcStageMask = PipelineStageFlagBits2::eEarlyFragmentTests | PipelineStageFlagBits2::eLateFragmentTests;
@@ -305,6 +306,7 @@ static ::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITex
         barrier.dstStageMask = PipelineStageFlagBits2::eColorAttachmentOutput;
         break;
     case ImageLayout::eDepthStencilAttachmentOptimal:
+    case ImageLayout::eDepthAttachmentOptimal:
         barrier.dstAccessMask =
             AccessFlagBits2::eDepthStencilAttachmentRead | AccessFlagBits2::eDepthStencilAttachmentWrite;
         barrier.dstStageMask = PipelineStageFlagBits2::eEarlyFragmentTests;
@@ -540,14 +542,15 @@ void VkCommandList::DrawIndexed(
 void VkCommandList::SetVertexBuffers(u32 startSlot, std::span<RHIBufferBinding> vertexBuffers)
 {
     VEX_NOT_YET_IMPLEMENTED();
-    // Code should be verified by our resident vulkan expert:
+    // Code should be verified by our resident vulkan expert.
+    // Unsure if vkOffsets should be bytes or bits?
     static constexpr u64 ByteToBits = 8;
     std::vector<::vk::Buffer> vkBuffers(vertexBuffers.size());
     std::vector<::vk::DeviceSize> vkOffsets(vkBuffers.size());
     for (auto& [binding, buffer] : vertexBuffers)
     {
         vkBuffers.emplace_back(buffer->GetNativeBuffer());
-        vkOffsets.push_back(binding.offsetByteSize * ByteToBits);
+        vkOffsets.push_back(binding.offsetByteSize.value_or(0) * ByteToBits);
     }
 
     commandBuffer->bindVertexBuffers(startSlot, static_cast<u32>(vkBuffers.size()), vkBuffers.data(), vkOffsets.data());

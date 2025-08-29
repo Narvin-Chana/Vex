@@ -45,25 +45,22 @@ public:
                       std::optional<TextureClearValue> textureClearValue = std::nullopt,
                       std::optional<std::array<float, 4>> clearRect = std::nullopt);
 
-    // Starts a graphics rendering pass, setting up the graphics pipeline for your specific draw bindings.
-    // Once called you must eventually have a matching EndRendering call.
-    void BeginRendering(const DrawResourceBinding& drawBindings);
-    // Marks the end of a graphics rendering pass. Must have previously called BeginRendering.
-    void EndRendering();
-
     void Draw(const DrawDescription& drawDesc,
+              const DrawResourceBinding& drawBindings,
               std::optional<ConstantBinding> constants,
               u32 vertexCount,
               u32 instanceCount = 1,
               u32 vertexOffset = 0,
               u32 instanceOffset = 0);
 
-    void DrawIndexed()
-    {
-    }
-    void DrawInstancedIndexed()
-    {
-    }
+    void DrawIndexed(const DrawDescription& drawDesc,
+                     const DrawResourceBinding& drawBindings,
+                     std::optional<ConstantBinding> constants,
+                     u32 indexCount,
+                     u32 instanceCount = 1,
+                     u32 indexOffset = 0,
+                     u32 vertexOffset = 0,
+                     u32 instanceOffset = 0);
 
     void Dispatch(const ShaderKey& shader,
                   const std::optional<ConstantBinding>& constants,
@@ -116,6 +113,12 @@ public:
     RHICommandList& GetRHICommandList();
 
 private:
+    std::optional<RHIDrawResources> PrepareDrawCall(const DrawDescription& drawDesc,
+                                                    const DrawResourceBinding& drawBindings,
+                                                    std::optional<ConstantBinding> constants);
+    void SetVertexBuffers(u32 vertexBuffersFirstSlot, std::span<BufferBinding> vertexBuffers);
+    void SetIndexBuffer(std::optional<BufferBinding> indexBuffer);
+
     GfxBackend* backend;
     RHICommandList* cmdList;
 
@@ -125,8 +128,6 @@ private:
     std::optional<GraphicsPipelineStateKey> cachedGraphicsPSOKey;
     std::optional<ComputePipelineStateKey> cachedComputePSOKey;
     std::optional<InputAssembly> cachedInputAssembly;
-
-    std::optional<RHIDrawResources> currentDrawResources;
 };
 
 template <class T>

@@ -58,6 +58,10 @@ void ImGuiRenderExtension::OnFrameEnd()
     // Call all user imgui calls
     ImGui::ShowDemoWindow();
 
+    // Render resolves all internal ImGui code.
+    // It does not touch the graphics API at all.
+    ImGui::Render();
+
     // Render ImGui to the backbuffer.
     {
         vex::CommandContext ctx = graphics.BeginScopedCommandContext(vex::CommandQueueType::Graphics);
@@ -71,7 +75,6 @@ void ImGuiRenderExtension::OnFrameEnd()
         // directly to the backbuffer).
         ctx.BeginRendering({ .renderTargets = std::initializer_list{ backBufferBinding } });
 
-        ImGui::Render();
         ImGui_ImplVex_RenderDrawData(ctx);
 
         ctx.EndRendering();

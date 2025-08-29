@@ -61,8 +61,8 @@ struct BufferBinding
     Buffer buffer;
     // The usage to use in this binding. Needs to be part of the usages of the buffer description
     BufferBindingUsage usage = BufferBindingUsage::Invalid;
-    // Optional: Stride of the buffer when using StructuredBuffer usage
-    std::optional<u32> stride;
+    // Optional: Stride of the buffer in bytes when using StructuredBuffer usage
+    std::optional<u32> strideByteSize;
     // Optional: The offset to apply when binding the buffer (in bytes).
     std::optional<u64> offsetByteSize;
 
@@ -122,6 +122,14 @@ struct DrawResourceBinding
 {
     std::span<const TextureBinding> renderTargets;
     std::optional<const TextureBinding> depthStencil;
+
+    u32 vertexBuffersFirstSlot = 0;
+    // Vertex buffers to be bound starting at the above slot.
+    // You can bind no vertex buffer and instead depend on SV_VertexID in your Vertex Shader.
+    std::span<BufferBinding> vertexBuffers;
+
+    // Index buffer used for DrawIndexed.
+    std::optional<BufferBinding> indexBuffer;
 
     void Validate() const;
 };

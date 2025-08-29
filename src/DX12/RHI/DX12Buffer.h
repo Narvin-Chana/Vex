@@ -22,7 +22,7 @@ namespace vex::dx12
 struct BufferViewCacheKey
 {
     BufferBindingUsage usage;
-    std::optional<u32> stride;
+    std::optional<u32> strideByteSize;
 
     bool operator==(const BufferViewCacheKey& other) const = default;
 };
@@ -33,7 +33,7 @@ struct BufferViewCacheKey
 
 VEX_MAKE_HASHABLE(vex::dx12::BufferViewCacheKey,
     VEX_HASH_COMBINE(seed, obj.usage);
-    VEX_HASH_COMBINE(seed, obj.stride);
+    VEX_HASH_COMBINE(seed, obj.strideByteSize);
 );
 
 // clang-format on
@@ -47,7 +47,7 @@ public:
     DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, const BufferDescription& desc);
 
     virtual BindlessHandle GetOrCreateBindlessView(BufferBindingUsage usage,
-                                                   std::optional<u32> stride,
+                                                   std::optional<u32> strideByteSize,
                                                    RHIDescriptorPool& descriptorPool) override;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
     virtual void FreeAllocation(RHIAllocator& allocator) override;

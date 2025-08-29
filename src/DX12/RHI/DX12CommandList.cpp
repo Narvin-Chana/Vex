@@ -394,7 +394,8 @@ void DX12CommandList::SetVertexBuffers(u32 startSlot, std::span<RHIBufferBinding
         VEX_LOG(Fatal, "Cannot use draw calls with a non-graphics command queue.");
     }
 
-    std::vector<D3D12_VERTEX_BUFFER_VIEW> views(vertexBuffers.size());
+    std::vector<D3D12_VERTEX_BUFFER_VIEW> views;
+    views.reserve(vertexBuffers.size());
     for (auto& [binding, buffer] : vertexBuffers)
     {
         views.push_back(buffer->GetVertexBufferView(binding));
