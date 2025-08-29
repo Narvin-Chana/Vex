@@ -218,12 +218,28 @@ Buffer GfxBackend::CreateBuffer(BufferDescription description, ResourceLifetime 
                    .description = std::move(description) };
 }
 
-void GfxBackend::UpdateData(const Buffer& buffer, std::span<const u8> data)
+ResourceMappedMemory GfxBackend::MapResource(const Buffer& buffer)
 {
-    VEX_ASSERT(data.size() <= buffer.description.byteSize, "Buffer data exceded buffer size");
-
     RHIBuffer& rhiBuffer = GetRHIBuffer(buffer.handle);
-    rhiBuffer.GetMappedMemory().SetData(data);
+
+    if (rhiBuffer.GetDescription().memoryLocality != ResourceMemoryLocality::CPUWrite)
+    {
+        VEX_LOG(Fatal, "Buffer needs to have CPUWrite locality to be mapped to");
+    }
+
+    return ResourceMappedMemory(rhiBuffer);
+}
+
+ResourceMappedMemory GfxBackend::MapResource(const Texture& texture)
+{
+    RHITexture& rhiTexture = GetRHITexture(texture.handle);
+
+    if (rhiTexture.GetDescription().memoryLocality != ResourceMemoryLocality::CPUWrite)
+    {
+        VEX_LOG(Fatal, "Texture needs to have CPUWrite locality to be mapped to directly");
+    }
+
+    return ResourceMappedMemory(rhiTexture);
 }
 
 void GfxBackend::DestroyTexture(const Texture& texture)

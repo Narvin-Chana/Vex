@@ -8,7 +8,8 @@ namespace vex::dx12
 {
 
 DX12Allocator::DX12Allocator(const ComPtr<DX12Device>& device)
-    : device(device)
+    : RHIAllocatorBase(magic_enum::enum_count<HeapType>())
+    , device(device)
 {
 }
 
@@ -24,7 +25,7 @@ Allocation DX12Allocator::AllocateResource(ComPtr<ID3D12Resource>& resource,
 
     // Allocates and handles finding an optimal place to allocate the memory.
     // No api calls will be made if a valid MemoryRange is already available, making this super fast!
-    Allocation allocation = Allocate(allocInfo.SizeInBytes, allocInfo.Alignment, heapType);
+    Allocation allocation = Allocate(allocInfo.SizeInBytes, allocInfo.Alignment, std::to_underlying(heapType));
 
     auto& heapList = heaps[std::to_underlying(heapType)];
 
@@ -44,12 +45,10 @@ void DX12Allocator::FreeResource(const Allocation& allocation)
     Free(allocation);
 }
 
-void DX12Allocator::OnPageAllocated(PageHandle pageHandle, HeapType heapType)
+void DX12Allocator::OnPageAllocated(PageHandle pageHandle, u32 heapIndex)
 {
-    auto& heapList = heaps[std::to_underlying(heapType)];
-    std::size_t oldSize = heapList.size();
-
-    u64 pageByteSize = pageInfos[std::to_underlying(heapType)][pageHandle].GetByteSize();
+    auto& heapList = heaps[heapIndex];
+    u64 pageByteSize = pageInfos[heapIndex][pageHandle].GetByteSize();
 
     // Using D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT will default to 64KB, which is valid for all resources APART
     // from MSAA textures.
@@ -57,7 +56,7 @@ void DX12Allocator::OnPageAllocated(PageHandle pageHandle, HeapType heapType)
     D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_CREATE_NOT_ZEROED | D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;
 
     CD3DX12_HEAP_DESC heapDesc;
-    switch (heapType)
+    switch (static_cast<HeapType>(heapIndex))
     {
     case HeapType::GPUOnly:
         heapDesc = CD3DX12_HEAP_DESC(pageByteSize, D3D12_HEAP_TYPE_DEFAULT, heapAlignment, heapFlags);
@@ -76,11 +75,11 @@ void DX12Allocator::OnPageAllocated(PageHandle pageHandle, HeapType heapType)
     chk << device->CreateHeap(&heapDesc, IID_PPV_ARGS(&heapList[pageHandle]));
 }
 
-void DX12Allocator::OnPageFreed(PageHandle pageHandle, HeapType heapType)
+void DX12Allocator::OnPageFreed(PageHandle pageHandle, u32 heapIndex)
 {
     // A page is only freed when a resource is freed and its the last occupying the page. Since resource clearing is
     // handled by ResourceCleanup, we can be certain that immediately deleting the heap is safe.
-    heaps[std::to_underlying(heapType)].erase(pageHandle);
+    heaps[heapIndex].erase(pageHandle);
 }
 
 } // namespace vex::dx12

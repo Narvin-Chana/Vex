@@ -1,13 +1,10 @@
 ﻿#include "DX12Buffer.h"
 
 #include <Vex/Buffer.h>
-#include <Vex/ByteUtils.h>
 #include <Vex/Debug.h>
 #include <Vex/Logger.h>
 #include <Vex/Platform/Platform.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
-
-#define VEX_USE_CUSTOM_ALLOCATOR_BUFFERS 1
 
 namespace vex::dx12
 {
@@ -21,9 +18,8 @@ static u32 RaiseToMultipleOf(u32 val, u32 multiple)
 } // namespace BufferHelpers_Internal
 
 DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, const BufferDescription& desc)
-    : RHIBufferBase(desc)
+    : RHIBufferBase(allocator, desc)
     , device(device)
-    , allocator(allocator)
 {
     auto size = desc.byteSize;
     // Size of constant buffers need to be multiples of 256. User won't know its bigger but it shouldn't be an issue
@@ -69,16 +65,6 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
 #if !VEX_SHIPPING
     chk << buffer->SetName(StringToWString(desc.name).data());
 #endif
-}
-
-UniqueHandle<RHIBuffer> DX12Buffer::CreateStagingBuffer()
-{
-    return MakeUnique<DX12Buffer>(device,
-                                  *allocator,
-                                  BufferDescription{ .name = desc.name + "_StagingBuffer",
-                                                     .byteSize = desc.byteSize,
-                                                     .usage = BufferUsage::None,
-                                                     .memoryLocality = ResourceMemoryLocality::CPUWrite });
 }
 
 std::span<u8> DX12Buffer::Map()

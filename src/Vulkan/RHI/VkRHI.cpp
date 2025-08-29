@@ -358,12 +358,12 @@ UniqueHandle<RHIResourceLayout> VkRHI::CreateResourceLayout(RHIDescriptorPool& d
 
 RHITexture VkRHI::CreateTexture(RHIAllocator& allocator, const TextureDescription& description)
 {
-    return VkTexture(GetGPUContext(), TextureDescription(description));
+    return VkTexture(GetGPUContext(), allocator, TextureDescription(description));
 }
 
 RHIBuffer VkRHI::CreateBuffer(RHIAllocator& allocator, const BufferDescription& description)
 {
-    return VkBuffer(GetGPUContext(), description);
+    return VkBuffer(GetGPUContext(), allocator, description);
 }
 
 UniqueHandle<RHIDescriptorPool> VkRHI::CreateDescriptorPool()
@@ -373,7 +373,7 @@ UniqueHandle<RHIDescriptorPool> VkRHI::CreateDescriptorPool()
 
 RHIAllocator VkRHI::CreateAllocator()
 {
-    return VkAllocator();
+    return VkAllocator(GetGPUContext());
 }
 
 void VkRHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBackend, ShaderEnvironment& shaderEnv)

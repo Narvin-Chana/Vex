@@ -8,8 +8,8 @@
 namespace vex
 {
 
-MemoryPageInfo::MemoryPageInfo(HeapType heapType, u64 pageByteSize)
-    : heapType(heapType)
+MemoryPageInfo::MemoryPageInfo(u32 memoryTypeIndex, u64 pageByteSize)
+    : memoryTypeIndex(memoryTypeIndex)
     , pageByteSize(pageByteSize)
 {
 }
@@ -67,11 +67,16 @@ std::optional<MemoryRange> MemoryPageInfo::FindFreeSpace(u64 size, u64 alignment
     return std::nullopt;
 }
 
-Allocation RHIAllocatorBase::Allocate(u64 size, u64 alignment, HeapType heapType)
+RHIAllocatorBase::RHIAllocatorBase(u32 memoryTypeCount)
+{
+    pageInfos.resize(memoryTypeCount);
+}
+
+Allocation RHIAllocatorBase::Allocate(u64 size, u64 alignment, u32 memoryTypeIndex)
 {
     u64 alignedSize = AlignUp(size, alignment);
 
-    auto& memoryPages = pageInfos[std::to_underlying(heapType)];
+    auto& memoryPages = pageInfos[memoryTypeIndex];
     for (auto it = memoryPages.begin(); it != memoryPages.end(); ++it)
     {
         // If page is too small, skip it as there's no chance it will allow us to allocate.
@@ -87,7 +92,7 @@ Allocation RHIAllocatorBase::Allocate(u64 size, u64 alignment, HeapType heapType
 #endif
 
             return Allocation{
-                .heapType = heapType,
+                .memoryTypeIndex = memoryTypeIndex,
                 .pageHandle = it.GetHandle(),
                 .memoryRange = res.value(),
             };
@@ -96,7 +101,7 @@ Allocation RHIAllocatorBase::Allocate(u64 size, u64 alignment, HeapType heapType
 
     // No valid page was found, we have to create a new page.
     PageHandle pageHandle = memoryPages.AllocateElement(
-        MemoryPageInfo(heapType, std::max(alignedSize, MemoryPageInfo::DefaultPageByteSize)));
+        MemoryPageInfo(memoryTypeIndex, std::max(alignedSize, MemoryPageInfo::DefaultPageByteSize)));
 #if !VEX_SHIPPING
     VEX_LOG(Verbose,
             "Allocated new page: size {} alignment {}!",
@@ -109,9 +114,9 @@ Allocation RHIAllocatorBase::Allocate(u64 size, u64 alignment, HeapType heapType
 #if !VEX_SHIPPING
         VEX_LOG(Verbose, "Allocated range: size {} offset {}", res.value().size, res.value().offset);
 #endif
-        OnPageAllocated(pageHandle, heapType);
+        OnPageAllocated(pageHandle, memoryTypeIndex);
         return Allocation{
-            .heapType = heapType,
+            .memoryTypeIndex = memoryTypeIndex,
             .pageHandle = pageHandle,
             .memoryRange = res.value(),
         };
@@ -119,16 +124,21 @@ Allocation RHIAllocatorBase::Allocate(u64 size, u64 alignment, HeapType heapType
 
     VEX_LOG(Fatal,
             "The program was unable to fit the requested allocation in any existing pages AND was unable to "
-            "allocate a new page for: size {} and alignment {} on heapType: {}!",
+            "allocate a new page for: size {} and alignment {} on memory type index: {}!",
             size,
             alignment,
-            magic_enum::enum_name(heapType));
+            memoryTypeIndex);
     std::unreachable();
 }
 
 void RHIAllocatorBase::Free(const Allocation& allocation)
 {
-    auto& memoryPages = pageInfos[std::to_underlying(allocation.heapType)];
+    if (allocation.pageHandle == GInvalidPageHandle)
+    {
+        VEX_LOG(Fatal, "Invalid page handle was passed to RHIAllocatorBase::Free()")
+    }
+
+    auto& memoryPages = pageInfos[allocation.memoryTypeIndex];
     auto& page = memoryPages[allocation.pageHandle];
 #if !VEX_SHIPPING
     VEX_LOG(Verbose, "Freed range: size {} offset {}", allocation.memoryRange.size, allocation.memoryRange.offset);
@@ -143,7 +153,7 @@ void RHIAllocatorBase::Free(const Allocation& allocation)
         VEX_LOG(Verbose, "Freed page: size {}", page.GetByteSize());
 #endif
 
-        OnPageFreed(allocation.pageHandle, allocation.heapType);
+        OnPageFreed(allocation.pageHandle, allocation.memoryTypeIndex);
         memoryPages.FreeElement(allocation.pageHandle);
     }
 

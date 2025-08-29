@@ -72,4 +72,10 @@ void ValidateTextureDescription(const TextureDescription& description)
 
 } // namespace TextureUtil
 
+u32 TextureDescription::GetTextureByteSize() const
+{
+    // TODO: Split this per API as the memory footprint of textures varies
+    // This is unused for now. To be tackled properly when uploading data to texture
+    return width * height * depthOrArraySize * (4 * sizeof(float));
+}
 } // namespace vex

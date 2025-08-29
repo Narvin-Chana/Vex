@@ -161,6 +161,7 @@ add_library(Vex STATIC
     "src/Vex/Containers/FreeList.h"
     "src/Vex/Containers/FreeList.cpp"
     "src/Vex/Handle.h"
+    "src/Vex/Resource.cpp"
     "src/Vex/Resource.h"
     "src/Vex/Containers/ResourceCleanup.h"
     "src/Vex/Containers/ResourceCleanup.cpp"

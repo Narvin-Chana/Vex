@@ -50,6 +50,7 @@ public:
 
     virtual void Copy(RHITexture& src, RHITexture& dst) override;
     virtual void Copy(RHIBuffer& src, RHIBuffer& dst) override;
+    virtual void Copy(RHIBuffer& src, RHITexture& dst) override;
 
     virtual CommandQueueType GetType() const override;
 

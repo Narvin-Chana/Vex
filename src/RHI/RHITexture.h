@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Vex/EnumFlags.h>
+#include <Vex/MemoryAllocation.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/Resource.h>
 #include <Vex/Texture.h>
@@ -25,10 +26,12 @@ END_VEX_ENUM_FLAGS();
 
 // clang-format on
 
-class RHITextureBase
+class RHITextureBase : public MappableResourceInterface
 {
 public:
     RHITextureBase() = default;
+    RHITextureBase(RHIAllocator& allocator)
+        : allocator{ &allocator } {};
     RHITextureBase(const RHITextureBase&) = delete;
     RHITextureBase& operator=(const RHITextureBase&) = delete;
     RHITextureBase(RHITextureBase&&) = default;
@@ -57,9 +60,17 @@ public:
         currentState = newState;
     }
 
+    const Allocation& GetAllocation() const noexcept
+    {
+        return allocation;
+    }
+
 protected:
     TextureDescription description;
     RHITextureState::Flags currentState = RHITextureState::Common;
+
+    RHIAllocator* allocator{};
+    Allocation allocation;
 };
 
 } // namespace vex

@@ -3,13 +3,13 @@
 #include <Vex/Bindings.h>
 #include <Vex/RHIBindings.h>
 
+#include <Vulkan/RHI/VkAllocator.h>
 #include <Vulkan/RHI/VkCommandPool.h>
 #include <Vulkan/RHI/VkDescriptorPool.h>
 #include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkFormats.h>
 #include <Vulkan/VkGPUContext.h>
-#include <Vulkan/VkMemory.h>
 
 namespace vex::vk
 {
@@ -98,12 +98,13 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescri
     SetDebugName(ctx->device, *rawImage, description.name.c_str());
 }
 
-VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescription)
-    : ctx(ctx)
+VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, RHIAllocator& allocator, TextureDescription&& inDescription)
+    : RHITextureBase(allocator)
+    , ctx(ctx)
     , isBackBuffer(false)
 {
     description = std::move(inDescription);
-    CreateImage();
+    CreateImage(allocator);
 }
 
 ::vk::Image VkTexture::GetResource()
@@ -228,11 +229,28 @@ void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 
 void VkTexture::FreeAllocation(RHIAllocator& allocator)
 {
-    // VEX_NOT_YET_IMPLEMENTED();
-    // For now does nothing to stop the Vk impl from crashing.
+    allocator.FreeResource(allocation);
 }
 
-void VkTexture::CreateImage()
+std::span<u8> VkTexture::Map()
+{
+    if (!allocator)
+    {
+        VEX_LOG(Fatal, "Texture {} cannot be mapped to", description.name);
+    }
+    return allocator->MapAllocation(allocation);
+}
+
+void VkTexture::Unmap()
+{
+    if (!allocator)
+    {
+        VEX_LOG(Fatal, "Texture {} cannot be unmapped", description.name);
+    }
+    allocator->UnmapAllocation(allocation);
+}
+
+void VkTexture::CreateImage(RHIAllocator& allocator)
 {
     if (isBackBuffer)
     {
@@ -290,18 +308,23 @@ void VkTexture::CreateImage()
 
     ::vk::MemoryRequirements imageMemoryReq = ctx->device.getImageMemoryRequirements(*imageTmp);
 
+#if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
+    auto [memory, newAllocation] = allocator.AllocateResource(description.memoryLocality, imageMemoryReq);
+    allocation = newAllocation;
+    VEX_VK_CHECK << ctx->device.bindImageMemory(*imageTmp, memory, allocation.memoryRange.offset);
+#else
     // memory allocation should be done elsewhere in a central place
     ::vk::MemoryAllocateInfo allocateInfo{
         .allocationSize = imageMemoryReq.size,
-        .memoryTypeIndex = GetBestMemoryType(ctx->physDevice,
-                                             imageMemoryReq.memoryTypeBits,
-                                             ::vk::MemoryPropertyFlagBits::eDeviceLocal),
+        .memoryTypeIndex = AllocatorUtils::GetBestSuitedMemoryTypeIndex(ctx->physDevice,
+                                                                        imageMemoryReq.memoryTypeBits,
+                                                                        ::vk::MemoryPropertyFlagBits::eDeviceLocal),
     };
     memory = VEX_VK_CHECK <<= ctx->device.allocateMemoryUnique(allocateInfo);
-    VEX_VK_CHECK << ctx->device.bindImageMemory(*imageTmp, *memory, 0);
-
-    SetDebugName(ctx->device, imageTmp.get(), description.name.c_str());
     SetDebugName(ctx->device, *memory, std::format("{}_Memory", description.name).c_str());
+    VEX_VK_CHECK << ctx->device.bindImageMemory(*imageTmp, *memory, 0);
+#endif
+    SetDebugName(ctx->device, imageTmp.get(), description.name.c_str());
 
     image = std::move(imageTmp);
 }
