@@ -13,7 +13,8 @@
 namespace vex
 {
 struct BufferDescription;
-}
+struct BufferBinding;
+} // namespace vex
 
 namespace vex::dx12
 {
@@ -63,6 +64,9 @@ public:
     {
         return buffer->GetGPUVirtualAddress();
     }
+
+    D3D12_VERTEX_BUFFER_VIEW GetVertexBufferView(const BufferBinding& binding) const;
+    D3D12_INDEX_BUFFER_VIEW GetIndexBufferView(const BufferBinding& binding) const;
 
 private:
     ComPtr<DX12Device> device;

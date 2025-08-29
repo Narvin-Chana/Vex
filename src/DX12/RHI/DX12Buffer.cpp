@@ -1,5 +1,6 @@
 ﻿#include "DX12Buffer.h"
 
+#include <Vex/Bindings.h>
 #include <Vex/Buffer.h>
 #include <Vex/Debug.h>
 #include <Vex/Logger.h>

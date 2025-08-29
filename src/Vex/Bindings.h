@@ -62,7 +62,9 @@ struct BufferBinding
     // The usage to use in this binding. Needs to be part of the usages of the buffer description
     BufferBindingUsage usage = BufferBindingUsage::Invalid;
     // Optional: Stride of the buffer when using StructuredBuffer usage
-    std::optional<u32> stride = 0;
+    std::optional<u32> stride;
+    // Optional: The offset to apply when binding the buffer (in bytes).
+    std::optional<u64> offsetByteSize;
 
     void ValidateForShaderUse(BufferUsage::Flags validBufferUsageFlags) const;
     void Validate() const;

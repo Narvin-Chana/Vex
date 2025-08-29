@@ -131,9 +131,15 @@ void CommandContext::ClearTexture(const TextureBinding& binding,
                 "stencil!");
     }
 
+    if (clearRect.has_value())
+    {
+        // Clear Rect not yet supported.
+        VEX_NOT_YET_IMPLEMENTED();
+    }
+
     RHITexture& texture = backend->GetRHITexture(binding.texture.handle);
     cmdList->Transition(texture, texture.GetClearTextureState());
-    cmdList->ClearTexture({ binding, texture },
+    cmdList->ClearTexture({ binding, NonNullPtr(texture) },
                           // This is a safe cast, textures can only contain one of the two usages (RT/DS).
                           static_cast<TextureUsage::Type>(binding.texture.description.usage &
                                                           (TextureUsage::RenderTarget | TextureUsage::DepthStencil)),
@@ -152,14 +158,16 @@ void CommandContext::BeginRendering(const DrawResourceBinding& drawBindings)
     for (const auto& renderTarget : drawBindings.renderTargets)
     {
         transitions.emplace_back(backend->GetRHITexture(renderTarget.texture.handle), RHITextureState::RenderTarget);
-        currentDrawResources->renderTargets.emplace_back(renderTarget,
-                                                         backend->GetRHITexture(renderTarget.texture.handle));
+        currentDrawResources->renderTargets.emplace_back(
+            renderTarget,
+            NonNullPtr(backend->GetRHITexture(renderTarget.texture.handle)));
     }
 
     if (drawBindings.depthStencil)
     {
         currentDrawResources->depthStencil = { *drawBindings.depthStencil,
-                                               backend->GetRHITexture(drawBindings.depthStencil->texture.handle) };
+                                               NonNullPtr(
+                                                   backend->GetRHITexture(drawBindings.depthStencil->texture.handle)) };
         transitions.emplace_back(backend->GetRHITexture(drawBindings.depthStencil->texture.handle),
                                  RHITextureState::DepthWrite);
     }
@@ -180,7 +188,12 @@ void CommandContext::EndRendering()
     currentDrawResources.reset();
 }
 
-void CommandContext::Draw(const DrawDescription& drawDesc, std::optional<ConstantBinding> constants, u32 vertexCount)
+void CommandContext::Draw(const DrawDescription& drawDesc,
+                          std::optional<ConstantBinding> constants,
+                          u32 vertexCount,
+                          u32 instanceCount,
+                          u32 vertexOffset,
+                          u32 instanceOffset)
 {
     if (!currentDrawResources)
     {
@@ -229,7 +242,7 @@ void CommandContext::Draw(const DrawDescription& drawDesc, std::optional<Constan
 
     // TODO(https://trello.com/c/IGxuLci9): Validate draw vertex count (eg: versus the currently used index buffer size)
 
-    cmdList->Draw(vertexCount);
+    cmdList->Draw(vertexCount, instanceCount, vertexOffset, instanceOffset);
 }
 
 void CommandContext::Dispatch(const ShaderKey& shader,

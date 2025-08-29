@@ -51,7 +51,12 @@ public:
     // Marks the end of a graphics rendering pass. Must have previously called BeginRendering.
     void EndRendering();
 
-    void Draw(const DrawDescription& drawDesc, std::optional<ConstantBinding> constants, u32 vertexCount);
+    void Draw(const DrawDescription& drawDesc,
+              std::optional<ConstantBinding> constants,
+              u32 vertexCount,
+              u32 instanceCount = 1,
+              u32 vertexOffset = 0,
+              u32 instanceOffset = 0);
 
     void DrawIndexed()
     {
@@ -94,22 +99,16 @@ public:
 
     // Allows you to transition the passed in texture to the correct state. Usually this is done automatically by Vex
     // before any draws or dispatches for the resources you pass in.
-    //
-    // However, in the case you are leveraging bindless resources (VEX_GET_BINDLESS_RESOURCE), you are responsible for
-    // ensuring any used resources are in the correct state.
-    //
-    // This contains redundancy checks so feel free to call it even if the resource is potentially already in the
-    // desired state for correctness.
+    // However, in the case you are leveraging bindless resources, you are responsible for ensuring any used resources
+    // are in the correct state. This contains redundancy checks so feel free to call it even if the resource is
+    // potentially already in the desired state for correctness.
     void Transition(const Texture& texture, RHITextureState::Type newState);
 
     // Allows you to transition the passed in buffer to the correct state. Usually this is done automatically by Vex
     // before any draws or dispatches for the resources you pass in.
-    //
-    // However, in the case you are leveraging bindless resources (VEX_GET_BINDLESS_RESOURCE), you are responsible for
-    // ensuring any used resources are in the correct state.
-    //
-    // This contains redundancy checks so feel free to call it even if the resource is potentially already in the
-    // desired state for correctness.
+    // However, in the case you are leveraging bindless resources, you are responsible for ensuring any used resources
+    // are in the correct state. This contains redundancy checks so feel free to call it even if the resource is
+    // potentially already in the desired state for correctness.
     void Transition(const Buffer& buffer, RHIBufferState::Type newState);
 
     // Returns the RHI command list associated with this context (you should avoid using this unless you know

@@ -225,7 +225,7 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
     }
 }
 
-::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITextureState::Flags flags)
+static ::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITextureState::Flags flags)
 {
     using namespace ::vk;
     ImageLayout prevLayout = texture.GetLayout();
@@ -346,7 +346,7 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
     return barrier;
 }
 
-::vk::BufferMemoryBarrier2 GetBufferBarrierFrom(VkBuffer& buffer, RHIBufferState::Flags flags)
+static ::vk::BufferMemoryBarrier2 GetBufferBarrierFrom(VkBuffer& buffer, RHIBufferState::Flags flags)
 {
     ::vk::AccessFlags2 srcAccessMask = BufferUtil::GetAccessFlagsFromBufferState(buffer.GetCurrentState());
     ::vk::AccessFlags2 dstAccessMask = BufferUtil::GetAccessFlagsFromBufferState(flags);
@@ -502,7 +502,7 @@ void VkCommandList::EndRendering()
     commandBuffer->endRendering();
 }
 
-void VkCommandList::Draw(u32 vertexCount)
+void VkCommandList::Draw(u32 vertexCount, u32 instanceCount, u32 vertexOffset, u32 instanceOffset)
 {
     if (!cachedViewport || !cachedScissor)
     {
@@ -516,7 +516,46 @@ void VkCommandList::Draw(u32 vertexCount)
 
     commandBuffer->setViewportWithCount(1, &*cachedViewport);
     commandBuffer->setScissorWithCount(1, &*cachedScissor);
-    commandBuffer->draw(vertexCount, 1, 0, 0);
+    commandBuffer->draw(vertexCount, instanceCount, vertexOffset, instanceOffset);
+}
+
+void VkCommandList::DrawIndexed(
+    u32 indexCount, u32 instanceCount, u32 indexOffset, u32 vertexOffset, u32 instanceOffset)
+{
+    if (!cachedViewport || !cachedScissor)
+    {
+        VEX_LOG(Fatal, "SetScissor and SetViewport need to be called before Draw is ever called")
+    }
+
+    if (!isRendering)
+    {
+        VEX_LOG(Fatal, "You need to call BeginRendering before calling any draw commands")
+    }
+
+    commandBuffer->setViewportWithCount(1, &*cachedViewport);
+    commandBuffer->setScissorWithCount(1, &*cachedScissor);
+    commandBuffer->drawIndexed(indexCount, instanceCount, indexOffset, vertexOffset, instanceOffset);
+}
+
+void VkCommandList::SetVertexBuffers(u32 startSlot, std::span<RHIBufferBinding> vertexBuffers)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+    // Code should be verified by our resident vulkan expert:
+    static constexpr u64 ByteToBits = 8;
+    std::vector<::vk::Buffer> vkBuffers(vertexBuffers.size());
+    std::vector<::vk::DeviceSize> vkOffsets(vkBuffers.size());
+    for (auto& [binding, buffer] : vertexBuffers)
+    {
+        vkBuffers.emplace_back(buffer->GetNativeBuffer());
+        vkOffsets.push_back(binding.offsetByteSize * ByteToBits);
+    }
+
+    commandBuffer->bindVertexBuffers(startSlot, static_cast<u32>(vkBuffers.size()), vkBuffers.data(), vkOffsets.data());
+}
+
+void VkCommandList::SetIndexBuffer(const RHIBufferBinding& indexBuffer)
+{
+    VEX_NOT_YET_IMPLEMENTED();
 }
 
 void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount)

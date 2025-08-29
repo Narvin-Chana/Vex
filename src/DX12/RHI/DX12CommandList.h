@@ -41,7 +41,12 @@ public:
     virtual void BeginRendering(const RHIDrawResources& resources) override;
     virtual void EndRendering() override;
 
-    virtual void Draw(u32 vertexCount) override;
+    virtual void Draw(u32 vertexCount, u32 instanceCount = 1, u32 vertexOffset = 0, u32 instanceOffset = 0) override;
+    virtual void DrawIndexed(
+        u32 indexCount, u32 instanceCount, u32 indexOffset, u32 vertexOffset, u32 instanceOffset) override;
+
+    virtual void SetVertexBuffers(u32 startSlot, std::span<RHIBufferBinding> vertexBuffers) override;
+    virtual void SetIndexBuffer(const RHIBufferBinding& indexBuffer) override;
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount) override;
 
