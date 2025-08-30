@@ -83,6 +83,19 @@ struct Buffer final
     BufferDescription description;
 };
 
+struct BufferRegion
+{
+    u32 offset;
+    u32 size;
+};
+
+struct BufferToBufferCopyRegion
+{
+    u32 srcOffset;
+    u32 dstOffset;
+    u32 size;
+};
+
 namespace BufferUtil
 {
 inline void ValidateBufferDescription(const BufferDescription& desc)

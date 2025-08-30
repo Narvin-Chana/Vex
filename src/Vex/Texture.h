@@ -124,4 +124,26 @@ inline bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags 
     return true;
 }
 
+struct TextureRegionExtent
+{
+    u32 width;
+    u32 height;
+    u32 depth = 1;
+};
+
+struct TextureRegion
+{
+    u32 mip = 0;
+    u32 baseLayer = 0;
+    u32 layerCount = 1;
+    TextureRegionExtent offset{ 0, 0, 0 };
+};
+
+struct TextureToTextureCopyRegionMapping
+{
+    TextureRegion srcRegion;
+    TextureRegion dstRegion;
+    TextureRegionExtent extent;
+};
+
 } // namespace vex
