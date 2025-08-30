@@ -57,6 +57,7 @@ public:
     virtual void TraceRays(const std::array<u32, 3>& widthHeightDepth,
                            const RHIRayTracingPipelineState& rayTracingPipelineState) override;
 
+    using RHICommandListBase::Copy;
     virtual void Copy(RHITexture& src, RHITexture& dst, const std::vector<TextureToTextureCopyRegionMapping>& regionMappings) override;
     virtual void Copy(RHIBuffer& src, RHIBuffer& dst, const BufferToBufferCopyRegion& regionMappings) override;
     virtual void Copy(RHIBuffer& src, RHITexture& dst, const std::vector<BufferToTextureCopyMapping>& regionMappings) override;
@@ -82,4 +83,4 @@ private:
     friend class VkRHI;
 };
 
-} // namespace vex::vk
+} // namespace vex

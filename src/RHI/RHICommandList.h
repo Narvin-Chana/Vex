@@ -1,7 +1,6 @@
 #pragma once
 
 #include <array>
-#include <regex>
 #include <span>
 #include <utility>
 
@@ -11,9 +10,6 @@
 
 #include <RHI/RHIBuffer.h>
 #include <RHI/RHITexture.h>
-
-#include "DX12/RHI/DX12Buffer.h"
-#include "DX12/RHI/DX12Texture.h"
 
 namespace vex
 {
@@ -90,106 +86,5 @@ public:
 
     virtual CommandQueueType GetType() const = 0;
 };
-
-// TODO: Move this to CPP file
-inline void RHICommandListBase::Copy(RHITexture& src, RHITexture& dst)
-{
-    const auto desc = src.GetDescription();
-    std::vector<std::pair<TextureRegion, TextureRegionExtent>> regions;
-    u32 width = desc.width;
-    u32 height = desc.height;
-    u32 depth = desc.depthOrArraySize;
-    for (u32 i = 0; i < desc.mips; ++i)
-    {
-        regions.emplace_back(
-            TextureRegion{
-                .mip = i,
-                .baseLayer = 0,
-                .layerCount = desc.type == TextureType::Texture3D ? desc.depthOrArraySize : 1,
-                .offset = { 0, 0, 0 }
-            },
-            TextureRegionExtent{ width, height, depth }
-        );
-
-        width = std::max(1u, width / 2u);
-        height = std::max(1u, height / 2u);
-        depth = std::max(1u, depth / 2u);
-    }
-
-    std::vector<TextureToTextureCopyRegionMapping> regionMappings;
-    for (const auto& [region, extent] : regions)
-    {
-        regionMappings.emplace_back(region, region, extent);
-    }
-
-    Copy(src, dst, regionMappings);
-}
-
-inline void RHICommandListBase::Copy(RHIBuffer& src, RHIBuffer& dst)
-{
-    Copy(src, dst, BufferToBufferCopyRegion{ 0, 0, src.GetDescription().byteSize });
-}
-
-inline u8 GetPixelByteSizeFromFormat(TextureFormat format)
-{
-    const std::string_view enumName = magic_enum::enum_name(format);
-
-    const std::regex r{ "([0-9]+)+" };
-
-    std::match_results<std::string_view::const_iterator> results;
-
-    auto it = enumName.begin();
-
-    int totalBits = 0;
-    while (regex_search(it, enumName.end(), results, r))
-    {
-        std::string value = results.str();
-        totalBits += std::stoi(value);
-        std::advance(it, results.prefix().length() + value.length());
-    }
-
-    return static_cast<uint8_t>(totalBits / 8);
-}
-
-inline void RHICommandListBase::Copy(RHIBuffer& src, RHITexture& dst)
-{
-    const TextureDescription& desc = dst.GetDescription();
-
-    const u8 texelByteSize = GetPixelByteSizeFromFormat(desc.format);
-
-    TextureRegionExtent mipSize{ desc.width,
-                                desc.height,
-                                (desc.type == TextureType::Texture3D) ? desc.depthOrArraySize : 1 };
-
-    std::vector<BufferToTextureCopyMapping> regions;
-
-    u32 bufferOffset = 0;
-    for (u8 i = 0; i < desc.mips; ++i)
-    {
-        const u32 mipByteSize = mipSize.width * mipSize.height * (desc.type == TextureType::Texture3D
-                                    ? mipSize.depth
-                                    : desc.depthOrArraySize * texelByteSize);
-
-        regions.push_back(BufferToTextureCopyMapping{
-            .srcRegion = BufferRegion{ bufferOffset, mipByteSize },
-            .dstRegion = TextureRegion{
-                .mip = i,
-                .baseLayer = 0,
-                .layerCount = (desc.type == TextureType::Texture3D) ? 1 : desc.depthOrArraySize,
-                .offset = { 0, 0, 0 }
-            },
-            .extent = { mipSize.width, mipSize.height, mipSize.depth }
-        });
-
-        bufferOffset += mipByteSize;
-        mipSize = TextureRegionExtent{
-            std::max(1u, mipSize.width / 2u),
-            std::max(1u, mipSize.height / 2u),
-            std::max(1u, mipSize.depth / 2u)
-        };
-    }
-
-    Copy(src, dst, regions);
-}
 
 } // namespace vex

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <regex>
 #include <string>
 
 #include <Vex/EnumFlags.h>
@@ -107,6 +108,27 @@ struct Texture final
     TextureHandle handle;
     TextureDescription description;
 };
+
+inline u8 GetPixelByteSizeFromFormat(TextureFormat format)
+{
+    const std::string_view enumName = magic_enum::enum_name(format);
+
+    const std::regex r{ "([0-9]+)+" };
+
+    std::match_results<std::string_view::const_iterator> results;
+
+    auto it = enumName.begin();
+
+    int totalBits = 0;
+    while (regex_search(it, enumName.end(), results, r))
+    {
+        std::string value = results.str();
+        totalBits += std::stoi(value);
+        std::advance(it, results.prefix().length() + value.length());
+    }
+
+    return static_cast<uint8_t>(totalBits / 8);
+}
 
 inline bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags usages,
                                                             TextureBindingUsage bindingUsage)
