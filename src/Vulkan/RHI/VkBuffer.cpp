@@ -82,7 +82,7 @@ VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, VkAllocator& allocator, const B
 }
 
 BindlessHandle VkBuffer::GetOrCreateBindlessView(BufferBindingUsage usage,
-                                                 std::optional<u32> stride,
+                                                 std::optional<u32> strideByteSize,
                                                  RHIDescriptorPool& descriptorPool)
 {
     if (bufferHandle)

@@ -57,7 +57,7 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
                            {
                                return ::vk::VertexInputBindingDescription{
                                    .binding = binding.binding,
-                                   .stride = binding.stride,
+                                   .stride = binding.strideByteSize,
                                    .inputRate = GraphicsPiplineUtils::InputRateToVkInputRate(binding.inputRate)
                                };
                            });

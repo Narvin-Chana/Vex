@@ -34,7 +34,7 @@ struct VertexInputLayout
     struct VertexBinding
     {
         u32 binding;
-        u32 stride;
+        u32 strideByteSize;
         InputRate inputRate;
 
         bool operator==(const VertexBinding& other) const = default;
@@ -286,7 +286,7 @@ VEX_MAKE_HASHABLE(vex::VertexInputLayout::VertexAttribute,
 
 VEX_MAKE_HASHABLE(vex::VertexInputLayout::VertexBinding,
     VEX_HASH_COMBINE(seed, obj.binding);
-    VEX_HASH_COMBINE(seed, obj.stride);
+    VEX_HASH_COMBINE(seed, obj.strideByteSize);
     VEX_HASH_COMBINE(seed, obj.inputRate);
 );
 
