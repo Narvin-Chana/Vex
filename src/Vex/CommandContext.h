@@ -108,6 +108,12 @@ public:
     // potentially already in the desired state for correctness.
     void Transition(const Buffer& buffer, RHIBufferState::Type newState);
 
+    // Useful for calling native API draws when wanting to render to a specific Render Target.
+    // Allows the passed in lambda to be executed in a draw scope.
+    void ExecuteInDrawContext(std::span<const TextureBinding> renderTargets,
+                              std::optional<const TextureBinding> depthStencil,
+                              std::function<void()> callback);
+
     // Returns the RHI command list associated with this context (you should avoid using this unless you know
     // what you are doing).
     RHICommandList& GetRHICommandList();

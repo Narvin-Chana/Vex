@@ -78,4 +78,33 @@ void ResourceBindingUtils::CollectRHIResources(GfxBackend& backend,
     }
 }
 
+RHIDrawResources ResourceBindingUtils::CollectRHIDrawResourcesAndTransitions(
+    GfxBackend& backend,
+    std::span<const TextureBinding> renderTargets,
+    std::optional<TextureBinding> depthStencil,
+    std::vector<std::pair<RHITexture&, RHITextureState::Flags>>& transitions)
+{
+    RHIDrawResources drawResources;
+    drawResources.renderTargets.reserve(renderTargets.size());
+
+    std::size_t totalSize = renderTargets.size() + static_cast<std::size_t>(depthStencil.has_value());
+    transitions.reserve(transitions.size() + totalSize);
+
+    for (const auto& renderTarget : renderTargets)
+    {
+        auto& tex = backend.GetRHITexture(renderTarget.texture.handle);
+        transitions.emplace_back(tex, RHITextureState::RenderTarget);
+        drawResources.renderTargets.emplace_back(renderTarget, NonNullPtr(tex));
+    }
+    if (depthStencil.has_value())
+    {
+        auto& tex = backend.GetRHITexture(depthStencil->texture.handle);
+        // TODO: What about if we want to do DepthRead? Would require a flag.
+        transitions.emplace_back(tex, RHITextureState::DepthWrite);
+        drawResources.depthStencil = RHITextureBinding{ .binding = *depthStencil, .texture = tex };
+    }
+
+    return drawResources;
+}
+
 } // namespace vex

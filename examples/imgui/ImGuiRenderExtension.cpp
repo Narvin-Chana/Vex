@@ -73,10 +73,10 @@ void ImGuiRenderExtension::OnFrameEnd()
         // ImGui renders to the texture that is currently set as render target.
         // We have to manually set the render target we want ImGui to render to (in this case we want to render
         // directly to the backbuffer).
-        ctx.BeginRendering({ .renderTargets = std::initializer_list{ backBufferBinding } });
-
-        ImGui_ImplVex_RenderDrawData(ctx);
-
-        ctx.EndRendering();
+        // For this we use the ExecuteInDrawContext function, which will take care of binding the render targets/depth
+        // stencil and then execute the passed in callback.
+        ctx.ExecuteInDrawContext({ &backBufferBinding, 1 },
+                                 std::nullopt,
+                                 [&ctx]() { ImGui_ImplVex_RenderDrawData(ctx); });
     }
 }

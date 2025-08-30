@@ -377,6 +377,20 @@ void CommandContext::Transition(const Buffer& buffer, RHIBufferState::Type newSt
     cmdList->Transition(backend->GetRHIBuffer(buffer.handle), newState);
 }
 
+void CommandContext::ExecuteInDrawContext(std::span<const TextureBinding> renderTargets,
+                                          std::optional<const TextureBinding> depthStencil,
+                                          std::function<void()> callback)
+{
+    std::vector<std::pair<RHITexture&, RHITextureState::Flags>> transitions;
+    RHIDrawResources drawResources =
+        ResourceBindingUtils::CollectRHIDrawResourcesAndTransitions(*backend, renderTargets, depthStencil, transitions);
+
+    cmdList->Transition(transitions);
+    cmdList->BeginRendering(drawResources);
+    callback();
+    cmdList->EndRendering();
+}
+
 RHICommandList& CommandContext::GetRHICommandList()
 {
     return *cmdList;
@@ -399,29 +413,14 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDescri
                 magic_enum::enum_name(drawDesc.pixelShader.type));
     }
 
-    RHIDrawResources drawResources;
     // Transition RTs/DepthStencil
-    {
-        std::vector<std::pair<RHITexture&, RHITextureState::Flags>> transitions;
-        transitions.reserve(drawBindings.renderTargets.size() +
-                            static_cast<u32>(drawBindings.depthStencil.has_value()));
-        for (const auto& renderTarget : drawBindings.renderTargets)
-        {
-            transitions.emplace_back(backend->GetRHITexture(renderTarget.texture.handle),
-                                     RHITextureState::RenderTarget);
-            drawResources.renderTargets.emplace_back(renderTarget,
-                                                     NonNullPtr(backend->GetRHITexture(renderTarget.texture.handle)));
-        }
-        if (drawBindings.depthStencil)
-        {
-            drawResources.depthStencil = { *drawBindings.depthStencil,
-                                           NonNullPtr(
-                                               backend->GetRHITexture(drawBindings.depthStencil->texture.handle)) };
-            transitions.emplace_back(backend->GetRHITexture(drawBindings.depthStencil->texture.handle),
-                                     RHITextureState::DepthWrite);
-        }
-        cmdList->Transition(transitions);
-    }
+    std::vector<std::pair<RHITexture&, RHITextureState::Flags>> transitions;
+    RHIDrawResources drawResources =
+        ResourceBindingUtils::CollectRHIDrawResourcesAndTransitions(*backend,
+                                                                    drawBindings.renderTargets,
+                                                                    drawBindings.depthStencil,
+                                                                    transitions);
+    cmdList->Transition(transitions);
 
     auto graphicsPSOKey = CommandContext_Internal::GetGraphicsPSOKeyFromDrawDesc(drawDesc, drawResources);
 
