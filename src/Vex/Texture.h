@@ -56,9 +56,11 @@ namespace TextureUtil
 
 TextureViewType GetTextureViewType(const TextureBinding& binding);
 TextureFormat GetTextureFormat(const TextureBinding& binding);
+void ValidateTextureDescription(const TextureDescription& description);
+u8 GetPixelByteSizeFromFormat(TextureFormat format);
+u32 GetTotalTextureByteSize(const TextureDescription& desc);
+bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage);
 
-void ValidateTextureDescription(const TextureDescription& description)
-;
 } // namespace TextureUtil
 
 // clang-format off
@@ -91,8 +93,6 @@ struct TextureDescription
     TextureUsage::Flags usage = TextureUsage::ShaderRead;
     TextureClearValue clearValue;
     ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly;
-
-    u32 GetTextureByteSize() const;
 };
 
 // Strongly defined type represents a texture.
@@ -109,42 +109,6 @@ struct Texture final
     TextureDescription description;
 };
 
-inline u8 GetPixelByteSizeFromFormat(TextureFormat format)
-{
-    const std::string_view enumName = magic_enum::enum_name(format);
-
-    const std::regex r{ "([0-9]+)+" };
-
-    std::match_results<std::string_view::const_iterator> results;
-
-    auto it = enumName.begin();
-
-    int totalBits = 0;
-    while (regex_search(it, enumName.end(), results, r))
-    {
-        std::string value = results.str();
-        totalBits += std::stoi(value);
-        std::advance(it, results.prefix().length() + value.length());
-    }
-
-    return static_cast<uint8_t>(totalBits / 8);
-}
-
-inline bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags usages,
-                                                            TextureBindingUsage bindingUsage)
-{
-    if (bindingUsage == TextureBindingUsage::ShaderRead)
-    {
-        return usages & TextureUsage::ShaderRead;
-    }
-
-    if (bindingUsage == TextureBindingUsage::ShaderReadWrite)
-    {
-        return usages & TextureUsage::ShaderReadWrite;
-    }
-
-    return true;
-}
 
 struct TextureRegionExtent
 {

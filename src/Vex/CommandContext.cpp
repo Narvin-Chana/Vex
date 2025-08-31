@@ -90,7 +90,7 @@ static BufferDescription GetStagingBufferDescription(const std::string& name, u3
 
 } // namespace CommandContext_Internal
 
-CommandContext::CommandContext(GfxBackend* backend, RHICommandList* cmdList)
+CommandContext::CommandContext(GfxBackend* backend, NonNullPtr<RHICommandList> cmdList)
     : backend(backend)
     , cmdList(cmdList)
 {
@@ -374,6 +374,18 @@ void CommandContext::Copy(const Texture& source, const Texture& destination)
     cmdList->Transition(transitions);
     cmdList->Copy(sourceRHI, destinationRHI);
 }
+void CommandContext::Copy(const Texture& source,
+                          const Texture& destination,
+                          const std::vector<TextureToTextureCopyRegionMapping>& regionMappings)
+{
+    RHITexture& sourceRHI = backend->GetRHITexture(source.handle);
+    RHITexture& destinationRHI = backend->GetRHITexture(destination.handle);
+    std::array transitions{ std::pair<RHITexture&, RHITextureState::Flags>{ sourceRHI, RHITextureState::CopySource },
+                            std::pair<RHITexture&, RHITextureState::Flags>{ destinationRHI,
+                                                                            RHITextureState::CopyDest } };
+    cmdList->Transition(transitions);
+    cmdList->Copy(sourceRHI, destinationRHI, regionMappings);
+}
 
 void CommandContext::Copy(const Buffer& source, const Buffer& destination)
 {
@@ -385,6 +397,18 @@ void CommandContext::Copy(const Buffer& source, const Buffer& destination)
     cmdList->Copy(sourceRHI, destinationRHI);
 }
 
+void CommandContext::Copy(const Buffer& source,
+                          const Buffer& destination,
+                          const BufferToBufferCopyRegion& regionMappings)
+{
+    RHIBuffer& sourceRHI = backend->GetRHIBuffer(source.handle);
+    RHIBuffer& destinationRHI = backend->GetRHIBuffer(destination.handle);
+    std::array transitions{ std::pair<RHIBuffer&, RHIBufferState::Flags>{ sourceRHI, RHIBufferState::CopySource },
+                            std::pair<RHIBuffer&, RHIBufferState::Flags>{ destinationRHI, RHIBufferState::CopyDest } };
+    cmdList->Transition(transitions);
+    cmdList->Copy(sourceRHI, destinationRHI, regionMappings);
+}
+
 void CommandContext::Copy(const Buffer& source, const Texture& destination)
 {
     RHIBuffer& sourceRHI = backend->GetRHIBuffer(source.handle);
@@ -392,6 +416,16 @@ void CommandContext::Copy(const Buffer& source, const Texture& destination)
     cmdList->Transition(sourceRHI, RHIBufferState::CopySource);
     cmdList->Transition(destinationRHI, RHITextureState::CopyDest);
     cmdList->Copy(sourceRHI, destinationRHI);
+}
+void CommandContext::Copy(const Buffer& source,
+                          const Texture& destination,
+                          const std::vector<BufferToTextureCopyMapping>& regionMappings)
+{
+    RHIBuffer& sourceRHI = backend->GetRHIBuffer(source.handle);
+    RHITexture& destinationRHI = backend->GetRHITexture(destination.handle);
+    cmdList->Transition(sourceRHI, RHIBufferState::CopySource);
+    cmdList->Transition(destinationRHI, RHITextureState::CopyDest);
+    cmdList->Copy(sourceRHI, destinationRHI, regionMappings);
 }
 
 void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const u8> data)
@@ -424,7 +458,7 @@ void CommandContext::EnqueueDataUpload(const Texture& texture, std::span<const u
 
     Buffer stagingBuffer = backend->CreateBuffer(
         CommandContext_Internal::GetStagingBufferDescription(texture.description.name,
-                                                             texture.description.GetTextureByteSize()),
+                                                             TextureUtil::GetTotalTextureByteSize(texture.description)),
         ResourceLifetime::Static);
     RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
 

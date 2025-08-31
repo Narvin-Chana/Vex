@@ -250,8 +250,10 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
 ::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITextureState::Flags flags)
 {
     using namespace ::vk;
-    ImageLayout prevLayout = texture.GetLayout();
-    ImageLayout nextLayout = TextureUtil::TextureStateFlagToImageLayout(flags);
+    const ImageLayout prevLayout = texture.GetLayout();
+    const ImageLayout nextLayout = TextureUtil::TextureStateFlagToImageLayout(flags);
+
+    const auto desc = texture.GetDescription();
 
     ImageMemoryBarrier2 barrier{
         .oldLayout = prevLayout,
@@ -260,11 +262,11 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .image = texture.GetResource(),
         .subresourceRange = {
-            .aspectMask = ImageAspectFlagBits::eColor, // TODO(https://trello.com/c/whUAeix0): Support depth/stencil (will probably be fixed in merge w/ Vk graphics pipeline).
+            .aspectMask = FormatIsDepthStencilCompatible(desc.format) ? ImageAspectFlagBits::eDepth | ImageAspectFlagBits::eStencil : ImageAspectFlagBits::eColor,
             .baseMipLevel = 0,
-            .levelCount = 1,
+            .levelCount = desc.mips,
             .baseArrayLayer = 0,
-            .layerCount = 1,
+            .layerCount = (desc.type == TextureType::Texture3D) ? 1 : desc.depthOrArraySize
         },
     };
 

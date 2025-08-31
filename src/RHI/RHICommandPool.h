@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Vex/RHIFwd.h>
-#include <Vex/UniqueHandle.h>
+#include <Vex/NonNullPtr.h>
 
 namespace vex
 {
@@ -9,7 +9,7 @@ namespace vex
 class RHICommandPoolBase
 {
 public:
-    virtual RHICommandList* CreateCommandList(CommandQueueType queueType) = 0;
+    virtual NonNullPtr<RHICommandList> CreateCommandList(CommandQueueType queueType) = 0;
     virtual void ReclaimCommandListMemory(CommandQueueType queueType) = 0;
     virtual void ReclaimAllCommandListMemory() = 0;
 };

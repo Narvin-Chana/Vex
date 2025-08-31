@@ -13,7 +13,7 @@ DX12CommandPool::DX12CommandPool(const ComPtr<DX12Device>& device)
 {
 }
 
-RHICommandList* DX12CommandPool::CreateCommandList(CommandQueueType queueType)
+NonNullPtr<RHICommandList> DX12CommandPool::CreateCommandList(CommandQueueType queueType)
 {
     UniqueHandle<DX12CommandList> cmdList = nullptr;
 
@@ -35,7 +35,7 @@ RHICommandList* DX12CommandPool::CreateCommandList(CommandQueueType queueType)
 
     auto& occupied = GetOccupiedCommandLists(queueType);
     occupied.push_back(std::move(cmdList));
-    return occupied.back().get();
+    return NonNullPtr{ occupied.back().get() };
 }
 
 void DX12CommandPool::ReclaimCommandListMemory(CommandQueueType queueType)

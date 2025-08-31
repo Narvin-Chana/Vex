@@ -57,11 +57,57 @@ HelloTriangleApplication::HelloTriangleApplication()
                                           .usage = vex::BufferUsage::ReadWriteBuffer | vex::BufferUsage::GenericBuffer,
                                           .memoryLocality = vex::ResourceMemoryLocality::GPUOnly },
                                         vex::ResourceLifetime::Static);
+
+    graphics->StartFrame();
+
+    auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
+
+    const std::filesystem::path uvImagePath =
+                    std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() /
+                    "examples" / "uv-guide.png";
+    int width, height, channels;
+    void* imageData = stbi_load(uvImagePath.string().c_str(), &width, &height, &channels, 4);
+
+    std::vector<vex::u8> fullImageData;
+    std::copy_n(static_cast<vex::u8*>(imageData), width * height * channels, std::back_inserter(fullImageData));
+
+    // Checker board pattern for mip 2
+    for (int x = 0; x < width / 2; ++x)
+    {
+        for (int y = 0; y < height / 2; ++y)
+        {
+            bool evenX = (x / 20) % 2 == 0;
+            bool evenY = (y / 20) % 2 == 0;
+
+            fullImageData.push_back(evenX ^ evenY ? 0 : 0xFF);
+            fullImageData.push_back(0x00);
+            fullImageData.push_back(0x00);
+            fullImageData.push_back(0xFF);
+        }
+    }
+
+    uvGuideTexture = graphics->CreateTexture(
+        { .name = "UV Guide",
+          .type = vex::TextureType::Texture2D,
+          .width = static_cast<vex::u32>(width),
+          .height = static_cast<vex::u32>(height),
+          .depthOrArraySize = 1,
+          .mips = 2,
+          .format = vex::TextureFormat::RGBA8_UNORM,
+          .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
+        vex::ResourceLifetime::Static);
+
+    ctx.EnqueueDataUpload(
+        uvGuideTexture,
+        std::span<const vex::u8>{ fullImageData });
+
+    stbi_image_free(imageData);
+
+    graphics->EndFrame(windowMode == Fullscreen);
 }
 
 void HelloTriangleApplication::Run()
 {
-    bool firstFrame = true;
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
@@ -102,33 +148,6 @@ void HelloTriangleApplication::Run()
 #endif // VEX_TEST_ALLOCS
 
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
-
-            if (firstFrame)
-            {
-                const std::filesystem::path uvImagePath =
-                    std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() /
-                    "examples" / "uv-guide.png";
-                int width, height, channels;
-                void* imageData = stbi_load(uvImagePath.string().c_str(), &width, &height, &channels, 4);
-
-                uvGuideTexture = graphics->CreateTexture(
-                    { .name = "UV Guide",
-                      .type = vex::TextureType::Texture2D,
-                      .width = static_cast<vex::u32>(width),
-                      .height = static_cast<vex::u32>(height),
-                      .depthOrArraySize = 1,
-                      .mips = 1,
-                      .format = vex::TextureFormat::RGBA8_UNORM,
-                      .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
-                    vex::ResourceLifetime::Static);
-
-                ctx.EnqueueDataUpload(
-                    uvGuideTexture,
-                    { static_cast<const vex::u8*>(imageData), static_cast<size_t>(width * height * channels) });
-
-                stbi_image_free(imageData);
-                firstFrame = false;
-            }
 
             // clang-format off
             ctx.EnqueueDataUpload(colorBuffer, color);

@@ -10,6 +10,7 @@
 #include <RHI/RHIBuffer.h>
 #include <RHI/RHIPipelineState.h>
 #include <RHI/RHITexture.h>
+#include <RHI/RHICommandList.h>
 
 namespace vex
 {
@@ -28,7 +29,7 @@ struct RayTracingPassDescription;
 class CommandContext
 {
 public:
-    CommandContext(GfxBackend* backend, RHICommandList* cmdList);
+    CommandContext(GfxBackend* backend, NonNullPtr<RHICommandList> cmdList);
     ~CommandContext();
 
     CommandContext(const CommandContext& other) = delete;
@@ -72,10 +73,13 @@ public:
 
     // Copies the entirety of source texture (all mips and array levels) to the destination texture
     void Copy(const Texture& source, const Texture& destination);
+    void Copy(const Texture& source, const Texture& destination, const std::vector<TextureToTextureCopyRegionMapping>& regionMappings);
     // Copies the entirety of source buffer to the destination buffer
     void Copy(const Buffer& source, const Buffer& destination);
+    void Copy(const Buffer& source, const Buffer& destination, const BufferToBufferCopyRegion& regionMappings);
     // Copies the contents of a buffer to the specified texture according to API needs
     void Copy(const Buffer& source, const Texture& destination);
+    void Copy(const Buffer& source, const Texture& destination, const std::vector<BufferToTextureCopyMapping>& regionMappings);
 
     // Enqueues data to be uploaded to the specific buffer. If the buffer is mappable it will map it and directly write
     // data to it. If the buffer isn't mappable a staging buffer is used implicitly
@@ -115,7 +119,7 @@ public:
 
 private:
     GfxBackend* backend;
-    RHICommandList* cmdList;
+    NonNullPtr<RHICommandList> cmdList;
 
     // Used to avoid resetting the same state multiple times which can be costly on certain hardware.
     // In general draws and dispatches are recommended to be grouped by PSO, so this caching can be very efficient

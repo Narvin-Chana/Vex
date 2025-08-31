@@ -48,7 +48,7 @@ void RHICommandListBase::Copy(RHIBuffer& src, RHITexture& dst)
 {
     const TextureDescription& desc = dst.GetDescription();
 
-    const u8 texelByteSize = GetPixelByteSizeFromFormat(desc.format);
+    const u8 texelByteSize = TextureUtil::GetPixelByteSizeFromFormat(desc.format);
 
     TextureRegionExtent mipSize{ desc.width,
                                 desc.height,
