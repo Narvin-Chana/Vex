@@ -2,9 +2,13 @@
 
 #include <optional>
 
+#include <Vex/Containers/ResourceCleanup.h>
+#include <Vex/NonNullPtr.h>
 #include <Vex/RHIBindings.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/Shaders/ShaderKey.h>
+#include <Vex/SubmissionPolicy.h>
+#include <Vex/Synchronization.h>
 #include <Vex/Types.h>
 
 #include <RHI/RHIBuffer.h>
@@ -28,8 +32,13 @@ struct RayTracingPassDescription;
 
 class CommandContext
 {
+private:
+    CommandContext(NonNullPtr<GfxBackend> backend,
+                   NonNullPtr<RHICommandList> cmdList,
+                   SubmissionPolicy submissionPolicy,
+                   std::span<SyncToken> dependencies);
+
 public:
-    CommandContext(GfxBackend* backend, NonNullPtr<RHICommandList> cmdList);
     ~CommandContext();
 
     CommandContext(const CommandContext& other) = delete;
@@ -126,7 +135,7 @@ public:
     // However, in the case you are leveraging bindless resources, you are responsible for ensuring any used resources
     // are in the correct state. This contains redundancy checks so feel free to call it even if the resource is
     // potentially already in the desired state for correctness.
-    void Transition(const Texture& texture, RHITextureState::Type newState);
+    void Transition(const Texture& texture, RHITextureState newState);
 
     // Allows you to transition the passed in buffer to the correct state. Usually this is done automatically by Vex
     // before any draws or dispatches for the resources you pass in.
@@ -134,6 +143,10 @@ public:
     // are in the correct state. This contains redundancy checks so feel free to call it even if the resource is
     // potentially already in the desired state for correctness.
     void Transition(const Buffer& buffer, RHIBufferState::Type newState);
+
+    // Allows you to manually submit the command context, receiving SyncTokens that allow you to later perform a CPU
+    // wait for the work to be done.
+    std::vector<SyncToken> Submit();
 
     // Useful for calling native API draws when wanting to render to a specific Render Target.
     // Allows the passed in lambda to be executed in a draw scope.
@@ -152,8 +165,17 @@ private:
     void SetVertexBuffers(u32 vertexBuffersFirstSlot, std::span<BufferBinding> vertexBuffers);
     void SetIndexBuffer(std::optional<BufferBinding> indexBuffer);
 
-    GfxBackend* backend;
+    NonNullPtr<GfxBackend> backend;
     NonNullPtr<RHICommandList> cmdList;
+
+    SubmissionPolicy submissionPolicy;
+
+    // The command queue will insert these sync tokens as dependencies before submission.
+    std::vector<SyncToken> dependencies;
+
+    // Temporary resources (eg: staging resources) that will be marked for destruction once this command list is
+    // submitted.
+    std::vector<ResourceCleanup::CleanupVariant> temporaryResources;
 
     // Used to avoid resetting the same state multiple times which can be costly on certain hardware.
     // In general draws and dispatches are recommended to be grouped by PSO, so this caching can be very efficient
@@ -161,6 +183,10 @@ private:
     std::optional<GraphicsPipelineStateKey> cachedGraphicsPSOKey;
     std::optional<ComputePipelineStateKey> cachedComputePSOKey;
     std::optional<InputAssembly> cachedInputAssembly;
+
+    bool hasSubmitted = false;
+
+    friend class GfxBackend;
 };
 
 template <class T>

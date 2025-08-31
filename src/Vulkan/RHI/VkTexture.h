@@ -46,7 +46,7 @@ VEX_MAKE_HASHABLE(vex::vk::VkTextureViewDesc,
 
 namespace vex::TextureUtil
 {
-::vk::ImageLayout TextureStateFlagToImageLayout(RHITextureState::Flags flags);
+::vk::ImageLayout TextureStateFlagToImageLayout(RHITextureState flags);
 } // namespace vex::TextureUtil
 
 namespace vex::vk
@@ -80,7 +80,7 @@ public:
 
     ::vk::ImageView GetOrCreateImageView(const TextureBinding& binding, TextureUsage::Type usage);
 
-    virtual RHITextureState::Type GetClearTextureState() override;
+    virtual RHITextureState GetClearTextureState() override;
 
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
     virtual void FreeAllocation(RHIAllocator& allocator) override;

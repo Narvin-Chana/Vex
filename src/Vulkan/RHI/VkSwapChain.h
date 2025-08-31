@@ -37,13 +37,21 @@ public:
                 const PlatformWindow& platformWindow);
 
     virtual void Resize(u32 width, u32 height) override;
+
+    virtual TextureDescription GetBackBufferTextureDescription() const override;
+
     virtual void SetVSync(bool enableVSync) override;
     virtual bool NeedsFlushForVSyncToggle() override;
 
-    virtual RHITexture CreateBackBuffer(u8 backBufferIndex) override;
+    virtual RHITexture AcquireBackBuffer(u8 frameIndex) override;
+    virtual SyncToken Present(u8 frameIndex,
+                              RHI& rhi,
+                              NonNullPtr<RHICommandList> commandList,
+                              bool isFullscreen) override;
 
 private:
     void InitSwapchainResource(u32 width, u32 height);
+
     NonNullPtr<VkGPUContext> ctx;
 
     VkSwapChainSupportDetails supportDetails;
@@ -59,7 +67,6 @@ private:
     // Used to wait for all command lists to finish before presenting.
     std::vector<::vk::UniqueSemaphore> presentSemaphore;
 
-    // TODO(https://trello.com/c/KVA9njlW): currentBackBufferID is unused, this is probably not correct.
     u32 currentBackbufferId;
     u32 width, height;
 

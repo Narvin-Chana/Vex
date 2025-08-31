@@ -18,18 +18,12 @@ namespace vex::dx12
 class DX12CommandPool final : public RHICommandPoolBase
 {
 public:
-    DX12CommandPool(const ComPtr<DX12Device>& device);
-    virtual NonNullPtr<RHICommandList> CreateCommandList(CommandQueueType queueType) override;
-    virtual void ReclaimCommandListMemory(CommandQueueType queueType) override;
-    virtual void ReclaimAllCommandListMemory() override;
+    DX12CommandPool(RHI& rhi, const ComPtr<DX12Device>& device);
+
+    virtual NonNullPtr<RHICommandList> GetOrCreateCommandList(CommandQueueType queueType) override;
 
 private:
-    std::vector<UniqueHandle<DX12CommandList>>& GetAvailableCommandLists(CommandQueueType queueType);
-    std::vector<UniqueHandle<DX12CommandList>>& GetOccupiedCommandLists(CommandQueueType queueType);
-
     ComPtr<DX12Device> device;
-    std::array<std::vector<UniqueHandle<DX12CommandList>>, CommandQueueTypes::Count> perQueueAvailableCommandLists;
-    std::array<std::vector<UniqueHandle<DX12CommandList>>, CommandQueueTypes::Count> perQueueOccupiedCommandLists;
 };
 
 } // namespace vex::dx12

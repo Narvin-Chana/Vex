@@ -28,9 +28,7 @@ void ImGuiApplication::Run()
     {
         glfwPollEvents();
 
-        graphics->StartFrame();
-
-        graphics->EndFrame(windowMode == Fullscreen);
+        graphics->Present(windowMode == Fullscreen);
     }
 }
 

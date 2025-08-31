@@ -24,8 +24,7 @@ public:
     virtual void Initialize() override;
     virtual void Destroy() override;
 
-    virtual void OnFrameStart() override;
-    virtual void OnFrameEnd() override;
+    virtual void OnPrePresent() override;
 
 private:
     vex::GfxBackend& graphics;

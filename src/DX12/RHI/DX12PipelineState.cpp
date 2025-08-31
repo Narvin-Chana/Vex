@@ -69,6 +69,10 @@ void DX12GraphicsPipelineState::Compile(const Shader& vertexShader,
 
 void DX12GraphicsPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
 {
+    if (!graphicsPSO)
+    {
+        return;
+    }
     // Simple swap and move
     auto cleanupPSO = MakeUnique<DX12GraphicsPipelineState>(device, key);
     std::swap(cleanupPSO->graphicsPSO, graphicsPSO);
@@ -115,6 +119,10 @@ void DX12ComputePipelineState::Compile(const Shader& computeShader, RHIResourceL
 
 void DX12ComputePipelineState::Cleanup(ResourceCleanup& resourceCleanup)
 {
+    if (!computePSO)
+    {
+        return;
+    }
     // Simple swap and move
     auto cleanupPSO = MakeUnique<DX12ComputePipelineState>(device, key);
     std::swap(cleanupPSO->computePSO, computePSO);
@@ -246,6 +254,12 @@ void DX12RayTracingPipelineState::Compile(const RayTracingShaderCollection& shad
 
 void DX12RayTracingPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
 {
+    if (!(stateObject && rayGenerationShaderTable && rayMissShaderTable && hitGroupShaderTable &&
+          rayCallableShaderTable))
+    {
+        return;
+    }
+
     // Simple swap and move
     auto cleanupPSO = MakeUnique<DX12RayTracingPipelineState>(device, key);
     // State object

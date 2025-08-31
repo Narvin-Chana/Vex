@@ -7,7 +7,6 @@
 #include <Vex/Bindings.h>
 #include <Vex/CommandContext.h>
 #include <Vex/Formats.h>
-#include <Vex/FrameResource.h>
 #include <Vex/GfxBackend.h>
 
 ImGuiRenderExtension::ImGuiRenderExtension(vex::GfxBackend& graphics,
@@ -46,15 +45,12 @@ void ImGuiRenderExtension::Destroy()
     ImGui::DestroyContext();
 }
 
-void ImGuiRenderExtension::OnFrameStart()
+void ImGuiRenderExtension::OnPrePresent()
 {
     ImGui_ImplVex_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-}
 
-void ImGuiRenderExtension::OnFrameEnd()
-{
     // Call all user imgui calls
     ImGui::ShowDemoWindow();
 
@@ -66,7 +62,7 @@ void ImGuiRenderExtension::OnFrameEnd()
     {
         vex::CommandContext ctx = graphics.BeginScopedCommandContext(vex::CommandQueueType::Graphics);
 
-        vex::TextureBinding backBufferBinding = { .texture = graphics.GetCurrentBackBuffer() };
+        vex::TextureBinding backBufferBinding = { .texture = graphics.GetCurrentPresentTexture() };
         vex::TextureClearValue clearValue{ .flags = vex::TextureClear::ClearColor, .color = { 0, 0, 0, 0 } };
         ctx.ClearTexture(backBufferBinding, clearValue);
 

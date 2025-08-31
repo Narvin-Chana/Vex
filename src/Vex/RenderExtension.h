@@ -25,10 +25,7 @@ public:
     {
     }
 
-    virtual void OnFrameStart()
-    {
-    }
-    virtual void OnFrameEnd()
+    virtual void OnPrePresent()
     {
     }
 

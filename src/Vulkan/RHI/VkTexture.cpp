@@ -74,7 +74,6 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescri
     , image{ backbufferImage }
 {
     description = std::move(inDescription);
-    currentState = RHITextureState::Common;
     SetDebugName(ctx->device, backbufferImage, description.name.c_str());
 }
 
@@ -218,7 +217,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
     return ret;
 }
 
-RHITextureState::Type VkTexture::GetClearTextureState()
+RHITextureState VkTexture::GetClearTextureState()
 {
     if (description.usage & TextureUsage::DepthStencil)
     {
@@ -347,9 +346,9 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
 namespace vex::TextureUtil
 {
 
-::vk::ImageLayout TextureStateFlagToImageLayout(RHITextureState::Flags flags)
+::vk::ImageLayout TextureStateFlagToImageLayout(RHITextureState flags)
 {
-    using namespace RHITextureState;
+    using enum RHITextureState;
     using enum ::vk::ImageLayout;
 
     switch (flags)

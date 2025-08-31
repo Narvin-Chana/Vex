@@ -4,11 +4,11 @@
 #include <optional>
 
 #include <Vex/RHIFwd.h>
+#include <Vex/RHIImpl/RHIFence.h>
 
 #include <RHI/RHI.h>
 
 #include <DX12/DX12FeatureChecker.h>
-#include <DX12/DX12Fence.h>
 
 namespace vex
 {
@@ -46,11 +46,15 @@ public:
     virtual void ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBackend,
                                                  ShaderEnvironment& shaderEnv) override;
 
-    virtual u32 AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex) override;
-    virtual void SubmitAndPresent(std::span<RHICommandList*> commandLists,
-                                  RHISwapChain& swapChain,
-                                  u32 currentFrameIndex,
-                                  bool isFullscreenMode) override;
+    virtual void WaitForTokenOnCPU(const SyncToken& syncToken) override;
+    virtual bool IsTokenComplete(const SyncToken& syncToken) override;
+    virtual void WaitForTokenOnGPU(CommandQueueType waitingQueue, const SyncToken& waitFor) override;
+
+    virtual std::array<SyncToken, CommandQueueTypes::Count> GetMostRecentSyncTokenPerQueue() const override;
+
+    virtual std::vector<SyncToken> Submit(std::span<NonNullPtr<RHICommandList>> commandLists,
+                                          std::span<SyncToken> dependencies) override;
+
     virtual void FlushGPU() override;
 
     ComPtr<DX12Device>& GetNativeDevice();
@@ -69,6 +73,8 @@ private:
 
     std::array<ComPtr<ID3D12CommandQueue>, CommandQueueTypes::Count> queues;
     std::optional<std::array<DX12Fence, CommandQueueTypes::Count>> fences;
+
+    friend class DX12SwapChain;
 };
 
 } // namespace vex::dx12

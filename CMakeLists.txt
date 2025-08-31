@@ -106,6 +106,7 @@ add_library(Vex STATIC
     "src/Vex/RHIFwd.h"
     "src/RHI/RHI.h"  
     "src/RHI/RHICommandPool.h"
+    "src/RHI/RHICommandPool.cpp"
     "src/RHI/RHISwapChain.h"
     "src/RHI/RHITexture.h"
     "src/RHI/RHIBuffer.h"
@@ -120,6 +121,8 @@ add_library(Vex STATIC
     "src/RHI/RHICommandList.cpp"
     "src/RHI/RHIAllocator.h"
     "src/RHI/RHIAllocator.cpp"
+    "src/RHI/RHIFence.h"
+    "src/Vex/RHIImpl/RHIFence.h"
     "src/Vex/RHIImpl/RHICommandList.h"
     "src/Vex/RHIImpl/RHICommandPool.h"
     "src/Vex/RHIImpl/RHIDescriptorPool.h"
@@ -189,7 +192,11 @@ add_library(Vex STATIC
     "src/Vex/Shaders/DXCImpl.cpp"
     "src/Vex/Shaders/ShaderEnvironment.h"
     "src/Vex/Shaders/CompilerBase.h"
-  )
+    "src/Vex/SubmissionPolicy.h"
+    "src/Vex/Synchronization.h"
+    "src/Tests/SynchronizationTorture.h"
+    "src/Tests/SynchronizationTorture.cpp"
+)
 
 if(WIN32)
     target_sources(Vex PRIVATE

@@ -9,8 +9,8 @@
 #include <Vulkan/VkFormats.h>
 // These are necessary for ResourceCleanup
 #include <Vulkan/RHI/VkBuffer.h>
-#include <Vulkan/RHI/VkGraphicsPipeline.h>
 #include <Vulkan/RHI/VkTexture.h>
+#include <Vulkan/VkGraphicsPipeline.h>
 
 namespace vex::vk
 {
@@ -197,6 +197,10 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
 
 void VkGraphicsPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
 {
+    if (!graphicsPipeline)
+    {
+        return;
+    }
     auto cleanupPSO = MakeUnique<VkGraphicsPipelineState>(key, device, PSOCache);
     std::swap(cleanupPSO->graphicsPipeline, graphicsPipeline);
     resourceCleanup.CleanupResource(std::move(cleanupPSO));
@@ -234,6 +238,10 @@ void VkComputePipelineState::Compile(const Shader& computeShader, RHIResourceLay
 
 void VkComputePipelineState::Cleanup(ResourceCleanup& resourceCleanup)
 {
+    if (!computePipeline)
+    {
+        return;
+    }
     auto cleanupPSO = MakeUnique<VkComputePipelineState>(key, device, PSOCache);
     std::swap(cleanupPSO->computePipeline, computePipeline);
     resourceCleanup.CleanupResource(std::move(cleanupPSO));
@@ -255,6 +263,11 @@ void VkRayTracingPipelineState::Compile(const RayTracingShaderCollection& shader
 
 void VkRayTracingPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
 {
+    // Don't cleanup if RTPSO is null.
+    if (!!1)
+    {
+        return;
+    }
     VEX_NOT_YET_IMPLEMENTED();
 }
 

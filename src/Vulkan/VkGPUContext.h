@@ -6,6 +6,7 @@ namespace vex::vk
 {
 
 struct VkCommandQueue;
+struct VkFence;
 
 struct VkGPUContext
 {
@@ -14,6 +15,7 @@ struct VkGPUContext
     ::vk::SurfaceKHR surface;
 
     VkCommandQueue& graphicsPresentQueue;
+    VkFence& graphicsPresentFence;
 };
 
 } // namespace vex::vk

@@ -38,8 +38,6 @@ void HelloRayTracing::Run()
     {
         glfwPollEvents();
 
-        graphics->StartFrame();
-
         {
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
 
@@ -81,10 +79,10 @@ void HelloRayTracing::Run()
 #endif
 
             // Copy output to the backbuffer.
-            ctx.Copy(workingTexture, graphics->GetCurrentBackBuffer());
+            ctx.Copy(workingTexture, graphics->GetCurrentPresentTexture());
         }
 
-        graphics->EndFrame(windowMode == Fullscreen);
+        graphics->Present(windowMode == Fullscreen);
     }
 }
 

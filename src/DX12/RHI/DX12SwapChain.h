@@ -21,26 +21,30 @@ class DX12SwapChain final : public RHISwapChainBase
 public:
     DX12SwapChain(ComPtr<DX12Device>& device,
                   SwapChainDescription desc,
-                  const ComPtr<ID3D12CommandQueue>& commandQueue,
+                  const ComPtr<ID3D12CommandQueue>& graphicsCommandQueue,
                   const PlatformWindow& platformWindow);
     ~DX12SwapChain();
+
     virtual void Resize(u32 width, u32 height) override;
+
+    virtual TextureDescription GetBackBufferTextureDescription() const override;
 
     virtual void SetVSync(bool enableVSync) override;
     virtual bool NeedsFlushForVSyncToggle() override;
 
-    virtual RHITexture CreateBackBuffer(u8 backBufferIndex) override;
+    virtual RHITexture AcquireBackBuffer(u8 frameIndex) override;
+    virtual SyncToken Present(u8 frameIndex,
+                              RHI& rhi,
+                              NonNullPtr<RHICommandList> commandList,
+                              bool isFullscreen) override;
 
 private:
     static u8 GetBackBufferCount(FrameBuffering frameBuffering);
 
-    void Present(bool isFullscreenMode);
-
     ComPtr<DX12Device> device;
     SwapChainDescription description;
+    ComPtr<ID3D12CommandQueue> graphicsCommandQueue;
     ComPtr<IDXGISwapChain4> swapChain;
-
-    friend class DX12RHI;
 };
 
 } // namespace vex::dx12

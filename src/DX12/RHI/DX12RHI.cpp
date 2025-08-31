@@ -7,15 +7,16 @@
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHICommandPool.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
+#include <Vex/RHIImpl/RHIFence.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/Shaders/ShaderCompilerSettings.h>
 #include <Vex/Shaders/ShaderEnvironment.h>
+#include <Vex/Synchronization.h>
 
 #include <DX12/DX12Debug.h>
-#include <DX12/DX12Fence.h>
 #include <DX12/DX12PhysicalDevice.h>
 #include <DX12/DXGIFactory.h>
 #include <DX12/HRChecker.h>
@@ -138,7 +139,7 @@ UniqueHandle<RHISwapChain> DX12RHI::CreateSwapChain(const SwapChainDescription& 
 
 UniqueHandle<RHICommandPool> DX12RHI::CreateCommandPool()
 {
-    return MakeUnique<DX12CommandPool>(device);
+    return MakeUnique<DX12CommandPool>(*this, device);
 }
 
 RHIGraphicsPipelineState DX12RHI::CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key)
@@ -194,31 +195,54 @@ void DX12RHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBack
     shaderEnv.defines.emplace_back("VEX_DX12");
 }
 
-u32 DX12RHI::AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex)
+void DX12RHI::WaitForTokenOnCPU(const SyncToken& syncToken)
 {
-    for (u32 i = 0; i < CommandQueueTypes::Count; ++i)
-    {
-        CommandQueueType queueType = static_cast<CommandQueueType>(i);
-        auto& fence = (*fences)[queueType];
-        // Don't wait for the first few frames (the first time use of each frame buffer has no dependencies).
-        if (fence.nextSignalValue > std::to_underlying(swapChain.description.frameBuffering))
-        {
-            fence.WaitCPU(fence.nextSignalValue - std::to_underlying(swapChain.description.frameBuffering));
-        }
-    }
-    return currentFrameIndex;
+    auto& fence = (*fences)[syncToken.queueType];
+    fence.WaitOnCPU(syncToken.value);
 }
 
-void DX12RHI::SubmitAndPresent(std::span<RHICommandList*> commandLists,
-                               RHISwapChain& swapChain,
-                               u32 currentFrameIndex,
-                               bool isFullscreenMode)
+bool DX12RHI::IsTokenComplete(const SyncToken& syncToken)
 {
+    auto& fence = (*fences)[syncToken.queueType];
+    return fence.GetValue() >= syncToken.value;
+}
+
+void DX12RHI::WaitForTokenOnGPU(CommandQueueType waitingQueue, const SyncToken& waitFor)
+{
+    auto& waitingFence = (*fences)[waitingQueue];
+    auto& signalingFence = (*fences)[waitFor.queueType];
+
+    // GPU-side wait: waitingQueue waits for waitFor.value on signalingQueue
+    chk << GetNativeQueue(waitingQueue)->Wait(signalingFence.fence.Get(), waitFor.value);
+}
+
+std::array<SyncToken, CommandQueueTypes::Count> DX12RHI::GetMostRecentSyncTokenPerQueue() const
+{
+    std::array<SyncToken, CommandQueueTypes::Count> highestSyncTokens;
+
+    for (u8 i = 0; i < CommandQueueTypes::Count; ++i)
+    {
+        highestSyncTokens[i] = { static_cast<CommandQueueType>(i),
+                                 ((*fences)[i].nextSignalValue != 0) * ((*fences)[i].nextSignalValue - 1) };
+    }
+
+    return highestSyncTokens;
+}
+
+std::vector<SyncToken> DX12RHI::Submit(std::span<NonNullPtr<RHICommandList>> commandLists,
+                                       std::span<SyncToken> dependencies)
+{
+    // Submit command lists
     std::array<std::vector<ID3D12CommandList*>, CommandQueueTypes::Count> rawCommandListsPerQueue;
-    for (RHICommandList* cmdList : commandLists)
+    std::array<std::vector<NonNullPtr<RHICommandList>>, CommandQueueTypes::Count> commandListsPerQueue;
+    for (NonNullPtr<RHICommandList> cmdList : commandLists)
     {
         rawCommandListsPerQueue[cmdList->GetType()].push_back(cmdList->GetNativeCommandList().Get());
+        commandListsPerQueue[cmdList->GetType()].push_back(cmdList);
     }
+
+    std::vector<SyncToken> syncTokens;
+    syncTokens.reserve(CommandQueueTypes::Count);
 
     for (u32 i = 0; i < CommandQueueTypes::Count; ++i)
     {
@@ -228,26 +252,26 @@ void DX12RHI::SubmitAndPresent(std::span<RHICommandList*> commandLists,
             continue;
         }
         queues[i]->ExecuteCommandLists(rawCmdLists.size(), rawCmdLists.data());
-    }
 
-    swapChain.Present(isFullscreenMode);
-
-    for (u32 i = 0; i < CommandQueueTypes::Count; ++i)
-    {
+        // Signal N, and increment the queue fence.
         CommandQueueType queueType = static_cast<CommandQueueType>(i);
         auto& fence = (*fences)[queueType];
         u64 signalValue = fence.nextSignalValue++;
         chk << GetNativeQueue(queueType)->Signal(fence.fence.Get(), signalValue);
+
+        syncTokens.push_back(SyncToken{ queueType, signalValue });
     }
+
+    return syncTokens;
 }
 
 void DX12RHI::FlushGPU()
 {
+    // Wait for all queues to complete their latest work (the most recently signaled values)
     for (u32 i = 0; i < CommandQueueTypes::Count; ++i)
     {
-        CommandQueueType queueType = static_cast<CommandQueueType>(i);
-        auto& fence = (*fences)[queueType];
-        fence.Flush();
+        auto& fence = (*fences)[static_cast<CommandQueueType>(i)];
+        fence.WaitOnCPU((fence.nextSignalValue != 0) * (fence.nextSignalValue - 1));
     }
 }
 
@@ -258,7 +282,7 @@ ComPtr<DX12Device>& DX12RHI::GetNativeDevice()
 
 ComPtr<ID3D12CommandQueue>& DX12RHI::GetNativeQueue(CommandQueueType queueType)
 {
-    return queues[std::to_underlying(queueType)];
+    return queues[queueType];
 }
 
 DX12RHI::LiveObjectsReporter::~LiveObjectsReporter()

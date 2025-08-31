@@ -9,22 +9,17 @@
 
 #include <Vulkan/RHI/VkBuffer.h>
 #include <Vulkan/RHI/VkDescriptorPool.h>
-#include <Vulkan/RHI/VkGraphicsPipeline.h>
 #include <Vulkan/RHI/VkPipelineState.h>
 #include <Vulkan/RHI/VkResourceLayout.h>
 #include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkErrorHandler.h>
+#include <Vulkan/VkGraphicsPipeline.h>
 
 #include "Vulkan/VkFormats.h"
 #include "Vulkan/VkGPUContext.h"
 
 namespace vex::vk
 {
-
-bool VkCommandList::IsOpen() const
-{
-    return isOpen;
-}
 
 void VkCommandList::Open()
 {
@@ -34,7 +29,7 @@ void VkCommandList::Open()
         return;
     }
 
-    // VEX_VK_CHECK << commandBuffer->reset();
+    VEX_VK_CHECK << commandBuffer->reset();
 
     constexpr ::vk::CommandBufferBeginInfo beginInfo{};
     VEX_VK_CHECK << commandBuffer->begin(beginInfo);
@@ -230,7 +225,7 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
     }
 }
 
-static ::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITextureState::Flags flags)
+static ::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITextureState flags)
 {
     using namespace ::vk;
     const ImageLayout prevLayout = texture.GetLayout();
@@ -372,8 +367,10 @@ static ::vk::BufferMemoryBarrier2 GetBufferBarrierFrom(VkBuffer& buffer, RHIBuff
              .size = buffer.GetDescription().byteSize };
 }
 
-void VkCommandList::Transition(RHITexture& texture, RHITextureState::Flags newState)
+void VkCommandList::Transition(RHITexture& texture, RHITextureState newState)
 {
+    RHITexture::ValidateStateVersusQueueType(newState, type);
+
     // Nothing to do if the states are already equal.
     if (texture.GetCurrentState() == newState)
     {
@@ -400,12 +397,13 @@ void VkCommandList::Transition(RHIBuffer& buffer, RHIBufferState::Flags newState
     buffer.SetCurrentState(newState);
 }
 
-void VkCommandList::Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs)
+void VkCommandList::Transition(std::span<std::pair<RHITexture&, RHITextureState>> textureNewStatePairs)
 {
     std::vector<::vk::ImageMemoryBarrier2> barriers;
 
     for (auto& [texture, flags] : textureNewStatePairs)
     {
+        RHITexture::ValidateStateVersusQueueType(flags, type);
         // Nothing to do if the states are already equal.
         if (flags == texture.GetCurrentState())
         {
@@ -678,17 +676,12 @@ void VkCommandList::Copy(RHIBuffer& src,
                                      regions.data());
 }
 
-CommandQueueType VkCommandList::GetType() const
-{
-    return type;
-}
-
 VkCommandList::VkCommandList(NonNullPtr<VkGPUContext> ctx,
                              ::vk::UniqueCommandBuffer&& commandBuffer,
                              CommandQueueType type)
-    : ctx{ ctx }
+    : RHICommandListBase{ type }
+    , ctx{ ctx }
     , commandBuffer{ std::move(commandBuffer) }
-    , type{ type }
 {
 }
 

@@ -6,22 +6,23 @@
 #include <Vex/PlatformWindow.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
+#include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHICommandPool.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
+#include <Vex/RHIImpl/RHIFence.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/Shaders/ShaderCompilerSettings.h>
 #include <Vex/Shaders/ShaderEnvironment.h>
+#include <Vex/Synchronization.h>
 
-#include <RHI/RHICommandPool.h>
-
-#include <Vulkan/RHI/VkGraphicsPipeline.h>
 #include <Vulkan/VkCommandQueue.h>
 #include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkExtensions.h>
+#include <Vulkan/VkGraphicsPipeline.h>
 #include <Vulkan/VkHeaders.h>
 #include <Vulkan/VkPhysicalDevice.h>
 
@@ -272,52 +273,39 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*device);
 
-    auto createTimelineSemaphore = [&]()
-    {
-        ::vk::SemaphoreTypeCreateInfoKHR createInfo{ .semaphoreType = ::vk::SemaphoreType::eTimeline,
-                                                     .initialValue = 0 };
-        return VEX_VK_CHECK <<= device->createSemaphoreUnique(::vk::SemaphoreCreateInfo{
-                   .pNext = &createInfo,
-               });
-    };
-
     if (graphicsQueueFamily == -1)
     {
         VEX_LOG(Fatal, "Unable to create graphics queue on device!");
     }
-    commandQueues[CommandQueueTypes::Graphics] = VkCommandQueue{
+    queues[CommandQueueTypes::Graphics] = VkCommandQueue{
         .type = CommandQueueTypes::Graphics,
         .family = static_cast<u32>(graphicsQueueFamily),
         .queue = device->getQueue(graphicsQueueFamily, 0),
-        .nextSignalValue = 1,
-        .timelineSemaphore = createTimelineSemaphore(),
     };
 
     SetDebugName(*device, device->getQueue(graphicsQueueFamily, 0), "Graphics Queue");
 
     if (computeQueueFamily != -1)
     {
-        commandQueues[CommandQueueTypes::Compute] = VkCommandQueue{
+        queues[CommandQueueTypes::Compute] = VkCommandQueue{
             .type = CommandQueueTypes::Compute,
             .family = static_cast<u32>(computeQueueFamily),
             .queue = device->getQueue(computeQueueFamily, 0),
-            .nextSignalValue = 1,
-            .timelineSemaphore = createTimelineSemaphore(),
         };
         SetDebugName(*device, device->getQueue(computeQueueFamily, 0), "Compute Queue");
     }
 
     if (copyQueueFamily != -1)
     {
-        commandQueues[CommandQueueTypes::Copy] = VkCommandQueue{
+        queues[CommandQueueTypes::Copy] = VkCommandQueue{
             .type = CommandQueueTypes::Copy,
             .family = static_cast<u32>(copyQueueFamily),
             .queue = device->getQueue(copyQueueFamily, 0),
-            .nextSignalValue = 1,
-            .timelineSemaphore = createTimelineSemaphore(),
         };
         SetDebugName(*device, device->getQueue(copyQueueFamily, 0), "Copy Queue");
     }
+
+    fences = { VkFence(*device), VkFence(*device), VkFence(*device) };
 
     PSOCache = VEX_VK_CHECK <<= device->createPipelineCacheUnique({});
 
@@ -333,7 +321,7 @@ UniqueHandle<RHISwapChain> VkRHI::CreateSwapChain(const SwapChainDescription& de
 
 UniqueHandle<RHICommandPool> VkRHI::CreateCommandPool()
 {
-    return MakeUnique<VkCommandPool>(GetGPUContext(), commandQueues);
+    return MakeUnique<VkCommandPool>(*this, GetGPUContext(), queues);
 }
 
 RHIGraphicsPipelineState VkRHI::CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key)
@@ -389,196 +377,147 @@ void VkRHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBacken
     shaderEnv.defines.emplace_back("VEX_VULKAN");
 }
 
-u32 VkRHI::AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex)
+void VkRHI::WaitForTokenOnCPU(const SyncToken& syncToken)
 {
-    // Handle frames in flight - wait for this frame slot to be available
-    auto& cmdQueue = commandQueues[CommandQueueType::Graphics];
-
-    // Don't wait for the first N frames (no work has been queued yet).
-    if (cmdQueue.nextSignalValue > std::to_underlying(swapChain.description.frameBuffering))
-    {
-        u64 waitValue = cmdQueue.nextSignalValue - std::to_underlying(swapChain.description.frameBuffering);
-#if !VEX_SHIPPING
-        // Helper for debugging issues with semaphores
-        VEX_LOG(Verbose, "Waiting on semaphore value: {}", waitValue);
-#endif
-
-        // Wait until GPU has finished processing the frame that was using these resources previously (numFramesInFlight
-        // frames ago)
-        const ::vk::SemaphoreWaitInfo waitInfo = {
-            .semaphoreCount = 1,
-            .pSemaphores = &*cmdQueue.timelineSemaphore,
-            .pValues = &waitValue,
-        };
-        VEX_VK_CHECK << device->waitSemaphores(&waitInfo, std::numeric_limits<u64>::max());
-    }
-
-    // Acquire the next image, potentially requiring a swapchain recreation.
-    // TODO(https://trello.com/c/KVA9njlW): resizing logic is currently not stable at all. Requires further work on
-    // fixing the RHI resize logic which currently is too DX-centric. Vk backbuffers can potentially change their
-    // underlying image upon a resize, requiring us to modify the RHITexture of this backbuffer.
-    auto res = device->acquireNextImageKHR(*swapChain.swapchain,
-                                           std::numeric_limits<u64>::max(),
-                                           *swapChain.backbufferAcquisition[currentFrameIndex],
-                                           VK_NULL_HANDLE,
-                                           &swapChain.currentBackbufferId);
-    if (res == ::vk::Result::eErrorOutOfDateKHR)
-    {
-        VEX_LOG(Fatal,
-                "Swapchain was OutOfDate which should never happen. "
-                "It should have been resized with the application window")
-        res = ::vk::Result::eSuccess;
-    }
-
-    VEX_VK_CHECK << res;
-
-    return swapChain.currentBackbufferId;
+    auto& fence = (*fences)[syncToken.queueType];
+    fence.WaitOnCPU(syncToken.value);
 }
 
-void VkRHI::SubmitAndPresent(std::span<RHICommandList*> commandLists,
-                             RHISwapChain& swapChain,
-                             u32 currentFrameIndex,
-                             bool isFullscreenMode)
+bool VkRHI::IsTokenComplete(const SyncToken& syncToken)
 {
-    // Separate by queue type.
-    std::vector<::vk::CommandBufferSubmitInfo> graphicsCmdLists, computeCmdLists, copyCmdLists;
-    for (auto* cmdList : commandLists)
+    auto& fence = (*fences)[syncToken.queueType];
+    return fence.GetValue() >= syncToken.value;
+}
+
+void VkRHI::WaitForTokenOnGPU(CommandQueueType waitingQueue, const SyncToken& waitFor)
+{
+    pendingWaits[waitingQueue].push_back(waitFor);
+}
+
+std::array<SyncToken, CommandQueueTypes::Count> VkRHI::GetMostRecentSyncTokenPerQueue() const
+{
+    std::array<SyncToken, CommandQueueTypes::Count> highestSyncTokens;
+
+    for (u8 i = 0; i < CommandQueueTypes::Count; ++i)
     {
-        switch (cmdList->GetType())
-        {
-        case CommandQueueType::Graphics:
-            graphicsCmdLists.push_back({
-                .commandBuffer = *cmdList->commandBuffer,
-                .deviceMask = 0,
-            });
-            break;
-        case CommandQueueType::Compute:
-            computeCmdLists.push_back({
-                .commandBuffer = *cmdList->commandBuffer,
-                .deviceMask = 0,
-            });
-            break;
-        case CommandQueueType::Copy:
-            copyCmdLists.push_back({
-                .commandBuffer = *cmdList->commandBuffer,
-                .deviceMask = 0,
-            });
-            break;
-        }
+        highestSyncTokens[i] = { static_cast<CommandQueueType>(i),
+                                 ((*fences)[i].nextSignalValue != 0) * ((*fences)[i].nextSignalValue - 1) };
     }
 
-    // Complete all graphics queue rendering.
-    if (!graphicsCmdLists.empty())
-    {
-        auto& cmdQueue = commandQueues[CommandQueueType::Graphics];
-        u64 signalValue = cmdQueue.nextSignalValue++;
+    return highestSyncTokens;
+}
 
-#if !VEX_SHIPPING
-        VEX_LOG(Verbose, "About to signal timeline value: {}", signalValue);
-#endif
+void VkRHI::AddDependencyWait(std::vector<::vk::SemaphoreSubmitInfo>& waitSemaphores, SyncToken syncToken)
+{
+    auto& signalingFence = (*fences)[syncToken.queueType];
+    waitSemaphores.push_back({ .semaphore = *signalingFence.timelineSemaphore,
+                               .value = syncToken.value,
+                               .stageMask = ::vk::PipelineStageFlagBits2::eAllCommands });
+}
 
-#if !VEX_SHIPPING
-        // Validate semaphore is in correct state
-        if (auto preSubmitValue = VEX_VK_CHECK <<= device->getSemaphoreCounterValue(*cmdQueue.timelineSemaphore);
-            preSubmitValue == std::numeric_limits<u64>::max())
-        {
-            VEX_LOG(Fatal, "Timeline semaphore is in error state (UINT64_MAX) before submission!");
-            return;
-        }
-#endif
-        // Before rendering the graphics queue, we must wait for acquireImage to be done.
-        // This equates to waiting on this frame's backbufferAcquisition binary semaphore.
-        ::vk::SemaphoreSubmitInfo acquireWaitInfo = {
-            .semaphore = *swapChain.backbufferAcquisition[currentFrameIndex],
-            .stageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-        };
+SyncToken VkRHI::SubmitToQueue(CommandQueueType queueType,
+                               std::span<::vk::CommandBufferSubmitInfo> commandBuffers,
+                               std::span<::vk::SemaphoreSubmitInfo> waitSemaphores,
+                               std::vector<::vk::SemaphoreSubmitInfo> signalSemaphores)
+{
+    auto& fence = (*fences)[queueType];
+    auto& queue = queues[queueType];
 
-        // Signal the timeline semaphore of this queue (allows for CPU-side waiting later on if the CPU moves too fast).
-        ::vk::SemaphoreSubmitInfo timelineSignalInfo = {
-            .semaphore = *cmdQueue.timelineSemaphore,
-            .value = signalValue,
-            .stageMask = ::vk::PipelineStageFlagBits2::eAllCommands,
-        };
-        // Signal the present binary semaphore (we only want to present once rendering work is done).
-        ::vk::SemaphoreSubmitInfo presentSignalInfo = {
-            .semaphore = *swapChain.presentSemaphore[currentFrameIndex],
-            .stageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-        };
-        std::array<::vk::SemaphoreSubmitInfo, 2> signalInfos = { timelineSignalInfo, presentSignalInfo };
-        ::vk::SubmitInfo2 submitInfo = {
-            .waitSemaphoreInfoCount = 1,
-            .pWaitSemaphoreInfos = &acquireWaitInfo,
-            .commandBufferInfoCount = static_cast<u32>(graphicsCmdLists.size()),
-            .pCommandBufferInfos = graphicsCmdLists.data(),
-            .signalSemaphoreInfoCount = static_cast<u32>(signalInfos.size()),
-            .pSignalSemaphoreInfos = signalInfos.data(),
-        };
+    // Obtain signal value and increment for the next signal.
+    u64 signalValue = fence.nextSignalValue++;
 
-        VEX_VK_CHECK << cmdQueue.queue.submit2(submitInfo);
-    }
+    ::vk::SemaphoreSubmitInfo signalInfo{ .semaphore = *fence.timelineSemaphore, .value = signalValue };
+    signalSemaphores.push_back(signalInfo);
 
-    if (!computeCmdLists.empty())
-    {
-        // TODO(https://trello.com/c/4IEzErNL): Vex's multi-queue logic should be implemented in a more purposeful way.
-        // This would require being able to take in user priorities and dependencies when a user creates a command
-        // context on a specific queue. More thought has to be put into this, so its appropriate to be kept for later.
-        VEX_NOT_YET_IMPLEMENTED();
-    }
-
-    if (!copyCmdLists.empty())
-    {
-        // TODO(https://trello.com/c/4IEzErNL): same as previous TODO.
-        VEX_NOT_YET_IMPLEMENTED();
-    }
-
-    // Present.
-    ::vk::PresentInfoKHR presentInfo = {
-        .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &*swapChain.presentSemaphore[currentFrameIndex],
-        .swapchainCount = 1,
-        .pSwapchains = &*swapChain.swapchain,
-        .pImageIndices = &swapChain.currentBackbufferId,
+    ::vk::SubmitInfo2 submitInfo = {
+        .waitSemaphoreInfoCount = static_cast<u32>(waitSemaphores.size()),
+        .pWaitSemaphoreInfos = waitSemaphores.data(),
+        .commandBufferInfoCount = static_cast<u32>(commandBuffers.size()),
+        .pCommandBufferInfos = commandBuffers.data(),
+        .signalSemaphoreInfoCount = static_cast<u32>(signalSemaphores.size()),
+        .pSignalSemaphoreInfos = signalSemaphores.data(),
     };
-    auto res = commandQueues[CommandQueueType::Graphics].queue.presentKHR(presentInfo);
-    if (res == ::vk::Result::eErrorOutOfDateKHR)
+
+    VEX_VK_CHECK << queue.queue.submit2(submitInfo);
+
+    return SyncToken{ queueType, signalValue };
+}
+
+std::vector<SyncToken> VkRHI::Submit(std::span<NonNullPtr<RHICommandList>> commandLists,
+                                     std::span<SyncToken> dependencies)
+{
+    // Group by queue type
+    std::array<std::vector<::vk::CommandBufferSubmitInfo>, CommandQueueTypes::Count> commandListsPerQueue;
+    for (NonNullPtr<RHICommandList> cmdList : commandLists)
     {
-        VEX_LOG(Fatal,
-                "Swapchain was OutOfDate which should never happen. "
-                "It should have been resized with the application window")
-        res = ::vk::Result::eSuccess;
+        commandListsPerQueue[cmdList->GetType()].push_back(
+            ::vk::CommandBufferSubmitInfo{ .commandBuffer = cmdList->GetNativeCommandList() });
     }
 
-    VEX_VK_CHECK << res;
+    std::vector<SyncToken> syncTokens;
+    syncTokens.reserve(CommandQueueTypes::Count);
+
+    // Submit each queue separately
+    for (u8 i = 0; i < CommandQueueTypes::Count; ++i)
+    {
+        auto& cmdLists = commandListsPerQueue[i];
+        if (cmdLists.empty())
+            continue;
+
+        CommandQueueType queueType = static_cast<CommandQueueType>(i);
+
+        // Collect all waits for this queue
+        std::vector<::vk::SemaphoreSubmitInfo> waitSemaphores;
+
+        // Add explicit dependencies
+        for (auto& dep : dependencies)
+        {
+            AddDependencyWait(waitSemaphores, dep);
+        }
+
+        // Add pending waits for this queue
+        auto& pending = pendingWaits[i];
+        for (auto& pendingWait : pending)
+        {
+            AddDependencyWait(waitSemaphores, pendingWait);
+        }
+        pending.clear();
+
+        // Submit this queue's work
+        syncTokens.push_back(SubmitToQueue(queueType, cmdLists, waitSemaphores));
+    }
+
+    return syncTokens;
 }
 
 void VkRHI::FlushGPU()
 {
-    const auto& cmdQueue = commandQueues[CommandQueueType::Graphics];
-    if (cmdQueue.nextSignalValue == 0)
+    for (u8 i = 0; i < CommandQueueTypes::Count; ++i)
     {
-        // This means we're in the first frame, no work has been submitted yet!
-        return;
+        CommandQueueType queueType = static_cast<CommandQueueType>(i);
+        const auto& queue = queues[queueType];
+        // Force immediate queue flush
+        VEX_VK_CHECK << queue.queue.waitIdle();
+
+        const auto& fence = (*fences)[queueType];
+        // We want to wait for the most recently queued up signal (aka nextSignalValue - 1).
+        const u64 waitValue = fence.nextSignalValue - 1;
+        const ::vk::SemaphoreWaitInfo flushWaitInfo{
+            .semaphoreCount = 1,
+            .pSemaphores = &*fence.timelineSemaphore,
+            .pValues = &waitValue,
+        };
+        VEX_VK_CHECK << device->waitSemaphores(&flushWaitInfo, std::numeric_limits<u64>::max());
     }
-
-    // Force immediate queue flush
-    VEX_VK_CHECK << cmdQueue.queue.waitIdle();
-
-    // We want to wait for the most recently queued up signal (aka nextSignalValue - 1).
-    const u64 waitValue = cmdQueue.nextSignalValue - 1;
-    const ::vk::SemaphoreWaitInfo flushWaitInfo{
-        .semaphoreCount = 1,
-        .pSemaphores = &*cmdQueue.timelineSemaphore,
-        .pValues = &waitValue,
-    };
-    VEX_VK_CHECK << device->waitSemaphores(&flushWaitInfo, std::numeric_limits<u64>::max());
-
-    // TODO(https://trello.com/c/4IEzErNL): relating to the previous function's todos, we must be more mindful of
-    // multi-queue work when we reach that point. This includes the flushing of the GPU (resolving dependencies).
 }
 
 NonNullPtr<VkGPUContext> VkRHI::GetGPUContext()
 {
-    static VkGPUContext ctx{ *device, physDevice, *surface, commandQueues[CommandQueueType::Graphics] };
+    static VkGPUContext ctx{ *device,
+                             physDevice,
+                             *surface,
+                             queues[CommandQueueType::Graphics],
+                             (*fences)[CommandQueueType::Graphics] };
     return NonNullPtr(ctx);
 }
 

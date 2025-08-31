@@ -3,9 +3,11 @@
 #include <array>
 #include <span>
 #include <utility>
+#include <vector>
 
 #include <Vex/CommandQueueType.h>
 #include <Vex/RHIFwd.h>
+#include <Vex/Synchronization.h>
 #include <Vex/Types.h>
 
 #include <RHI/RHIBuffer.h>
@@ -30,16 +32,26 @@ struct BufferToTextureCopyDescription
 
 namespace TextureCopyUtil
 {
-void ValidateBufferToTextureCopyDescription(const BufferDescription& srcDesc,
-                                            const TextureDescription& dstDesc,
-                                            const BufferToTextureCopyDescription& copyDesc);
-void ValidateSimpleBufferToTextureCopy(const BufferDescription& srcDesc, const TextureDescription& dstDesc);
+    void ValidateBufferToTextureCopyDescription(const BufferDescription& srcDesc,
+        const TextureDescription& dstDesc,
+        const BufferToTextureCopyDescription& copyDesc);
+    void ValidateSimpleBufferToTextureCopy(const BufferDescription& srcDesc, const TextureDescription& dstDesc);
 } // namespace TextureCopyUtil
+
+enum class RHICommandListState : u8
+{
+    Available, // Ready to be acquired.
+    Recording, // Currently being recorded to.
+    Submitted  // Submitted to GPU, waiting for completion.
+};
 
 class RHICommandListBase
 {
 public:
-    virtual bool IsOpen() const = 0;
+    RHICommandListBase(CommandQueueType type)
+        : type(type)
+    {
+    }
 
     virtual void Open() = 0;
     virtual void Close() = 0;
@@ -60,10 +72,10 @@ public:
                               TextureUsage::Type usage,
                               const TextureClearValue& clearValue) = 0;
 
-    virtual void Transition(RHITexture& texture, RHITextureState::Flags newState) = 0;
+    virtual void Transition(RHITexture& texture, RHITextureState newState) = 0;
     virtual void Transition(RHIBuffer& texture, RHIBufferState::Flags newState) = 0;
     // Ideal for batching multiple resource transitions together.
-    virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs) = 0;
+    virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState>> textureNewStatePairs) = 0;
     virtual void Transition(std::span<std::pair<RHIBuffer&, RHIBufferState::Flags>> bufferNewStatePairs) = 0;
 
     // Need to be called before and after all draw commands with the same DrawBinding
@@ -100,7 +112,41 @@ public:
                       RHITexture& dst,
                       std::span<const BufferToTextureCopyDescription> regionMappings) = 0;
 
-    virtual CommandQueueType GetType() const = 0;
+    CommandQueueType GetType() const
+    {
+        return type;
+    }
+
+    RHICommandListState GetState() const
+    {
+        return state;
+    }
+    void SetState(RHICommandListState newState)
+    {
+        state = newState;
+    }
+
+    std::span<const SyncToken> GetSyncTokens() const
+    {
+        return syncTokens;
+    }
+    void SetSyncTokens(std::span<SyncToken> tokens)
+    {
+        syncTokens = { tokens.begin(), tokens.end() };
+    }
+
+    bool IsOpen() const
+    {
+        return isOpen;
+    }
+
+protected:
+    CommandQueueType type;
+
+    RHICommandListState state = RHICommandListState::Available;
+    std::vector<SyncToken> syncTokens;
+
+    bool isOpen = false;
 };
 
 } // namespace vex

@@ -2,6 +2,7 @@
 
 #include <Vex/NonNullPtr.h>
 #include <Vex/RHIFwd.h>
+#include <Vex/RHIImpl/RHIFence.h>
 
 #include <RHI/RHI.h>
 
@@ -11,7 +12,6 @@
 
 namespace vex
 {
-struct BufferDescription;
 struct PlatformWindowHandle;
 } // namespace vex
 
@@ -61,9 +61,9 @@ public:
     }
     const VkCommandQueue& GetCommandQueue(CommandQueueType queueType)
     {
-        return commandQueues[std::to_underlying(queueType)];
+        return queues[std::to_underlying(queueType)];
     }
-    ::vk::PhysicalDevice GetNativePhysicalDevice()
+    ::vk::PhysicalDevice GetNativePhysicalDevice() const
     {
         return physDevice;
     }
@@ -72,16 +72,24 @@ public:
         return *PSOCache;
     }
 
-    virtual u32 AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex) override;
-    virtual void SubmitAndPresent(std::span<RHICommandList*> commandLists,
-                                  RHISwapChain& swapChain,
-                                  u32 currentFrameIndex,
-                                  bool isFullscreenMode) override;
+    virtual void WaitForTokenOnCPU(const SyncToken& syncToken) override;
+    virtual bool IsTokenComplete(const SyncToken& syncToken) override;
+    virtual void WaitForTokenOnGPU(CommandQueueType waitingQueue, const SyncToken& waitFor) override;
+    virtual std::array<SyncToken, CommandQueueTypes::Count> GetMostRecentSyncTokenPerQueue() const override;
+
+    virtual std::vector<SyncToken> Submit(std::span<NonNullPtr<RHICommandList>> commandLists,
+                                          std::span<SyncToken> dependencies) override;
     virtual void FlushGPU() override;
 
 private:
     NonNullPtr<VkGPUContext> GetGPUContext();
     void InitWindow(const PlatformWindowHandle& windowHandle);
+
+    void AddDependencyWait(std::vector<::vk::SemaphoreSubmitInfo>& waitSemaphores, SyncToken syncToken);
+    SyncToken SubmitToQueue(CommandQueueType queueType,
+                            std::span<::vk::CommandBufferSubmitInfo> commandBuffers,
+                            std::span<::vk::SemaphoreSubmitInfo> waitSemaphores,
+                            std::vector<::vk::SemaphoreSubmitInfo> signalSemaphores = {});
 
     ::vk::UniqueInstance instance;
     ::vk::UniqueSurfaceKHR surface;
@@ -89,7 +97,13 @@ private:
     ::vk::PhysicalDevice physDevice;
     ::vk::UniquePipelineCache PSOCache;
 
-    std::array<VkCommandQueue, CommandQueueTypes::Count> commandQueues;
+    std::array<VkCommandQueue, CommandQueueTypes::Count> queues;
+    std::optional<std::array<VkFence, CommandQueueTypes::Count>> fences;
+
+    // To be submitted when the next submission happens. Avoids submitting with an empty command buffer.
+    std::array<std::vector<SyncToken>, CommandQueueTypes::Count> pendingWaits;
+
+    friend class VkSwapChain;
 };
 
 } // namespace vex::vk

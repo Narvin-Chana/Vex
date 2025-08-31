@@ -1,6 +1,7 @@
 #pragma once
 
-#include <Vex/EnumFlags.h>
+#include <Vex/CommandQueueType.h>
+#include <Vex/Logger.h>
 #include <Vex/MemoryAllocation.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/Resource.h>
@@ -10,25 +11,54 @@
 namespace vex
 {
 
-// clang-format off
-
-BEGIN_VEX_ENUM_FLAGS(RHITextureState, u8)
-    Common          = 0,
-    RenderTarget    = 1 << 0,
-    ShaderReadWrite = 1 << 1,
-    DepthWrite      = 1 << 2,
-    DepthRead       = 1 << 3,
-    ShaderResource  = 1 << 4,
-    CopySource      = 1 << 5,
-    CopyDest        = 1 << 6,
-    Present         = 1 << 7,
-END_VEX_ENUM_FLAGS();
-
-// clang-format on
+enum class RHITextureState : u8
+{
+    Common = 0,
+    CopySource,
+    CopyDest,
+    ShaderResource,
+    ShaderReadWrite,
+    DepthRead,
+    DepthWrite,
+    RenderTarget,
+    Present,
+};
 
 class RHITextureBase : public MappableResourceInterface
 {
 public:
+    static inline void ValidateStateVersusQueueType(RHITextureState state, CommandQueueType queueType)
+    {
+        using enum RHITextureState;
+
+        static constexpr RHITextureState CopyQueueMaxState = CopyDest;
+        static constexpr RHITextureState ComputeQueueMaxState = ShaderReadWrite;
+        static constexpr RHITextureState GraphicsQueueMaxState = Present;
+
+        bool isValid = false;
+        switch (queueType)
+        {
+        case CommandQueueType::Graphics:
+            isValid = state <= GraphicsQueueMaxState;
+            break;
+        case CommandQueueType::Compute:
+            isValid = state <= ComputeQueueMaxState;
+            break;
+        case CommandQueueType::Copy:
+            isValid = state <= CopyQueueMaxState;
+            break;
+        }
+
+        if (!isValid)
+        {
+            VEX_LOG(Fatal,
+                    "Unsupported transition state versus CommandQueue type: Cannot transition texture to state: {} "
+                    "from queue type: {}.",
+                    magic_enum::enum_name(state),
+                    magic_enum::enum_name(queueType));
+        }
+    }
+
     RHITextureBase() = default;
     RHITextureBase(RHIAllocator& allocator)
         : allocator{ &allocator } {};
@@ -43,19 +73,19 @@ public:
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeAllocation(RHIAllocator& allocator) = 0;
 
-    virtual RHITextureState::Type GetClearTextureState() = 0;
+    virtual RHITextureState GetClearTextureState() = 0;
 
     const TextureDescription& GetDescription() const
     {
         return description;
     }
 
-    [[nodiscard]] RHITextureState::Flags GetCurrentState() const
+    [[nodiscard]] RHITextureState GetCurrentState() const
     {
         return currentState;
     }
 
-    void SetCurrentState(RHITextureState::Flags newState)
+    void SetCurrentState(RHITextureState newState)
     {
         currentState = newState;
     }
@@ -67,7 +97,7 @@ public:
 
 protected:
     TextureDescription description;
-    RHITextureState::Flags currentState = RHITextureState::Common;
+    RHITextureState currentState = RHITextureState::Common;
 
     RHIAllocator* allocator{};
     Allocation allocation;
