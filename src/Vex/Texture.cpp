@@ -106,6 +106,21 @@ u8 GetPixelByteSizeFromFormat(TextureFormat format)
         return 8;
     }
 
+    if (index >= std::to_underlying(R32_UINT) && index <= std::to_underlying(R32_FLOAT))
+    {
+        return 4;
+    }
+
+    if (index >= std::to_underlying(RG32_UINT) && index <= std::to_underlying(RG32_FLOAT))
+    {
+        return 8;
+    }
+
+    if (index >= std::to_underlying(RGBA32_UINT) && index <= std::to_underlying(RGBA32_FLOAT))
+    {
+        return 16;
+    }
+
     if (index == std::to_underlying(D16_UNORM))
     {
         return 2;
