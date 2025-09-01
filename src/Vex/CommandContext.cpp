@@ -379,7 +379,7 @@ void CommandContext::Transition(const Buffer& buffer, RHIBufferState::Type newSt
 
 void CommandContext::ExecuteInDrawContext(std::span<const TextureBinding> renderTargets,
                                           std::optional<const TextureBinding> depthStencil,
-                                          std::function<void()> callback)
+                                          const std::function<void()>& callback)
 {
     std::vector<std::pair<RHITexture&, RHITextureState::Flags>> transitions;
     RHIDrawResources drawResources =

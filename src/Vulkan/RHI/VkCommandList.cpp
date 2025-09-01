@@ -541,16 +541,12 @@ void VkCommandList::DrawIndexed(
 
 void VkCommandList::SetVertexBuffers(u32 startSlot, std::span<RHIBufferBinding> vertexBuffers)
 {
-    VEX_NOT_YET_IMPLEMENTED();
-    // Code should be verified by our resident vulkan expert.
-    // Unsure if vkOffsets should be bytes or bits?
-    static constexpr u64 ByteToBits = 8;
     std::vector<::vk::Buffer> vkBuffers(vertexBuffers.size());
     std::vector<::vk::DeviceSize> vkOffsets(vkBuffers.size());
     for (auto& [binding, buffer] : vertexBuffers)
     {
         vkBuffers.emplace_back(buffer->GetNativeBuffer());
-        vkOffsets.push_back(binding.offsetByteSize.value_or(0) * ByteToBits);
+        vkOffsets.push_back(binding.offsetByteSize.value_or(0));
     }
 
     commandBuffer->bindVertexBuffers(startSlot, static_cast<u32>(vkBuffers.size()), vkBuffers.data(), vkOffsets.data());
@@ -558,7 +554,24 @@ void VkCommandList::SetVertexBuffers(u32 startSlot, std::span<RHIBufferBinding> 
 
 void VkCommandList::SetIndexBuffer(const RHIBufferBinding& indexBuffer)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    ::vk::IndexType indexType;
+    switch (indexBuffer.binding.strideByteSize.value_or(0))
+    {
+    case 2:
+        indexType = ::vk::IndexType::eUint16;
+        break;
+    case 4:
+        indexType = ::vk::IndexType::eUint32;
+        break;
+    default:
+        VEX_LOG(Fatal,
+                "Unsupported index buffer stride byte size: {}. Vex only supports 2 and 4 byte indices.",
+                indexBuffer.binding.strideByteSize.value_or(0));
+    }
+
+    commandBuffer->bindIndexBuffer(indexBuffer.buffer->GetNativeBuffer(),
+                                   indexBuffer.binding.offsetByteSize.value_or(0),
+                                   indexType);
 }
 
 void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount)
