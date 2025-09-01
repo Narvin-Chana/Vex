@@ -21,13 +21,20 @@ struct RHITextureBinding;
 struct RHIBufferBinding;
 struct InputAssembly;
 
-//TODO: Find appropriate place for this
-struct BufferToTextureCopyMapping
+struct BufferToTextureCopyDescription
 {
-    BufferRegion srcRegion;
-    TextureRegion dstRegion;
-    TextureRegionExtent extent;
+    BufferSubresource srcRegion{};
+    TextureSubresource dstRegion{};
+    TextureExtent extent{};
 };
+
+namespace TextureCopyUtil
+{
+void ValidateBufferToTextureCopyDescription(const BufferDescription& srcDesc,
+                                            const TextureDescription& dstDesc,
+                                            const BufferToTextureCopyDescription& copyDesc);
+void ValidateSimpleBufferToTextureCopy(const BufferDescription& srcDesc, const TextureDescription& dstDesc);
+} // namespace TextureCopyUtil
 
 class RHICommandListBase
 {
@@ -70,19 +77,21 @@ public:
     virtual void TraceRays(const std::array<u32, 3>& widthHeightDepth,
                            const RHIRayTracingPipelineState& rayTracingPipelineState) = 0;
 
-    // Copies the whole texture data from src to dst. These textures should have the same size, mips, arrayLayers, type, etc...
+    // Copies the whole texture data from src to dst. These textures should have the same size, mips, arrayLayers, type,
+    // etc...
     virtual void Copy(RHITexture& src, RHITexture& dst);
     // Copies the regions from src to dst
-    virtual void Copy(RHITexture& src, RHITexture& dst, const std::vector<TextureToTextureCopyRegionMapping>& regionMappings) = 0;
+    virtual void Copy(RHITexture& src, RHITexture& dst, std::span<TextureCopyDescription> regionMappings) = 0;
     // Copies the whole contents of src to dst. Buffers need to have the same byte size
     virtual void Copy(RHIBuffer& src, RHIBuffer& dst);
     // Copies the buffer region from src to dst
-    virtual void Copy(RHIBuffer& src, RHIBuffer& dst, const BufferToBufferCopyRegion& regionMappings) = 0;
+    virtual void Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& regionMappings) = 0;
     // Copies the complete contents of the buffer to all regions of the dst texture.
-    // This assumes the texture regions are contiguously arranged in the buffer. The whole content of the texture must be in the buffer
+    // This assumes the texture regions are contiguously arranged in the buffer. The whole content of the texture must
+    // be in the buffer
     virtual void Copy(RHIBuffer& src, RHITexture& dst);
     // Copies the different regions of buffers to dst texture regions
-    virtual void Copy(RHIBuffer& src, RHITexture& dst, const std::vector<BufferToTextureCopyMapping>& regionMappings) = 0;
+    virtual void Copy(RHIBuffer& src, RHITexture& dst, std::span<BufferToTextureCopyDescription> regionMappings) = 0;
 
     virtual CommandQueueType GetType() const = 0;
 };

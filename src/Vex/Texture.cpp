@@ -1,12 +1,30 @@
-﻿#include "Bindings.h"
-#include "Logger.h"
-#include "Texture.h"
+﻿#include "Texture.h"
+
+#include <Vex/Bindings.h>
+#include <Vex/Logger.h>
+#include <Vex/Validation.h>
 
 namespace vex
 {
 
 namespace TextureUtil
 {
+
+std::tuple<u32, u32, u32> GetMipSize(const TextureDescription& desc, u32 mip)
+{
+    VEX_ASSERT(mip < desc.mips);
+
+    u32 width = desc.width;
+    u32 height = desc.height;
+    u32 depth = desc.GetDepth();
+    for (u32 i = 0; i < mip; ++i)
+    {
+        width = std::max(1u, width / 2);
+        height = std::max(1u, height / 2);
+        depth = std::max(1u, depth / 2);
+    }
+    return { width, height, depth };
+}
 
 TextureViewType GetTextureViewType(const TextureBinding& binding)
 {
@@ -70,7 +88,7 @@ void ValidateTextureDescription(const TextureDescription& description)
     }
 }
 
-u8 GetPixelByteSizeFromFormat(TextureFormat format)
+float GetPixelByteSizeFromFormat(TextureFormat format)
 {
     using enum TextureFormat;
 
@@ -141,30 +159,48 @@ u8 GetPixelByteSizeFromFormat(TextureFormat format)
         return 4;
     }
 
-    // TODO: handle compression formats
-    VEX_LOG(Fatal, "Format size not handled")
+    if (index >= std::to_underlying(BC1_UNORM) && index <= std::to_underlying(BC1_UNORM_SRGB))
+    {
+        return 0.5f;
+    }
+
+    if (index >= std::to_underlying(BC2_UNORM) && index <= std::to_underlying(BC3_UNORM_SRGB))
+    {
+        return 1;
+    }
+
+    if (index >= std::to_underlying(BC4_UNORM) && index <= std::to_underlying(BC4_SNORM))
+    {
+        return 0.5f;
+    }
+
+    if (index >= std::to_underlying(BC5_UNORM) && index <= std::to_underlying(BC7_UNORM_SRGB))
+    {
+        return 1;
+    }
+
     return 0;
 }
 
 u32 GetTotalTextureByteSize(const TextureDescription& desc)
 {
-    u32 pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
+    float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
 
-    u32 totalSize = 0;
+    float totalSize = 0;
     u32 width = desc.width;
     u32 height = desc.height;
-    u32 depth = desc.type == TextureType::Texture3D ? desc.depthOrArraySize : 1;
-    u32 arraySize = desc.type != TextureType::Texture3D ? desc.depthOrArraySize : 1;
+    u32 depth = desc.GetDepth();
+    u32 arraySize = desc.GetArrayCount();
 
     for (int i = 0; i < desc.mips; ++i)
     {
-        totalSize += width * height * depth * arraySize * pixelByteSize;
+        totalSize += static_cast<float>(width * height * depth * arraySize) * pixelByteSize;
 
         width = std::max(1u, width / 2u);
         height = std::max(1u, height / 2u);
         depth = std::max(1u, depth / 2u);
     }
-    return totalSize;
+    return static_cast<u32>(std::ceil(totalSize));
 }
 
 bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage)
@@ -180,6 +216,86 @@ bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags usages,
     }
 
     return true;
+}
+
+void ValidateTextureSubresource(const TextureDescription& description, const TextureSubresource& subresource)
+{
+    if (subresource.mip >= description.mips)
+    {
+        LogFailValidation("Subresource mip is greater than texture's mip count. Subresource mip: {}, texture copy: {}",
+                          subresource.mip,
+                          description.mips);
+    }
+
+    if (subresource.startSlice >= description.GetArrayCount())
+    {
+        LogFailValidation(
+            "Subresource start slice is greater than texture's array size. Start slice: {}, array size: {}",
+            subresource.startSlice,
+            description.GetArrayCount());
+    }
+
+    if (subresource.startSlice + subresource.sliceCount > description.GetArrayCount())
+    {
+        LogFailValidation(
+            "Subresource accesses more slice than available. Start slice: {}, slice count: {}, texture array size: {}",
+            subresource.startSlice,
+            subresource.sliceCount,
+            description.GetArrayCount());
+    }
+
+    const auto [mipWidth, mipHeight, mipDepth] = GetMipSize(description, subresource.mip);
+    if (subresource.offset.width >= mipWidth || subresource.offset.height >= mipHeight ||
+        subresource.offset.depth >= mipDepth)
+    {
+        LogFailValidation(
+            "Subresource offset is beyond the mip's resource size. Mip size: {}x{}x{}, subresource offset: {}x{}x{}",
+            mipWidth,
+            mipHeight,
+            mipDepth,
+            subresource.offset.width,
+            subresource.offset.height,
+            subresource.offset.depth);
+    }
+}
+
+void ValidateTextureCopyDescription(const TextureDescription& srcDesc,
+                                    const TextureDescription& dstDesc,
+                                    const TextureCopyDescription& copyDesc)
+{
+    ValidateTextureSubresource(srcDesc, copyDesc.srcRegion);
+    ValidateTextureSubresource(dstDesc, copyDesc.dstRegion);
+    ValidateTextureExtent(srcDesc, copyDesc.srcRegion, copyDesc.extent);
+    ValidateTextureExtent(dstDesc, copyDesc.dstRegion, copyDesc.extent);
+}
+void ValidateTextureExtent(const TextureDescription& description,
+                           const TextureSubresource& subresource,
+                           const TextureExtent& extent)
+{
+    const auto [mipWidth, mipHeight, mipDepth] = GetMipSize(description, subresource.mip);
+    const auto offsetExtentWidth = subresource.offset.width + extent.width;
+    const auto offsetExtentHeight = subresource.offset.height + extent.height;
+    const auto offsetExtentDepth = subresource.offset.depth + extent.depth;
+    if (offsetExtentWidth > mipWidth || offsetExtentHeight > mipHeight || offsetExtentDepth > mipDepth)
+    {
+        LogFailValidation("Copy description extent goes beyon mip size: Extent + offset: {}x{}x{}, mip size: {}x{}x{}",
+                          offsetExtentWidth,
+                          offsetExtentHeight,
+                          offsetExtentDepth,
+                          mipWidth,
+                          mipHeight,
+                          mipDepth);
+    }
+}
+void ValidateCompatibleTextureDescriptions(const TextureDescription& srcDesc, const TextureDescription& dstDesc)
+{
+    if (srcDesc.depthOrArraySize != dstDesc.depthOrArraySize || srcDesc.width != dstDesc.width ||
+        srcDesc.height != dstDesc.height || srcDesc.mips != dstDesc.mips || srcDesc.format != dstDesc.format ||
+        srcDesc.type != dstDesc.type)
+    {
+        LogFailValidation("Textures must have the same width, height, depth/array size, mips, format and type to be "
+                          "able to do a simple copy");
+    }
 }
 
 } // namespace TextureUtil

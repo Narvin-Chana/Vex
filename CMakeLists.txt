@@ -148,6 +148,7 @@ add_library(Vex STATIC
     "src/Vex/Texture.h"
     "src/Vex/Texture.cpp"
     "src/Vex/Buffer.h"
+    "src/Vex/Buffer.cpp"
     "src/Vex/CommandQueueType.h"
     "src/Vex/CommandContext.h"
     "src/Vex/CommandContext.cpp"

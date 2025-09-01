@@ -83,13 +83,13 @@ struct Buffer final
     BufferDescription description;
 };
 
-struct BufferRegion
+struct BufferSubresource
 {
     u32 offset;
     u32 size;
 };
 
-struct BufferToBufferCopyRegion
+struct BufferCopyDescription
 {
     u32 srcOffset;
     u32 dstOffset;
@@ -98,18 +98,13 @@ struct BufferToBufferCopyRegion
 
 namespace BufferUtil
 {
-inline void ValidateBufferDescription(const BufferDescription& desc)
-{
-    if (desc.name.empty())
-    {
-        VEX_LOG(Fatal, "The buffer needs a name on creation.");
-    }
+void ValidateBufferDescription(const BufferDescription& desc);
+void ValidateBufferCopyDescription(const BufferDescription& srcDesc,
+                                   const BufferDescription& dstDesc,
+                                   const BufferCopyDescription& copyDesc);
+void ValidateBufferSubresource(const BufferDescription& desc, const BufferSubresource& subresource);
+void ValidateSimpleBufferCopy(const BufferDescription& srcDesc, const BufferDescription& dstDesc);
 
-    if (desc.byteSize == 0)
-    {
-        VEX_LOG(Fatal, "Buffer \"{}\" must have a size bigger than 0", desc.name);
-    }
-}
 } // namespace BufferUtil
 
 } // namespace vex

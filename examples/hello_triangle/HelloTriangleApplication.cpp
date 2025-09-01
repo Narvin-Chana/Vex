@@ -63,12 +63,13 @@ HelloTriangleApplication::HelloTriangleApplication()
     auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
 
     const std::filesystem::path uvImagePath =
-                    std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() /
-                    "examples" / "uv-guide.png";
+        std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() / "examples" /
+        "uv-guide.png";
     int width, height, channels;
     void* imageData = stbi_load(uvImagePath.string().c_str(), &width, &height, &channels, 4);
 
     std::vector<vex::u8> fullImageData;
+    fullImageData.reserve((width * height + (width / 2) * (height / 2)) * channels);
     std::copy_n(static_cast<vex::u8*>(imageData), width * height * channels, std::back_inserter(fullImageData));
 
     // Checker board pattern for mip 2
@@ -86,20 +87,18 @@ HelloTriangleApplication::HelloTriangleApplication()
         }
     }
 
-    uvGuideTexture = graphics->CreateTexture(
-        { .name = "UV Guide",
-          .type = vex::TextureType::Texture2D,
-          .width = static_cast<vex::u32>(width),
-          .height = static_cast<vex::u32>(height),
-          .depthOrArraySize = 1,
-          .mips = 2,
-          .format = vex::TextureFormat::RGBA8_UNORM,
-          .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
-        vex::ResourceLifetime::Static);
+    uvGuideTexture =
+        graphics->CreateTexture({ .name = "UV Guide",
+                                  .type = vex::TextureType::Texture2D,
+                                  .width = static_cast<vex::u32>(width),
+                                  .height = static_cast<vex::u32>(height),
+                                  .depthOrArraySize = 1,
+                                  .mips = 2,
+                                  .format = vex::TextureFormat::RGBA8_UNORM,
+                                  .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
+                                vex::ResourceLifetime::Static);
 
-    ctx.EnqueueDataUpload(
-        uvGuideTexture,
-        std::span<const vex::u8>{ fullImageData });
+    ctx.EnqueueDataUpload(uvGuideTexture, std::span<const vex::u8>{ fullImageData });
 
     stbi_image_free(imageData);
 
