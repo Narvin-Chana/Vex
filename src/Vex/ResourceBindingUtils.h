@@ -24,6 +24,13 @@ struct ResourceBindingUtils
                                     std::vector<RHITextureBinding>& textureBindings,
                                     std::vector<RHIBufferBinding>& bufferBindings);
 
+    // Collects draw textures from a set of render targets and a depth stencil
+    static RHIDrawResources CollectRHIDrawResourcesAndTransitions(
+        GfxBackend& backend,
+        std::span<const TextureBinding> renderTargets,
+        std::optional<TextureBinding> depthStencil,
+        std::vector<std::pair<RHITexture&, RHITextureState::Flags>>& transitions);
+
     static RHITextureState::Type TextureBindingUsageToState(TextureUsage::Type usage);
     static RHIBufferState::Flags BufferBindingUsageToState(BufferBindingUsage usage);
 };

@@ -101,12 +101,6 @@ CommandContext::CommandContext(GfxBackend* backend, RHICommandList* cmdList)
 
 CommandContext::~CommandContext()
 {
-    if (currentDrawResources.has_value())
-    {
-        VEX_LOG(Fatal,
-                "The command context was closed with a still open rendering pass! You might have forgotten to call "
-                "EndRendering()!");
-    }
     backend->EndCommandContext(*cmdList);
 }
 
@@ -131,105 +125,69 @@ void CommandContext::ClearTexture(const TextureBinding& binding,
                 "stencil!");
     }
 
+    if (clearRect.has_value())
+    {
+        // Clear Rect not yet supported.
+        VEX_NOT_YET_IMPLEMENTED();
+    }
+
     RHITexture& texture = backend->GetRHITexture(binding.texture.handle);
     cmdList->Transition(texture, texture.GetClearTextureState());
-    cmdList->ClearTexture({ binding, texture },
+    cmdList->ClearTexture({ binding, NonNullPtr(texture) },
                           // This is a safe cast, textures can only contain one of the two usages (RT/DS).
                           static_cast<TextureUsage::Type>(binding.texture.description.usage &
                                                           (TextureUsage::RenderTarget | TextureUsage::DepthStencil)),
                           textureClearValue.value_or(binding.texture.description.clearValue));
 }
 
-void CommandContext::BeginRendering(const DrawResourceBinding& drawBindings)
+void CommandContext::Draw(const DrawDescription& drawDesc,
+                          const DrawResourceBinding& drawBindings,
+                          std::optional<ConstantBinding> constants,
+                          u32 vertexCount,
+                          u32 instanceCount,
+                          u32 vertexOffset,
+                          u32 instanceOffset)
 {
-    if (currentDrawResources.has_value())
+    // Index buffers are not used in Draw, warn the user if they have still bound one.
+    if (drawBindings.indexBuffer.has_value())
     {
-        VEX_LOG(Fatal, "BeginRendering must never be called twice without calling EndRendering first.");
+        VEX_LOG(Warning,
+                "Your CommandContext::Draw call resources contain an index buffer which will be ignored. If you wish "
+                "to use the index buffer, call CommandContext::DrawIndexed instead.");
     }
 
-    currentDrawResources.emplace();
-    std::vector<std::pair<RHITexture&, RHITextureState::Flags>> transitions;
-    for (const auto& renderTarget : drawBindings.renderTargets)
+    auto drawResources = PrepareDrawCall(drawDesc, drawBindings, constants);
+    if (!drawResources.has_value())
     {
-        transitions.emplace_back(backend->GetRHITexture(renderTarget.texture.handle), RHITextureState::RenderTarget);
-        currentDrawResources->renderTargets.emplace_back(renderTarget,
-                                                         backend->GetRHITexture(renderTarget.texture.handle));
+        return;
     }
 
-    if (drawBindings.depthStencil)
-    {
-        currentDrawResources->depthStencil = { *drawBindings.depthStencil,
-                                               backend->GetRHITexture(drawBindings.depthStencil->texture.handle) };
-        transitions.emplace_back(backend->GetRHITexture(drawBindings.depthStencil->texture.handle),
-                                 RHITextureState::DepthWrite);
-    }
-
-    cmdList->Transition(transitions);
-    cmdList->BeginRendering(*currentDrawResources);
-}
-
-void CommandContext::EndRendering()
-{
-    if (!currentDrawResources.has_value())
-    {
-        VEX_LOG(Fatal, "BeginRendering must have been called before a call to EndRendering is valid");
-    }
-
+    cmdList->BeginRendering(*drawResources);
+    // TODO(https://trello.com/c/IGxuLci9): Validate draw vertex count (eg: versus the currently used vertex buffer
+    // size)
+    cmdList->Draw(vertexCount, instanceCount, vertexOffset, instanceOffset);
     cmdList->EndRendering();
-
-    currentDrawResources.reset();
 }
 
-void CommandContext::Draw(const DrawDescription& drawDesc, std::optional<ConstantBinding> constants, u32 vertexCount)
+void CommandContext::DrawIndexed(const DrawDescription& drawDesc,
+                                 const DrawResourceBinding& drawBindings,
+                                 std::optional<ConstantBinding> constants,
+                                 u32 indexCount,
+                                 u32 instanceCount,
+                                 u32 indexOffset,
+                                 u32 vertexOffset,
+                                 u32 instanceOffset)
 {
-    if (!currentDrawResources)
+    auto drawResources = PrepareDrawCall(drawDesc, drawBindings, constants);
+    if (!drawResources.has_value())
     {
-        VEX_LOG(Fatal, "BeginRender must be called before any draw call is executed");
+        return;
     }
 
-    if (drawDesc.vertexShader.type != ShaderType::VertexShader)
-    {
-        VEX_LOG(Fatal,
-                "Invalid type passed to Draw call for vertex shader: {}",
-                magic_enum::enum_name(drawDesc.vertexShader.type));
-    }
-    if (drawDesc.pixelShader.type != ShaderType::PixelShader)
-    {
-        VEX_LOG(Fatal,
-                "Invalid type passed to Draw call for pixel shader: {}",
-                magic_enum::enum_name(drawDesc.pixelShader.type));
-    }
-
-    auto graphicsPSOKey = CommandContext_Internal::GetGraphicsPSOKeyFromDrawDesc(drawDesc, *currentDrawResources);
-
-    if (!cachedGraphicsPSOKey || graphicsPSOKey != *cachedGraphicsPSOKey)
-    {
-        const RHIGraphicsPipelineState* pipelineState = backend->psCache.GetGraphicsPipelineState(graphicsPSOKey);
-        // No valid PSO means we cannot proceed.
-        if (!pipelineState)
-        {
-            return;
-        }
-
-        cmdList->SetPipelineState(*pipelineState);
-        cachedGraphicsPSOKey = graphicsPSOKey;
-    }
-
-    // Setup the layout for our pass.
-    RHIResourceLayout& resourceLayout = backend->psCache.GetResourceLayout();
-    resourceLayout.SetLayoutResources(constants);
-
-    cmdList->SetLayout(resourceLayout);
-
-    if (!cachedInputAssembly || drawDesc.inputAssembly != cachedInputAssembly)
-    {
-        cmdList->SetInputAssembly(drawDesc.inputAssembly);
-        cachedInputAssembly = drawDesc.inputAssembly;
-    }
-
-    // TODO(https://trello.com/c/IGxuLci9): Validate draw vertex count (eg: versus the currently used index buffer size)
-
-    cmdList->Draw(vertexCount);
+    cmdList->BeginRendering(*drawResources);
+    // TODO(https://trello.com/c/IGxuLci9): Validate draw index count (eg: versus the currently used index buffer size)
+    cmdList->DrawIndexed(indexCount, instanceCount, indexOffset, vertexOffset, instanceOffset);
+    cmdList->EndRendering();
 }
 
 void CommandContext::Dispatch(const ShaderKey& shader,
@@ -419,9 +377,125 @@ void CommandContext::Transition(const Buffer& buffer, RHIBufferState::Type newSt
     cmdList->Transition(backend->GetRHIBuffer(buffer.handle), newState);
 }
 
+void CommandContext::ExecuteInDrawContext(std::span<const TextureBinding> renderTargets,
+                                          std::optional<const TextureBinding> depthStencil,
+                                          const std::function<void()>& callback)
+{
+    std::vector<std::pair<RHITexture&, RHITextureState::Flags>> transitions;
+    RHIDrawResources drawResources =
+        ResourceBindingUtils::CollectRHIDrawResourcesAndTransitions(*backend, renderTargets, depthStencil, transitions);
+
+    cmdList->Transition(transitions);
+    cmdList->BeginRendering(drawResources);
+    callback();
+    cmdList->EndRendering();
+}
+
 RHICommandList& CommandContext::GetRHICommandList()
 {
     return *cmdList;
+}
+
+std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDescription& drawDesc,
+                                                                const DrawResourceBinding& drawBindings,
+                                                                std::optional<ConstantBinding> constants)
+{
+    if (drawDesc.vertexShader.type != ShaderType::VertexShader)
+    {
+        VEX_LOG(Fatal,
+                "Invalid type passed to Draw call for vertex shader: {}",
+                magic_enum::enum_name(drawDesc.vertexShader.type));
+    }
+    if (drawDesc.pixelShader.type != ShaderType::PixelShader)
+    {
+        VEX_LOG(Fatal,
+                "Invalid type passed to Draw call for pixel shader: {}",
+                magic_enum::enum_name(drawDesc.pixelShader.type));
+    }
+
+    // Transition RTs/DepthStencil
+    std::vector<std::pair<RHITexture&, RHITextureState::Flags>> transitions;
+    RHIDrawResources drawResources =
+        ResourceBindingUtils::CollectRHIDrawResourcesAndTransitions(*backend,
+                                                                    drawBindings.renderTargets,
+                                                                    drawBindings.depthStencil,
+                                                                    transitions);
+    cmdList->Transition(transitions);
+
+    auto graphicsPSOKey = CommandContext_Internal::GetGraphicsPSOKeyFromDrawDesc(drawDesc, drawResources);
+
+    if (!cachedGraphicsPSOKey || graphicsPSOKey != *cachedGraphicsPSOKey)
+    {
+        const RHIGraphicsPipelineState* pipelineState = backend->psCache.GetGraphicsPipelineState(graphicsPSOKey);
+        // No valid PSO means we cannot proceed.
+        if (!pipelineState)
+        {
+            return std::nullopt;
+        }
+
+        cmdList->SetPipelineState(*pipelineState);
+        cachedGraphicsPSOKey = graphicsPSOKey;
+    }
+
+    // Setup the layout for our pass.
+    RHIResourceLayout& resourceLayout = backend->psCache.GetResourceLayout();
+    resourceLayout.SetLayoutResources(constants);
+
+    cmdList->SetLayout(resourceLayout);
+
+    if (!cachedInputAssembly || drawDesc.inputAssembly != cachedInputAssembly)
+    {
+        cmdList->SetInputAssembly(drawDesc.inputAssembly);
+        cachedInputAssembly = drawDesc.inputAssembly;
+    }
+
+    // Transition and bind Vertex Buffer(s)
+    SetVertexBuffers(drawBindings.vertexBuffersFirstSlot, drawBindings.vertexBuffers);
+
+    // Transition and bind Index Buffer.
+    SetIndexBuffer(drawBindings.indexBuffer);
+
+    return drawResources;
+}
+
+void CommandContext::SetVertexBuffers(u32 vertexBuffersFirstSlot, std::span<BufferBinding> vertexBuffers)
+{
+    if (vertexBuffers.empty())
+    {
+        return;
+    }
+
+    std::vector<std::pair<RHIBuffer&, RHIBufferState::Flags>> transitions;
+    std::vector<RHIBufferBinding> rhiBindings;
+    transitions.reserve(vertexBuffers.size());
+    rhiBindings.reserve(vertexBuffers.size());
+    for (const auto& vertexBuffer : vertexBuffers)
+    {
+        if (!vertexBuffer.strideByteSize.has_value())
+        {
+            VEX_LOG(Fatal, "A vertex buffer must have a valid strideByteSize!");
+        }
+        RHIBuffer& buffer = backend->GetRHIBuffer(vertexBuffer.buffer.handle);
+        transitions.emplace_back(buffer, RHIBufferState::VertexBuffer);
+        rhiBindings.emplace_back(vertexBuffer, NonNullPtr(buffer));
+    }
+    cmdList->Transition(transitions);
+    cmdList->SetVertexBuffers(vertexBuffersFirstSlot, rhiBindings);
+}
+
+void CommandContext::SetIndexBuffer(std::optional<BufferBinding> indexBuffer)
+{
+    if (!indexBuffer.has_value())
+    {
+        return;
+    }
+
+    RHIBuffer& buffer = backend->GetRHIBuffer(indexBuffer->buffer.handle);
+
+    cmdList->Transition(buffer, RHIBufferState::IndexBuffer);
+
+    RHIBufferBinding binding{ *indexBuffer, NonNullPtr(buffer) };
+    cmdList->SetIndexBuffer(binding);
 }
 
 } // namespace vex

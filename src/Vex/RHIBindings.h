@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include <Vex/Bindings.h>
 #include <Vex/Buffer.h>
 #include <Vex/NonNullPtr.h>

@@ -366,14 +366,52 @@ void DX12CommandList::EndRendering()
     // Nothing to do here
 }
 
-void DX12CommandList::Draw(u32 vertexCount)
+void DX12CommandList::Draw(u32 vertexCount, u32 instanceCount, u32 vertexOffset, u32 instanceOffset)
 {
     if (type != CommandQueueType::Graphics)
     {
         VEX_LOG(Fatal, "Cannot use draw calls with a non-graphics command queue.");
     }
 
-    commandList->DrawInstanced(vertexCount, 1, 0, 0);
+    commandList->DrawInstanced(vertexCount, instanceCount, vertexOffset, instanceOffset);
+}
+
+void DX12CommandList::DrawIndexed(
+    u32 indexCount, u32 instanceCount, u32 indexOffset, u32 vertexOffset, u32 instanceOffset)
+{
+    if (type != CommandQueueType::Graphics)
+    {
+        VEX_LOG(Fatal, "Cannot use draw calls with a non-graphics command queue.");
+    }
+
+    commandList->DrawIndexedInstanced(indexCount, instanceCount, indexOffset, vertexOffset, instanceOffset);
+}
+
+void DX12CommandList::SetVertexBuffers(u32 startSlot, std::span<RHIBufferBinding> vertexBuffers)
+{
+    if (type != CommandQueueType::Graphics)
+    {
+        VEX_LOG(Fatal, "Cannot use draw calls with a non-graphics command queue.");
+    }
+
+    std::vector<D3D12_VERTEX_BUFFER_VIEW> views;
+    views.reserve(vertexBuffers.size());
+    for (auto& [binding, buffer] : vertexBuffers)
+    {
+        views.push_back(buffer->GetVertexBufferView(binding));
+    }
+    commandList->IASetVertexBuffers(startSlot, views.size(), views.data());
+}
+
+void DX12CommandList::SetIndexBuffer(const RHIBufferBinding& indexBuffer)
+{
+    if (type != CommandQueueType::Graphics)
+    {
+        VEX_LOG(Fatal, "Cannot use draw calls with a non-graphics command queue.");
+    }
+
+    D3D12_INDEX_BUFFER_VIEW indexBufferView = indexBuffer.buffer->GetIndexBufferView(indexBuffer.binding);
+    commandList->IASetIndexBuffer(&indexBufferView);
 }
 
 void DX12CommandList::Dispatch(const std::array<u32, 3>& groupCount)
@@ -383,8 +421,10 @@ void DX12CommandList::Dispatch(const std::array<u32, 3>& groupCount)
     case CommandQueueType::Graphics:
     case CommandQueueType::Compute:
         commandList->Dispatch(groupCount[0], groupCount[1], groupCount[2]);
+        break;
     case CommandQueueType::Copy:
     default:
+        VEX_LOG(Fatal, "Cannot use dispatch with a non-compute capable command queue.");
         break;
     }
 }

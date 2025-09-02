@@ -42,7 +42,7 @@ void BufferBinding::Validate() const
 
     if (usage == BufferBindingUsage::StructuredBuffer || usage == BufferBindingUsage::RWStructuredBuffer)
     {
-        if (!stride.has_value())
+        if (!strideByteSize.has_value())
         {
             VEX_LOG(Fatal,
                     "Invalid binding for resource \"{}\": In order to use a binding as a structured buffer, you must "

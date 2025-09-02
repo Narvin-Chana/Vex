@@ -265,7 +265,7 @@ BindlessHandle GfxBackend::GetBufferBindlessHandle(const BufferBinding& bindless
     bindlessResource.Validate();
 
     auto& buffer = GetRHIBuffer(bindlessResource.buffer.handle);
-    return buffer.GetOrCreateBindlessView(bindlessResource.usage, bindlessResource.stride, *descriptorPool);
+    return buffer.GetOrCreateBindlessView(bindlessResource.usage, bindlessResource.strideByteSize, *descriptorPool);
 }
 
 void GfxBackend::FlushGPU()
