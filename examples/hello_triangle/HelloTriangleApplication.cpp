@@ -141,7 +141,7 @@ void HelloTriangleApplication::Run()
             };
             std::vector<vex::BindlessHandle> pass1Handles = ctx.GetBindlessHandles(pass1Bindings);
 
-            std::array<vex::ResourceBinding, 3> pass2Bindings{
+            std::array<vex::ResourceBinding, 4> pass2Bindings{
                 vex::TextureBinding{
                     .texture = finalOutputTexture,
                     .usage = vex::TextureBindingUsage::ShaderReadWrite,
@@ -155,6 +155,7 @@ void HelloTriangleApplication::Run()
                     .texture = workingTexture,
                     .usage = vex::TextureBindingUsage::ShaderRead,
                 },
+                vex::TextureBinding{ .texture = uvGuideTexture, .usage = vex::TextureBindingUsage::ShaderRead },
             };
             std::vector<vex::BindlessHandle> pass2Handles = ctx.GetBindlessHandles(pass2Bindings);
 

@@ -34,7 +34,7 @@ VEX_UNIFORMS(UniformStruct, Uniforms);
 static const RWTexture2D<float4> OutputTexture = GetBindlessResource(Uniforms.outputTextureHandle);
 static const ConstantBuffer<Colors> ColorBuffer = GetBindlessResource(Uniforms.colorBufferHandle);
 static const RWStructuredBuffer<float4> CommBuffer = GetBindlessResource(Uniforms.commBufferHandle);
-static const Texture2D<float4> UVTextureGuide = GetBindlessResource(Uniforms.uvGuideTextureHandle)
+static const Texture2D<float4> UVTextureGuide = GetBindlessResource(Uniforms.uvGuideTextureHandle);
 
 [numthreads(8, 8, 1)]
 void CSMain(uint3 dtid : SV_DispatchThreadID)
