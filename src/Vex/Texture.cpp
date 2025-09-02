@@ -14,16 +14,7 @@ std::tuple<u32, u32, u32> GetMipSize(const TextureDescription& desc, u32 mip)
 {
     VEX_ASSERT(mip < desc.mips);
 
-    u32 width = desc.width;
-    u32 height = desc.height;
-    u32 depth = desc.GetDepth();
-    for (u32 i = 0; i < mip; ++i)
-    {
-        width = std::max(1u, width / 2);
-        height = std::max(1u, height / 2);
-        depth = std::max(1u, depth / 2);
-    }
-    return { width, height, depth };
+    return { std::max(desc.width >> mip, 1u), std::max(desc.height >> mip, 1u), std::max(desc.GetDepth() >> mip, 1u) };
 }
 
 TextureViewType GetTextureViewType(const TextureBinding& binding)
@@ -220,43 +211,34 @@ bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags usages,
 
 void ValidateTextureSubresource(const TextureDescription& description, const TextureSubresource& subresource)
 {
-    if (subresource.mip >= description.mips)
-    {
-        LogFailValidation("Subresource mip is greater than texture's mip count. Subresource mip: {}, texture copy: {}",
-                          subresource.mip,
-                          description.mips);
-    }
+    VEX_CHECK(
+        subresource.mip < description.mips,
+        "Validation failed: Subresource mip is greater than texture's mip count. Subresource mip: {}, texture copy: {}",
+        subresource.mip,
+        description.mips);
 
-    if (subresource.startSlice >= description.GetArrayCount())
-    {
-        LogFailValidation(
-            "Subresource start slice is greater than texture's array size. Start slice: {}, array size: {}",
-            subresource.startSlice,
-            description.GetArrayCount());
-    }
+    VEX_CHECK(subresource.startSlice < description.GetArrayCount(),
+              "Subresource start slice is greater than texture's array size. Start slice: {}, array size: {}",
+              subresource.startSlice,
+              description.GetArrayCount());
 
-    if (subresource.startSlice + subresource.sliceCount > description.GetArrayCount())
-    {
-        LogFailValidation(
-            "Subresource accesses more slice than available. Start slice: {}, slice count: {}, texture array size: {}",
-            subresource.startSlice,
-            subresource.sliceCount,
-            description.GetArrayCount());
-    }
+    VEX_CHECK(
+        subresource.startSlice + subresource.sliceCount <= description.GetArrayCount(),
+        "Subresource accesses more slice than available. Start slice: {}, slice count: {}, texture array size: {}",
+        subresource.startSlice,
+        subresource.sliceCount,
+        description.GetArrayCount());
 
     const auto [mipWidth, mipHeight, mipDepth] = GetMipSize(description, subresource.mip);
-    if (subresource.offset.width >= mipWidth || subresource.offset.height >= mipHeight ||
-        subresource.offset.depth >= mipDepth)
-    {
-        LogFailValidation(
-            "Subresource offset is beyond the mip's resource size. Mip size: {}x{}x{}, subresource offset: {}x{}x{}",
-            mipWidth,
-            mipHeight,
-            mipDepth,
-            subresource.offset.width,
-            subresource.offset.height,
-            subresource.offset.depth);
-    }
+    VEX_CHECK(subresource.offset.width < mipWidth && subresource.offset.height < mipHeight &&
+                  subresource.offset.depth < mipDepth,
+              "Subresource offset is beyond the mip's resource size. Mip size: {}x{}x{}, subresource offset: {}x{}x{}",
+              mipWidth,
+              mipHeight,
+              mipDepth,
+              subresource.offset.width,
+              subresource.offset.height,
+              subresource.offset.depth);
 }
 
 void ValidateTextureCopyDescription(const TextureDescription& srcDesc,
@@ -276,26 +258,22 @@ void ValidateTextureExtent(const TextureDescription& description,
     const auto offsetExtentWidth = subresource.offset.width + extent.width;
     const auto offsetExtentHeight = subresource.offset.height + extent.height;
     const auto offsetExtentDepth = subresource.offset.depth + extent.depth;
-    if (offsetExtentWidth > mipWidth || offsetExtentHeight > mipHeight || offsetExtentDepth > mipDepth)
-    {
-        LogFailValidation("Copy description extent goes beyon mip size: Extent + offset: {}x{}x{}, mip size: {}x{}x{}",
-                          offsetExtentWidth,
-                          offsetExtentHeight,
-                          offsetExtentDepth,
-                          mipWidth,
-                          mipHeight,
-                          mipDepth);
-    }
+    VEX_CHECK(offsetExtentWidth <= mipWidth && offsetExtentHeight <= mipHeight && offsetExtentDepth <= mipDepth,
+              "Copy description extent goes beyon mip size: Extent + offset: {}x{}x{}, mip size: {}x{}x{}",
+              offsetExtentWidth,
+              offsetExtentHeight,
+              offsetExtentDepth,
+              mipWidth,
+              mipHeight,
+              mipDepth);
 }
 void ValidateCompatibleTextureDescriptions(const TextureDescription& srcDesc, const TextureDescription& dstDesc)
 {
-    if (srcDesc.depthOrArraySize != dstDesc.depthOrArraySize || srcDesc.width != dstDesc.width ||
-        srcDesc.height != dstDesc.height || srcDesc.mips != dstDesc.mips || srcDesc.format != dstDesc.format ||
-        srcDesc.type != dstDesc.type)
-    {
-        LogFailValidation("Textures must have the same width, height, depth/array size, mips, format and type to be "
-                          "able to do a simple copy");
-    }
+    VEX_CHECK(srcDesc.depthOrArraySize == dstDesc.depthOrArraySize && srcDesc.width == dstDesc.width &&
+                  srcDesc.height == dstDesc.height && srcDesc.mips == dstDesc.mips &&
+                  srcDesc.format == dstDesc.format && srcDesc.type == dstDesc.type,
+              "Textures must have the same width, height, depth/array size, mips, format and type to be able to do a "
+              "simple copy")
 }
 
 } // namespace TextureUtil

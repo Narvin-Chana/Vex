@@ -20,23 +20,19 @@ void ValidateBufferToTextureCopyDescription(const BufferDescription& srcDesc,
     const u32 requiredByteSize = static_cast<u32>(
         std::ceil(mipWidth * mipHeight * mipDepth * TextureUtil::GetPixelByteSizeFromFormat(dstDesc.format)));
 
-    if (copyDesc.srcRegion.size < requiredByteSize)
-    {
-        LogFailValidation("Buffer not big enough to copy to texture. buffer size: {}, required mip byte size: {}",
-                          srcDesc.byteSize,
-                          requiredByteSize);
-    }
+    VEX_CHECK(copyDesc.srcRegion.size >= requiredByteSize,
+              "Buffer not big enough to copy to texture. buffer size: {}, required mip byte size: {}",
+              srcDesc.byteSize,
+              requiredByteSize);
 }
 
 void ValidateSimpleBufferToTextureCopy(const BufferDescription& srcDesc, const TextureDescription& dstDesc)
 {
     u32 textureByteSize = TextureUtil::GetTotalTextureByteSize(dstDesc);
-    if (srcDesc.byteSize < textureByteSize)
-    {
-        LogFailValidation("Buffer not big enough to copy to texture. buffer size: {}, texture byte size: {}",
-                          srcDesc.byteSize,
-                          textureByteSize);
-    }
+    VEX_CHECK(srcDesc.byteSize >= textureByteSize,
+              "Buffer not big enough to copy to texture. buffer size: {}, texture byte size: {}",
+              srcDesc.byteSize,
+              textureByteSize);
 }
 } // namespace TextureCopyUtil
 
@@ -44,6 +40,7 @@ void RHICommandListBase::Copy(RHITexture& src, RHITexture& dst)
 {
     const auto desc = src.GetDescription();
     std::vector<std::pair<TextureSubresource, TextureExtent>> regions;
+    regions.reserve(desc.mips);
     u32 width = desc.width;
     u32 height = desc.height;
     u32 depth = desc.depthOrArraySize;
@@ -59,6 +56,7 @@ void RHICommandListBase::Copy(RHITexture& src, RHITexture& dst)
     }
 
     std::vector<TextureCopyDescription> regionMappings;
+    regionMappings.reserve(desc.mips);
     for (const auto& [region, extent] : regions)
     {
         regionMappings.emplace_back(region, region, extent);
