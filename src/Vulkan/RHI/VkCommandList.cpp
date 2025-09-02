@@ -143,7 +143,7 @@ void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIReso
                                           nullptr);
         break;
     default:
-        // VEX_ASSERT(false, "Operation not supported on this queue type");
+        VEX_ASSERT(false, "Operation not supported on this queue type");
         break;
     }
 }
