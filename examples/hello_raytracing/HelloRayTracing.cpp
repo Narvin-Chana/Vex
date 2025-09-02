@@ -43,27 +43,42 @@ void HelloRayTracing::Run()
         {
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
 
+            const vex::TextureBinding outputTextureBinding{
+                .texture = workingTexture,
+                .usage = vex::TextureBindingUsage::ShaderReadWrite,
+            };
+
+            ctx.TransitionBindings({ { outputTextureBinding } });
+            vex::BindlessHandle handle = ctx.GetBindlessHandle(outputTextureBinding);
+
+            // Two ray invocations, one for the HLSL shader, and one for the Slang shader.
             ctx.TraceRays(
                 { 
                     .rayGenerationShader = 
                     {
-                        .path = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() /
-                                "examples" / "hello_raytracing" / "HelloRayTracingShader.hlsl",
+                        .path = ExamplesDir / "hello_raytracing" / "HelloRayTracingShader.hlsl",
                         .entryPoint = "RayGenMain",
                         .type = vex::ShaderType::RayGenerationShader,
                     },
                 },
-                {{
-                    vex::TextureBinding
-                    {
-                        .name = "OutputTexture",
-                        .texture = workingTexture,
-                        .usage = vex::TextureBindingUsage::ShaderReadWrite,
-                    },
-                }},
-                {},
+                vex::ConstantBinding(handle),
                 { static_cast<vex::u32>(width), static_cast<vex::u32>(height), 1 } // One ray per pixel.
             );
+
+#if VEX_SLANG
+            ctx.TraceRays(
+                { 
+                    .rayGenerationShader = 
+                    {
+                        .path = ExamplesDir / "hello_raytracing" / "HelloRayTracingShader.slang",
+                        .entryPoint = "RayGenMain",
+                        .type = vex::ShaderType::RayGenerationShader,
+                    },
+                },
+                vex::ConstantBinding(handle),
+                { static_cast<vex::u32>(width), static_cast<vex::u32>(height), 1 } // One ray per pixel.
+            );
+#endif
 
             // Copy output to the backbuffer.
             ctx.Copy(workingTexture, graphics->GetCurrentBackBuffer());

@@ -52,7 +52,7 @@ public:
     virtual void SetPipelineState(const RHIComputePipelineState& computePipelineState) = 0;
     virtual void SetPipelineState(const RHIRayTracingPipelineState& rayTracingPipelineState) = 0;
 
-    virtual void SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& descriptorPool) = 0;
+    virtual void SetLayout(RHIResourceLayout& layout) = 0;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) = 0;
     virtual void SetInputAssembly(InputAssembly inputAssembly) = 0;
 
@@ -70,7 +70,12 @@ public:
     virtual void BeginRendering(const RHIDrawResources& resources) = 0;
     virtual void EndRendering() = 0;
 
-    virtual void Draw(u32 vertexCount) = 0;
+    virtual void Draw(u32 vertexCount, u32 instanceCount = 1, u32 vertexOffset = 0, u32 instanceOffset = 0) = 0;
+    virtual void DrawIndexed(
+        u32 indexCount, u32 instanceCount = 1, u32 indexOffset = 0, u32 vertexOffset = 0, u32 instanceOffset = 0) = 0;
+
+    virtual void SetVertexBuffers(u32 startSlot, std::span<RHIBufferBinding> vertexBuffers) = 0;
+    virtual void SetIndexBuffer(const RHIBufferBinding& indexBuffer) = 0;
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount) = 0;
 

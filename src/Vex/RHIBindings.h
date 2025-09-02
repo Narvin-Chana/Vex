@@ -1,7 +1,10 @@
 #pragma once
 
+#include <optional>
+
 #include <Vex/Bindings.h>
 #include <Vex/Buffer.h>
+#include <Vex/NonNullPtr.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/Texture.h>
 
@@ -11,13 +14,13 @@ namespace vex
 struct RHITextureBinding
 {
     TextureBinding binding;
-    RHITexture* texture;
+    NonNullPtr<RHITexture> texture;
 };
 
 struct RHIBufferBinding
 {
     BufferBinding binding;
-    RHIBuffer* buffer;
+    NonNullPtr<RHIBuffer> buffer;
 };
 
 struct RHIDrawResources

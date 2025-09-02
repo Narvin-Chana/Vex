@@ -22,6 +22,9 @@ include(GitHooks)
 # Contains all logic to fetch and include DXC
 include(VexDXC)
 
+# Contains all logic to fetch and include Slang
+include(VexSlang)
+
 # =========================================
 # Graphics Backend Selection
 # =========================================
@@ -169,10 +172,7 @@ add_library(Vex STATIC
     "src/Vex/Containers/ResourceCleanup.cpp"
     "src/Vex/Shaders/ShaderCompiler.h"
     "src/Vex/Shaders/ShaderCompiler.cpp"
-    "src/Vex/Formattable.h"
-    "src/Vex/Shaders/ShaderResourceContext.h"
-    "src/Vex/Shaders/ShaderResourceContext.cpp"
-    "src/Vex/Shaders/ShaderGen.h"
+    "src/Vex/Formattable.h"    
     "src/Vex/TextureSampler.h"
     "src/Vex/GraphicsPipeline.h"
     "src/Vex/DrawHelpers.h"
@@ -182,14 +182,14 @@ add_library(Vex STATIC
     "src/Vex/ResourceBindingUtils.cpp"
     "src/Vex/MaybeUninitialized.h"
     "src/Vex/NonNullPtr.h"
-    "src/Vex/Shaders/DXCImpl.h"
-    "src/Vex/Shaders/DXCImpl.cpp"
-    "src/Vex/Shaders/ShaderEnvironment.h"
-    "src/Vex/Shaders/CompilerInterface.h"
     "src/Vex/RayTracing.h"
     "src/Vex/RayTracing.cpp"
     "src/Vex/ByteUtils.h"
-)
+    "src/Vex/Shaders/DXCImpl.h"
+    "src/Vex/Shaders/DXCImpl.cpp"
+    "src/Vex/Shaders/ShaderEnvironment.h"
+    "src/Vex/Shaders/CompilerBase.h"
+  )
 
 if(WIN32)
     target_sources(Vex PRIVATE
@@ -229,10 +229,19 @@ function(vex_setup_runtime TARGET)
         include(VexDX12)
         vex_setup_d3d12_agility_runtime(${TARGET})
     endif()
+
+    link_with_dxc(${TARGET})
+
+    if (VEX_ENABLE_SLANG)
+        link_with_slang(${TARGET})
+    endif()
 endfunction()
 
 # Static linking with DXC.
 build_with_dxc(Vex)
+
+# Static linking with Slang.
+build_with_slang(Vex)
 
 # Static linking to magic_enum
 add_header_only_dependency(Vex magic_enum "${magic_enum_SOURCE_DIR}" "include" "magic_enum")

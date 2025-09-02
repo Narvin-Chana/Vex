@@ -1,5 +1,6 @@
 ﻿#include "DX12Buffer.h"
 
+#include <Vex/Bindings.h>
 #include <Vex/Buffer.h>
 #include <Vex/Debug.h>
 #include <Vex/Logger.h>
@@ -87,8 +88,39 @@ void DX12Buffer::Unmap()
     buffer->Unmap(0, &range);
 }
 
+D3D12_VERTEX_BUFFER_VIEW DX12Buffer::GetVertexBufferView(const BufferBinding& binding) const
+{
+    return D3D12_VERTEX_BUFFER_VIEW{
+        .BufferLocation = GetGPUVirtualAddress() + binding.offsetByteSize.value_or(0),
+        .SizeInBytes = desc.byteSize,
+        .StrideInBytes = *binding.strideByteSize,
+    };
+}
+
+D3D12_INDEX_BUFFER_VIEW DX12Buffer::GetIndexBufferView(const BufferBinding& binding) const
+{
+    DXGI_FORMAT format;
+    switch (*binding.strideByteSize)
+    {
+    case 2:
+        format = DXGI_FORMAT_R16_UINT;
+        break;
+    case 4:
+        format = DXGI_FORMAT_R32_UINT;
+        break;
+    default:
+        VEX_LOG(Fatal,
+                "DX12RHI: DX12Buffer's IndexBufferView cannot be created with a stride different than 2 or 4 bytes.");
+    }
+    return D3D12_INDEX_BUFFER_VIEW{
+        .BufferLocation = GetGPUVirtualAddress() + binding.offsetByteSize.value_or(0),
+        .SizeInBytes = desc.byteSize,
+        .Format = format,
+    };
+}
+
 BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
-                                                   u32 stride,
+                                                   std::optional<u32> strideByteSize,
                                                    DX12DescriptorPool& descriptorPool)
 {
     bool isCBV = usage == BufferBindingUsage::ConstantBuffer;
@@ -100,7 +132,7 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
                desc.name);
 
     // Check cache first
-    BufferViewCacheKey cacheKey{ usage, stride };
+    BufferViewCacheKey cacheKey{ usage, strideByteSize };
     if (auto it = viewCache.find(cacheKey); it != viewCache.end() && descriptorPool.IsValid(it->second))
     {
         return it->second;
@@ -128,8 +160,8 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.Buffer.FirstElement = 0;
-            srvDesc.Buffer.NumElements = desc.byteSize / stride;
-            srvDesc.Buffer.StructureByteStride = stride;
+            srvDesc.Buffer.NumElements = desc.byteSize / *strideByteSize;
+            srvDesc.Buffer.StructureByteStride = *strideByteSize;
             srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
             break;
         case BufferBindingUsage::ByteAddressBuffer:
@@ -157,8 +189,8 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
             uavDesc.Format = DXGI_FORMAT_UNKNOWN;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
             uavDesc.Buffer.FirstElement = 0;
-            uavDesc.Buffer.NumElements = desc.byteSize / stride;
-            uavDesc.Buffer.StructureByteStride = stride;
+            uavDesc.Buffer.NumElements = desc.byteSize / *strideByteSize;
+            uavDesc.Buffer.StructureByteStride = *strideByteSize;
             uavDesc.Buffer.CounterOffsetInBytes = 0;
             uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
             break;
@@ -170,6 +202,7 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
             uavDesc.Buffer.StructureByteStride = 0;
             uavDesc.Buffer.CounterOffsetInBytes = 0;
             uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+            break;
         default:
             break;
         }

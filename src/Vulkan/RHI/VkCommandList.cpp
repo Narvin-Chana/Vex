@@ -94,32 +94,12 @@ void VkCommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTracin
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-void VkCommandList::SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& descriptorPool)
+void VkCommandList::SetLayout(RHIResourceLayout& layout)
 {
-    bool hasGlobalConstantsBuffer = layout.currentInternalConstantBuffer.has_value();
-    if (hasGlobalConstantsBuffer)
-    {
-        Transition(*layout.currentInternalConstantBuffer, RHIBufferState::UniformResource);
-    }
     std::span<const u8> localConstantsData = layout.GetLocalConstantsData();
-
-    size_t globalConstantsByteSize = sizeof(u32);
-    size_t finalDataByteSize = localConstantsData.size_bytes() + globalConstantsByteSize;
-
-    std::vector<u8> finalData(finalDataByteSize);
-    std::memcpy(finalData.data() + globalConstantsByteSize, localConstantsData.data(), localConstantsData.size_bytes());
-    if (hasGlobalConstantsBuffer)
+    if (localConstantsData.empty())
     {
-        u32 globalBindlessBuffer =
-            layout.currentInternalConstantBuffer
-                ->GetOrCreateBindlessView(BufferBindingUsage::ConstantBuffer, globalConstantsByteSize, descriptorPool)
-                .GetIndex();
-        std::memcpy(finalData.data(), reinterpret_cast<u8*>(&globalBindlessBuffer), globalConstantsByteSize);
-    }
-    else
-    {
-        u32 invalidBindlessHandle = GInvalidBindlessHandle.GetIndex();
-        std::memcpy(finalData.data(), reinterpret_cast<u8*>(&invalidBindlessHandle), globalConstantsByteSize);
+        return;
     }
 
     ::vk::ShaderStageFlags stageFlags;
@@ -134,7 +114,11 @@ void VkCommandList::SetLayout(RHIResourceLayout& layout, RHIDescriptorPool& desc
         VEX_ASSERT(false, "Operation not supported on this queue type");
     }
 
-    commandBuffer->pushConstants(*layout.pipelineLayout, stageFlags, 0, finalData.size(), finalData.data());
+    commandBuffer->pushConstants(*layout.pipelineLayout,
+                                 stageFlags,
+                                 0,
+                                 localConstantsData.size(),
+                                 localConstantsData.data());
 }
 
 void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)
@@ -246,7 +230,7 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
     }
 }
 
-::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITextureState::Flags flags)
+static ::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITextureState::Flags flags)
 {
     using namespace ::vk;
     const ImageLayout prevLayout = texture.GetLayout();
@@ -287,6 +271,7 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
         barrier.srcStageMask = PipelineStageFlagBits2::eColorAttachmentOutput;
         break;
     case ImageLayout::eDepthStencilAttachmentOptimal:
+    case ImageLayout::eDepthAttachmentOptimal:
         barrier.srcAccessMask =
             AccessFlagBits2::eDepthStencilAttachmentRead | AccessFlagBits2::eDepthStencilAttachmentWrite;
         barrier.srcStageMask = PipelineStageFlagBits2::eEarlyFragmentTests | PipelineStageFlagBits2::eLateFragmentTests;
@@ -328,6 +313,7 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
         barrier.dstStageMask = PipelineStageFlagBits2::eColorAttachmentOutput;
         break;
     case ImageLayout::eDepthStencilAttachmentOptimal:
+    case ImageLayout::eDepthAttachmentOptimal:
         barrier.dstAccessMask =
             AccessFlagBits2::eDepthStencilAttachmentRead | AccessFlagBits2::eDepthStencilAttachmentWrite;
         barrier.dstStageMask = PipelineStageFlagBits2::eEarlyFragmentTests;
@@ -369,7 +355,7 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
     return barrier;
 }
 
-::vk::BufferMemoryBarrier2 GetBufferBarrierFrom(VkBuffer& buffer, RHIBufferState::Flags flags)
+static ::vk::BufferMemoryBarrier2 GetBufferBarrierFrom(VkBuffer& buffer, RHIBufferState::Flags flags)
 {
     ::vk::AccessFlags2 srcAccessMask = BufferUtil::GetAccessFlagsFromBufferState(buffer.GetCurrentState());
     ::vk::AccessFlags2 dstAccessMask = BufferUtil::GetAccessFlagsFromBufferState(flags);
@@ -525,7 +511,7 @@ void VkCommandList::EndRendering()
     commandBuffer->endRendering();
 }
 
-void VkCommandList::Draw(u32 vertexCount)
+void VkCommandList::Draw(u32 vertexCount, u32 instanceCount, u32 vertexOffset, u32 instanceOffset)
 {
     if (!cachedViewport || !cachedScissor)
     {
@@ -539,7 +525,60 @@ void VkCommandList::Draw(u32 vertexCount)
 
     commandBuffer->setViewportWithCount(1, &*cachedViewport);
     commandBuffer->setScissorWithCount(1, &*cachedScissor);
-    commandBuffer->draw(vertexCount, 1, 0, 0);
+    commandBuffer->draw(vertexCount, instanceCount, vertexOffset, instanceOffset);
+}
+
+void VkCommandList::DrawIndexed(
+    u32 indexCount, u32 instanceCount, u32 indexOffset, u32 vertexOffset, u32 instanceOffset)
+{
+    if (!cachedViewport || !cachedScissor)
+    {
+        VEX_LOG(Fatal, "SetScissor and SetViewport need to be called before Draw is ever called")
+    }
+
+    if (!isRendering)
+    {
+        VEX_LOG(Fatal, "You need to call BeginRendering before calling any draw commands")
+    }
+
+    commandBuffer->setViewportWithCount(1, &*cachedViewport);
+    commandBuffer->setScissorWithCount(1, &*cachedScissor);
+    commandBuffer->drawIndexed(indexCount, instanceCount, indexOffset, vertexOffset, instanceOffset);
+}
+
+void VkCommandList::SetVertexBuffers(u32 startSlot, std::span<RHIBufferBinding> vertexBuffers)
+{
+    std::vector<::vk::Buffer> vkBuffers(vertexBuffers.size());
+    std::vector<::vk::DeviceSize> vkOffsets(vkBuffers.size());
+    for (auto& [binding, buffer] : vertexBuffers)
+    {
+        vkBuffers.emplace_back(buffer->GetNativeBuffer());
+        vkOffsets.push_back(binding.offsetByteSize.value_or(0));
+    }
+
+    commandBuffer->bindVertexBuffers(startSlot, static_cast<u32>(vkBuffers.size()), vkBuffers.data(), vkOffsets.data());
+}
+
+void VkCommandList::SetIndexBuffer(const RHIBufferBinding& indexBuffer)
+{
+    ::vk::IndexType indexType;
+    switch (indexBuffer.binding.strideByteSize.value_or(0))
+    {
+    case 2:
+        indexType = ::vk::IndexType::eUint16;
+        break;
+    case 4:
+        indexType = ::vk::IndexType::eUint32;
+        break;
+    default:
+        VEX_LOG(Fatal,
+                "Unsupported index buffer stride byte size: {}. Vex only supports 2 and 4 byte indices.",
+                indexBuffer.binding.strideByteSize.value_or(0));
+    }
+
+    commandBuffer->bindIndexBuffer(indexBuffer.buffer->GetNativeBuffer(),
+                                   indexBuffer.binding.offsetByteSize.value_or(0),
+                                   indexType);
 }
 
 void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount)

@@ -49,9 +49,8 @@ void HelloTriangleGraphicsApplication::Run()
 
         graphics->StartFrame();
 
-        // clang-format off
-
         {
+            // Make the color buffer's contents oscillate over time.
             const double currentTime = glfwGetTime();
             float oscillatedColor = static_cast<float>(cos(currentTime) / 2 + 0.5);
             float invOscillatedColor = 1 - oscillatedColor;
@@ -66,67 +65,77 @@ void HelloTriangleGraphicsApplication::Run()
 
             // Clear backbuffer.
             vex::TextureClearValue clearValue{ .flags = vex::TextureClear::ClearColor, .color = { 1, 0.5f, 1, 1 } };
-            ctx.ClearTexture(vex::TextureBinding{
-                .name = "Backbuffer",
-                .texture = graphics->GetCurrentBackBuffer(),
-            }, clearValue);
-
-
-            // Setup our rendering pass.
-            std::array renderTargets = {
+            ctx.ClearTexture(
                 vex::TextureBinding{
-                    .name = "OutputTexture",
                     .texture = graphics->GetCurrentBackBuffer(),
-                }
-            };
-
-            // Allows for rendering to these render targets!
-            ctx.BeginRendering({ .renderTargets = renderTargets, .depthStencil = std::nullopt });
+                },
+                clearValue);
 
             // Setup our draw call's description...
-            static std::filesystem::path shaderFolderPath = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() / "examples" / "hello_triangle_graphics_pipeline";
-            vex::DrawDescription drawDesc{
-                .vertexShader = {
-                    .path = shaderFolderPath / "HelloTriangleGraphicsShader.hlsl",
-                    .entryPoint = "VSMain",
-                    .type = vex::ShaderType::VertexShader
-                },
-                .pixelShader = {
-                    .path = shaderFolderPath / "HelloTriangleGraphicsShader.hlsl",
-                    .entryPoint = "PSMain",
-                    .type = vex::ShaderType::PixelShader
-                }
+            vex::DrawDescription hlslDrawDesc{
+                .vertexShader = { .path = ExamplesDir / "hello_triangle_graphics_pipeline" /
+                                          "HelloTriangleGraphicsShader.hlsl",
+                                  .entryPoint = "VSMain",
+                                  .type = vex::ShaderType::VertexShader, },
+                .pixelShader = { .path = ExamplesDir / "hello_triangle_graphics_pipeline" /
+                                         "HelloTriangleGraphicsShader.hlsl",
+                                 .entryPoint = "PSMain",
+                                 .type = vex::ShaderType::PixelShader, },
             };
+#if VEX_SLANG
+            vex::DrawDescription slangDrawDesc{
+                .vertexShader = { .path = ExamplesDir / "hello_triangle_graphics_pipeline" /
+                                          "HelloTriangleGraphicsShader.slang",
+                                  .entryPoint = "VSMain",
+                                  .type = vex::ShaderType::VertexShader, },
+                .pixelShader = { .path = ExamplesDir / "hello_triangle_graphics_pipeline" /
+                                         "HelloTriangleGraphicsShader.slang",
+                                 .entryPoint = "PSMain",
+                                 .type = vex::ShaderType::PixelShader, },
+            };
+#endif
             // ...and resources.
-
-            std::array<vex::ResourceBinding, 1> resourceBindings = {
-                vex::BufferBinding{
-                    .name = "ColorBuffer",
-                    .buffer = colorBuffer,
-                    .usage = vex::BufferBindingUsage::ConstantBuffer,
-                    .stride = sizeof(float) * 4,
-                }
+            vex::BufferBinding colorBufferBinding{
+                .buffer = colorBuffer,
+                .usage = vex::BufferBindingUsage::ConstantBuffer,
+                .strideByteSize = static_cast<vex::u32>(sizeof(float) * 4),
             };
+
+            // Setup our rendering pass.
+            std::array renderTargets = { vex::TextureBinding{
+                .texture = graphics->GetCurrentBackBuffer(),
+            } };
 
             // Cursed float overflow UB greatness.
             static float time = 0;
             time += static_cast<float>(currentTime / 1000.0);
 
-            vex::DrawResources drawResources{
-                .constants = time,
-                .resourceBindings = resourceBindings,
+            struct LocalConstants
+            {
+                vex::BindlessHandle colorBufferHandle;
+                float time;
             };
 
+            LocalConstants lc{
+                .colorBufferHandle = ctx.GetBindlessHandle(colorBufferBinding),
+                .time = time,
+            };
+
+            ctx.TransitionBindings({ { colorBufferBinding } });
+
             ctx.SetViewport(0, 0, width / 2.0f, height);
-            ctx.Draw(drawDesc, drawResources, 3);
+            ctx.Draw(hlslDrawDesc, { .renderTargets = renderTargets }, vex::ConstantBinding(lc), 3);
             ctx.SetViewport(width / 2.0f, 0, width / 2.0f, height);
-            ctx.Draw(drawDesc, drawResources, 3);
-
-            // Ends the rendering pass, MUST be called.
-            ctx.EndRendering();
+            ctx.Draw(
+#if VEX_SLANG
+                slangDrawDesc,
+#else
+                hlslDrawDesc,
+#endif
+                { .renderTargets = renderTargets },
+                vex::ConstantBinding(lc),
+                3);
         }
-
-        // clang-format on
 
         graphics->EndFrame(windowMode == Fullscreen);
     }

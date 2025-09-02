@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <string_view>
 
 #include <Vex.h>
@@ -16,6 +17,8 @@ public:
 
 protected:
     static constexpr int32_t DefaultWidth = 1280, DefaultHeight = 600;
+    static inline const std::filesystem::path ExamplesDir =
+        std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() / "examples";
 
     virtual void OnResize(GLFWwindow* window, uint32_t newWidth, uint32_t newHeight);
     void ToggleFullscreen();

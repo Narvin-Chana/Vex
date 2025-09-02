@@ -9,53 +9,16 @@
 namespace vex
 {
 
-namespace Bindings_Internal
-{
-static bool IsValidHLSLResourceName(const std::string& name)
-{
-    // Check if empty
-    if (name.empty())
-    {
-        return false;
-    }
-
-    // First character must be a letter or underscore
-    if (!std::isalpha(name[0]) && name[0] != '_')
-    {
-        return false;
-    }
-
-    // Check each character
-    for (char c : name)
-    {
-        // Valid characters: letters, digits, underscore
-        if (!std::isalnum(c) && c != '_')
-        {
-            return false;
-        }
-    }
-
-    return true;
-}
-} // namespace Bindings_Internal
-
 void BufferBinding::ValidateForShaderUse(BufferUsage::Flags validBufferUsageFlags) const
 {
     Validate();
-
-    if (!Bindings_Internal::IsValidHLSLResourceName(name))
-    {
-        VEX_LOG(Fatal,
-                "Invalid binding for buffer \"{}\": You must specify a non-empty name that is valid for HLSL usage.",
-                buffer.description.name);
-    }
 
     if (!(buffer.description.usage & validBufferUsageFlags))
     {
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": The specified buffer cannot be bound for this type of "
                 "operation. Check the usage flags of your resource at creation.",
-                name);
+                buffer.description.name);
     }
 }
 
@@ -66,7 +29,7 @@ void BufferBinding::Validate() const
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": Binding usage must be compatible with buffer description "
                 "usage.",
-                name);
+                buffer.description.name);
     }
 
     if (usage == BufferBindingUsage::Invalid)
@@ -74,7 +37,18 @@ void BufferBinding::Validate() const
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": The binding's usage must be set to something and therefore not "
                 "be invalid",
-                name);
+                buffer.description.name);
+    }
+
+    if (usage == BufferBindingUsage::StructuredBuffer || usage == BufferBindingUsage::RWStructuredBuffer)
+    {
+        if (!strideByteSize.has_value())
+        {
+            VEX_LOG(Fatal,
+                    "Invalid binding for resource \"{}\": In order to use a binding as a structured buffer, you must "
+                    "pass in a valid stride.",
+                    buffer.description.name);
+        }
     }
 }
 
@@ -82,25 +56,20 @@ void TextureBinding::ValidateForShaderUse(TextureUsage::Flags validTextureUsageF
 {
     Validate();
 
-    if (!Bindings_Internal::IsValidHLSLResourceName(name))
-    {
-        VEX_LOG(Fatal,
-                "Invalid binding for texture \"{}\": You must specify a non-empty name that is valid for HLSL usage.",
-                texture.description.name);
-    }
-
     if (!(texture.description.usage & validTextureUsageFlags))
     {
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": The specified texture cannot be bound for this type of "
                 "operation. Check the usage flags of your resource at creation.",
-                name);
+                texture.description.name);
     }
 
     if ((validTextureUsageFlags & TextureUsage::DepthStencil) &&
         !FormatIsDepthStencilCompatible(texture.description.format))
     {
-        VEX_LOG(Fatal, "Invalid binding for resource \"{}\": texture cannot be bound as depth stencil", name);
+        VEX_LOG(Fatal,
+                "Invalid binding for resource \"{}\": texture cannot be bound as depth stencil",
+                texture.description.name);
     }
 }
 void TextureBinding::Validate() const
@@ -110,7 +79,7 @@ void TextureBinding::Validate() const
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": The binding's usage must be set to something and therefore not "
                 "be invalid",
-                name);
+                texture.description.name);
     }
 
     if (mipCount > texture.description.mips)
@@ -118,7 +87,7 @@ void TextureBinding::Validate() const
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": The binding's mip count ({}) cannot be larger than the "
                 "actual texture's mip count ({}).",
-                name,
+                texture.description.name,
                 mipCount,
                 texture.description.mips);
     }
@@ -128,7 +97,7 @@ void TextureBinding::Validate() const
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": The binding's mip bias ({}) cannot be larger than the "
                 "actual texture's mip count ({}).",
-                name,
+                texture.description.name,
                 mipBias,
                 texture.description.mips);
     }
@@ -138,7 +107,7 @@ void TextureBinding::Validate() const
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": The binding's slice count ({}) cannot be larger than the "
                 "actual texture's depth ({}).",
-                name,
+                texture.description.name,
                 sliceCount,
                 texture.description.depthOrArraySize);
     }
@@ -148,7 +117,7 @@ void TextureBinding::Validate() const
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": The binding's starting slice ({}) cannot be larger than the "
                 "actual texture's depth ({}).",
-                name,
+                texture.description.name,
                 startSlice,
                 texture.description.depthOrArraySize);
     }
@@ -160,7 +129,7 @@ void TextureBinding::Validate() const
             VEX_LOG(Fatal,
                     "Invalid binding for resource \"{}\": Texture's format ({}) does not allow for an SRGB "
                     "binding.",
-                    name,
+                    texture.description.name,
                     magic_enum::enum_name(texture.description.format));
         }
     }
@@ -171,7 +140,7 @@ void TextureBinding::Validate() const
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": Texture's format ({}) requires the depth stencil usage "
                 "upon creation.",
-                name,
+                texture.description.name,
                 magic_enum::enum_name(texture.description.format));
     }
 
@@ -180,7 +149,7 @@ void TextureBinding::Validate() const
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": Binding usage must be compatible with texture description's"
                 "usage.",
-                name);
+                texture.description.name);
     }
 }
 

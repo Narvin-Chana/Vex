@@ -1,21 +1,17 @@
-struct MyStruct
+#include <Vex.hlsli>
+
+struct UniformStruct
 {
+    uint colorBufferHandle;
     float time;
 };
+
+VEX_UNIFORMS(UniformStruct, Uniforms);
 
 struct Colors
 {
     float4 cols;
 };
-
-VEX_SHADER
-{
-    VEX_LOCAL_CONSTANTS(
-        MyStruct,
-        MyLocalConstants
-    );
-    VEX_GLOBAL_RESOURCE(ConstantBuffer<Colors>, ColorBuffer);
-}
 
 void ComputeTriangleVertex(in uint vertexID, out float4 position, out float2 uv)
 {
@@ -57,8 +53,10 @@ bool IsInsideTriangle(float2 p, float2 v0, float2 v1, float2 v2)
 float4 PSMain(VSOutput input)
     : SV_Target
 {
+    ConstantBuffer<Colors> ColorBuffer = GetBindlessResource(Uniforms.colorBufferHandle);
+
     static const float moveSpeed = 0.2f;
-    float offset = sin(MyLocalConstants.time * moveSpeed) * 0.1;
+    float offset = sin(Uniforms.time * moveSpeed) * 0.1;
 
     // Define triangle vertices in normalized space
     float2 v0 = float2(0.5 + offset, 0.1); // Bottom center

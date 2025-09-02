@@ -58,6 +58,10 @@ void ImGuiRenderExtension::OnFrameEnd()
     // Call all user imgui calls
     ImGui::ShowDemoWindow();
 
+    // Render resolves all internal ImGui code.
+    // It does not touch the graphics API at all.
+    ImGui::Render();
+
     // Render ImGui to the backbuffer.
     {
         vex::CommandContext ctx = graphics.BeginScopedCommandContext(vex::CommandQueueType::Graphics);
@@ -66,14 +70,11 @@ void ImGuiRenderExtension::OnFrameEnd()
         vex::TextureClearValue clearValue{ .flags = vex::TextureClear::ClearColor, .color = { 0, 0, 0, 0 } };
         ctx.ClearTexture(backBufferBinding, clearValue);
 
-        // ImGui renders to the texture that is currently set as render target.
-        // We have to manually set the render target we want ImGui to render to (in this case we want to render
-        // directly to the backbuffer).
-        ctx.BeginRendering({ .renderTargets = std::initializer_list{ backBufferBinding } });
-
-        ImGui::Render();
-        ImGui_ImplVex_RenderDrawData(ctx);
-
-        ctx.EndRendering();
+        // ImGui renders to the texture that is currently set as render target. In this case we want to render
+        // directly to the backbuffer. For this we use the ExecuteInDrawContext function, which will take care of
+        // binding the render targets/depth stencil and then execute the passed in callback.
+        ctx.ExecuteInDrawContext({ &backBufferBinding, 1 },
+                                 std::nullopt,
+                                 [&ctx]() { ImGui_ImplVex_RenderDrawData(ctx); });
     }
 }

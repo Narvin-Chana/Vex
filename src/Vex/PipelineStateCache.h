@@ -31,20 +31,16 @@ public:
 
     RHIResourceLayout& GetResourceLayout();
 
-    const RHIGraphicsPipelineState* GetGraphicsPipelineState(const RHIGraphicsPipelineState::Key& key,
-                                                             ShaderResourceContext resourceContext);
-    const RHIComputePipelineState* GetComputePipelineState(const RHIComputePipelineState::Key& key,
-                                                           ShaderResourceContext resourceContext);
+    const RHIGraphicsPipelineState* GetGraphicsPipelineState(const RHIGraphicsPipelineState::Key& key);
+    const RHIComputePipelineState* GetComputePipelineState(const RHIComputePipelineState::Key& key);
     const RHIRayTracingPipelineState* GetRayTracingPipelineState(const RHIRayTracingPipelineState::Key& key,
-                                                                 ShaderResourceContext resourceContext,
                                                                  RHIAllocator& allocator);
 
     ShaderCompiler& GetShaderCompiler();
 
 private:
     // Converts a RayTracingPSOKey into the mirrored version of itself which contains all required shaders.
-    std::optional<RayTracingShaderCollection> GetRayTracingShaderCollection(const RHIRayTracingPipelineState::Key& key,
-                                                                            ShaderResourceContext resourceContext);
+    std::optional<RayTracingShaderCollection> GetRayTracingShaderCollection(const RHIRayTracingPipelineState::Key& key);
 
     // Can't use NonNullPtr, as this field can potentially be empty during the time it takes for the RHI to be
     // initialized.

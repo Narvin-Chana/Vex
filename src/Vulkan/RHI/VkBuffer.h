@@ -32,7 +32,7 @@ public:
     VkBuffer(NonNullPtr<VkGPUContext> ctx, VkAllocator& allocator, const BufferDescription& desc);
 
     virtual BindlessHandle GetOrCreateBindlessView(BufferBindingUsage usage,
-                                                   u32 stride,
+                                                   std::optional<u32> strideByteSize,
                                                    RHIDescriptorPool& descriptorPool) override;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
     virtual void FreeAllocation(RHIAllocator& allocator) override;

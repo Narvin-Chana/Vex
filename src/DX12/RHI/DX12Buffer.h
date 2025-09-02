@@ -13,7 +13,8 @@
 namespace vex
 {
 struct BufferDescription;
-}
+struct BufferBinding;
+} // namespace vex
 
 namespace vex::dx12
 {
@@ -21,7 +22,7 @@ namespace vex::dx12
 struct BufferViewCacheKey
 {
     BufferBindingUsage usage;
-    u32 stride;
+    std::optional<u32> strideByteSize;
 
     bool operator==(const BufferViewCacheKey& other) const = default;
 };
@@ -32,7 +33,7 @@ struct BufferViewCacheKey
 
 VEX_MAKE_HASHABLE(vex::dx12::BufferViewCacheKey,
     VEX_HASH_COMBINE(seed, obj.usage);
-    VEX_HASH_COMBINE(seed, obj.stride);
+    VEX_HASH_COMBINE(seed, obj.strideByteSize);
 );
 
 // clang-format on
@@ -46,7 +47,7 @@ public:
     DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, const BufferDescription& desc);
 
     virtual BindlessHandle GetOrCreateBindlessView(BufferBindingUsage usage,
-                                                   u32 stride,
+                                                   std::optional<u32> strideByteSize,
                                                    RHIDescriptorPool& descriptorPool) override;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
     virtual void FreeAllocation(RHIAllocator& allocator) override;
@@ -63,6 +64,9 @@ public:
     {
         return buffer->GetGPUVirtualAddress();
     }
+
+    D3D12_VERTEX_BUFFER_VIEW GetVertexBufferView(const BufferBinding& binding) const;
+    D3D12_INDEX_BUFFER_VIEW GetIndexBufferView(const BufferBinding& binding) const;
 
 private:
     ComPtr<DX12Device> device;

@@ -15,14 +15,14 @@ namespace vex
 
 // Determines how the buffer can be used.
 BEGIN_VEX_ENUM_FLAGS(BufferUsage, u8)
-    None                            = 0,      // Buffers that will never be bound anywhere. Used for staging buffers mostly
+    None                            = 0,      // Buffers that will never be bound anywhere. Mostly used for staging buffers.
     GenericBuffer                   = 1 << 0, // Buffers that can be read from shaders (SRV)
     UniformBuffer                   = 1 << 1, // Buffers with specific alignment constraints (CBV)
     ReadWriteBuffer                 = 1 << 2, // Buffers with read and write operations in shaders (UAV)
     VertexBuffer                    = 1 << 3, // Buffers used for vertex buffers
     IndexBuffer                     = 1 << 4, // Buffers used for index buffers
-    IndirectArgs                    = 1 << 5,
-    RaytracingAccelerationStructure = 1 << 6,
+    IndirectArgs                    = 1 << 5, // Buffers used as parameters for an indirect dispatch.
+    RaytracingAccelerationStructure = 1 << 6, // Buffers used as an RT Acceleration Structure.
 END_VEX_ENUM_FLAGS();
 
 // clang-format on

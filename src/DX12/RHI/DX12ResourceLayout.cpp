@@ -35,15 +35,9 @@ void DX12ResourceLayout::CompileRootSignature()
     u32 rootSignatureDWORDCount = GPhysicalDevice->featureChecker->GetMaxLocalConstantsByteSize() / sizeof(DWORD);
 
     std::vector<CD3DX12_ROOT_PARAMETER> rootParameters;
-
-    CD3DX12_ROOT_PARAMETER rootCBV{};
-    // Root constant buffer is bound at the first slot (for Vex's internal bindless mapping).
-    rootCBV.InitAsConstantBufferView(0);
-    rootParameters.push_back(std::move(rootCBV));
-
     CD3DX12_ROOT_PARAMETER rootConstants{};
-    // Root constants are always bound at slot 1 of the root parameters (in space 0).
-    rootConstants.InitAsConstants(rootSignatureDWORDCount - 2, 1);
+    // Root constants are always bound at slot 0 of the root parameters (in space 0).
+    rootConstants.InitAsConstants(rootSignatureDWORDCount, 0, 0);
     rootParameters.push_back(std::move(rootConstants));
 
     std::vector<D3D12_STATIC_SAMPLER_DESC> dxSamplers =
