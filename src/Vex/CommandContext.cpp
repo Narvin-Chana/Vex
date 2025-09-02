@@ -409,6 +409,7 @@ void CommandContext::EnqueueDataUpload(const Texture& texture, std::span<const u
 {
     const BufferDescription stagingBufferDesc =
         CommandContext_Internal::GetStagingBufferDescription(texture.description.name,
+                                                             TextureUtil::GetTotalTextureByteSize(texture.description));
 
     TextureCopyUtil::ValidateSimpleBufferToTextureCopy(stagingBufferDesc, texture.description);
 
