@@ -2,9 +2,6 @@
 
 #include <GLFWIncludes.h>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
-
 HelloTriangleApplication::HelloTriangleApplication()
     : ExampleApplication("HelloTriangleApplication")
 {
@@ -75,7 +72,7 @@ void HelloTriangleApplication::Run()
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
 
             // Create the bindings and obtain the bindless handles we need for our compute passes.
-            std::array<vex::ResourceBinding, 4> pass1Bindings{
+            std::array<vex::ResourceBinding, 3> pass1Bindings{
                 vex::BufferBinding{
                     .buffer = colorBuffer,
                     .usage = vex::BufferBindingUsage::ConstantBuffer,
@@ -89,11 +86,10 @@ void HelloTriangleApplication::Run()
                     .texture = workingTexture,
                     .usage = vex::TextureBindingUsage::ShaderReadWrite,
                 },
-                vex::TextureBinding{ .texture = uvGuideTexture, .usage = vex::TextureBindingUsage::ShaderRead },
             };
             std::vector<vex::BindlessHandle> pass1Handles = ctx.GetBindlessHandles(pass1Bindings);
 
-            std::array<vex::ResourceBinding, 4> pass2Bindings{
+            std::array<vex::ResourceBinding, 3> pass2Bindings{
                 vex::TextureBinding{
                     .texture = finalOutputTexture,
                     .usage = vex::TextureBindingUsage::ShaderReadWrite,
@@ -107,7 +103,6 @@ void HelloTriangleApplication::Run()
                     .texture = workingTexture,
                     .usage = vex::TextureBindingUsage::ShaderRead,
                 },
-                vex::TextureBinding{ .texture = uvGuideTexture, .usage = vex::TextureBindingUsage::ShaderRead },
             };
             std::vector<vex::BindlessHandle> pass2Handles = ctx.GetBindlessHandles(pass2Bindings);
 

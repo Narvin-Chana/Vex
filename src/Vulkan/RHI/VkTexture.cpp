@@ -39,7 +39,10 @@ static ::vk::ImageViewType TextureTypeToVulkan(TextureViewType type)
     std::unreachable();
 }
 
-static ::vk::ImageAspectFlags GetDepthAspectFlags(TextureFormat format)
+namespace VkTextureUtil
+{
+
+::vk::ImageAspectFlags GetDepthAspectFlags(TextureFormat format)
 {
     ::vk::ImageAspectFlags aspectFlags{};
     using enum TextureFormat;
@@ -56,6 +59,28 @@ static ::vk::ImageAspectFlags GetDepthAspectFlags(TextureFormat format)
     }
     return aspectFlags;
 }
+
+::vk::ImageAspectFlags GetFormatAspectFlags(TextureFormat format)
+{
+    ::vk::ImageAspectFlags aspectFlags{};
+    using enum TextureFormat;
+    switch (format)
+    {
+    case D24_UNORM_S8_UINT:
+    case D32_FLOAT_S8_UINT:
+        aspectFlags |= ::vk::ImageAspectFlagBits::eStencil;
+    case D16_UNORM:
+    case D32_FLOAT:
+        aspectFlags |= ::vk::ImageAspectFlagBits::eDepth;
+        return aspectFlags;
+    default:
+        return ::vk::ImageAspectFlagBits::eColor;
+        break;
+    }
+}
+
+} // namespace VkTextureUtil
+
 //
 // ::vk::Sampler GetOrCreateAnisotropicSamplers(NonNullPtr<VkGPUContext> ctx)
 // {
@@ -168,7 +193,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
                                                 .viewType = TextureTypeToVulkan(view.viewType),
                                                 .format = TextureFormatToVulkan(view.format),
                                                 .subresourceRange = {
-                                                    .aspectMask = ::vk::ImageAspectFlagBits::eColor,
+                                                    .aspectMask = VkTextureUtil::GetFormatAspectFlags(view.format),
                                                     .baseMipLevel = view.mipBias,
                                                     .levelCount = view.mipCount,
                                                     .baseArrayLayer = view.startSlice,
@@ -222,7 +247,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
                                                 .format = TextureFormatToVulkan(view.format),
                                                 .subresourceRange = {
                                                     .aspectMask = usage == TextureUsage::DepthStencil
-                                                                      ? GetDepthAspectFlags(view.format)
+                                                                      ? VkTextureUtil::GetDepthAspectFlags(view.format)
                                                                       : ::vk::ImageAspectFlagBits::eColor,
                                                     .baseMipLevel = view.mipBias,
                                                     .levelCount = view.mipCount,

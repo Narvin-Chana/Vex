@@ -18,7 +18,6 @@ protected:
 private:
     vex::Texture workingTexture;
     vex::Texture finalOutputTexture;
-    vex::Texture uvGuideTexture;
 
     vex::Buffer colorBuffer;
     vex::Buffer commBuffer;

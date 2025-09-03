@@ -3,7 +3,7 @@
 #include <GLFWIncludes.h>
 
 #define STB_IMAGE_IMPLEMENTATION
-#include <third_party/stb_image.h>
+#include <stb_image.h>
 
 struct Vertex
 {
@@ -182,6 +182,7 @@ void HelloCubeApplication::Run()
                         .offset = 0,
                     },
                     {
+                        // TODO: This needs to be discussed as it makes no sense in VK
                         .semanticName = "TEXCOORD",
                         .semanticIndex = 1,
                         .binding = 0,
