@@ -3,7 +3,7 @@
 #include <GLFWIncludes.h>
 
 #define STB_IMAGE_IMPLEMENTATION
-#include <third_party/stb_image.h>
+#include <stb_image.h>
 
 HelloTriangleApplication::HelloTriangleApplication()
     : ExampleApplication("HelloTriangleApplication")

@@ -15,6 +15,15 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glfw)
 
+# STB Image
+message(STATUS "Fetching stb...")
+FetchContent_Declare(
+        stb
+        GIT_REPOSITORY https://github.com/nothings/stb.git
+        GIT_TAG f58f558c120e9b32c217290b80bad1a0729fbb2c
+)
+FetchContent_MakeAvailable(stb)
+
 # ImGui for the ImGui example.
 FetchContent_Declare(
     imgui
@@ -86,6 +95,8 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
         # Link the example
         target_link_libraries(${EXAMPLE_NAME} PRIVATE ${EXAMPLES_COMMON_LIBS})
         target_include_directories(${EXAMPLE_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${EXAMPLE_DIR}" "${CMAKE_SOURCE_DIR}/src")
+
+        add_header_only_dependency(${EXAMPLE_NAME} stb "${stb_SOURCE_DIR}" "" "stb")
     endif()
   endif()
 endforeach()

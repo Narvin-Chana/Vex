@@ -76,7 +76,9 @@ public:
     // Copies a region of source texture to destination texture
     void Copy(const Texture& source, const Texture& destination, const TextureCopyDescription& regionMapping);
     // Copies multiple regions of source texture to destination texture
-    void Copy(const Texture& source, const Texture& destination, std::span<TextureCopyDescription> regionMappings);
+    void Copy(const Texture& source,
+              const Texture& destination,
+              std::span<const TextureCopyDescription> regionMappings);
     // Copies the entirety of source buffer to the destination buffer
     void Copy(const Buffer& source, const Buffer& destination);
     // Copies the specified region from source to destination buffer
@@ -88,7 +90,7 @@ public:
     // Copies the contents of the buffer to multiple specified regions in the texture
     void Copy(const Buffer& source,
               const Texture& destination,
-              std::span<BufferToTextureCopyDescription> regionMappings);
+              std::span<const BufferToTextureCopyDescription> regionMappings);
 
     // Enqueues data to be uploaded to the specific buffer. If the buffer is mappable it will map it and directly write
     // data to it. If the buffer isn't mappable a staging buffer is used implicitly

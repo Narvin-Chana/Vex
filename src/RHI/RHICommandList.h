@@ -86,7 +86,7 @@ public:
     // etc...
     virtual void Copy(RHITexture& src, RHITexture& dst);
     // Copies the regions from src to dst
-    virtual void Copy(RHITexture& src, RHITexture& dst, std::span<TextureCopyDescription> regionMappings) = 0;
+    virtual void Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDescription> regionMappings) = 0;
     // Copies the whole contents of src to dst. Buffers need to have the same byte size
     virtual void Copy(RHIBuffer& src, RHIBuffer& dst);
     // Copies the buffer region from src to dst
@@ -96,7 +96,9 @@ public:
     // be in the buffer
     virtual void Copy(RHIBuffer& src, RHITexture& dst);
     // Copies the different regions of buffers to dst texture regions
-    virtual void Copy(RHIBuffer& src, RHITexture& dst, std::span<BufferToTextureCopyDescription> regionMappings) = 0;
+    virtual void Copy(RHIBuffer& src,
+                      RHITexture& dst,
+                      std::span<const BufferToTextureCopyDescription> regionMappings) = 0;
 
     virtual CommandQueueType GetType() const = 0;
 };

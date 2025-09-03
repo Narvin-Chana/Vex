@@ -63,11 +63,13 @@ public:
                            const RHIRayTracingPipelineState& rayTracingPipelineState) override;
 
     using RHICommandListBase::Copy;
-    virtual void Copy(RHITexture& src, RHITexture& dst, std::span<TextureCopyDescription> regionMappings) override;
+    virtual void Copy(RHITexture& src,
+                      RHITexture& dst,
+                      std::span<const TextureCopyDescription> regionMappings) override;
     virtual void Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& regionMappings) override;
     virtual void Copy(RHIBuffer& src,
                       RHITexture& dst,
-                      std::span<BufferToTextureCopyDescription> regionMappings) override;
+                      std::span<const BufferToTextureCopyDescription> regionMappings) override;
 
     virtual CommandQueueType GetType() const override;
 

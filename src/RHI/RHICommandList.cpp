@@ -1,5 +1,7 @@
 #include "RHICommandList.h"
 
+#include <cmath>
+
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/Validation.h>

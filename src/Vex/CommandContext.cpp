@@ -273,12 +273,12 @@ void CommandContext::Copy(const Texture& source,
                           const Texture& destination,
                           const TextureCopyDescription& regionMapping)
 {
-    Copy(source, destination, { regionMapping });
+    Copy(source, destination, { &regionMapping, 1 });
 }
 
 void CommandContext::Copy(const Texture& source,
                           const Texture& destination,
-                          std::span<TextureCopyDescription> regionMappings)
+                          std::span<const TextureCopyDescription> regionMappings)
 {
     for (auto& mapping : regionMappings)
     {
@@ -332,12 +332,12 @@ void CommandContext::Copy(const Buffer& source,
                           const Texture& destination,
                           const BufferToTextureCopyDescription& regionMapping)
 {
-    Copy(source, destination, { regionMapping });
+    Copy(source, destination, { &regionMapping, 1 });
 }
 
 void CommandContext::Copy(const Buffer& source,
                           const Texture& destination,
-                          std::span<BufferToTextureCopyDescription> regionMappings)
+                          std::span<const BufferToTextureCopyDescription> regionMappings)
 {
     for (auto& mapping : regionMappings)
     {

@@ -592,7 +592,7 @@ void VkCommandList::TraceRays(const std::array<u32, 3>& widthHeightDepth,
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-void VkCommandList::Copy(RHITexture& src, RHITexture& dst, std::span<TextureCopyDescription> regionMappings)
+void VkCommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDescription> regionMappings)
 {
     // TODO: Validate that the region mappings are correct and make sense
 
@@ -643,7 +643,9 @@ void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescrip
     commandBuffer->copyBuffer(src.GetNativeBuffer(), dst.GetNativeBuffer(), 1, &copy);
 }
 
-void VkCommandList::Copy(RHIBuffer& src, RHITexture& dst, std::span<BufferToTextureCopyDescription> regionMappings)
+void VkCommandList::Copy(RHIBuffer& src,
+                         RHITexture& dst,
+                         std::span<const BufferToTextureCopyDescription> regionMappings)
 {
     const ::vk::ImageAspectFlags dstAspectMask =
         FormatIsDepthStencilCompatible(dst.description.format)
