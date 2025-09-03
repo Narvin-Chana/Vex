@@ -269,6 +269,7 @@ void ValidateTextureExtent(const TextureDescription& description,
               mipHeight,
               mipDepth);
 }
+
 void ValidateCompatibleTextureDescriptions(const TextureDescription& srcDesc, const TextureDescription& dstDesc)
 {
     VEX_CHECK(srcDesc.depthOrArraySize == dstDesc.depthOrArraySize && srcDesc.width == dstDesc.width &&
