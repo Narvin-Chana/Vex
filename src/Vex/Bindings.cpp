@@ -144,7 +144,7 @@ void TextureBinding::Validate() const
                 magic_enum::enum_name(texture.description.format));
     }
 
-    if (!IsTextureBindingUsageCompatibleWithTextureUsage(texture.description.usage, usage))
+    if (!TextureUtil::IsTextureBindingUsageCompatibleWithTextureUsage(texture.description.usage, usage))
     {
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": Binding usage must be compatible with texture description's"

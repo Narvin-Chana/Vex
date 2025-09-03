@@ -50,16 +50,6 @@ struct ResourceBinding;
 struct TextureBinding;
 struct TextureDescription;
 
-namespace TextureUtil
-{
-
-TextureViewType GetTextureViewType(const TextureBinding& binding);
-TextureFormat GetTextureFormat(const TextureBinding& binding);
-
-void ValidateTextureDescription(const TextureDescription& description)
-;
-} // namespace TextureUtil
-
 // clang-format off
 
 BEGIN_VEX_ENUM_FLAGS(TextureClear, u8)
@@ -91,7 +81,14 @@ struct TextureDescription
     TextureClearValue clearValue;
     ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly;
 
-    u32 GetTextureByteSize() const;
+    [[nodiscard]] u32 GetDepth() const noexcept
+    {
+        return type == TextureType::Texture3D ? depthOrArraySize : 1;
+    }
+    [[nodiscard]] u32 GetArrayCount() const noexcept
+    {
+        return type != TextureType::Texture3D ? depthOrArraySize : 1;
+    }
 };
 
 // Strongly defined type represents a texture.
@@ -108,20 +105,48 @@ struct Texture final
     TextureDescription description;
 };
 
-inline bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags usages,
-                                                            TextureBindingUsage bindingUsage)
+struct TextureExtent
 {
-    if (bindingUsage == TextureBindingUsage::ShaderRead)
-    {
-        return usages & TextureUsage::ShaderRead;
-    }
+    u32 width = 1;
+    u32 height = 1;
+    u32 depth = 1;
+};
 
-    if (bindingUsage == TextureBindingUsage::ShaderReadWrite)
-    {
-        return usages & TextureUsage::ShaderReadWrite;
-    }
+struct TextureSubresource
+{
+    u32 mip = 0;
+    u32 startSlice = 0;
+    u32 sliceCount = 1;
+    TextureExtent offset{ 0, 0, 0 };
+};
 
-    return true;
-}
+struct TextureCopyDescription
+{
+    TextureSubresource srcRegion;
+    TextureSubresource dstRegion;
+    TextureExtent extent;
+};
+
+namespace TextureUtil
+{
+
+std::tuple<u32, u32, u32> GetMipSize(const TextureDescription& desc, u32 mip);
+TextureViewType GetTextureViewType(const TextureBinding& binding);
+TextureFormat GetTextureFormat(const TextureBinding& binding);
+void ValidateTextureDescription(const TextureDescription& description);
+float GetPixelByteSizeFromFormat(TextureFormat format);
+u32 GetTotalTextureByteSize(const TextureDescription& desc);
+bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage);
+
+void ValidateTextureSubresource(const TextureDescription& description, const TextureSubresource& subresource);
+void ValidateTextureCopyDescription(const TextureDescription& srcDesc,
+                                    const TextureDescription& dstDesc,
+                                    const TextureCopyDescription& copyDesc);
+void ValidateTextureExtent(const TextureDescription& description,
+                           const TextureSubresource& subresource,
+                           const TextureExtent& extent);
+void ValidateCompatibleTextureDescriptions(const TextureDescription& srcDesc, const TextureDescription& dstDesc);
+
+} // namespace TextureUtil
 
 } // namespace vex

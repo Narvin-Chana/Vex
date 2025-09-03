@@ -25,6 +25,7 @@ struct UniformStruct
     uint colorBufferHandle;
     uint commBufferHandle;
     uint outputTextureHandle;
+    uint uvGuideTextureHandle;
 };
 
 VEX_UNIFORMS(UniformStruct, Uniforms);
@@ -33,6 +34,7 @@ VEX_UNIFORMS(UniformStruct, Uniforms);
 static const RWTexture2D<float4> OutputTexture = GetBindlessResource(Uniforms.outputTextureHandle);
 static const ConstantBuffer<Colors> ColorBuffer = GetBindlessResource(Uniforms.colorBufferHandle);
 static const RWStructuredBuffer<float4> CommBuffer = GetBindlessResource(Uniforms.commBufferHandle);
+static const Texture2D<float4> UVTextureGuide = GetBindlessResource(Uniforms.uvGuideTextureHandle);
 
 [numthreads(8, 8, 1)]
 void CSMain(uint3 dtid : SV_DispatchThreadID)
@@ -62,6 +64,7 @@ void CSMain(uint3 dtid : SV_DispatchThreadID)
     }
     else
     {
-        OutputTexture[dtid.xy] = float4(0.2f, 0.2f, 0.2f, 1.0f);
+        float2 globalUV = float2(dtid.xy) / max(width, height);
+        OutputTexture[dtid.xy] = float4(0.2f, 0.2f, 0.2f, 1.0f) * UVTextureGuide.Load(int3(globalUV * 860, 0));
     }
 }

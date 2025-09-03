@@ -2,6 +2,7 @@
 
 #include <Vex/CommandQueueType.h>
 #include <Vex/NonNullPtr.h>
+#include <Vex/UniqueHandle.h>
 
 #include <RHI/RHICommandPool.h>
 
@@ -17,7 +18,7 @@ public:
     VkCommandPool(NonNullPtr<VkGPUContext> ctx,
                   const std::array<VkCommandQueue, CommandQueueTypes::Count>& commandQueues);
 
-    virtual RHICommandList* CreateCommandList(CommandQueueType queueType) override;
+    virtual NonNullPtr<RHICommandList> CreateCommandList(CommandQueueType queueType) override;
     virtual void ReclaimCommandListMemory(CommandQueueType queueType) override;
     virtual void ReclaimAllCommandListMemory() override;
 

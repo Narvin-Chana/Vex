@@ -39,14 +39,24 @@ ResourceMappedMemory::~ResourceMappedMemory()
 
 void ResourceMappedMemory::SetData(std::span<const u8> inData)
 {
-    VEX_ASSERT(mappedData.size() >= inData.size());
-    // This function is defined in <utility> which is more lightweight than <ranges>/<algorithm>.
-    std::ranges::copy(inData, mappedData.begin());
+    SetData(inData, 0);
 }
 
 void ResourceMappedMemory::SetData(std::span<u8> inData)
 {
-    SetData(std::span<const u8>{ inData.begin(), inData.end() });
+    SetData(std::span<const u8>{ inData.begin(), inData.end() }, 0);
+}
+
+void ResourceMappedMemory::SetData(std::span<const u8> inData, u32 offset)
+{
+    VEX_ASSERT(mappedData.size() - offset >= inData.size());
+    // This function is defined in <utility> which is more lightweight than <ranges>/<algorithm>.
+    std::copy(inData.begin(), inData.end(), mappedData.begin() + offset);
+}
+
+void ResourceMappedMemory::SetData(std::span<u8> inData, u32 offset)
+{
+    SetData(std::span<const u8>{ inData.begin(), inData.end() }, offset);
 }
 
 } // namespace vex

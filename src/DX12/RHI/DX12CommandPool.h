@@ -19,7 +19,7 @@ class DX12CommandPool final : public RHICommandPoolBase
 {
 public:
     DX12CommandPool(const ComPtr<DX12Device>& device);
-    virtual RHICommandList* CreateCommandList(CommandQueueType queueType) override;
+    virtual NonNullPtr<RHICommandList> CreateCommandList(CommandQueueType queueType) override;
     virtual void ReclaimCommandListMemory(CommandQueueType queueType) override;
     virtual void ReclaimAllCommandListMemory() override;
 

@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Vex.h>
-
 #include <ExampleApplication.h>
+
+#include <Vex.h>
 
 class GLFWwindow;
 
@@ -18,6 +18,7 @@ protected:
 private:
     vex::Texture workingTexture;
     vex::Texture finalOutputTexture;
+    vex::Texture uvGuideTexture;
 
     vex::Buffer colorBuffer;
     vex::Buffer commBuffer;

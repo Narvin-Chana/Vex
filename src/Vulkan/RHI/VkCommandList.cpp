@@ -1,6 +1,7 @@
 ﻿#include "VkCommandList.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include <Vex/Bindings.h>
 #include <Vex/DrawHelpers.h>
@@ -13,6 +14,9 @@
 #include <Vulkan/RHI/VkResourceLayout.h>
 #include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkErrorHandler.h>
+
+#include "Vulkan/VkFormats.h"
+#include "Vulkan/VkGPUContext.h"
 
 namespace vex::vk
 {
@@ -140,6 +144,7 @@ void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIReso
         break;
     default:
         VEX_ASSERT(false, "Operation not supported on this queue type");
+        break;
     }
 }
 
@@ -228,8 +233,10 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
 static ::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITextureState::Flags flags)
 {
     using namespace ::vk;
-    ImageLayout prevLayout = texture.GetLayout();
-    ImageLayout nextLayout = TextureUtil::TextureStateFlagToImageLayout(flags);
+    const ImageLayout prevLayout = texture.GetLayout();
+    const ImageLayout nextLayout = TextureUtil::TextureStateFlagToImageLayout(flags);
+
+    const auto desc = texture.GetDescription();
 
     ImageMemoryBarrier2 barrier{
         .oldLayout = prevLayout,
@@ -237,13 +244,13 @@ static ::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITex
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .image = texture.GetResource(),
-        .subresourceRange = {
-            .aspectMask = ImageAspectFlagBits::eColor, // TODO(https://trello.com/c/whUAeix0): Support depth/stencil (will probably be fixed in merge w/ Vk graphics pipeline).
-            .baseMipLevel = 0,
-            .levelCount = 1,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
+        .subresourceRange = { .aspectMask = FormatIsDepthStencilCompatible(desc.format)
+                                                ? ImageAspectFlagBits::eDepth | ImageAspectFlagBits::eStencil
+                                                : ImageAspectFlagBits::eColor,
+                              .baseMipLevel = 0,
+                              .levelCount = desc.mips,
+                              .baseArrayLayer = 0,
+                              .layerCount = desc.GetArrayCount() },
     };
 
     const bool isBackbufferImage = texture.IsBackBufferTexture();
@@ -585,43 +592,39 @@ void VkCommandList::TraceRays(const std::array<u32, 3>& widthHeightDepth,
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-void VkCommandList::Copy(RHITexture& src, RHITexture& dst)
+void VkCommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDescription> regionMappings)
 {
-    // We assume a copy from 0,0 in the source to 0,0 in the dest with extent the size of the source
-    auto& srcDesc = src.GetDescription();
-    auto& dstDesc = dst.GetDescription();
+    // TODO: Validate that the region mappings are correct and make sense
 
-    VEX_ASSERT(srcDesc.depthOrArraySize <= dstDesc.depthOrArraySize);
-    VEX_ASSERT(srcDesc.mips <= dstDesc.mips);
-    VEX_ASSERT(srcDesc.width <= dstDesc.width);
-    VEX_ASSERT(srcDesc.height <= dstDesc.height);
-    VEX_ASSERT(srcDesc.type == dstDesc.type);
+    const auto& srcDesc = src.description;
+    const auto& dstDesc = dst.description;
 
     std::vector<::vk::ImageCopy> copyRegions{};
 
-    u32 width = srcDesc.width;
-    u32 height = srcDesc.height;
-    copyRegions.reserve(srcDesc.mips);
-    for (u32 i = 0; i < srcDesc.mips; ++i)
+    static constexpr ::vk::ImageAspectFlags depthStencilAspectMask =
+        ::vk::ImageAspectFlagBits::eDepth | ::vk::ImageAspectFlagBits::eStencil;
+    static constexpr ::vk::ImageAspectFlags colorAspectMask = ::vk::ImageAspectFlagBits::eColor;
+
+    const ::vk::ImageAspectFlags srcAspectMask =
+        FormatIsDepthStencilCompatible(srcDesc.format) ? depthStencilAspectMask : colorAspectMask;
+    const ::vk::ImageAspectFlags dstAspectMask =
+        FormatIsDepthStencilCompatible(dstDesc.format) ? depthStencilAspectMask : colorAspectMask;
+
+    copyRegions.reserve(regionMappings.size());
+    for (const auto& [srcRegion, dstRegion, extent] : regionMappings)
     {
-        ::vk::ImageSubresourceLayers subresource{ .aspectMask = ::vk::ImageAspectFlagBits::eColor,
-                                                  .mipLevel = i,
-                                                  .baseArrayLayer = 0,
-                                                  .layerCount = srcDesc.type == TextureType::Texture3D
-                                                                    ? srcDesc.depthOrArraySize
-                                                                    : 1 };
-
-        copyRegions.emplace_back(::vk::ImageCopy{
-            .srcSubresource = subresource,
-            .srcOffset = {},
-            .dstSubresource = subresource,
-            .dstOffset = {},
-            .extent = ::vk::Extent3D{ width,
-                                      height,
-                                      srcDesc.type != TextureType::Texture3D ? srcDesc.depthOrArraySize : 1 } });
-
-        width /= 2;
-        height /= 2;
+        copyRegions.push_back(::vk::ImageCopy{
+            .srcSubresource = { .aspectMask = srcAspectMask,
+                                .mipLevel = srcRegion.mip,
+                                .baseArrayLayer = srcRegion.startSlice,
+                                .layerCount = srcRegion.sliceCount },
+            .srcOffset = ::vk::Offset3D(srcRegion.offset.width, srcRegion.offset.height, srcRegion.offset.depth),
+            .dstSubresource = { .aspectMask = dstAspectMask,
+                                .mipLevel = dstRegion.mip,
+                                .baseArrayLayer = dstRegion.startSlice,
+                                .layerCount = dstRegion.sliceCount },
+            .dstOffset = ::vk::Offset3D(dstRegion.offset.width, dstRegion.offset.height, dstRegion.offset.depth),
+            .extent = ::vk::Extent3D{ extent.width, extent.height, extent.depth } });
     }
 
     commandBuffer->copyImage(src.GetResource(),
@@ -632,15 +635,47 @@ void VkCommandList::Copy(RHITexture& src, RHITexture& dst)
                              copyRegions.data());
 }
 
-void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst)
+void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& regionMappings)
 {
-    const ::vk::BufferCopy copy{ .srcOffset = 0, .dstOffset = 0, .size = src.GetDescription().byteSize };
+    const ::vk::BufferCopy copy{ .srcOffset = regionMappings.srcOffset,
+                                 .dstOffset = regionMappings.dstOffset,
+                                 .size = regionMappings.size };
     commandBuffer->copyBuffer(src.GetNativeBuffer(), dst.GetNativeBuffer(), 1, &copy);
 }
 
-void VkCommandList::Copy(RHIBuffer& src, RHITexture& dst)
+void VkCommandList::Copy(RHIBuffer& src,
+                         RHITexture& dst,
+                         std::span<const BufferToTextureCopyDescription> regionMappings)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    const ::vk::ImageAspectFlags dstAspectMask =
+        FormatIsDepthStencilCompatible(dst.description.format)
+            ? ::vk::ImageAspectFlagBits::eDepth | ::vk::ImageAspectFlagBits::eStencil
+            : ::vk::ImageAspectFlagBits::eColor;
+
+    std::vector<::vk::BufferImageCopy> regions;
+
+    for (const auto& [srcRegion, dstRegion, extent] : regionMappings)
+    {
+        regions.push_back(::vk::BufferImageCopy{
+            .bufferOffset = srcRegion.offset,
+            .bufferRowLength = 0,   // 0 means tightly packed according to imageExtent
+            .bufferImageHeight = 0, // 0 means tightly packed according to imageExtent
+            .imageSubresource =
+                ::vk::ImageSubresourceLayers{
+                    .aspectMask = dstAspectMask,
+                    .mipLevel = dstRegion.mip,
+                    .baseArrayLayer = dstRegion.startSlice,
+                    .layerCount = dstRegion.sliceCount,
+                },
+            .imageOffset = ::vk::Offset3D(dstRegion.offset.width, dstRegion.offset.height, dstRegion.offset.depth),
+            .imageExtent = { extent.width, extent.height, extent.depth } });
+    }
+
+    commandBuffer->copyBufferToImage(src.GetNativeBuffer(),
+                                     dst.GetResource(),
+                                     dst.GetLayout(),
+                                     static_cast<u32>(regions.size()),
+                                     regions.data());
 }
 
 CommandQueueType VkCommandList::GetType() const

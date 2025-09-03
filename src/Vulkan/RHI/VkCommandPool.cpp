@@ -10,7 +10,7 @@
 namespace vex::vk
 {
 
-RHICommandList* VkCommandPool::CreateCommandList(CommandQueueType queueType)
+NonNullPtr<RHICommandList> VkCommandPool::CreateCommandList(CommandQueueType queueType)
 {
     ::vk::UniqueCommandPool& commandPool = commandPoolPerQueueType[std::to_underlying(queueType)];
 
@@ -28,7 +28,7 @@ RHICommandList* VkCommandPool::CreateCommandList(CommandQueueType queueType)
 
     VEX_LOG(Verbose, "Created a command list for \"{}\" type", magic_enum::enum_name(queueType));
 
-    return cmdListPtr;
+    return NonNullPtr{ cmdListPtr };
 }
 
 void VkCommandPool::ReclaimCommandListMemory(CommandQueueType queueType)

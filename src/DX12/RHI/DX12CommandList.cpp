@@ -463,12 +463,22 @@ void DX12CommandList::Copy(RHITexture& src, RHITexture& dst)
     commandList->CopyResource(dst.GetRawTexture(), src.GetRawTexture());
 }
 
-void DX12CommandList::Copy(RHIBuffer& src, RHIBuffer& dst)
+void DX12CommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDescription> regionMappings)
 {
-    commandList->CopyBufferRegion(dst.GetRawBuffer(), 0, src.GetRawBuffer(), 0, src.GetDescription().byteSize);
+    VEX_NOT_YET_IMPLEMENTED();
 }
 
-void DX12CommandList::Copy(RHIBuffer& src, RHITexture& dst)
+void DX12CommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& regionMappings)
+{
+    commandList->CopyBufferRegion(dst.GetRawBuffer(),
+                                  regionMappings.dstOffset,
+                                  src.GetRawBuffer(),
+                                  regionMappings.srcOffset,
+                                  regionMappings.size);
+}
+void DX12CommandList::Copy(RHIBuffer& src,
+                           RHITexture& dst,
+                           std::span<const BufferToTextureCopyDescription> regionMappings)
 {
     VEX_NOT_YET_IMPLEMENTED();
 }

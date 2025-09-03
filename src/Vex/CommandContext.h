@@ -8,6 +8,7 @@
 #include <Vex/Types.h>
 
 #include <RHI/RHIBuffer.h>
+#include <RHI/RHICommandList.h>
 #include <RHI/RHIPipelineState.h>
 #include <RHI/RHITexture.h>
 
@@ -28,7 +29,7 @@ struct RayTracingPassDescription;
 class CommandContext
 {
 public:
-    CommandContext(GfxBackend* backend, RHICommandList* cmdList);
+    CommandContext(GfxBackend* backend, NonNullPtr<RHICommandList> cmdList);
     ~CommandContext();
 
     CommandContext(const CommandContext& other) = delete;
@@ -72,20 +73,46 @@ public:
 
     // Copies the entirety of source texture (all mips and array levels) to the destination texture
     void Copy(const Texture& source, const Texture& destination);
+    // Copies a region of source texture to destination texture
+    void Copy(const Texture& source, const Texture& destination, const TextureCopyDescription& regionMapping);
+    // Copies multiple regions of source texture to destination texture
+    void Copy(const Texture& source,
+              const Texture& destination,
+              std::span<const TextureCopyDescription> regionMappings);
     // Copies the entirety of source buffer to the destination buffer
     void Copy(const Buffer& source, const Buffer& destination);
+    // Copies the specified region from source to destination buffer
+    void Copy(const Buffer& source, const Buffer& destination, const BufferCopyDescription& regionMappings);
     // Copies the contents of a buffer to the specified texture according to API needs
     void Copy(const Buffer& source, const Texture& destination);
+    // Copies the contents of the buffer to a specified region in the texture
+    void Copy(const Buffer& source, const Texture& destination, const BufferToTextureCopyDescription& regionMapping);
+    // Copies the contents of the buffer to multiple specified regions in the texture
+    void Copy(const Buffer& source,
+              const Texture& destination,
+              std::span<const BufferToTextureCopyDescription> regionMappings);
 
     // Enqueues data to be uploaded to the specific buffer. If the buffer is mappable it will map it and directly write
     // data to it. If the buffer isn't mappable a staging buffer is used implicitly
     void EnqueueDataUpload(const Buffer& buffer, std::span<const u8> data);
+    // Enqueues data to be uploaded to specific region of destination buffer using a staging buffer when necessary
+    void EnqueueDataUpload(const Buffer& buffer, std::span<const u8> data, const BufferSubresource& subresource);
 
     // Enqueues data to be uploaded to the specific texture with the use of a staging buffer.
-    void EnqueueDataUpload(const Texture& buffer, std::span<const u8> data);
+    void EnqueueDataUpload(const Texture& texture, std::span<const u8> data);
+    // Enqueues data to be uploaded to a specific region of the texture
+    void EnqueueDataUpload(const Texture& texture,
+                           std::span<const u8> data,
+                           const TextureSubresource& subresource,
+                           const TextureExtent& extent);
 
     template <class T>
     void EnqueueDataUpload(const Texture& texture, const T& data);
+    template <class T>
+    void EnqueueDataUpload(const Texture& texture,
+                           const T& data,
+                           const TextureSubresource& subresource,
+                           const TextureExtent& extent);
     template <class T>
     void EnqueueDataUpload(const Buffer& buffer, const T& data);
 
@@ -126,7 +153,7 @@ private:
     void SetIndexBuffer(std::optional<BufferBinding> indexBuffer);
 
     GfxBackend* backend;
-    RHICommandList* cmdList;
+    NonNullPtr<RHICommandList> cmdList;
 
     // Used to avoid resetting the same state multiple times which can be costly on certain hardware.
     // In general draws and dispatches are recommended to be grouped by PSO, so this caching can be very efficient
@@ -143,9 +170,20 @@ void CommandContext::EnqueueDataUpload(const Texture& texture, const T& data)
 }
 
 template <class T>
+void CommandContext::EnqueueDataUpload(const Texture& texture,
+                                       const T& data,
+                                       const TextureSubresource& subresource,
+                                       const TextureExtent& extent)
+{
+    EnqueueDataUpload(texture, std::span{ reinterpret_cast<const u8*>(&data), sizeof(T) }, subresource, extent);
+}
+
+template <class T>
 void CommandContext::EnqueueDataUpload(const Buffer& buffer, const T& data)
 {
-    EnqueueDataUpload(buffer, std::span{ reinterpret_cast<const u8*>(&data), sizeof(T) });
+    EnqueueDataUpload(buffer,
+                      std::span{ reinterpret_cast<const u8*>(&data), sizeof(T) },
+                      BufferSubresource{ 0, sizeof(T) });
 }
 
 } // namespace vex

@@ -2,6 +2,9 @@
 
 #include <GLFWIncludes.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 HelloTriangleApplication::HelloTriangleApplication()
     : ExampleApplication("HelloTriangleApplication")
 {
@@ -54,6 +57,52 @@ HelloTriangleApplication::HelloTriangleApplication()
                                           .usage = vex::BufferUsage::ReadWriteBuffer | vex::BufferUsage::GenericBuffer,
                                           .memoryLocality = vex::ResourceMemoryLocality::GPUOnly },
                                         vex::ResourceLifetime::Static);
+
+    graphics->StartFrame();
+
+    auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
+
+    const std::filesystem::path uvImagePath =
+        std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() / "examples" /
+        "uv-guide.png";
+    int width, height, channels;
+    void* imageData = stbi_load(uvImagePath.string().c_str(), &width, &height, &channels, 4);
+
+    std::vector<vex::u8> fullImageData;
+    fullImageData.reserve((width * height + (width / 2) * (height / 2)) * channels);
+    std::copy_n(static_cast<vex::u8*>(imageData), width * height * channels, std::back_inserter(fullImageData));
+
+    // Checker board pattern for mip 2
+    for (int x = 0; x < width / 2; ++x)
+    {
+        for (int y = 0; y < height / 2; ++y)
+        {
+            bool evenX = (x / 20) % 2 == 0;
+            bool evenY = (y / 20) % 2 == 0;
+
+            fullImageData.push_back(evenX ^ evenY ? 0 : 0xFF);
+            fullImageData.push_back(0x00);
+            fullImageData.push_back(0x00);
+            fullImageData.push_back(0xFF);
+        }
+    }
+
+    uvGuideTexture =
+        graphics->CreateTexture({ .name = "UV Guide",
+                                  .type = vex::TextureType::Texture2D,
+                                  .width = static_cast<vex::u32>(width),
+                                  .height = static_cast<vex::u32>(height),
+                                  .depthOrArraySize = 1,
+                                  .mips = 2,
+                                  .format = vex::TextureFormat::RGBA8_UNORM,
+                                  .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
+                                vex::ResourceLifetime::Static);
+
+    ctx.EnqueueDataUpload(uvGuideTexture, std::span<const vex::u8>{ fullImageData });
+
+    stbi_image_free(imageData);
+
+    graphics->EndFrame(windowMode == Fullscreen);
 }
 
 void HelloTriangleApplication::Run()
@@ -74,7 +123,7 @@ void HelloTriangleApplication::Run()
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
 
             // Create the bindings and obtain the bindless handles we need for our compute passes.
-            std::array<vex::ResourceBinding, 3> pass1Bindings{
+            std::array<vex::ResourceBinding, 4> pass1Bindings{
                 vex::BufferBinding{
                     .buffer = colorBuffer,
                     .usage = vex::BufferBindingUsage::ConstantBuffer,
@@ -88,10 +137,11 @@ void HelloTriangleApplication::Run()
                     .texture = workingTexture,
                     .usage = vex::TextureBindingUsage::ShaderReadWrite,
                 },
+                vex::TextureBinding{ .texture = uvGuideTexture, .usage = vex::TextureBindingUsage::ShaderRead },
             };
             std::vector<vex::BindlessHandle> pass1Handles = ctx.GetBindlessHandles(pass1Bindings);
 
-            std::array<vex::ResourceBinding, 3> pass2Bindings{
+            std::array<vex::ResourceBinding, 4> pass2Bindings{
                 vex::TextureBinding{
                     .texture = finalOutputTexture,
                     .usage = vex::TextureBindingUsage::ShaderReadWrite,
@@ -105,6 +155,7 @@ void HelloTriangleApplication::Run()
                     .texture = workingTexture,
                     .usage = vex::TextureBindingUsage::ShaderRead,
                 },
+                vex::TextureBinding{ .texture = uvGuideTexture, .usage = vex::TextureBindingUsage::ShaderRead },
             };
             std::vector<vex::BindlessHandle> pass2Handles = ctx.GetBindlessHandles(pass2Bindings);
 
