@@ -1,5 +1,7 @@
 ﻿#include "Texture.h"
 
+#include <cmath>
+
 #include <Vex/Bindings.h>
 #include <Vex/Logger.h>
 #include <Vex/Validation.h>
