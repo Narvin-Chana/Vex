@@ -1,6 +1,7 @@
 #include "CommandContext.h"
 
 #include <algorithm>
+#include <cmath>
 #include <variant>
 
 #include <Vex/Containers/Utils.h>
