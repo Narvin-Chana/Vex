@@ -74,4 +74,16 @@ bool FormatIsDepthStencilCompatible(TextureFormat format)
     }
 }
 
+bool DoesFormatSupportStencil(TextureFormat format)
+{
+    switch (format)
+    {
+    case TextureFormat::D24_UNORM_S8_UINT:
+    case TextureFormat::D32_FLOAT_S8_UINT:
+        return true;
+    default:
+        return false;
+    }
+}
+
 } // namespace vex

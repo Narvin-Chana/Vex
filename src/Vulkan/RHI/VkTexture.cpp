@@ -38,6 +38,24 @@ static ::vk::ImageViewType TextureTypeToVulkan(TextureViewType type)
     }
     std::unreachable();
 }
+
+static ::vk::ImageAspectFlags GetDepthAspectFlags(TextureFormat format)
+{
+    ::vk::ImageAspectFlags aspectFlags{};
+    using enum TextureFormat;
+    switch (format)
+    {
+    case D24_UNORM_S8_UINT:
+    case D32_FLOAT_S8_UINT:
+        aspectFlags |= ::vk::ImageAspectFlagBits::eStencil;
+    case D16_UNORM:
+    case D32_FLOAT:
+        aspectFlags |= ::vk::ImageAspectFlagBits::eDepth;
+    default:
+        break;
+    }
+    return aspectFlags;
+}
 //
 // ::vk::Sampler GetOrCreateAnisotropicSamplers(NonNullPtr<VkGPUContext> ctx)
 // {
@@ -203,7 +221,9 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
                                                 .viewType = TextureTypeToVulkan(view.viewType),
                                                 .format = TextureFormatToVulkan(view.format),
                                                 .subresourceRange = {
-                                                    .aspectMask = ::vk::ImageAspectFlagBits::eColor,
+                                                    .aspectMask = usage == TextureUsage::DepthStencil
+                                                                      ? GetDepthAspectFlags(view.format)
+                                                                      : ::vk::ImageAspectFlagBits::eColor,
                                                     .baseMipLevel = view.mipBias,
                                                     .levelCount = view.mipCount,
                                                     .baseArrayLayer = view.startSlice,
@@ -212,7 +232,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
 
     ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx->device.createImageViewUnique(viewCreate);
 
-    ::vk::ImageView ret = *imageView;
+    const ::vk::ImageView ret = *imageView;
     viewCache[view] = std::move(imageView);
     return ret;
 }
@@ -221,7 +241,7 @@ RHITextureState VkTexture::GetClearTextureState()
 {
     if (description.usage & TextureUsage::DepthStencil)
     {
-        return RHITextureState::DepthWrite;
+        return RHITextureState::CopyDest;
     }
 
     return RHITextureState::ShaderReadWrite;

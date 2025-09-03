@@ -39,14 +39,14 @@ TextureViewType GetTextureViewType(const TextureBinding& binding)
 
 TextureFormat GetTextureFormat(const TextureBinding& binding)
 {
-    if (!IsFormatSRGB(binding.texture.description.format) &&
-        !FormatHasSRGBEquivalent(binding.texture.description.format))
-    {
-        return TextureFormat::UNKNOWN;
-    }
-
     if (binding.flags & TextureBindingFlags::SRGB)
     {
+        if (!IsFormatSRGB(binding.texture.description.format) ||
+            !FormatHasSRGBEquivalent(binding.texture.description.format))
+        {
+            return TextureFormat::UNKNOWN;
+        }
+
         return GetSRGBEquivalentFormat(binding.texture.description.format);
     }
 

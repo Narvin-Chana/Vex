@@ -89,6 +89,8 @@ bool FormatHasSRGBEquivalent(TextureFormat format);
 
 bool FormatIsDepthStencilCompatible(TextureFormat format);
 
+bool DoesFormatSupportStencil(TextureFormat format);
+
 } // namespace vex
 
 // clang-format off

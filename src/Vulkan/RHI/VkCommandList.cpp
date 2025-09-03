@@ -233,15 +233,27 @@ static ::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITex
 
     const auto desc = texture.GetDescription();
 
+    ImageAspectFlags aspectMask{};
+    if (FormatIsDepthStencilCompatible(desc.format))
+    {
+        aspectMask |= ImageAspectFlagBits::eDepth;
+        if (DoesFormatSupportStencil(desc.format))
+        {
+            aspectMask |= ImageAspectFlagBits::eStencil;
+        }
+    }
+    else
+    {
+        aspectMask = ImageAspectFlagBits::eColor;
+    }
+
     ImageMemoryBarrier2 barrier{
         .oldLayout = prevLayout,
         .newLayout = nextLayout,
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .image = texture.GetResource(),
-        .subresourceRange = { .aspectMask = FormatIsDepthStencilCompatible(desc.format)
-                                                ? ImageAspectFlagBits::eDepth | ImageAspectFlagBits::eStencil
-                                                : ImageAspectFlagBits::eColor,
+        .subresourceRange = { .aspectMask = aspectMask,
                               .baseMipLevel = 0,
                               .levelCount = desc.mips,
                               .baseArrayLayer = 0,
@@ -496,7 +508,10 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
         .colorAttachmentCount = static_cast<uint32_t>(colorAttachmentsInfo.size()),
         .pColorAttachments = colorAttachmentsInfo.data(),
         .pDepthAttachment = depthInfo ? &*depthInfo : nullptr,
-        .pStencilAttachment = depthInfo ? &*depthInfo : nullptr,
+        .pStencilAttachment =
+            depthInfo && DoesFormatSupportStencil(resources.depthStencil->texture->GetDescription().format)
+                ? &*depthInfo
+                : nullptr,
     };
 
     commandBuffer->beginRendering(info);
@@ -546,8 +561,10 @@ void VkCommandList::DrawIndexed(
 
 void VkCommandList::SetVertexBuffers(u32 startSlot, std::span<RHIBufferBinding> vertexBuffers)
 {
-    std::vector<::vk::Buffer> vkBuffers(vertexBuffers.size());
-    std::vector<::vk::DeviceSize> vkOffsets(vkBuffers.size());
+    std::vector<::vk::Buffer> vkBuffers;
+    vkBuffers.reserve(vertexBuffers.size());
+    std::vector<::vk::DeviceSize> vkOffsets;
+    vkOffsets.reserve(vkBuffers.size());
     for (auto& [binding, buffer] : vertexBuffers)
     {
         vkBuffers.emplace_back(buffer->GetNativeBuffer());

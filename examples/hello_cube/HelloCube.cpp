@@ -2,9 +2,13 @@
 
 #include <GLFWIncludes.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <third_party/stb_image.h>
+
 struct Vertex
 {
     float position[3];
+    float uv[2];
 };
 
 static constexpr vex::u32 VertexCount = 8;
@@ -66,15 +70,15 @@ HelloCubeApplication::HelloCubeApplication()
         // Cube vertices (8 vertices for a cube)
         std::array<Vertex, VertexCount> cubeVertices{
             // Front face
-            Vertex{ -0.5f, -0.5f, 0.5f }, // 0: bottom-left
-            Vertex{  0.5f, -0.5f, 0.5f }, // 1: bottom-right
-            Vertex{  0.5f,  0.5f, 0.5f }, // 2: top-right
-            Vertex{ -0.5f,  0.5f, 0.5f }, // 3: top-left
+            Vertex{ -0.5f, -0.5f, 0.5f, 0, 0 }, // 0: bottom-left
+            Vertex{  0.5f, -0.5f, 0.5f, 1, 0 }, // 1: bottom-right
+            Vertex{  0.5f,  0.5f, 0.5f, 1, 1 }, // 2: top-right
+            Vertex{ -0.5f,  0.5f, 0.5f, 0, 1 }, // 3: top-left
             // Back face
-            Vertex{ -0.5f, -0.5f, -0.5f }, // 4: bottom-left
-            Vertex{  0.5f, -0.5f, -0.5f }, // 5: bottom-right
-            Vertex{  0.5f,  0.5f, -0.5f }, // 6: top-right
-            Vertex{ -0.5f,  0.5f, -0.5f }, // 7: top-left
+            Vertex{ -0.5f, -0.5f, -0.5f, 1, 0 }, // 4: bottom-left
+            Vertex{  0.5f, -0.5f, -0.5f, 0, 0 }, // 5: bottom-right
+            Vertex{  0.5f,  0.5f, -0.5f, 0, 1 }, // 6: top-right
+            Vertex{ -0.5f,  0.5f, -0.5f, 1, 1 }, // 7: top-left
         };
     
         // Cube indices (36 indices for 12 triangles, 2 triangles per face)
@@ -97,6 +101,46 @@ HelloCubeApplication::HelloCubeApplication()
 
         ctx.EnqueueDataUpload(vertexBuffer, cubeVertices);
         ctx.EnqueueDataUpload(indexBuffer, cubeIndices);
+
+        const std::filesystem::path uvImagePath =
+            std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() / "examples" /
+            "uv-guide.png";
+        int width, height, channels;
+        void* imageData = stbi_load(uvImagePath.string().c_str(), &width, &height, &channels, 4);
+
+        std::vector<vex::u8> fullImageData;
+        fullImageData.reserve((width * height + (width / 2) * (height / 2)) * channels);
+        std::copy_n(static_cast<vex::u8*>(imageData), width * height * channels, std::back_inserter(fullImageData));
+
+        // Checker board pattern for mip 2
+        for (int x = 0; x < width / 2; ++x)
+        {
+            for (int y = 0; y < height / 2; ++y)
+            {
+                bool evenX = (x / 20) % 2 == 0;
+                bool evenY = (y / 20) % 2 == 0;
+
+                fullImageData.push_back(evenX ^ evenY ? 0 : 0xFF);
+                fullImageData.push_back(0x00);
+                fullImageData.push_back(0x00);
+                fullImageData.push_back(0xFF);
+            }
+        }
+
+        uvGuideTexture =
+            graphics->CreateTexture({ .name = "UV Guide",
+                                      .type = vex::TextureType::Texture2D,
+                                      .width = static_cast<vex::u32>(width),
+                                      .height = static_cast<vex::u32>(height),
+                                      .depthOrArraySize = 1,
+                                      .mips = 2,
+                                      .format = vex::TextureFormat::RGBA8_UNORM,
+                                      .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
+                                    vex::ResourceLifetime::Static);
+
+        ctx.EnqueueDataUpload(uvGuideTexture, std::span<const vex::u8>{ fullImageData });
+
+        stbi_image_free(imageData);
     }
 }
 
@@ -129,24 +173,36 @@ void HelloCubeApplication::Run()
             ctx.ClearTexture({ .texture = depthTexture });
 
             vex::VertexInputLayout vertexLayout{
-                .attributes = { {
-                    .semanticName = "POSITION",
-                    .semanticIndex = 0,
-                    .binding = 0,
-                    .format = vex::TextureFormat::RGB32_FLOAT,
-                    .offset = 0,
-                } },
-                .bindings = { {
-                    .binding = 0,
-                    .strideByteSize = static_cast<vex::u32>(sizeof(Vertex)),
-                    .inputRate = vex::VertexInputLayout::InputRate::PerVertex,
-                } },
+                .attributes = {
+                    {
+                        .semanticName = "POSITION",
+                        .semanticIndex = 0,
+                        .binding = 0,
+                        .format = vex::TextureFormat::RGB32_FLOAT,
+                        .offset = 0,
+                    },
+                    {
+                        .semanticName = "TEXCOORD",
+                        .semanticIndex = 1,
+                        .binding = 0,
+                        .format = vex::TextureFormat::RG32_FLOAT,
+                        .offset = sizeof(float) * 3,
+                    }
+                },
+                .bindings = {
+                    {
+                        .binding = 0,
+                        .strideByteSize = static_cast<vex::u32>(sizeof(Vertex)),
+                        .inputRate = vex::VertexInputLayout::InputRate::PerVertex,
+                    },
+                },
             };
 
             vex::DepthStencilState depthStencilState{
                 .depthTestEnabled = true,
                 .depthWriteEnabled = true,
                 .depthCompareOp = vex::CompareOp::GreaterEqual,
+                .depthStencilFormat = depthTexture.description.format,
             };
 
             // Setup our draw call's description...
@@ -191,6 +247,15 @@ void HelloCubeApplication::Run()
                 .texture = graphics->GetCurrentPresentTexture(),
             } };
 
+            vex::BindlessHandle uvGuideHandle = ctx.GetBindlessHandle(
+                vex::TextureBinding{ .texture = uvGuideTexture, .usage = vex::TextureBindingUsage::ShaderRead });
+
+            struct UniformData
+            {
+                float currentTime;
+                vex::BindlessHandle uvGuideHandle;
+            };
+
             ctx.DrawIndexed(hlslDrawDesc,
                             {
                                 .renderTargets = renderTargets,
@@ -198,7 +263,7 @@ void HelloCubeApplication::Run()
                                 .vertexBuffers = { &vertexBufferBinding, 1 },
                                 .indexBuffer = indexBufferBinding,
                             },
-                            vex::ConstantBinding(static_cast<float>(currentTime)),
+                            vex::ConstantBinding(UniformData{ static_cast<float>(currentTime), uvGuideHandle }),
                             IndexCount);
 #if VEX_SLANG
             ctx.DrawIndexed(slangDrawDesc,
@@ -208,7 +273,7 @@ void HelloCubeApplication::Run()
                                 .vertexBuffers = { &vertexBufferBinding, 1 },
                                 .indexBuffer = indexBufferBinding,
                             },
-                            vex::ConstantBinding(static_cast<float>(currentTime)),
+                            vex::ConstantBinding(UniformData{ static_cast<float>(currentTime), uvGuideHandle }),
                             IndexCount);
 #endif
         }
