@@ -159,6 +159,7 @@ struct DepthStencilState
     StencilOpState back;
     float minDepthBounds = 0; // Vulkan only
     float maxDepthBounds = 0; // Vulkan only
+    TextureFormat depthStencilFormat = TextureFormat::UNKNOWN;
 
     bool operator==(const DepthStencilState& other) const = default;
 };

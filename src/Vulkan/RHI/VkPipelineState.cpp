@@ -162,10 +162,14 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
     // Requires including the heavy <algorithm>
     std::ranges::transform(key.renderTargetState.colorFormats, attachmentFormats.begin(), TextureFormatToVulkan);
 
-    // TODO(https://trello.com/c/2KeJ2cXy): Add depthAttachmentFormat and stencilAttachmentFormat support.
     const ::vk::PipelineRenderingCreateInfoKHR pipelineRenderingCI{
         .colorAttachmentCount = static_cast<u32>(attachmentFormats.size()),
         .pColorAttachmentFormats = attachmentFormats.data(),
+        .depthAttachmentFormat = TextureFormatToVulkan(key.depthStencilState.depthStencilFormat),
+        .stencilAttachmentFormat =
+            TextureFormatToVulkan(DoesFormatSupportStencil(key.depthStencilState.depthStencilFormat)
+                                      ? key.depthStencilState.depthStencilFormat
+                                      : TextureFormat::UNKNOWN)
     };
 
     ::vk::PipelineViewportStateCreateInfo viewportStateCI{
