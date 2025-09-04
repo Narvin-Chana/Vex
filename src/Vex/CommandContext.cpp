@@ -350,6 +350,7 @@ void CommandContext::Copy(const Buffer& source, const Texture& destination)
     cmdList->Transition(destinationRHI, RHITextureState::CopyDest);
     cmdList->Copy(sourceRHI, destinationRHI);
 }
+
 void CommandContext::Copy(const Buffer& source,
                           const Texture& destination,
                           const BufferToTextureCopyDescription& regionMapping)
@@ -458,8 +459,6 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
                                        const TextureSubresource& subresource,
                                        const TextureExtent& extent)
 {
-    RHITexture& rhiDestTexture = backend->GetRHITexture(texture.handle);
-
     const BufferDescription stagingBufferDesc = CommandContext_Internal::GetStagingBufferDescription(
         texture.description.name,
         std::ceil(extent.width * extent.height * extent.depth *
@@ -473,6 +472,7 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
 
     Buffer stagingBuffer = backend->CreateBuffer(stagingBufferDesc, ResourceLifetime::Static);
     RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
+    RHITexture& rhiDestTexture = backend->GetRHITexture(texture.handle);
 
     ResourceMappedMemory(rhiStagingBuffer).SetData(data);
 
