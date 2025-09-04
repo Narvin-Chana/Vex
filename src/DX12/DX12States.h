@@ -8,7 +8,7 @@
 namespace vex::dx12
 {
 
-D3D12_RESOURCE_STATES RHITextureStateToDX12State(RHITextureState::Flags state);
+D3D12_RESOURCE_STATES RHITextureStateToDX12State(RHITextureState state);
 D3D12_RESOURCE_STATES RHIBufferStateToDX12State(RHIBufferState::Flags state);
 
 } // namespace vex::dx12

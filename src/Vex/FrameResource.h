@@ -22,46 +22,4 @@ enum class FrameBuffering : u8
     Triple = 3
 };
 
-// For resources who exist once per frame buffer count (eg: command pools, constant buffers, structured buffer).
-template <class T>
-    requires std::is_default_constructible_v<T>
-class FrameResource
-{
-public:
-    FrameResource(FrameBuffering frameBuffering)
-        : resource(std::to_underlying(frameBuffering))
-    {
-    }
-    ~FrameResource() = default;
-
-    T& Get(u32 frameIndex)
-    {
-        return resource[frameIndex];
-    }
-
-    const T& Get(u32 frameIndex) const
-    {
-        return resource[frameIndex];
-    }
-
-    void ForEach(std::function<void(T&)> func)
-    {
-        for (auto& el : resource)
-        {
-            func(el);
-        }
-    }
-
-    void ForEach(std::function<void(const T&)> func) const
-    {
-        for (const auto& el : resource)
-        {
-            func(el);
-        }
-    }
-
-private:
-    std::vector<T> resource;
-};
-
 } // namespace vex

@@ -3,7 +3,6 @@
 #include <span>
 #include <vector>
 
-#include <Vex/FrameResource.h>
 #include <Vex/MaybeUninitialized.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/RHIImpl/RHIBuffer.h>

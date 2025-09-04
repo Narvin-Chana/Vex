@@ -9,7 +9,7 @@
 namespace vex
 {
 
-RHITextureState::Type ResourceBindingUtils::TextureBindingUsageToState(TextureUsage::Type usage)
+RHITextureState ResourceBindingUtils::TextureBindingUsageToState(TextureUsage::Type usage)
 {
     switch (usage)
     {
@@ -82,7 +82,7 @@ RHIDrawResources ResourceBindingUtils::CollectRHIDrawResourcesAndTransitions(
     GfxBackend& backend,
     std::span<const TextureBinding> renderTargets,
     std::optional<TextureBinding> depthStencil,
-    std::vector<std::pair<RHITexture&, RHITextureState::Flags>>& transitions)
+    std::vector<std::pair<RHITexture&, RHITextureState>>& transitions)
 {
     RHIDrawResources drawResources;
     drawResources.renderTargets.reserve(renderTargets.size());

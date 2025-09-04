@@ -16,6 +16,7 @@ class VkResourceLayout;
 class VkTexture;
 class VkBuffer;
 class VkRHI;
+class VkFence;
 
 } // namespace vex::vk
 
@@ -37,5 +38,6 @@ using RHIResourceLayout = vk::VkResourceLayout;
 using RHITexture = vk::VkTexture;
 using RHIBuffer = vk::VkBuffer;
 using RHI = vk::VkRHI;
+using RHIFence = vk::VkFence;
 
 } // namespace vex

@@ -25,11 +25,11 @@ GfxBackend::GfxBackend(const BackendDescription& description)
               description.enableGPUDebugLayer,
               description.enableGPUBasedValidation))
     , description(description)
-    , resourceCleanup(static_cast<i8>(description.frameBuffering))
-    , commandPools(description.frameBuffering)
-    , backBuffers(std::to_underlying(description.frameBuffering))
+    , resourceCleanup(rhi)
     , textureRegistry(DefaultRegistrySize)
     , bufferRegistry(DefaultRegistrySize)
+    , presentTextures(std::to_underlying(description.frameBuffering))
+    , presentTokens(std::to_underlying(description.frameBuffering))
 {
     std::string vexTargetName;
     if (VEX_DEBUG)
@@ -66,7 +66,7 @@ GfxBackend::GfxBackend(const BackendDescription& description)
     GPhysicalDevice->DumpPhysicalDeviceInfo();
 #endif
 
-    // Initializes RHI which includes creating logical device and swapchain
+    // Initializes RHI which includes creating logical device and swapchain.
     rhi.Init(GPhysicalDevice);
 
     VEX_LOG(Info,
@@ -74,36 +74,39 @@ GfxBackend::GfxBackend(const BackendDescription& description)
             description.platformWindow.width,
             description.platformWindow.height);
 
-    commandPools.ForEach([&rhi = rhi](UniqueHandle<RHICommandPool>& el) { el = rhi.CreateCommandPool(); });
+    commandPool = rhi.CreateCommandPool();
 
     descriptorPool = rhi.CreateDescriptorPool();
 
     psCache = PipelineStateCache(&rhi, *descriptorPool, &resourceCleanup, description.shaderCompilerSettings);
 
-    swapChain = rhi.CreateSwapChain(
-        {
-            .format = description.swapChainFormat,
-            .frameBuffering = description.frameBuffering,
-            .useVSync = description.useVSync,
-        },
-        description.platformWindow);
-
-    CreateBackBuffers();
-
     allocator = rhi.CreateAllocator();
+
+    if (description.useSwapChain)
+    {
+        swapChain = rhi.CreateSwapChain(
+            {
+                .format = description.swapChainFormat,
+                .frameBuffering = description.frameBuffering,
+                .useVSync = description.useVSync,
+            },
+            description.platformWindow);
+
+        CreatePresentTextures();
+    }
 }
 
 GfxBackend::~GfxBackend()
 {
-    if (isInMiddleOfFrame)
+    if (!deferredSubmissionCommandLists.empty())
     {
         VEX_LOG(Warning,
-                "Destroying Vex GfxBackend in the middle of a frame, this is valid, although not recommended. Make "
-                "sure each StartFrame has a matching EndFrame.");
-        EndFrame(false);
-        isInMiddleOfFrame = false;
+                "Destroying Vex GfxBackend in the middle of a frame, this is valid, although not recommended."
+                "Make sure to not exit before Presenting if you use the Deferred submission policy as otherwise this "
+                "could result in uncompleted work.");
     }
-    // Wait for work to be done before starting the deletion of resources.
+
+    //  Wait for work to be done before starting the deletion of resources.
     FlushGPU();
 
     for (auto& renderExtension : renderExtensions)
@@ -115,73 +118,125 @@ GfxBackend::~GfxBackend()
     GPhysicalDevice = nullptr;
 }
 
-void GfxBackend::StartFrame()
+void GfxBackend::Present(bool isFullscreenMode)
 {
-    backbufferIndex = rhi.AcquireNextFrame(*swapChain, currentFrameIndex);
-
-    // We cannot guarantee that the framebuffer is in the same state it was before.
-    // Therefore we set it to Common to make sure it's transitioned properly next time its used
-    GetRHITexture(GetCurrentBackBuffer().handle).SetCurrentState(RHITextureState::Common);
-
-    // Flush all resources that were queued up for deletion.
-    resourceCleanup.FlushResources(1, *descriptorPool, *allocator);
-
-    // Release the memory occupied by the command lists that are done.
-    GetCurrentCommandPool().ReclaimAllCommandListMemory();
+    if (!description.useSwapChain)
+    {
+        VEX_LOG(Fatal, "Cannot present without using a swapchain!");
+    }
 
     for (auto& renderExtension : renderExtensions)
     {
-        renderExtension->OnFrameStart();
+        renderExtension->OnPrePresent();
     }
 
-    isInMiddleOfFrame = true;
-}
+    // Make sure the (n - FRAME_BUFFERING == n) present has finished before presenting anew.
+    rhi.WaitForTokenOnCPU(presentTokens[currentFrameIndex]);
 
-void GfxBackend::EndFrame(bool isFullscreenMode)
-{
-    for (auto& renderExtension : renderExtensions)
-    {
-        renderExtension->OnFrameEnd();
-    }
+    // Before presenting we have to handle all the queued for submission command lists (and their dependencies).
+    SubmitDeferredWork();
 
-    RHITexture& currentRHIBackBuffer = GetRHITexture(GetCurrentBackBuffer().handle);
-    // Make sure the backbuffer is in Present mode, if not we will have to open a command list just to transition it.
-    if (!(currentRHIBackBuffer.GetCurrentState() & RHITextureState::Present))
-    {
-        // We are forced to use a graphics queue when transitioning to the present state.
-        RHICommandList* cmdList = commandPools.Get(currentFrameIndex)->CreateCommandList(CommandQueueType::Graphics);
-        cmdList->Open();
-        cmdList->Transition(currentRHIBackBuffer, RHITextureState::Present);
-        cmdList->Close();
-        queuedCommandLists.push_back(cmdList);
-    }
+    // Open a new command list that will be used to copy the presentTexture to the backbuffer, and presenting.
+    RHITexture& presentTexture = GetRHITexture(GetCurrentPresentTexture().handle);
+    RHITexture backBuffer = swapChain->AcquireBackBuffer(currentFrameIndex);
 
-    rhi.SubmitAndPresent(queuedCommandLists, *swapChain, currentFrameIndex, isFullscreenMode);
-    queuedCommandLists.clear();
+    // Copy the present texture to the backbuffer.
+    // Must be a graphics queue in order to be able to move the backbuffer to the present state.
+    NonNullPtr<RHICommandList> cmdList = commandPool->GetOrCreateCommandList(CommandQueueType::Graphics);
+    cmdList->Open();
+    cmdList->Transition(presentTexture, RHITextureState::CopySource);
+    cmdList->Transition(backBuffer, RHITextureState::CopyDest);
+    cmdList->Copy(presentTexture, backBuffer);
+    cmdList->Transition(backBuffer, RHITextureState::Present);
+    cmdList->Close();
+    presentTokens[currentFrameIndex] = swapChain->Present(currentFrameIndex, rhi, cmdList, isFullscreenMode);
+    commandPool->OnCommandListsSubmitted({ &cmdList, 1 }, { &presentTokens[currentFrameIndex], 1 });
 
     currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
 
-    // Send all shader errors to the user, only done on frame end, not on GPU flush.
-    psCache.GetShaderCompiler().FlushCompilationErrors();
-
-    ++frameCounter;
-
-    isInMiddleOfFrame = false;
+    CleanupResources();
 }
 
-CommandContext GfxBackend::BeginScopedCommandContext(CommandQueueType queueType)
+CommandContext GfxBackend::BeginScopedCommandContext(CommandQueueType queueType,
+                                                     SubmissionPolicy submissionPolicy,
+                                                     std::span<SyncToken> dependencies)
 {
-    return { this, GetCurrentCommandPool().CreateCommandList(queueType) };
+    return CommandContext{ *this, commandPool->GetOrCreateCommandList(queueType), submissionPolicy, dependencies };
 }
 
-void GfxBackend::EndCommandContext(RHICommandList& cmdList)
+void GfxBackend::SubmitDeferredWork()
+{
+    std::vector dependencies(deferredSubmissionDependencies.begin(), deferredSubmissionDependencies.end());
+    std::vector deferredSubmissionTokens = rhi.Submit(deferredSubmissionCommandLists, dependencies);
+    commandPool->OnCommandListsSubmitted(deferredSubmissionCommandLists, deferredSubmissionTokens);
+
+    for (auto& res : deferredSubmissionResources)
+    {
+        resourceCleanup.CleanupResource(std::move(res));
+    }
+
+    deferredSubmissionCommandLists.clear();
+    deferredSubmissionDependencies.clear();
+    deferredSubmissionResources.clear();
+}
+
+void GfxBackend::CleanupResources()
+{
+    // Flushes all resources that were queued up for deletion (using the max sync token that was used when the resource
+    // was submitted for destruction).
+    resourceCleanup.FlushResources(*descriptorPool, *allocator);
+    commandPool->ReclaimCommandLists();
+
+    // Send all shader errors to the user, we do this every time we cleanup, since cleanup occurs when we submit or
+    // present.
+    psCache.GetShaderCompiler().FlushCompilationErrors();
+}
+
+std::vector<SyncToken> GfxBackend::EndCommandContext(CommandContext& ctx)
 {
     // We want to close a command list asap, to allow for driver optimizations.
-    cmdList.Close();
+    ctx.cmdList->Close();
 
-    // However the submitting of a commandList should be batched as much as possible for further driver optimizations
-    // (allowed to append them together during execution or reorder if no dependencies exist).
-    queuedCommandLists.push_back(&cmdList);
+    std::vector<SyncToken> syncTokens;
+
+    // No swapchain means we submit asap, since no presents will occur.
+    // If we have dependencies, we submit asap, since in order to insert dependency signals, we have to submit this
+    // separately anyways.
+    if (!description.useSwapChain || ctx.submissionPolicy == SubmissionPolicy::Immediate || !ctx.dependencies.empty())
+    {
+        syncTokens = rhi.Submit({ &ctx.cmdList, 1 }, ctx.dependencies);
+
+        // Enqueue the command context's temporary resources for destruction.
+        for (auto& res : ctx.temporaryResources)
+        {
+            resourceCleanup.CleanupResource(std::move(res));
+        }
+
+        commandPool->OnCommandListsSubmitted({ &ctx.cmdList, 1 }, syncTokens);
+
+        // Users will not necessarily present (in the case we don't have a swapchain). So we instead cleanup our
+        // resources at this point.
+        CleanupResources();
+    }
+    else if (description.useSwapChain && (ctx.submissionPolicy == SubmissionPolicy::DeferToPresent))
+    {
+        // The submitting of a commandList when we have a swapchain should be batched as much as possible for further
+        // driver optimizations (allowed to append them together during execution or reorder if no dependencies
+        // exist).
+        deferredSubmissionCommandLists.push_back(ctx.cmdList);
+        deferredSubmissionDependencies.insert(ctx.dependencies.begin(), ctx.dependencies.end());
+        deferredSubmissionResources.reserve(ctx.temporaryResources.size() + deferredSubmissionResources.size());
+        for (auto& tempResource : ctx.temporaryResources)
+        {
+            deferredSubmissionResources.push_back(std::move(tempResource));
+        }
+    }
+    else
+    {
+        VEX_LOG(Fatal, "Unsupported submission policy when submitting CommandContext...");
+    }
+
+    return syncTokens;
 }
 
 Texture GfxBackend::CreateTexture(TextureDescription description, ResourceLifetime lifetime)
@@ -272,26 +327,11 @@ void GfxBackend::FlushGPU()
 {
     VEX_LOG(Info, "Forcing a GPU flush...");
 
-    // In the case we're in the middle of a frame, we still want to submit all currently queued up work.
-    if (isInMiddleOfFrame)
-    {
-        EndFrame(false);
-    }
+    SubmitDeferredWork();
 
     rhi.FlushGPU();
 
-    // Release all stale resource now that the GPU is done with them.
-    resourceCleanup.FlushResources(std::to_underlying(description.frameBuffering), *descriptorPool, *allocator);
-
-    // Release the memory that is occupied by all our command lists.
-    commandPools.ForEach([](auto& el) { el->ReclaimAllCommandListMemory(); });
-
-    // Keep this transparent for the user, by starting up another frame automatically.
-    if (isInMiddleOfFrame)
-    {
-        StartFrame();
-        isInMiddleOfFrame = false;
-    }
+    CleanupResources();
 
     VEX_LOG(Info, "GPU flush done.");
 }
@@ -315,16 +355,19 @@ void GfxBackend::OnWindowResized(u32 newWidth, u32 newHeight)
         return;
     }
 
+    // Destroy present textures
+    for (auto& presentTex : presentTextures)
+    {
+        DestroyTexture(presentTex);
+    }
+    presentTextures.clear();
+
     FlushGPU();
 
-    // No need to handle texture lifespan since we've flushed the GPU.
-    for (auto& backBuffer : backBuffers)
-    {
-        textureRegistry.FreeElement(backBuffer.handle);
-    }
-    backBuffers.clear();
+    // Resize swapchain.
     swapChain->Resize(newWidth, newHeight);
-    CreateBackBuffers();
+
+    CreatePresentTextures();
 
     for (auto& renderExtension : renderExtensions)
     {
@@ -335,9 +378,20 @@ void GfxBackend::OnWindowResized(u32 newWidth, u32 newHeight)
     description.platformWindow.height = newHeight;
 }
 
-Texture GfxBackend::GetCurrentBackBuffer()
+Texture GfxBackend::GetCurrentPresentTexture()
 {
-    return backBuffers[backbufferIndex];
+    if (!description.useSwapChain)
+    {
+        VEX_LOG(Fatal, "Your backend was created without swapchain support. Backbuffers were not created.");
+    }
+    return presentTextures[currentFrameIndex];
+}
+
+void GfxBackend::WaitForTokenOnCPU(const SyncToken& syncToken)
+{
+    rhi.WaitForTokenOnCPU(syncToken);
+
+    CleanupResources();
 }
 
 void GfxBackend::RecompileAllShaders()
@@ -377,7 +431,7 @@ RenderExtension* GfxBackend::RegisterRenderExtension(UniqueHandle<RenderExtensio
     return renderExtensions.back().get();
 }
 
-void GfxBackend::UnregisterRenderExtension(RenderExtension* renderExtension)
+void GfxBackend::UnregisterRenderExtension(NonNullPtr<RenderExtension> renderExtension)
 {
     // Included in <utility>, avoiding including heavy <algorithm>.
     auto el = std::ranges::find_if(renderExtensions,
@@ -406,11 +460,6 @@ PipelineStateCache& GfxBackend::GetPipelineStateCache()
     return psCache;
 }
 
-RHICommandPool& GfxBackend::GetCurrentCommandPool()
-{
-    return *commandPools.Get(currentFrameIndex);
-}
-
 RHITexture& GfxBackend::GetRHITexture(TextureHandle textureHandle)
 {
     return textureRegistry[textureHandle];
@@ -421,20 +470,16 @@ RHIBuffer& GfxBackend::GetRHIBuffer(BufferHandle bufferHandle)
     return bufferRegistry[bufferHandle];
 }
 
-void GfxBackend::CreateBackBuffers()
+void GfxBackend::CreatePresentTextures()
 {
-    backBuffers.resize(std::to_underlying(description.frameBuffering));
-    for (u8 backBufferIndex = 0; backBufferIndex < std::to_underlying(description.frameBuffering); ++backBufferIndex)
+    presentTextures.resize(std::to_underlying(description.frameBuffering));
+    for (u8 presentTextureIndex = 0; presentTextureIndex < std::to_underlying(description.frameBuffering);
+         ++presentTextureIndex)
     {
-        RHITexture rhiTexture = swapChain->CreateBackBuffer(backBufferIndex);
-        const auto& rhiDesc = rhiTexture.GetDescription();
-        backBuffers[backBufferIndex] =
-            Texture{ .handle = textureRegistry.AllocateElement(std::move(rhiTexture)), .description = rhiDesc };
+        TextureDescription presentTextureDesc = swapChain->GetBackBufferTextureDescription();
+        presentTextureDesc.name = std::format("PresentTexture_{}", presentTextureIndex);
+        presentTextures[presentTextureIndex] = CreateTexture(presentTextureDesc, ResourceLifetime::Static);
     }
-
-    // Recreating the backbuffers means resetting the current frame index to 0 (as if we've just started the application
-    // from scratch).
-    currentFrameIndex = 0;
 }
 
 } // namespace vex

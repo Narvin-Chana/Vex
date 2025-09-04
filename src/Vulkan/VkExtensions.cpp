@@ -47,6 +47,7 @@ std::vector<const char*> GetDefaultValidationLayers(bool enableGPUBasedValidatio
     if (enableGPUBasedValidation)
     {
         validationLayers.push_back("VK_LAYER_KHRONOS_validation");
+        validationLayers.push_back("VK_LAYER_KHRONOS_synchronization2");
     }
 
     return validationLayers;

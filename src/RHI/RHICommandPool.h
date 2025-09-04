@@ -1,7 +1,14 @@
 #pragma once
 
-#include <Vex/RHIFwd.h>
+#include <array>
+#include <span>
+#include <utility>
+#include <vector>
+
 #include <Vex/NonNullPtr.h>
+#include <Vex/RHIFwd.h>
+#include <Vex/Synchronization.h>
+#include <Vex/UniqueHandle.h>
 
 namespace vex
 {
@@ -9,9 +16,19 @@ namespace vex
 class RHICommandPoolBase
 {
 public:
-    virtual NonNullPtr<RHICommandList> CreateCommandList(CommandQueueType queueType) = 0;
-    virtual void ReclaimCommandListMemory(CommandQueueType queueType) = 0;
-    virtual void ReclaimAllCommandListMemory() = 0;
+    RHICommandPoolBase(RHI& rhi);
+    // Available -> Recording
+    virtual NonNullPtr<RHICommandList> GetOrCreateCommandList(CommandQueueType queueType) = 0;
+    // Recording -> Submitted
+    void OnCommandListsSubmitted(std::span<NonNullPtr<RHICommandList>> submits, std::span<SyncToken> syncTokens);
+    // Submitted -> Available
+    void ReclaimCommandLists();
+
+protected:
+    std::vector<UniqueHandle<RHICommandList>>& GetCommandLists(CommandQueueType queueType);
+
+    RHI& rhi;
+    std::array<std::vector<UniqueHandle<RHICommandList>>, CommandQueueTypes::Count> commandListsPerQueue;
 };
 
 } // namespace vex

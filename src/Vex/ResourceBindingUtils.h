@@ -29,9 +29,9 @@ struct ResourceBindingUtils
         GfxBackend& backend,
         std::span<const TextureBinding> renderTargets,
         std::optional<TextureBinding> depthStencil,
-        std::vector<std::pair<RHITexture&, RHITextureState::Flags>>& transitions);
+        std::vector<std::pair<RHITexture&, RHITextureState>>& transitions);
 
-    static RHITextureState::Type TextureBindingUsageToState(TextureUsage::Type usage);
+    static RHITextureState TextureBindingUsageToState(TextureUsage::Type usage);
     static RHIBufferState::Flags BufferBindingUsageToState(BufferBindingUsage usage);
 };
 

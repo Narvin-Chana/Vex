@@ -6,25 +6,30 @@
 
 #include <RHI/RHICommandPool.h>
 
-#include <Vulkan/RHI/VkCommandList.h>
 #include <Vulkan/VkCommandQueue.h>
 #include <Vulkan/VkHeaders.h>
 
 namespace vex::vk
 {
+
+struct VkGPUContext;
+
 class VkCommandPool final : public RHICommandPoolBase
 {
 public:
-    VkCommandPool(NonNullPtr<VkGPUContext> ctx,
+    VkCommandPool(RHI& rhi,
+                  NonNullPtr<VkGPUContext> ctx,
                   const std::array<VkCommandQueue, CommandQueueTypes::Count>& commandQueues);
+    ~VkCommandPool();
 
-    virtual NonNullPtr<RHICommandList> CreateCommandList(CommandQueueType queueType) override;
-    virtual void ReclaimCommandListMemory(CommandQueueType queueType) override;
-    virtual void ReclaimAllCommandListMemory() override;
+    virtual NonNullPtr<RHICommandList> GetOrCreateCommandList(CommandQueueType queueType) override;
 
 private:
+    ::vk::UniqueCommandPool& GetCommandPool(CommandQueueType queueType);
+
     NonNullPtr<VkGPUContext> ctx;
-    std::array<::vk::UniqueCommandPool, CommandQueueTypes::Count> commandPoolPerQueueType;
-    std::array<std::vector<UniqueHandle<VkCommandList>>, CommandQueueTypes::Count> allocatedCommandBuffers{};
+
+    std::array<::vk::UniqueCommandPool, CommandQueueTypes::Count> commandPoolPerQueue;
 };
+
 } // namespace vex::vk

@@ -1,5 +1,8 @@
 #pragma once
 
+#include <optional>
+#include <queue>
+#include <unordered_set>
 #include <vector>
 
 #include <Vex/CommandQueueType.h>
@@ -7,6 +10,7 @@
 #include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/Formats.h>
 #include <Vex/FrameResource.h>
+#include <Vex/NonNullPtr.h>
 #include <Vex/PipelineStateCache.h>
 #include <Vex/PlatformWindow.h>
 #include <Vex/RHIFwd.h>
@@ -14,6 +18,8 @@
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHITexture.h>
+#include <Vex/SubmissionPolicy.h>
+#include <Vex/Synchronization.h>
 #include <Vex/UniqueHandle.h>
 
 namespace vex
@@ -29,6 +35,7 @@ class RenderExtension;
 struct BackendDescription
 {
     PlatformWindow platformWindow;
+    bool useSwapChain = true;
     TextureFormat swapChainFormat;
     bool useVSync = false;
     FrameBuffering frameBuffering = FrameBuffering::Triple;
@@ -43,16 +50,16 @@ public:
     GfxBackend(const BackendDescription& description);
     ~GfxBackend();
 
-    // Start of the frame, sets up the swapchain and backbuffers and blocks until the GPU is ready to accept a new
-    // frame. Since this is blocking, you generally want to call this as late as possible to reduce CPU starvation.
-    void StartFrame();
-
-    // Ends the frame by presenting to the swapchain.
-    void EndFrame(bool isFullscreenMode);
+    // Presents the current presentTexture to the swapchain. Will stall if the GPU's next backbuffer is not yet ready
+    // (depends on your FrameBuffering).
+    void Present(bool isFullscreenMode);
 
     // Begin a scoped CommandContext in which GPU commands can be submitted. The command context will automatically
-    // submit its commands upon destruction.
-    CommandContext BeginScopedCommandContext(CommandQueueType queueType);
+    // submit its commands upon destruction if you use immediate submission policy. The Deferred submission policy will
+    // instead submit all command queues batched together at swapchain present time.
+    CommandContext BeginScopedCommandContext(CommandQueueType queueType,
+                                             SubmissionPolicy submissionPolicy = SubmissionPolicy::DeferToPresent,
+                                             std::span<SyncToken> dependencies = {});
 
     // Creates a new texture, the handle passed back should be kept.
     Texture CreateTexture(TextureDescription description, ResourceLifetime lifetime);
@@ -77,6 +84,8 @@ public:
     // Allows users to fetch the bindless handles for a buffer binding
     BindlessHandle GetBufferBindlessHandle(const BufferBinding& bindlessResource);
 
+    // Waits for the passed in token to be done.
+    void WaitForTokenOnCPU(const SyncToken& syncToken);
     // Flushes all currently submitted GPU commands.
     void FlushGPU();
 
@@ -86,9 +95,9 @@ public:
     // Called when the underlying window resizes, allows the swapchain to be resized.
     void OnWindowResized(u32 newWidth, u32 newHeight);
 
-    // Obtains the current backbuffer texture, should not be stored from frame to frame, as a previously obtained
-    // backbuffer could no longer be available.
-    Texture GetCurrentBackBuffer();
+    // Obtains the current present texture handle. If the swapchain is enabled, Vex uses a present texture which is
+    // copied to the backbuffer when presenting.
+    Texture GetCurrentPresentTexture();
 
     // Recompiles all shader which have changed since the last compilation. Useful for shader development and
     // hot-reloading. You generally want to avoid calling this too often if your application has many shaders.
@@ -102,26 +111,28 @@ public:
     // Register a custom RenderExtension, it will be automatically unregistered when the graphics backend is destroyed.
     RenderExtension* RegisterRenderExtension(UniqueHandle<RenderExtension>&& renderExtension);
     // You can manually unregister a RenderExtension by passing in the pointer returned on creation.
-    void UnregisterRenderExtension(RenderExtension* renderExtension);
+    void UnregisterRenderExtension(NonNullPtr<RenderExtension> renderExtension);
 
 private:
-    void EndCommandContext(RHICommandList& cmdList);
+    void SubmitDeferredWork();
+    void CleanupResources();
+
+    std::vector<SyncToken> EndCommandContext(CommandContext& ctx);
 
     PipelineStateCache& GetPipelineStateCache();
-    RHICommandPool& GetCurrentCommandPool();
 
     RHITexture& GetRHITexture(TextureHandle textureHandle);
     RHIBuffer& GetRHIBuffer(BufferHandle bufferHandle);
 
-    void CreateBackBuffers();
+    void CreatePresentTextures();
 
     // Index of the current frame, possible values depends on buffering:
     //  {0} if single buffering
     //  {0, 1} if double buffering
     //  {0, 1, 2} if triple buffering
+    // Only valid if the backend uses a swapchain and not able to be used for anything OTHER than consecutive
+    // presents/backbuffers.
     u8 currentFrameIndex = 0;
-    u8 backbufferIndex = 0;
-    u64 frameCounter = 0;
 
     RHI rhi;
 
@@ -135,26 +146,28 @@ private:
     //  RHI RESOURCES (should be destroyed before rhi)
     // =================================================
 
-    FrameResource<UniqueHandle<RHICommandPool>> commandPools;
+    UniqueHandle<RHICommandPool> commandPool;
 
     // Used for allocating/freeing bindless descriptors for resources.
     UniqueHandle<RHIDescriptorPool> descriptorPool;
 
-    UniqueHandle<RHISwapChain> swapChain;
-    std::vector<Texture> backBuffers;
-
     MaybeUninitialized<RHIAllocator> allocator;
+
+    UniqueHandle<RHISwapChain> swapChain;
 
     // Converts from the Handle to the actual underlying RHI resource.
     FreeList<RHITexture, TextureHandle> textureRegistry;
     FreeList<RHIBuffer, BufferHandle> bufferRegistry;
 
-    // We submit our command lists in batch at the end of the frame, to reduce driver overhead.
-    std::vector<RHICommandList*> queuedCommandLists;
+    std::vector<Texture> presentTextures;
+    std::vector<SyncToken> presentTokens;
+
+    // We submit our command lists in batch at the end of frame, to reduce driver overhead.
+    std::vector<NonNullPtr<RHICommandList>> deferredSubmissionCommandLists;
+    std::unordered_set<SyncToken> deferredSubmissionDependencies;
+    std::vector<ResourceCleanup::CleanupVariant> deferredSubmissionResources;
 
     std::vector<UniqueHandle<RenderExtension>> renderExtensions;
-
-    bool isInMiddleOfFrame = false;
 
     static constexpr u32 DefaultRegistrySize = 1024;
 

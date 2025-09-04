@@ -1,12 +1,15 @@
 #pragma once
 
+#include <utility>
 #include <variant>
 #include <vector>
 
 #include <Vex/MaybeUninitialized.h>
+#include <Vex/NonNullPtr.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHITexture.h>
+#include <Vex/Synchronization.h>
 #include <Vex/Types.h>
 #include <Vex/UniqueHandle.h>
 
@@ -21,15 +24,15 @@ public:
                                         UniqueHandle<RHIGraphicsPipelineState>,
                                         UniqueHandle<RHIComputePipelineState>,
                                         UniqueHandle<RHIRayTracingPipelineState>>;
-    ResourceCleanup(i8 bufferingCount);
+
+    ResourceCleanup(NonNullPtr<RHI> rhi);
 
     void CleanupResource(CleanupVariant&& resource);
-    void CleanupResource(CleanupVariant&& resource, i8 lifespan);
-    void FlushResources(i8 flushCount, RHIDescriptorPool& descriptorPool, RHIAllocator& allocator);
+    void FlushResources(RHIDescriptorPool& descriptorPool, RHIAllocator& allocator);
 
 private:
-    i8 defaultLifespan;
-    std::vector<std::pair<CleanupVariant, i8>> resourcesInFlight;
+    NonNullPtr<RHI> rhi;
+    std::vector<std::pair<CleanupVariant, std::array<SyncToken, CommandQueueTypes::Count>>> resourcesInFlight;
 };
 
 } // namespace vex

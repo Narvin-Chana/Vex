@@ -20,8 +20,8 @@ namespace vex::dx12
 {
 
 DX12CommandList::DX12CommandList(const ComPtr<DX12Device>& device, CommandQueueType type)
-    : device{ device }
-    , type{ type }
+    : RHICommandListBase{ type }
+    , device{ device }
 {
     D3D12_COMMAND_LIST_TYPE d3dType;
     switch (type)
@@ -45,11 +45,6 @@ DX12CommandList::DX12CommandList(const ComPtr<DX12Device>& device, CommandQueueT
     // Create CommandList1 creates the command list closed by default.
     chk << device->CreateCommandList1(0, d3dType, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&commandList));
     chk << device->CreateCommandAllocator(d3dType, IID_PPV_ARGS(&commandAllocator));
-}
-
-bool DX12CommandList::IsOpen() const
-{
-    return isOpen;
 }
 
 void DX12CommandList::Open()
@@ -239,12 +234,13 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
     }
 }
 
-void DX12CommandList::Transition(RHITexture& texture, RHITextureState::Flags newState)
+void DX12CommandList::Transition(RHITexture& texture, RHITextureState newState)
 {
+    RHITexture::ValidateStateVersusQueueType(newState, type);
+
     D3D12_RESOURCE_STATES currentDX12State = RHITextureStateToDX12State(texture.GetCurrentState());
     D3D12_RESOURCE_STATES newDX12State = RHITextureStateToDX12State(newState);
 
-    texture.SetCurrentState(newState);
     // Nothing to do if the states are already equal (we compare raw API states, due to them not mapping 1:1 to Vex
     // ones).
     if (currentDX12State == newDX12State)
@@ -252,6 +248,7 @@ void DX12CommandList::Transition(RHITexture& texture, RHITextureState::Flags new
         return;
     }
 
+    texture.SetCurrentState(newState);
     CD3DX12_RESOURCE_BARRIER resourceBarrier =
         CD3DX12_RESOURCE_BARRIER::Transition(texture.GetRawTexture(), currentDX12State, newDX12State);
 
@@ -260,31 +257,32 @@ void DX12CommandList::Transition(RHITexture& texture, RHITextureState::Flags new
 
 void DX12CommandList::Transition(RHIBuffer& buffer, RHIBufferState::Flags newState)
 {
+    D3D12_RESOURCE_STATES currentDX12State = RHIBufferStateToDX12State(buffer.GetCurrentState());
+    D3D12_RESOURCE_STATES newDX12State = RHIBufferStateToDX12State(newState);
+
     // Nothing to do if the states are already equal.
     if (buffer.GetCurrentState() == newState)
     {
         return;
     }
 
-    D3D12_RESOURCE_STATES currentDX12State = RHIBufferStateToDX12State(buffer.GetCurrentState());
-    D3D12_RESOURCE_STATES newDX12State = RHIBufferStateToDX12State(newState);
+    buffer.SetCurrentState(newState);
     D3D12_RESOURCE_BARRIER resourceBarrier =
         CD3DX12_RESOURCE_BARRIER::Transition(buffer.GetRawBuffer(), currentDX12State, newDX12State);
-
-    buffer.SetCurrentState(newState);
 
     commandList->ResourceBarrier(1, &resourceBarrier);
 }
 
-void DX12CommandList::Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs)
+void DX12CommandList::Transition(std::span<std::pair<RHITexture&, RHITextureState>> textureNewStatePairs)
 {
     std::vector<D3D12_RESOURCE_BARRIER> transitionBarriers;
     transitionBarriers.reserve(textureNewStatePairs.size());
     for (auto& [texture, newState] : textureNewStatePairs)
     {
+        RHITexture::ValidateStateVersusQueueType(newState, type);
+
         D3D12_RESOURCE_STATES currentDX12State = RHITextureStateToDX12State(texture.GetCurrentState());
         D3D12_RESOURCE_STATES newDX12State = RHITextureStateToDX12State(newState);
-        texture.SetCurrentState(newState);
         // Nothing to do if the states are already equal (we compare raw API states, due to them not mapping 1:1 to Vex
         // ones).
         if (newDX12State == currentDX12State)
@@ -293,6 +291,7 @@ void DX12CommandList::Transition(std::span<std::pair<RHITexture&, RHITextureStat
         }
         D3D12_RESOURCE_BARRIER resourceBarrier =
             CD3DX12_RESOURCE_BARRIER::Transition(texture.GetRawTexture(), currentDX12State, newDX12State);
+        texture.SetCurrentState(newState);
         transitionBarriers.push_back(std::move(resourceBarrier));
     }
 
@@ -318,7 +317,6 @@ void DX12CommandList::Transition(std::span<std::pair<RHIBuffer&, RHIBufferState:
             CD3DX12_RESOURCE_BARRIER::Transition(buffer.GetRawBuffer(), currentDX12State, newDX12State);
 
         buffer.SetCurrentState(newState);
-
         transitionBarriers.push_back(std::move(resourceBarrier));
     }
 
@@ -327,6 +325,7 @@ void DX12CommandList::Transition(std::span<std::pair<RHIBuffer&, RHIBufferState:
         commandList->ResourceBarrier(transitionBarriers.size(), transitionBarriers.data());
     }
 }
+
 void DX12CommandList::BeginRendering(const RHIDrawResources& resources)
 {
     std::vector<CD3DX12_CPU_DESCRIPTOR_HANDLE> rtvHandles;
@@ -481,11 +480,6 @@ void DX12CommandList::Copy(RHIBuffer& src,
                            std::span<const BufferToTextureCopyDescription> regionMappings)
 {
     VEX_NOT_YET_IMPLEMENTED();
-}
-
-CommandQueueType DX12CommandList::GetType() const
-{
-    return type;
 }
 
 } // namespace vex::dx12

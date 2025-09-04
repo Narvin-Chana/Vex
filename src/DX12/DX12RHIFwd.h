@@ -17,6 +17,7 @@ class DX12ResourceLayout;
 class DX12Texture;
 class DX12Buffer;
 class DX12RHI;
+class DX12Fence;
 
 } // namespace vex::dx12
 
@@ -38,5 +39,6 @@ using RHIResourceLayout = dx12::DX12ResourceLayout;
 using RHITexture = dx12::DX12Texture;
 using RHIBuffer = dx12::DX12Buffer;
 using RHI = dx12::DX12RHI;
+using RHIFence = dx12::DX12Fence;
 
 } // namespace vex

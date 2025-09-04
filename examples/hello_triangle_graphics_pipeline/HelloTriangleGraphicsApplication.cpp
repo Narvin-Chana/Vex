@@ -47,8 +47,6 @@ void HelloTriangleGraphicsApplication::Run()
     {
         glfwPollEvents();
 
-        graphics->StartFrame();
-
         {
             // Make the color buffer's contents oscillate over time.
             const double currentTime = glfwGetTime();
@@ -67,7 +65,7 @@ void HelloTriangleGraphicsApplication::Run()
             vex::TextureClearValue clearValue{ .flags = vex::TextureClear::ClearColor, .color = { 1, 0.5f, 1, 1 } };
             ctx.ClearTexture(
                 vex::TextureBinding{
-                    .texture = graphics->GetCurrentBackBuffer(),
+                    .texture = graphics->GetCurrentPresentTexture(),
                 },
                 clearValue);
 
@@ -103,7 +101,7 @@ void HelloTriangleGraphicsApplication::Run()
 
             // Setup our rendering pass.
             std::array renderTargets = { vex::TextureBinding{
-                .texture = graphics->GetCurrentBackBuffer(),
+                .texture = graphics->GetCurrentPresentTexture(),
             } };
 
             // Cursed float overflow UB greatness.
@@ -137,7 +135,7 @@ void HelloTriangleGraphicsApplication::Run()
                 3);
         }
 
-        graphics->EndFrame(windowMode == Fullscreen);
+        graphics->Present(windowMode == Fullscreen);
     }
 }
 

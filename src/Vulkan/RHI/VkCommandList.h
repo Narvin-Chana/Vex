@@ -22,8 +22,6 @@ class VkCommandList final : public RHICommandListBase
 public:
     VkCommandList(NonNullPtr<VkGPUContext> ctx, ::vk::UniqueCommandBuffer&& commandBuffer, CommandQueueType type);
 
-    virtual bool IsOpen() const override;
-
     virtual void Open() override;
     virtual void Close() override;
 
@@ -42,9 +40,9 @@ public:
                               TextureUsage::Type usage,
                               const TextureClearValue& clearValue) override;
 
-    virtual void Transition(RHITexture& texture, RHITextureState::Flags newState) override;
+    virtual void Transition(RHITexture& texture, RHITextureState newState) override;
     virtual void Transition(RHIBuffer& texture, RHIBufferState::Flags newState) override;
-    virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs) override;
+    virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState>> textureNewStatePairs) override;
     virtual void Transition(std::span<std::pair<RHIBuffer&, RHIBufferState::Flags>> bufferNewStatePairs) override;
 
     virtual void BeginRendering(const RHIDrawResources& resources) override;
@@ -71,8 +69,6 @@ public:
                       RHITexture& dst,
                       std::span<const BufferToTextureCopyDescription> regionMappings) override;
 
-    virtual CommandQueueType GetType() const override;
-
     ::vk::CommandBuffer GetNativeCommandList()
     {
         return *commandBuffer;
@@ -81,8 +77,6 @@ public:
 private:
     NonNullPtr<VkGPUContext> ctx;
     ::vk::UniqueCommandBuffer commandBuffer;
-    CommandQueueType type;
-    bool isOpen = false;
 
     bool isRendering = false;
 

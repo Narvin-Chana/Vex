@@ -56,12 +56,10 @@ HelloCubeApplication::HelloCubeApplication()
                                            .memoryLocality = vex::ResourceMemoryLocality::GPUOnly },
                                          vex::ResourceLifetime::Static);
 
-    // Tmp since right now we can't perform work without a present...
-    graphics->StartFrame();
-
     {
-        // Scoped command context will submit commands automatically upon destruction.
-        auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
+        // Immediate submission means the commands are instantly submitted upon destruction.
+        auto ctx =
+            graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics, vex::SubmissionPolicy::Immediate);
 
         // clang-format off
 
@@ -100,11 +98,6 @@ HelloCubeApplication::HelloCubeApplication()
         ctx.EnqueueDataUpload(vertexBuffer, cubeVertices);
         ctx.EnqueueDataUpload(indexBuffer, cubeIndices);
     }
-
-    // Tmp since right now we can't perform work without a present...
-    graphics->EndFrame(windowMode == Fullscreen);
-
-    graphics->FlushGPU();
 }
 
 void HelloCubeApplication::Run()
@@ -112,8 +105,6 @@ void HelloCubeApplication::Run()
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
-
-        graphics->StartFrame();
 
         {
             // Make the cube's contents oscillate over time.
@@ -130,7 +121,7 @@ void HelloCubeApplication::Run()
                                                .color = { 0.2f, 0.2f, 0.2f, 1 } };
             ctx.ClearTexture(
                 vex::TextureBinding{
-                    .texture = graphics->GetCurrentBackBuffer(),
+                    .texture = graphics->GetCurrentPresentTexture(),
                 },
                 clearValue);
 
@@ -197,7 +188,7 @@ void HelloCubeApplication::Run()
 
             // Setup our rendering pass.
             std::array renderTargets = { vex::TextureBinding{
-                .texture = graphics->GetCurrentBackBuffer(),
+                .texture = graphics->GetCurrentPresentTexture(),
             } };
 
             ctx.DrawIndexed(hlslDrawDesc,
@@ -222,7 +213,7 @@ void HelloCubeApplication::Run()
 #endif
         }
 
-        graphics->EndFrame(windowMode == Fullscreen);
+        graphics->Present(windowMode == Fullscreen);
     }
 }
 

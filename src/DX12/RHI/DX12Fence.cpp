@@ -30,19 +30,23 @@ DX12Fence::~DX12Fence()
     }
 }
 
-void DX12Fence::WaitCPU(u64 value) const
+u64 DX12Fence::GetValue() const
 {
-    if (fence->GetCompletedValue() < value)
+    return fence->GetCompletedValue();
+}
+
+void DX12Fence::WaitOnCPU(u64 value) const
+{
+    if (GetValue() < value)
     {
         chk << fence->SetEventOnCompletion(value, GEventHandle);
         WaitForSingleObjectEx(GEventHandle, INFINITE, false);
     }
 }
 
-void DX12Fence::Flush() const
+void DX12Fence::SignalOnCPU(u64 value)
 {
-    // Wait for the fence value we signaled most recently.
-    WaitCPU(nextSignalValue - 1);
+    fence->Signal(value);
 }
 
 } // namespace vex::dx12

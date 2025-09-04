@@ -403,7 +403,7 @@ void DX12Texture::FreeAllocation(RHIAllocator& allocator)
     }
 }
 
-RHITextureState::Type DX12Texture::GetClearTextureState()
+RHITextureState DX12Texture::GetClearTextureState()
 {
     if (description.usage & TextureUsage::RenderTarget)
     {

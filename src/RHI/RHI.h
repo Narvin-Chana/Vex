@@ -4,7 +4,7 @@
 #include <vector>
 
 #include <Vex/CommandQueueType.h>
-#include <Vex/FrameResource.h>
+#include <Vex/NonNullPtr.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/Types.h>
 #include <Vex/UniqueHandle.h>
@@ -14,7 +14,6 @@ namespace vex
 
 struct BufferDescription;
 struct TextureDescription;
-struct ShaderDefine;
 struct PhysicalDevice;
 struct GraphicsPipelineStateKey;
 struct ComputePipelineStateKey;
@@ -24,6 +23,7 @@ struct SwapChainDescription;
 struct PlatformWindow;
 enum class ShaderCompilerBackend : u8;
 struct ShaderEnvironment;
+struct SyncToken;
 
 struct RHIBase
 {
@@ -50,11 +50,15 @@ struct RHIBase
     virtual void ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBackend,
                                                  ShaderEnvironment& shaderEnv) = 0;
 
-    virtual u32 AcquireNextFrame(RHISwapChain& swapChain, u32 currentFrameIndex) = 0;
-    virtual void SubmitAndPresent(std::span<RHICommandList*> commandLists,
-                                  RHISwapChain& swapChain,
-                                  u32 currentFrameIndex,
-                                  bool isFullscreenMode) = 0;
+    virtual void WaitForTokenOnCPU(const SyncToken& syncToken) = 0;
+    virtual bool IsTokenComplete(const SyncToken& syncToken) = 0;
+    virtual void WaitForTokenOnGPU(CommandQueueType waitingQueue, const SyncToken& waitFor) = 0;
+
+    virtual std::array<SyncToken, CommandQueueTypes::Count> GetMostRecentSyncTokenPerQueue() const = 0;
+
+    virtual std::vector<SyncToken> Submit(std::span<NonNullPtr<RHICommandList>> commandLists,
+                                          std::span<SyncToken> dependencies) = 0;
+
     virtual void FlushGPU() = 0;
 };
 

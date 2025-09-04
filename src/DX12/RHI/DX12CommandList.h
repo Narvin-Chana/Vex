@@ -12,7 +12,6 @@ class DX12CommandList final : public RHICommandListBase
 {
 public:
     DX12CommandList(const ComPtr<DX12Device>& device, CommandQueueType type);
-    virtual bool IsOpen() const override;
 
     virtual void Open() override;
     virtual void Close() override;
@@ -33,9 +32,9 @@ public:
                               TextureUsage::Type usage,
                               const TextureClearValue& clearValue) override;
 
-    virtual void Transition(RHITexture& texture, RHITextureState::Flags newState) override;
+    virtual void Transition(RHITexture& texture, RHITextureState newState) override;
     virtual void Transition(RHIBuffer& buffer, RHIBufferState::Flags newState) override;
-    virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState::Flags>> textureNewStatePairs) override;
+    virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState>> textureNewStatePairs) override;
     virtual void Transition(std::span<std::pair<RHIBuffer&, RHIBufferState::Flags>> bufferNewStatePairs) override;
 
     virtual void BeginRendering(const RHIDrawResources& resources) override;
@@ -63,8 +62,6 @@ public:
                       RHITexture& dst,
                       std::span<const BufferToTextureCopyDescription> regionMappings) override;
 
-    virtual CommandQueueType GetType() const override;
-
     ComPtr<ID3D12GraphicsCommandList10>& GetNativeCommandList()
     {
         return commandList;
@@ -72,13 +69,10 @@ public:
 
 private:
     ComPtr<DX12Device> device;
-    CommandQueueType type;
     ComPtr<ID3D12GraphicsCommandList10> commandList;
 
     // Underlying memory of the command list.
     ComPtr<ID3D12CommandAllocator> commandAllocator;
-
-    bool isOpen = false;
 };
 
 } // namespace vex::dx12

@@ -28,7 +28,7 @@ namespace CommandContext_Internal
 
 static void TransitionBindings(RHICommandList& cmdList, const std::vector<RHITextureBinding>& rhiTextureBindings)
 {
-    std::vector<std::pair<RHITexture&, RHITextureState::Flags>> textureStateTransitions;
+    std::vector<std::pair<RHITexture&, RHITextureState>> textureStateTransitions;
     textureStateTransitions.reserve(rhiTextureBindings.size());
     for (const auto& texBinding : rhiTextureBindings)
     {
@@ -92,17 +92,30 @@ static BufferDescription GetStagingBufferDescription(const std::string& name, u3
 
 } // namespace CommandContext_Internal
 
-CommandContext::CommandContext(GfxBackend* backend, NonNullPtr<RHICommandList> cmdList)
+CommandContext::CommandContext(NonNullPtr<GfxBackend> backend,
+                               NonNullPtr<RHICommandList> cmdList,
+                               SubmissionPolicy submissionPolicy,
+                               std::span<SyncToken> dependencies)
     : backend(backend)
     , cmdList(cmdList)
+    , submissionPolicy(submissionPolicy)
+    , dependencies{ dependencies.begin(), dependencies.end() }
 {
     cmdList->Open();
-    cmdList->SetDescriptorPool(*backend->descriptorPool, backend->psCache.GetResourceLayout());
+    if (cmdList->GetType() != CommandQueueType::Copy)
+    {
+        cmdList->SetDescriptorPool(*backend->descriptorPool, backend->psCache.GetResourceLayout());
+    }
 }
 
 CommandContext::~CommandContext()
 {
-    backend->EndCommandContext(*cmdList);
+    if (hasSubmitted)
+    {
+        return;
+    }
+
+    backend->EndCommandContext(*this);
 }
 
 void CommandContext::SetViewport(float x, float y, float width, float height, float minDepth, float maxDepth)
@@ -259,13 +272,17 @@ void CommandContext::TraceRays(const RayTracingPassDescription& rayTracingPassDe
 
 void CommandContext::Copy(const Texture& source, const Texture& destination)
 {
+    if (source.handle == destination.handle)
+    {
+        VEX_LOG(Fatal, "Cannot copy a texture to itself!");
+    }
+
     TextureUtil::ValidateCompatibleTextureDescriptions(source.description, destination.description);
 
     RHITexture& sourceRHI = backend->GetRHITexture(source.handle);
     RHITexture& destinationRHI = backend->GetRHITexture(destination.handle);
-    std::array transitions{ std::pair<RHITexture&, RHITextureState::Flags>{ sourceRHI, RHITextureState::CopySource },
-                            std::pair<RHITexture&, RHITextureState::Flags>{ destinationRHI,
-                                                                            RHITextureState::CopyDest } };
+    std::array transitions{ std::pair<RHITexture&, RHITextureState>{ sourceRHI, RHITextureState::CopySource },
+                            std::pair<RHITexture&, RHITextureState>{ destinationRHI, RHITextureState::CopyDest } };
     cmdList->Transition(transitions);
     cmdList->Copy(sourceRHI, destinationRHI);
 }
@@ -288,15 +305,19 @@ void CommandContext::Copy(const Texture& source,
 
     RHITexture& sourceRHI = backend->GetRHITexture(source.handle);
     RHITexture& destinationRHI = backend->GetRHITexture(destination.handle);
-    std::array transitions{ std::pair<RHITexture&, RHITextureState::Flags>{ sourceRHI, RHITextureState::CopySource },
-                            std::pair<RHITexture&, RHITextureState::Flags>{ destinationRHI,
-                                                                            RHITextureState::CopyDest } };
+    std::array transitions{ std::pair<RHITexture&, RHITextureState>{ sourceRHI, RHITextureState::CopySource },
+                            std::pair<RHITexture&, RHITextureState>{ destinationRHI, RHITextureState::CopyDest } };
     cmdList->Transition(transitions);
     cmdList->Copy(sourceRHI, destinationRHI, regionMappings);
 }
 
 void CommandContext::Copy(const Buffer& source, const Buffer& destination)
 {
+    if (source.handle == destination.handle)
+    {
+        VEX_LOG(Fatal, "Cannot copy a texture to itself!");
+    }
+
     BufferUtil::ValidateSimpleBufferCopy(source.description, destination.description);
 
     RHIBuffer& sourceRHI = backend->GetRHIBuffer(source.handle);
@@ -329,6 +350,7 @@ void CommandContext::Copy(const Buffer& source, const Texture& destination)
     cmdList->Transition(destinationRHI, RHITextureState::CopyDest);
     cmdList->Copy(sourceRHI, destinationRHI);
 }
+
 void CommandContext::Copy(const Buffer& source,
                           const Texture& destination,
                           const BufferToTextureCopyDescription& regionMapping)
@@ -365,28 +387,27 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const u8>
         CommandContext_Internal::GetStagingBufferDescription(buffer.description.name, buffer.description.byteSize),
         ResourceLifetime::Static);
 
-    RHIBuffer& rhiDestBuffer = backend->GetRHIBuffer(buffer.handle);
     RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
+    RHIBuffer& rhiDestBuffer = backend->GetRHIBuffer(buffer.handle);
 
     ResourceMappedMemory(rhiStagingBuffer).SetData(data);
 
-    cmdList->Transition(rhiStagingBuffer, RHIBufferState::CopySource);
-    cmdList->Transition(rhiDestBuffer, RHIBufferState::CopyDest);
+    std::array transitions{ std::pair<RHIBuffer&, RHIBufferState::Flags>{ rhiStagingBuffer,
+                                                                          RHIBufferState::CopySource },
+                            std::pair<RHIBuffer&, RHIBufferState::Flags>{ rhiDestBuffer, RHIBufferState::CopyDest } };
+    cmdList->Transition(transitions);
     cmdList->Copy(rhiStagingBuffer, rhiDestBuffer);
 
-    backend->DestroyBuffer(stagingBuffer);
+    temporaryResources.emplace_back(std::move(rhiStagingBuffer));
 }
 
 void CommandContext::EnqueueDataUpload(const Buffer& buffer,
                                        std::span<const u8> data,
                                        const BufferSubresource& subresource)
 {
-    RHIBuffer& rhiDestBuffer = backend->GetRHIBuffer(buffer.handle);
-
-    BufferUtil::ValidateBufferSubresource(buffer.description, subresource);
-
     if (buffer.description.memoryLocality == ResourceMemoryLocality::CPUWrite)
     {
+        RHIBuffer& rhiDestBuffer = backend->GetRHIBuffer(buffer.handle);
         ResourceMappedMemory(rhiDestBuffer).SetData(data, subresource.offset);
         return;
     }
@@ -394,8 +415,14 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer,
     const BufferDescription stagingBufferDesc =
         CommandContext_Internal::GetStagingBufferDescription(buffer.description.name, subresource.size);
 
+    // Buffer creation invalidates pointers to existing RHI buffers.
     Buffer stagingBuffer = backend->CreateBuffer(stagingBufferDesc, ResourceLifetime::Static);
+
+    // So fetch buffers only AFTER creating the staging buffer.
     RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
+    RHIBuffer& rhiDestBuffer = backend->GetRHIBuffer(buffer.handle);
+
+    BufferUtil::ValidateBufferSubresource(buffer.description, subresource);
 
     ResourceMappedMemory(rhiStagingBuffer).SetData(data);
 
@@ -403,7 +430,7 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer,
     cmdList->Transition(rhiDestBuffer, RHIBufferState::CopyDest);
     cmdList->Copy(rhiStagingBuffer, rhiDestBuffer, BufferCopyDescription{ 0, subresource.offset, subresource.size });
 
-    backend->DestroyBuffer(stagingBuffer);
+    temporaryResources.emplace_back(std::move(rhiStagingBuffer));
 }
 
 void CommandContext::EnqueueDataUpload(const Texture& texture, std::span<const u8> data)
@@ -424,15 +451,14 @@ void CommandContext::EnqueueDataUpload(const Texture& texture, std::span<const u
     cmdList->Transition(rhiDestTexture, RHITextureState::CopyDest);
     cmdList->Copy(rhiStagingBuffer, rhiDestTexture);
 
-    backend->DestroyBuffer(stagingBuffer);
+    temporaryResources.emplace_back(std::move(rhiStagingBuffer));
 }
+
 void CommandContext::EnqueueDataUpload(const Texture& texture,
                                        std::span<const u8> data,
                                        const TextureSubresource& subresource,
                                        const TextureExtent& extent)
 {
-    RHITexture& rhiDestTexture = backend->GetRHITexture(texture.handle);
-
     const BufferDescription stagingBufferDesc = CommandContext_Internal::GetStagingBufferDescription(
         texture.description.name,
         std::ceil(extent.width * extent.height * extent.depth *
@@ -446,6 +472,7 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
 
     Buffer stagingBuffer = backend->CreateBuffer(stagingBufferDesc, ResourceLifetime::Static);
     RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
+    RHITexture& rhiDestTexture = backend->GetRHITexture(texture.handle);
 
     ResourceMappedMemory(rhiStagingBuffer).SetData(data);
 
@@ -453,7 +480,7 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
     cmdList->Transition(rhiDestTexture, RHITextureState::CopyDest);
     cmdList->Copy(rhiStagingBuffer, rhiDestTexture, { &copyDesc, 1 });
 
-    backend->DestroyBuffer(stagingBuffer);
+    temporaryResources.emplace_back(std::move(rhiStagingBuffer));
 }
 
 BindlessHandle CommandContext::GetBindlessHandle(const ResourceBinding& resourceBinding)
@@ -497,7 +524,7 @@ void CommandContext::TransitionBindings(std::span<const ResourceBinding> resourc
     CommandContext_Internal::TransitionBindings(*cmdList, rhiBufferBindings);
 }
 
-void CommandContext::Transition(const Texture& texture, RHITextureState::Type newState)
+void CommandContext::Transition(const Texture& texture, RHITextureState newState)
 {
     cmdList->Transition(backend->GetRHITexture(texture.handle), newState);
 }
@@ -507,11 +534,22 @@ void CommandContext::Transition(const Buffer& buffer, RHIBufferState::Type newSt
     cmdList->Transition(backend->GetRHIBuffer(buffer.handle), newState);
 }
 
+std::vector<SyncToken> CommandContext::Submit()
+{
+    if (submissionPolicy != SubmissionPolicy::Immediate)
+    {
+        VEX_LOG(Fatal,
+                "Cannot call submit when your submission policy is anything other than SubmissionPolicy::Immediate.");
+    }
+    hasSubmitted = true;
+    return backend->EndCommandContext(*this);
+}
+
 void CommandContext::ExecuteInDrawContext(std::span<const TextureBinding> renderTargets,
                                           std::optional<const TextureBinding> depthStencil,
                                           const std::function<void()>& callback)
 {
-    std::vector<std::pair<RHITexture&, RHITextureState::Flags>> transitions;
+    std::vector<std::pair<RHITexture&, RHITextureState>> transitions;
     RHIDrawResources drawResources =
         ResourceBindingUtils::CollectRHIDrawResourcesAndTransitions(*backend, renderTargets, depthStencil, transitions);
 
@@ -544,7 +582,7 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDescri
     }
 
     // Transition RTs/DepthStencil
-    std::vector<std::pair<RHITexture&, RHITextureState::Flags>> transitions;
+    std::vector<std::pair<RHITexture&, RHITextureState>> transitions;
     RHIDrawResources drawResources =
         ResourceBindingUtils::CollectRHIDrawResourcesAndTransitions(*backend,
                                                                     drawBindings.renderTargets,

@@ -4,8 +4,13 @@
 #include <utility>
 
 #include <Vex/PlatformWindow.h>
+#include <Vex/RHIImpl/RHI.h>
+#include <Vex/RHIImpl/RHICommandList.h>
+#include <Vex/RHIImpl/RHIFence.h>
+#include <Vex/RHIImpl/RHITexture.h>
+#include <Vex/Synchronization.h>
 
-#include <Vulkan/RHI/VkTexture.h>
+#include <Vulkan/VkCommandQueue.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkFormats.h>
 #include <Vulkan/VkGPUContext.h>
@@ -113,6 +118,18 @@ void VkSwapChain::Resize(u32 width, u32 height)
     InitSwapchainResource(width, height);
 }
 
+TextureDescription VkSwapChain::GetBackBufferTextureDescription() const
+{
+    return TextureDescription{ .name = "backbuffer",
+                               .type = TextureType::Texture2D,
+                               .width = width,
+                               .height = height,
+                               .depthOrArraySize = 1,
+                               .mips = 1,
+                               .format = VulkanToTextureFormat(surfaceFormat.format),
+                               .usage = TextureUsage::RenderTarget | TextureUsage::ShaderRead };
+}
+
 void VkSwapChain::SetVSync(bool enableVSync)
 {
     presentMode = GetBestPresentMode(supportDetails, enableVSync);
@@ -125,20 +142,72 @@ bool VkSwapChain::NeedsFlushForVSyncToggle()
     return true;
 }
 
-RHITexture VkSwapChain::CreateBackBuffer(u8 backBufferIndex)
+RHITexture VkSwapChain::AcquireBackBuffer(u8 frameIndex)
 {
+    // Acquire the next backbuffer image.
+    auto res = ctx->device.acquireNextImageKHR(*swapchain,
+                                               std::numeric_limits<u64>::max(),
+                                               *backbufferAcquisition[frameIndex],
+                                               VK_NULL_HANDLE,
+                                               &currentBackbufferId);
+    if (res == ::vk::Result::eErrorOutOfDateKHR)
+    {
+        VEX_LOG(Error,
+                "Swapchain was OutOfDate which should never happen. "
+                "It should have been resized with the application window")
+    }
+
+    VEX_VK_CHECK << res;
+
+    // Return the acquired backbuffer.
     auto backbufferImages = VEX_VK_CHECK <<= ctx->device.getSwapchainImagesKHR(*swapchain);
 
-    TextureDescription desc{ .name = std::format("backbuffer_{}", backBufferIndex),
-                             .type = TextureType::Texture2D,
-                             .width = width,
-                             .height = height,
-                             .depthOrArraySize = 1,
-                             .mips = 1,
-                             .format = VulkanToTextureFormat(surfaceFormat.format),
-                             .usage = TextureUsage::RenderTarget | TextureUsage::ShaderRead };
+    TextureDescription desc = GetBackBufferTextureDescription();
+    desc.name = std::format("backbuffer_{}", currentBackbufferId);
+    return RHITexture{ ctx, std::move(desc), backbufferImages[currentBackbufferId] };
+}
 
-    return { ctx, std::move(desc), backbufferImages[backBufferIndex] };
+SyncToken VkSwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandList> commandList, bool isFullscreen)
+{
+    ::vk::CommandBufferSubmitInfo cmdBufferSubmitInfo{ .commandBuffer = commandList->GetNativeCommandList() };
+
+    // Before rendering the graphics queue, we must wait for acquireImage to be done.
+    // This equates to waiting on the backbufferAcquisition binary semaphore of this backbuffer.
+    ::vk::SemaphoreSubmitInfo acquireWaitInfo = {
+        .semaphore = *backbufferAcquisition[frameIndex],
+        .stageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+    };
+
+    // Signal the present binary semaphore (we only want to present once rendering work is done).
+    ::vk::SemaphoreSubmitInfo presentSignalInfo = {
+        .semaphore = *presentSemaphore[frameIndex],
+        .stageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+    };
+
+    SyncToken syncToken = rhi.SubmitToQueue(commandList->GetType(),
+                                            { &cmdBufferSubmitInfo, 1 },
+                                            { &acquireWaitInfo, 1 },
+                                            { presentSignalInfo });
+
+    // Present now that we've submitted the present copy work.
+    ::vk::PresentInfoKHR presentInfo = {
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &*presentSemaphore[frameIndex],
+        .swapchainCount = 1,
+        .pSwapchains = &*swapchain,
+        .pImageIndices = &currentBackbufferId,
+    };
+    auto res = ctx->graphicsPresentQueue.queue.presentKHR(presentInfo);
+    if (res == ::vk::Result::eErrorOutOfDateKHR)
+    {
+        VEX_LOG(Error,
+                "Swapchain was OutOfDate which should never happen. "
+                "It should have been resized with the application window")
+    }
+
+    VEX_VK_CHECK << res;
+
+    return syncToken;
 }
 
 void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
