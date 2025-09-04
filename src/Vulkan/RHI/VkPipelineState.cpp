@@ -63,17 +63,15 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
                            });
 
     std::vector<::vk::VertexInputAttributeDescription> attributes{ key.vertexInputLayout.attributes.size() };
-    // Requires including the heavy <algorithm>
-    std::ranges::transform(
-        key.vertexInputLayout.attributes,
-        attributes.begin(),
-        [](const VertexInputLayout::VertexAttribute& attribute)
-        {
-            return ::vk::VertexInputAttributeDescription{ .location = attribute.semanticIndex,
-                                                          .binding = attribute.binding,
-                                                          .format = TextureFormatToVulkan(attribute.format),
-                                                          .offset = attribute.offset };
-        });
+    for (u32 i = 0; i < attributes.size(); ++i)
+    {
+        const VertexInputLayout::VertexAttribute& attribute = key.vertexInputLayout.attributes[i];
+        // TODO: Find out the right location according to semanticName + semanticIndex from shader reflection
+        attributes[i] = ::vk::VertexInputAttributeDescription{ .location = i,
+                                                               .binding = attribute.binding,
+                                                               .format = TextureFormatToVulkan(attribute.format),
+                                                               .offset = attribute.offset };
+    }
 
     ::vk::PipelineVertexInputStateCreateInfo pipelineVertexInputStateCI{
         .vertexBindingDescriptionCount = static_cast<u32>(bindings.size()),

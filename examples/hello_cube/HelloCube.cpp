@@ -182,9 +182,8 @@ void HelloCubeApplication::Run()
                         .offset = 0,
                     },
                     {
-                        // TODO: This needs to be discussed as it makes no sense in VK
                         .semanticName = "TEXCOORD",
-                        .semanticIndex = 1,
+                        .semanticIndex = 0,
                         .binding = 0,
                         .format = vex::TextureFormat::RG32_FLOAT,
                         .offset = sizeof(float) * 3,
