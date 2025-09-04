@@ -404,12 +404,9 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer,
                                        std::span<const u8> data,
                                        const BufferSubresource& subresource)
 {
-    RHIBuffer& rhiDestBuffer = backend->GetRHIBuffer(buffer.handle);
-
-    BufferUtil::ValidateBufferSubresource(buffer.description, subresource);
-
     if (buffer.description.memoryLocality == ResourceMemoryLocality::CPUWrite)
     {
+        RHIBuffer& rhiDestBuffer = backend->GetRHIBuffer(buffer.handle);
         ResourceMappedMemory(rhiDestBuffer).SetData(data, subresource.offset);
         return;
     }
@@ -417,8 +414,14 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer,
     const BufferDescription stagingBufferDesc =
         CommandContext_Internal::GetStagingBufferDescription(buffer.description.name, subresource.size);
 
+    // Buffer creation invalidates pointers to existing RHI buffers.
     Buffer stagingBuffer = backend->CreateBuffer(stagingBufferDesc, ResourceLifetime::Static);
+
+    // So fetch buffers only AFTER creating the staging buffer.
     RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
+    RHIBuffer& rhiDestBuffer = backend->GetRHIBuffer(buffer.handle);
+
+    BufferUtil::ValidateBufferSubresource(buffer.description, subresource);
 
     ResourceMappedMemory(rhiStagingBuffer).SetData(data);
 
