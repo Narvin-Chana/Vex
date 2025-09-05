@@ -3,6 +3,7 @@
 struct UniformStruct
 {
     float time;
+    uint uvGuideTextureHandle;
 };
 
 VEX_UNIFORMS(UniformStruct, Uniforms);
@@ -10,11 +11,13 @@ VEX_UNIFORMS(UniformStruct, Uniforms);
 struct VSOutput
 {
     float4 position : SV_POSITION;
+    float2 uv : TEXCOORD0;
 };
 
-VSOutput VSMain(in float3 position : POSITION)
+VSOutput VSMain(in float3 position : POSITION, in float2 uv : TEXCOORD)
 {
     VSOutput vs;
+    vs.uv = uv;
 
     float timeScale = Uniforms.time * 0.5f;
     
@@ -40,13 +43,20 @@ VSOutput VSMain(in float3 position : POSITION)
         0, scale, 0,
         0, 0, scale
     );
-    
+
+    float3 offsetPosition = float3(0, 0, -10);
+    float3x3 translationMatrix = float3x3(
+        0, 0, offsetPosition.x,
+        0, 0, offsetPosition.y,
+        0, 0, offsetPosition.z
+    );
+
     float3 scaledPosition = mul(scaleMatrix, position);
     
     float3x3 finalRotation = mul(rotationY, rotationX);
     float3 rotatedPosition = mul(finalRotation, scaledPosition);
     
-    float3 worldPosition = rotatedPosition + float3(-0.4f, 0.3f, -10);
+    float3 worldPosition = rotatedPosition + float3(-0.4f, 0.3f, -1);
     
     // Quick scuffed projection matrix (perspective)
     float fov = 1.57f; // ~90 degrees in radians
@@ -56,18 +66,23 @@ VSOutput VSMain(in float3 position : POSITION)
     
     float f = 1.0f / tan(fov * 0.5f);
     float4x4 projection = float4x4(
-        f / aspect, 0,  0,                           0,
-        0,          f,  0,                           0,
-        0,          0,  far / (near - far),         -1,
-        0,          0,  (near * far) / (near - far), 0
+        f / aspect, 0,  0,                  0,
+        0,          f,  0,                  0,
+        0,          0,  far / (near - far), (near * far) / (near - far),
+        0,          0,  -1,                 0
     );
     
     vs.position = mul(projection, float4(worldPosition, 1));
-
     return vs;
 }
 
+static const Texture2D<float4> UVGuideTexture = GetBindlessResource(Uniforms.uvGuideTextureHandle);
+
 float4 PSMain(VSOutput input) : SV_Target
 {
-    return float4(1, 1, 0, 1);
+    // TODO: Replace this with samples
+    uint width, height;
+    UVGuideTexture.GetDimensions(width, height);
+    int2 texCoord = int2(input.uv * float2(width - 1, height - 1));
+    return float4(UVGuideTexture.Load(int3(texCoord, 0)).rgb, 1) * float4(0, 1, 1, 1);
 }

@@ -239,9 +239,7 @@ static ::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITex
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .image = texture.GetResource(),
-        .subresourceRange = { .aspectMask = FormatIsDepthStencilCompatible(desc.format)
-                                                ? ImageAspectFlagBits::eDepth | ImageAspectFlagBits::eStencil
-                                                : ImageAspectFlagBits::eColor,
+        .subresourceRange = { .aspectMask = VkTextureUtil::GetFormatAspectFlags(desc.format),
                               .baseMipLevel = 0,
                               .levelCount = desc.mips,
                               .baseArrayLayer = 0,
@@ -496,7 +494,10 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
         .colorAttachmentCount = static_cast<uint32_t>(colorAttachmentsInfo.size()),
         .pColorAttachments = colorAttachmentsInfo.data(),
         .pDepthAttachment = depthInfo ? &*depthInfo : nullptr,
-        .pStencilAttachment = depthInfo ? &*depthInfo : nullptr,
+        .pStencilAttachment =
+            depthInfo && DoesFormatSupportStencil(resources.depthStencil->texture->GetDescription().format)
+                ? &*depthInfo
+                : nullptr,
     };
 
     commandBuffer->beginRendering(info);
@@ -546,8 +547,10 @@ void VkCommandList::DrawIndexed(
 
 void VkCommandList::SetVertexBuffers(u32 startSlot, std::span<RHIBufferBinding> vertexBuffers)
 {
-    std::vector<::vk::Buffer> vkBuffers(vertexBuffers.size());
-    std::vector<::vk::DeviceSize> vkOffsets(vkBuffers.size());
+    std::vector<::vk::Buffer> vkBuffers;
+    vkBuffers.reserve(vertexBuffers.size());
+    std::vector<::vk::DeviceSize> vkOffsets;
+    vkOffsets.reserve(vkBuffers.size());
     for (auto& [binding, buffer] : vertexBuffers)
     {
         vkBuffers.emplace_back(buffer->GetNativeBuffer());
@@ -592,21 +595,13 @@ void VkCommandList::TraceRays(const std::array<u32, 3>& widthHeightDepth,
 
 void VkCommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDescription> regionMappings)
 {
-    // TODO: Validate that the region mappings are correct and make sense
-
     const auto& srcDesc = src.description;
     const auto& dstDesc = dst.description;
 
     std::vector<::vk::ImageCopy> copyRegions{};
 
-    static constexpr ::vk::ImageAspectFlags depthStencilAspectMask =
-        ::vk::ImageAspectFlagBits::eDepth | ::vk::ImageAspectFlagBits::eStencil;
-    static constexpr ::vk::ImageAspectFlags colorAspectMask = ::vk::ImageAspectFlagBits::eColor;
-
-    const ::vk::ImageAspectFlags srcAspectMask =
-        FormatIsDepthStencilCompatible(srcDesc.format) ? depthStencilAspectMask : colorAspectMask;
-    const ::vk::ImageAspectFlags dstAspectMask =
-        FormatIsDepthStencilCompatible(dstDesc.format) ? depthStencilAspectMask : colorAspectMask;
+    const ::vk::ImageAspectFlags srcAspectMask = VkTextureUtil::GetFormatAspectFlags(srcDesc.format);
+    const ::vk::ImageAspectFlags dstAspectMask = VkTextureUtil::GetFormatAspectFlags(dstDesc.format);
 
     copyRegions.reserve(regionMappings.size());
     for (const auto& [srcRegion, dstRegion, extent] : regionMappings)

@@ -267,7 +267,7 @@ struct ColorBlendState
 struct RenderTargetState
 {
     std::vector<TextureFormat> colorFormats;
-    TextureFormat depthStencilFormat;
+    TextureFormat depthStencilFormat = TextureFormat::UNKNOWN;
 
     bool operator==(const RenderTargetState& other) const = default;
 };

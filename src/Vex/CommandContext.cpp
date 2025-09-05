@@ -19,6 +19,7 @@
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/RayTracing.h>
 #include <Vex/ResourceBindingUtils.h>
+#include <Vex/Validation.h>
 
 namespace vex
 {
@@ -70,9 +71,10 @@ static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDescript
         key.renderTargetState.colorFormats.emplace_back(rhiBinding.binding.texture.description.format);
     }
 
-    key.renderTargetState.depthStencilFormat = rhiDrawRes.depthStencil.has_value()
-                                                   ? rhiDrawRes.depthStencil->binding.texture.description.format
-                                                   : TextureFormat::UNKNOWN;
+    if (rhiDrawRes.depthStencil)
+    {
+        key.renderTargetState.depthStencilFormat = rhiDrawRes.depthStencil->binding.texture.description.format;
+    }
 
     // Ensure each render target has atleast a default color attachment (no blending, write all).
     key.colorBlendState.attachments.resize(rhiDrawRes.renderTargets.size());
@@ -568,18 +570,16 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDescri
                                                                 const DrawResourceBinding& drawBindings,
                                                                 std::optional<ConstantBinding> constants)
 {
-    if (drawDesc.vertexShader.type != ShaderType::VertexShader)
-    {
-        VEX_LOG(Fatal,
-                "Invalid type passed to Draw call for vertex shader: {}",
-                magic_enum::enum_name(drawDesc.vertexShader.type));
-    }
-    if (drawDesc.pixelShader.type != ShaderType::PixelShader)
-    {
-        VEX_LOG(Fatal,
-                "Invalid type passed to Draw call for pixel shader: {}",
-                magic_enum::enum_name(drawDesc.pixelShader.type));
-    }
+    VEX_CHECK(!drawBindings.depthStencil ||
+                  (drawBindings.depthStencil &&
+                   FormatIsDepthStencilCompatible(drawBindings.depthStencil->texture.description.format)),
+              "The provided depth stencil should have a depth stencil format");
+    VEX_CHECK(drawDesc.vertexShader.type == ShaderType::VertexShader,
+              "Invalid type passed to Draw call for vertex shader: {}",
+              drawDesc.vertexShader.type);
+    VEX_CHECK(drawDesc.pixelShader.type == ShaderType::PixelShader,
+              "Invalid type passed to Draw call for pixel shader: {}",
+              drawDesc.pixelShader.type);
 
     // Transition RTs/DepthStencil
     std::vector<std::pair<RHITexture&, RHITextureState>> transitions;

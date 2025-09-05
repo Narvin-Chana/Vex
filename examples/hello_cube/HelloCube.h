@@ -15,6 +15,7 @@ protected:
 
 private:
     vex::Texture depthTexture;
+    vex::Texture uvGuideTexture;
     vex::Buffer vertexBuffer;
     vex::Buffer indexBuffer;
 };

@@ -16,6 +16,12 @@ struct RHITextureBinding;
 namespace vex::vk
 {
 
+namespace VkTextureUtil
+{
+::vk::ImageAspectFlags GetDepthAspectFlags(TextureFormat format);
+::vk::ImageAspectFlags GetFormatAspectFlags(TextureFormat format);
+} // namespace VkTextureUtil
+
 struct VkTextureViewDesc
 {
     TextureViewType viewType = TextureViewType::Texture2D;

@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include <Vex/Bindings.h>
+#include <Vex/Formattable.h>
 #include <Vex/Logger.h>
 #include <Vex/Validation.h>
 
@@ -39,14 +40,16 @@ TextureViewType GetTextureViewType(const TextureBinding& binding)
 
 TextureFormat GetTextureFormat(const TextureBinding& binding)
 {
-    if (!IsFormatSRGB(binding.texture.description.format) &&
-        !FormatHasSRGBEquivalent(binding.texture.description.format))
-    {
-        return TextureFormat::UNKNOWN;
-    }
-
     if (binding.flags & TextureBindingFlags::SRGB)
     {
+        if (!IsFormatSRGB(binding.texture.description.format) ||
+            !FormatHasSRGBEquivalent(binding.texture.description.format))
+        {
+            VEX_LOG(Fatal,
+                    "Format {} cannot support SRGB loads. Please use an SRGB-compatible texture format.",
+                    binding.texture.description.format);
+        }
+
         return GetSRGBEquivalentFormat(binding.texture.description.format);
     }
 

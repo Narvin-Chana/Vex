@@ -63,17 +63,16 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
                            });
 
     std::vector<::vk::VertexInputAttributeDescription> attributes{ key.vertexInputLayout.attributes.size() };
-    // Requires including the heavy <algorithm>
-    std::ranges::transform(
-        key.vertexInputLayout.attributes,
-        attributes.begin(),
-        [](const VertexInputLayout::VertexAttribute& attribute)
-        {
-            return ::vk::VertexInputAttributeDescription{ .location = attribute.semanticIndex,
-                                                          .binding = attribute.binding,
-                                                          .format = TextureFormatToVulkan(attribute.format),
-                                                          .offset = attribute.offset };
-        });
+    for (u32 i = 0; i < attributes.size(); ++i)
+    {
+        const VertexInputLayout::VertexAttribute& attribute = key.vertexInputLayout.attributes[i];
+        // TODO: Find out the right location according to semanticName + semanticIndex from shader reflection
+        // Trello: https://trello.com/c/iAzWZsBM
+        attributes[i] = ::vk::VertexInputAttributeDescription{ .location = i,
+                                                               .binding = attribute.binding,
+                                                               .format = TextureFormatToVulkan(attribute.format),
+                                                               .offset = attribute.offset };
+    }
 
     ::vk::PipelineVertexInputStateCreateInfo pipelineVertexInputStateCI{
         .vertexBindingDescriptionCount = static_cast<u32>(bindings.size()),
@@ -162,10 +161,13 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
     // Requires including the heavy <algorithm>
     std::ranges::transform(key.renderTargetState.colorFormats, attachmentFormats.begin(), TextureFormatToVulkan);
 
-    // TODO(https://trello.com/c/2KeJ2cXy): Add depthAttachmentFormat and stencilAttachmentFormat support.
     const ::vk::PipelineRenderingCreateInfoKHR pipelineRenderingCI{
         .colorAttachmentCount = static_cast<u32>(attachmentFormats.size()),
         .pColorAttachmentFormats = attachmentFormats.data(),
+        .depthAttachmentFormat = TextureFormatToVulkan(key.renderTargetState.depthStencilFormat),
+        .stencilAttachmentFormat = DoesFormatSupportStencil(key.renderTargetState.depthStencilFormat)
+                                       ? TextureFormatToVulkan(key.renderTargetState.depthStencilFormat)
+                                       : ::vk::Format::eUndefined
     };
 
     ::vk::PipelineViewportStateCreateInfo viewportStateCI{

@@ -25,7 +25,6 @@ struct UniformsStruct
     uint ColorBuffer;
     uint CommBuffer;
     uint OutputTexture;
-    uint uvGuideTextureHandle;
 };
 
 // Global way of mapping local constant bindless handles to resources.
@@ -46,7 +45,6 @@ void CSMain(uint3 dtid : SV_DispatchThreadID)
     let ColorBuffer = GetBindlessResource<ConstantBuffer<Colors>>(Uniforms.ColorBuffer);
     let CommBuffer = GetBindlessResource<RWStructuredBuffer<float4>>(Uniforms.CommBuffer);
     let OutputTexture = GetBindlessResource<RWTexture2D<float4>>(Uniforms.OutputTexture);
-    let UVTextureGuide = GetBindlessResource<Texture2D<float4>>(Uniforms.uvGuideTextureHandle);
 
     uint width, height;
     OutputTexture.GetDimensions(width, height);
@@ -74,6 +72,6 @@ void CSMain(uint3 dtid : SV_DispatchThreadID)
     else
     {
         float2 globalUV = float2(dtid.xy) / max(width, height);
-        OutputTexture[dtid.xy] = float4(0.2f, 0.1f, 0.1f, 1.0f) * UVTextureGuide.Load(int3(int2(globalUV * 860), 0));
+        OutputTexture[dtid.xy] = float4(0.2f, 0.1f, 0.1f, 1.0f);
     }
 }
