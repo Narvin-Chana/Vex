@@ -165,11 +165,10 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
     const ::vk::PipelineRenderingCreateInfoKHR pipelineRenderingCI{
         .colorAttachmentCount = static_cast<u32>(attachmentFormats.size()),
         .pColorAttachmentFormats = attachmentFormats.data(),
-        .depthAttachmentFormat = TextureFormatToVulkan(key.depthStencilState.depthStencilFormat),
-        .stencilAttachmentFormat =
-            TextureFormatToVulkan(DoesFormatSupportStencil(key.depthStencilState.depthStencilFormat)
-                                      ? key.depthStencilState.depthStencilFormat
-                                      : TextureFormat::UNKNOWN)
+        .depthAttachmentFormat = TextureFormatToVulkan(key.renderTargetState.depthStencilFormat),
+        .stencilAttachmentFormat = DoesFormatSupportStencil(key.renderTargetState.depthStencilFormat)
+                                       ? TextureFormatToVulkan(key.renderTargetState.depthStencilFormat)
+                                       : ::vk::Format::eUndefined
     };
 
     ::vk::PipelineViewportStateCreateInfo viewportStateCI{

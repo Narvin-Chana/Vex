@@ -200,7 +200,6 @@ void HelloCubeApplication::Run()
                 .depthTestEnabled = true,
                 .depthWriteEnabled = true,
                 .depthCompareOp = vex::CompareOp::GreaterEqual,
-                .depthStencilFormat = depthTexture.description.format,
             };
 
             // Setup our draw call's description...
