@@ -2,9 +2,8 @@
 
 #include <cmath>
 
-#include <magic_enum/magic_enum_format.hpp>
-
 #include <Vex/Bindings.h>
+#include <Vex/Formattable.h>
 #include <Vex/Logger.h>
 #include <Vex/Validation.h>
 

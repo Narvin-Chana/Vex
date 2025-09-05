@@ -67,8 +67,7 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
     {
         const VertexInputLayout::VertexAttribute& attribute = key.vertexInputLayout.attributes[i];
         // TODO: Find out the right location according to semanticName + semanticIndex from shader reflection
-        // Trello:
-        // https://trello.com/c/iAzWZsBM/92-use-shader-reflection-to-query-the-right-location-for-vertex-attributes
+        // Trello: https://trello.com/c/iAzWZsBM
         attributes[i] = ::vk::VertexInputAttributeDescription{ .location = i,
                                                                .binding = attribute.binding,
                                                                .format = TextureFormatToVulkan(attribute.format),

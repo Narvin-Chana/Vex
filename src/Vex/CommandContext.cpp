@@ -4,8 +4,6 @@
 #include <cmath>
 #include <variant>
 
-#include <magic_enum/magic_enum_format.hpp>
-
 #include <Vex/Containers/Utils.h>
 #include <Vex/Debug.h>
 #include <Vex/DrawHelpers.h>
