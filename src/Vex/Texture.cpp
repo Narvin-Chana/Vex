@@ -2,6 +2,8 @@
 
 #include <cmath>
 
+#include <magic_enum/magic_enum_format.hpp>
+
 #include <Vex/Bindings.h>
 #include <Vex/Logger.h>
 #include <Vex/Validation.h>
@@ -44,7 +46,9 @@ TextureFormat GetTextureFormat(const TextureBinding& binding)
         if (!IsFormatSRGB(binding.texture.description.format) ||
             !FormatHasSRGBEquivalent(binding.texture.description.format))
         {
-            return TextureFormat::UNKNOWN;
+            VEX_LOG(Fatal,
+                    "Format {} cannot support SRGB loads. Please use an SRGB-compatible texture format.",
+                    binding.texture.description.format);
         }
 
         return GetSRGBEquivalentFormat(binding.texture.description.format);

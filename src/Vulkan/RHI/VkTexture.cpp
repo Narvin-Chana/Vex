@@ -75,7 +75,6 @@ namespace VkTextureUtil
         return aspectFlags;
     default:
         return ::vk::ImageAspectFlagBits::eColor;
-        break;
     }
 }
 
@@ -264,11 +263,6 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
 
 RHITextureState VkTexture::GetClearTextureState()
 {
-    if (description.usage & TextureUsage::DepthStencil)
-    {
-        return RHITextureState::CopyDest;
-    }
-
     return RHITextureState::ShaderReadWrite;
 }
 

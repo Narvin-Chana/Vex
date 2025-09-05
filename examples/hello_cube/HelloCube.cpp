@@ -102,9 +102,7 @@ HelloCubeApplication::HelloCubeApplication()
         ctx.EnqueueDataUpload(vertexBuffer, cubeVertices);
         ctx.EnqueueDataUpload(indexBuffer, cubeIndices);
 
-        const std::filesystem::path uvImagePath =
-            std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() / "examples" /
-            "uv-guide.png";
+        const std::filesystem::path uvImagePath = ExamplesDir / "uv-guide.png";
         int width, height, channels;
         void* imageData = stbi_load(uvImagePath.string().c_str(), &width, &height, &channels, 4);
 
