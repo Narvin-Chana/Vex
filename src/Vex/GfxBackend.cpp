@@ -133,22 +133,35 @@ void GfxBackend::Present(bool isFullscreenMode)
     // Make sure the (n - FRAME_BUFFERING == n) present has finished before presenting anew.
     rhi.WaitForTokenOnCPU(presentTokens[currentFrameIndex]);
 
+    std::optional<RHITexture> backBuffer = swapChain->AcquireBackBuffer(currentFrameIndex);
+
     // Before presenting we have to handle all the queued for submission command lists (and their dependencies).
     SubmitDeferredWork();
 
     // Open a new command list that will be used to copy the presentTexture to the backbuffer, and presenting.
     RHITexture& presentTexture = GetRHITexture(GetCurrentPresentTexture().handle);
-    RHITexture backBuffer = swapChain->AcquireBackBuffer(currentFrameIndex);
 
     // Copy the present texture to the backbuffer.
     // Must be a graphics queue in order to be able to move the backbuffer to the present state.
     NonNullPtr<RHICommandList> cmdList = commandPool->GetOrCreateCommandList(CommandQueueType::Graphics);
     cmdList->Open();
     cmdList->Transition(presentTexture, RHITextureState::CopySource);
-    cmdList->Transition(backBuffer, RHITextureState::CopyDest);
-    cmdList->Copy(presentTexture, backBuffer);
-    cmdList->Transition(backBuffer, RHITextureState::Present);
+
+    if (backBuffer)
+    {
+        cmdList->Transition(*backBuffer, RHITextureState::CopyDest);
+        cmdList->Copy(presentTexture, *backBuffer);
+        cmdList->Transition(*backBuffer, RHITextureState::Present);
+    }
+    else
+    {
+        // This is to dirty the windows size to ensure if the backend is resized it wont fall through
+        description.platformWindow.width = 0;
+        description.platformWindow.height = 0;
+    }
+
     cmdList->Close();
+
     presentTokens[currentFrameIndex] = swapChain->Present(currentFrameIndex, rhi, cmdList, isFullscreenMode);
     commandPool->OnCommandListsSubmitted({ &cmdList, 1 }, { &presentTokens[currentFrameIndex], 1 });
 

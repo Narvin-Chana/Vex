@@ -114,6 +114,7 @@ public:
     void UnregisterRenderExtension(NonNullPtr<RenderExtension> renderExtension);
 
 private:
+    void DitchDeferredWork();
     void SubmitDeferredWork();
     void CleanupResources();
 
@@ -173,6 +174,10 @@ private:
 
     friend class CommandContext;
     friend struct ResourceBindingUtils;
+
+    // True when the backbuffer cannot be accessed
+    // This is true in VK while minimized
+    bool canPresent;
 };
 
 } // namespace vex
