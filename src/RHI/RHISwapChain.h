@@ -33,7 +33,7 @@ public:
 
     // FrameIndex is used for our per-frame resources (semaphores etc..).
     // The actual backbuffer returned will be determined by the swapChain's internal index.
-    virtual RHITexture AcquireBackBuffer(u8 frameIndex) = 0;
+    virtual std::optional<RHITexture> AcquireBackBuffer(u8 frameIndex) = 0;
     virtual SyncToken Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandList> commandList, bool isFullscreen) = 0;
 };
 

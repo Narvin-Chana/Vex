@@ -142,7 +142,7 @@ bool VkSwapChain::NeedsFlushForVSyncToggle()
     return true;
 }
 
-RHITexture VkSwapChain::AcquireBackBuffer(u8 frameIndex)
+std::optional<RHITexture> VkSwapChain::AcquireBackBuffer(u8 frameIndex)
 {
     // Acquire the next backbuffer image.
     auto res = ctx->device.acquireNextImageKHR(*swapchain,
@@ -152,9 +152,7 @@ RHITexture VkSwapChain::AcquireBackBuffer(u8 frameIndex)
                                                &currentBackbufferId);
     if (res == ::vk::Result::eErrorOutOfDateKHR)
     {
-        VEX_LOG(Error,
-                "Swapchain was OutOfDate which should never happen. "
-                "It should have been resized with the application window")
+        return {};
     }
 
     VEX_VK_CHECK << res;
@@ -197,15 +195,12 @@ SyncToken VkSwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandLis
         .pSwapchains = &*swapchain,
         .pImageIndices = &currentBackbufferId,
     };
-    auto res = ctx->graphicsPresentQueue.queue.presentKHR(presentInfo);
-    if (res == ::vk::Result::eErrorOutOfDateKHR)
-    {
-        VEX_LOG(Error,
-                "Swapchain was OutOfDate which should never happen. "
-                "It should have been resized with the application window")
-    }
 
-    VEX_VK_CHECK << res;
+    auto res = ctx->graphicsPresentQueue.queue.presentKHR(presentInfo);
+    if (res != ::vk::Result::eErrorOutOfDateKHR)
+    {
+        VEX_VK_CHECK << res;
+    }
 
     return syncToken;
 }

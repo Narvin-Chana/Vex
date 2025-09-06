@@ -229,59 +229,57 @@ void SynchronizationTortureTest(GfxBackend& graphics)
 
     // Test 6: Resource Upload Torture
     //
-    // Disabled since we don't yet have buffer->texture upload.
-    //
-    // VEX_LOG(Info, "Test 6: Resource Upload Torture");
-    //{
-    //    // Create upload buffer
-    //    BufferDescription uploadBufDesc{};
-    //    uploadBufDesc.name = "Test6 Buf";
-    //    uploadBufDesc.byteSize = 1024 * 1024; // 1MB
-    //    uploadBufDesc.usage = BufferUsage::None;
-    //    uploadBufDesc.memoryLocality = ResourceMemoryLocality::CPUWrite;
-    //    auto uploadBuffer = graphics.CreateBuffer(uploadBufDesc, ResourceLifetime::Static);
+    VEX_LOG(Info, "Test 6: Resource Upload Torture");
+    {
+        // Create upload buffer
+        BufferDescription uploadBufDesc{};
+        uploadBufDesc.name = "Test6 Buf";
+        uploadBufDesc.byteSize = 1024 * 1024; // 1MB
+        uploadBufDesc.usage = BufferUsage::None;
+        uploadBufDesc.memoryLocality = ResourceMemoryLocality::CPUWrite;
+        auto uploadBuffer = graphics.CreateBuffer(uploadBufDesc, ResourceLifetime::Static);
 
-    //    // Create target texture
-    //    TextureDescription texDesc{};
-    //    texDesc.name = "Test6 Tex";
-    //    texDesc.width = 256;
-    //    texDesc.height = 256;
-    //    texDesc.format = TextureFormat::RGBA8_UNORM;
-    //    texDesc.usage = TextureUsage::ShaderRead;
-    //    auto targetTexture = graphics.CreateTexture(texDesc, ResourceLifetime::Static);
+        // Create target texture
+        TextureDescription texDesc{};
+        texDesc.name = "Test6 Tex";
+        texDesc.width = 256;
+        texDesc.height = 256;
+        texDesc.format = TextureFormat::RGBA8_UNORM;
+        texDesc.usage = TextureUsage::ShaderRead;
+        auto targetTexture = graphics.CreateTexture(texDesc, ResourceLifetime::Static);
 
-    //    std::vector<SyncToken> uploadTokens;
+        std::vector<SyncToken> uploadTokens;
 
-    //    // Perform multiple uploads
-    //    for (int i = 0; i < 10; ++i)
-    //    {
-    //        std::span<SyncToken> deps = uploadTokens.size() > 2
-    //                                        ? std::span<SyncToken>(uploadTokens.end() - 2, uploadTokens.end())
-    //                                        : std::span<SyncToken>();
+        // Perform multiple uploads
+        for (int i = 0; i < 10; ++i)
+        {
+            std::span<SyncToken> deps = uploadTokens.size() > 2
+                                            ? std::span<SyncToken>(uploadTokens.end() - 2, uploadTokens.end())
+                                            : std::span<SyncToken>();
 
-    //        auto ctx = graphics.BeginScopedCommandContext(CommandQueueType::Copy, SubmissionPolicy::Immediate, deps);
+            auto ctx = graphics.BeginScopedCommandContext(CommandQueueType::Copy, SubmissionPolicy::Immediate, deps);
 
-    //        // Generate dummy data
-    //        std::vector<u8> dummyData(1024, static_cast<u8>(i));
-    //        ctx.EnqueueDataUpload(uploadBuffer, dummyData);
-    //        ctx.Copy(uploadBuffer, targetTexture);
+            // Generate dummy data
+            std::vector<u8> dummyData(1024, static_cast<u8>(i));
+            ctx.EnqueueDataUpload(uploadBuffer, dummyData);
+            ctx.Copy(uploadBuffer, targetTexture);
 
-    //        auto tokens = ctx.Submit();
-    //        uploadTokens.insert(uploadTokens.end(), tokens.begin(), tokens.end());
+            auto tokens = ctx.Submit();
+            uploadTokens.insert(uploadTokens.end(), tokens.begin(), tokens.end());
 
-    //        VEX_LOG(Verbose, "Upload iteration {}", i);
-    //    }
+            VEX_LOG(Verbose, "Upload iteration {}", i);
+        }
 
-    //    // Wait for all uploads
-    //    for (const auto& token : uploadTokens)
-    //    {
-    //        graphics.WaitForTokenOnCPU(token);
-    //    }
+        // Wait for all uploads
+        for (const auto& token : uploadTokens)
+        {
+            graphics.WaitForTokenOnCPU(token);
+        }
 
-    //    // Cleanup
-    //    graphics.DestroyBuffer(uploadBuffer);
-    //    graphics.DestroyTexture(targetTexture);
-    //}
+        // Cleanup
+        graphics.DestroyBuffer(uploadBuffer);
+        graphics.DestroyTexture(targetTexture);
+    }
 
     // Test 7: Final Stress Test - Everything at Once
     VEX_LOG(Info, "Test 7: Final Stress Test");
