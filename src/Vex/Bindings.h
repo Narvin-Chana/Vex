@@ -23,7 +23,7 @@ struct ConstantBinding
 
     template <typename T>
     explicit ConstantBinding(std::span<T> data)
-        : ConstantBinding(static_cast<const void*>(data.data()), data.size_bytes())
+        : data(std::as_bytes(data))
     {
     }
 

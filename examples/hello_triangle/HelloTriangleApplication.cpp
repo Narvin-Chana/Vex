@@ -106,7 +106,7 @@ void HelloTriangleApplication::Run()
             };
             std::vector<vex::BindlessHandle> pass2Handles = ctx.GetBindlessHandles(pass2Bindings);
 
-            ctx.EnqueueDataUpload(colorBuffer, color);
+            ctx.EnqueueDataUpload(colorBuffer, std::as_bytes(std::span(color)));
 
             // Draw the first pass, first with an HLSL shader, then with a Slang shader (if available).
             {
