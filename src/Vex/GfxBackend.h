@@ -174,10 +174,7 @@ private:
 
     friend class CommandContext;
     friend struct ResourceBindingUtils;
-
-    // True when the backbuffer cannot be accessed
-    // This is true in VK while minimized
-    bool canPresent;
+    bool isSwapchainValid = true;
 };
 
 } // namespace vex
