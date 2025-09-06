@@ -3,9 +3,11 @@
 #include <optional>
 
 #include <Vex/Bindings.h>
+#include <Vex/ByteUtils.h>
 #include <Vex/Logger.h>
 #include <Vex/RHIBindings.h>
 #include <Vex/Texture.h>
+#include <Vex/Validation.h>
 
 #include <DX12/DX12Formats.h>
 #include <DX12/DX12GraphicsPipeline.h>
@@ -462,24 +464,73 @@ void DX12CommandList::Copy(RHITexture& src, RHITexture& dst)
     commandList->CopyResource(dst.GetRawTexture(), src.GetRawTexture());
 }
 
-void DX12CommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDescription> regionMappings)
+void DX12CommandList::Copy(RHITexture& src,
+                           RHITexture& dst,
+                           std::span<const TextureCopyDescription> textureCopyDescriptions)
 {
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-void DX12CommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& regionMappings)
+void DX12CommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& bufferCopyDescription)
 {
     commandList->CopyBufferRegion(dst.GetRawBuffer(),
-                                  regionMappings.dstOffset,
+                                  bufferCopyDescription.dstOffset,
                                   src.GetRawBuffer(),
-                                  regionMappings.srcOffset,
-                                  regionMappings.size);
+                                  bufferCopyDescription.srcOffset,
+                                  bufferCopyDescription.size);
 }
+
 void DX12CommandList::Copy(RHIBuffer& src,
                            RHITexture& dst,
-                           std::span<const BufferToTextureCopyDescription> regionMappings)
+                           std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    ID3D12Resource* srcBuffer = src.GetRawBuffer();
+    ID3D12Resource* dstTexture = dst.GetRawTexture();
+
+    float formatPixelByteSize = TextureUtil::GetPixelByteSizeFromFormat(dst.GetDescription().format);
+
+    for (const auto& copyDesc : bufferToTextureCopyDescriptions)
+    {
+        const u32 rowPitch = copyDesc.extent.width * formatPixelByteSize;
+        VEX_CHECK(IsAligned<u64>(rowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT),
+                  "Cannot copy buffer {} to texture {}: The buffer's rows should be aligned to 256 bytes.",
+                  src.GetDescription().name,
+                  dst.GetDescription().name);
+        VEX_CHECK(IsAligned<u64>(copyDesc.srcRegion.offset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
+                  "Source offset should be aligned to 512 bytes!");
+
+        D3D12_TEXTURE_COPY_LOCATION srcLoc = {};
+        srcLoc.pResource = srcBuffer;
+        srcLoc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+
+        D3D12_PLACED_SUBRESOURCE_FOOTPRINT& footprint = srcLoc.PlacedFootprint;
+        footprint.Offset = copyDesc.srcRegion.offset;
+        footprint.Footprint.Format = TextureFormatToDXGI(dst.GetDescription().format);
+        footprint.Footprint.Width = copyDesc.extent.width;
+        footprint.Footprint.Height = copyDesc.extent.height;
+        footprint.Footprint.Depth = copyDesc.extent.depth;
+        footprint.Footprint.RowPitch = rowPitch;
+
+        D3D12_TEXTURE_COPY_LOCATION dstLoc = {};
+        dstLoc.pResource = dstTexture;
+        dstLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        dstLoc.SubresourceIndex = copyDesc.dstRegion.startSlice * dst.GetDescription().mips + copyDesc.dstRegion.mip;
+
+        D3D12_BOX srcBox = {};
+        srcBox.left = 0;
+        srcBox.top = 0;
+        srcBox.front = 0;
+        srcBox.right = copyDesc.extent.width;
+        srcBox.bottom = copyDesc.extent.height;
+        srcBox.back = copyDesc.extent.depth;
+
+        commandList->CopyTextureRegion(&dstLoc,
+                                       copyDesc.dstRegion.offset.width,
+                                       copyDesc.dstRegion.offset.height,
+                                       copyDesc.dstRegion.offset.depth,
+                                       &srcLoc,
+                                       &srcBox);
+    }
 }
 
 } // namespace vex::dx12

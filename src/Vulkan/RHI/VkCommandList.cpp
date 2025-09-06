@@ -590,10 +590,10 @@ void VkCommandList::TraceRays(const std::array<u32, 3>& widthHeightDepth,
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-void VkCommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDescription> regionMappings)
+void VkCommandList::Copy(RHITexture& src,
+                         RHITexture& dst,
+                         std::span<const TextureCopyDescription> textureCopyDescriptions)
 {
-    // TODO: Validate that the region mappings are correct and make sense
-
     const auto& srcDesc = src.description;
     const auto& dstDesc = dst.description;
 
@@ -608,8 +608,8 @@ void VkCommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const Textu
     const ::vk::ImageAspectFlags dstAspectMask =
         FormatIsDepthStencilCompatible(dstDesc.format) ? depthStencilAspectMask : colorAspectMask;
 
-    copyRegions.reserve(regionMappings.size());
-    for (const auto& [srcRegion, dstRegion, extent] : regionMappings)
+    copyRegions.reserve(textureCopyDescriptions.size());
+    for (const auto& [srcRegion, dstRegion, extent] : textureCopyDescriptions)
     {
         copyRegions.push_back(::vk::ImageCopy{
             .srcSubresource = { .aspectMask = srcAspectMask,
@@ -633,17 +633,17 @@ void VkCommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const Textu
                              copyRegions.data());
 }
 
-void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& regionMappings)
+void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& bufferCopyDescription)
 {
-    const ::vk::BufferCopy copy{ .srcOffset = regionMappings.srcOffset,
-                                 .dstOffset = regionMappings.dstOffset,
-                                 .size = regionMappings.size };
+    const ::vk::BufferCopy copy{ .srcOffset = bufferCopyDescription.srcOffset,
+                                 .dstOffset = bufferCopyDescription.dstOffset,
+                                 .size = bufferCopyDescription.size };
     commandBuffer->copyBuffer(src.GetNativeBuffer(), dst.GetNativeBuffer(), 1, &copy);
 }
 
 void VkCommandList::Copy(RHIBuffer& src,
                          RHITexture& dst,
-                         std::span<const BufferToTextureCopyDescription> regionMappings)
+                         std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions)
 {
     const ::vk::ImageAspectFlags dstAspectMask =
         FormatIsDepthStencilCompatible(dst.description.format)
@@ -652,7 +652,7 @@ void VkCommandList::Copy(RHIBuffer& src,
 
     std::vector<::vk::BufferImageCopy> regions;
 
-    for (const auto& [srcRegion, dstRegion, extent] : regionMappings)
+    for (const auto& [srcRegion, dstRegion, extent] : bufferToTextureCopyDescriptions)
     {
         regions.push_back(::vk::BufferImageCopy{
             .bufferOffset = srcRegion.offset,

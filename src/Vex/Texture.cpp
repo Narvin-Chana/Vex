@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include <Vex/Bindings.h>
+#include <Vex/ByteUtils.h>
 #include <Vex/Logger.h>
 #include <Vex/Validation.h>
 
@@ -187,7 +188,8 @@ u32 GetTotalTextureByteSize(const TextureDescription& desc)
 
     for (int i = 0; i < desc.mips; ++i)
     {
-        totalSize += static_cast<float>(width * height * depth * arraySize) * pixelByteSize;
+        totalSize += AlignUp<u32>(AlignUp<u32>(width * pixelByteSize, RowPitchAlignment) * height * depth * arraySize,
+                                  MipAlignment);
 
         width = std::max(1u, width / 2u);
         height = std::max(1u, height / 2u);

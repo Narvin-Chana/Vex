@@ -114,7 +114,7 @@ struct TextureExtent
 
 struct TextureSubresource
 {
-    u32 mip = 0;
+    u16 mip = 0;
     u32 startSlice = 0;
     u32 sliceCount = 1;
     TextureExtent offset{ 0, 0, 0 };
@@ -129,6 +129,9 @@ struct TextureCopyDescription
 
 namespace TextureUtil
 {
+
+static constexpr u32 RowPitchAlignment = 256;
+static constexpr u32 MipAlignment = 512;
 
 std::tuple<u32, u32, u32> GetMipSize(const TextureDescription& desc, u32 mip);
 TextureViewType GetTextureViewType(const TextureBinding& binding);

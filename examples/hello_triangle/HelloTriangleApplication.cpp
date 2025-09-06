@@ -62,17 +62,18 @@ HelloTriangleApplication::HelloTriangleApplication()
         vex::CommandContext ctx =
             graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics, vex::SubmissionPolicy::Immediate);
 
-        const std::filesystem::path uvImagePath =
-            std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() / "examples" /
-            "uv-guide.png";
+        const std::filesystem::path uvImagePath = ExamplesDir / "uv-guide.png";
         int width, height, channels;
         void* imageData = stbi_load(uvImagePath.string().c_str(), &width, &height, &channels, 4);
 
-        std::vector<vex::u8> fullImageData;
-        fullImageData.reserve((width * height + (width / 2) * (height / 2)) * channels);
-        std::copy_n(static_cast<vex::u8*>(imageData), width * height * channels, std::back_inserter(fullImageData));
+        std::vector<std::vector<vex::u8>> perMipImageData(2);
+        perMipImageData[0].reserve(width * height * channels);
+        std::copy_n(static_cast<vex::u8*>(imageData),
+                    width * height * channels,
+                    std::back_inserter(perMipImageData[0]));
 
         // Checker board pattern for mip 2
+        perMipImageData[1].reserve((width / 2) * (height / 2) * channels);
         for (int x = 0; x < width / 2; ++x)
         {
             for (int y = 0; y < height / 2; ++y)
@@ -80,10 +81,10 @@ HelloTriangleApplication::HelloTriangleApplication()
                 bool evenX = (x / 20) % 2 == 0;
                 bool evenY = (y / 20) % 2 == 0;
 
-                fullImageData.push_back(evenX ^ evenY ? 0 : 0xFF);
-                fullImageData.push_back(0x00);
-                fullImageData.push_back(0x00);
-                fullImageData.push_back(0xFF);
+                perMipImageData[1].push_back(evenX ^ evenY ? 0 : 0xFF);
+                perMipImageData[1].push_back(0x00);
+                perMipImageData[1].push_back(0x00);
+                perMipImageData[1].push_back(0xFF);
             }
         }
 
@@ -98,7 +99,7 @@ HelloTriangleApplication::HelloTriangleApplication()
                                       .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
                                     vex::ResourceLifetime::Static);
 
-        ctx.EnqueueDataUpload(uvGuideTexture, std::span<const vex::u8>{ fullImageData });
+        ctx.EnqueueDataUpload(uvGuideTexture, perMipImageData);
 
         stbi_image_free(imageData);
 

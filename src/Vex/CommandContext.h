@@ -80,26 +80,28 @@ public:
                    const std::optional<ConstantBinding>& constants,
                    std::array<u32, 3> widthHeightDepth);
 
-    // Copies the entirety of source texture (all mips and array levels) to the destination texture
+    // Copies the entirety of the source texture (all mips and array levels) to the destination texture.
     void Copy(const Texture& source, const Texture& destination);
-    // Copies a region of source texture to destination texture
-    void Copy(const Texture& source, const Texture& destination, const TextureCopyDescription& regionMapping);
-    // Copies multiple regions of source texture to destination texture
+    // Copies a region of the source texture to the destination texture.
+    void Copy(const Texture& source, const Texture& destination, const TextureCopyDescription& textureCopyDescription);
+    // Copies multiple regions of the source texture to the destination texture.
     void Copy(const Texture& source,
               const Texture& destination,
-              std::span<const TextureCopyDescription> regionMappings);
-    // Copies the entirety of source buffer to the destination buffer
+              std::span<const TextureCopyDescription> textureCopyDescriptions);
+    // Copies the entirety of the source buffer to the destination buffer.
     void Copy(const Buffer& source, const Buffer& destination);
-    // Copies the specified region from source to destination buffer
-    void Copy(const Buffer& source, const Buffer& destination, const BufferCopyDescription& regionMappings);
-    // Copies the contents of a buffer to the specified texture according to API needs
+    // Copies the specified region from the source buffer to the destination buffer.
+    void Copy(const Buffer& source, const Buffer& destination, const BufferCopyDescription& bufferCopyDescription);
+    // Copies the contents of the buffer to the specified texture.
     void Copy(const Buffer& source, const Texture& destination);
-    // Copies the contents of the buffer to a specified region in the texture
-    void Copy(const Buffer& source, const Texture& destination, const BufferToTextureCopyDescription& regionMapping);
-    // Copies the contents of the buffer to multiple specified regions in the texture
+    // Copies the contents of the buffer to a specified region in the texture.
     void Copy(const Buffer& source,
               const Texture& destination,
-              std::span<const BufferToTextureCopyDescription> regionMappings);
+              const BufferToTextureCopyDescription& bufferToTextureCopyDescription);
+    // Copies the contents of the buffer to multiple specified regions in the texture.
+    void Copy(const Buffer& source,
+              const Texture& destination,
+              std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions);
 
     // Enqueues data to be uploaded to the specific buffer. If the buffer is mappable it will map it and directly write
     // data to it. If the buffer isn't mappable a staging buffer is used implicitly
@@ -109,6 +111,8 @@ public:
 
     // Enqueues data to be uploaded to the specific texture with the use of a staging buffer.
     void EnqueueDataUpload(const Texture& texture, std::span<const u8> data);
+    // Enqueues data to be uploaded to the specific texture with the use of a staging buffer.
+    void EnqueueDataUpload(const Texture& texture, std::span<std::span<const u8>> perMipData);
     // Enqueues data to be uploaded to a specific region of the texture
     void EnqueueDataUpload(const Texture& texture,
                            std::span<const u8> data,
@@ -116,13 +120,16 @@ public:
                            const TextureExtent& extent);
 
     template <class T>
+        requires(not IsContainer<T>)
     void EnqueueDataUpload(const Texture& texture, const T& data);
     template <class T>
+        requires(not IsContainer<T>)
     void EnqueueDataUpload(const Texture& texture,
                            const T& data,
                            const TextureSubresource& subresource,
                            const TextureExtent& extent);
     template <class T>
+        requires(not IsContainer<T>)
     void EnqueueDataUpload(const Buffer& buffer, const T& data);
 
     BindlessHandle GetBindlessHandle(const ResourceBinding& resourceBinding);
@@ -190,12 +197,14 @@ private:
 };
 
 template <class T>
+    requires(not IsContainer<T>)
 void CommandContext::EnqueueDataUpload(const Texture& texture, const T& data)
 {
     EnqueueDataUpload(texture, std::span{ reinterpret_cast<const u8*>(&data), sizeof(T) });
 }
 
 template <class T>
+    requires(not IsContainer<T>)
 void CommandContext::EnqueueDataUpload(const Texture& texture,
                                        const T& data,
                                        const TextureSubresource& subresource,
@@ -205,6 +214,7 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
 }
 
 template <class T>
+    requires(not IsContainer<T>)
 void CommandContext::EnqueueDataUpload(const Buffer& buffer, const T& data)
 {
     EnqueueDataUpload(buffer,

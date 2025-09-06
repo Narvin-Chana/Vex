@@ -454,6 +454,38 @@ void CommandContext::EnqueueDataUpload(const Texture& texture, std::span<const u
     temporaryResources.emplace_back(std::move(rhiStagingBuffer));
 }
 
+void CommandContext::EnqueueDataUpload(const Texture& texture, std::span<std::span<const u8>> perMipData)
+{
+    u32 stagingBufferByteSize = TextureUtil::GetTotalTextureByteSize(texture.description);
+    const BufferDescription stagingBufferDesc =
+        CommandContext_Internal::GetStagingBufferDescription(texture.description.name, stagingBufferByteSize);
+
+    TextureCopyUtil::ValidateSimpleBufferToTextureCopy(stagingBufferDesc, texture.description);
+
+    Buffer stagingBuffer = backend->CreateBuffer(stagingBufferDesc, ResourceLifetime::Static);
+    RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
+    RHITexture& rhiDestTexture = backend->GetRHITexture(texture.handle);
+
+    // Upload the texture data to our staging buffer.
+    {
+        ResourceMappedMemory stagingMapped = ResourceMappedMemory(rhiStagingBuffer);
+
+        u32 offset = 0;
+        for (std::span<const u8> mip : perMipData)
+        {
+            // TODO: add alignment padding
+            stagingMapped.SetData(mip, offset);
+            offset += mip.size();
+        }
+    }
+
+    cmdList->Transition(rhiStagingBuffer, RHIBufferState::CopySource);
+    cmdList->Transition(rhiDestTexture, RHITextureState::CopyDest);
+    cmdList->Copy(rhiStagingBuffer, rhiDestTexture);
+
+    temporaryResources.emplace_back(std::move(rhiStagingBuffer));
+}
+
 void CommandContext::EnqueueDataUpload(const Texture& texture,
                                        std::span<const u8> data,
                                        const TextureSubresource& subresource,

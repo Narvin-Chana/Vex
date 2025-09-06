@@ -196,7 +196,7 @@ add_library(Vex STATIC
     "src/Vex/Synchronization.h"
     "src/Tests/SynchronizationTorture.h"
     "src/Tests/SynchronizationTorture.cpp"
-)
+ "src/Vex/ResourceCopy.h" "src/Vex/ResourceCopy.cpp")
 
 if(WIN32)
     target_sources(Vex PRIVATE
