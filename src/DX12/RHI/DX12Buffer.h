@@ -52,7 +52,7 @@ public:
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
     virtual void FreeAllocation(RHIAllocator& allocator) override;
 
-    virtual std::span<u8> Map() override;
+    virtual std::span<byte> Map() override;
     virtual void Unmap() override;
 
     ID3D12Resource* GetRawBuffer()

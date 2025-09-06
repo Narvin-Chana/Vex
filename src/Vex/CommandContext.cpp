@@ -94,12 +94,12 @@ static BufferDescription GetStagingBufferDescription(const std::string& name, u6
 }
 
 static void UploadTextureDataAligned(const TextureDescription& textureDesc,
-                                     std::span<const u8> packedData,
-                                     std::span<u8> stagingBuffer)
+                                     std::span<const byte> packedData,
+                                     std::span<byte> stagingBuffer)
 {
     const u32 bytesPerPixel = TextureUtil::GetPixelByteSizeFromFormat(textureDesc.format);
-    const u8* srcData = packedData.data();
-    u8* dstData = stagingBuffer.data();
+    const byte* srcData = packedData.data();
+    byte* dstData = stagingBuffer.data();
     u64 srcOffset = 0;
     u64 dstOffset = 0;
 
@@ -125,9 +125,9 @@ static void UploadTextureDataAligned(const TextureDescription& textureDesc,
                 // Copy each row with alignment
                 for (u32 row = 0; row < height; ++row)
                 {
-                    const u8* srcRow = srcData + srcOffset + depthSlice * packedSlicePitch + row * packedRowPitch;
+                    const byte* srcRow = srcData + srcOffset + depthSlice * packedSlicePitch + row * packedRowPitch;
 
-                    u8* dstRow = dstData + dstOffset + depthSlice * alignedSlicePitch + row * alignedRowPitch;
+                    byte* dstRow = dstData + dstOffset + depthSlice * alignedSlicePitch + row * alignedRowPitch;
 
                     std::memcpy(dstRow, srcRow, packedRowPitch);
 
@@ -443,7 +443,7 @@ void CommandContext::Copy(const Buffer& source,
     cmdList->Copy(sourceRHI, destinationRHI, regionMappings);
 }
 
-void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const u8> data)
+void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const byte> data)
 {
     if (buffer.description.memoryLocality == ResourceMemoryLocality::CPUWrite)
     {
@@ -471,7 +471,7 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const u8>
 }
 
 void CommandContext::EnqueueDataUpload(const Buffer& buffer,
-                                       std::span<const u8> data,
+                                       std::span<const byte> data,
                                        const BufferSubresource& subresource)
 {
     if (buffer.description.memoryLocality == ResourceMemoryLocality::CPUWrite)
@@ -502,7 +502,7 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer,
     temporaryResources.emplace_back(std::move(rhiStagingBuffer));
 }
 
-void CommandContext::EnqueueDataUpload(const Texture& texture, std::span<const u8> data)
+void CommandContext::EnqueueDataUpload(const Texture& texture, std::span<const byte> data)
 {
     const BufferDescription stagingBufferDesc = CommandContext_Internal::GetStagingBufferDescription(
         texture.description.name,
@@ -516,7 +516,7 @@ void CommandContext::EnqueueDataUpload(const Texture& texture, std::span<const u
 
     // The staging buffer has to respect the alignment that which Vex uses for uploads.
     // We suppose however that user data is tightly packed.
-    std::span<u8> stagingBufferData = rhiStagingBuffer.Map();
+    std::span<byte> stagingBufferData = rhiStagingBuffer.Map();
     CommandContext_Internal::UploadTextureDataAligned(texture.description, data, stagingBufferData);
     rhiStagingBuffer.Unmap();
 
@@ -528,7 +528,7 @@ void CommandContext::EnqueueDataUpload(const Texture& texture, std::span<const u
 }
 
 void CommandContext::EnqueueDataUpload(const Texture& texture,
-                                       std::span<const u8> data,
+                                       std::span<const byte> data,
                                        const TextureSubresource& subresource,
                                        const TextureExtent& extent)
 {

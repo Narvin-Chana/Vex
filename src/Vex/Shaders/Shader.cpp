@@ -10,7 +10,7 @@ Shader::Shader(const ShaderKey& key)
 
 Shader::~Shader() = default;
 
-std::span<const u8> Shader::GetBlob() const
+std::span<const byte> Shader::GetBlob() const
 {
     return blob;
 }

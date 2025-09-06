@@ -1,10 +1,12 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
 namespace vex
 {
 
+using byte = std::byte;
 using u8 = uint8_t;
 using u16 = uint16_t;
 using u32 = uint32_t;

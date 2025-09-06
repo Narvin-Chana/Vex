@@ -91,7 +91,7 @@ void VkCommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTracin
 
 void VkCommandList::SetLayout(RHIResourceLayout& layout)
 {
-    std::span<const u8> localConstantsData = layout.GetLocalConstantsData();
+    std::span<const byte> localConstantsData = layout.GetLocalConstantsData();
     if (localConstantsData.empty())
     {
         return;

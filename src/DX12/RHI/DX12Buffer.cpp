@@ -64,7 +64,7 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
 #endif
 }
 
-std::span<u8> DX12Buffer::Map()
+std::span<byte> DX12Buffer::Map()
 {
     void* ptr;
     D3D12_RANGE range{
@@ -72,7 +72,7 @@ std::span<u8> DX12Buffer::Map()
         .End = desc.byteSize,
     };
     chk << buffer->Map(0, &range, &ptr);
-    return { static_cast<u8*>(ptr), desc.byteSize };
+    return { static_cast<byte*>(ptr), desc.byteSize };
 }
 
 void DX12Buffer::Unmap()

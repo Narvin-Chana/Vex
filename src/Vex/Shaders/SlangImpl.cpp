@@ -28,7 +28,7 @@ SlangCompilerImpl::SlangCompilerImpl(std::vector<std::filesystem::path> incDirs)
 
 SlangCompilerImpl::~SlangCompilerImpl() = default;
 
-std::expected<std::vector<u8>, std::string> SlangCompilerImpl::CompileShader(
+std::expected<std::vector<byte>, std::string> SlangCompilerImpl::CompileShader(
     const Shader& shader, ShaderEnvironment& shaderEnv, const ShaderCompilerSettings& compilerSettings) const
 {
     if (shader.key.path.extension() != ".slang")
@@ -91,7 +91,7 @@ std::expected<std::vector<u8>, std::string> SlangCompilerImpl::CompileShader(
     }
 
     // Copy the bytecode to our return vector
-    std::vector<u8> finalShaderBlob;
+    std::vector<byte> finalShaderBlob;
     std::size_t blobSize = bytecodeBlob->getBufferSize();
     finalShaderBlob.resize(blobSize);
     std::memcpy(finalShaderBlob.data(), bytecodeBlob->getBufferPointer(), blobSize);

@@ -5,6 +5,7 @@
 #include <variant>
 
 #include <Vex/Buffer.h>
+#include <Vex/Concepts.h>
 #include <Vex/EnumFlags.h>
 #include <Vex/RHIFwd.h>
 #include <Vex/Texture.h>
@@ -13,17 +14,10 @@
 namespace vex
 {
 
-template <typename T>
-concept IsContainer = requires(T a) {
-    { a.begin() } -> std::input_or_output_iterator;
-    { a.end() } -> std::input_or_output_iterator;
-    typename T::value_type;
-};
-
 struct ConstantBinding
 {
-    explicit ConstantBinding(const void* data, std::span<const u8>::size_type size)
-        : data{ reinterpret_cast<const u8*>(data), size }
+    explicit ConstantBinding(const void* data, std::span<const byte>::size_type size)
+        : data{ reinterpret_cast<const byte*>(data), size }
     {
     }
 
@@ -42,7 +36,7 @@ struct ConstantBinding
     {
     }
 
-    std::span<const u8> data;
+    std::span<const byte> data;
 };
 
 // clang-format off

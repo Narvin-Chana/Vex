@@ -99,11 +99,11 @@ HelloCubeApplication::HelloCubeApplication()
 
         // clang-format on
 
-        ctx.EnqueueDataUpload(vertexBuffer, cubeVertices);
-        ctx.EnqueueDataUpload(indexBuffer, cubeIndices);
+        ctx.EnqueueDataUpload(vertexBuffer, std::as_bytes(std::span(cubeVertices)));
+        ctx.EnqueueDataUpload(indexBuffer, std::as_bytes(std::span(cubeIndices)));
 
         const std::filesystem::path uvImagePath = ExamplesDir / "uv-guide.png";
-        int width, height, channels;
+        vex::i32 width, height, channels;
         void* imageData = stbi_load(uvImagePath.string().c_str(), &width, &height, &channels, 4);
 
         std::vector<vex::u8> fullImageData;
@@ -136,7 +136,10 @@ HelloCubeApplication::HelloCubeApplication()
                                       .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
                                     vex::ResourceLifetime::Static);
 
-        ctx.EnqueueDataUpload(uvGuideTexture, std::span<const vex::u8>{ fullImageData });
+        ctx.EnqueueDataUpload(uvGuideTexture, std::as_bytes(std::span(fullImageData)));
+
+        // The texture will now only be used as a read-only shader resource. Avoids having to transition it later on.
+        ctx.Transition(uvGuideTexture, vex::RHITextureState::ShaderResource);
 
         stbi_image_free(imageData);
     }
@@ -244,6 +247,8 @@ void HelloCubeApplication::Run()
                 .texture = graphics->GetCurrentPresentTexture(),
             } };
 
+            // Usually you'd have to transition the uvGuideTexture (since we're using it bindless-ly), but since we
+            // already transitioned it to RHITextureState::ShaderResource after the texture upload we don't have to!
             vex::BindlessHandle uvGuideHandle = ctx.GetBindlessHandle(
                 vex::TextureBinding{ .texture = uvGuideTexture, .usage = vex::TextureBindingUsage::ShaderRead });
 

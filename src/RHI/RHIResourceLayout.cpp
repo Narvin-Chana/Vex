@@ -62,7 +62,7 @@ std::span<const TextureSampler> RHIResourceLayoutBase::GetStaticSamplers() const
     return samplers;
 }
 
-std::span<const u8> RHIResourceLayoutBase::GetLocalConstantsData() const
+std::span<const byte> RHIResourceLayoutBase::GetLocalConstantsData() const
 {
     return localConstantsData;
 }

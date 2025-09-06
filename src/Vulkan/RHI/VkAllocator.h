@@ -29,7 +29,7 @@ public:
     VkAllocator(NonNullPtr<VkGPUContext> ctx);
     ~VkAllocator();
 
-    std::span<u8> MapAllocation(const Allocation& alloc);
+    std::span<byte> MapAllocation(const Allocation& alloc);
     void UnmapAllocation(const Allocation& alloc);
 
     std::pair<::vk::DeviceMemory, Allocation> AllocateResource(ResourceMemoryLocality type,

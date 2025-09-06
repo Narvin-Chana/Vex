@@ -283,7 +283,7 @@ void VkTexture::FreeAllocation(RHIAllocator& allocator)
     allocator.FreeResource(allocation);
 }
 
-std::span<u8> VkTexture::Map()
+std::span<byte> VkTexture::Map()
 {
     if (!allocator)
     {

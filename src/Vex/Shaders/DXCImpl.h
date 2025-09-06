@@ -42,7 +42,7 @@ struct DXCCompilerImpl : public CompilerBase
     DXCCompilerImpl(std::vector<std::filesystem::path> includeDirectories);
     virtual ~DXCCompilerImpl() override;
 
-    virtual std::expected<std::vector<u8>, std::string> CompileShader(
+    virtual std::expected<std::vector<byte>, std::string> CompileShader(
         const Shader& shader,
         ShaderEnvironment& shaderEnv,
         const ShaderCompilerSettings& compilerSettings) const override;

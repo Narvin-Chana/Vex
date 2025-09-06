@@ -68,11 +68,11 @@ VkAllocator::~VkAllocator()
     memoryPagesByType.clear();
 }
 
-std::span<u8> VkAllocator::MapAllocation(const Allocation& alloc)
+std::span<byte> VkAllocator::MapAllocation(const Allocation& alloc)
 {
     ::vk::DeviceMemory memory = GetMemoryFromAllocation(alloc);
     void* ptr = VEX_VK_CHECK <<= ctx->device.mapMemory(memory, alloc.memoryRange.offset, alloc.memoryRange.size);
-    return { static_cast<u8*>(ptr), alloc.memoryRange.size };
+    return { static_cast<byte*>(ptr), alloc.memoryRange.size };
 }
 
 void VkAllocator::UnmapAllocation(const Allocation& alloc)

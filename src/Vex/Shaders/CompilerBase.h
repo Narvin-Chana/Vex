@@ -24,7 +24,7 @@ struct CompilerBase
     }
     virtual ~CompilerBase() = default;
 
-    virtual std::expected<std::vector<u8>, std::string> CompileShader(
+    virtual std::expected<std::vector<byte>, std::string> CompileShader(
         const Shader& shader, ShaderEnvironment& shaderEnv, const ShaderCompilerSettings& compilerSettings) const = 0;
 
 protected:

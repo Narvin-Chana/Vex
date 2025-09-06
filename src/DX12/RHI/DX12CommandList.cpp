@@ -129,7 +129,7 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
         break;
     }
 
-    std::span<const u8> localConstantsData = layout.GetLocalConstantsData();
+    std::span<const byte> localConstantsData = layout.GetLocalConstantsData();
     if (localConstantsData.empty())
     {
         return;
@@ -512,7 +512,8 @@ void DX12CommandList::Copy(RHIBuffer& src,
         D3D12_TEXTURE_COPY_LOCATION dstLoc = {};
         dstLoc.pResource = dstTexture;
         dstLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        dstLoc.SubresourceIndex = copyDesc.dstSubresource.startSlice * dst.GetDescription().mips + copyDesc.dstSubresource.mip;
+        dstLoc.SubresourceIndex =
+            copyDesc.dstSubresource.startSlice * dst.GetDescription().mips + copyDesc.dstSubresource.mip;
 
         D3D12_BOX srcBox = {};
         srcBox.left = 0;

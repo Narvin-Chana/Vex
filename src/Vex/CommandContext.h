@@ -103,49 +103,31 @@ public:
               const Texture& destination,
               std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions);
 
+    // ---------------------------------------------------------------------------------------------------------------
+    // Buffer Data Upload
+    // ---------------------------------------------------------------------------------------------------------------
+
     // Enqueues data to be uploaded to the specific buffer. If the buffer is mappable it will map it and directly write
     // data to it. If the buffer isn't mappable a staging buffer is used implicitly
-    void EnqueueDataUpload(const Buffer& buffer, std::span<const u8> data);
+    void EnqueueDataUpload(const Buffer& buffer, std::span<const byte> data);
+
     // Enqueues data to be uploaded to specific region of destination buffer using a staging buffer when necessary
-    void EnqueueDataUpload(const Buffer& buffer, std::span<const u8> data, const BufferSubresource& subresource);
+    void EnqueueDataUpload(const Buffer& buffer, std::span<const byte> data, const BufferSubresource& subresource);
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // Texture Data Upload
+    // ---------------------------------------------------------------------------------------------------------------
 
     // Enqueues data to be uploaded to the specific texture with the use of a staging buffer.
-    void EnqueueDataUpload(const Texture& texture, std::span<const u8> data);
+    void EnqueueDataUpload(const Texture& texture, std::span<const byte> data);
+
     // Enqueues data to be uploaded to a specific region of the texture
     void EnqueueDataUpload(const Texture& texture,
-                           std::span<const u8> data,
+                           std::span<const byte> data,
                            const TextureSubresource& subresource,
                            const TextureExtent& extent);
 
-    // Upload the raw data to the specified texture, using a staging buffer.
-    template <class T>
-        requires(not IsContainer<T>)
-    void EnqueueDataUpload(const Texture& texture, const T& data);
-    // Upload the span's data to the specified texture, using a staging buffer.
-    template <class T>
-    void EnqueueDataUpload(const Texture& texture, std::span<const T> data);
-
-    // Upload the raw data to the specified texture's subsection, using a staging buffer.
-    template <class T>
-        requires(not IsContainer<T>)
-    void EnqueueDataUpload(const Texture& texture,
-                           const T& data,
-                           const TextureSubresource& subresource,
-                           const TextureExtent& extent);
-    // Upload the span's data to the specified texture's subsection, using a staging buffer.
-    template <class T>
-    void EnqueueDataUpload(const Texture& texture,
-                           std::span<const T> data,
-                           const TextureSubresource& subresource,
-                           const TextureExtent& extent);
-
-    // Upload raw data to the specified buffer. If the buffer is not CPU_WRITE, this uses a staging buffer.
-    template <class T>
-        requires(not IsContainer<T>)
-    void EnqueueDataUpload(const Buffer& buffer, const T& data);
-    // Upload the span's data to the specified buffer. If the buffer is not CPU_WRITE, this uses a staging buffer.
-    template <class T>
-    void EnqueueDataUpload(const Buffer& buffer, std::span<const T> data);
+    // ---------------------------------------------------------------------------------------------------------------
 
     BindlessHandle GetBindlessHandle(const ResourceBinding& resourceBinding);
     std::vector<BindlessHandle> GetBindlessHandles(std::span<const ResourceBinding> resourceBindings);
@@ -210,57 +192,5 @@ private:
 
     friend class GfxBackend;
 };
-
-template <class T>
-    requires(not IsContainer<T>)
-void CommandContext::EnqueueDataUpload(const Texture& texture, const T& data)
-{
-    EnqueueDataUpload(texture, std::span{ reinterpret_cast<const u8*>(&data), sizeof(T) });
-}
-
-template <class T>
-void CommandContext::EnqueueDataUpload(const Texture& texture, std::span<const T> data)
-{
-    EnqueueDataUpload(texture, std::span{ reintepret_cast<const u8*>(data.data()), data.size_bytes() });
-}
-
-template <class T>
-    requires(not IsContainer<T>)
-void CommandContext::EnqueueDataUpload(const Texture& texture,
-                                       const T& data,
-                                       const TextureSubresource& subresource,
-                                       const TextureExtent& extent)
-{
-    EnqueueDataUpload(texture, std::span{ reinterpret_cast<const u8*>(&data), sizeof(T) }, subresource, extent);
-}
-
-template <class T>
-void CommandContext::EnqueueDataUpload(const Texture& texture,
-                                       std::span<const T> data,
-                                       const TextureSubresource& subresource,
-                                       const TextureExtent& extent)
-{
-    EnqueueDataUpload(texture,
-                      std::span{ reinterpret_cast<const u8*>(data.data()), data.size_bytes() },
-                      subresource,
-                      extent);
-}
-
-template <class T>
-    requires(not IsContainer<T>)
-void CommandContext::EnqueueDataUpload(const Buffer& buffer, const T& data)
-{
-    EnqueueDataUpload(buffer,
-                      std::span{ reinterpret_cast<const u8*>(&data), sizeof(T) },
-                      BufferSubresource{ 0, sizeof(T) });
-}
-
-template <class T>
-void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const T> data)
-{
-    EnqueueDataUpload(buffer,
-                      std::span{ reinterpret_cast<const u8*>(data.data()), data.size_bytes() },
-                      BufferSubresource{ 0, data.size_bytes() });
-}
 
 } // namespace vex
