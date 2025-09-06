@@ -62,7 +62,7 @@ HelloCubeApplication::HelloCubeApplication()
 
     {
         // Immediate submission means the commands are instantly submitted upon destruction.
-        auto ctx =
+        vex::CommandContext ctx =
             graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics, vex::SubmissionPolicy::Immediate);
 
         // clang-format off

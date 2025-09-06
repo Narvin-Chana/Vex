@@ -4,6 +4,7 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/Formattable.h>
+#include <Vex/ByteUtils.h>
 #include <Vex/Logger.h>
 #include <Vex/Validation.h>
 
@@ -178,7 +179,7 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
     return 0;
 }
 
-u32 GetTotalTextureByteSize(const TextureDescription& desc)
+u64 GetAlignedByteSizeForTextureUploadStagingBuffer(const TextureDescription& desc)
 {
     float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
 
@@ -188,15 +189,17 @@ u32 GetTotalTextureByteSize(const TextureDescription& desc)
     u32 depth = desc.GetDepth();
     u32 arraySize = desc.GetArrayCount();
 
-    for (int i = 0; i < desc.mips; ++i)
+    for (u16 mip = 0; mip < desc.mips; ++mip)
     {
-        totalSize += static_cast<float>(width * height * depth * arraySize) * pixelByteSize;
+        // The staging buffer should have a row pitch alignment of 256 and mip alignment of 512 due to API constraints.
+        totalSize += AlignUp<u64>(width * pixelByteSize, RowPitchAlignment) * height * depth * arraySize;
+        totalSize = AlignUp<u64>(totalSize, MipAlignment);
 
         width = std::max(1u, width / 2u);
         height = std::max(1u, height / 2u);
         depth = std::max(1u, depth / 2u);
     }
-    return static_cast<u32>(std::ceil(totalSize));
+    return static_cast<u64>(std::ceil(totalSize));
 }
 
 bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage)
@@ -250,10 +253,10 @@ void ValidateTextureCopyDescription(const TextureDescription& srcDesc,
                                     const TextureDescription& dstDesc,
                                     const TextureCopyDescription& copyDesc)
 {
-    ValidateTextureSubresource(srcDesc, copyDesc.srcRegion);
-    ValidateTextureSubresource(dstDesc, copyDesc.dstRegion);
-    ValidateTextureExtent(srcDesc, copyDesc.srcRegion, copyDesc.extent);
-    ValidateTextureExtent(dstDesc, copyDesc.dstRegion, copyDesc.extent);
+    ValidateTextureSubresource(srcDesc, copyDesc.srcSubresource);
+    ValidateTextureSubresource(dstDesc, copyDesc.dstSubresource);
+    ValidateTextureExtent(srcDesc, copyDesc.srcSubresource, copyDesc.extent);
+    ValidateTextureExtent(dstDesc, copyDesc.dstSubresource, copyDesc.extent);
 }
 void ValidateTextureExtent(const TextureDescription& description,
                            const TextureSubresource& subresource,

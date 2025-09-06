@@ -50,7 +50,6 @@ void ResourceMappedMemory::SetData(std::span<u8> inData)
 void ResourceMappedMemory::SetData(std::span<const u8> inData, u32 offset)
 {
     VEX_ASSERT(mappedData.size() - offset >= inData.size());
-    // This function is defined in <utility> which is more lightweight than <ranges>/<algorithm>.
     std::copy(inData.begin(), inData.end(), mappedData.begin() + offset);
 }
 

@@ -1,3 +1,4 @@
+#include "ByteUtils.h"
 #include "CommandContext.h"
 
 #include <algorithm>
@@ -82,7 +83,7 @@ static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDescript
     return key;
 }
 
-static BufferDescription GetStagingBufferDescription(const std::string& name, u32 byteSize)
+static BufferDescription GetStagingBufferDescription(const std::string& name, u64 byteSize)
 {
     BufferDescription description;
     description.byteSize = byteSize;
@@ -90,6 +91,72 @@ static BufferDescription GetStagingBufferDescription(const std::string& name, u3
     description.usage = BufferUsage::None;
     description.memoryLocality = ResourceMemoryLocality::CPUWrite;
     return description;
+}
+
+static void UploadTextureDataAligned(const TextureDescription& textureDesc,
+                                     std::span<const u8> packedData,
+                                     std::span<u8> stagingBuffer)
+{
+    const u32 bytesPerPixel = TextureUtil::GetPixelByteSizeFromFormat(textureDesc.format);
+    const u8* srcData = packedData.data();
+    u8* dstData = stagingBuffer.data();
+    u64 srcOffset = 0;
+    u64 dstOffset = 0;
+
+    u32 width = textureDesc.width;
+    u32 height = textureDesc.height;
+    u32 depth = textureDesc.GetDepth();
+    u32 arraySize = textureDesc.GetArrayCount();
+
+    // Process each mip level
+    for (u32 mip = 0; mip < textureDesc.mips; ++mip)
+    {
+        const u32 packedRowPitch = width * bytesPerPixel;
+        const u32 alignedRowPitch = AlignUp<u32>(packedRowPitch, TextureUtil::RowPitchAlignment);
+        const u32 packedSlicePitch = packedRowPitch * height;
+        const u32 alignedSlicePitch = alignedRowPitch * height;
+
+        // Process each array slice (for texture arrays/cubes)
+        for (u32 arrayIndex = 0; arrayIndex < arraySize; ++arrayIndex)
+        {
+            // Process each depth slice (for 3D textures)
+            for (u32 depthSlice = 0; depthSlice < depth; ++depthSlice)
+            {
+                // Copy each row with alignment
+                for (u32 row = 0; row < height; ++row)
+                {
+                    const u8* srcRow = srcData + srcOffset + depthSlice * packedSlicePitch + row * packedRowPitch;
+
+                    u8* dstRow = dstData + dstOffset + depthSlice * alignedSlicePitch + row * alignedRowPitch;
+
+                    std::memcpy(dstRow, srcRow, packedRowPitch);
+
+#if !VEX_SHIPPING
+                    // Zero out padding bytes for debugging purposes
+                    if (alignedRowPitch > packedRowPitch)
+                    {
+                        std::memset(dstRow + packedRowPitch, 0, alignedRowPitch - packedRowPitch);
+                    }
+#endif
+                }
+            }
+
+            // Move to next array slice
+            srcOffset += packedSlicePitch * depth;
+            dstOffset += alignedSlicePitch * depth;
+        }
+
+        // Calculate next mip dimensions
+        width = std::max(1u, width / 2);
+        height = std::max(1u, height / 2);
+        if (textureDesc.type == TextureType::Texture3D)
+        {
+            depth = std::max(1u, depth / 2);
+        }
+
+        // Align destination offset for next mip level
+        dstOffset = AlignUp<u64>(dstOffset, TextureUtil::MipAlignment);
+    }
 }
 
 } // namespace CommandContext_Internal
@@ -437,9 +504,9 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer,
 
 void CommandContext::EnqueueDataUpload(const Texture& texture, std::span<const u8> data)
 {
-    const BufferDescription stagingBufferDesc =
-        CommandContext_Internal::GetStagingBufferDescription(texture.description.name,
-                                                             TextureUtil::GetTotalTextureByteSize(texture.description));
+    const BufferDescription stagingBufferDesc = CommandContext_Internal::GetStagingBufferDescription(
+        texture.description.name,
+        TextureUtil::GetAlignedByteSizeForTextureUploadStagingBuffer(texture.description));
 
     TextureCopyUtil::ValidateSimpleBufferToTextureCopy(stagingBufferDesc, texture.description);
 
@@ -447,7 +514,11 @@ void CommandContext::EnqueueDataUpload(const Texture& texture, std::span<const u
     RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
     RHITexture& rhiDestTexture = backend->GetRHITexture(texture.handle);
 
-    ResourceMappedMemory(rhiStagingBuffer).SetData(data);
+    // The staging buffer has to respect the alignment that which Vex uses for uploads.
+    // We suppose however that user data is tightly packed.
+    std::span<u8> stagingBufferData = rhiStagingBuffer.Map();
+    CommandContext_Internal::UploadTextureDataAligned(texture.description, data, stagingBufferData);
+    rhiStagingBuffer.Unmap();
 
     cmdList->Transition(rhiStagingBuffer, RHIBufferState::CopySource);
     cmdList->Transition(rhiDestTexture, RHITextureState::CopyDest);
@@ -466,8 +537,8 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
         std::ceil(extent.width * extent.height * extent.depth *
                   TextureUtil::GetPixelByteSizeFromFormat(texture.description.format)));
 
-    BufferToTextureCopyDescription copyDesc{ .srcRegion = BufferSubresource{ 0, stagingBufferDesc.byteSize },
-                                             .dstRegion = subresource,
+    BufferToTextureCopyDescription copyDesc{ .srcSubresource = BufferSubresource{ 0, stagingBufferDesc.byteSize },
+                                             .dstSubresource = subresource,
                                              .extent = extent };
 
     TextureCopyUtil::ValidateBufferToTextureCopyDescription(stagingBufferDesc, texture.description, copyDesc);

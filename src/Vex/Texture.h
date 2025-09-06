@@ -10,6 +10,7 @@
 
 namespace vex
 {
+
 // clang-format off
 
 BEGIN_VEX_ENUM_FLAGS(TextureUsage, u8)
@@ -20,7 +21,7 @@ BEGIN_VEX_ENUM_FLAGS(TextureUsage, u8)
     DepthStencil    = 1 << 3, // DSV in DX12, Depth/Stencil Attachment in Vulkan
 END_VEX_ENUM_FLAGS();
 
-//clang-format on
+// clang-format on
 
 enum class TextureType : u8
 {
@@ -114,7 +115,7 @@ struct TextureExtent
 
 struct TextureSubresource
 {
-    u32 mip = 0;
+    u16 mip = 0;
     u32 startSlice = 0;
     u32 sliceCount = 1;
     TextureExtent offset{ 0, 0, 0 };
@@ -122,20 +123,23 @@ struct TextureSubresource
 
 struct TextureCopyDescription
 {
-    TextureSubresource srcRegion;
-    TextureSubresource dstRegion;
+    TextureSubresource srcSubresource;
+    TextureSubresource dstSubresource;
     TextureExtent extent;
 };
 
 namespace TextureUtil
 {
 
+static constexpr u64 RowPitchAlignment = 256;
+static constexpr u64 MipAlignment = 512;
+
 std::tuple<u32, u32, u32> GetMipSize(const TextureDescription& desc, u32 mip);
 TextureViewType GetTextureViewType(const TextureBinding& binding);
 TextureFormat GetTextureFormat(const TextureBinding& binding);
 void ValidateTextureDescription(const TextureDescription& description);
 float GetPixelByteSizeFromFormat(TextureFormat format);
-u32 GetTotalTextureByteSize(const TextureDescription& desc);
+u64 GetAlignedByteSizeForTextureUploadStagingBuffer(const TextureDescription& desc);
 bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage);
 
 void ValidateTextureSubresource(const TextureDescription& description, const TextureSubresource& subresource);
