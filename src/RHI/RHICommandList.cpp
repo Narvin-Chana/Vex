@@ -56,23 +56,42 @@ void RHICommandListBase::Copy(RHIBuffer& src, RHITexture& dst)
         const u32 alignedRowPitch = AlignUp<u32>(packedRowSize, TextureUtil::RowPitchAlignment);
         const u32 alignedSlicePitch = alignedRowPitch * mipSize.height;
 
-        // Calculate total aligned size for this mip level
-        const u32 depthOrArrayCount = (desc.type == TextureType::Texture3D) ? mipSize.depth : desc.depthOrArraySize;
-        const u64 alignedMipByteSize = static_cast<u64>(alignedSlicePitch) * depthOrArrayCount;
+        u32 depthCount, arrayCount;
+        if (desc.type == TextureType::Texture3D)
+        {
+            // For 3D textures: depth changes per mip, array count is always 1.
+            depthCount = mipSize.depth;
+            arrayCount = 1;
+        }
+        else
+        {
+            // For 2D array textures: depth is always 1, array count is constant.
+            depthCount = 1;
+            arrayCount = desc.GetArrayCount();
+        }
 
-        bufferToTextureCopyDescriptions.push_back(
-            BufferToTextureCopyDescription{ .srcSubresource = BufferSubresource{ bufferOffset, alignedMipByteSize },
-                                            .dstSubresource = TextureSubresource{ .mip = mip,
-                                                                                  .startSlice = 0,
-                                                                                  .sliceCount = desc.GetArrayCount(),
-                                                                                  .offset = { 0, 0, 0 } },
-                                            .extent = { mipSize.width, mipSize.height, mipSize.depth } });
+        const u32 totalSlices = depthCount * arrayCount;
+        const u64 alignedMipByteSize = static_cast<u64>(alignedSlicePitch) * totalSlices;
+
+        bufferToTextureCopyDescriptions.push_back(BufferToTextureCopyDescription{
+            .srcSubresource = BufferSubresource{ bufferOffset, alignedMipByteSize },
+            .dstSubresource =
+                TextureSubresource{
+                    .mip = mip,
+                    .startSlice = 0,
+                    .sliceCount = arrayCount,
+                    .offset = { 0, 0, 0 },
+                },
+            .extent = { mipSize.width, mipSize.height, mipSize.depth },
+        });
 
         bufferOffset += alignedMipByteSize;
         bufferOffset = AlignUp<u64>(bufferOffset, TextureUtil::MipAlignment);
-        mipSize = TextureExtent{ std::max(1u, mipSize.width / 2u),
-                                 std::max(1u, mipSize.height / 2u),
-                                 std::max(1u, mipSize.depth / 2u) };
+        mipSize = TextureExtent{
+            std::max(1u, mipSize.width / 2u),
+            std::max(1u, mipSize.height / 2u),
+            std::max(1u, mipSize.depth / 2u),
+        };
     }
 
     Copy(src, dst, bufferToTextureCopyDescriptions);
