@@ -125,13 +125,6 @@ void GfxBackend::Present(bool isFullscreenMode)
         VEX_LOG(Fatal, "Cannot present without using a swapchain!");
     }
 
-    if (!isSwapchainValid)
-    {
-        // Always submit deferred work even though we cant present
-        SubmitDeferredWork();
-        return;
-    }
-
     for (auto& renderExtension : renderExtensions)
     {
         renderExtension->OnPrePresent();
@@ -139,6 +132,14 @@ void GfxBackend::Present(bool isFullscreenMode)
 
     // Make sure the (n - FRAME_BUFFERING == n) present has finished before presenting anew.
     rhi.WaitForTokenOnCPU(presentTokens[currentFrameIndex]);
+
+    if (!isSwapchainValid)
+    {
+        // Always submit deferred work even though we cant present
+        SubmitDeferredWork();
+        CleanupResources();
+        return;
+    }
 
     std::optional<RHITexture> backBuffer = swapChain->AcquireBackBuffer(currentFrameIndex);
     isSwapchainValid = backBuffer.has_value();
@@ -362,8 +363,8 @@ void GfxBackend::OnWindowResized(u32 newWidth, u32 newHeight)
 {
     // Do not resize if any of the dimensions is 0, or if the resize gives us the same window size as we have
     // currently.
-    if (isSwapchainValid &&
-        (newWidth == 0 || newHeight == 0 ||
+    if (newWidth == 0 || newHeight == 0 ||
+        (isSwapchainValid &&
          (newWidth == description.platformWindow.width && newHeight == description.platformWindow.height)))
     {
         return;
