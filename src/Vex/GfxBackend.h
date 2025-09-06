@@ -114,7 +114,6 @@ public:
     void UnregisterRenderExtension(NonNullPtr<RenderExtension> renderExtension);
 
 private:
-    void DitchDeferredWork();
     void SubmitDeferredWork();
     void CleanupResources();
 
