@@ -140,7 +140,7 @@ void GfxBackend::Present(bool isFullscreenMode)
     // Make sure the (n - FRAME_BUFFERING == n) present has finished before presenting anew.
     rhi.WaitForTokenOnCPU(presentTokens[currentFrameIndex]);
 
-    std::optional<RHITexture> backBuffer = swapChain->AcquireBackBuffer(currentFrameIndex, rhi);
+    std::optional<RHITexture> backBuffer = swapChain->AcquireBackBuffer(currentFrameIndex);
     isSwapchainValid = backBuffer.has_value();
 
     // Before presenting we have to handle all the queued for submission command lists (and their dependencies).
