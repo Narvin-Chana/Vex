@@ -20,7 +20,7 @@ void RHICommandListBase::Copy(RHITexture& src, RHITexture& dst)
     {
         TextureSubresource subresource{ .mip = mip,
                                         .startSlice = 0,
-                                        .sliceCount = desc.GetArrayCount(),
+                                        .sliceCount = desc.GetArraySize(),
                                         .offset = { 0, 0, 0 } };
         copyDescriptions.emplace_back(subresource, subresource, TextureExtent{ width, height, depth });
 
@@ -67,7 +67,7 @@ void RHICommandListBase::Copy(RHIBuffer& src, RHITexture& dst)
         {
             // For 2D array textures: depth is always 1, array count is constant.
             depthCount = 1;
-            arrayCount = desc.GetArrayCount();
+            arrayCount = desc.GetArraySize();
         }
 
         const u32 totalSlices = depthCount * arrayCount;

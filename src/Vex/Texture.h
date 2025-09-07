@@ -86,7 +86,7 @@ struct TextureDescription
     {
         return type == TextureType::Texture3D ? depthOrArraySize : 1;
     }
-    [[nodiscard]] u32 GetArrayCount() const noexcept
+    [[nodiscard]] u32 GetArraySize() const noexcept
     {
         return type != TextureType::Texture3D ? depthOrArraySize : 1;
     }
@@ -115,6 +115,7 @@ struct TextureExtent
 
 struct TextureSubresource
 {
+    // Mip index (0-based).
     u16 mip = 0;
     u32 startSlice = 0;
     u32 sliceCount = 1;
@@ -128,6 +129,14 @@ struct TextureCopyDescription
     TextureExtent extent;
 };
 
+struct TextureUploadRegion
+{
+    u16 mip = 0;
+    u32 slice = 0;
+    TextureExtent offset{ 0, 0, 0 };
+    TextureExtent extent{ 0, 0, 0 }; // 0 means we use the mip's entire extent.
+};
+
 namespace TextureUtil
 {
 
@@ -139,7 +148,13 @@ TextureViewType GetTextureViewType(const TextureBinding& binding);
 TextureFormat GetTextureFormat(const TextureBinding& binding);
 void ValidateTextureDescription(const TextureDescription& description);
 float GetPixelByteSizeFromFormat(TextureFormat format);
-u64 GetAlignedByteSizeForTextureUploadStagingBuffer(const TextureDescription& desc);
+
+u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc);
+u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc,
+                                       std::span<const TextureUploadRegion> uploadRegions);
+u64 ComputePackedUploadDataByteSize(const TextureDescription& desc);
+u64 ComputePackedUploadDataByteSize(const TextureDescription& desc, std::span<const TextureUploadRegion> uploadRegions);
+
 bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage);
 
 void ValidateTextureSubresource(const TextureDescription& description, const TextureSubresource& subresource);

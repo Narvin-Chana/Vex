@@ -243,7 +243,7 @@ static ::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITex
                               .baseMipLevel = 0,
                               .levelCount = desc.mips,
                               .baseArrayLayer = 0,
-                              .layerCount = desc.GetArrayCount() },
+                              .layerCount = desc.GetArraySize() },
     };
 
     const bool isBackbufferImage = texture.IsBackBufferTexture();

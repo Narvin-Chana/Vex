@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <span>
 
 #include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/NonNullPtr.h>
@@ -80,6 +81,10 @@ public:
                    const std::optional<ConstantBinding>& constants,
                    std::array<u32, 3> widthHeightDepth);
 
+    // ---------------------------------------------------------------------------------------------------------------
+    // Resource Copy - Will automatically transition the resources into the correct states.
+    // ---------------------------------------------------------------------------------------------------------------
+
     // Copies the entirety of the source texture (all mips and array levels) to the destination texture.
     void Copy(const Texture& source, const Texture& destination);
     // Copies a region of the source texture to the destination texture.
@@ -104,28 +109,32 @@ public:
               std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions);
 
     // ---------------------------------------------------------------------------------------------------------------
-    // Buffer Data Upload
+    // Buffer Data Operations
     // ---------------------------------------------------------------------------------------------------------------
 
-    // Enqueues data to be uploaded to the specific buffer. If the buffer is mappable it will map it and directly write
-    // data to it. If the buffer isn't mappable a staging buffer is used implicitly
-    void EnqueueDataUpload(const Buffer& buffer, std::span<const byte> data);
-
-    // Enqueues data to be uploaded to specific region of destination buffer using a staging buffer when necessary
-    void EnqueueDataUpload(const Buffer& buffer, std::span<const byte> data, const BufferSubresource& subresource);
+    // Enqueues data to be uploaded to a specific subresource inside the destination buffer, using a staging buffer when
+    // necessary. Will upload data to the entirety of the destination buffer if a subresource is not specified.
+    void EnqueueDataUpload(const Buffer& buffer,
+                           std::span<const byte> data,
+                           const std::optional<BufferSubresource>& subresource = std::nullopt);
+    // Enqueues for the entirety of a buffer to be readback from the GPU to the specified output.
+    // Will automatically use a staging buffer if necessary.
+    void EnqueueDataReadback(const Buffer& buffer, std::span<byte> output);
 
     // ---------------------------------------------------------------------------------------------------------------
-    // Texture Data Upload
+    // Texture Data Operations
     // ---------------------------------------------------------------------------------------------------------------
 
-    // Enqueues data to be uploaded to the specific texture with the use of a staging buffer.
-    void EnqueueDataUpload(const Texture& texture, std::span<const byte> data);
-
-    // Enqueues data to be uploaded to a specific region of the texture
+    // Enqueues data to be uploaded to a texture, using a staging buffer when necessary.
+    // This allows for multiple uploads to various subresources inside the texture.
+    // The uploadRegions should match the layout of the tightly packed 'data' parameter.
+    // If the uploadRegions are empty, we suppose that you intend to upload to the entirety of the texture.
     void EnqueueDataUpload(const Texture& texture,
                            std::span<const byte> data,
-                           const TextureSubresource& subresource,
-                           const TextureExtent& extent);
+                           std::span<const TextureUploadRegion> uploadRegions = {});
+    // Enqueues for the entirety of a texture to be readback from the GPU to the specified output.
+    // Will automatically use a staging buffer if necessary.
+    void EnqueueDataReadback(const Texture& texture, std::span<byte> output);
 
     // ---------------------------------------------------------------------------------------------------------------
 

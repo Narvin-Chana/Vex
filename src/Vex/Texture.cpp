@@ -3,8 +3,8 @@
 #include <cmath>
 
 #include <Vex/Bindings.h>
-#include <Vex/Formattable.h>
 #include <Vex/ByteUtils.h>
+#include <Vex/Formattable.h>
 #include <Vex/Logger.h>
 #include <Vex/Validation.h>
 
@@ -179,15 +179,15 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
     return 0;
 }
 
-u64 GetAlignedByteSizeForTextureUploadStagingBuffer(const TextureDescription& desc)
+u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc)
 {
-    float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
+    const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
 
     float totalSize = 0;
     u32 width = desc.width;
     u32 height = desc.height;
     u32 depth = desc.GetDepth();
-    u32 arraySize = desc.GetArrayCount();
+    const u32 arraySize = desc.GetArraySize();
 
     for (u16 mip = 0; mip < desc.mips; ++mip)
     {
@@ -199,6 +199,102 @@ u64 GetAlignedByteSizeForTextureUploadStagingBuffer(const TextureDescription& de
         height = std::max(1u, height / 2u);
         depth = std::max(1u, depth / 2u);
     }
+
+    return static_cast<u64>(std::ceil(totalSize));
+}
+
+u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc,
+                                       std::span<const TextureUploadRegion> uploadRegions)
+{
+    // Empty desc means full resource upload.
+    if (uploadRegions.empty())
+    {
+        return ComputeAlignedUploadBufferByteSize(desc);
+    }
+
+    const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
+    float totalSize = 0;
+
+    for (const TextureUploadRegion& region : uploadRegions)
+    {
+        VEX_CHECK(region.slice < desc.GetArraySize(),
+                  "Cannot upload to a slice index ({}) greater or equal to the the texture's slice count ({})!",
+                  region.slice,
+                  desc.GetArraySize());
+
+        // Get dimensions for the mip level of this region.
+        const u32 mipWidth = std::max(1u, desc.width >> region.mip);
+        const u32 mipHeight = std::max(1u, desc.height >> region.mip);
+        const u32 mipDepth = std::max(1u, desc.GetDepth() >> region.mip);
+
+        // Use region extent if specified, otherwise use full mip dimensions
+        const u32 width = (region.extent.width == 0) ? mipWidth : region.extent.width;
+        const u32 height = (region.extent.height == 0) ? mipHeight : region.extent.height;
+        const u32 depth = (region.extent.depth == 0) ? mipDepth : region.extent.depth;
+
+        // The staging buffer should have a row pitch alignment of 256 and mip alignment of 512 due to API constraints.
+        u64 regionSize = AlignUp<u64>(width * pixelByteSize, RowPitchAlignment) * height * depth;
+        totalSize += AlignUp<u64>(regionSize, MipAlignment);
+    }
+
+    return static_cast<u64>(std::ceil(totalSize));
+}
+
+u64 ComputePackedUploadDataByteSize(const TextureDescription& desc)
+{
+    const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
+
+    float totalSize = 0;
+    u32 width = desc.width;
+    u32 height = desc.height;
+    u32 depth = desc.GetDepth();
+    const u32 arraySize = desc.GetArraySize();
+
+    for (u16 mip = 0; mip < desc.mips; ++mip)
+    {
+        totalSize += width * pixelByteSize * height * depth * arraySize;
+
+        width = std::max(1u, width / 2u);
+        height = std::max(1u, height / 2u);
+        depth = std::max(1u, depth / 2u);
+    }
+
+    return static_cast<u64>(std::ceil(totalSize));
+}
+
+u64 ComputePackedUploadDataByteSize(const TextureDescription& desc, std::span<const TextureUploadRegion> uploadRegions)
+{
+    // Empty desc means full resource upload.
+    if (uploadRegions.empty())
+    {
+        return ComputePackedUploadDataByteSize(desc);
+    }
+
+    // Pixel byte size could be less than 1 (BlockCompressed formats).
+    const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
+    float totalSize = 0;
+
+    for (const TextureUploadRegion& region : uploadRegions)
+    {
+        VEX_CHECK(region.slice < desc.GetArraySize(),
+                  "Cannot upload to a slice index ({}) greater or equal to the the texture's slice count ({})!",
+                  region.slice,
+                  desc.GetArraySize());
+
+        // Get dimensions for the mip level of this region.
+        const u32 mipWidth = std::max(1u, desc.width >> region.mip);
+        const u32 mipHeight = std::max(1u, desc.height >> region.mip);
+        const u32 mipDepth = std::max(1u, desc.GetDepth() >> region.mip);
+
+        // Use region extent if specified, otherwise use full mip dimensions
+        const u32 width = (region.extent.width == 0) ? mipWidth : region.extent.width;
+        const u32 height = (region.extent.height == 0) ? mipHeight : region.extent.height;
+        const u32 depth = (region.extent.depth == 0) ? mipDepth : region.extent.depth;
+
+        // Calculate tightly packed size for this region
+        totalSize += width * pixelByteSize * height * depth;
+    }
+
     return static_cast<u64>(std::ceil(totalSize));
 }
 
@@ -225,17 +321,17 @@ void ValidateTextureSubresource(const TextureDescription& description, const Tex
         subresource.mip,
         description.mips);
 
-    VEX_CHECK(subresource.startSlice < description.GetArrayCount(),
+    VEX_CHECK(subresource.startSlice < description.GetArraySize(),
               "Subresource start slice is greater than texture's array size. Start slice: {}, array size: {}",
               subresource.startSlice,
-              description.GetArrayCount());
+              description.GetArraySize());
 
     VEX_CHECK(
-        subresource.startSlice + subresource.sliceCount <= description.GetArrayCount(),
-        "Subresource accesses more slice than available. Start slice: {}, slice count: {}, texture array size: {}",
+        subresource.startSlice + subresource.sliceCount <= description.GetArraySize(),
+        "Subresource accesses more slices than available. Start slice: {}, slice count: {}, texture array size: {}",
         subresource.startSlice,
         subresource.sliceCount,
-        description.GetArrayCount());
+        description.GetArraySize());
 
     const auto [mipWidth, mipHeight, mipDepth] = GetMipSize(description, subresource.mip);
     VEX_CHECK(subresource.offset.width < mipWidth && subresource.offset.height < mipHeight &&
