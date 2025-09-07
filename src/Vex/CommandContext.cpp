@@ -1,10 +1,10 @@
-#include "ByteUtils.h"
 #include "CommandContext.h"
 
 #include <algorithm>
 #include <cmath>
 #include <variant>
 
+#include <Vex/ByteUtils.h>
 #include <Vex/Containers/Utils.h>
 #include <Vex/Debug.h>
 #include <Vex/DrawHelpers.h>
