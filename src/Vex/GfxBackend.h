@@ -173,6 +173,7 @@ private:
 
     friend class CommandContext;
     friend struct ResourceBindingUtils;
+    bool isSwapchainValid = true;
 };
 
 } // namespace vex

@@ -32,7 +32,7 @@ public:
     virtual void SetVSync(bool enableVSync) override;
     virtual bool NeedsFlushForVSyncToggle() override;
 
-    virtual RHITexture AcquireBackBuffer(u8 frameIndex) override;
+    virtual std::optional<RHITexture> AcquireBackBuffer(u8 frameIndex) override;
     virtual SyncToken Present(u8 frameIndex,
                               RHI& rhi,
                               NonNullPtr<RHICommandList> commandList,

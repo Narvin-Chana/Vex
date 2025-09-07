@@ -66,7 +66,7 @@ void DX12SwapChain::Resize(u32 width, u32 height)
 
 TextureDescription DX12SwapChain::GetBackBufferTextureDescription() const
 {
-    return const_cast<DX12SwapChain&>(*this).AcquireBackBuffer(0).GetDescription();
+    return const_cast<DX12SwapChain&>(*this).AcquireBackBuffer(0)->GetDescription();
 }
 
 void DX12SwapChain::SetVSync(bool enableVSync)
@@ -79,7 +79,7 @@ bool DX12SwapChain::NeedsFlushForVSyncToggle()
     return false;
 }
 
-RHITexture DX12SwapChain::AcquireBackBuffer(u8 frameIndex)
+std::optional<RHITexture> DX12SwapChain::AcquireBackBuffer(u8 frameIndex)
 {
     u32 backBufferIndex = swapChain->GetCurrentBackBufferIndex();
     ComPtr<ID3D12Resource> backBuffer;
