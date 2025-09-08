@@ -131,7 +131,8 @@ public:
     // If the uploadRegions are empty, we suppose that you intend to upload to the entirety of the texture.
     void EnqueueDataUpload(const Texture& texture,
                            std::span<const byte> data,
-                           std::span<const TextureUploadRegion> uploadRegions = {});
+                           std::span<const TextureUploadRegion> uploadRegions);
+
     // Enqueues for the entirety of a texture to be readback from the GPU to the specified output.
     // Will automatically use a staging buffer if necessary.
     void EnqueueDataReadback(const Texture& texture, std::span<byte> output);

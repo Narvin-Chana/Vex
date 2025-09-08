@@ -93,86 +93,12 @@ static BufferDescription GetStagingBufferDescription(const std::string& name, u6
     return description;
 }
 
-// Performs a full aligned upload (every mip/slice/pixel).
-static void UploadFullTextureDataAligned(const TextureDescription& textureDesc,
-                                         std::span<const byte> packedData,
-                                         std::span<byte> stagingBuffer)
-{
-    const u32 bytesPerPixel = TextureUtil::GetPixelByteSizeFromFormat(textureDesc.format);
-    const byte* srcData = packedData.data();
-    byte* dstData = stagingBuffer.data();
-    u64 srcOffset = 0;
-    u64 dstOffset = 0;
-
-    u32 width = textureDesc.width;
-    u32 height = textureDesc.height;
-    u32 depth = textureDesc.GetDepth();
-    u32 arraySize = textureDesc.GetArraySize();
-
-    // Process each mip level.
-    for (u32 mip = 0; mip < textureDesc.mips; ++mip)
-    {
-        const u32 packedRowPitch = width * bytesPerPixel;
-        const u32 alignedRowPitch = AlignUp<u32>(packedRowPitch, TextureUtil::RowPitchAlignment);
-        const u32 packedSlicePitch = packedRowPitch * height;
-        const u32 alignedSlicePitch = alignedRowPitch * height;
-
-        // Process each array slice (for texture arrays/cubes).
-        for (u32 arrayIndex = 0; arrayIndex < arraySize; ++arrayIndex)
-        {
-            // Process each depth slice (for 3D textures).
-            for (u32 depthSlice = 0; depthSlice < depth; ++depthSlice)
-            {
-                // Copy each row with alignment.
-                for (u32 row = 0; row < height; ++row)
-                {
-                    const byte* srcRow = srcData + srcOffset + depthSlice * packedSlicePitch + row * packedRowPitch;
-
-                    byte* dstRow = dstData + dstOffset + depthSlice * alignedSlicePitch + row * alignedRowPitch;
-
-                    std::memcpy(dstRow, srcRow, packedRowPitch);
-
-#if !VEX_SHIPPING
-                    // Zero out padding bytes for debugging purposes.
-                    if (alignedRowPitch > packedRowPitch)
-                    {
-                        std::memset(dstRow + packedRowPitch, 0, alignedRowPitch - packedRowPitch);
-                    }
-#endif
-                }
-            }
-
-            // Move to next array slice.
-            srcOffset += packedSlicePitch * depth;
-            dstOffset += alignedSlicePitch * depth;
-        }
-
-        // Calculate next mip dimensions.
-        width = std::max(1u, width / 2);
-        height = std::max(1u, height / 2);
-        if (textureDesc.type == TextureType::Texture3D)
-        {
-            depth = std::max(1u, depth / 2);
-        }
-
-        // Align destination offset for next mip level.
-        dstOffset = AlignUp<u64>(dstOffset, TextureUtil::MipAlignment);
-    }
-}
-
-// Performs a region-per-region upload (falls back to a full upload if no region is provided).
 static void UploadTextureDataAligned(const TextureDescription& textureDesc,
                                      std::span<const TextureUploadRegion> uploadRegions,
                                      std::span<const byte> packedData,
                                      std::span<byte> stagingBuffer)
 
 {
-    if (uploadRegions.empty())
-    {
-        UploadFullTextureDataAligned(textureDesc, packedData, stagingBuffer);
-        return;
-    }
-
     const u32 bytesPerPixel = TextureUtil::GetPixelByteSizeFromFormat(textureDesc.format);
     const byte* srcData = packedData.data();
     byte* dstData = stagingBuffer.data();
@@ -181,14 +107,9 @@ static void UploadTextureDataAligned(const TextureDescription& textureDesc,
 
     for (const TextureUploadRegion& region : uploadRegions)
     {
-        const u32 mipWidth = std::max(1u, textureDesc.width >> region.mip);
-        const u32 mipHeight = std::max(1u, textureDesc.height >> region.mip);
-        const u32 mipDepth = std::max(1u, textureDesc.GetDepth() >> region.mip);
-
-        // Use region extent if specified, otherwise use full mip dimensions.
-        const u32 regionWidth = (region.extent.width == 0) ? mipWidth : region.extent.width;
-        const u32 regionHeight = (region.extent.height == 0) ? mipHeight : region.extent.height;
-        const u32 regionDepth = (region.extent.depth == 0) ? mipDepth : region.extent.depth;
+        const u32 regionWidth = region.extent.width;
+        const u32 regionHeight = region.extent.height;
+        const u32 regionDepth = region.extent.depth;
 
         const u32 packedRowPitch = regionWidth * bytesPerPixel;
         const u32 alignedRowPitch = AlignUp<u32>(packedRowPitch, TextureUtil::RowPitchAlignment);
@@ -198,7 +119,7 @@ static void UploadTextureDataAligned(const TextureDescription& textureDesc,
         // Copy each depth slice (for 3D textures).
         for (u32 depthSlice = 0; depthSlice < regionDepth; ++depthSlice)
         {
-            // Copy each row with alignment.
+            // Copy each row one-by-one with alignment.
             for (u32 row = 0; row < regionHeight; ++row)
             {
                 const byte* srcRow = srcData + srcOffset + depthSlice * packedSlicePitch + row * packedRowPitch;
@@ -476,8 +397,6 @@ void CommandContext::Copy(const Buffer& source, const Buffer& destination, const
 
 void CommandContext::Copy(const Buffer& source, const Texture& destination)
 {
-    TextureCopyUtil::ValidateSimpleBufferToTextureCopy(source.description, destination.description);
-
     RHIBuffer& sourceRHI = backend->GetRHIBuffer(source.handle);
     RHITexture& destinationRHI = backend->GetRHITexture(destination.handle);
     cmdList->Transition(sourceRHI, RHIBufferState::CopySource);

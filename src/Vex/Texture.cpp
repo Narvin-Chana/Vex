@@ -179,39 +179,9 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
     return 0;
 }
 
-u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc)
-{
-    const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
-
-    float totalSize = 0;
-    u32 width = desc.width;
-    u32 height = desc.height;
-    u32 depth = desc.GetDepth();
-    const u32 arraySize = desc.GetArraySize();
-
-    for (u16 mip = 0; mip < desc.mips; ++mip)
-    {
-        // The staging buffer should have a row pitch alignment of 256 and mip alignment of 512 due to API constraints.
-        totalSize += AlignUp<u64>(width * pixelByteSize, RowPitchAlignment) * height * depth * arraySize;
-        totalSize = AlignUp<u64>(totalSize, MipAlignment);
-
-        width = std::max(1u, width / 2u);
-        height = std::max(1u, height / 2u);
-        depth = std::max(1u, depth / 2u);
-    }
-
-    return static_cast<u64>(std::ceil(totalSize));
-}
-
 u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc,
                                        std::span<const TextureUploadRegion> uploadRegions)
 {
-    // Empty desc means full resource upload.
-    if (uploadRegions.empty())
-    {
-        return ComputeAlignedUploadBufferByteSize(desc);
-    }
-
     const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
     float totalSize = 0;
 
@@ -222,15 +192,9 @@ u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc,
                   region.slice,
                   desc.GetArraySize());
 
-        // Get dimensions for the mip level of this region.
-        const u32 mipWidth = std::max(1u, desc.width >> region.mip);
-        const u32 mipHeight = std::max(1u, desc.height >> region.mip);
-        const u32 mipDepth = std::max(1u, desc.GetDepth() >> region.mip);
-
-        // Use region extent if specified, otherwise use full mip dimensions
-        const u32 width = (region.extent.width == 0) ? mipWidth : region.extent.width;
-        const u32 height = (region.extent.height == 0) ? mipHeight : region.extent.height;
-        const u32 depth = (region.extent.depth == 0) ? mipDepth : region.extent.depth;
+        const u32 width = region.extent.width;
+        const u32 height = region.extent.height;
+        const u32 depth = region.extent.depth;
 
         // The staging buffer should have a row pitch alignment of 256 and mip alignment of 512 due to API constraints.
         u64 regionSize = AlignUp<u64>(width * pixelByteSize, RowPitchAlignment) * height * depth;
@@ -240,36 +204,8 @@ u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc,
     return static_cast<u64>(std::ceil(totalSize));
 }
 
-u64 ComputePackedUploadDataByteSize(const TextureDescription& desc)
-{
-    const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
-
-    float totalSize = 0;
-    u32 width = desc.width;
-    u32 height = desc.height;
-    u32 depth = desc.GetDepth();
-    const u32 arraySize = desc.GetArraySize();
-
-    for (u16 mip = 0; mip < desc.mips; ++mip)
-    {
-        totalSize += width * pixelByteSize * height * depth * arraySize;
-
-        width = std::max(1u, width / 2u);
-        height = std::max(1u, height / 2u);
-        depth = std::max(1u, depth / 2u);
-    }
-
-    return static_cast<u64>(std::ceil(totalSize));
-}
-
 u64 ComputePackedUploadDataByteSize(const TextureDescription& desc, std::span<const TextureUploadRegion> uploadRegions)
 {
-    // Empty desc means full resource upload.
-    if (uploadRegions.empty())
-    {
-        return ComputePackedUploadDataByteSize(desc);
-    }
-
     // Pixel byte size could be less than 1 (BlockCompressed formats).
     const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
     float totalSize = 0;
@@ -281,15 +217,9 @@ u64 ComputePackedUploadDataByteSize(const TextureDescription& desc, std::span<co
                   region.slice,
                   desc.GetArraySize());
 
-        // Get dimensions for the mip level of this region.
-        const u32 mipWidth = std::max(1u, desc.width >> region.mip);
-        const u32 mipHeight = std::max(1u, desc.height >> region.mip);
-        const u32 mipDepth = std::max(1u, desc.GetDepth() >> region.mip);
-
-        // Use region extent if specified, otherwise use full mip dimensions
-        const u32 width = (region.extent.width == 0) ? mipWidth : region.extent.width;
-        const u32 height = (region.extent.height == 0) ? mipHeight : region.extent.height;
-        const u32 depth = (region.extent.depth == 0) ? mipDepth : region.extent.depth;
+        const u32 width = region.extent.width;
+        const u32 height = region.extent.height;
+        const u32 depth = region.extent.depth;
 
         // Calculate tightly packed size for this region
         totalSize += width * pixelByteSize * height * depth;
@@ -382,5 +312,56 @@ void ValidateCompatibleTextureDescriptions(const TextureDescription& srcDesc, co
 }
 
 } // namespace TextureUtil
+
+std::vector<TextureUploadRegion> TextureUploadRegion::UploadAllMips(const TextureDescription& textureDescription)
+{
+    std::vector<TextureUploadRegion> regions(textureDescription.mips * textureDescription.GetArraySize());
+
+    u32 width = textureDescription.width;
+    u32 height = textureDescription.height;
+    u32 depth = textureDescription.GetDepth();
+
+    for (u16 mip = 0; mip < regions.size(); ++mip)
+    {
+        for (u32 slice = 0; slice < textureDescription.GetArraySize(); ++slice)
+        {
+            regions[mip + slice] = {
+                .mip = mip,
+                .slice = slice,
+                .offset = { 0, 0, 0 },
+                .extent = { width, height, depth },
+            };
+        }
+
+        width = std::max(1u, width / 2u);
+        height = std::max(1u, height / 2u);
+        if (textureDescription.type == TextureType::Texture3D)
+        {
+            depth = std::max(1u, depth / 2u);
+        }
+    }
+
+    return regions;
+}
+
+std::vector<TextureUploadRegion> TextureUploadRegion::UploadFullMip(u16 mipIndex,
+                                                                    const TextureDescription& textureDescription)
+{
+    std::vector<TextureUploadRegion> regions(textureDescription.GetArraySize());
+
+    for (u32 slice = 0; slice < textureDescription.GetArraySize(); ++slice)
+    {
+        regions[slice] = {
+            .mip = mipIndex,
+            .slice = slice,
+            .offset = { 0, 0, 0 },
+            .extent = { std::max(1u, textureDescription.width >> mipIndex),
+                        std::max(1u, textureDescription.height >> mipIndex),
+                        std::max(1u, textureDescription.GetDepth() >> mipIndex), },
+        };
+    }
+
+    return regions;
+}
 
 } // namespace vex

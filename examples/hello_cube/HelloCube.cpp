@@ -140,26 +140,23 @@ HelloCubeApplication::HelloCubeApplication()
                                     vex::ResourceLifetime::Static);
 
         // Upload the entirety of both mips using the default value.
-        ctx.EnqueueDataUpload(uvGuideTexture, std::as_bytes(std::span(fullImageData)));
+        ctx.EnqueueDataUpload(uvGuideTexture,
+                              std::as_bytes(std::span(fullImageData)),
+                              vex::TextureUploadRegion::UploadAllMips(uvGuideTexture.description));
 
         // Some other examples of the EnqueueDataUpload api:
 
         // Upload only the first mip
-        // ctx.EnqueueDataUpload(
-        //    uvGuideTexture,
-        //    std::as_bytes(std::span(fullImageData.begin(), fullImageData.begin() + width * height * channels)),
-        //    { { vex::TextureUploadRegion{ .mip = 0 } } });
+        ctx.EnqueueDataUpload(
+            uvGuideTexture,
+            std::as_bytes(std::span(fullImageData.begin(), fullImageData.begin() + width * height * channels)),
+            vex::TextureUploadRegion::UploadFullMip(0, uvGuideTexture.description));
 
         // Upload only the second mip
-        // ctx.EnqueueDataUpload(
-        //    uvGuideTexture,
-        //    std::as_bytes(std::span(fullImageData.begin() + width * height * channels, fullImageData.end())),
-        //    { { vex::TextureUploadRegion{ .mip = 1 } } });
-
-        // Upload both mips manually.
-        // ctx.EnqueueDataUpload(uvGuideTexture,
-        //                      std::as_bytes(std::span(fullImageData)),
-        //                      { { vex::TextureUploadRegion{ .mip = 0 }, vex::TextureUploadRegion{ .mip = 1 } } });
+        ctx.EnqueueDataUpload(
+            uvGuideTexture,
+            std::as_bytes(std::span(fullImageData.begin() + width * height * channels, fullImageData.end())),
+            vex::TextureUploadRegion::UploadFullMip(1, uvGuideTexture.description));
 
         // Upload only to the top half of the first mip and the bottom half of the second mip.
         // Requires having halfImageData which is half the first mip and half the second mip packed together.

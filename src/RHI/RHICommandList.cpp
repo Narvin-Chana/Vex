@@ -85,6 +85,10 @@ void RHICommandListBase::Copy(RHIBuffer& src, RHITexture& dst)
             .extent = { mipSize.width, mipSize.height, mipSize.depth },
         });
 
+        TextureCopyUtil::ValidateBufferToTextureCopyDescription(src.GetDescription(),
+                                                                dst.GetDescription(),
+                                                                bufferToTextureCopyDescriptions.back());
+
         bufferOffset += alignedMipByteSize;
         bufferOffset = AlignUp<u64>(bufferOffset, TextureUtil::MipAlignment);
         mipSize = TextureExtent{

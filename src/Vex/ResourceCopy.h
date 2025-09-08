@@ -18,7 +18,6 @@ namespace TextureCopyUtil
 void ValidateBufferToTextureCopyDescription(const BufferDescription& srcDesc,
                                             const TextureDescription& dstDesc,
                                             const BufferToTextureCopyDescription& copyDesc);
-void ValidateSimpleBufferToTextureCopy(const BufferDescription& srcDesc, const TextureDescription& dstDesc);
 } // namespace TextureCopyUtil
 
 } // namespace vex

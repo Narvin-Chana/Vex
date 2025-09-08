@@ -134,7 +134,12 @@ struct TextureUploadRegion
     u16 mip = 0;
     u32 slice = 0;
     TextureExtent offset{ 0, 0, 0 };
-    TextureExtent extent{ 0, 0, 0 }; // 0 means we use the mip's entire extent.
+    TextureExtent extent{ 0, 0, 0 };
+
+    // Uploads the entirety of the texture (all mips and all depth slices).
+    static std::vector<TextureUploadRegion> UploadAllMips(const TextureDescription& textureDescription);
+    // Uploads the entirety of a specific mip of the texture (1 mip and all depth slices).
+    static std::vector<TextureUploadRegion> UploadFullMip(u16 mipIndex, const TextureDescription& textureDescription);
 };
 
 namespace TextureUtil
@@ -149,10 +154,8 @@ TextureFormat GetTextureFormat(const TextureBinding& binding);
 void ValidateTextureDescription(const TextureDescription& description);
 float GetPixelByteSizeFromFormat(TextureFormat format);
 
-u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc);
 u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc,
                                        std::span<const TextureUploadRegion> uploadRegions);
-u64 ComputePackedUploadDataByteSize(const TextureDescription& desc);
 u64 ComputePackedUploadDataByteSize(const TextureDescription& desc, std::span<const TextureUploadRegion> uploadRegions);
 
 bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage);

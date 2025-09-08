@@ -369,11 +369,7 @@ void VkCommandList::Transition(RHITexture& texture, RHITextureState newState)
 {
     RHITexture::ValidateStateVersusQueueType(newState, type);
 
-    // Nothing to do if the states are already equal.
-    if (texture.GetCurrentState() == newState)
-    {
-        return;
-    }
+    // We still add the barrier, even if the states are equal for synchronization purposes.
 
     auto memBarrier = GetMemoryBarrierFrom(texture, newState);
     commandBuffer->pipelineBarrier2({ .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &memBarrier });
@@ -383,11 +379,7 @@ void VkCommandList::Transition(RHITexture& texture, RHITextureState newState)
 
 void VkCommandList::Transition(RHIBuffer& buffer, RHIBufferState::Flags newState)
 {
-    // Nothing to do if the states are already equal.
-    if (buffer.GetCurrentState() == newState)
-    {
-        return;
-    }
+    // We still add the barrier, even if the states are equal for synchronization purposes.
 
     auto memBarrier = GetBufferBarrierFrom(buffer, newState);
     commandBuffer->pipelineBarrier2({ .bufferMemoryBarrierCount = 1, .pBufferMemoryBarriers = &memBarrier });
@@ -402,11 +394,7 @@ void VkCommandList::Transition(std::span<std::pair<RHITexture&, RHITextureState>
     for (auto& [texture, flags] : textureNewStatePairs)
     {
         RHITexture::ValidateStateVersusQueueType(flags, type);
-        // Nothing to do if the states are already equal.
-        if (flags == texture.GetCurrentState())
-        {
-            continue;
-        }
+        // We still add the barrier, even if the states are equal for synchronization purposes.
         barriers.push_back(GetMemoryBarrierFrom(texture, flags));
     }
 
@@ -431,11 +419,7 @@ void VkCommandList::Transition(std::span<std::pair<RHIBuffer&, RHIBufferState::F
 
     for (auto& [buffer, flags] : bufferNewStatePairs)
     {
-        // Nothing to do if the states are already equal.
-        if (flags == buffer.GetCurrentState())
-        {
-            continue;
-        }
+        // We still add the barrier, even if the states are equal for synchronization purposes.
         barriers.push_back(GetBufferBarrierFrom(buffer, flags));
     }
 

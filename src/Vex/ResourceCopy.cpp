@@ -25,15 +25,6 @@ void ValidateBufferToTextureCopyDescription(const BufferDescription& srcDesc,
               srcDesc.byteSize,
               requiredByteSize);
 }
-
-void ValidateSimpleBufferToTextureCopy(const BufferDescription& srcDesc, const TextureDescription& dstDesc)
-{
-    u32 textureByteSize = TextureUtil::ComputeAlignedUploadBufferByteSize(dstDesc);
-    VEX_CHECK(srcDesc.byteSize >= textureByteSize,
-              "Buffer not big enough to copy to texture. buffer size: {}, texture byte size: {}",
-              srcDesc.byteSize,
-              textureByteSize);
-}
 } // namespace TextureCopyUtil
 
 } // namespace vex
