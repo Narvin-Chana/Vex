@@ -67,7 +67,7 @@ void RHICommandListBase::Copy(RHIBuffer& src, RHITexture& dst)
         {
             // For 2D array textures: depth is always 1, array count is constant.
             depthCount = 1;
-            arrayCount = desc.GetArraySize();
+            arrayCount = desc.depthOrArraySize;
         }
 
         const u32 totalSlices = depthCount * arrayCount;
