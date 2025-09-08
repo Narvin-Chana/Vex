@@ -349,15 +349,17 @@ std::vector<TextureUploadRegion> TextureUploadRegion::UploadFullMip(u16 mipIndex
 {
     std::vector<TextureUploadRegion> regions(textureDescription.GetArraySize());
 
+    const u32 width = std::max(1u, textureDescription.width >> mipIndex);
+    const u32 height = std::max(1u, textureDescription.height >> mipIndex);
+    const u32 depth = std::max(1u, textureDescription.GetDepth() >> mipIndex);
+
     for (u32 slice = 0; slice < textureDescription.GetArraySize(); ++slice)
     {
         regions[slice] = {
             .mip = mipIndex,
             .slice = slice,
             .offset = { 0, 0, 0 },
-            .extent = { std::max(1u, textureDescription.width >> mipIndex),
-                        std::max(1u, textureDescription.height >> mipIndex),
-                        std::max(1u, textureDescription.GetDepth() >> mipIndex), },
+            .extent = { width, height, depth },
         };
     }
 
