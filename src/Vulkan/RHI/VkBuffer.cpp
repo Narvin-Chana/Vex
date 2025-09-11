@@ -90,9 +90,9 @@ BindlessHandle VkBuffer::GetOrCreateBindlessView(BufferBindingUsage usage,
         return *bufferHandle;
     }
 
-    const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
+    const BindlessHandle handle = descriptorPool.bindlessSet->AllocateStaticDescriptor();
 
-    descriptorPool.UpdateDescriptor(
+    descriptorPool.bindlessSet->UpdateDescriptor(
         handle,
         desc.usage == BufferUsage::UniformBuffer ? ::vk::DescriptorType::eUniformBuffer
                                                  : ::vk::DescriptorType::eStorageBuffer,
@@ -107,7 +107,7 @@ void VkBuffer::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 {
     if (bufferHandle && *bufferHandle != GInvalidBindlessHandle)
     {
-        descriptorPool.FreeStaticDescriptor(*bufferHandle);
+        descriptorPool.bindlessSet->FreeStaticDescriptor(*bufferHandle);
     }
     bufferHandle.reset();
 }

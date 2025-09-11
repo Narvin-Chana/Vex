@@ -12,7 +12,7 @@ class DX12DescriptorPool final : public RHIDescriptorPoolBase
 {
 public:
     DX12DescriptorPool(ComPtr<DX12Device>& device);
-    virtual void CopyNullDescriptor(u32 slotIndex) override;
+    virtual void CopyNullBindlessDescriptor(u32 slotIndex) override;
 
     void CopyDescriptor(BindlessHandle handle, CD3DX12_CPU_DESCRIPTOR_HANDLE descriptor);
     CD3DX12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptor(BindlessHandle handle);

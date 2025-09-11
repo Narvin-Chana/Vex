@@ -184,7 +184,8 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
         .startSlice = binding.startSlice,
         .sliceCount = (binding.sliceCount == 0) ? description.depthOrArraySize : binding.sliceCount,
     };
-    if (auto it = bindlessCache.find(view); it != bindlessCache.end() && descriptorPool.IsValid(it->second.handle))
+    if (auto it = bindlessCache.find(view);
+        it != bindlessCache.end() && descriptorPool.bindlessSet->IsValid(it->second.handle))
     {
         return it->second.handle;
     }
@@ -201,7 +202,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
                                                 } };
 
     ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx->device.createImageViewUnique(viewCreate);
-    const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
+    const BindlessHandle handle = descriptorPool.bindlessSet->AllocateStaticDescriptor();
 
     ::vk::ImageLayout viewLayout;
     switch (binding.usage)
@@ -216,7 +217,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
         VEX_LOG(Fatal, "Unsupported binding usage for texture {}.", binding.texture.description.name);
     }
 
-    descriptorPool.UpdateDescriptor(
+    descriptorPool.bindlessSet->UpdateDescriptor(
         handle,
         ::vk::DescriptorImageInfo{ .sampler = nullptr, .imageView = *imageView, .imageLayout = viewLayout },
         view.usage & TextureUsage::ShaderReadWrite);
@@ -277,7 +278,7 @@ void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
     {
         if (entry.handle != GInvalidBindlessHandle)
         {
-            descriptorPool.FreeStaticDescriptor(entry.handle);
+            descriptorPool.bindlessSet->FreeStaticDescriptor(entry.handle);
         }
     }
     bindlessCache.clear();

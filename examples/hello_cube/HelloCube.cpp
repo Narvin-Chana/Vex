@@ -187,6 +187,9 @@ HelloCubeApplication::HelloCubeApplication()
 
         stbi_image_free(imageData);
     }
+
+    std::vector<vex::TextureSampler> samplers{ vex::TextureSampler{ .name = "MySampler" } };
+    graphics->SetSamplers(samplers);
 }
 
 void HelloCubeApplication::Run()
