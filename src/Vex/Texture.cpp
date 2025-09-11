@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include <Vex/Bindings.h>
+#include <Vex/ByteUtils.h>
 #include <Vex/Formattable.h>
 #include <Vex/Logger.h>
 #include <Vex/Validation.h>
@@ -178,25 +179,53 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
     return 0;
 }
 
-u32 GetTotalTextureByteSize(const TextureDescription& desc)
+u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc,
+                                       std::span<const TextureUploadRegion> uploadRegions)
 {
-    float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
-
+    const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
     float totalSize = 0;
-    u32 width = desc.width;
-    u32 height = desc.height;
-    u32 depth = desc.GetDepth();
-    u32 arraySize = desc.GetArrayCount();
 
-    for (int i = 0; i < desc.mips; ++i)
+    for (const TextureUploadRegion& region : uploadRegions)
     {
-        totalSize += static_cast<float>(width * height * depth * arraySize) * pixelByteSize;
+        VEX_CHECK(region.slice < desc.GetArraySize(),
+                  "Cannot upload to a slice index ({}) greater or equal to the the texture's slice count ({})!",
+                  region.slice,
+                  desc.GetArraySize());
 
-        width = std::max(1u, width / 2u);
-        height = std::max(1u, height / 2u);
-        depth = std::max(1u, depth / 2u);
+        const u32 width = region.extent.width;
+        const u32 height = region.extent.height;
+        const u32 depth = region.extent.depth;
+
+        // The staging buffer should have a row pitch alignment of 256 and mip alignment of 512 due to API constraints.
+        u64 regionSize = AlignUp<u64>(width * pixelByteSize, RowPitchAlignment) * height * depth;
+        totalSize += AlignUp<u64>(regionSize, MipAlignment);
     }
-    return static_cast<u32>(std::ceil(totalSize));
+
+    return static_cast<u64>(std::ceil(totalSize));
+}
+
+u64 ComputePackedUploadDataByteSize(const TextureDescription& desc, std::span<const TextureUploadRegion> uploadRegions)
+{
+    // Pixel byte size could be less than 1 (BlockCompressed formats).
+    const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
+    float totalSize = 0;
+
+    for (const TextureUploadRegion& region : uploadRegions)
+    {
+        VEX_CHECK(region.slice < desc.GetArraySize(),
+                  "Cannot upload to a slice index ({}) greater or equal to the the texture's slice count ({})!",
+                  region.slice,
+                  desc.GetArraySize());
+
+        const u32 width = region.extent.width;
+        const u32 height = region.extent.height;
+        const u32 depth = region.extent.depth;
+
+        // Calculate tightly packed size for this region
+        totalSize += width * pixelByteSize * height * depth;
+    }
+
+    return static_cast<u64>(std::ceil(totalSize));
 }
 
 bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage)
@@ -222,17 +251,17 @@ void ValidateTextureSubresource(const TextureDescription& description, const Tex
         subresource.mip,
         description.mips);
 
-    VEX_CHECK(subresource.startSlice < description.GetArrayCount(),
+    VEX_CHECK(subresource.startSlice < description.GetArraySize(),
               "Subresource start slice is greater than texture's array size. Start slice: {}, array size: {}",
               subresource.startSlice,
-              description.GetArrayCount());
+              description.GetArraySize());
 
     VEX_CHECK(
-        subresource.startSlice + subresource.sliceCount <= description.GetArrayCount(),
-        "Subresource accesses more slice than available. Start slice: {}, slice count: {}, texture array size: {}",
+        subresource.startSlice + subresource.sliceCount <= description.GetArraySize(),
+        "Subresource accesses more slices than available. Start slice: {}, slice count: {}, texture array size: {}",
         subresource.startSlice,
         subresource.sliceCount,
-        description.GetArrayCount());
+        description.GetArraySize());
 
     const auto [mipWidth, mipHeight, mipDepth] = GetMipSize(description, subresource.mip);
     VEX_CHECK(subresource.offset.width < mipWidth && subresource.offset.height < mipHeight &&
@@ -250,10 +279,10 @@ void ValidateTextureCopyDescription(const TextureDescription& srcDesc,
                                     const TextureDescription& dstDesc,
                                     const TextureCopyDescription& copyDesc)
 {
-    ValidateTextureSubresource(srcDesc, copyDesc.srcRegion);
-    ValidateTextureSubresource(dstDesc, copyDesc.dstRegion);
-    ValidateTextureExtent(srcDesc, copyDesc.srcRegion, copyDesc.extent);
-    ValidateTextureExtent(dstDesc, copyDesc.dstRegion, copyDesc.extent);
+    ValidateTextureSubresource(srcDesc, copyDesc.srcSubresource);
+    ValidateTextureSubresource(dstDesc, copyDesc.dstSubresource);
+    ValidateTextureExtent(srcDesc, copyDesc.srcSubresource, copyDesc.extent);
+    ValidateTextureExtent(dstDesc, copyDesc.dstSubresource, copyDesc.extent);
 }
 void ValidateTextureExtent(const TextureDescription& description,
                            const TextureSubresource& subresource,
@@ -283,5 +312,58 @@ void ValidateCompatibleTextureDescriptions(const TextureDescription& srcDesc, co
 }
 
 } // namespace TextureUtil
+
+std::vector<TextureUploadRegion> TextureUploadRegion::UploadAllMips(const TextureDescription& textureDescription)
+{
+    std::vector<TextureUploadRegion> regions(textureDescription.mips * textureDescription.GetArraySize());
+
+    u32 width = textureDescription.width;
+    u32 height = textureDescription.height;
+    u32 depth = textureDescription.GetDepth();
+
+    for (u16 mip = 0; mip < regions.size(); ++mip)
+    {
+        for (u32 slice = 0; slice < textureDescription.GetArraySize(); ++slice)
+        {
+            regions[mip + slice] = {
+                .mip = mip,
+                .slice = slice,
+                .offset = { 0, 0, 0 },
+                .extent = { width, height, depth },
+            };
+        }
+
+        width = std::max(1u, width / 2u);
+        height = std::max(1u, height / 2u);
+        if (textureDescription.type == TextureType::Texture3D)
+        {
+            depth = std::max(1u, depth / 2u);
+        }
+    }
+
+    return regions;
+}
+
+std::vector<TextureUploadRegion> TextureUploadRegion::UploadFullMip(u16 mipIndex,
+                                                                    const TextureDescription& textureDescription)
+{
+    std::vector<TextureUploadRegion> regions(textureDescription.GetArraySize());
+
+    const u32 width = std::max(1u, textureDescription.width >> mipIndex);
+    const u32 height = std::max(1u, textureDescription.height >> mipIndex);
+    const u32 depth = std::max(1u, textureDescription.GetDepth() >> mipIndex);
+
+    for (u32 slice = 0; slice < textureDescription.GetArraySize(); ++slice)
+    {
+        regions[slice] = {
+            .mip = mipIndex,
+            .slice = slice,
+            .offset = { 0, 0, 0 },
+            .extent = { width, height, depth },
+        };
+    }
+
+    return regions;
+}
 
 } // namespace vex

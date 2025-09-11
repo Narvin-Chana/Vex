@@ -62,7 +62,7 @@ HelloCubeApplication::HelloCubeApplication()
 
     {
         // Immediate submission means the commands are instantly submitted upon destruction.
-        auto ctx =
+        vex::CommandContext ctx =
             graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics, vex::SubmissionPolicy::Immediate);
 
         // clang-format off
@@ -99,18 +99,21 @@ HelloCubeApplication::HelloCubeApplication()
 
         // clang-format on
 
-        ctx.EnqueueDataUpload(vertexBuffer, cubeVertices);
-        ctx.EnqueueDataUpload(indexBuffer, cubeIndices);
+        ctx.EnqueueDataUpload(vertexBuffer, std::as_bytes(std::span(cubeVertices)));
+        ctx.EnqueueDataUpload(indexBuffer, std::as_bytes(std::span(cubeIndices)));
 
+        // Use the loaded image for mip index 0.
         const std::filesystem::path uvImagePath = ExamplesDir / "uv-guide.png";
-        int width, height, channels;
+        vex::i32 width, height, channels;
         void* imageData = stbi_load(uvImagePath.string().c_str(), &width, &height, &channels, 4);
 
+        // Vex requires that the upload data for textures be tightly packed together! This shouldn't be an issue as most
+        // file formats tightly pack data to avoid wasting space with padding.
         std::vector<vex::u8> fullImageData;
         fullImageData.reserve((width * height + (width / 2) * (height / 2)) * channels);
         std::copy_n(static_cast<vex::u8*>(imageData), width * height * channels, std::back_inserter(fullImageData));
 
-        // Checker board pattern for mip 2
+        // Checkerboard pattern for mip index 1
         for (int x = 0; x < width / 2; ++x)
         {
             for (int y = 0; y < height / 2; ++y)
@@ -136,7 +139,47 @@ HelloCubeApplication::HelloCubeApplication()
                                       .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
                                     vex::ResourceLifetime::Static);
 
-        ctx.EnqueueDataUpload(uvGuideTexture, std::span<const vex::u8>{ fullImageData });
+        // Upload the entirety of both mips using the default value.
+        ctx.EnqueueDataUpload(uvGuideTexture,
+                              std::as_bytes(std::span(fullImageData)),
+                              vex::TextureUploadRegion::UploadAllMips(uvGuideTexture.description));
+
+        // Some other examples of the EnqueueDataUpload api:
+
+        // Upload only the first mip
+        ctx.EnqueueDataUpload(
+            uvGuideTexture,
+            std::as_bytes(std::span(fullImageData.begin(), fullImageData.begin() + width * height * channels)),
+            vex::TextureUploadRegion::UploadFullMip(0, uvGuideTexture.description));
+
+        // Upload only the second mip
+        ctx.EnqueueDataUpload(
+            uvGuideTexture,
+            std::as_bytes(std::span(fullImageData.begin() + width * height * channels, fullImageData.end())),
+            vex::TextureUploadRegion::UploadFullMip(1, uvGuideTexture.description));
+
+        // Upload only to the top half of the first mip and the bottom half of the second mip.
+        // Requires having halfImageData which is half the first mip and half the second mip packed together.
+        // ctx.EnqueueDataUpload(
+        //    uvGuideTexture,
+        //    std::as_bytes(std::span(halfImageData)),
+        //    { {
+        //        vex::TextureUploadRegion{ .mip = 0, .extent = { 0, static_cast<vex::u32>(height) / 2, 0 } },
+        //        vex::TextureUploadRegion{ .mip = 1,
+        //                                  .offset = { 0, static_cast<vex::u32>(height) / 2 / 2, 0 },
+        //                                  .extent = { 0, static_cast<vex::u32>(height) / 2 / 2, 0 } },
+        //    } });
+
+        // TODO(https://trello.com/c/L6TkjaGl): this causes a Vulkan synchronization error! Very probably some sort of
+        // missing barrier stage. Upload a single RGBA pixel to position x=10, y=10.
+        std::vector<vex::u8> pixel{ 255, 255, 255, 255 };
+        ctx.EnqueueDataUpload(
+            uvGuideTexture,
+            std::as_bytes(std::span(pixel)),
+            { { vex::TextureUploadRegion{ .mip = 0, .offset = { 10, 10, 0 }, .extent = { 1, 1, 1 } } } });
+
+        // The texture will now only be used as a read-only shader resource. Avoids having to transition it later on.
+        ctx.Transition(uvGuideTexture, vex::RHITextureState::ShaderResource);
 
         stbi_image_free(imageData);
     }
@@ -244,6 +287,8 @@ void HelloCubeApplication::Run()
                 .texture = graphics->GetCurrentPresentTexture(),
             } };
 
+            // Usually you'd have to transition the uvGuideTexture (since we're using it bindless-ly), but since we
+            // already transitioned it to RHITextureState::ShaderResource after the texture upload we don't have to!
             vex::BindlessHandle uvGuideHandle = ctx.GetBindlessHandle(
                 vex::TextureBinding{ .texture = uvGuideTexture, .usage = vex::TextureBindingUsage::ShaderRead });
 

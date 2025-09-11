@@ -7,6 +7,7 @@
 
 #include <Vex/CommandQueueType.h>
 #include <Vex/RHIFwd.h>
+#include <Vex/ResourceCopy.h>
 #include <Vex/Synchronization.h>
 #include <Vex/Types.h>
 
@@ -22,21 +23,6 @@ struct ResourceBinding;
 struct RHITextureBinding;
 struct RHIBufferBinding;
 struct InputAssembly;
-
-struct BufferToTextureCopyDescription
-{
-    BufferSubresource srcRegion{};
-    TextureSubresource dstRegion{};
-    TextureExtent extent{};
-};
-
-namespace TextureCopyUtil
-{
-    void ValidateBufferToTextureCopyDescription(const BufferDescription& srcDesc,
-        const TextureDescription& dstDesc,
-        const BufferToTextureCopyDescription& copyDesc);
-    void ValidateSimpleBufferToTextureCopy(const BufferDescription& srcDesc, const TextureDescription& dstDesc);
-} // namespace TextureCopyUtil
 
 enum class RHICommandListState : u8
 {
@@ -97,20 +83,22 @@ public:
     // Copies the whole texture data from src to dst. These textures should have the same size, mips, slice, type,
     // etc...
     virtual void Copy(RHITexture& src, RHITexture& dst);
-    // Copies the regions from src to dst
-    virtual void Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDescription> regionMappings) = 0;
-    // Copies the whole contents of src to dst. Buffers need to have the same byte size
+    // Copies from src to dst the various copy descriptions.
+    virtual void Copy(RHITexture& src,
+                      RHITexture& dst,
+                      std::span<const TextureCopyDescription> textureCopyDescriptions) = 0;
+    // Copies the whole contents of src to dst. Buffers need to have the same byte size.
     virtual void Copy(RHIBuffer& src, RHIBuffer& dst);
-    // Copies the buffer region from src to dst
-    virtual void Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& regionMappings) = 0;
+    // Copies the buffer from src to dst.
+    virtual void Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& bufferCopyDescription) = 0;
     // Copies the complete contents of the buffer to all regions of the dst texture.
     // This assumes the texture regions are contiguously arranged in the buffer. The whole content of the texture must
-    // be in the buffer
+    // be in the buffer.
     virtual void Copy(RHIBuffer& src, RHITexture& dst);
-    // Copies the different regions of buffers to dst texture regions
+    // Copies the different regions of buffers to dst texture regions.
     virtual void Copy(RHIBuffer& src,
                       RHITexture& dst,
-                      std::span<const BufferToTextureCopyDescription> regionMappings) = 0;
+                      std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions) = 0;
 
     CommandQueueType GetType() const
     {

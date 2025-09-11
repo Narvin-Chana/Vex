@@ -27,7 +27,7 @@ public:
     void SetSamplers(std::span<TextureSampler> newSamplers);
     std::span<const TextureSampler> GetStaticSamplers() const;
 
-    std::span<const u8> GetLocalConstantsData() const;
+    std::span<const byte> GetLocalConstantsData() const;
 
     u32 version = 0;
 
@@ -37,7 +37,7 @@ protected:
     const u32 maxLocalConstantsByteSize;
 
     // Constant data remains always allocated, avoiding reallocations on successive draw calls.
-    std::vector<u8> localConstantsData;
+    std::vector<byte> localConstantsData;
 
     std::vector<TextureSampler> samplers;
 };

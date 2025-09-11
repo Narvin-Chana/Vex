@@ -39,7 +39,7 @@ public:
 
     ::vk::Buffer GetNativeBuffer();
 
-    virtual std::span<u8> Map() override;
+    virtual std::span<byte> Map() override;
     virtual void Unmap() override;
 
 private:

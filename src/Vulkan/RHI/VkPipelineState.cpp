@@ -27,13 +27,13 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
                                       const Shader& pixelShader,
                                       RHIResourceLayout& resourceLayout)
 {
-    std::span<const u8> vsCode = vertexShader.GetBlob();
+    std::span<const byte> vsCode = vertexShader.GetBlob();
     ::vk::ShaderModuleCreateInfo vsShaderModuleCreateInfo{
         .codeSize = vsCode.size(),
         .pCode = reinterpret_cast<const u32*>(&vsCode[0]),
     };
 
-    std::span<const u8> psCode = pixelShader.GetBlob();
+    std::span<const byte> psCode = pixelShader.GetBlob();
     ::vk::ShaderModuleCreateInfo psShaderModuleCreateInfo{
         .codeSize = psCode.size(),
         .pCode = reinterpret_cast<const u32*>(&psCode[0]),
@@ -217,7 +217,7 @@ VkComputePipelineState::VkComputePipelineState(const Key& key, ::vk::Device devi
 
 void VkComputePipelineState::Compile(const Shader& computeShader, RHIResourceLayout& resourceLayout)
 {
-    std::span<const u8> shaderCode = computeShader.GetBlob();
+    std::span<const byte> shaderCode = computeShader.GetBlob();
     ::vk::ShaderModuleCreateInfo shaderModulecreateInfo{
         .codeSize = shaderCode.size(),
         .pCode = reinterpret_cast<const u32*>(&shaderCode[0]),

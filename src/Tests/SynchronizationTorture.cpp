@@ -260,7 +260,7 @@ void SynchronizationTortureTest(GfxBackend& graphics)
             auto ctx = graphics.BeginScopedCommandContext(CommandQueueType::Copy, SubmissionPolicy::Immediate, deps);
 
             // Generate dummy data
-            std::vector<u8> dummyData(1024, static_cast<u8>(i));
+            std::vector<byte> dummyData(1024, static_cast<byte>(i));
             ctx.EnqueueDataUpload(uploadBuffer, dummyData);
             ctx.Copy(uploadBuffer, targetTexture);
 

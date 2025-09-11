@@ -1,7 +1,6 @@
 #include "RHICommandList.h"
 
-#include <cmath>
-
+#include <Vex/ByteUtils.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/Validation.h>
@@ -9,62 +8,28 @@
 namespace vex
 {
 
-namespace TextureCopyUtil
-{
-void ValidateBufferToTextureCopyDescription(const BufferDescription& srcDesc,
-                                            const TextureDescription& dstDesc,
-                                            const BufferToTextureCopyDescription& copyDesc)
-{
-    BufferUtil::ValidateBufferSubresource(srcDesc, copyDesc.srcRegion);
-    TextureUtil::ValidateTextureSubresource(dstDesc, copyDesc.dstRegion);
-
-    auto [mipWidth, mipHeight, mipDepth] = copyDesc.extent;
-    const u32 requiredByteSize = static_cast<u32>(
-        std::ceil(mipWidth * mipHeight * mipDepth * TextureUtil::GetPixelByteSizeFromFormat(dstDesc.format)));
-
-    VEX_CHECK(copyDesc.srcRegion.size >= requiredByteSize,
-              "Buffer not big enough to copy to texture. buffer size: {}, required mip byte size: {}",
-              srcDesc.byteSize,
-              requiredByteSize);
-}
-
-void ValidateSimpleBufferToTextureCopy(const BufferDescription& srcDesc, const TextureDescription& dstDesc)
-{
-    u32 textureByteSize = TextureUtil::GetTotalTextureByteSize(dstDesc);
-    VEX_CHECK(srcDesc.byteSize >= textureByteSize,
-              "Buffer not big enough to copy to texture. buffer size: {}, texture byte size: {}",
-              srcDesc.byteSize,
-              textureByteSize);
-}
-} // namespace TextureCopyUtil
-
 void RHICommandListBase::Copy(RHITexture& src, RHITexture& dst)
 {
-    const auto desc = src.GetDescription();
-    std::vector<std::pair<TextureSubresource, TextureExtent>> regions;
-    regions.reserve(desc.mips);
+    const TextureDescription& desc = src.GetDescription();
+    std::vector<TextureCopyDescription> copyDescriptions;
+    copyDescriptions.reserve(desc.mips);
     u32 width = desc.width;
     u32 height = desc.height;
     u32 depth = desc.depthOrArraySize;
-    for (u32 i = 0; i < desc.mips; ++i)
+    for (u16 mip = 0; mip < desc.mips; ++mip)
     {
-        regions.emplace_back(
-            TextureSubresource{ .mip = i, .startSlice = 0, .sliceCount = desc.GetArrayCount(), .offset = { 0, 0, 0 } },
-            TextureExtent{ width, height, depth });
+        TextureSubresource subresource{ .mip = mip,
+                                        .startSlice = 0,
+                                        .sliceCount = desc.GetArraySize(),
+                                        .offset = { 0, 0, 0 } };
+        copyDescriptions.emplace_back(subresource, subresource, TextureExtent{ width, height, depth });
 
         width = std::max(1u, width / 2u);
         height = std::max(1u, height / 2u);
         depth = std::max(1u, depth / 2u);
     }
 
-    std::vector<TextureCopyDescription> regionMappings;
-    regionMappings.reserve(desc.mips);
-    for (const auto& [region, extent] : regions)
-    {
-        regionMappings.emplace_back(region, region, extent);
-    }
-
-    Copy(src, dst, regionMappings);
+    Copy(src, dst, copyDescriptions);
 }
 
 void RHICommandListBase::Copy(RHIBuffer& src, RHIBuffer& dst)
@@ -80,30 +45,60 @@ void RHICommandListBase::Copy(RHIBuffer& src, RHITexture& dst)
 
     TextureExtent mipSize{ desc.width, desc.height, desc.GetDepth() };
 
-    std::vector<BufferToTextureCopyDescription> regions;
+    std::vector<BufferToTextureCopyDescription> bufferToTextureCopyDescriptions;
+    bufferToTextureCopyDescriptions.reserve(desc.mips);
 
-    u32 bufferOffset = 0;
-    for (u16 i = 0; i < desc.mips; ++i)
+    u64 bufferOffset = 0;
+    for (u16 mip = 0; mip < desc.mips; ++mip)
     {
-        const u32 mipByteSize = static_cast<u32>(
-            std::ceil(mipSize.width * mipSize.height *
-                      (desc.type == TextureType::Texture3D ? mipSize.depth : desc.depthOrArraySize) * texelByteSize));
+        // Calculate aligned dimensions for this mip level
+        const u32 packedRowSize = mipSize.width * texelByteSize;
+        const u32 alignedRowPitch = AlignUp<u32>(packedRowSize, TextureUtil::RowPitchAlignment);
+        const u32 alignedSlicePitch = alignedRowPitch * mipSize.height;
 
-        regions.push_back(
-            BufferToTextureCopyDescription{ .srcRegion = BufferSubresource{ bufferOffset, mipByteSize },
-                                            .dstRegion = TextureSubresource{ .mip = i,
-                                                                             .startSlice = 0,
-                                                                             .sliceCount = desc.GetArrayCount(),
-                                                                             .offset = { 0, 0, 0 } },
-                                            .extent = { mipSize.width, mipSize.height, mipSize.depth } });
+        u32 depthCount, arrayCount;
+        if (desc.type == TextureType::Texture3D)
+        {
+            // For 3D textures: depth changes per mip, array count is always 1.
+            depthCount = mipSize.depth;
+            arrayCount = 1;
+        }
+        else
+        {
+            // For 2D array textures: depth is always 1, array count is constant.
+            depthCount = 1;
+            arrayCount = desc.depthOrArraySize;
+        }
 
-        bufferOffset += mipByteSize;
-        mipSize = TextureExtent{ std::max(1u, mipSize.width / 2u),
-                                 std::max(1u, mipSize.height / 2u),
-                                 std::max(1u, mipSize.depth / 2u) };
+        const u32 totalSlices = depthCount * arrayCount;
+        const u64 alignedMipByteSize = static_cast<u64>(alignedSlicePitch) * totalSlices;
+
+        bufferToTextureCopyDescriptions.push_back(BufferToTextureCopyDescription{
+            .srcSubresource = BufferSubresource{ bufferOffset, alignedMipByteSize },
+            .dstSubresource =
+                TextureSubresource{
+                    .mip = mip,
+                    .startSlice = 0,
+                    .sliceCount = arrayCount,
+                    .offset = { 0, 0, 0 },
+                },
+            .extent = { mipSize.width, mipSize.height, mipSize.depth },
+        });
+
+        TextureCopyUtil::ValidateBufferToTextureCopyDescription(src.GetDescription(),
+                                                                dst.GetDescription(),
+                                                                bufferToTextureCopyDescriptions.back());
+
+        bufferOffset += alignedMipByteSize;
+        bufferOffset = AlignUp<u64>(bufferOffset, TextureUtil::MipAlignment);
+        mipSize = TextureExtent{
+            std::max(1u, mipSize.width / 2u),
+            std::max(1u, mipSize.height / 2u),
+            std::max(1u, mipSize.depth / 2u),
+        };
     }
 
-    Copy(src, dst, regions);
+    Copy(src, dst, bufferToTextureCopyDescriptions);
 }
 
 } // namespace vex

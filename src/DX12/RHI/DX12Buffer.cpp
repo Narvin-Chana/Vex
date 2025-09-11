@@ -2,6 +2,7 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/Buffer.h>
+#include <Vex/ByteUtils.h>
 #include <Vex/Debug.h>
 #include <Vex/Logger.h>
 #include <Vex/Platform/Platform.h>
@@ -10,22 +11,17 @@
 namespace vex::dx12
 {
 
-namespace BufferHelpers_Internal
-{
-static u32 RaiseToMultipleOf(u32 val, u32 multiple)
-{
-    return val + (multiple - (val % multiple));
-}
-} // namespace BufferHelpers_Internal
-
 DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, const BufferDescription& desc)
     : RHIBufferBase(allocator, desc)
     , device(device)
 {
-    auto size = desc.byteSize;
-    // Size of constant buffers need to be multiples of 256. User won't know its bigger but it shouldn't be an issue
+    u64 size = desc.byteSize;
+
+    // Size of constant buffers need to be multiples of 256. User won't know its bigger so it shouldn't be an issue.
     if (desc.usage & BufferUsage::UniformBuffer)
-        size = BufferHelpers_Internal::RaiseToMultipleOf(desc.byteSize, 256);
+    {
+        size = AlignUp<u64>(desc.byteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+    }
 
     const CD3DX12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(
         size,
@@ -68,7 +64,7 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
 #endif
 }
 
-std::span<u8> DX12Buffer::Map()
+std::span<byte> DX12Buffer::Map()
 {
     void* ptr;
     D3D12_RANGE range{
@@ -76,7 +72,7 @@ std::span<u8> DX12Buffer::Map()
         .End = desc.byteSize,
     };
     chk << buffer->Map(0, &range, &ptr);
-    return { static_cast<u8*>(ptr), desc.byteSize };
+    return { static_cast<byte*>(ptr), desc.byteSize };
 }
 
 void DX12Buffer::Unmap()
@@ -92,7 +88,7 @@ D3D12_VERTEX_BUFFER_VIEW DX12Buffer::GetVertexBufferView(const BufferBinding& bi
 {
     return D3D12_VERTEX_BUFFER_VIEW{
         .BufferLocation = GetGPUVirtualAddress() + binding.offsetByteSize.value_or(0),
-        .SizeInBytes = desc.byteSize,
+        .SizeInBytes = static_cast<u32>(desc.byteSize),
         .StrideInBytes = *binding.strideByteSize,
     };
 }
@@ -114,7 +110,7 @@ D3D12_INDEX_BUFFER_VIEW DX12Buffer::GetIndexBufferView(const BufferBinding& bind
     }
     return D3D12_INDEX_BUFFER_VIEW{
         .BufferLocation = GetGPUVirtualAddress() + binding.offsetByteSize.value_or(0),
-        .SizeInBytes = desc.byteSize,
+        .SizeInBytes = static_cast<u32>(desc.byteSize),
         .Format = format,
     };
 }
@@ -145,7 +141,7 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
     {
         D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
         cbvDesc.BufferLocation = buffer->GetGPUVirtualAddress();
-        cbvDesc.SizeInBytes = BufferHelpers_Internal::RaiseToMultipleOf(desc.byteSize, 256u);
+        cbvDesc.SizeInBytes = AlignUp<u32>(desc.byteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
         device->CreateConstantBufferView(&cbvDesc, cpuHandle);
     }

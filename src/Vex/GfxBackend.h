@@ -67,7 +67,7 @@ public:
     // Creates a new buffer with specified description, the buffer will be refered using the Buffer object returned
     Buffer CreateBuffer(BufferDescription description, ResourceLifetime lifetime);
 
-    // Writes data to buffer memory. This only supports buffers with CPUWrite ResourceLocality
+    // Writes data to buffer memory. This only supports buffers with ResourceMemoryLocality::CPUWrite.
     ResourceMappedMemory MapResource(const Buffer& buffer);
     ResourceMappedMemory MapResource(const Texture& texture);
 

@@ -10,6 +10,7 @@
 
 namespace vex
 {
+
 // clang-format off
 
 BEGIN_VEX_ENUM_FLAGS(TextureUsage, u8)
@@ -20,7 +21,7 @@ BEGIN_VEX_ENUM_FLAGS(TextureUsage, u8)
     DepthStencil    = 1 << 3, // DSV in DX12, Depth/Stencil Attachment in Vulkan
 END_VEX_ENUM_FLAGS();
 
-//clang-format on
+// clang-format on
 
 enum class TextureType : u8
 {
@@ -85,7 +86,7 @@ struct TextureDescription
     {
         return type == TextureType::Texture3D ? depthOrArraySize : 1;
     }
-    [[nodiscard]] u32 GetArrayCount() const noexcept
+    [[nodiscard]] u32 GetArraySize() const noexcept
     {
         return type != TextureType::Texture3D ? depthOrArraySize : 1;
     }
@@ -114,7 +115,8 @@ struct TextureExtent
 
 struct TextureSubresource
 {
-    u32 mip = 0;
+    // Mip index (0-based).
+    u16 mip = 0;
     u32 startSlice = 0;
     u32 sliceCount = 1;
     TextureExtent offset{ 0, 0, 0 };
@@ -122,20 +124,40 @@ struct TextureSubresource
 
 struct TextureCopyDescription
 {
-    TextureSubresource srcRegion;
-    TextureSubresource dstRegion;
+    TextureSubresource srcSubresource;
+    TextureSubresource dstSubresource;
     TextureExtent extent;
+};
+
+struct TextureUploadRegion
+{
+    u16 mip = 0;
+    u32 slice = 0;
+    TextureExtent offset{ 0, 0, 0 };
+    TextureExtent extent{ 0, 0, 0 };
+
+    // Uploads the entirety of the texture (all mips and all depth slices).
+    static std::vector<TextureUploadRegion> UploadAllMips(const TextureDescription& textureDescription);
+    // Uploads the entirety of a specific mip of the texture (1 mip and all depth slices).
+    static std::vector<TextureUploadRegion> UploadFullMip(u16 mipIndex, const TextureDescription& textureDescription);
 };
 
 namespace TextureUtil
 {
+
+static constexpr u64 RowPitchAlignment = 256;
+static constexpr u64 MipAlignment = 512;
 
 std::tuple<u32, u32, u32> GetMipSize(const TextureDescription& desc, u32 mip);
 TextureViewType GetTextureViewType(const TextureBinding& binding);
 TextureFormat GetTextureFormat(const TextureBinding& binding);
 void ValidateTextureDescription(const TextureDescription& description);
 float GetPixelByteSizeFromFormat(TextureFormat format);
-u32 GetTotalTextureByteSize(const TextureDescription& desc);
+
+u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc,
+                                       std::span<const TextureUploadRegion> uploadRegions);
+u64 ComputePackedUploadDataByteSize(const TextureDescription& desc, std::span<const TextureUploadRegion> uploadRegions);
+
 bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage);
 
 void ValidateTextureSubresource(const TextureDescription& description, const TextureSubresource& subresource);

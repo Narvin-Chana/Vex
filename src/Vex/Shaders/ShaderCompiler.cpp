@@ -57,7 +57,7 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader)
 
     ShaderCompilerBackend shaderCompilerToUse = ShaderCompilerBackend::Auto;
 
-    std::expected<std::vector<u8>, std::string> res = std::unexpected("Invalid shader compiler backend.");
+    std::expected<std::vector<byte>, std::string> res = std::unexpected("Invalid shader compiler backend.");
     // Identify which shader compiler to use.
     switch (shader.key.compiler)
     {
@@ -101,7 +101,7 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader)
         return std::unexpected(res.error());
     }
 
-    std::vector<u8>& shaderBytecode = res.value();
+    std::vector<byte>& shaderBytecode = res.value();
 
     // Outputs raw bytecode if we ever need to figure out a difficult shader issue (for spirv can use spirv-dis
     // to read raw .spv file, similar tools like RenderDoc work for dxil).

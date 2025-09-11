@@ -122,7 +122,7 @@ void VkBuffer::FreeAllocation(RHIAllocator& allocator)
     return *buffer;
 }
 
-std::span<u8> VkBuffer::Map()
+std::span<byte> VkBuffer::Map()
 {
     return allocator->MapAllocation(allocation);
 }

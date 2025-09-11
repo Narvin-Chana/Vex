@@ -85,7 +85,7 @@ DXCCompilerImpl::DXCCompilerImpl(std::vector<std::filesystem::path> includeDirec
 
 DXCCompilerImpl::~DXCCompilerImpl() = default;
 
-std::expected<std::vector<u8>, std::string> DXCCompilerImpl::CompileShader(
+std::expected<std::vector<byte>, std::string> DXCCompilerImpl::CompileShader(
     const Shader& shader, ShaderEnvironment& shaderEnv, const ShaderCompilerSettings& compilerSettings) const
 {
     using namespace DXCImpl_Internal;
@@ -190,7 +190,7 @@ std::expected<std::vector<u8>, std::string> DXCCompilerImpl::CompileShader(
     }
 
     // Store shader bytecode blob inside the Shader.
-    std::vector<u8> finalShaderBlob;
+    std::vector<byte> finalShaderBlob;
     finalShaderBlob.resize(shaderBytecode->GetBufferSize());
     std::memcpy(finalShaderBlob.data(), shaderBytecode->GetBufferPointer(), finalShaderBlob.size() * sizeof(u8));
 

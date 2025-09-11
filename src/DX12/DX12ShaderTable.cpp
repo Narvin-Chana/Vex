@@ -31,7 +31,7 @@ DX12ShaderTable::DX12ShaderTable(ComPtr<DX12Device>& device,
     u64 alignedRecordStride = AlignUp<u64>(recordStride, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
     shaderTableStride = alignedRecordStride;
 
-    std::span<u8> mappedData = buffer.Map();
+    std::span<byte> mappedData = buffer.Map();
 
     // Write each shader identifier.
     for (u64 i = 0; i < shaderIdentifiers.size(); ++i)

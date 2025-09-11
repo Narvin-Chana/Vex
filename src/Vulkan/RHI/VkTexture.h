@@ -96,7 +96,7 @@ public:
         return TextureUtil::TextureStateFlagToImageLayout(GetCurrentState());
     }
 
-    virtual std::span<u8> Map() override;
+    virtual std::span<byte> Map() override;
     virtual void Unmap() override;
 
     struct CacheEntry

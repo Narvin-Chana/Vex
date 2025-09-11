@@ -64,7 +64,7 @@ inline bool IsBindingUsageCompatibleWithBufferUsage(BufferUsage::Flags usages, B
 struct BufferDescription
 {
     std::string name;
-    u32 byteSize = 0;
+    u64 byteSize = 0;
     BufferUsage::Flags usage = BufferUsage::GenericBuffer;
     ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly;
 };
@@ -85,15 +85,15 @@ struct Buffer final
 
 struct BufferSubresource
 {
-    u32 offset;
-    u32 size;
+    u64 offset;
+    u64 size;
 };
 
 struct BufferCopyDescription
 {
-    u32 srcOffset;
-    u32 dstOffset;
-    u32 size;
+    u64 srcOffset;
+    u64 dstOffset;
+    u64 size;
 };
 
 namespace BufferUtil

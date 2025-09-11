@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include <Vex/Bindings.h>
+#include <Vex/ByteUtils.h>
 #include <Vex/DrawHelpers.h>
 #include <Vex/RHIBindings.h>
 
@@ -13,10 +14,9 @@
 #include <Vulkan/RHI/VkResourceLayout.h>
 #include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkErrorHandler.h>
+#include <Vulkan/VkFormats.h>
+#include <Vulkan/VkGPUContext.h>
 #include <Vulkan/VkGraphicsPipeline.h>
-
-#include "Vulkan/VkFormats.h"
-#include "Vulkan/VkGPUContext.h"
 
 namespace vex::vk
 {
@@ -91,7 +91,7 @@ void VkCommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTracin
 
 void VkCommandList::SetLayout(RHIResourceLayout& layout)
 {
-    std::span<const u8> localConstantsData = layout.GetLocalConstantsData();
+    std::span<const byte> localConstantsData = layout.GetLocalConstantsData();
     if (localConstantsData.empty())
     {
         return;
@@ -243,7 +243,7 @@ static ::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITex
                               .baseMipLevel = 0,
                               .levelCount = desc.mips,
                               .baseArrayLayer = 0,
-                              .layerCount = desc.GetArrayCount() },
+                              .layerCount = desc.GetArraySize() },
     };
 
     const bool isBackbufferImage = texture.IsBackBufferTexture();
@@ -369,11 +369,7 @@ void VkCommandList::Transition(RHITexture& texture, RHITextureState newState)
 {
     RHITexture::ValidateStateVersusQueueType(newState, type);
 
-    // Nothing to do if the states are already equal.
-    if (texture.GetCurrentState() == newState)
-    {
-        return;
-    }
+    // We still add the barrier, even if the states are equal for synchronization purposes.
 
     auto memBarrier = GetMemoryBarrierFrom(texture, newState);
     commandBuffer->pipelineBarrier2({ .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &memBarrier });
@@ -383,11 +379,7 @@ void VkCommandList::Transition(RHITexture& texture, RHITextureState newState)
 
 void VkCommandList::Transition(RHIBuffer& buffer, RHIBufferState::Flags newState)
 {
-    // Nothing to do if the states are already equal.
-    if (buffer.GetCurrentState() == newState)
-    {
-        return;
-    }
+    // We still add the barrier, even if the states are equal for synchronization purposes.
 
     auto memBarrier = GetBufferBarrierFrom(buffer, newState);
     commandBuffer->pipelineBarrier2({ .bufferMemoryBarrierCount = 1, .pBufferMemoryBarriers = &memBarrier });
@@ -402,11 +394,7 @@ void VkCommandList::Transition(std::span<std::pair<RHITexture&, RHITextureState>
     for (auto& [texture, flags] : textureNewStatePairs)
     {
         RHITexture::ValidateStateVersusQueueType(flags, type);
-        // Nothing to do if the states are already equal.
-        if (flags == texture.GetCurrentState())
-        {
-            continue;
-        }
+        // We still add the barrier, even if the states are equal for synchronization purposes.
         barriers.push_back(GetMemoryBarrierFrom(texture, flags));
     }
 
@@ -431,11 +419,7 @@ void VkCommandList::Transition(std::span<std::pair<RHIBuffer&, RHIBufferState::F
 
     for (auto& [buffer, flags] : bufferNewStatePairs)
     {
-        // Nothing to do if the states are already equal.
-        if (flags == buffer.GetCurrentState())
-        {
-            continue;
-        }
+        // We still add the barrier, even if the states are equal for synchronization purposes.
         barriers.push_back(GetBufferBarrierFrom(buffer, flags));
     }
 
@@ -593,7 +577,9 @@ void VkCommandList::TraceRays(const std::array<u32, 3>& widthHeightDepth,
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-void VkCommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDescription> regionMappings)
+void VkCommandList::Copy(RHITexture& src,
+                         RHITexture& dst,
+                         std::span<const TextureCopyDescription> textureCopyDescriptions)
 {
     const auto& srcDesc = src.description;
     const auto& dstDesc = dst.description;
@@ -603,20 +589,22 @@ void VkCommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const Textu
     const ::vk::ImageAspectFlags srcAspectMask = VkTextureUtil::GetFormatAspectFlags(srcDesc.format);
     const ::vk::ImageAspectFlags dstAspectMask = VkTextureUtil::GetFormatAspectFlags(dstDesc.format);
 
-    copyRegions.reserve(regionMappings.size());
-    for (const auto& [srcRegion, dstRegion, extent] : regionMappings)
+    copyRegions.reserve(textureCopyDescriptions.size());
+    for (const auto& [srcSubresource, dstSubresource, extent] : textureCopyDescriptions)
     {
         copyRegions.push_back(::vk::ImageCopy{
             .srcSubresource = { .aspectMask = srcAspectMask,
-                                .mipLevel = srcRegion.mip,
-                                .baseArrayLayer = srcRegion.startSlice,
-                                .layerCount = srcRegion.sliceCount },
-            .srcOffset = ::vk::Offset3D(srcRegion.offset.width, srcRegion.offset.height, srcRegion.offset.depth),
+                                .mipLevel = srcSubresource.mip,
+                                .baseArrayLayer = srcSubresource.startSlice,
+                                .layerCount = srcSubresource.sliceCount },
+            .srcOffset =
+                ::vk::Offset3D(srcSubresource.offset.width, srcSubresource.offset.height, srcSubresource.offset.depth),
             .dstSubresource = { .aspectMask = dstAspectMask,
-                                .mipLevel = dstRegion.mip,
-                                .baseArrayLayer = dstRegion.startSlice,
-                                .layerCount = dstRegion.sliceCount },
-            .dstOffset = ::vk::Offset3D(dstRegion.offset.width, dstRegion.offset.height, dstRegion.offset.depth),
+                                .mipLevel = dstSubresource.mip,
+                                .baseArrayLayer = dstSubresource.startSlice,
+                                .layerCount = dstSubresource.sliceCount },
+            .dstOffset =
+                ::vk::Offset3D(dstSubresource.offset.width, dstSubresource.offset.height, dstSubresource.offset.depth),
             .extent = ::vk::Extent3D{ extent.width, extent.height, extent.depth } });
     }
 
@@ -628,39 +616,46 @@ void VkCommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const Textu
                              copyRegions.data());
 }
 
-void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& regionMappings)
+void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& bufferCopyDescription)
 {
-    const ::vk::BufferCopy copy{ .srcOffset = regionMappings.srcOffset,
-                                 .dstOffset = regionMappings.dstOffset,
-                                 .size = regionMappings.size };
+    const ::vk::BufferCopy copy{ .srcOffset = bufferCopyDescription.srcOffset,
+                                 .dstOffset = bufferCopyDescription.dstOffset,
+                                 .size = bufferCopyDescription.size };
     commandBuffer->copyBuffer(src.GetNativeBuffer(), dst.GetNativeBuffer(), 1, &copy);
 }
 
 void VkCommandList::Copy(RHIBuffer& src,
                          RHITexture& dst,
-                         std::span<const BufferToTextureCopyDescription> regionMappings)
+                         std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions)
 {
     const ::vk::ImageAspectFlags dstAspectMask =
         FormatIsDepthStencilCompatible(dst.description.format)
             ? ::vk::ImageAspectFlagBits::eDepth | ::vk::ImageAspectFlagBits::eStencil
             : ::vk::ImageAspectFlagBits::eColor;
 
-    std::vector<::vk::BufferImageCopy> regions;
+    float pixelByteSize = TextureUtil::GetPixelByteSizeFromFormat(dst.GetDescription().format);
 
-    for (const auto& [srcRegion, dstRegion, extent] : regionMappings)
+    std::vector<::vk::BufferImageCopy> regions;
+    regions.reserve(bufferToTextureCopyDescriptions.size());
+    for (const auto& [srcSubresource, dstSubresource, extent] : bufferToTextureCopyDescriptions)
     {
+        u32 alignedRowPitch =
+            static_cast<u32>(AlignUp<u64>(extent.width * pixelByteSize, TextureUtil::RowPitchAlignment));
+
         regions.push_back(::vk::BufferImageCopy{
-            .bufferOffset = srcRegion.offset,
-            .bufferRowLength = 0,   // 0 means tightly packed according to imageExtent
-            .bufferImageHeight = 0, // 0 means tightly packed according to imageExtent
+            .bufferOffset = srcSubresource.offset,
+            // Buffer row length is in pixels.
+            .bufferRowLength = static_cast<u32>(alignedRowPitch / pixelByteSize),
+            .bufferImageHeight = 0,
             .imageSubresource =
                 ::vk::ImageSubresourceLayers{
                     .aspectMask = dstAspectMask,
-                    .mipLevel = dstRegion.mip,
-                    .baseArrayLayer = dstRegion.startSlice,
-                    .layerCount = dstRegion.sliceCount,
+                    .mipLevel = dstSubresource.mip,
+                    .baseArrayLayer = dstSubresource.startSlice,
+                    .layerCount = dstSubresource.sliceCount,
                 },
-            .imageOffset = ::vk::Offset3D(dstRegion.offset.width, dstRegion.offset.height, dstRegion.offset.depth),
+            .imageOffset =
+                ::vk::Offset3D(dstSubresource.offset.width, dstSubresource.offset.height, dstSubresource.offset.depth),
             .imageExtent = { extent.width, extent.height, extent.depth } });
     }
 

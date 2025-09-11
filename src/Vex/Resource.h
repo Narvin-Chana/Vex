@@ -34,7 +34,7 @@ static constexpr BindlessHandle GInvalidBindlessHandle;
 
 struct MappableResourceInterface
 {
-    virtual std::span<u8> Map() = 0;
+    virtual std::span<byte> Map() = 0;
     virtual void Unmap() = 0;
     virtual ~MappableResourceInterface() = default;
 };
@@ -52,16 +52,16 @@ public:
     ResourceMappedMemory(MappableResourceInterface& resource);
 
     ~ResourceMappedMemory();
-    void SetData(std::span<const u8> inData);
-    void SetData(std::span<u8> inData);
-    void SetData(std::span<const u8> inData, u32 offset);
-    void SetData(std::span<u8> inData, u32 offset);
+    void SetData(std::span<const byte> inData);
+    void SetData(std::span<byte> inData);
+    void SetData(std::span<const byte> inData, u32 offset);
+    void SetData(std::span<byte> inData, u32 offset);
 
     template <class T>
     void SetData(const T& inData);
 
 private:
-    std::span<u8> mappedData;
+    std::span<byte> mappedData;
 
     MappableResourceInterface& resource;
 

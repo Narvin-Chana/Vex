@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <span>
 
 #include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/NonNullPtr.h>
@@ -80,50 +81,63 @@ public:
                    const std::optional<ConstantBinding>& constants,
                    std::array<u32, 3> widthHeightDepth);
 
-    // Copies the entirety of source texture (all mips and array levels) to the destination texture
+    // ---------------------------------------------------------------------------------------------------------------
+    // Resource Copy - Will automatically transition the resources into the correct states.
+    // ---------------------------------------------------------------------------------------------------------------
+
+    // Copies the entirety of the source texture (all mips and array levels) to the destination texture.
     void Copy(const Texture& source, const Texture& destination);
-    // Copies a region of source texture to destination texture
-    void Copy(const Texture& source, const Texture& destination, const TextureCopyDescription& regionMapping);
-    // Copies multiple regions of source texture to destination texture
+    // Copies a region of the source texture to the destination texture.
+    void Copy(const Texture& source, const Texture& destination, const TextureCopyDescription& textureCopyDescription);
+    // Copies multiple regions of the source texture to the destination texture.
     void Copy(const Texture& source,
               const Texture& destination,
-              std::span<const TextureCopyDescription> regionMappings);
-    // Copies the entirety of source buffer to the destination buffer
+              std::span<const TextureCopyDescription> textureCopyDescriptions);
+    // Copies the entirety of the source buffer to the destination buffer.
     void Copy(const Buffer& source, const Buffer& destination);
-    // Copies the specified region from source to destination buffer
-    void Copy(const Buffer& source, const Buffer& destination, const BufferCopyDescription& regionMappings);
-    // Copies the contents of a buffer to the specified texture according to API needs
+    // Copies the specified region from the source buffer to the destination buffer.
+    void Copy(const Buffer& source, const Buffer& destination, const BufferCopyDescription& bufferCopyDescription);
+    // Copies the contents of the buffer to the specified texture.
     void Copy(const Buffer& source, const Texture& destination);
-    // Copies the contents of the buffer to a specified region in the texture
-    void Copy(const Buffer& source, const Texture& destination, const BufferToTextureCopyDescription& regionMapping);
-    // Copies the contents of the buffer to multiple specified regions in the texture
+    // Copies the contents of the buffer to a specified region in the texture.
     void Copy(const Buffer& source,
               const Texture& destination,
-              std::span<const BufferToTextureCopyDescription> regionMappings);
+              const BufferToTextureCopyDescription& bufferToTextureCopyDescription);
+    // Copies the contents of the buffer to multiple specified regions in the texture.
+    void Copy(const Buffer& source,
+              const Texture& destination,
+              std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions);
 
-    // Enqueues data to be uploaded to the specific buffer. If the buffer is mappable it will map it and directly write
-    // data to it. If the buffer isn't mappable a staging buffer is used implicitly
-    void EnqueueDataUpload(const Buffer& buffer, std::span<const u8> data);
-    // Enqueues data to be uploaded to specific region of destination buffer using a staging buffer when necessary
-    void EnqueueDataUpload(const Buffer& buffer, std::span<const u8> data, const BufferSubresource& subresource);
+    // ---------------------------------------------------------------------------------------------------------------
+    // Buffer Data Operations
+    // ---------------------------------------------------------------------------------------------------------------
 
-    // Enqueues data to be uploaded to the specific texture with the use of a staging buffer.
-    void EnqueueDataUpload(const Texture& texture, std::span<const u8> data);
-    // Enqueues data to be uploaded to a specific region of the texture
+    // Enqueues data to be uploaded to a specific subresource inside the destination buffer, using a staging buffer when
+    // necessary. Will upload data to the entirety of the destination buffer if a subresource is not specified.
+    void EnqueueDataUpload(const Buffer& buffer,
+                           std::span<const byte> data,
+                           const std::optional<BufferSubresource>& subresource = std::nullopt);
+    // Enqueues for the entirety of a buffer to be readback from the GPU to the specified output.
+    // Will automatically use a staging buffer if necessary.
+    void EnqueueDataReadback(const Buffer& buffer, std::span<byte> output);
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // Texture Data Operations
+    // ---------------------------------------------------------------------------------------------------------------
+
+    // Enqueues data to be uploaded to a texture, using a staging buffer when necessary.
+    // This allows for multiple uploads to various subresources inside the texture.
+    // The uploadRegions should match the layout of the tightly packed 'data' parameter.
+    // If the uploadRegions are empty, we suppose that you intend to upload to the entirety of the texture.
     void EnqueueDataUpload(const Texture& texture,
-                           std::span<const u8> data,
-                           const TextureSubresource& subresource,
-                           const TextureExtent& extent);
+                           std::span<const byte> data,
+                           std::span<const TextureUploadRegion> uploadRegions);
 
-    template <class T>
-    void EnqueueDataUpload(const Texture& texture, const T& data);
-    template <class T>
-    void EnqueueDataUpload(const Texture& texture,
-                           const T& data,
-                           const TextureSubresource& subresource,
-                           const TextureExtent& extent);
-    template <class T>
-    void EnqueueDataUpload(const Buffer& buffer, const T& data);
+    // Enqueues for the entirety of a texture to be readback from the GPU to the specified output.
+    // Will automatically use a staging buffer if necessary.
+    void EnqueueDataReadback(const Texture& texture, std::span<byte> output);
+
+    // ---------------------------------------------------------------------------------------------------------------
 
     BindlessHandle GetBindlessHandle(const ResourceBinding& resourceBinding);
     std::vector<BindlessHandle> GetBindlessHandles(std::span<const ResourceBinding> resourceBindings);
@@ -188,28 +202,5 @@ private:
 
     friend class GfxBackend;
 };
-
-template <class T>
-void CommandContext::EnqueueDataUpload(const Texture& texture, const T& data)
-{
-    EnqueueDataUpload(texture, std::span{ reinterpret_cast<const u8*>(&data), sizeof(T) });
-}
-
-template <class T>
-void CommandContext::EnqueueDataUpload(const Texture& texture,
-                                       const T& data,
-                                       const TextureSubresource& subresource,
-                                       const TextureExtent& extent)
-{
-    EnqueueDataUpload(texture, std::span{ reinterpret_cast<const u8*>(&data), sizeof(T) }, subresource, extent);
-}
-
-template <class T>
-void CommandContext::EnqueueDataUpload(const Buffer& buffer, const T& data)
-{
-    EnqueueDataUpload(buffer,
-                      std::span{ reinterpret_cast<const u8*>(&data), sizeof(T) },
-                      BufferSubresource{ 0, sizeof(T) });
-}
 
 } // namespace vex
