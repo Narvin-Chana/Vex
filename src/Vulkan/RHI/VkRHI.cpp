@@ -371,7 +371,7 @@ void VkRHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBacken
         shaderEnv.args.emplace_back(L"-spirv");
         shaderEnv.args.emplace_back(L"-fvk-bind-resource-heap");
         shaderEnv.args.emplace_back(L"0");
-        shaderEnv.args.emplace_back(L"0");
+        shaderEnv.args.emplace_back(L"1");
     }
 
     shaderEnv.defines.emplace_back("VEX_VULKAN");

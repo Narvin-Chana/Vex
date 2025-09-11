@@ -18,7 +18,7 @@ DX12DescriptorPool::DX12DescriptorPool(ComPtr<DX12Device>& device)
     device->CreateShaderResourceView(nullptr, &nullDesc, GetNullDescriptor());
 }
 
-void DX12DescriptorPool::CopyNullDescriptor(u32 slotIndex)
+void DX12DescriptorPool::CopyNullBindlessDescriptor(u32 slotIndex)
 {
     device->CopyDescriptorsSimple(1,
                                   gpuHeap.GetCPUDescriptorHandle(slotIndex),

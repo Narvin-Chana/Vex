@@ -18,9 +18,6 @@ HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
         .enableGPUBasedValidation = !VEX_SHIPPING });
     SetupShaderErrorHandling();
 
-    std::vector<vex::TextureSampler> samplers{ vex::TextureSampler{ .name = "MySampler" } };
-    graphics->SetSamplers(samplers);
-
     // Example of CPU accessible buffer
     colorBuffer = graphics->CreateBuffer({ .name = "Color Buffer",
                                            .byteSize = sizeof(float) * 4,
