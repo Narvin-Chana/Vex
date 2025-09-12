@@ -70,14 +70,16 @@ struct TextureClearValue
     u8 stencil;
 };
 
+static constexpr u8 GTextureCubeFaceCount = 6U;
+
 struct TextureDescription
 {
     std::string name;
     TextureType type;
+    TextureFormat format;
     u32 width, height, depthOrArraySize = 1;
     // mips = 0 indicates that you want max mips
     u16 mips = 1;
-    TextureFormat format;
     TextureUsage::Flags usage = TextureUsage::ShaderRead;
     TextureClearValue clearValue;
     ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly;
@@ -88,8 +90,70 @@ struct TextureDescription
     }
     [[nodiscard]] u32 GetArraySize() const noexcept
     {
-        return type != TextureType::Texture3D ? depthOrArraySize : 1;
+        if (type == TextureType::Texture3D)
+        {
+            return 1;
+        }
+
+        u32 arraySize = depthOrArraySize;
+        if (type == TextureType::TextureCube)
+        {
+            // Cubemaps are just a Texture2DArray with an array size which is a multiple of 6.
+            arraySize *= GTextureCubeFaceCount;
+        }
+        return arraySize;
     }
+
+    // Helpers to create a description.
+
+    static TextureDescription CreateTexture2D(std::string name,
+                                              TextureFormat format,
+                                              u32 width,
+                                              u32 height,
+                                              u16 mips = 1,
+                                              TextureUsage::Flags usage = TextureUsage::ShaderRead,
+                                              TextureClearValue clearValue = {},
+                                              ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
+
+    static TextureDescription CreateTexture2DArray(
+        std::string name,
+        TextureFormat format,
+        u32 width,
+        u32 height,
+        u32 arraySize,
+        u16 mips = 1,
+        TextureUsage::Flags usage = TextureUsage::ShaderRead,
+        TextureClearValue clearValue = {},
+        ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
+
+    static TextureDescription CreateTextureCube(
+        std::string name,
+        TextureFormat format,
+        u32 faceSize,
+        u16 mips = 1,
+        TextureUsage::Flags usage = TextureUsage::ShaderRead,
+        TextureClearValue clearValue = {},
+        ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
+
+    static TextureDescription CreateTextureCubeArray(
+        std::string name,
+        TextureFormat format,
+        u32 faceSize,
+        u32 arraySize,
+        u16 mips = 1,
+        TextureUsage::Flags usage = TextureUsage::ShaderRead,
+        TextureClearValue clearValue = {},
+        ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
+
+    static TextureDescription CreateTexture3D(std::string name,
+                                              TextureFormat format,
+                                              u32 width,
+                                              u32 height,
+                                              u32 depth,
+                                              u16 mips = 1,
+                                              TextureUsage::Flags usage = TextureUsage::ShaderRead,
+                                              TextureClearValue clearValue = {},
+                                              ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
 };
 
 // Strongly defined type represents a texture.

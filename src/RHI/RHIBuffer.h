@@ -16,9 +16,6 @@ BEGIN_VEX_ENUM_FLAGS(RHIBufferState, u16)
     Common = 0,
     CopySource = 1 << 0,
     CopyDest = 1 << 1,
-    // UniformResource state is not exposed to users, as Vex fully leverages bindless rendering, 
-    // where constant buffers are (from what we've seen) unusable.
-    // We still expose the state, in case we ever decide to use them in a bindful (bindless-less?) manner.
     UniformResource = 1 << 2,
     ShaderResource = 1 << 3,
     ShaderReadWrite = 1 << 4,

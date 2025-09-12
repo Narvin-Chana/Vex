@@ -199,7 +199,9 @@ add_library(Vex STATIC
     "src/Vex/ResourceCopy.h"
     "src/Vex/ResourceCopy.cpp"
     "src/Vex/Concepts.h"
- )
+    "src/Tests/TextureUpload.h"
+    "src/Tests/TextureUpload.cpp"
+)
 
 if(WIN32)
     target_sources(Vex PRIVATE

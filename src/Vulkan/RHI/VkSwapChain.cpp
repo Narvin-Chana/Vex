@@ -122,11 +122,11 @@ TextureDescription VkSwapChain::GetBackBufferTextureDescription() const
 {
     return TextureDescription{ .name = "backbuffer",
                                .type = TextureType::Texture2D,
+                               .format = VulkanToTextureFormat(surfaceFormat.format),
                                .width = width,
                                .height = height,
                                .depthOrArraySize = 1,
                                .mips = 1,
-                               .format = VulkanToTextureFormat(surfaceFormat.format),
                                .usage = TextureUsage::RenderTarget | TextureUsage::ShaderRead };
 }
 

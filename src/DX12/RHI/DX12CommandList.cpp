@@ -242,9 +242,6 @@ void DX12CommandList::Transition(RHITexture& texture, RHITextureState newState)
 
     D3D12_RESOURCE_STATES currentDX12State = RHITextureStateToDX12State(texture.GetCurrentState());
     D3D12_RESOURCE_STATES newDX12State = RHITextureStateToDX12State(newState);
-
-    // Nothing to do if the states are already equal (we compare raw API states, due to them not mapping 1:1 to Vex
-    // ones).
     if (currentDX12State == newDX12State)
     {
         return;
@@ -261,9 +258,7 @@ void DX12CommandList::Transition(RHIBuffer& buffer, RHIBufferState::Flags newSta
 {
     D3D12_RESOURCE_STATES currentDX12State = RHIBufferStateToDX12State(buffer.GetCurrentState());
     D3D12_RESOURCE_STATES newDX12State = RHIBufferStateToDX12State(newState);
-
-    // Nothing to do if the states are already equal.
-    if (buffer.GetCurrentState() == newState)
+    if (currentDX12State == newDX12State)
     {
         return;
     }
@@ -285,12 +280,12 @@ void DX12CommandList::Transition(std::span<std::pair<RHITexture&, RHITextureStat
 
         D3D12_RESOURCE_STATES currentDX12State = RHITextureStateToDX12State(texture.GetCurrentState());
         D3D12_RESOURCE_STATES newDX12State = RHITextureStateToDX12State(newState);
-        // Nothing to do if the states are already equal (we compare raw API states, due to them not mapping 1:1 to Vex
-        // ones).
-        if (newDX12State == currentDX12State)
+
+        if (currentDX12State == newDX12State)
         {
             continue;
         }
+
         D3D12_RESOURCE_BARRIER resourceBarrier =
             CD3DX12_RESOURCE_BARRIER::Transition(texture.GetRawTexture(), currentDX12State, newDX12State);
         texture.SetCurrentState(newState);
@@ -311,13 +306,12 @@ void DX12CommandList::Transition(std::span<std::pair<RHIBuffer&, RHIBufferState:
     {
         D3D12_RESOURCE_STATES currentDX12State = RHIBufferStateToDX12State(buffer.GetCurrentState());
         D3D12_RESOURCE_STATES newDX12State = RHIBufferStateToDX12State(newState);
-        if (newDX12State == currentDX12State)
+        D3D12_RESOURCE_BARRIER resourceBarrier =
+            CD3DX12_RESOURCE_BARRIER::Transition(buffer.GetRawBuffer(), currentDX12State, newDX12State);
+        if (currentDX12State == newDX12State)
         {
             continue;
         }
-        D3D12_RESOURCE_BARRIER resourceBarrier =
-            CD3DX12_RESOURCE_BARRIER::Transition(buffer.GetRawBuffer(), currentDX12State, newDX12State);
-
         buffer.SetCurrentState(newState);
         transitionBarriers.push_back(std::move(resourceBarrier));
     }
@@ -468,7 +462,38 @@ void DX12CommandList::Copy(RHITexture& src,
                            RHITexture& dst,
                            std::span<const TextureCopyDescription> textureCopyDescriptions)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    ID3D12Resource* srcTexture = src.GetRawTexture();
+    ID3D12Resource* dstTexture = dst.GetRawTexture();
+
+    for (const TextureCopyDescription& copyDesc : textureCopyDescriptions)
+    {
+        D3D12_TEXTURE_COPY_LOCATION srcLoc = {};
+        srcLoc.pResource = srcTexture;
+        srcLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        srcLoc.SubresourceIndex =
+            copyDesc.srcSubresource.startSlice * src.GetDescription().mips + copyDesc.srcSubresource.mip;
+
+        D3D12_TEXTURE_COPY_LOCATION dstLoc = {};
+        dstLoc.pResource = dstTexture;
+        dstLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        dstLoc.SubresourceIndex =
+            copyDesc.dstSubresource.startSlice * dst.GetDescription().mips + copyDesc.dstSubresource.mip;
+
+        D3D12_BOX srcBox = {};
+        srcBox.left = copyDesc.srcSubresource.offset.width;
+        srcBox.top = copyDesc.srcSubresource.offset.height;
+        srcBox.front = copyDesc.srcSubresource.offset.depth;
+        srcBox.right = copyDesc.srcSubresource.offset.width + copyDesc.extent.width;
+        srcBox.bottom = copyDesc.srcSubresource.offset.height + copyDesc.extent.height;
+        srcBox.back = copyDesc.srcSubresource.offset.depth + copyDesc.extent.depth;
+
+        commandList->CopyTextureRegion(&dstLoc,
+                                       copyDesc.dstSubresource.offset.width,
+                                       copyDesc.dstSubresource.offset.height,
+                                       copyDesc.dstSubresource.offset.depth,
+                                       &srcLoc,
+                                       &srcBox);
+    }
 }
 
 void DX12CommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& bufferCopyDescription)
@@ -484,6 +509,10 @@ void DX12CommandList::Copy(RHIBuffer& src,
                            RHITexture& dst,
                            std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions)
 {
+    // TODO(https://trello.com/c/KEnbDLG6): this way of uploading makes it so that texture arrays are copied slice by
+    // slice, when instead they could be copied array element by array element. Would require considerable effort to fix
+    // so will probably be done later on.
+
     ID3D12Resource* srcBuffer = src.GetRawBuffer();
     ID3D12Resource* dstTexture = dst.GetRawTexture();
 

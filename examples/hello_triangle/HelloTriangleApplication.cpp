@@ -23,21 +23,21 @@ HelloTriangleApplication::HelloTriangleApplication()
     workingTexture =
         graphics->CreateTexture({ .name = "Working Texture",
                                   .type = vex::TextureType::Texture2D,
+                                  .format = vex::TextureFormat::RGBA8_UNORM,
                                   .width = DefaultWidth,
                                   .height = DefaultHeight,
                                   .depthOrArraySize = 1,
                                   .mips = 1,
-                                  .format = vex::TextureFormat::RGBA8_UNORM,
                                   .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
                                 vex::ResourceLifetime::Static);
     finalOutputTexture =
         graphics->CreateTexture({ .name = "Final Output Texture",
                                   .type = vex::TextureType::Texture2D,
+                                  .format = vex::TextureFormat::RGBA8_UNORM,
                                   .width = DefaultWidth,
                                   .height = DefaultHeight,
                                   .depthOrArraySize = 1,
                                   .mips = 1,
-                                  .format = vex::TextureFormat::RGBA8_UNORM,
                                   .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
                                 vex::ResourceLifetime::Static);
 
@@ -196,22 +196,22 @@ void HelloTriangleApplication::OnResize(GLFWwindow* window, uint32_t newWidth, u
     finalOutputTexture =
         graphics->CreateTexture({ .name = "Final Output Texture",
                                   .type = vex::TextureType::Texture2D,
+                                  .format = vex::TextureFormat::RGBA8_UNORM,
                                   .width = newWidth,
                                   .height = newHeight,
                                   .depthOrArraySize = 1,
                                   .mips = 1,
-                                  .format = vex::TextureFormat::RGBA8_UNORM,
                                   .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
                                 vex::ResourceLifetime::Static);
     workingTexture = graphics->CreateTexture(
         {
             .name = "Working Texture",
             .type = vex::TextureType::Texture2D,
+            .format = vex::TextureFormat::RGBA8_UNORM,
             .width = newWidth,
             .height = newHeight,
             .depthOrArraySize = 1,
             .mips = 1,
-            .format = vex::TextureFormat::RGBA8_UNORM,
             .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite,
         },
         vex::ResourceLifetime::Static);
