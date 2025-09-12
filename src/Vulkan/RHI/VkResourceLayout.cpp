@@ -53,7 +53,10 @@ const RHIDescriptorSet& VkResourceLayout::GetSamplerDescriptor()
     ::vk::UniquePipelineLayout pipelineLayout = VEX_VK_CHECK <<= ctx->device.createPipelineLayoutUnique(createInfo);
 
     std::vector<::vk::WriteDescriptorSet> writeSets;
+    // Needed because writeSets stores a pointer to descriptorImageInfos
+    std::vector<::vk::DescriptorImageInfo> descriptorImageInfos;
     writeSets.reserve(samplers.size());
+    descriptorImageInfos.reserve(samplers.size());
 
     vkSamplers.clear();
     for (u32 i = 0; i < samplers.size(); ++i)
@@ -82,9 +85,7 @@ const RHIDescriptorSet& VkResourceLayout::GetSamplerDescriptor()
 
         ::vk::UniqueSampler vkSampler = VEX_VK_CHECK <<= ctx->device.createSamplerUnique(samplerCI);
 
-        ::vk::DescriptorImageInfo imageInfo{
-            .sampler = *vkSampler,
-        };
+        ::vk::DescriptorImageInfo& imageInfo = descriptorImageInfos.emplace_back(*vkSampler);
 
         writeSets.push_back(::vk::WriteDescriptorSet{
             .dstSet = *samplerSet->descriptorSet,
