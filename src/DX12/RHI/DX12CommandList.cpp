@@ -156,9 +156,9 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
     }
 }
 
-void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& layout)
+void DX12CommandList::BindStaticDescriptorSets(RHIBindlessDescriptorSet& bindlessSet, RHIResourceLayout& layout)
 {
-    commandList->SetDescriptorHeaps(1, descriptorPool.gpuHeap.GetNativeDescriptorHeap().GetAddressOf());
+    commandList->SetDescriptorHeaps(1, bindlessSet.gpuHeap.GetNativeDescriptorHeap().GetAddressOf());
 }
 
 void DX12CommandList::SetInputAssembly(InputAssembly inputAssembly)

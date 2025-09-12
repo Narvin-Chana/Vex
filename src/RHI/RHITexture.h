@@ -26,8 +26,8 @@ public:
     ~RHITextureBase() = default;
 
     virtual BindlessHandle GetOrCreateBindlessView(const TextureBinding& binding,
-                                                   RHIDescriptorPool& descriptorPool) = 0;
-    virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
+                                                   RHIBindlessDescriptorSet& bindlessSet) = 0;
+    virtual void FreeBindlessHandles(RHIBindlessDescriptorSet& bindlessSet) = 0;
     virtual void FreeAllocation(RHIAllocator& allocator) = 0;
 
     virtual RHITextureBarrier GetClearTextureBarrier() = 0;

@@ -99,16 +99,15 @@ static bool IsShaderCollectionStale(const RayTracingShaderCollection& shaderColl
 
 } // namespace PipelineStateCache_Internal
 
-PipelineStateCache::PipelineStateCache() = default;
-
 PipelineStateCache::PipelineStateCache(RHI* rhi,
                                        RHIDescriptorPool& descriptorPool,
+                                       RHIBindlessDescriptorSet& bindlessSet,
                                        ResourceCleanup* resourceCleanup,
                                        const ShaderCompilerSettings& compilerSettings)
     : rhi(rhi)
     , resourceCleanup(resourceCleanup)
     , shaderCompiler(rhi, compilerSettings)
-    , resourceLayout(rhi->CreateResourceLayout(descriptorPool))
+    , resourceLayout(rhi->CreateResourceLayout(descriptorPool, bindlessSet))
 {
 }
 

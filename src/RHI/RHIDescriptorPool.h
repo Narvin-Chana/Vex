@@ -18,7 +18,7 @@ enum class DescriptorType : u8
 class RHIDescriptorPoolBase
 {
 public:
-    std::optional<RHIBindlessDescriptorSet> bindlessSet;
+    virtual RHIBindlessDescriptorSet CreateBindlessSet() = 0;
 };
 
 } // namespace vex

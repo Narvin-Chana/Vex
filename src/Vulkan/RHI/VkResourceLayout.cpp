@@ -10,15 +10,24 @@
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkFeatureChecker.h>
 #include <Vulkan/VkGPUContext.h>
+#include <Vulkan/VkSamplers.h>
 
 namespace vex::vk
 {
-VkResourceLayout::VkResourceLayout(NonNullPtr<VkGPUContext> ctx, NonNullPtr<VkDescriptorPool> descriptorPool)
+
+VkResourceLayout::VkResourceLayout(NonNullPtr<VkGPUContext> ctx,
+                                   NonNullPtr<VkDescriptorPool> descriptorPool,
+                                   NonNullPtr<VkBindlessDescriptorSet> bindlessSet)
     : ctx{ ctx }
     , descriptorPool{ descriptorPool }
+    , bindlessSet{ bindlessSet }
 {
+    std::array<DescriptorType, MaxSamplerCount> descriptorTypes{};
+    std::fill_n(descriptorTypes.begin(), samplers.size(), DescriptorType::Sampler);
+    samplerSet = VkDescriptorSet(ctx, *descriptorPool->descriptorPool, descriptorTypes);
 }
-const RHIDescriptorSet& VkResourceLayout::GetResourceLayoutDescriptor()
+
+const RHIDescriptorSet& VkResourceLayout::GetSamplerDescriptor()
 {
     if (isDirty)
     {
@@ -35,12 +44,7 @@ const RHIDescriptorSet& VkResourceLayout::GetResourceLayoutDescriptor()
                                    .offset = 0,
                                    .size = GPhysicalDevice->featureChecker->GetMaxLocalConstantsByteSize() };
 
-    std::vector<DescriptorType> descriptorTypes;
-    descriptorTypes.resize(samplers.size());
-    std::fill_n(descriptorTypes.begin(), samplers.size(), DescriptorType::Sampler);
-    samplerSet = VkDescriptorSet(ctx, *descriptorPool->descriptorPool, descriptorTypes);
-
-    std::array layouts = { *samplerSet->descriptorLayout, *descriptorPool->bindlessSet->descriptorLayout };
+    std::array layouts = { *samplerSet->descriptorLayout, *bindlessSet->descriptorLayout };
     ::vk::PipelineLayoutCreateInfo createInfo{ .setLayoutCount = static_cast<u32>(layouts.size()),
                                                .pSetLayouts = layouts.data(),
                                                .pushConstantRangeCount = 1,
@@ -55,9 +59,26 @@ const RHIDescriptorSet& VkResourceLayout::GetResourceLayoutDescriptor()
     for (u32 i = 0; i < samplers.size(); ++i)
     {
         const TextureSampler& sampler = samplers[i];
-        ::vk::SamplerCreateInfo samplerCI{
-            // TODO: fill sampler data
-        };
+
+        bool useAnisotropy = sampler.minFilter == FilterMode::Anisotropic ||
+                             sampler.magFilter == FilterMode::Anisotropic ||
+                             sampler.mipFilter == FilterMode::Anisotropic;
+
+        ::vk::SamplerCreateInfo samplerCI{ .magFilter = FilterModeToVkFilter(sampler.magFilter),
+                                           .minFilter = FilterModeToVkFilter(sampler.minFilter),
+                                           .mipmapMode = FilterModeToVkMipMapMode(sampler.mipFilter),
+                                           .addressModeU = AddressModeToVkSamplerAddressMode(sampler.addressU),
+                                           .addressModeV = AddressModeToVkSamplerAddressMode(sampler.addressV),
+                                           .addressModeW = AddressModeToVkSamplerAddressMode(sampler.addressW),
+                                           .mipLodBias = sampler.mipLODBias,
+                                           .anisotropyEnable = useAnisotropy,
+                                           .maxAnisotropy = static_cast<float>(sampler.maxAnisotropy),
+                                           .compareEnable = sampler.compareOp != CompareOp::Never,
+                                           .compareOp = static_cast<::vk::CompareOp>(sampler.compareOp),
+                                           .minLod = sampler.minLOD,
+                                           .maxLod = sampler.maxLOD,
+                                           .borderColor = BorderColorToVkBorderColor(sampler.borderColor),
+                                           .unnormalizedCoordinates = false };
 
         ::vk::UniqueSampler vkSampler = VEX_VK_CHECK <<= ctx->device.createSamplerUnique(samplerCI);
 

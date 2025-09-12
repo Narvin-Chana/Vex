@@ -131,15 +131,14 @@ void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
     fences = DX12RHI_Internal::CreateFences(device);
 }
 
-UniqueHandle<RHISwapChain> DX12RHI::CreateSwapChain(const SwapChainDescription& description,
-                                                    const PlatformWindow& platformWindow)
+RHISwapChain DX12RHI::CreateSwapChain(const SwapChainDescription& description, const PlatformWindow& platformWindow)
 {
-    return MakeUnique<DX12SwapChain>(device, description, GetNativeQueue(CommandQueueType::Graphics), platformWindow);
+    return DX12SwapChain(device, description, GetNativeQueue(CommandQueueType::Graphics), platformWindow);
 }
 
-UniqueHandle<RHICommandPool> DX12RHI::CreateCommandPool()
+RHICommandPool DX12RHI::CreateCommandPool()
 {
-    return MakeUnique<DX12CommandPool>(*this, device);
+    return DX12CommandPool(*this, device);
 }
 
 RHIGraphicsPipelineState DX12RHI::CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key)
@@ -160,9 +159,10 @@ RHIRayTracingPipelineState DX12RHI::CreateRayTracingPipelineState(const RayTraci
     return { device, key };
 }
 
-UniqueHandle<RHIResourceLayout> DX12RHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool)
+RHIResourceLayout DX12RHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool,
+                                                RHIBindlessDescriptorSet& bindlessSet)
 {
-    return MakeUnique<DX12ResourceLayout>(device);
+    return DX12ResourceLayout(device);
 }
 
 RHITexture DX12RHI::CreateTexture(RHIAllocator& allocator, const TextureDescription& description)
@@ -175,9 +175,9 @@ RHIBuffer DX12RHI::CreateBuffer(RHIAllocator& allocator, const BufferDescription
     return DX12Buffer(device, allocator, description);
 }
 
-UniqueHandle<RHIDescriptorPool> DX12RHI::CreateDescriptorPool()
+RHIDescriptorPool DX12RHI::CreateDescriptorPool()
 {
-    return MakeUnique<DX12DescriptorPool>(device);
+    return DX12DescriptorPool(device);
 }
 
 RHIAllocator DX12RHI::CreateAllocator()

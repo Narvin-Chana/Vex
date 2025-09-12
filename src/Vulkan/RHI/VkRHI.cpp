@@ -313,15 +313,14 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     GetGPUContext();
 }
 
-UniqueHandle<RHISwapChain> VkRHI::CreateSwapChain(const SwapChainDescription& description,
-                                                  const PlatformWindow& platformWindow)
+RHISwapChain VkRHI::CreateSwapChain(const SwapChainDescription& description, const PlatformWindow& platformWindow)
 {
-    return MakeUnique<VkSwapChain>(GetGPUContext(), description, platformWindow);
+    return { GetGPUContext(), description, platformWindow };
 }
 
-UniqueHandle<RHICommandPool> VkRHI::CreateCommandPool()
+RHICommandPool VkRHI::CreateCommandPool()
 {
-    return MakeUnique<VkCommandPool>(*this, GetGPUContext(), queues);
+    return { *this, GetGPUContext(), queues };
 }
 
 RHIGraphicsPipelineState VkRHI::CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key)
@@ -339,24 +338,25 @@ RHIRayTracingPipelineState VkRHI::CreateRayTracingPipelineState(const RayTracing
     return { key, *device, *PSOCache };
 }
 
-UniqueHandle<RHIResourceLayout> VkRHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool)
+RHIResourceLayout VkRHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool,
+                                              RHIBindlessDescriptorSet& descriptorSet)
 {
-    return MakeUnique<VkResourceLayout>(GetGPUContext(), descriptorPool);
+    return { GetGPUContext(), descriptorPool, descriptorSet };
 }
 
 RHITexture VkRHI::CreateTexture(RHIAllocator& allocator, const TextureDescription& description)
 {
-    return VkTexture(GetGPUContext(), allocator, TextureDescription(description));
+    return { GetGPUContext(), allocator, TextureDescription(description) };
 }
 
 RHIBuffer VkRHI::CreateBuffer(RHIAllocator& allocator, const BufferDescription& description)
 {
-    return VkBuffer(GetGPUContext(), allocator, description);
+    return { GetGPUContext(), allocator, description };
 }
 
-UniqueHandle<RHIDescriptorPool> VkRHI::CreateDescriptorPool()
+RHIDescriptorPool VkRHI::CreateDescriptorPool()
 {
-    return MakeUnique<VkDescriptorPool>(GetGPUContext());
+    return { GetGPUContext() };
 }
 
 RHIAllocator VkRHI::CreateAllocator()

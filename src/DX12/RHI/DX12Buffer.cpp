@@ -111,7 +111,7 @@ D3D12_INDEX_BUFFER_VIEW DX12Buffer::GetIndexBufferView(const BufferBinding& bind
 
 BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
                                                    std::optional<u32> strideByteSize,
-                                                   DX12DescriptorPool& descriptorPool)
+                                                   RHIBindlessDescriptorSet& bindlessSet)
 {
     bool isCBV = usage == BufferBindingUsage::ConstantBuffer;
     bool isSRV = usage == BufferBindingUsage::StructuredBuffer || usage == BufferBindingUsage::ByteAddressBuffer;
@@ -123,13 +123,13 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
 
     // Check cache first
     BufferViewCacheKey cacheKey{ usage, strideByteSize };
-    if (auto it = viewCache.find(cacheKey); it != viewCache.end() && descriptorPool.IsValid(it->second))
+    if (auto it = viewCache.find(cacheKey); it != viewCache.end() && bindlessSet.IsValid(it->second))
     {
         return it->second;
     }
 
-    BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
-    auto cpuHandle = descriptorPool.GetCPUDescriptor(handle);
+    BindlessHandle handle = bindlessSet.AllocateStaticDescriptor();
+    auto cpuHandle = bindlessSet.GetCPUDescriptor(handle);
 
     if (isCBV)
     {
@@ -204,13 +204,13 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
     return handle;
 }
 
-void DX12Buffer::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
+void DX12Buffer::FreeBindlessHandles(RHIBindlessDescriptorSet& bindlessSet)
 {
     for (const auto& [cacheKey, bindlessHandle] : viewCache)
     {
         if (bindlessHandle != GInvalidBindlessHandle)
         {
-            descriptorPool.FreeStaticDescriptor(bindlessHandle);
+            bindlessSet.FreeStaticDescriptor(bindlessHandle);
         }
     }
     viewCache.clear();

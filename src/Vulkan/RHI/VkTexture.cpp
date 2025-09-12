@@ -173,19 +173,18 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, RHIAllocator& allocator, Text
     return returnVal;
 }
 
-BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding, RHIDescriptorPool& descriptorPool)
+BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding, RHIBindlessDescriptorSet& bindlessSet)
 {
     VkTextureViewDesc view{
         .viewType = TextureUtil::GetTextureViewType(binding),
         .format = TextureUtil::GetTextureFormat(binding),
         .usage = static_cast<TextureUsage::Type>(binding.usage),
         .mipBias = binding.mipBias,
-        .mipCount = (binding.mipCount == 0) ? description.mips : binding.mipCount,
+        .mipCount = (binding.mipCount == 0) ? VK_REMAINING_MIP_LEVELS : binding.mipCount,
         .startSlice = binding.startSlice,
-        .sliceCount = (binding.sliceCount == 0) ? description.depthOrArraySize : binding.sliceCount,
+        .sliceCount = (binding.sliceCount == 0) ? VK_REMAINING_ARRAY_LAYERS : binding.sliceCount,
     };
-    if (auto it = bindlessCache.find(view);
-        it != bindlessCache.end() && descriptorPool.bindlessSet->IsValid(it->second.handle))
+    if (auto it = bindlessCache.find(view); it != bindlessCache.end() && bindlessSet.IsValid(it->second.handle))
     {
         return it->second.handle;
     }
@@ -202,7 +201,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
                                                 } };
 
     ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx->device.createImageViewUnique(viewCreate);
-    const BindlessHandle handle = descriptorPool.bindlessSet->AllocateStaticDescriptor();
+    const BindlessHandle handle = bindlessSet.AllocateStaticDescriptor();
 
     ::vk::ImageLayout viewLayout;
     switch (binding.usage)
@@ -217,7 +216,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
         VEX_LOG(Fatal, "Unsupported binding usage for texture {}.", binding.texture.description.name);
     }
 
-    descriptorPool.bindlessSet->UpdateDescriptor(
+    bindlessSet.UpdateDescriptor(
         handle,
         ::vk::DescriptorImageInfo{ .sampler = nullptr, .imageView = *imageView, .imageLayout = viewLayout },
         view.usage & TextureUsage::ShaderReadWrite);
@@ -272,13 +271,13 @@ RHITextureBarrier VkTexture::GetClearTextureBarrier()
                              RHITextureLayout::CopyDest);
 }
 
-void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
+void VkTexture::FreeBindlessHandles(RHIBindlessDescriptorSet& bindlessSet)
 {
     for (const auto& [viewDesc, entry] : bindlessCache)
     {
         if (entry.handle != GInvalidBindlessHandle)
         {
-            descriptorPool.bindlessSet->FreeStaticDescriptor(entry.handle);
+            bindlessSet.FreeStaticDescriptor(entry.handle);
         }
     }
     bindlessCache.clear();
