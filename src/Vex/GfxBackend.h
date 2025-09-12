@@ -145,12 +145,10 @@ private:
 
     BackendDescription description;
 
-    std::optional<PipelineStateCache> psCache;
-
     ResourceCleanup resourceCleanup;
 
     // =================================================
-    //  RHI RESOURCES (should be destroyed before rhi)
+    //  RHI RESOURCES (should be destroyed before rhi and order matters)
     // =================================================
 
     std::optional<RHICommandPool> commandPool;
@@ -159,6 +157,8 @@ private:
     std::optional<RHIDescriptorPool> descriptorPool;
 
     std::optional<RHIBindlessDescriptorSet> bindlessSet;
+
+    std::optional<PipelineStateCache> psCache;
 
     MaybeUninitialized<RHIAllocator> allocator;
 
