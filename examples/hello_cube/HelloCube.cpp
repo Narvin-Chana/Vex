@@ -35,9 +35,9 @@ HelloCubeApplication::HelloCubeApplication()
         {
             .name = "Depth Texture",
             .type = vex::TextureType::Texture2D,
+            .format = vex::TextureFormat::D32_FLOAT,
             .width = static_cast<vex::u32>(width),
             .height = static_cast<vex::u32>(height),
-            .format = vex::TextureFormat::D32_FLOAT,
             .usage = vex::TextureUsage::DepthStencil,
             .clearValue =
                 vex::TextureClearValue{
@@ -131,11 +131,11 @@ HelloCubeApplication::HelloCubeApplication()
         uvGuideTexture =
             graphics->CreateTexture({ .name = "UV Guide",
                                       .type = vex::TextureType::Texture2D,
+                                      .format = vex::TextureFormat::RGBA8_UNORM,
                                       .width = static_cast<vex::u32>(width),
                                       .height = static_cast<vex::u32>(height),
                                       .depthOrArraySize = 1,
                                       .mips = 2,
-                                      .format = vex::TextureFormat::RGBA8_UNORM,
                                       .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
                                     vex::ResourceLifetime::Static);
 
@@ -357,9 +357,9 @@ void HelloCubeApplication::OnResize(GLFWwindow* window, uint32_t width, uint32_t
         {
             .name = "Depth Texture",
             .type = vex::TextureType::Texture2D,
+            .format = vex::TextureFormat::D32_FLOAT,
             .width = static_cast<vex::u32>(width),
             .height = static_cast<vex::u32>(height),
-            .format = vex::TextureFormat::D32_FLOAT,
             .usage = vex::TextureUsage::DepthStencil,
             .clearValue =
                 vex::TextureClearValue{

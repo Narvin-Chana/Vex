@@ -465,7 +465,38 @@ void DX12CommandList::Copy(RHITexture& src,
                            RHITexture& dst,
                            std::span<const TextureCopyDescription> textureCopyDescriptions)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    ID3D12Resource* srcTexture = src.GetRawTexture();
+    ID3D12Resource* dstTexture = dst.GetRawTexture();
+
+    for (const TextureCopyDescription& copyDesc : textureCopyDescriptions)
+    {
+        D3D12_TEXTURE_COPY_LOCATION srcLoc = {};
+        srcLoc.pResource = srcTexture;
+        srcLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        srcLoc.SubresourceIndex =
+            copyDesc.srcSubresource.startSlice * src.GetDescription().mips + copyDesc.srcSubresource.mip;
+
+        D3D12_TEXTURE_COPY_LOCATION dstLoc = {};
+        dstLoc.pResource = dstTexture;
+        dstLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        dstLoc.SubresourceIndex =
+            copyDesc.dstSubresource.startSlice * dst.GetDescription().mips + copyDesc.dstSubresource.mip;
+
+        D3D12_BOX srcBox = {};
+        srcBox.left = copyDesc.srcSubresource.offset.width;
+        srcBox.top = copyDesc.srcSubresource.offset.height;
+        srcBox.front = copyDesc.srcSubresource.offset.depth;
+        srcBox.right = copyDesc.srcSubresource.offset.width + copyDesc.extent.width;
+        srcBox.bottom = copyDesc.srcSubresource.offset.height + copyDesc.extent.height;
+        srcBox.back = copyDesc.srcSubresource.offset.depth + copyDesc.extent.depth;
+
+        commandList->CopyTextureRegion(&dstLoc,
+                                       copyDesc.dstSubresource.offset.width,
+                                       copyDesc.dstSubresource.offset.height,
+                                       copyDesc.dstSubresource.offset.depth,
+                                       &srcLoc,
+                                       &srcBox);
+    }
 }
 
 void DX12CommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& bufferCopyDescription)

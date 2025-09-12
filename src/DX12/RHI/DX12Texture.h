@@ -77,8 +77,6 @@ public:
 
     CD3DX12_CPU_DESCRIPTOR_HANDLE GetOrCreateRTVDSVView(DX12TextureView view);
 
-    D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
-
     virtual std::span<byte> Map() override;
     virtual void Unmap() override;
 
