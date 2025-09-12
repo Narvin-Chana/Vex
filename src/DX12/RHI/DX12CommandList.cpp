@@ -512,6 +512,10 @@ void DX12CommandList::Copy(RHIBuffer& src,
                            RHITexture& dst,
                            std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions)
 {
+    // TODO(https://trello.com/c/KEnbDLG6): this way of uploading makes it so that texture arrays are copied slice by
+    // slice, when instead they could be copied array element by array element. Would require considerable effort to fix
+    // so will probably be done later on.
+
     ID3D12Resource* srcBuffer = src.GetRawBuffer();
     ID3D12Resource* dstTexture = dst.GetRawTexture();
 

@@ -10,7 +10,7 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics)
 
     // Test 1: Upload a cubemap with two mips
     {
-        // TODO: add a version of these tests with compute and copy command lists.
+        // TODO(https://trello.com/c/mtX3xaGD): add a version of these tests with compute and copy command lists.
         // Currently not possible due to errors in our DX12 synchronization code.
         auto ctx = graphics->BeginScopedCommandContext(CommandQueueType::Graphics, SubmissionPolicy::Immediate);
 
@@ -60,7 +60,7 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics)
 
     // Test 2: Upload a 2d texture array of size 2 with 3 mips
     {
-        // TODO: add a version of these tests with compute and copy command lists.
+        // TODO(https://trello.com/c/mtX3xaGD): add a version of these tests with compute and copy command lists.
         // Currently not possible due to errors in our DX12 synchronization code.
         auto ctx = graphics->BeginScopedCommandContext(CommandQueueType::Graphics, SubmissionPolicy::Immediate);
 
@@ -129,7 +129,7 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics)
 
     // Test 3: Upload a texture cube array of size 3 with 2 mips
     {
-        // TODO: add a version of these tests with compute and copy command lists.
+        // TODO(https://trello.com/c/mtX3xaGD): add a version of these tests with compute and copy command lists.
         // Currently not possible due to errors in our DX12 synchronization code.
         auto ctx = graphics->BeginScopedCommandContext(CommandQueueType::Graphics, SubmissionPolicy::Immediate);
 
@@ -191,7 +191,7 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics)
 
     // Test 4: Upload a 3d texture of depth 2 with 3 mips
     {
-        // TODO: add a version of these tests with compute and copy command lists.
+        // TODO(https://trello.com/c/mtX3xaGD): add a version of these tests with compute and copy command lists.
         // Currently not possible due to errors in our DX12 synchronization code.
         auto ctx = graphics->BeginScopedCommandContext(CommandQueueType::Graphics, SubmissionPolicy::Immediate);
 
