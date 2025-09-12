@@ -345,7 +345,8 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
 #endif
 }
 
-BindlessHandle DX12Texture::GetOrCreateBindlessView(const TextureBinding& binding, RHIDescriptorPool& descriptorPool)
+BindlessHandle DX12Texture::GetOrCreateBindlessView(const TextureBinding& binding,
+                                                    RHIBindlessDescriptorSet& bindlessSet)
 {
     DX12TextureView view{ binding };
 
@@ -359,23 +360,23 @@ BindlessHandle DX12Texture::GetOrCreateBindlessView(const TextureBinding& bindin
                "Texture view requested must be of type SRV or UAV AND the underlying texture must support this usage.");
 
     // Check cache first
-    if (auto it = viewCache.find(view); it != viewCache.end() && descriptorPool.IsValid(it->second.bindlessHandle))
+    if (auto it = viewCache.find(view); it != viewCache.end() && bindlessSet.IsValid(it->second.bindlessHandle))
     {
         return it->second.bindlessHandle;
     }
 
-    BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
+    BindlessHandle handle = bindlessSet.AllocateStaticDescriptor();
 
     if (isSRVView)
     {
         auto desc = CreateShaderResourceViewDesc(view);
-        auto cpuDescriptorHandle = descriptorPool.GetCPUDescriptor(handle);
+        auto cpuDescriptorHandle = bindlessSet.GetCPUDescriptor(handle);
         device->CreateShaderResourceView(texture.Get(), &desc, cpuDescriptorHandle);
     }
     else // if (isUAVView)
     {
         auto desc = CreateUnorderedAccessViewDesc(view);
-        auto cpuDescriptorHandle = descriptorPool.GetCPUDescriptor(handle);
+        auto cpuDescriptorHandle = bindlessSet.GetCPUDescriptor(handle);
         device->CreateUnorderedAccessView(texture.Get(), nullptr, &desc, cpuDescriptorHandle);
     }
 
@@ -383,13 +384,13 @@ BindlessHandle DX12Texture::GetOrCreateBindlessView(const TextureBinding& bindin
     return handle;
 }
 
-void DX12Texture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
+void DX12Texture::FreeBindlessHandles(RHIBindlessDescriptorSet& bindlessSet)
 {
     for (auto& [view, entry] : viewCache)
     {
         if (entry.bindlessHandle != GInvalidBindlessHandle)
         {
-            descriptorPool.FreeStaticDescriptor(entry.bindlessHandle);
+            bindlessSet.FreeStaticDescriptor(entry.bindlessHandle);
         }
     }
     viewCache.clear();

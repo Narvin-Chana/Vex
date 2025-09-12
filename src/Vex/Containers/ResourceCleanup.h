@@ -6,11 +6,9 @@
 
 #include <Vex/MaybeUninitialized.h>
 #include <Vex/NonNullPtr.h>
-#include <Vex/RHIFwd.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/Synchronization.h>
-#include <Vex/Types.h>
 #include <Vex/UniqueHandle.h>
 
 namespace vex
@@ -28,7 +26,7 @@ public:
     ResourceCleanup(NonNullPtr<RHI> rhi);
 
     void CleanupResource(CleanupVariant&& resource);
-    void FlushResources(RHIDescriptorPool& descriptorPool, RHIAllocator& allocator);
+    void FlushResources(RHIBindlessDescriptorSet& bindlessSet, RHIAllocator& allocator);
 
 private:
     NonNullPtr<RHI> rhi;

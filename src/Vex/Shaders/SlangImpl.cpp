@@ -195,11 +195,6 @@ Slang::ComPtr<slang::ISession> SlangCompilerImpl::CreateSession(const Shader& sh
     compilerOptions.push_back(
         { .name = slang::CompilerOptionName::VulkanEmitReflection,
           .value = slang::CompilerOptionValue{ .kind = slang::CompilerOptionValueKind::Int, .intValue0 = true } });
-
-    // Force aliasing of bindless resources to bindless set 0.
-    compilerOptions.push_back(
-        { .name = slang::CompilerOptionName::BindlessSpaceIndex,
-          .value = slang::CompilerOptionValue{ .kind = slang::CompilerOptionValueKind::Int, .intValue0 = 0 } });
 #endif
 
     targetDesc.compilerOptionEntries = compilerOptions.data();

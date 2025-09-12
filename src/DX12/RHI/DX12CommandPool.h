@@ -22,6 +22,9 @@ public:
 
     virtual NonNullPtr<RHICommandList> GetOrCreateCommandList(CommandQueueType queueType) override;
 
+    DX12CommandPool(DX12CommandPool&&) = default;
+    DX12CommandPool& operator=(DX12CommandPool&&) = default;
+
 private:
     ComPtr<DX12Device> device;
 };

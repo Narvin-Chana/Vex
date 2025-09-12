@@ -116,24 +116,25 @@ void VkCommandList::SetLayout(RHIResourceLayout& layout)
                                  localConstantsData.data());
 }
 
-void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)
+void VkCommandList::BindStaticDescriptorSets(RHIBindlessDescriptorSet& bindlessSet, RHIResourceLayout& resourceLayout)
 {
+    std::array descriptorSets{ *resourceLayout.GetSamplerDescriptor().descriptorSet, *bindlessSet.descriptorSet };
     switch (type)
     {
     case CommandQueueTypes::Graphics:
         commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eGraphics,
                                           *resourceLayout.pipelineLayout,
                                           0,
-                                          1,
-                                          &*descriptorPool.bindlessSet,
+                                          descriptorSets.size(),
+                                          descriptorSets.data(),
                                           0,
                                           nullptr);
     case CommandQueueTypes::Compute:
         commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eCompute,
                                           *resourceLayout.pipelineLayout,
                                           0,
-                                          1,
-                                          &*descriptorPool.bindlessSet,
+                                          descriptorSets.size(),
+                                          descriptorSets.data(),
                                           0,
                                           nullptr);
         break;

@@ -82,13 +82,13 @@ public:
     }
 
     virtual BindlessHandle GetOrCreateBindlessView(const TextureBinding& binding,
-                                                   RHIDescriptorPool& descriptorPool) override;
+                                                   RHIBindlessDescriptorSet& bindlessSet) override;
 
     ::vk::ImageView GetOrCreateImageView(const TextureBinding& binding, TextureUsage::Type usage);
 
     virtual RHITextureState GetClearTextureState() override;
 
-    virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
+    virtual void FreeBindlessHandles(RHIBindlessDescriptorSet& bindlessSet) override;
     virtual void FreeAllocation(RHIAllocator& allocator) override;
 
     [[nodiscard]] ::vk::ImageLayout GetLayout() const

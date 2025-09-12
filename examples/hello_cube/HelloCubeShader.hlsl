@@ -78,11 +78,10 @@ VSOutput VSMain(in float3 position : POSITION, in float2 uv : TEXCOORD)
 
 static const Texture2D<float4> UVGuideTexture = GetBindlessResource(Uniforms.uvGuideTextureHandle);
 
+SamplerState LinearSampler;
+SamplerState PointSampler;
+
 float4 PSMain(VSOutput input) : SV_Target
 {
-    // TODO: Replace this with samples
-    uint width, height;
-    UVGuideTexture.GetDimensions(width, height);
-    int2 texCoord = int2(input.uv * float2(width - 1, height - 1));
-    return float4(UVGuideTexture.Load(int3(texCoord, 0)).rgb, 1) * float4(0, 1, 1, 1);
+    return float4(UVGuideTexture.Sample(LinearSampler, input.uv).rgb, 1);
 }

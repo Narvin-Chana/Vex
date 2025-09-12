@@ -31,6 +31,9 @@ public:
 
     u32 version = 0;
 
+    RHIResourceLayoutBase(RHIResourceLayoutBase&&) = default;
+    RHIResourceLayoutBase& operator=(RHIResourceLayoutBase&&) = default;
+
 protected:
     bool isDirty = true;
 

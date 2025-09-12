@@ -17,6 +17,8 @@ class VkTexture;
 class VkBuffer;
 class VkRHI;
 class VkFence;
+class VkDescriptorSet;
+class VkBindlessDescriptorSet;
 
 } // namespace vex::vk
 
@@ -30,6 +32,8 @@ using RHIAllocator = vk::VkAllocator;
 using RHICommandList = vk::VkCommandList;
 using RHICommandPool = vk::VkCommandPool;
 using RHIDescriptorPool = vk::VkDescriptorPool;
+using RHIDescriptorSet = vk::VkDescriptorSet;
+using RHIBindlessDescriptorSet = vk::VkBindlessDescriptorSet;
 using RHIGraphicsPipelineState = vk::VkGraphicsPipelineState;
 using RHIComputePipelineState = vk::VkComputePipelineState;
 using RHIRayTracingPipelineState = vk::VkRayTracingPipelineState;

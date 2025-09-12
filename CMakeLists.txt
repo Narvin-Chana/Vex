@@ -122,6 +122,8 @@ add_library(Vex STATIC
     "src/RHI/RHIAllocator.h"
     "src/RHI/RHIAllocator.cpp"
     "src/RHI/RHIFence.h"
+    "src/RHI/RHIDescriptorSet.cpp"
+    "src/RHI/RHIDescriptorSet.h"
     "src/Vex/RHIImpl/RHIFence.h"
     "src/Vex/RHIImpl/RHICommandList.h"
     "src/Vex/RHIImpl/RHICommandPool.h"
@@ -133,6 +135,7 @@ add_library(Vex STATIC
     "src/Vex/RHIImpl/RHI.h"
     "src/Vex/RHIImpl/RHIBuffer.h"
     "src/Vex/RHIImpl/RHIAllocator.h"
+    "src/Vex/RHIImpl/RHIDescriptorSet.h"
     # Vex API
     "src/Vex.h"
     "src/Vex.cpp"
@@ -199,7 +202,7 @@ add_library(Vex STATIC
     "src/Vex/ResourceCopy.h"
     "src/Vex/ResourceCopy.cpp"
     "src/Vex/Concepts.h"
- )
+)
 
 if(WIN32)
     target_sources(Vex PRIVATE

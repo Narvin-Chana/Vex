@@ -2,11 +2,9 @@
 
 #include <unordered_map>
 
-#include <Vex/NonNullPtr.h>
-#include <Vex/RHIFwd.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
+#include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/Shaders/ShaderCompiler.h>
-#include <Vex/UniqueHandle.h>
 
 namespace vex
 {
@@ -16,15 +14,12 @@ class FeatureChecker;
 class PipelineStateCache
 {
 public:
-    PipelineStateCache();
     PipelineStateCache(RHI* rhi,
                        RHIDescriptorPool& descriptorPool,
+                       RHIBindlessDescriptorSet& descriptorSet,
                        ResourceCleanup* resourceCleanup,
                        const ShaderCompilerSettings& compilerSettings);
     ~PipelineStateCache();
-
-    PipelineStateCache(const PipelineStateCache&) = delete;
-    PipelineStateCache& operator=(const PipelineStateCache&) = delete;
 
     PipelineStateCache(PipelineStateCache&&) = default;
     PipelineStateCache& operator=(PipelineStateCache&&) = default;
@@ -49,7 +44,7 @@ private:
     ResourceCleanup* resourceCleanup;
 
     ShaderCompiler shaderCompiler;
-    UniqueHandle<RHIResourceLayout> resourceLayout;
+    std::optional<RHIResourceLayout> resourceLayout;
     std::unordered_map<RHIGraphicsPipelineState::Key, RHIGraphicsPipelineState, RHIGraphicsPipelineState::Hasher>
         graphicsPSCache;
     std::unordered_map<RHIComputePipelineState::Key, RHIComputePipelineState> computePSCache;
