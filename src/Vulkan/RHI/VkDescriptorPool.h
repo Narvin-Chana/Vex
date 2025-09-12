@@ -19,6 +19,8 @@ class VkDescriptorPool final : public RHIDescriptorPoolBase
 public:
     VkDescriptorPool(NonNullPtr<VkGPUContext> ctx);
 
+    virtual RHIBindlessDescriptorSet CreateBindlessSet() override;
+
     ::vk::DescriptorPool& GetNativeDescriptorPool()
     {
         return *descriptorPool;

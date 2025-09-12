@@ -159,7 +159,7 @@ CommandContext::CommandContext(NonNullPtr<GfxBackend> backend,
     cmdList->Open();
     if (cmdList->GetType() != CommandQueueType::Copy)
     {
-        cmdList->SetDescriptorPool(*backend->descriptorPool, backend->psCache.GetResourceLayout());
+        cmdList->BindStaticDescriptorSets(*backend->bindlessSet, backend->psCache->GetResourceLayout());
     }
 }
 
@@ -274,7 +274,7 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     if (!cachedComputePSOKey || psoKey != cachedComputePSOKey)
     {
         // Register shader and get Pipeline if exists (if not create it).
-        const RHIComputePipelineState* pipelineState = backend->psCache.GetComputePipelineState(psoKey);
+        const RHIComputePipelineState* pipelineState = backend->psCache->GetComputePipelineState(psoKey);
 
         // Nothing more to do if the PSO is invalid.
         if (!pipelineState)
@@ -287,7 +287,7 @@ void CommandContext::Dispatch(const ShaderKey& shader,
     }
 
     // Sets the resource layout to use for the dispatch.
-    RHIResourceLayout& resourceLayout = backend->psCache.GetResourceLayout();
+    RHIResourceLayout& resourceLayout = backend->psCache->GetResourceLayout();
     resourceLayout.SetLayoutResources(constants);
     cmdList->SetLayout(resourceLayout);
 
@@ -305,7 +305,7 @@ void CommandContext::TraceRays(const RayTracingPassDescription& rayTracingPassDe
     RayTracingPassDescription::ValidateShaderTypes(rayTracingPassDescription);
 
     const RHIRayTracingPipelineState* pipelineState =
-        backend->psCache.GetRayTracingPipelineState(rayTracingPassDescription, *backend->allocator);
+        backend->psCache->GetRayTracingPipelineState(rayTracingPassDescription, *backend->allocator);
     if (!pipelineState)
     {
         VEX_LOG(Error, "PSO cache returned an invalid pipeline state, unable to continue dispatch...");
@@ -314,7 +314,7 @@ void CommandContext::TraceRays(const RayTracingPassDescription& rayTracingPassDe
     cmdList->SetPipelineState(*pipelineState);
 
     // Sets the resource layout to use for the ray trace.
-    RHIResourceLayout& resourceLayout = backend->psCache.GetResourceLayout();
+    RHIResourceLayout& resourceLayout = backend->psCache->GetResourceLayout();
     resourceLayout.SetLayoutResources(constants);
 
     cmdList->SetLayout(resourceLayout);
@@ -686,7 +686,7 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDescri
 
     if (!cachedGraphicsPSOKey || graphicsPSOKey != *cachedGraphicsPSOKey)
     {
-        const RHIGraphicsPipelineState* pipelineState = backend->psCache.GetGraphicsPipelineState(graphicsPSOKey);
+        const RHIGraphicsPipelineState* pipelineState = backend->psCache->GetGraphicsPipelineState(graphicsPSOKey);
         // No valid PSO means we cannot proceed.
         if (!pipelineState)
         {
@@ -698,7 +698,7 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDescri
     }
 
     // Setup the layout for our pass.
-    RHIResourceLayout& resourceLayout = backend->psCache.GetResourceLayout();
+    RHIResourceLayout& resourceLayout = backend->psCache->GetResourceLayout();
     resourceLayout.SetLayoutResources(constants);
 
     cmdList->SetLayout(resourceLayout);

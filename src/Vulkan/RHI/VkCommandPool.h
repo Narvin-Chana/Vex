@@ -22,6 +22,9 @@ public:
                   const std::array<VkCommandQueue, CommandQueueTypes::Count>& commandQueues);
     ~VkCommandPool();
 
+    VkCommandPool(VkCommandPool&&) = default;
+    VkCommandPool& operator=(VkCommandPool&&) = default;
+
     virtual NonNullPtr<RHICommandList> GetOrCreateCommandList(CommandQueueType queueType) override;
 
 private:

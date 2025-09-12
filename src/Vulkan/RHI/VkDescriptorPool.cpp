@@ -29,8 +29,10 @@ VkDescriptorPool::VkDescriptorPool(NonNullPtr<VkGPUContext> ctx)
     };
 
     descriptorPool = VEX_VK_CHECK <<= ctx->device.createDescriptorPoolUnique(descriptorPoolInfo);
-
-    bindlessSet.emplace(ctx, *descriptorPool);
+}
+RHIBindlessDescriptorSet VkDescriptorPool::CreateBindlessSet()
+{
+    return { ctx, *descriptorPool };
 }
 
 } // namespace vex::vk

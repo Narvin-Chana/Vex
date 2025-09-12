@@ -48,8 +48,8 @@ public:
 
     virtual BindlessHandle GetOrCreateBindlessView(BufferBindingUsage usage,
                                                    std::optional<u32> strideByteSize,
-                                                   RHIDescriptorPool& descriptorPool) override;
-    virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
+                                                   RHIBindlessDescriptorSet& bindlessSet) override;
+    virtual void FreeBindlessHandles(RHIBindlessDescriptorSet& bindlessSet) override;
     virtual void FreeAllocation(RHIAllocator& allocator) override;
 
     virtual std::span<byte> Map() override;

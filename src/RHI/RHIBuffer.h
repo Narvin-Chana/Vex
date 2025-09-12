@@ -43,8 +43,8 @@ public:
     // Raw direct access to buffer memory
     virtual BindlessHandle GetOrCreateBindlessView(BufferBindingUsage usage,
                                                    std::optional<u32> strideByteSize,
-                                                   RHIDescriptorPool& descriptorPool) = 0;
-    virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
+                                                   RHIBindlessDescriptorSet& bindlessSet) = 0;
+    virtual void FreeBindlessHandles(RHIBindlessDescriptorSet& bindlessSet) = 0;
     virtual void FreeAllocation(RHIAllocator& allocator) = 0;
 
     void SetCurrentState(const RHIBufferState::Flags flags)

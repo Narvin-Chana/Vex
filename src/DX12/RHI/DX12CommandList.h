@@ -25,7 +25,8 @@ public:
     virtual void SetPipelineState(const RHIRayTracingPipelineState& rayTracingPipelineState) override;
 
     virtual void SetLayout(RHIResourceLayout& layout) override;
-    virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) override;
+    virtual void BindStaticDescriptorSets(RHIBindlessDescriptorSet& bindlessSet,
+                                          RHIResourceLayout& resourceLayout) override;
     virtual void SetInputAssembly(InputAssembly inputAssembly) override;
 
     virtual void ClearTexture(const RHITextureBinding& binding,

@@ -13,10 +13,11 @@
 #include <Vex/NonNullPtr.h>
 #include <Vex/PipelineStateCache.h>
 #include <Vex/PlatformWindow.h>
-#include <Vex/RHIFwd.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
+#include <Vex/RHIImpl/RHICommandPool.h>
+#include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/SubmissionPolicy.h>
 #include <Vex/Synchronization.h>
@@ -138,7 +139,7 @@ private:
 
     BackendDescription description;
 
-    PipelineStateCache psCache;
+    std::optional<PipelineStateCache> psCache;
 
     ResourceCleanup resourceCleanup;
 
@@ -146,14 +147,16 @@ private:
     //  RHI RESOURCES (should be destroyed before rhi)
     // =================================================
 
-    UniqueHandle<RHICommandPool> commandPool;
+    std::optional<RHICommandPool> commandPool;
 
     // Used for allocating/freeing bindless descriptors for resources.
-    UniqueHandle<RHIDescriptorPool> descriptorPool;
+    std::optional<RHIDescriptorPool> descriptorPool;
+
+    std::optional<RHIBindlessDescriptorSet> bindlessSet;
 
     MaybeUninitialized<RHIAllocator> allocator;
 
-    UniqueHandle<RHISwapChain> swapChain;
+    std::optional<RHISwapChain> swapChain;
 
     // Converts from the Handle to the actual underlying RHI resource.
     FreeList<RHITexture, TextureHandle> textureRegistry;
