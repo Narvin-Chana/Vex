@@ -23,11 +23,11 @@ HelloRayTracing::HelloRayTracing()
     workingTexture =
         graphics->CreateTexture({ .name = "Working Texture",
                                   .type = vex::TextureType::Texture2D,
+                                  .format = vex::TextureFormat::RGBA8_UNORM,
                                   .width = DefaultWidth,
                                   .height = DefaultHeight,
                                   .depthOrArraySize = 1,
                                   .mips = 1,
-                                  .format = vex::TextureFormat::RGBA8_UNORM,
                                   .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
                                 vex::ResourceLifetime::Static);
 }
@@ -101,11 +101,11 @@ void HelloRayTracing::OnResize(GLFWwindow* window, uint32_t newWidth, uint32_t n
         {
             .name = "Working Texture",
             .type = vex::TextureType::Texture2D,
+            .format = vex::TextureFormat::RGBA8_UNORM,
             .width = newWidth,
             .height = newHeight,
             .depthOrArraySize = 1,
             .mips = 1,
-            .format = vex::TextureFormat::RGBA8_UNORM,
             .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite,
         },
         vex::ResourceLifetime::Static);

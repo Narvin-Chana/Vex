@@ -39,8 +39,8 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
     else if (desc.memoryLocality == ResourceMemoryLocality::CPUWrite)
     {
         heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-        dxInitialState = D3D12_RESOURCE_STATE_GENERIC_READ;
-        currentState = RHIBufferState::ShaderResource;
+        // dxInitialState = D3D12_RESOURCE_STATE_COPY_SOURCE;
+        // currentState = RHIBufferState::CopySource;
     }
     else
     {
