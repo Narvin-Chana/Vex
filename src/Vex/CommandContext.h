@@ -5,15 +5,15 @@
 
 #include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/NonNullPtr.h>
-#include <Vex/RHIBindings.h>
-#include <Vex/RHIFwd.h>
 #include <Vex/Shaders/ShaderKey.h>
 #include <Vex/SubmissionPolicy.h>
 #include <Vex/Synchronization.h>
 #include <Vex/Types.h>
 
+#include <RHI/RHIBindings.h>
 #include <RHI/RHIBuffer.h>
 #include <RHI/RHICommandList.h>
+#include <RHI/RHIFwd.h>
 #include <RHI/RHIPipelineState.h>
 #include <RHI/RHITexture.h>
 
@@ -149,14 +149,17 @@ public:
     // However, in the case you are leveraging bindless resources, you are responsible for ensuring any used resources
     // are in the correct state. This contains redundancy checks so feel free to call it even if the resource is
     // potentially already in the desired state for correctness.
-    void Transition(const Texture& texture, RHITextureState newState);
+    void Barrier(const Texture& texture,
+                 RHIBarrierSync newSync,
+                 RHIBarrierAccess newAccess,
+                 RHITextureLayout newLayout);
 
     // Allows you to transition the passed in buffer to the correct state. Usually this is done automatically by Vex
     // before any draws or dispatches for the resources you pass in.
     // However, in the case you are leveraging bindless resources, you are responsible for ensuring any used resources
     // are in the correct state. This contains redundancy checks so feel free to call it even if the resource is
     // potentially already in the desired state for correctness.
-    void Transition(const Buffer& buffer, RHIBufferState::Type newState);
+    void Barrier(const Buffer& buffer, RHIBarrierSync newSync, RHIBarrierAccess newAccess);
 
     // Allows you to manually submit the command context, receiving SyncTokens that allow you to later perform a CPU
     // wait for the work to be done.

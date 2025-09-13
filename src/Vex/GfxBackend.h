@@ -13,7 +13,7 @@
 #include <Vex/NonNullPtr.h>
 #include <Vex/PipelineStateCache.h>
 #include <Vex/PlatformWindow.h>
-#include <Vex/RHIFwd.h>
+#include <RHI/RHIFwd.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIBuffer.h>

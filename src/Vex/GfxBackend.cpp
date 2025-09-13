@@ -156,10 +156,26 @@ void GfxBackend::Present(bool isFullscreenMode)
         // Must be a graphics queue in order to be able to move the backbuffer to the present state.
         NonNullPtr<RHICommandList> cmdList = commandPool->GetOrCreateCommandList(CommandQueueType::Graphics);
         cmdList->Open();
-        cmdList->Transition(presentTexture, RHITextureState::CopySource);
-        cmdList->Transition(*backBuffer, RHITextureState::CopyDest);
+        std::array barriers = {
+            RHITextureBarrier{
+                presentTexture,
+                RHIBarrierSync::Copy,
+                RHIBarrierAccess::CopySource,
+                RHITextureLayout::CopySource,
+            },
+            RHITextureBarrier{
+                *backBuffer,
+                RHIBarrierSync::Copy,
+                RHIBarrierAccess::CopyDest,
+                RHITextureLayout::CopyDest,
+            },
+        };
+        cmdList->Barrier({}, barriers);
         cmdList->Copy(presentTexture, *backBuffer);
-        cmdList->Transition(*backBuffer, RHITextureState::Present);
+        cmdList->TextureBarrier(*backBuffer,
+                                RHIBarrierSync::AllGraphics,
+                                RHIBarrierAccess::NoAccess,
+                                RHITextureLayout::Present);
         cmdList->Close();
 
         presentTokens[currentFrameIndex] = swapChain->Present(currentFrameIndex, rhi, cmdList, isFullscreenMode);

@@ -6,7 +6,7 @@
 #include <vector>
 
 #include <Vex/NonNullPtr.h>
-#include <Vex/RHIFwd.h>
+#include <RHI/RHIFwd.h>
 #include <Vex/Synchronization.h>
 #include <Vex/UniqueHandle.h>
 

@@ -3,7 +3,7 @@
 #include <Vex/Formats.h>
 #include <Vex/FrameResource.h>
 #include <Vex/NonNullPtr.h>
-#include <Vex/RHIFwd.h>
+#include <RHI/RHIFwd.h>
 #include <Vex/Types.h>
 #include <Vex/UniqueHandle.h>
 

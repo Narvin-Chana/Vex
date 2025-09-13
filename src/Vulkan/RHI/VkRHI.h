@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Vex/NonNullPtr.h>
-#include <Vex/RHIFwd.h>
+#include <RHI/RHIFwd.h>
 #include <Vex/RHIImpl/RHIFence.h>
 
 #include <RHI/RHI.h>

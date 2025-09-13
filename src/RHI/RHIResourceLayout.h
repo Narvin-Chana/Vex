@@ -4,7 +4,7 @@
 #include <vector>
 
 #include <Vex/MaybeUninitialized.h>
-#include <Vex/RHIFwd.h>
+#include <RHI/RHIFwd.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/TextureSampler.h>
 #include <Vex/Types.h>
