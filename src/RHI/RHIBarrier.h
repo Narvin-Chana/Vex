@@ -66,7 +66,7 @@ enum class RHITextureLayout : u8
     UnorderedAccess,   // Storage/UAV access
     CopySource,        // Copy source
     CopyDest,          // Copy destination
-    Present,           // Presentation};
+    Present,           // Presentation
 };
 
 struct RHIBufferBarrier
