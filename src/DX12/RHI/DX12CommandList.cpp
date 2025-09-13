@@ -317,10 +317,12 @@ void DX12CommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
         barrierGroups.push_back(bufferGroup);
     }
 
-    if (!barrierGroups.empty())
+    if (barrierGroups.empty())
     {
-        commandList->Barrier(barrierGroups.size(), barrierGroups.data());
+        return;
     }
+
+    commandList->Barrier(barrierGroups.size(), barrierGroups.data());
 }
 
 void DX12CommandList::BeginRendering(const RHIDrawResources& resources)

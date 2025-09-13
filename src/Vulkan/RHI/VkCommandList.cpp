@@ -291,6 +291,11 @@ void VkCommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
         textureBarrier.texture->SetLastLayout(textureBarrier.dstLayout);
     }
 
+    if (vkBufferBarriers.empty() && vkTextureBarriers.empty())
+    {
+        return;
+    }
+
     ::vk::DependencyInfo info{ .bufferMemoryBarrierCount = static_cast<u32>(vkBufferBarriers.size()),
                                .pBufferMemoryBarriers = vkBufferBarriers.data(),
                                .imageMemoryBarrierCount = static_cast<u32>(vkTextureBarriers.size()),
