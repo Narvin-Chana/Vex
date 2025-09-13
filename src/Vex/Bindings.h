@@ -7,7 +7,6 @@
 #include <Vex/Buffer.h>
 #include <Vex/Concepts.h>
 #include <Vex/EnumFlags.h>
-#include <RHI/RHIFwd.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
 

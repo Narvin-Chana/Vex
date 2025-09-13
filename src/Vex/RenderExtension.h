@@ -1,7 +1,8 @@
 #pragma once
 
-#include <RHI/RHIFwd.h>
 #include <Vex/Types.h>
+
+#include <RHI/RHIFwd.h>
 
 namespace vex
 {

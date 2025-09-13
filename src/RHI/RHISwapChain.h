@@ -3,9 +3,10 @@
 #include <Vex/Formats.h>
 #include <Vex/FrameResource.h>
 #include <Vex/NonNullPtr.h>
-#include <RHI/RHIFwd.h>
 #include <Vex/Types.h>
 #include <Vex/UniqueHandle.h>
+
+#include <RHI/RHIFwd.h>
 
 namespace vex
 {

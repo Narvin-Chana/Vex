@@ -1,8 +1,8 @@
 #pragma once
 
 #include <Vex/NonNullPtr.h>
-#include <RHI/RHIFwd.h>
 
+#include <RHI/RHIFwd.h>
 #include <RHI/RHISwapChain.h>
 
 #include <Vulkan/VkGPUContext.h>

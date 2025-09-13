@@ -6,12 +6,13 @@
 
 #include <Vex/MaybeUninitialized.h>
 #include <Vex/NonNullPtr.h>
-#include <RHI/RHIFwd.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/Synchronization.h>
 #include <Vex/Types.h>
 #include <Vex/UniqueHandle.h>
+
+#include <RHI/RHIFwd.h>
 
 namespace vex
 {

@@ -6,9 +6,10 @@
 #include <vector>
 
 #include <Vex/NonNullPtr.h>
-#include <RHI/RHIFwd.h>
 #include <Vex/Synchronization.h>
 #include <Vex/UniqueHandle.h>
+
+#include <RHI/RHIFwd.h>
 
 namespace vex
 {

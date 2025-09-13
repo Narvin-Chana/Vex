@@ -13,7 +13,6 @@
 #include <Vex/NonNullPtr.h>
 #include <Vex/PipelineStateCache.h>
 #include <Vex/PlatformWindow.h>
-#include <RHI/RHIFwd.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
@@ -21,6 +20,8 @@
 #include <Vex/SubmissionPolicy.h>
 #include <Vex/Synchronization.h>
 #include <Vex/UniqueHandle.h>
+
+#include <RHI/RHIFwd.h>
 
 namespace vex
 {

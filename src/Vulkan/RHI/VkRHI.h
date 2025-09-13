@@ -1,10 +1,10 @@
 #pragma once
 
 #include <Vex/NonNullPtr.h>
-#include <RHI/RHIFwd.h>
 #include <Vex/RHIImpl/RHIFence.h>
 
 #include <RHI/RHI.h>
+#include <RHI/RHIFwd.h>
 
 #include <Vulkan/VkCommandQueue.h>
 #include <Vulkan/VkGPUContext.h>

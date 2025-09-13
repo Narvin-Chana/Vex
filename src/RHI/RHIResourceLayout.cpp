@@ -6,10 +6,11 @@
 #include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
-#include <RHI/RHIBindings.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/RHIImpl/RHITexture.h>
+
+#include <RHI/RHIBindings.h>
 
 namespace vex
 {
