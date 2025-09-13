@@ -10,6 +10,8 @@
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
 
+#include <RHI/RHIFwd.h>
+
 namespace vex
 {
 
