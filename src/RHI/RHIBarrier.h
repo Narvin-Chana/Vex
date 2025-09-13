@@ -24,8 +24,6 @@ enum class RHIBarrierSync : u8
     DepthStencil,
     ComputeShader,
     Copy,
-    // Is this needed?
-    // Clear,
     RenderTarget,
     DrawIndirect,
     Host,

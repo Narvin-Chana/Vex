@@ -37,9 +37,6 @@ D3D12_BARRIER_SYNC RHIBarrierSyncToDX12(RHIBarrierSync barrierSync)
         return D3D12_BARRIER_SYNC_COMPUTE_SHADING;
     case Copy:
         return D3D12_BARRIER_SYNC_COPY;
-    // To be checked:
-    // case Clear:
-    //     return D3D12_BARRIER_SYNC_CLEAR_UNORDERED_ACCESS_VIEW;
     case RenderTarget:
         return D3D12_BARRIER_SYNC_RENDER_TARGET;
     case DrawIndirect:
