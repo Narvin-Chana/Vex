@@ -5,8 +5,9 @@
 #include <Vex/Bindings.h>
 #include <Vex/Buffer.h>
 #include <Vex/NonNullPtr.h>
-#include <Vex/RHIFwd.h>
 #include <Vex/Texture.h>
+
+#include <RHI/RHIFwd.h>
 
 namespace vex
 {

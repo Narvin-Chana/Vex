@@ -50,11 +50,6 @@ VEX_MAKE_HASHABLE(vex::vk::VkTextureViewDesc,
 );
 // clang-format on
 
-namespace vex::TextureUtil
-{
-::vk::ImageLayout TextureStateFlagToImageLayout(RHITextureState flags);
-} // namespace vex::TextureUtil
-
 namespace vex::vk
 {
 struct VkGPUContext;
@@ -86,15 +81,10 @@ public:
 
     ::vk::ImageView GetOrCreateImageView(const TextureBinding& binding, TextureUsage::Type usage);
 
-    virtual RHITextureState GetClearTextureState() override;
+    virtual RHITextureBarrier GetClearTextureBarrier() override;
 
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
     virtual void FreeAllocation(RHIAllocator& allocator) override;
-
-    [[nodiscard]] ::vk::ImageLayout GetLayout() const
-    {
-        return TextureUtil::TextureStateFlagToImageLayout(GetCurrentState());
-    }
 
     virtual std::span<byte> Map() override;
     virtual void Unmap() override;

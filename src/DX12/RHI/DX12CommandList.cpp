@@ -5,14 +5,15 @@
 #include <Vex/Bindings.h>
 #include <Vex/ByteUtils.h>
 #include <Vex/Logger.h>
-#include <Vex/RHIBindings.h>
 #include <Vex/Texture.h>
 #include <Vex/Validation.h>
 
+#include <RHI/RHIBindings.h>
+
 #include <DX12/DX12Formats.h>
 #include <DX12/DX12GraphicsPipeline.h>
-#include <DX12/DX12States.h>
 #include <DX12/HRChecker.h>
+#include <DX12/RHI/DX12Barrier.h>
 #include <DX12/RHI/DX12Buffer.h>
 #include <DX12/RHI/DX12PipelineState.h>
 #include <DX12/RHI/DX12ResourceLayout.h>
@@ -236,96 +237,92 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
     }
 }
 
-void DX12CommandList::Transition(RHITexture& texture, RHITextureState newState)
+void DX12CommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
+                              std::span<const RHITextureBarrier> textureBarriers)
 {
-    RHITexture::ValidateStateVersusQueueType(newState, type);
+    std::vector<D3D12_BUFFER_BARRIER> dx12BufferBarriers;
+    dx12BufferBarriers.reserve(bufferBarriers.size());
+    std::vector<D3D12_TEXTURE_BARRIER> dx12TextureBarriers;
+    dx12TextureBarriers.reserve(textureBarriers.size());
 
-    D3D12_RESOURCE_STATES currentDX12State = RHITextureStateToDX12State(texture.GetCurrentState());
-    D3D12_RESOURCE_STATES newDX12State = RHITextureStateToDX12State(newState);
+    for (auto& bufferBarrier : bufferBarriers)
+    {
+        D3D12_BUFFER_BARRIER dx12Barrier = {};
+        dx12Barrier.SyncBefore = RHIBarrierSyncToDX12(bufferBarrier.srcSync);
+        dx12Barrier.SyncAfter = RHIBarrierSyncToDX12(bufferBarrier.dstSync);
+        dx12Barrier.AccessBefore = RHIBarrierAccessToDX12(bufferBarrier.srcAccess);
+        dx12Barrier.AccessAfter = RHIBarrierAccessToDX12(bufferBarrier.dstAccess);
+        dx12Barrier.pResource = bufferBarrier.buffer->GetRawBuffer();
+        // Buffer range - for now, barrier entire buffer.
+        dx12Barrier.Offset = 0;
+        dx12Barrier.Size = std::numeric_limits<u64>::max();
+        dx12BufferBarriers.push_back(std::move(dx12Barrier));
 
-    // Nothing to do if the states are already equal (we compare raw API states, due to them not mapping 1:1 to Vex
-    // ones).
-    if (currentDX12State == newDX12State)
+        // Update last sync and access.
+        bufferBarrier.buffer->SetLastSync(bufferBarrier.dstSync);
+        bufferBarrier.buffer->SetLastAccess(bufferBarrier.dstAccess);
+    }
+    for (auto& textureBarrier : textureBarriers)
+    {
+        D3D12_TEXTURE_BARRIER dx12Barrier = {};
+        dx12Barrier.SyncBefore = RHIBarrierSyncToDX12(textureBarrier.srcSync);
+        dx12Barrier.SyncAfter = RHIBarrierSyncToDX12(textureBarrier.dstSync);
+        dx12Barrier.AccessBefore = RHIBarrierAccessToDX12(textureBarrier.srcAccess);
+        dx12Barrier.AccessAfter = RHIBarrierAccessToDX12(textureBarrier.dstAccess);
+        dx12Barrier.LayoutBefore = RHITextureLayoutToDX12(textureBarrier.srcLayout);
+        dx12Barrier.LayoutAfter = RHITextureLayoutToDX12(textureBarrier.dstLayout);
+        dx12Barrier.pResource = textureBarrier.texture->GetRawTexture();
+
+        if (dx12Barrier.AccessAfter & D3D12_BARRIER_ACCESS_NO_ACCESS)
+        {
+            dx12Barrier.SyncAfter = D3D12_BARRIER_SYNC_NONE;
+        }
+
+        // Handle subresources - for now, barrier all subresources.
+        // We might want to extend RHIBarrier to specify subresource ranges (...one day...maybe...).
+        dx12Barrier.Subresources.IndexOrFirstMipLevel = 0;
+        dx12Barrier.Subresources.NumMipLevels = textureBarrier.texture->GetDescription().mips;
+        dx12Barrier.Subresources.FirstArraySlice = 0;
+        dx12Barrier.Subresources.NumArraySlices = textureBarrier.texture->GetDescription().GetArraySize();
+        dx12Barrier.Subresources.FirstPlane = 0;
+        dx12Barrier.Subresources.NumPlanes = 1; // Most textures have 1 plane
+        dx12Barrier.Flags = D3D12_TEXTURE_BARRIER_FLAG_NONE;
+        dx12TextureBarriers.push_back(std::move(dx12Barrier));
+
+        // Update last sync, access and layout.
+        textureBarrier.texture->SetLastSync(textureBarrier.dstSync);
+        textureBarrier.texture->SetLastAccess(textureBarrier.dstAccess);
+        textureBarrier.texture->SetLastLayout(textureBarrier.dstLayout);
+    }
+
+    // Take our barriers and now insert them into "groups" to be sent to the command list.
+    std::vector<D3D12_BARRIER_GROUP> barrierGroups;
+    barrierGroups.reserve(dx12TextureBarriers.size() + dx12BufferBarriers.size());
+
+    if (!dx12TextureBarriers.empty())
+    {
+        D3D12_BARRIER_GROUP textureGroup = {};
+        textureGroup.Type = D3D12_BARRIER_TYPE_TEXTURE;
+        textureGroup.NumBarriers = static_cast<UINT>(dx12TextureBarriers.size());
+        textureGroup.pTextureBarriers = dx12TextureBarriers.data();
+        barrierGroups.push_back(textureGroup);
+    }
+
+    if (!dx12BufferBarriers.empty())
+    {
+        D3D12_BARRIER_GROUP bufferGroup = {};
+        bufferGroup.Type = D3D12_BARRIER_TYPE_BUFFER;
+        bufferGroup.NumBarriers = static_cast<UINT>(dx12BufferBarriers.size());
+        bufferGroup.pBufferBarriers = dx12BufferBarriers.data();
+        barrierGroups.push_back(bufferGroup);
+    }
+
+    if (barrierGroups.empty())
     {
         return;
     }
 
-    texture.SetCurrentState(newState);
-    CD3DX12_RESOURCE_BARRIER resourceBarrier =
-        CD3DX12_RESOURCE_BARRIER::Transition(texture.GetRawTexture(), currentDX12State, newDX12State);
-
-    commandList->ResourceBarrier(1, &resourceBarrier);
-}
-
-void DX12CommandList::Transition(RHIBuffer& buffer, RHIBufferState::Flags newState)
-{
-    D3D12_RESOURCE_STATES currentDX12State = RHIBufferStateToDX12State(buffer.GetCurrentState());
-    D3D12_RESOURCE_STATES newDX12State = RHIBufferStateToDX12State(newState);
-
-    // Nothing to do if the states are already equal.
-    if (buffer.GetCurrentState() == newState)
-    {
-        return;
-    }
-
-    buffer.SetCurrentState(newState);
-    D3D12_RESOURCE_BARRIER resourceBarrier =
-        CD3DX12_RESOURCE_BARRIER::Transition(buffer.GetRawBuffer(), currentDX12State, newDX12State);
-
-    commandList->ResourceBarrier(1, &resourceBarrier);
-}
-
-void DX12CommandList::Transition(std::span<std::pair<RHITexture&, RHITextureState>> textureNewStatePairs)
-{
-    std::vector<D3D12_RESOURCE_BARRIER> transitionBarriers;
-    transitionBarriers.reserve(textureNewStatePairs.size());
-    for (auto& [texture, newState] : textureNewStatePairs)
-    {
-        RHITexture::ValidateStateVersusQueueType(newState, type);
-
-        D3D12_RESOURCE_STATES currentDX12State = RHITextureStateToDX12State(texture.GetCurrentState());
-        D3D12_RESOURCE_STATES newDX12State = RHITextureStateToDX12State(newState);
-        // Nothing to do if the states are already equal (we compare raw API states, due to them not mapping 1:1 to Vex
-        // ones).
-        if (newDX12State == currentDX12State)
-        {
-            continue;
-        }
-        D3D12_RESOURCE_BARRIER resourceBarrier =
-            CD3DX12_RESOURCE_BARRIER::Transition(texture.GetRawTexture(), currentDX12State, newDX12State);
-        texture.SetCurrentState(newState);
-        transitionBarriers.push_back(std::move(resourceBarrier));
-    }
-
-    if (!transitionBarriers.empty())
-    {
-        commandList->ResourceBarrier(transitionBarriers.size(), transitionBarriers.data());
-    }
-}
-
-void DX12CommandList::Transition(std::span<std::pair<RHIBuffer&, RHIBufferState::Flags>> bufferNewStatePairs)
-{
-    std::vector<D3D12_RESOURCE_BARRIER> transitionBarriers;
-    transitionBarriers.reserve(bufferNewStatePairs.size());
-    for (auto& [buffer, newState] : bufferNewStatePairs)
-    {
-        D3D12_RESOURCE_STATES currentDX12State = RHIBufferStateToDX12State(buffer.GetCurrentState());
-        D3D12_RESOURCE_STATES newDX12State = RHIBufferStateToDX12State(newState);
-        if (newDX12State == currentDX12State)
-        {
-            continue;
-        }
-        D3D12_RESOURCE_BARRIER resourceBarrier =
-            CD3DX12_RESOURCE_BARRIER::Transition(buffer.GetRawBuffer(), currentDX12State, newDX12State);
-
-        buffer.SetCurrentState(newState);
-        transitionBarriers.push_back(std::move(resourceBarrier));
-    }
-
-    if (!transitionBarriers.empty())
-    {
-        commandList->ResourceBarrier(transitionBarriers.size(), transitionBarriers.data());
-    }
+    commandList->Barrier(barrierGroups.size(), barrierGroups.data());
 }
 
 void DX12CommandList::BeginRendering(const RHIDrawResources& resources)

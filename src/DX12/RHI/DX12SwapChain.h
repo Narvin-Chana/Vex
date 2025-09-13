@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Vex/CommandQueueType.h>
-#include <Vex/RHIFwd.h>
+#include <RHI/RHIFwd.h>
 #include <Vex/UniqueHandle.h>
 
 #include <RHI/RHISwapChain.h>

@@ -403,16 +403,22 @@ void DX12Texture::FreeAllocation(RHIAllocator& allocator)
     }
 }
 
-RHITextureState DX12Texture::GetClearTextureState()
+RHITextureBarrier DX12Texture::GetClearTextureBarrier()
 {
     if (description.usage & TextureUsage::RenderTarget)
     {
-        return RHITextureState::RenderTarget;
+        return RHITextureBarrier{ *this,
+                                  RHIBarrierSync::RenderTarget,
+                                  RHIBarrierAccess::RenderTarget,
+                                  RHITextureLayout::RenderTarget };
     }
 
     if (description.usage & TextureUsage::DepthStencil)
     {
-        return RHITextureState::DepthWrite;
+        return RHITextureBarrier{ *this,
+                                  RHIBarrierSync::DepthStencil,
+                                  RHIBarrierAccess::DepthStencilWrite,
+                                  RHITextureLayout::DepthStencilWrite };
     }
 
     VEX_LOG(Fatal,

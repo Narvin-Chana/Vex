@@ -11,7 +11,6 @@
 #include <Vex/GfxBackend.h>
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
-#include <Vex/RHIBindings.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
@@ -22,38 +21,36 @@
 #include <Vex/ResourceBindingUtils.h>
 #include <Vex/Validation.h>
 
+#include <RHI/RHIBarrier.h>
+#include <RHI/RHIBindings.h>
+
 namespace vex
 {
 
 namespace CommandContext_Internal
 {
 
-static void TransitionBindings(RHICommandList& cmdList, const std::vector<RHITextureBinding>& rhiTextureBindings)
+static std::vector<RHIBufferBarrier> CreateBarriersFromBindings(const std::vector<RHIBufferBinding>& rhiBufferBindings)
 {
-    std::vector<std::pair<RHITexture&, RHITextureState>> textureStateTransitions;
-    textureStateTransitions.reserve(rhiTextureBindings.size());
-    for (const auto& texBinding : rhiTextureBindings)
+    std::vector<RHIBufferBarrier> barriers;
+    barriers.reserve(rhiBufferBindings.size());
+    for (const auto& rhiBinding : rhiBufferBindings)
     {
-        textureStateTransitions.emplace_back(*texBinding.texture,
-                                             ResourceBindingUtils::TextureBindingUsageToState(
-                                                 static_cast<TextureUsage::Type>(texBinding.binding.usage)));
+        barriers.push_back(ResourceBindingUtils::CreateBarrierFromRHIBinding(rhiBinding));
     }
-
-    cmdList.Transition(textureStateTransitions);
+    return barriers;
 }
 
-static void TransitionBindings(RHICommandList& cmdList, const std::vector<RHIBufferBinding>& rhiBufferBindings)
+static std::vector<RHITextureBarrier> CreateBarriersFromBindings(
+    const std::vector<RHITextureBinding>& rhiTextureBindings)
 {
-    std::vector<std::pair<RHIBuffer&, RHIBufferState::Flags>> bufferStateTransitions;
-    bufferStateTransitions.reserve(rhiBufferBindings.size());
-    for (const auto& bufferBinding : rhiBufferBindings)
+    std::vector<RHITextureBarrier> barriers;
+    barriers.reserve(rhiTextureBindings.size());
+    for (const auto& rhiBinding : rhiTextureBindings)
     {
-        bufferStateTransitions.emplace_back(
-            *bufferBinding.buffer,
-            ResourceBindingUtils::BufferBindingUsageToState(bufferBinding.binding.usage));
+        barriers.push_back(ResourceBindingUtils::CreateBarrierFromRHIBinding(rhiBinding));
     }
-
-    cmdList.Transition(bufferStateTransitions);
+    return barriers;
 }
 
 static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDescription& drawDesc,
@@ -201,7 +198,8 @@ void CommandContext::ClearTexture(const TextureBinding& binding,
     }
 
     RHITexture& texture = backend->GetRHITexture(binding.texture.handle);
-    cmdList->Transition(texture, texture.GetClearTextureState());
+    RHITextureBarrier barrier = texture.GetClearTextureBarrier();
+    cmdList->Barrier({}, { &barrier, 1 });
     cmdList->ClearTexture({ binding, NonNullPtr(texture) },
                           // This is a safe cast, textures can only contain one of the two usages (RT/DS).
                           static_cast<TextureUsage::Type>(binding.texture.description.usage &
@@ -336,9 +334,15 @@ void CommandContext::Copy(const Texture& source, const Texture& destination)
 
     RHITexture& sourceRHI = backend->GetRHITexture(source.handle);
     RHITexture& destinationRHI = backend->GetRHITexture(destination.handle);
-    std::array transitions{ std::pair<RHITexture&, RHITextureState>{ sourceRHI, RHITextureState::CopySource },
-                            std::pair<RHITexture&, RHITextureState>{ destinationRHI, RHITextureState::CopyDest } };
-    cmdList->Transition(transitions);
+    std::array barriers{ RHITextureBarrier{ sourceRHI,
+                                            RHIBarrierSync::Copy,
+                                            RHIBarrierAccess::CopySource,
+                                            RHITextureLayout::CopySource },
+                         RHITextureBarrier{ destinationRHI,
+                                            RHIBarrierSync::Copy,
+                                            RHIBarrierAccess::CopyDest,
+                                            RHITextureLayout::CopyDest } };
+    cmdList->Barrier({}, barriers);
     cmdList->Copy(sourceRHI, destinationRHI);
 }
 
@@ -353,6 +357,11 @@ void CommandContext::Copy(const Texture& source,
                           const Texture& destination,
                           std::span<const TextureCopyDescription> regionMappings)
 {
+    if (source.handle == destination.handle)
+    {
+        VEX_LOG(Fatal, "Cannot copy a texture to itself!");
+    }
+
     for (auto& mapping : regionMappings)
     {
         TextureUtil::ValidateTextureCopyDescription(source.description, destination.description, mapping);
@@ -360,9 +369,15 @@ void CommandContext::Copy(const Texture& source,
 
     RHITexture& sourceRHI = backend->GetRHITexture(source.handle);
     RHITexture& destinationRHI = backend->GetRHITexture(destination.handle);
-    std::array transitions{ std::pair<RHITexture&, RHITextureState>{ sourceRHI, RHITextureState::CopySource },
-                            std::pair<RHITexture&, RHITextureState>{ destinationRHI, RHITextureState::CopyDest } };
-    cmdList->Transition(transitions);
+    std::array barriers{ RHITextureBarrier{ sourceRHI,
+                                            RHIBarrierSync::Copy,
+                                            RHIBarrierAccess::CopySource,
+                                            RHITextureLayout::CopySource },
+                         RHITextureBarrier{ destinationRHI,
+                                            RHIBarrierSync::Copy,
+                                            RHIBarrierAccess::CopyDest,
+                                            RHITextureLayout::CopyDest } };
+    cmdList->Barrier({}, barriers);
     cmdList->Copy(sourceRHI, destinationRHI, regionMappings);
 }
 
@@ -370,28 +385,34 @@ void CommandContext::Copy(const Buffer& source, const Buffer& destination)
 {
     if (source.handle == destination.handle)
     {
-        VEX_LOG(Fatal, "Cannot copy a texture to itself!");
+        VEX_LOG(Fatal, "Cannot copy a buffer to itself!");
     }
 
     BufferUtil::ValidateSimpleBufferCopy(source.description, destination.description);
 
     RHIBuffer& sourceRHI = backend->GetRHIBuffer(source.handle);
     RHIBuffer& destinationRHI = backend->GetRHIBuffer(destination.handle);
-    std::array transitions{ std::pair<RHIBuffer&, RHIBufferState::Flags>{ sourceRHI, RHIBufferState::CopySource },
-                            std::pair<RHIBuffer&, RHIBufferState::Flags>{ destinationRHI, RHIBufferState::CopyDest } };
-    cmdList->Transition(transitions);
+    std::array barriers{ RHIBufferBarrier{ sourceRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource },
+                         RHIBufferBarrier{ destinationRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest } };
+    cmdList->Barrier(barriers, {});
     cmdList->Copy(sourceRHI, destinationRHI);
 }
 
 void CommandContext::Copy(const Buffer& source, const Buffer& destination, const BufferCopyDescription& regionMappings)
 {
+    if (source.handle == destination.handle)
+    {
+        VEX_LOG(Fatal, "Cannot copy a buffer to itself!");
+    }
+
     BufferUtil::ValidateBufferCopyDescription(source.description, destination.description, regionMappings);
 
     RHIBuffer& sourceRHI = backend->GetRHIBuffer(source.handle);
     RHIBuffer& destinationRHI = backend->GetRHIBuffer(destination.handle);
-    std::array transitions{ std::pair<RHIBuffer&, RHIBufferState::Flags>{ sourceRHI, RHIBufferState::CopySource },
-                            std::pair<RHIBuffer&, RHIBufferState::Flags>{ destinationRHI, RHIBufferState::CopyDest } };
-    cmdList->Transition(transitions);
+    std::array barriers{ RHIBufferBarrier{ sourceRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource },
+                         RHIBufferBarrier{ destinationRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest } };
+    cmdList->Barrier(barriers, {});
+
     cmdList->Copy(sourceRHI, destinationRHI, regionMappings);
 }
 
@@ -399,8 +420,12 @@ void CommandContext::Copy(const Buffer& source, const Texture& destination)
 {
     RHIBuffer& sourceRHI = backend->GetRHIBuffer(source.handle);
     RHITexture& destinationRHI = backend->GetRHITexture(destination.handle);
-    cmdList->Transition(sourceRHI, RHIBufferState::CopySource);
-    cmdList->Transition(destinationRHI, RHITextureState::CopyDest);
+    RHIBufferBarrier sourceBarrier{ sourceRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource };
+    RHITextureBarrier destinationBarrier{ destinationRHI,
+                                          RHIBarrierSync::Copy,
+                                          RHIBarrierAccess::CopyDest,
+                                          RHITextureLayout::CopyDest };
+    cmdList->Barrier({ &sourceBarrier, 1 }, { &destinationBarrier, 1 });
     cmdList->Copy(sourceRHI, destinationRHI);
 }
 
@@ -422,8 +447,13 @@ void CommandContext::Copy(const Buffer& source,
 
     RHIBuffer& sourceRHI = backend->GetRHIBuffer(source.handle);
     RHITexture& destinationRHI = backend->GetRHITexture(destination.handle);
-    cmdList->Transition(sourceRHI, RHIBufferState::CopySource);
-    cmdList->Transition(destinationRHI, RHITextureState::CopyDest);
+    RHIBufferBarrier sourceBarrier{ sourceRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource };
+    RHITextureBarrier destinationBarrier{ destinationRHI,
+                                          RHIBarrierSync::Copy,
+                                          RHIBarrierAccess::CopyDest,
+                                          RHITextureLayout::CopyDest };
+    cmdList->Barrier({ &sourceBarrier, 1 }, { &destinationBarrier, 1 });
+
     cmdList->Copy(sourceRHI, destinationRHI, copyDescriptions);
 }
 
@@ -468,10 +498,9 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer,
 
     ResourceMappedMemory(rhiStagingBuffer).SetData(data);
 
-    std::array transitions{ std::pair<RHIBuffer&, RHIBufferState::Flags>{ rhiStagingBuffer,
-                                                                          RHIBufferState::CopySource },
-                            std::pair<RHIBuffer&, RHIBufferState::Flags>{ rhiDestBuffer, RHIBufferState::CopyDest } };
-    cmdList->Transition(transitions);
+    std::array barriers{ RHIBufferBarrier{ rhiStagingBuffer, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource },
+                         RHIBufferBarrier{ rhiDestBuffer, RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest } };
+    cmdList->Barrier(barriers, {});
 
     // Schedule a copy from the staging buffer to the destination texture.
     cmdList->Copy(rhiStagingBuffer,
@@ -514,8 +543,12 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
     CommandContext_Internal::UploadTextureDataAligned(texture.description, uploadRegions, data, stagingBufferData);
     rhiStagingBuffer.Unmap();
 
-    cmdList->Transition(rhiStagingBuffer, RHIBufferState::CopySource);
-    cmdList->Transition(rhiDestTexture, RHITextureState::CopyDest);
+    RHIBufferBarrier stagingBufferBarrier{ rhiStagingBuffer, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource };
+    RHITextureBarrier textureBarrier{ rhiDestTexture,
+                                      RHIBarrierSync::Copy,
+                                      RHIBarrierAccess::CopyDest,
+                                      RHITextureLayout::CopyDest };
+    cmdList->Barrier({ &stagingBufferBarrier, 1 }, { &textureBarrier, 1 });
 
     const bool isFullUpload = uploadRegions.empty();
     if (isFullUpload)
@@ -614,18 +647,22 @@ void CommandContext::TransitionBindings(std::span<const ResourceBinding> resourc
 
     // This code will be greatly simplified when we add caching of transitions until the next GPU operation.
     // See: https://trello.com/c/kJWhd2iu
-    CommandContext_Internal::TransitionBindings(*cmdList, rhiTextureBindings);
-    CommandContext_Internal::TransitionBindings(*cmdList, rhiBufferBindings);
+    auto bufferBarriers = CommandContext_Internal::CreateBarriersFromBindings(rhiBufferBindings);
+    auto textureBarriers = CommandContext_Internal::CreateBarriersFromBindings(rhiTextureBindings);
+    cmdList->Barrier(bufferBarriers, textureBarriers);
 }
 
-void CommandContext::Transition(const Texture& texture, RHITextureState newState)
+void CommandContext::Barrier(const Texture& texture,
+                             RHIBarrierSync newSync,
+                             RHIBarrierAccess newAccess,
+                             RHITextureLayout newLayout)
 {
-    cmdList->Transition(backend->GetRHITexture(texture.handle), newState);
+    cmdList->TextureBarrier(backend->GetRHITexture(texture.handle), newSync, newAccess, newLayout);
 }
 
-void CommandContext::Transition(const Buffer& buffer, RHIBufferState::Type newState)
+void CommandContext::Barrier(const Buffer& buffer, RHIBarrierSync newSync, RHIBarrierAccess newAccess)
 {
-    cmdList->Transition(backend->GetRHIBuffer(buffer.handle), newState);
+    cmdList->BufferBarrier(backend->GetRHIBuffer(buffer.handle), newSync, newAccess);
 }
 
 std::vector<SyncToken> CommandContext::Submit()
@@ -643,11 +680,11 @@ void CommandContext::ExecuteInDrawContext(std::span<const TextureBinding> render
                                           std::optional<const TextureBinding> depthStencil,
                                           const std::function<void()>& callback)
 {
-    std::vector<std::pair<RHITexture&, RHITextureState>> transitions;
+    std::vector<RHITextureBarrier> barriers;
     RHIDrawResources drawResources =
-        ResourceBindingUtils::CollectRHIDrawResourcesAndTransitions(*backend, renderTargets, depthStencil, transitions);
+        ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(*backend, renderTargets, depthStencil, barriers);
 
-    cmdList->Transition(transitions);
+    cmdList->Barrier({}, barriers);
     cmdList->BeginRendering(drawResources);
     callback();
     cmdList->EndRendering();
@@ -674,13 +711,13 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDescri
               drawDesc.pixelShader.type);
 
     // Transition RTs/DepthStencil
-    std::vector<std::pair<RHITexture&, RHITextureState>> transitions;
+    std::vector<RHITextureBarrier> barriers;
     RHIDrawResources drawResources =
-        ResourceBindingUtils::CollectRHIDrawResourcesAndTransitions(*backend,
-                                                                    drawBindings.renderTargets,
-                                                                    drawBindings.depthStencil,
-                                                                    transitions);
-    cmdList->Transition(transitions);
+        ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(*backend,
+                                                                 drawBindings.renderTargets,
+                                                                 drawBindings.depthStencil,
+                                                                 barriers);
+    cmdList->Barrier({}, barriers);
 
     auto graphicsPSOKey = CommandContext_Internal::GetGraphicsPSOKeyFromDrawDesc(drawDesc, drawResources);
 
@@ -725,9 +762,9 @@ void CommandContext::SetVertexBuffers(u32 vertexBuffersFirstSlot, std::span<Buff
         return;
     }
 
-    std::vector<std::pair<RHIBuffer&, RHIBufferState::Flags>> transitions;
+    std::vector<RHIBufferBarrier> barriers;
     std::vector<RHIBufferBinding> rhiBindings;
-    transitions.reserve(vertexBuffers.size());
+    barriers.reserve(vertexBuffers.size());
     rhiBindings.reserve(vertexBuffers.size());
     for (const auto& vertexBuffer : vertexBuffers)
     {
@@ -736,10 +773,10 @@ void CommandContext::SetVertexBuffers(u32 vertexBuffersFirstSlot, std::span<Buff
             VEX_LOG(Fatal, "A vertex buffer must have a valid strideByteSize!");
         }
         RHIBuffer& buffer = backend->GetRHIBuffer(vertexBuffer.buffer.handle);
-        transitions.emplace_back(buffer, RHIBufferState::VertexBuffer);
         rhiBindings.emplace_back(vertexBuffer, NonNullPtr(buffer));
+        barriers.push_back(RHIBufferBarrier{ buffer, RHIBarrierSync::VertexInput, RHIBarrierAccess::VertexInputRead });
     }
-    cmdList->Transition(transitions);
+    cmdList->Barrier(barriers, {});
     cmdList->SetVertexBuffers(vertexBuffersFirstSlot, rhiBindings);
 }
 
@@ -752,7 +789,7 @@ void CommandContext::SetIndexBuffer(std::optional<BufferBinding> indexBuffer)
 
     RHIBuffer& buffer = backend->GetRHIBuffer(indexBuffer->buffer.handle);
 
-    cmdList->Transition(buffer, RHIBufferState::IndexBuffer);
+    cmdList->BufferBarrier(buffer, RHIBarrierSync::VertexInput, RHIBarrierAccess::VertexInputRead);
 
     RHIBufferBinding binding{ *indexBuffer, NonNullPtr(buffer) };
     cmdList->SetIndexBuffer(binding);

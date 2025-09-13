@@ -1,7 +1,8 @@
 ﻿#include "VkTexture.h"
 
 #include <Vex/Bindings.h>
-#include <Vex/RHIBindings.h>
+
+#include <RHI/RHIBindings.h>
 
 #include <Vulkan/RHI/VkAllocator.h>
 #include <Vulkan/RHI/VkCommandPool.h>
@@ -261,9 +262,13 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
     return ret;
 }
 
-RHITextureState VkTexture::GetClearTextureState()
+RHITextureBarrier VkTexture::GetClearTextureBarrier()
 {
-    return RHITextureState::ShaderReadWrite;
+    // TMPO AllCommands, need to figure out clearing in a clean way.
+    return RHITextureBarrier(*this,
+                             RHIBarrierSync::AllCommands,
+                             RHIBarrierAccess::CopyDest,
+                             RHITextureLayout::CopyDest);
 }
 
 void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
@@ -313,7 +318,7 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
     createInfo.format = TextureFormatToVulkan(description.format);
     createInfo.sharingMode = ::vk::SharingMode::eExclusive;
     createInfo.tiling = ::vk::ImageTiling::eOptimal;
-    createInfo.initialLayout = GetLayout();
+    createInfo.initialLayout = ::vk::ImageLayout::eUndefined;
     createInfo.mipLevels = description.mips;
     createInfo.samples = ::vk::SampleCountFlagBits::e1;
 
@@ -381,40 +386,3 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
 }
 
 } // namespace vex::vk
-
-namespace vex::TextureUtil
-{
-
-::vk::ImageLayout TextureStateFlagToImageLayout(RHITextureState flags)
-{
-    using enum RHITextureState;
-    using enum ::vk::ImageLayout;
-
-    switch (flags)
-    {
-    case RenderTarget:
-        return eColorAttachmentOptimal;
-    case ShaderReadWrite:
-        return eGeneral;
-    case ShaderResource:
-        return eShaderReadOnlyOptimal;
-    case DepthRead:
-        return eDepthReadOnlyOptimal;
-    case DepthWrite:
-        return eDepthAttachmentOptimal;
-    case CopySource:
-        return eTransferSrcOptimal;
-    case CopyDest:
-        return eTransferDstOptimal;
-    case Present:
-        return ePresentSrcKHR;
-    case Common:
-        return eUndefined;
-    default:
-        VEX_ASSERT(false, "Flag to layout conversion not supported");
-        return eUndefined;
-    };
-    return eUndefined;
-}
-
-} // namespace vex::TextureUtil

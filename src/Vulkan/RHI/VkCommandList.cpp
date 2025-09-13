@@ -6,8 +6,10 @@
 #include <Vex/Bindings.h>
 #include <Vex/ByteUtils.h>
 #include <Vex/DrawHelpers.h>
-#include <Vex/RHIBindings.h>
 
+#include <RHI/RHIBindings.h>
+
+#include <Vulkan/RHI/VkBarrier.h>
 #include <Vulkan/RHI/VkBuffer.h>
 #include <Vulkan/RHI/VkDescriptorPool.h>
 #include <Vulkan/RHI/VkPipelineState.h>
@@ -200,7 +202,7 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
         };
 
         commandBuffer->clearDepthStencilImage(binding.texture->GetResource(),
-                                              binding.texture->GetLayout(),
+                                              RHITextureLayoutToVulkan(binding.texture->GetLastLayout()),
                                               &clearVal,
                                               1,
                                               &ranges);
@@ -218,224 +220,87 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
         };
 
         commandBuffer->clearColorImage(binding.texture->GetResource(),
-                                       binding.texture->GetLayout(),
+                                       RHITextureLayoutToVulkan(binding.texture->GetLastLayout()),
                                        &clearVal,
                                        1,
                                        &ranges);
     }
 }
 
-static ::vk::ImageMemoryBarrier2 GetMemoryBarrierFrom(VkTexture& texture, RHITextureState flags)
+void VkCommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
+                            std::span<const RHITextureBarrier> textureBarriers)
 {
-    using namespace ::vk;
-    const ImageLayout prevLayout = texture.GetLayout();
-    const ImageLayout nextLayout = TextureUtil::TextureStateFlagToImageLayout(flags);
+    std::vector<::vk::BufferMemoryBarrier2> vkBufferBarriers;
+    vkBufferBarriers.reserve(bufferBarriers.size());
+    std::vector<::vk::ImageMemoryBarrier2> vkTextureBarriers;
+    vkTextureBarriers.reserve(textureBarriers.size());
 
-    const auto desc = texture.GetDescription();
-
-    ImageMemoryBarrier2 barrier{
-        .oldLayout = prevLayout,
-        .newLayout = nextLayout,
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = texture.GetResource(),
-        .subresourceRange = { .aspectMask = VkTextureUtil::GetFormatAspectFlags(desc.format),
-                              .baseMipLevel = 0,
-                              .levelCount = desc.mips,
-                              .baseArrayLayer = 0,
-                              .layerCount = desc.GetArraySize() },
-    };
-
-    const bool isBackbufferImage = texture.IsBackBufferTexture();
-
-    // === SOURCE STAGE AND ACCESS ===
-    switch (prevLayout)
+    for (auto& bufferBarrier : bufferBarriers)
     {
-    case ImageLayout::eUndefined:
-        // Undefined layout means no previous access, so no source access mask needed
-        barrier.srcAccessMask = AccessFlagBits2::eNone;
-        // Swapchain images need to sync with acquire operation
-        // Regular textures can start from top of pipe
-        barrier.srcStageMask =
-            isBackbufferImage ? PipelineStageFlagBits2::eColorAttachmentOutput : PipelineStageFlagBits2::eTopOfPipe;
-        break;
-    case ImageLayout::eColorAttachmentOptimal:
-        barrier.srcAccessMask = AccessFlagBits2::eColorAttachmentWrite | AccessFlagBits2::eColorAttachmentRead;
-        barrier.srcStageMask = PipelineStageFlagBits2::eColorAttachmentOutput;
-        break;
-    case ImageLayout::eDepthStencilAttachmentOptimal:
-    case ImageLayout::eDepthAttachmentOptimal:
-        barrier.srcAccessMask =
-            AccessFlagBits2::eDepthStencilAttachmentRead | AccessFlagBits2::eDepthStencilAttachmentWrite;
-        barrier.srcStageMask = PipelineStageFlagBits2::eEarlyFragmentTests | PipelineStageFlagBits2::eLateFragmentTests;
-        break;
-    case ImageLayout::eShaderReadOnlyOptimal:
-        barrier.srcAccessMask = AccessFlagBits2::eShaderRead;
-        barrier.srcStageMask = PipelineStageFlagBits2::eVertexShader | PipelineStageFlagBits2::eFragmentShader |
-                               PipelineStageFlagBits2::eComputeShader;
-        break;
-    case ImageLayout::eTransferSrcOptimal:
-        barrier.srcAccessMask = AccessFlagBits2::eTransferRead;
-        barrier.srcStageMask = PipelineStageFlagBits2::eTransfer;
-        break;
-    case ImageLayout::eTransferDstOptimal:
-        barrier.srcAccessMask = AccessFlagBits2::eTransferWrite;
-        barrier.srcStageMask = PipelineStageFlagBits2::eTransfer;
-        break;
-    case ImageLayout::ePresentSrcKHR:
-        // Present layout has no specific access requirements
-        barrier.srcAccessMask = AccessFlagBits2::eNone;
-        barrier.srcStageMask =
-            isBackbufferImage ? PipelineStageFlagBits2::eColorAttachmentOutput : PipelineStageFlagBits2::eAllCommands;
-        break;
-    case ImageLayout::eGeneral:
-        // General layout allows any access
-        barrier.srcAccessMask = AccessFlagBits2::eMemoryRead | AccessFlagBits2::eMemoryWrite;
-        barrier.srcStageMask = PipelineStageFlagBits2::eAllCommands;
-        break;
-    default:
-        VEX_ASSERT(false, "Unsupported source image layout: {}", to_string(prevLayout));
-        break;
+        ::vk::BufferMemoryBarrier2 vkBarrier = {};
+        vkBarrier.srcStageMask = RHIBarrierSyncToVulkan(bufferBarrier.srcSync);
+        vkBarrier.dstStageMask = RHIBarrierSyncToVulkan(bufferBarrier.dstSync);
+        vkBarrier.srcAccessMask = RHIBarrierAccessToVulkan(bufferBarrier.srcAccess);
+        vkBarrier.dstAccessMask = RHIBarrierAccessToVulkan(bufferBarrier.dstAccess);
+        vkBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        vkBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        vkBarrier.buffer = bufferBarrier.buffer->GetNativeBuffer();
+        // Buffer range - for now, barrier entire buffer.
+        vkBarrier.offset = 0;
+        vkBarrier.size = std::numeric_limits<u64>::max();
+        vkBufferBarriers.push_back(std::move(vkBarrier));
+
+        // Update last sync and access.
+        bufferBarrier.buffer->SetLastSync(bufferBarrier.dstSync);
+        bufferBarrier.buffer->SetLastAccess(bufferBarrier.dstAccess);
+    }
+    for (auto& textureBarrier : textureBarriers)
+    {
+        const TextureDescription& desc = textureBarrier.texture->GetDescription();
+
+        ::vk::ImageMemoryBarrier2 vkBarrier = {};
+        if (textureBarrier.texture->IsBackBufferTexture() && textureBarrier.srcLayout == RHITextureLayout::Undefined)
+        {
+            // Synchronize with vkAcquireNextImageKHR
+            vkBarrier.srcStageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput;
+            vkBarrier.srcAccessMask = ::vk::AccessFlagBits2::eNone;
+        }
+        else
+        {
+            vkBarrier.srcStageMask = RHIBarrierSyncToVulkan(textureBarrier.srcSync);
+            vkBarrier.srcAccessMask = RHIBarrierAccessToVulkan(textureBarrier.srcAccess);
+        }
+        vkBarrier.oldLayout = RHITextureLayoutToVulkan(textureBarrier.srcLayout);
+        vkBarrier.dstStageMask = RHIBarrierSyncToVulkan(textureBarrier.dstSync);
+        vkBarrier.dstAccessMask = RHIBarrierAccessToVulkan(textureBarrier.dstAccess);
+        vkBarrier.newLayout = RHITextureLayoutToVulkan(textureBarrier.dstLayout);
+        vkBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        vkBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        vkBarrier.image = textureBarrier.texture->GetResource();
+        vkBarrier.subresourceRange = { .aspectMask = VkTextureUtil::GetFormatAspectFlags(desc.format),
+                                       .baseMipLevel = 0,
+                                       .levelCount = desc.mips,
+                                       .baseArrayLayer = 0,
+                                       .layerCount = desc.GetArraySize() },
+
+        vkTextureBarriers.push_back(std::move(vkBarrier));
+
+        // Update last sync, access and layout.
+        textureBarrier.texture->SetLastSync(textureBarrier.dstSync);
+        textureBarrier.texture->SetLastAccess(textureBarrier.dstAccess);
+        textureBarrier.texture->SetLastLayout(textureBarrier.dstLayout);
     }
 
-    // === DESTINATION STAGE AND ACCESS ===
-    switch (nextLayout)
-    {
-    case ImageLayout::eColorAttachmentOptimal:
-        barrier.dstAccessMask = AccessFlagBits2::eColorAttachmentWrite | AccessFlagBits2::eColorAttachmentRead;
-        barrier.dstStageMask = PipelineStageFlagBits2::eColorAttachmentOutput;
-        break;
-    case ImageLayout::eDepthStencilAttachmentOptimal:
-    case ImageLayout::eDepthAttachmentOptimal:
-        barrier.dstAccessMask =
-            AccessFlagBits2::eDepthStencilAttachmentRead | AccessFlagBits2::eDepthStencilAttachmentWrite;
-        barrier.dstStageMask = PipelineStageFlagBits2::eEarlyFragmentTests;
-        break;
-    case ImageLayout::eShaderReadOnlyOptimal:
-        barrier.dstAccessMask = AccessFlagBits2::eShaderRead;
-        barrier.dstStageMask = PipelineStageFlagBits2::eVertexShader | PipelineStageFlagBits2::eFragmentShader |
-                               PipelineStageFlagBits2::eComputeShader;
-        break;
-    case ImageLayout::eTransferSrcOptimal:
-        barrier.dstAccessMask = AccessFlagBits2::eTransferRead;
-        barrier.dstStageMask = PipelineStageFlagBits2::eTransfer;
-        break;
-    case ImageLayout::eTransferDstOptimal:
-        barrier.dstAccessMask = AccessFlagBits2::eTransferWrite;
-        barrier.dstStageMask = PipelineStageFlagBits2::eTransfer;
-        break;
-    case ImageLayout::ePresentSrcKHR:
-        // Present layout preparation
-        barrier.dstAccessMask = AccessFlagBits2::eNone;
-        // Swapchain images need to sync with present operation
-        barrier.dstStageMask =
-            isBackbufferImage ? PipelineStageFlagBits2::eColorAttachmentOutput : PipelineStageFlagBits2::eAllCommands;
-        break;
-    case ImageLayout::eGeneral:
-        // General layout allows any access
-        barrier.dstAccessMask = AccessFlagBits2::eMemoryRead | AccessFlagBits2::eMemoryWrite;
-        barrier.dstStageMask = PipelineStageFlagBits2::eAllCommands;
-        break;
-    case ImageLayout::eUndefined:
-        // Should never transition TO undefined
-        VEX_ASSERT(false, "Cannot transition TO undefined layout");
-        break;
-    default:
-        VEX_ASSERT(false, "Unsupported destination image layout: {}", to_string(nextLayout));
-        break;
-    }
-
-    return barrier;
-}
-
-static ::vk::BufferMemoryBarrier2 GetBufferBarrierFrom(VkBuffer& buffer, RHIBufferState::Flags flags)
-{
-    ::vk::AccessFlags2 srcAccessMask = BufferUtil::GetAccessFlagsFromBufferState(buffer.GetCurrentState());
-    ::vk::AccessFlags2 dstAccessMask = BufferUtil::GetAccessFlagsFromBufferState(flags);
-
-    // TODO: Figure out how to be more specific with stages
-    return { .srcStageMask = ::vk::PipelineStageFlagBits2::eAllCommands,
-             .srcAccessMask = srcAccessMask,
-             .dstStageMask = ::vk::PipelineStageFlagBits2::eAllCommands,
-             .dstAccessMask = dstAccessMask,
-             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-             .buffer = buffer.GetNativeBuffer(),
-             .offset = 0,
-             .size = buffer.GetDescription().byteSize };
-}
-
-void VkCommandList::Transition(RHITexture& texture, RHITextureState newState)
-{
-    RHITexture::ValidateStateVersusQueueType(newState, type);
-
-    // We still add the barrier, even if the states are equal for synchronization purposes.
-
-    auto memBarrier = GetMemoryBarrierFrom(texture, newState);
-    commandBuffer->pipelineBarrier2({ .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &memBarrier });
-
-    texture.SetCurrentState(newState);
-}
-
-void VkCommandList::Transition(RHIBuffer& buffer, RHIBufferState::Flags newState)
-{
-    // We still add the barrier, even if the states are equal for synchronization purposes.
-
-    auto memBarrier = GetBufferBarrierFrom(buffer, newState);
-    commandBuffer->pipelineBarrier2({ .bufferMemoryBarrierCount = 1, .pBufferMemoryBarriers = &memBarrier });
-
-    buffer.SetCurrentState(newState);
-}
-
-void VkCommandList::Transition(std::span<std::pair<RHITexture&, RHITextureState>> textureNewStatePairs)
-{
-    std::vector<::vk::ImageMemoryBarrier2> barriers;
-
-    for (auto& [texture, flags] : textureNewStatePairs)
-    {
-        RHITexture::ValidateStateVersusQueueType(flags, type);
-        // We still add the barrier, even if the states are equal for synchronization purposes.
-        barriers.push_back(GetMemoryBarrierFrom(texture, flags));
-    }
-
-    // No transitions means our job is done.
-    if (barriers.empty())
+    if (vkBufferBarriers.empty() && vkTextureBarriers.empty())
     {
         return;
     }
 
-    commandBuffer->pipelineBarrier2(
-        { .imageMemoryBarrierCount = static_cast<u32>(barriers.size()), .pImageMemoryBarriers = barriers.data() });
-
-    for (auto& [rhiTexture, flags] : textureNewStatePairs)
-    {
-        rhiTexture.SetCurrentState(flags);
-    }
-}
-
-void VkCommandList::Transition(std::span<std::pair<RHIBuffer&, RHIBufferState::Flags>> bufferNewStatePairs)
-{
-    std::vector<::vk::BufferMemoryBarrier2> barriers;
-
-    for (auto& [buffer, flags] : bufferNewStatePairs)
-    {
-        // We still add the barrier, even if the states are equal for synchronization purposes.
-        barriers.push_back(GetBufferBarrierFrom(buffer, flags));
-    }
-
-    // No transitions means our job is done.
-    if (barriers.empty())
-    {
-        return;
-    }
-
-    commandBuffer->pipelineBarrier2(
-        { .bufferMemoryBarrierCount = static_cast<u32>(barriers.size()), .pBufferMemoryBarriers = barriers.data() });
-
-    for (auto& [rhiTexture, flags] : bufferNewStatePairs)
-    {
-        rhiTexture.SetCurrentState(flags);
-    }
+    ::vk::DependencyInfo info{ .bufferMemoryBarrierCount = static_cast<u32>(vkBufferBarriers.size()),
+                               .pBufferMemoryBarriers = vkBufferBarriers.data(),
+                               .imageMemoryBarrierCount = static_cast<u32>(vkTextureBarriers.size()),
+                               .pImageMemoryBarriers = vkTextureBarriers.data() };
+    commandBuffer->pipelineBarrier2(info);
 }
 
 void VkCommandList::BeginRendering(const RHIDrawResources& resources)
@@ -457,7 +322,7 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
         {
             return ::vk::RenderingAttachmentInfo{
                 .imageView = rtBindings.texture->GetOrCreateImageView(rtBindings.binding, TextureUsage::RenderTarget),
-                .imageLayout = rtBindings.texture->GetLayout(),
+                .imageLayout = RHITextureLayoutToVulkan(rtBindings.texture->GetLastLayout()),
             };
         });
 
@@ -467,7 +332,7 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
         depthInfo = ::vk::RenderingAttachmentInfo{
             .imageView = resources.depthStencil->texture->GetOrCreateImageView(resources.depthStencil->binding,
                                                                                TextureUsage::DepthStencil),
-            .imageLayout = resources.depthStencil->texture->GetLayout(),
+            .imageLayout = RHITextureLayoutToVulkan(resources.depthStencil->texture->GetLastLayout()),
         };
     };
 
@@ -661,7 +526,7 @@ void VkCommandList::Copy(RHIBuffer& src,
 
     commandBuffer->copyBufferToImage(src.GetNativeBuffer(),
                                      dst.GetResource(),
-                                     dst.GetLayout(),
+                                     RHITextureLayoutToVulkan(dst.GetLastLayout()),
                                      static_cast<u32>(regions.size()),
                                      regions.data());
 }

@@ -4,10 +4,10 @@
 
 #include <Vex/Containers/FreeList.h>
 #include <Vex/Hash.h>
-#include <Vex/RHIFwd.h>
 #include <Vex/Resource.h>
 
 #include <RHI/RHIAllocator.h>
+#include <RHI/RHIFwd.h>
 #include <RHI/RHITexture.h>
 
 #include <DX12/DX12DescriptorHeap.h>
@@ -68,7 +68,7 @@ public:
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
     virtual void FreeAllocation(RHIAllocator& allocator) override;
 
-    virtual RHITextureState GetClearTextureState() override;
+    virtual RHITextureBarrier GetClearTextureBarrier() override;
 
     ID3D12Resource* GetRawTexture()
     {

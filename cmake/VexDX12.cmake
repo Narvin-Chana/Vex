@@ -37,6 +37,8 @@ function(setup_dx12_backend TARGET)
     set(VEX_DX12_SOURCES 
         # DX12 RHI
         "src/DX12/DX12RHIFwd.h"
+        "src/DX12/RHI/DX12Barrier.h"
+        "src/DX12/RHI/DX12Barrier.cpp"
         "src/DX12/RHI/DX12Buffer.h"
         "src/DX12/RHI/DX12Buffer.cpp"
         "src/DX12/RHI/DX12RHI.h"
@@ -75,8 +77,6 @@ function(setup_dx12_backend TARGET)
         "src/DX12/DX12Debug.cpp"
         "src/DX12/DX12TextureSampler.h"
         "src/DX12/DX12TextureSampler.cpp"
-        "src/DX12/DX12States.h"
-        "src/DX12/DX12States.cpp"
         "src/DX12/DX12GraphicsPipeline.h"
         "src/DX12/DX12GraphicsPipeline.cpp"
         "src/DX12/DX12ShaderTable.h"

@@ -178,8 +178,12 @@ HelloCubeApplication::HelloCubeApplication()
             std::as_bytes(std::span(pixel)),
             { { vex::TextureUploadRegion{ .mip = 0, .offset = { 10, 10, 0 }, .extent = { 1, 1, 1 } } } });
 
-        // The texture will now only be used as a read-only shader resource. Avoids having to transition it later on.
-        ctx.Transition(uvGuideTexture, vex::RHITextureState::ShaderResource);
+        // The texture will now only be used as a read-only shader resource. Avoids having to place a barrier later on.
+        // We use PixelShader sync since it will only be used there.
+        ctx.Barrier(uvGuideTexture,
+                    vex::RHIBarrierSync::PixelShader,
+                    vex::RHIBarrierAccess::ShaderRead,
+                    vex::RHITextureLayout::ShaderResource);
 
         stbi_image_free(imageData);
     }

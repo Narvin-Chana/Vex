@@ -28,28 +28,22 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
         (desc.usage & BufferUsage::ReadWriteBuffer) ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
                                                     : D3D12_RESOURCE_FLAG_NONE);
     CD3DX12_HEAP_PROPERTIES heapProps;
-    D3D12_RESOURCE_STATES dxInitialState = D3D12_RESOURCE_STATE_COMMON;
 
     if (desc.memoryLocality == ResourceMemoryLocality::CPURead)
     {
         heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK);
-        dxInitialState = D3D12_RESOURCE_STATE_COPY_DEST;
-        currentState = RHIBufferState::CopyDest;
     }
     else if (desc.memoryLocality == ResourceMemoryLocality::CPUWrite)
     {
         heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-        dxInitialState = D3D12_RESOURCE_STATE_GENERIC_READ;
-        currentState = RHIBufferState::ShaderResource;
     }
     else
     {
         heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-        // Default state is conserved.
     }
 
 #if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
-    allocation = allocator.AllocateResource(buffer, bufferDesc, desc.memoryLocality, dxInitialState);
+    allocation = allocator.AllocateResource(buffer, bufferDesc, desc.memoryLocality, D3D12_RESOURCE_STATE_COMMON);
 #else
     chk << device->CreateCommittedResource(&heapProps,
                                            D3D12_HEAP_FLAG_NONE,

@@ -6,22 +6,20 @@
 #include <vector>
 
 #include <Vex/CommandQueueType.h>
-#include <Vex/RHIFwd.h>
 #include <Vex/ResourceCopy.h>
 #include <Vex/Synchronization.h>
 #include <Vex/Types.h>
 
+#include <RHI/RHIBarrier.h>
 #include <RHI/RHIBuffer.h>
+#include <RHI/RHIFwd.h>
 #include <RHI/RHITexture.h>
 
 namespace vex
 {
 struct RHIDrawResources;
-struct DrawResources;
-struct ConstantBinding;
-struct ResourceBinding;
-struct RHITextureBinding;
 struct RHIBufferBinding;
+struct RHITextureBinding;
 struct InputAssembly;
 
 enum class RHICommandListState : u8
@@ -58,11 +56,10 @@ public:
                               TextureUsage::Type usage,
                               const TextureClearValue& clearValue) = 0;
 
-    virtual void Transition(RHITexture& texture, RHITextureState newState) = 0;
-    virtual void Transition(RHIBuffer& texture, RHIBufferState::Flags newState) = 0;
-    // Ideal for batching multiple resource transitions together.
-    virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState>> textureNewStatePairs) = 0;
-    virtual void Transition(std::span<std::pair<RHIBuffer&, RHIBufferState::Flags>> bufferNewStatePairs) = 0;
+    void BufferBarrier(RHIBuffer& buffer, RHIBarrierSync sync, RHIBarrierAccess access);
+    void TextureBarrier(RHITexture& texture, RHIBarrierSync sync, RHIBarrierAccess access, RHITextureLayout layout);
+    virtual void Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
+                         std::span<const RHITextureBarrier> textureBarriers) = 0;
 
     // Need to be called before and after all draw commands with the same DrawBinding
     virtual void BeginRendering(const RHIDrawResources& resources) = 0;

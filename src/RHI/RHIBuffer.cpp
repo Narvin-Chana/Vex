@@ -1,7 +1,5 @@
 #include "RHIBuffer.h"
 
-#include <Vex/RHIImpl/RHIBuffer.h>
-
 namespace vex
 {
 

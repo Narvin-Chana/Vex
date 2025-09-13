@@ -32,10 +32,8 @@ public:
                               TextureUsage::Type usage,
                               const TextureClearValue& clearValue) override;
 
-    virtual void Transition(RHITexture& texture, RHITextureState newState) override;
-    virtual void Transition(RHIBuffer& buffer, RHIBufferState::Flags newState) override;
-    virtual void Transition(std::span<std::pair<RHITexture&, RHITextureState>> textureNewStatePairs) override;
-    virtual void Transition(std::span<std::pair<RHIBuffer&, RHIBufferState::Flags>> bufferNewStatePairs) override;
+    virtual void Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
+                         std::span<const RHITextureBarrier> textureBarriers) override;
 
     virtual void BeginRendering(const RHIDrawResources& resources) override;
     virtual void EndRendering() override;

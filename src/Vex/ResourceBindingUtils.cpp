@@ -9,39 +9,58 @@
 namespace vex
 {
 
-RHITextureState ResourceBindingUtils::TextureBindingUsageToState(TextureUsage::Type usage)
+RHIBufferBarrier ResourceBindingUtils::CreateBarrierFromRHIBinding(const RHIBufferBinding& rhiBufferBinding)
 {
-    switch (usage)
-    {
-    case TextureUsage::DepthStencil:
-        return RHITextureState::DepthRead;
-    case TextureUsage::ShaderRead:
-        return RHITextureState::ShaderResource;
-    case TextureUsage::ShaderReadWrite:
-        return RHITextureState::ShaderReadWrite;
-    case TextureUsage::RenderTarget:
-        return RHITextureState::RenderTarget;
-    default:
-        VEX_LOG(Fatal, "TextureBindingUsage to RHITextureState not supported")
-    }
-    std::unreachable();
-}
+    const auto& [binding, buffer] = rhiBufferBinding;
 
-RHIBufferState::Flags ResourceBindingUtils::BufferBindingUsageToState(BufferBindingUsage usage)
-{
-    switch (usage)
+    // For now bindings are only used for Graphics passes (draws).
+    // TODO: In the future we could improve this by considering individual shader stages (eg: pixel shader).
+    RHIBarrierSync dstSync = RHIBarrierSync::AllGraphics;
+    RHIBarrierAccess dstAccess = RHIBarrierAccess::NoAccess;
+    switch (binding.usage)
     {
     case BufferBindingUsage::ConstantBuffer:
-    case BufferBindingUsage::ByteAddressBuffer:
+        dstAccess = RHIBarrierAccess::UniformRead;
+        break;
     case BufferBindingUsage::StructuredBuffer:
-        return RHIBufferState::ShaderResource;
-    case BufferBindingUsage::RWByteAddressBuffer:
+    case BufferBindingUsage::ByteAddressBuffer:
+        dstAccess = RHIBarrierAccess::ShaderRead;
+        break;
     case BufferBindingUsage::RWStructuredBuffer:
-        return RHIBufferState::ShaderReadWrite;
+    case BufferBindingUsage::RWByteAddressBuffer:
+        dstAccess = RHIBarrierAccess::ShaderReadWrite;
+        break;
     default:
-        VEX_LOG(Fatal, "BufferBindingUsage to RHIBufferState not supported")
+        VEX_LOG(Fatal, "Invalid buffer binding!");
     }
-    std::unreachable();
+
+    return RHIBufferBarrier{ buffer, dstSync, dstAccess };
+}
+
+RHITextureBarrier ResourceBindingUtils::CreateBarrierFromRHIBinding(const RHITextureBinding& rhiTextureBinding)
+{
+    const auto& [binding, texture] = rhiTextureBinding;
+
+    // For now bindings are only used for Graphics passes (draws).
+    // TODO: In the future we could improve this by considering individual shader stages (eg: pixel shader).
+    RHIBarrierSync dstSync = RHIBarrierSync::AllGraphics;
+    RHIBarrierAccess dstAccess = RHIBarrierAccess::NoAccess;
+    RHITextureLayout dstLayout = RHITextureLayout::Common;
+    switch (binding.usage)
+    {
+    case TextureBindingUsage::ShaderRead:
+        dstAccess = RHIBarrierAccess::ShaderRead;
+        dstLayout = RHITextureLayout::ShaderResource;
+        break;
+    case TextureBindingUsage::ShaderReadWrite:
+        dstAccess = RHIBarrierAccess::ShaderReadWrite;
+        dstLayout = RHITextureLayout::UnorderedAccess;
+        break;
+    default:
+        VEX_LOG(Fatal, "Invalid texture binding!");
+    }
+
+    return RHITextureBarrier{ texture, dstSync, dstAccess, dstLayout };
 }
 
 void ResourceBindingUtils::ValidateResourceBindings(std::span<const ResourceBinding> bindings)
@@ -78,30 +97,45 @@ void ResourceBindingUtils::CollectRHIResources(GfxBackend& backend,
     }
 }
 
-RHIDrawResources ResourceBindingUtils::CollectRHIDrawResourcesAndTransitions(
-    GfxBackend& backend,
-    std::span<const TextureBinding> renderTargets,
-    std::optional<TextureBinding> depthStencil,
-    std::vector<std::pair<RHITexture&, RHITextureState>>& transitions)
+RHIDrawResources ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(GfxBackend& backend,
+                                                                          std::span<const TextureBinding> renderTargets,
+                                                                          std::optional<TextureBinding> depthStencil,
+                                                                          std::vector<RHITextureBarrier>& barriers)
 {
     RHIDrawResources drawResources;
     drawResources.renderTargets.reserve(renderTargets.size());
 
     std::size_t totalSize = renderTargets.size() + static_cast<std::size_t>(depthStencil.has_value());
-    transitions.reserve(transitions.size() + totalSize);
+    barriers.reserve(barriers.size() + totalSize);
 
     for (const auto& renderTarget : renderTargets)
     {
-        auto& tex = backend.GetRHITexture(renderTarget.texture.handle);
-        transitions.emplace_back(tex, RHITextureState::RenderTarget);
-        drawResources.renderTargets.emplace_back(renderTarget, NonNullPtr(tex));
+        auto& texture = backend.GetRHITexture(renderTarget.texture.handle);
+        barriers.push_back(RHITextureBarrier{
+            texture,
+            RHIBarrierSync::RenderTarget,
+            // This technically doesn't support Vk's RenderTargetRead...
+            RHIBarrierAccess::RenderTarget,
+            RHITextureLayout::RenderTarget,
+        });
+        drawResources.renderTargets.emplace_back(renderTarget, texture);
     }
     if (depthStencil.has_value())
     {
-        auto& tex = backend.GetRHITexture(depthStencil->texture.handle);
-        // TODO: What about if we want to do DepthRead? Would require a flag.
-        transitions.emplace_back(tex, RHITextureState::DepthWrite);
-        drawResources.depthStencil = RHITextureBinding{ .binding = *depthStencil, .texture = tex };
+        auto& texture = backend.GetRHITexture(depthStencil->texture.handle);
+
+        // TODO: This deduces depth and/or stencil from the texture's format, ideally we'd pass this info along in
+        // the binding somehow.
+        bool supportsStencil = DoesFormatSupportStencil(texture.GetDescription().format);
+
+        barriers.push_back(RHITextureBarrier{
+            texture,
+            supportsStencil ? RHIBarrierSync::DepthStencil : RHIBarrierSync::Depth,
+            // TODO: What about if we want to do DepthRead? Would require a flag in the binding!
+            RHIBarrierAccess::DepthStencil,
+            RHITextureLayout::DepthStencilWrite,
+        });
+        drawResources.depthStencil = RHITextureBinding{ .binding = *depthStencil, .texture = texture };
     }
 
     return drawResources;

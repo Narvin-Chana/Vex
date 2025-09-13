@@ -34,8 +34,15 @@ DX12FeatureChecker::DX12FeatureChecker(const ComPtr<ID3D12Device>& device)
     chk << device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
     chk << device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1));
     chk << device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &options7, sizeof(options7));
-    chk << device->CheckFeatureSupport(D3D12_FEATURE_FEATURE_LEVELS, &featureLevels, sizeof(featureLevels));
+    chk << device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS12, &options12, sizeof(options12));
 
+    // Vex requires DX12's EnhancedBarriers for GPU resource synchronization.
+    if (!options12.EnhancedBarriersSupported)
+    {
+        VEX_LOG(Fatal, "DX12RHI incompatible: Vex DX12RHI uses Enhanced Barriers which are not supported by your GPU.");
+    }
+
+    chk << device->CheckFeatureSupport(D3D12_FEATURE_FEATURE_LEVELS, &featureLevels, sizeof(featureLevels));
     // List of shader models to check, from highest to lowest
     static const D3D_SHADER_MODEL shaderModelsToCheck[] = {
         D3D_SHADER_MODEL_6_9, D3D_SHADER_MODEL_6_8, D3D_SHADER_MODEL_6_7, D3D_SHADER_MODEL_6_6, D3D_SHADER_MODEL_6_5,

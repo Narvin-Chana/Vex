@@ -3,7 +3,7 @@
 #include <array>
 #include <optional>
 
-#include <Vex/RHIFwd.h>
+#include <RHI/RHIFwd.h>
 #include <Vex/RHIImpl/RHIFence.h>
 
 #include <RHI/RHI.h>

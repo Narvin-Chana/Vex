@@ -5,7 +5,7 @@
 
 #include <Vex/CommandQueueType.h>
 #include <Vex/NonNullPtr.h>
-#include <Vex/RHIFwd.h>
+#include <RHI/RHIFwd.h>
 #include <Vex/Types.h>
 #include <Vex/UniqueHandle.h>
 
