@@ -201,7 +201,7 @@ void DX12RHI::WaitForTokenOnCPU(const SyncToken& syncToken)
     fence.WaitOnCPU(syncToken.value);
 }
 
-bool DX12RHI::IsTokenComplete(const SyncToken& syncToken)
+bool DX12RHI::IsTokenComplete(const SyncToken& syncToken) const
 {
     auto& fence = (*fences)[syncToken.queueType];
     return fence.GetValue() >= syncToken.value;

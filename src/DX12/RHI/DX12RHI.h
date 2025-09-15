@@ -3,10 +3,10 @@
 #include <array>
 #include <optional>
 
-#include <RHI/RHIFwd.h>
 #include <Vex/RHIImpl/RHIFence.h>
 
 #include <RHI/RHI.h>
+#include <RHI/RHIFwd.h>
 
 #include <DX12/DX12FeatureChecker.h>
 
@@ -47,7 +47,7 @@ public:
                                                  ShaderEnvironment& shaderEnv) override;
 
     virtual void WaitForTokenOnCPU(const SyncToken& syncToken) override;
-    virtual bool IsTokenComplete(const SyncToken& syncToken) override;
+    virtual bool IsTokenComplete(const SyncToken& syncToken) const override;
     virtual void WaitForTokenOnGPU(CommandQueueType waitingQueue, const SyncToken& waitFor) override;
 
     virtual std::array<SyncToken, CommandQueueTypes::Count> GetMostRecentSyncTokenPerQueue() const override;

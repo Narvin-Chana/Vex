@@ -5,9 +5,10 @@
 
 #include <Vex/CommandQueueType.h>
 #include <Vex/NonNullPtr.h>
-#include <RHI/RHIFwd.h>
 #include <Vex/Types.h>
 #include <Vex/UniqueHandle.h>
+
+#include <RHI/RHIFwd.h>
 
 namespace vex
 {
@@ -51,7 +52,7 @@ struct RHIBase
                                                  ShaderEnvironment& shaderEnv) = 0;
 
     virtual void WaitForTokenOnCPU(const SyncToken& syncToken) = 0;
-    virtual bool IsTokenComplete(const SyncToken& syncToken) = 0;
+    virtual bool IsTokenComplete(const SyncToken& syncToken) const = 0;
     virtual void WaitForTokenOnGPU(CommandQueueType waitingQueue, const SyncToken& waitFor) = 0;
 
     virtual std::array<SyncToken, CommandQueueTypes::Count> GetMostRecentSyncTokenPerQueue() const = 0;

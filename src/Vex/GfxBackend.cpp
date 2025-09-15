@@ -419,6 +419,23 @@ Texture GfxBackend::GetCurrentPresentTexture()
     return presentTextures[currentFrameIndex];
 }
 
+bool GfxBackend::IsTokenComplete(const SyncToken& token) const
+{
+    return rhi.IsTokenComplete(token);
+}
+
+bool GfxBackend::AreTokensComplete(std::span<const SyncToken> tokens) const
+{
+    for (const auto& token : tokens)
+    {
+        if (!rhi.IsTokenComplete(token))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 void GfxBackend::WaitForTokenOnCPU(const SyncToken& syncToken)
 {
     rhi.WaitForTokenOnCPU(syncToken);

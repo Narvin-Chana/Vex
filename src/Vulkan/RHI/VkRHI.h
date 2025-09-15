@@ -73,7 +73,7 @@ public:
     }
 
     virtual void WaitForTokenOnCPU(const SyncToken& syncToken) override;
-    virtual bool IsTokenComplete(const SyncToken& syncToken) override;
+    virtual bool IsTokenComplete(const SyncToken& syncToken) const override;
     virtual void WaitForTokenOnGPU(CommandQueueType waitingQueue, const SyncToken& waitFor) override;
     virtual std::array<SyncToken, CommandQueueTypes::Count> GetMostRecentSyncTokenPerQueue() const override;
 

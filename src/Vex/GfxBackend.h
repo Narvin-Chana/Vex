@@ -85,6 +85,10 @@ public:
     // Allows users to fetch the bindless handles for a buffer binding
     BindlessHandle GetBufferBindlessHandle(const BufferBinding& bindlessResource);
 
+    // Has the passed-in sync token been executed on the GPU yet?
+    bool IsTokenComplete(const SyncToken& token) const;
+    // Have the passed-in sync tokens been executed on the GPU yet?
+    bool AreTokensComplete(std::span<const SyncToken> tokens) const;
     // Waits for the passed in token to be done.
     void WaitForTokenOnCPU(const SyncToken& syncToken);
     // Flushes all currently submitted GPU commands.
