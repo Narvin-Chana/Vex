@@ -1,14 +1,12 @@
 #pragma once
 
-#include "VkDescriptorSet.h"
-
 #include <Vex/NonNullPtr.h>
 
 #include <RHI/RHIDescriptorPool.h>
 #include <RHI/RHIFwd.h>
 
+#include <Vulkan/RHI/VkDescriptorSet.h>
 #include <Vulkan/VkHeaders.h>
-#include <Vulkan/VkRHIFwd.h>
 
 namespace vex::vk
 {

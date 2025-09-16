@@ -36,8 +36,6 @@ enum class BorderColor : u8
 
 struct TextureSampler
 {
-    // Name of the sampler, the one that is used inside your shader.
-    std::string name;
     FilterMode minFilter = FilterMode::Linear;
     FilterMode magFilter = FilterMode::Linear;
     FilterMode mipFilter = FilterMode::Linear;

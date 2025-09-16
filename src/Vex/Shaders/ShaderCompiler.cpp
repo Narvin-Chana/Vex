@@ -105,7 +105,7 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader)
 
     // Outputs raw bytecode if we ever need to figure out a difficult shader issue (for spirv can use spirv-dis
     // to read raw .spv file, similar tools like RenderDoc work for dxil).
-#define VEX_OUTPUT_BYTECODE 1
+#define VEX_OUTPUT_BYTECODE 0
 #if VEX_OUTPUT_BYTECODE
     std::filesystem::path outputPath = shader.key.path;
 #if VEX_VULKAN

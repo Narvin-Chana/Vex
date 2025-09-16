@@ -156,7 +156,7 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
     }
 }
 
-void DX12CommandList::BindStaticDescriptorSets(RHIDescriptorPool& descriptorPool, RHIResourceLayout& layout)
+void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& layout)
 {
     commandList->SetDescriptorHeaps(1, descriptorPool.gpuHeap.GetNativeDescriptorHeap().GetAddressOf());
 }
