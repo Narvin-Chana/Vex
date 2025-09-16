@@ -83,30 +83,31 @@ VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, VkAllocator& allocator, const B
 
 BindlessHandle VkBuffer::GetOrCreateBindlessView(BufferBindingUsage usage,
                                                  std::optional<u32> strideByteSize,
-                                                 RHIBindlessDescriptorSet& bindlessSet)
+                                                 RHIDescriptorPool& descriptorPool)
 {
     if (bufferHandle)
     {
         return *bufferHandle;
     }
 
-    const BindlessHandle handle = bindlessSet.AllocateStaticDescriptor();
+    const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
 
-    bindlessSet.UpdateDescriptor(handle,
-                                 desc.usage == BufferUsage::UniformBuffer ? ::vk::DescriptorType::eUniformBuffer
-                                                                          : ::vk::DescriptorType::eStorageBuffer,
-                                 ::vk::DescriptorBufferInfo{ .buffer = *buffer, .offset = 0, .range = desc.byteSize });
+    descriptorPool.GetBindlessSet().UpdateDescriptor(
+        handle,
+        desc.usage == BufferUsage::UniformBuffer ? ::vk::DescriptorType::eUniformBuffer
+                                                 : ::vk::DescriptorType::eStorageBuffer,
+        ::vk::DescriptorBufferInfo{ .buffer = *buffer, .offset = 0, .range = desc.byteSize });
 
     bufferHandle = handle;
 
     return handle;
 }
 
-void VkBuffer::FreeBindlessHandles(RHIBindlessDescriptorSet& bindlessSet)
+void VkBuffer::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 {
     if (bufferHandle && *bufferHandle != GInvalidBindlessHandle)
     {
-        bindlessSet.FreeStaticDescriptor(*bufferHandle);
+        descriptorPool.FreeStaticDescriptor(*bufferHandle);
     }
     bufferHandle.reset();
 }

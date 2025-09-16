@@ -19,10 +19,10 @@ void ResourceCleanup::CleanupResource(CleanupVariant&& resource)
     resourcesInFlight.emplace_back(std::move(resource), rhi->GetMostRecentSyncTokenPerQueue());
 }
 
-void ResourceCleanup::FlushResources(RHIBindlessDescriptorSet& bindlessSet, RHIAllocator& allocator)
+void ResourceCleanup::FlushResources(RHIDescriptorPool& descriptorPool, RHIAllocator& allocator)
 {
     std::erase_if(resourcesInFlight,
-                  [&rhi = rhi, &bindlessSet, &allocator](
+                  [&rhi = rhi, &descriptorPool, &allocator](
                       std::pair<CleanupVariant, std::array<SyncToken, CommandQueueTypes::Count>>& elem) -> bool
                   {
                       // See if all tokens are finished.
@@ -36,13 +36,13 @@ void ResourceCleanup::FlushResources(RHIBindlessDescriptorSet& bindlessSet, RHIA
 
                       // If we reach here, we can now free the resource.
                       std::visit(
-                          [&bindlessSet, &allocator](auto& val)
+                          [&descriptorPool, &allocator](auto& val)
                           {
                               using T = std::remove_cvref_t<decltype(val)>;
                               if constexpr (std::is_same_v<MaybeUninitialized<RHITexture>, T> or
                                             std::is_same_v<MaybeUninitialized<RHIBuffer>, T>)
                               {
-                                  val->FreeBindlessHandles(bindlessSet);
+                                  val->FreeBindlessHandles(descriptorPool);
                                   val->FreeAllocation(allocator);
                               }
                               // Reset in any case, works with both UniqueHandle and MaybeUninitialized.

@@ -29,10 +29,17 @@ VkDescriptorPool::VkDescriptorPool(NonNullPtr<VkGPUContext> ctx)
     };
 
     descriptorPool = VEX_VK_CHECK <<= ctx->device.createDescriptorPoolUnique(descriptorPoolInfo);
+
+    bindlessSet.emplace(ctx, *descriptorPool);
 }
-RHIBindlessDescriptorSet VkDescriptorPool::CreateBindlessSet()
+
+void VkDescriptorPool::CopyNullDescriptor(u32 slotIndex)
 {
-    return { ctx, *descriptorPool };
+    bindlessSet->SetDescriptorToNull(slotIndex);
+}
+VkBindlessDescriptorSet& VkDescriptorPool::GetBindlessSet()
+{
+    return *bindlessSet;
 }
 
 } // namespace vex::vk

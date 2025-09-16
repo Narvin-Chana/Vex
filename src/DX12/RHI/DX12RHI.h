@@ -34,8 +34,7 @@ public:
     virtual RHIGraphicsPipelineState CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key) override;
     virtual RHIComputePipelineState CreateComputePipelineState(const ComputePipelineStateKey& key) override;
     virtual RHIRayTracingPipelineState CreateRayTracingPipelineState(const RayTracingPipelineStateKey& key) override;
-    virtual RHIResourceLayout CreateResourceLayout(RHIDescriptorPool& descriptorPool,
-                                                   RHIBindlessDescriptorSet& bindlessSet) override;
+    virtual RHIResourceLayout CreateResourceLayout(RHIDescriptorPool& descriptorPool) override;
 
     virtual RHITexture CreateTexture(RHIAllocator& allocator, const TextureDescription& description) override;
     virtual RHIBuffer CreateBuffer(RHIAllocator& allocator, const BufferDescription& description) override;

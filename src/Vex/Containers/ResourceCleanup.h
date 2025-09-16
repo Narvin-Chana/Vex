@@ -28,7 +28,7 @@ public:
     ResourceCleanup(NonNullPtr<RHI> rhi);
 
     void CleanupResource(CleanupVariant&& resource);
-    void FlushResources(RHIBindlessDescriptorSet& bindlessSet, RHIAllocator& allocator);
+    void FlushResources(RHIDescriptorPool& descriptorPool, RHIAllocator& allocator);
 
 private:
     NonNullPtr<RHI> rhi;

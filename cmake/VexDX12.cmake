@@ -81,8 +81,6 @@ function(setup_dx12_backend TARGET)
         "src/DX12/DX12GraphicsPipeline.cpp"
         "src/DX12/DX12ShaderTable.h"
         "src/DX12/DX12ShaderTable.cpp"
-        "src/DX12/RHI/DX12DescriptorSet.cpp"
-        "src/DX12/RHI/DX12DescriptorSet.h"
     )
 
     # Add DX12 sources to target

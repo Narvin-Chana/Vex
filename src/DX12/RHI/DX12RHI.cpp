@@ -159,8 +159,7 @@ RHIRayTracingPipelineState DX12RHI::CreateRayTracingPipelineState(const RayTraci
     return { device, key };
 }
 
-RHIResourceLayout DX12RHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool,
-                                                RHIBindlessDescriptorSet& bindlessSet)
+RHIResourceLayout DX12RHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool)
 {
     return DX12ResourceLayout(device);
 }

@@ -156,8 +156,6 @@ private:
     // Used for allocating/freeing bindless descriptors for resources.
     std::optional<RHIDescriptorPool> descriptorPool;
 
-    std::optional<RHIBindlessDescriptorSet> bindlessSet;
-
     std::optional<PipelineStateCache> psCache;
 
     MaybeUninitialized<RHIAllocator> allocator;

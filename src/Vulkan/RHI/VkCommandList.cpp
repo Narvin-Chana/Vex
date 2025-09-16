@@ -118,9 +118,10 @@ void VkCommandList::SetLayout(RHIResourceLayout& layout)
                                  localConstantsData.data());
 }
 
-void VkCommandList::BindStaticDescriptorSets(RHIBindlessDescriptorSet& bindlessSet, RHIResourceLayout& resourceLayout)
+void VkCommandList::BindStaticDescriptorSets(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)
 {
-    std::array descriptorSets{ *resourceLayout.GetSamplerDescriptor().descriptorSet, *bindlessSet.descriptorSet };
+    std::array descriptorSets{ *resourceLayout.GetSamplerDescriptor().descriptorSet,
+                               *descriptorPool.bindlessSet->descriptorSet };
     switch (type)
     {
     case CommandQueueTypes::Graphics:

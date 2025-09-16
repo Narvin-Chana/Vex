@@ -338,10 +338,9 @@ RHIRayTracingPipelineState VkRHI::CreateRayTracingPipelineState(const RayTracing
     return { key, *device, *PSOCache };
 }
 
-RHIResourceLayout VkRHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool,
-                                              RHIBindlessDescriptorSet& descriptorSet)
+RHIResourceLayout VkRHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool)
 {
-    return { GetGPUContext(), descriptorPool, descriptorSet };
+    return { GetGPUContext(), descriptorPool };
 }
 
 RHITexture VkRHI::CreateTexture(RHIAllocator& allocator, const TextureDescription& description)

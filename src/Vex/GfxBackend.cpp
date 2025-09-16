@@ -77,9 +77,8 @@ GfxBackend::GfxBackend(const BackendDescription& description)
     commandPool.emplace(rhi.CreateCommandPool());
 
     descriptorPool = rhi.CreateDescriptorPool();
-    bindlessSet = descriptorPool->CreateBindlessSet();
 
-    psCache.emplace(&rhi, *descriptorPool, *bindlessSet, &resourceCleanup, description.shaderCompilerSettings);
+    psCache.emplace(&rhi, *descriptorPool, &resourceCleanup, description.shaderCompilerSettings);
 
     allocator = rhi.CreateAllocator();
 
@@ -215,7 +214,7 @@ void GfxBackend::CleanupResources()
 {
     // Flushes all resources that were queued up for deletion (using the max sync token that was used when the resource
     // was submitted for destruction).
-    resourceCleanup.FlushResources(*bindlessSet, *allocator);
+    resourceCleanup.FlushResources(*descriptorPool, *allocator);
     commandPool->ReclaimCommandLists();
 
     // Send all shader errors to the user, we do this every time we cleanup, since cleanup occurs when we submit or
@@ -343,7 +342,7 @@ BindlessHandle GfxBackend::GetTextureBindlessHandle(const TextureBinding& bindle
     bindlessResource.Validate();
 
     auto& texture = GetRHITexture(bindlessResource.texture.handle);
-    return texture.GetOrCreateBindlessView(bindlessResource, *bindlessSet);
+    return texture.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
 }
 
 BindlessHandle GfxBackend::GetBufferBindlessHandle(const BufferBinding& bindlessResource)
@@ -351,7 +350,7 @@ BindlessHandle GfxBackend::GetBufferBindlessHandle(const BufferBinding& bindless
     bindlessResource.Validate();
 
     auto& buffer = GetRHIBuffer(bindlessResource.buffer.handle);
-    return buffer.GetOrCreateBindlessView(bindlessResource.usage, bindlessResource.strideByteSize, *bindlessSet);
+    return buffer.GetOrCreateBindlessView(bindlessResource.usage, bindlessResource.strideByteSize, *descriptorPool);
 }
 
 void GfxBackend::FlushGPU()

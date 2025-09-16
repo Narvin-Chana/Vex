@@ -7,7 +7,6 @@
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/TextureSampler.h>
 #include <Vex/Types.h>
-#include <Vex/UniqueHandle.h>
 
 #include <RHI/RHIFwd.h>
 
@@ -38,7 +37,7 @@ public:
 protected:
     bool isDirty = true;
 
-    const u32 maxLocalConstantsByteSize;
+    u32 maxLocalConstantsByteSize;
 
     // Constant data remains always allocated, avoiding reallocations on successive draw calls.
     std::vector<byte> localConstantsData;

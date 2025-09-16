@@ -19,16 +19,19 @@ class VkDescriptorPool final : public RHIDescriptorPoolBase
 public:
     VkDescriptorPool(NonNullPtr<VkGPUContext> ctx);
 
-    virtual RHIBindlessDescriptorSet CreateBindlessSet() override;
-
     ::vk::DescriptorPool& GetNativeDescriptorPool()
     {
         return *descriptorPool;
     }
+    virtual void CopyNullDescriptor(u32 slotIndex) override;
+
+    VkBindlessDescriptorSet& GetBindlessSet();
 
 private:
     NonNullPtr<VkGPUContext> ctx;
     ::vk::UniqueDescriptorPool descriptorPool;
+
+    MaybeUninitialized<VkBindlessDescriptorSet> bindlessSet;
 
     friend class VkCommandList;
     friend class VkResourceLayout;

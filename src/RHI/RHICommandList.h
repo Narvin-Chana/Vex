@@ -49,7 +49,7 @@ public:
     virtual void SetPipelineState(const RHIRayTracingPipelineState& rayTracingPipelineState) = 0;
 
     virtual void SetLayout(RHIResourceLayout& layout) = 0;
-    virtual void BindStaticDescriptorSets(RHIBindlessDescriptorSet& bindlessSet, RHIResourceLayout& resourceLayout) = 0;
+    virtual void BindStaticDescriptorSets(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) = 0;
     virtual void SetInputAssembly(InputAssembly inputAssembly) = 0;
 
     virtual void ClearTexture(const RHITextureBinding& binding,

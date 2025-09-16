@@ -14,21 +14,18 @@ struct VkGPUContext;
 class VkResourceLayout final : public RHIResourceLayoutBase
 {
 public:
-    VkResourceLayout(NonNullPtr<VkGPUContext> ctx,
-                     NonNullPtr<VkDescriptorPool> descriptorPool,
-                     NonNullPtr<VkBindlessDescriptorSet> bindlessSet);
+    VkResourceLayout(NonNullPtr<VkGPUContext> ctx, NonNullPtr<VkDescriptorPool> descriptorPool);
 
     ::vk::UniquePipelineLayout pipelineLayout;
-    const RHIDescriptorSet& GetSamplerDescriptor();
+    const VkDescriptorSet& GetSamplerDescriptor();
 
 private:
     ::vk::UniquePipelineLayout CreateLayout();
-    std::optional<RHIDescriptorSet> samplerSet;
+    MaybeUninitialized<VkDescriptorSet> samplerSet;
     std::vector<::vk::UniqueSampler> vkSamplers;
 
     NonNullPtr<VkGPUContext> ctx;
     NonNullPtr<VkDescriptorPool> descriptorPool;
-    NonNullPtr<VkBindlessDescriptorSet> bindlessSet;
 };
 
 } // namespace vex::vk

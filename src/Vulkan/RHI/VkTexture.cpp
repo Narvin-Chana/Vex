@@ -173,7 +173,7 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, RHIAllocator& allocator, Text
     return returnVal;
 }
 
-BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding, RHIBindlessDescriptorSet& bindlessSet)
+BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding, RHIDescriptorPool& descriptorPool)
 {
     VkTextureViewDesc view{
         .viewType = TextureUtil::GetTextureViewType(binding),
@@ -184,7 +184,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
         .startSlice = binding.startSlice,
         .sliceCount = (binding.sliceCount == 0) ? VK_REMAINING_ARRAY_LAYERS : binding.sliceCount,
     };
-    if (auto it = bindlessCache.find(view); it != bindlessCache.end() && bindlessSet.IsValid(it->second.handle))
+    if (auto it = bindlessCache.find(view); it != bindlessCache.end() && descriptorPool.IsValid(it->second.handle))
     {
         return it->second.handle;
     }
@@ -201,7 +201,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
                                                 } };
 
     ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx->device.createImageViewUnique(viewCreate);
-    const BindlessHandle handle = bindlessSet.AllocateStaticDescriptor();
+    const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
 
     ::vk::ImageLayout viewLayout;
     switch (binding.usage)
@@ -216,7 +216,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
         VEX_LOG(Fatal, "Unsupported binding usage for texture {}.", binding.texture.description.name);
     }
 
-    bindlessSet.UpdateDescriptor(
+    descriptorPool.GetBindlessSet().UpdateDescriptor(
         handle,
         ::vk::DescriptorImageInfo{ .sampler = nullptr, .imageView = *imageView, .imageLayout = viewLayout },
         view.usage & TextureUsage::ShaderReadWrite);
@@ -271,13 +271,13 @@ RHITextureBarrier VkTexture::GetClearTextureBarrier()
                              RHITextureLayout::CopyDest);
 }
 
-void VkTexture::FreeBindlessHandles(RHIBindlessDescriptorSet& bindlessSet)
+void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 {
     for (const auto& [viewDesc, entry] : bindlessCache)
     {
         if (entry.handle != GInvalidBindlessHandle)
         {
-            bindlessSet.FreeStaticDescriptor(entry.handle);
+            descriptorPool.FreeStaticDescriptor(entry.handle);
         }
     }
     bindlessCache.clear();

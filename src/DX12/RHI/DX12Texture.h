@@ -64,8 +64,8 @@ public:
     DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID3D12Resource> rawTex);
 
     virtual BindlessHandle GetOrCreateBindlessView(const TextureBinding& binding,
-                                                   RHIBindlessDescriptorSet& bindlessSet) override;
-    virtual void FreeBindlessHandles(RHIBindlessDescriptorSet& bindlessSet) override;
+                                                   RHIDescriptorPool& descriptorPool) override;
+    virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
     virtual void FreeAllocation(RHIAllocator& allocator) override;
 
     virtual RHITextureBarrier GetClearTextureBarrier() override;

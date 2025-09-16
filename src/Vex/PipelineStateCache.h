@@ -19,7 +19,6 @@ class PipelineStateCache
 public:
     PipelineStateCache(RHI* rhi,
                        RHIDescriptorPool& descriptorPool,
-                       RHIBindlessDescriptorSet& descriptorSet,
                        ResourceCleanup* resourceCleanup,
                        const ShaderCompilerSettings& compilerSettings);
     ~PipelineStateCache();
