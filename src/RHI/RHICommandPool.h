@@ -28,7 +28,7 @@ public:
 protected:
     std::vector<UniqueHandle<RHICommandList>>& GetCommandLists(CommandQueueType queueType);
 
-    RHI& rhi;
+    NonNullPtr<RHI> rhi;
     std::array<std::vector<UniqueHandle<RHICommandList>>, CommandQueueTypes::Count> commandListsPerQueue;
 };
 
