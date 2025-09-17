@@ -14,6 +14,7 @@ enum class DescriptorType : u8;
 
 namespace vex::vk
 {
+class VkDescriptorPool;
 struct VkGPUContext;
 
 class VkDescriptorSet final
