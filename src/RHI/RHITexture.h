@@ -3,62 +3,19 @@
 #include <Vex/CommandQueueType.h>
 #include <Vex/Logger.h>
 #include <Vex/MemoryAllocation.h>
-#include <Vex/RHIFwd.h>
 #include <Vex/Resource.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
 
+#include <RHI/RHIBarrier.h>
+#include <RHI/RHIFwd.h>
+
 namespace vex
 {
-
-enum class RHITextureState : u8
-{
-    Common = 0,
-    CopySource,
-    CopyDest,
-    ShaderResource,
-    ShaderReadWrite,
-    DepthRead,
-    DepthWrite,
-    RenderTarget,
-    Present,
-};
 
 class RHITextureBase : public MappableResourceInterface
 {
 public:
-    static inline void ValidateStateVersusQueueType(RHITextureState state, CommandQueueType queueType)
-    {
-        using enum RHITextureState;
-
-        static constexpr RHITextureState CopyQueueMaxState = CopyDest;
-        static constexpr RHITextureState ComputeQueueMaxState = ShaderReadWrite;
-        static constexpr RHITextureState GraphicsQueueMaxState = Present;
-
-        bool isValid = false;
-        switch (queueType)
-        {
-        case CommandQueueType::Graphics:
-            isValid = state <= GraphicsQueueMaxState;
-            break;
-        case CommandQueueType::Compute:
-            isValid = state <= ComputeQueueMaxState;
-            break;
-        case CommandQueueType::Copy:
-            isValid = state <= CopyQueueMaxState;
-            break;
-        }
-
-        if (!isValid)
-        {
-            VEX_LOG(Fatal,
-                    "Unsupported transition state versus CommandQueue type: Cannot transition texture to state: {} "
-                    "from queue type: {}.",
-                    magic_enum::enum_name(state),
-                    magic_enum::enum_name(queueType));
-        }
-    }
-
     RHITextureBase() = default;
     RHITextureBase(RHIAllocator& allocator)
         : allocator{ &allocator } {};
@@ -73,21 +30,11 @@ public:
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeAllocation(RHIAllocator& allocator) = 0;
 
-    virtual RHITextureState GetClearTextureState() = 0;
+    virtual RHITextureBarrier GetClearTextureBarrier() = 0;
 
     const TextureDescription& GetDescription() const
     {
         return description;
-    }
-
-    [[nodiscard]] RHITextureState GetCurrentState() const
-    {
-        return currentState;
-    }
-
-    void SetCurrentState(RHITextureState newState)
-    {
-        currentState = newState;
     }
 
     const Allocation& GetAllocation() const noexcept
@@ -95,9 +42,38 @@ public:
         return allocation;
     }
 
+    [[nodiscard]] RHIBarrierSync GetLastSync() const
+    {
+        return lastSync;
+    }
+    void SetLastSync(RHIBarrierSync sync)
+    {
+        lastSync = sync;
+    }
+
+    [[nodiscard]] RHIBarrierAccess GetLastAccess() const
+    {
+        return lastAccess;
+    }
+    void SetLastAccess(RHIBarrierAccess access)
+    {
+        lastAccess = access;
+    }
+
+    [[nodiscard]] RHITextureLayout GetLastLayout() const
+    {
+        return lastLayout;
+    }
+    void SetLastLayout(RHITextureLayout layout)
+    {
+        lastLayout = layout;
+    }
+
 protected:
     TextureDescription description;
-    RHITextureState currentState = RHITextureState::Common;
+    RHIBarrierSync lastSync = RHIBarrierSync::None;
+    RHIBarrierAccess lastAccess = RHIBarrierAccess::NoAccess;
+    RHITextureLayout lastLayout = RHITextureLayout::Undefined;
 
     RHIAllocator* allocator{};
     Allocation allocation;

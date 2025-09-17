@@ -1,10 +1,10 @@
 #pragma once
 
 #include <Vex/NonNullPtr.h>
-#include <Vex/RHIFwd.h>
 #include <Vex/RHIImpl/RHIFence.h>
 
 #include <RHI/RHI.h>
+#include <RHI/RHIFwd.h>
 
 #include <Vulkan/VkCommandQueue.h>
 #include <Vulkan/VkGPUContext.h>
@@ -73,7 +73,7 @@ public:
     }
 
     virtual void WaitForTokenOnCPU(const SyncToken& syncToken) override;
-    virtual bool IsTokenComplete(const SyncToken& syncToken) override;
+    virtual bool IsTokenComplete(const SyncToken& syncToken) const override;
     virtual void WaitForTokenOnGPU(CommandQueueType waitingQueue, const SyncToken& waitFor) override;
     virtual std::array<SyncToken, CommandQueueTypes::Count> GetMostRecentSyncTokenPerQueue() const override;
 

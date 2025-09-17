@@ -8,6 +8,21 @@
 namespace vex
 {
 
+void RHICommandListBase::BufferBarrier(RHIBuffer& buffer, RHIBarrierSync sync, RHIBarrierAccess access)
+{
+    RHIBufferBarrier barrier{ buffer, sync, access };
+    Barrier({ &barrier, 1 }, {});
+}
+
+void RHICommandListBase::TextureBarrier(RHITexture& texture,
+                                        RHIBarrierSync sync,
+                                        RHIBarrierAccess access,
+                                        RHITextureLayout layout)
+{
+    RHITextureBarrier barrier{ texture, sync, access, layout };
+    Barrier({}, { &barrier, 1 });
+}
+
 void RHICommandListBase::Copy(RHITexture& src, RHITexture& dst)
 {
     const TextureDescription& desc = src.GetDescription();

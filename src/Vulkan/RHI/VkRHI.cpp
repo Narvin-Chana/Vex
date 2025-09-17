@@ -383,7 +383,7 @@ void VkRHI::WaitForTokenOnCPU(const SyncToken& syncToken)
     fence.WaitOnCPU(syncToken.value);
 }
 
-bool VkRHI::IsTokenComplete(const SyncToken& syncToken)
+bool VkRHI::IsTokenComplete(const SyncToken& syncToken) const
 {
     auto& fence = (*fences)[syncToken.queueType];
     return fence.GetValue() >= syncToken.value;

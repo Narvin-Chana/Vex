@@ -34,7 +34,7 @@ struct Handle
     {
         return value >> 24;
     }
-    bool operator==(Handle other) const
+    constexpr bool operator==(Handle other) const
     {
         return value == other.value;
     }
