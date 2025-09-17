@@ -124,7 +124,7 @@ add_library(Vex STATIC
     "src/RHI/RHIAllocator.h"
     "src/RHI/RHIAllocator.cpp"
     "src/RHI/RHIFence.h"
-        "src/Vex/RHIImpl/RHIFence.h"
+    "src/Vex/RHIImpl/RHIFence.h"
     "src/Vex/RHIImpl/RHICommandList.h"
     "src/Vex/RHIImpl/RHICommandPool.h"
     "src/Vex/RHIImpl/RHIDescriptorPool.h"
