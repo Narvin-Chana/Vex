@@ -135,7 +135,7 @@ add_library(Vex STATIC
     "src/Vex/RHIImpl/RHI.h"
     "src/Vex/RHIImpl/RHIBuffer.h"
     "src/Vex/RHIImpl/RHIAllocator.h"
-        # Vex API
+    # Vex API
     "src/Vex.h"
     "src/Vex.cpp"
     "src/Vex/GfxBackend.h" 
