@@ -156,10 +156,26 @@ void GfxBackend::Present(bool isFullscreenMode)
         // Must be a graphics queue in order to be able to move the backbuffer to the present state.
         NonNullPtr<RHICommandList> cmdList = commandPool->GetOrCreateCommandList(CommandQueueType::Graphics);
         cmdList->Open();
-        cmdList->Transition(presentTexture, RHITextureState::CopySource);
-        cmdList->Transition(*backBuffer, RHITextureState::CopyDest);
+        std::array barriers = {
+            RHITextureBarrier{
+                presentTexture,
+                RHIBarrierSync::Copy,
+                RHIBarrierAccess::CopySource,
+                RHITextureLayout::CopySource,
+            },
+            RHITextureBarrier{
+                *backBuffer,
+                RHIBarrierSync::Copy,
+                RHIBarrierAccess::CopyDest,
+                RHITextureLayout::CopyDest,
+            },
+        };
+        cmdList->Barrier({}, barriers);
         cmdList->Copy(presentTexture, *backBuffer);
-        cmdList->Transition(*backBuffer, RHITextureState::Present);
+        cmdList->TextureBarrier(*backBuffer,
+                                RHIBarrierSync::AllGraphics,
+                                RHIBarrierAccess::NoAccess,
+                                RHITextureLayout::Present);
         cmdList->Close();
 
         presentTokens[currentFrameIndex] = swapChain->Present(currentFrameIndex, rhi, cmdList, isFullscreenMode);
@@ -401,6 +417,23 @@ Texture GfxBackend::GetCurrentPresentTexture()
         VEX_LOG(Fatal, "Your backend was created without swapchain support. Backbuffers were not created.");
     }
     return presentTextures[currentFrameIndex];
+}
+
+bool GfxBackend::IsTokenComplete(const SyncToken& token) const
+{
+    return rhi.IsTokenComplete(token);
+}
+
+bool GfxBackend::AreTokensComplete(std::span<const SyncToken> tokens) const
+{
+    for (const auto& token : tokens)
+    {
+        if (!rhi.IsTokenComplete(token))
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 void GfxBackend::WaitForTokenOnCPU(const SyncToken& syncToken)

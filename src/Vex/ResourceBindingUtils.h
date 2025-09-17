@@ -2,8 +2,8 @@
 
 #include <span>
 
-#include <Vex/RHIBindings.h>
-
+#include <RHI/RHIBarrier.h>
+#include <RHI/RHIBindings.h>
 #include <RHI/RHIBuffer.h>
 #include <RHI/RHITexture.h>
 
@@ -25,14 +25,13 @@ struct ResourceBindingUtils
                                     std::vector<RHIBufferBinding>& bufferBindings);
 
     // Collects draw textures from a set of render targets and a depth stencil
-    static RHIDrawResources CollectRHIDrawResourcesAndTransitions(
-        GfxBackend& backend,
-        std::span<const TextureBinding> renderTargets,
-        std::optional<TextureBinding> depthStencil,
-        std::vector<std::pair<RHITexture&, RHITextureState>>& transitions);
+    static RHIDrawResources CollectRHIDrawResourcesAndBarriers(GfxBackend& backend,
+                                                               std::span<const TextureBinding> renderTargets,
+                                                               std::optional<TextureBinding> depthStencil,
+                                                               std::vector<RHITextureBarrier>& barriers);
 
-    static RHITextureState TextureBindingUsageToState(TextureUsage::Type usage);
-    static RHIBufferState::Flags BufferBindingUsageToState(BufferBindingUsage usage);
+    static RHIBufferBarrier CreateBarrierFromRHIBinding(const RHIBufferBinding& rhiBufferBinding);
+    static RHITextureBarrier CreateBarrierFromRHIBinding(const RHITextureBinding& rhiTextureBinding);
 };
 
 } // namespace vex

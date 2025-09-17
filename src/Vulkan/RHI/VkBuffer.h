@@ -14,10 +14,6 @@
 namespace vex
 {
 struct BufferDescription;
-namespace BufferUtil
-{
-::vk::AccessFlags2 GetAccessFlagsFromBufferState(RHIBufferState::Flags flags);
-}
 } // namespace vex
 
 namespace vex::vk

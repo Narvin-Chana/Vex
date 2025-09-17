@@ -103,7 +103,7 @@ add_library(Vex STATIC
     # Platform
     "src/Vex/Platform/Platform.h"
     # RHI
-    "src/Vex/RHIFwd.h"
+    "src/RHI/RHIFwd.h"
     "src/RHI/RHI.h"  
     "src/RHI/RHICommandPool.h"
     "src/RHI/RHICommandPool.cpp"
@@ -113,7 +113,9 @@ add_library(Vex STATIC
     "src/RHI/RHIBuffer.cpp"
     "src/RHI/RHIPipelineState.h"
     "src/RHI/RHIResourceLayout.cpp"
-    "src/Vex/RHIBindings.h"
+    "src/RHI/RHIBindings.h"
+    "src/RHI/RHIBarrier.h"
+    "src/RHI/RHIBarrier.cpp"
     "src/RHI/RHIResourceLayout.h"
     "src/RHI/RHIDescriptorPool.h"
     "src/RHI/RHIDescriptorPool.cpp"
@@ -199,7 +201,7 @@ add_library(Vex STATIC
     "src/Vex/ResourceCopy.h"
     "src/Vex/ResourceCopy.cpp"
     "src/Vex/Concepts.h"
- )
+)
 
 if(WIN32)
     target_sources(Vex PRIVATE

@@ -2,11 +2,12 @@
 
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Hash.h>
-#include <Vex/RHIFwd.h>
 #include <Vex/RayTracing.h>
 #include <Vex/Shaders/Shader.h>
 #include <Vex/Shaders/ShaderKey.h>
 #include <Vex/Types.h>
+
+#include <RHI/RHIFwd.h>
 
 namespace vex
 {

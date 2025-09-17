@@ -1,9 +1,9 @@
 #pragma once
 
 #include <Vex/NonNullPtr.h>
-#include <Vex/RHIFwd.h>
 
 #include <RHI/RHIDescriptorPool.h>
+#include <RHI/RHIFwd.h>
 
 #include <Vulkan/VkHeaders.h>
 #include <Vulkan/VkRHIFwd.h>

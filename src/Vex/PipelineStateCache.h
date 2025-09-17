@@ -3,10 +3,11 @@
 #include <unordered_map>
 
 #include <Vex/NonNullPtr.h>
-#include <Vex/RHIFwd.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/Shaders/ShaderCompiler.h>
 #include <Vex/UniqueHandle.h>
+
+#include <RHI/RHIFwd.h>
 
 namespace vex
 {
