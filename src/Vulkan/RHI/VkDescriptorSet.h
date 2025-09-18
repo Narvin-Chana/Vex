@@ -5,7 +5,7 @@
 
 #include <Vulkan/VkHeaders.h>
 
-#include "Vex/Resource.h"
+#include <Vex/Resource.h>
 
 namespace vex
 {
