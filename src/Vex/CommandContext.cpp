@@ -544,10 +544,15 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
     rhiStagingBuffer.Unmap();
 
     RHIBufferBarrier stagingBufferBarrier{ rhiStagingBuffer, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource };
-    RHITextureBarrier textureBarrier{ rhiDestTexture,
-                                      RHIBarrierSync::Copy,
-                                      RHIBarrierAccess::CopyDest,
-                                      RHITextureLayout::CopyDest };
+    RHITextureBarrier textureBarrier{
+        rhiDestTexture,
+        RHIBarrierSync::Copy,
+        RHIBarrierAccess::CopyDest,
+        // Keeping a common layout allows this function to be called with a Copy command list.
+        // This is because swizzling/compression happens when you transition the texture, which Copy command lists do
+        // not support.
+        RHITextureLayout::Common
+    };
     cmdList->Barrier({ &stagingBufferBarrier, 1 }, { &textureBarrier, 1 });
 
     const bool isFullUpload = uploadRegions.empty();
