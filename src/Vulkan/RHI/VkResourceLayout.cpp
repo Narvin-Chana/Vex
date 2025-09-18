@@ -19,8 +19,8 @@ VkResourceLayout::VkResourceLayout(NonNullPtr<VkGPUContext> ctx, NonNullPtr<VkDe
     : ctx{ ctx }
     , descriptorPool{ descriptorPool }
 {
-    std::array<DescriptorType, MaxSamplerCount> descriptorTypes{};
-    std::fill_n(descriptorTypes.begin(), samplers.size(), DescriptorType::Sampler);
+    std::array<::vk::DescriptorType, MaxSamplerCount> descriptorTypes{};
+    std::fill_n(descriptorTypes.begin(), samplers.size(), ::vk::DescriptorType::eSampler);
     samplerSet = VkDescriptorSet(ctx, *descriptorPool->descriptorPool, descriptorTypes);
 }
 

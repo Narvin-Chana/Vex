@@ -151,16 +151,16 @@ private:
     //  RHI RESOURCES (should be destroyed before rhi and order matters)
     // =================================================
 
-    std::optional<RHICommandPool> commandPool;
+    MaybeUninitialized<RHICommandPool> commandPool;
 
     // Used for allocating/freeing bindless descriptors for resources.
-    std::optional<RHIDescriptorPool> descriptorPool;
+    MaybeUninitialized<RHIDescriptorPool> descriptorPool;
 
-    std::optional<PipelineStateCache> psCache;
+    MaybeUninitialized<PipelineStateCache> psCache;
 
     MaybeUninitialized<RHIAllocator> allocator;
 
-    std::optional<RHISwapChain> swapChain;
+    MaybeUninitialized<RHISwapChain> swapChain;
 
     // Converts from the Handle to the actual underlying RHI resource.
     FreeList<RHITexture, TextureHandle> textureRegistry;

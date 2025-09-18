@@ -9,68 +9,40 @@
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkGPUContext.h>
 
+#include "Vex/Validation.h"
+
 namespace vex::vk
 {
 static constexpr ::vk::DescriptorBufferInfo NullDescriptorBufferInfo{ .buffer = VK_NULL_HANDLE,
                                                                       .offset = 0,
                                                                       .range = VK_WHOLE_SIZE };
 
-static ::vk::DescriptorType DescriptorTypeToVulkanDescriptorType(DescriptorType type)
+static void ValidateImageDescriptorType(::vk::DescriptorType type)
 {
-    using enum ::vk::DescriptorType;
-    switch (type)
-    {
-    case DescriptorType::Buffer:
-        return eUniformBuffer;
-    case DescriptorType::RWBuffer:
-        return eStorageBuffer;
-    case DescriptorType::Sampler:
-        return eSampler;
-    case DescriptorType::Texture:
-        return eSampledImage;
-    case DescriptorType::RWTexture:
-        return eStorageImage;
-    default:
-        VEX_LOG(Fatal, "Descriptor type ({}) not supported in vulkan", type)
-    }
-    std::unreachable();
+    VEX_CHECK(type == ::vk::DescriptorType::eStorageImage || type == ::vk::DescriptorType::eSampledImage ||
+                  type == ::vk::DescriptorType::eSampler,
+              "Tried to set descriptor of type {} with a Image descriptor info. Must be a Image or Sampler "
+              "compatible one",
+              type)
 }
-
-static void ValidateImageDescriptorType(DescriptorType type)
-{
-    if (type != DescriptorType::RWTexture && type != DescriptorType::Texture && type != DescriptorType::Sampler)
-    {
-        VEX_LOG(Fatal,
-                "Tried to set descriptor of type {} with a Image descriptor info. Must be a Image or Sampler "
-                "compatible one",
-                type)
-    }
-}
-static void ValidateImageDescriptor(DescriptorType type, const ::vk::DescriptorImageInfo& createInfo)
+static void ValidateImageDescriptor(::vk::DescriptorType type, const ::vk::DescriptorImageInfo& createInfo)
 {
     ValidateImageDescriptorType(type);
 
-    if (type == DescriptorType::Sampler && !createInfo.sampler)
-    {
-        VEX_LOG(Fatal,
-                "Tried to set descriptor of type Sampler with a Image descriptor info that doesnt have sampler set. "
-                "Sampler must be set")
-    }
+    VEX_CHECK(!(type == ::vk::DescriptorType::eSampler && !createInfo.sampler),
+              "Tried to set descriptor of type Sampler with a Image descriptor info that doesnt have sampler set. "
+              "Sampler must be set")
 }
 
-static void ValidateBufferDescriptor(DescriptorType type)
-{
-    if (type != DescriptorType::Buffer && type != DescriptorType::RWBuffer)
-    {
-        VEX_LOG(Fatal,
-                "Tried to set descriptor of type {} with a buffer descriptor info. Must be a buffer compatible one",
-                type)
-    }
+static void ValidateBufferDescriptor(::vk::DescriptorType type){
+    VEX_CHECK(type == ::vk::DescriptorType::eUniformBuffer || type == ::vk::DescriptorType::eStorageBuffer,
+              "Tried to set descriptor of type {} with a buffer descriptor info. Must be a buffer compatible one",
+              type)
 }
 
 VkDescriptorSet::VkDescriptorSet(NonNullPtr<VkGPUContext> ctx,
                                  const ::vk::DescriptorPool& descriptorPool,
-                                 std::span<DescriptorType> descriptorTypes)
+                                 std::span<::vk::DescriptorType> descriptorTypes)
     : descriptorTypes{ descriptorTypes.begin(), descriptorTypes.end() }
     , ctx{ ctx }
 {
@@ -81,7 +53,7 @@ VkDescriptorSet::VkDescriptorSet(NonNullPtr<VkGPUContext> ctx,
     {
         bindings.push_back(::vk::DescriptorSetLayoutBinding{
             .binding = i,
-            .descriptorType = DescriptorTypeToVulkanDescriptorType(descriptorTypes[i]),
+            .descriptorType = descriptorTypes[i],
             .descriptorCount = 1,
             .stageFlags = ::vk::ShaderStageFlagBits::eAll,
             .pImmutableSamplers = nullptr,
@@ -112,18 +84,16 @@ VkDescriptorSet::VkDescriptorSet(NonNullPtr<VkGPUContext> ctx,
 
 void VkDescriptorSet::UpdateDescriptor(u32 index, ::vk::DescriptorImageInfo createInfo)
 {
-    DescriptorType type = descriptorTypes[index];
+    ::vk::DescriptorType type = descriptorTypes[index];
 
     ValidateImageDescriptor(type, createInfo);
-
-    const ::vk::DescriptorType vkType = DescriptorTypeToVulkanDescriptorType(type);
 
     const ::vk::WriteDescriptorSet writeSet{
         .dstSet = *descriptorSet,
         .dstBinding = 0,
         .dstArrayElement = index,
         .descriptorCount = 1,
-        .descriptorType = vkType,
+        .descriptorType = type,
         .pImageInfo = &createInfo,
     };
     ctx->device.updateDescriptorSets(1, &writeSet, 0, nullptr);
@@ -131,13 +101,11 @@ void VkDescriptorSet::UpdateDescriptor(u32 index, ::vk::DescriptorImageInfo crea
 
 void VkDescriptorSet::UpdateDescriptors(u32 startIndex, std::span<::vk::DescriptorImageInfo> createInfos)
 {
-    DescriptorType type = descriptorTypes[startIndex];
+    ::vk::DescriptorType type = descriptorTypes[startIndex];
     ValidateImageDescriptorType(type);
 
     std::vector<::vk::WriteDescriptorSet> writeSets;
     writeSets.reserve(createInfos.size());
-
-    const ::vk::DescriptorType vkType = DescriptorTypeToVulkanDescriptorType(type);
 
     for (u32 i = 0; i < createInfos.size(); ++i)
     {
@@ -147,7 +115,7 @@ void VkDescriptorSet::UpdateDescriptors(u32 startIndex, std::span<::vk::Descript
             .dstBinding = 0,
             .dstArrayElement = startIndex + i,
             .descriptorCount = 1,
-            .descriptorType = vkType,
+            .descriptorType = type,
             .pImageInfo = &createInfos[i],
         });
     }
@@ -157,28 +125,24 @@ void VkDescriptorSet::UpdateDescriptors(u32 startIndex, std::span<::vk::Descript
 
 void VkDescriptorSet::UpdateDescriptor(u32 index, ::vk::DescriptorBufferInfo createInfo)
 {
-    DescriptorType type = descriptorTypes[index];
+    ::vk::DescriptorType type = descriptorTypes[index];
     ValidateBufferDescriptor(type);
-
-    const ::vk::DescriptorType vkType = DescriptorTypeToVulkanDescriptorType(type);
 
     const ::vk::WriteDescriptorSet writeSet{ .dstSet = *descriptorSet,
                                              .dstBinding = 0,
                                              .dstArrayElement = index,
                                              .descriptorCount = 1,
-                                             .descriptorType = vkType,
+                                             .descriptorType = type,
                                              .pBufferInfo = &createInfo };
     ctx->device.updateDescriptorSets(1, &writeSet, 0, nullptr);
 }
 
 void VkDescriptorSet::UpdateDescriptors(u32 startIndex, std::span<::vk::DescriptorBufferInfo> createInfos)
 {
-    DescriptorType type = descriptorTypes[startIndex];
+    ::vk::DescriptorType type = descriptorTypes[startIndex];
 
     std::vector<::vk::WriteDescriptorSet> writeSets;
     writeSets.reserve(createInfos.size());
-
-    const ::vk::DescriptorType vkType = DescriptorTypeToVulkanDescriptorType(type);
 
     for (u32 i = 0; i < createInfos.size(); ++i)
     {
@@ -188,7 +152,7 @@ void VkDescriptorSet::UpdateDescriptors(u32 startIndex, std::span<::vk::Descript
             .dstBinding = 0,
             .dstArrayElement = startIndex + i,
             .descriptorCount = 1,
-            .descriptorType = vkType,
+            .descriptorType = type,
             .pBufferInfo = &createInfos[i],
         });
     }

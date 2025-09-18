@@ -9,15 +9,6 @@ namespace vex
 
 static constexpr u32 GDefaultDescriptorPoolSize = 65536;
 
-enum class DescriptorType : u8
-{
-    Sampler,
-    Texture,
-    RWTexture,
-    Buffer,
-    RWBuffer,
-};
-
 class RHIDescriptorPoolBase
 {
 public:

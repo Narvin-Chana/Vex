@@ -2,15 +2,9 @@
 #include <variant>
 
 #include <Vex/NonNullPtr.h>
-
-#include <Vulkan/VkHeaders.h>
-
 #include <Vex/Resource.h>
 
-namespace vex
-{
-enum class DescriptorType : u8;
-}
+#include <Vulkan/VkHeaders.h>
 
 namespace vex::vk
 {
@@ -21,7 +15,7 @@ class VkDescriptorSet final
 {
     VkDescriptorSet(NonNullPtr<VkGPUContext> ctx,
                     const ::vk::DescriptorPool& descriptorPool,
-                    std::span<DescriptorType> descriptorTypes);
+                    std::span<::vk::DescriptorType> descriptorTypes);
 
 public:
     void UpdateDescriptor(u32 index, ::vk::DescriptorImageInfo createInfo);
@@ -32,7 +26,7 @@ public:
 private:
     ::vk::UniqueDescriptorSet descriptorSet;
     ::vk::UniqueDescriptorSetLayout descriptorLayout;
-    std::vector<DescriptorType> descriptorTypes;
+    std::vector<::vk::DescriptorType> descriptorTypes;
 
     NonNullPtr<VkGPUContext> ctx;
 

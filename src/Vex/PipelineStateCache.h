@@ -46,7 +46,7 @@ private:
     ResourceCleanup* resourceCleanup;
 
     ShaderCompiler shaderCompiler;
-    std::optional<RHIResourceLayout> resourceLayout;
+    MaybeUninitialized<RHIResourceLayout> resourceLayout;
     std::unordered_map<RHIGraphicsPipelineState::Key, RHIGraphicsPipelineState, RHIGraphicsPipelineState::Hasher>
         graphicsPSCache;
     std::unordered_map<RHIComputePipelineState::Key, RHIComputePipelineState> computePSCache;
