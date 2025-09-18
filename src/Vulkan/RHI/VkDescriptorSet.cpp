@@ -9,7 +9,7 @@
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkGPUContext.h>
 
-#include "Vex/Validation.h"
+#include <Vex/Validation.h>
 
 namespace vex::vk
 {
