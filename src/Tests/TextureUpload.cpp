@@ -5,12 +5,12 @@
 namespace vex
 {
 
-void TestTextureUpload(NonNullPtr<GfxBackend> graphics)
+void TestTextureUpload(NonNullPtr<GfxBackend> graphics, CommandQueueType type)
 {
 
     // Test 1: Upload a cubemap with two mips
     {
-        auto ctx = graphics->BeginScopedCommandContext(CommandQueueType::Copy, SubmissionPolicy::Immediate);
+        auto ctx = graphics->BeginScopedCommandContext(type, SubmissionPolicy::Immediate);
 
         u32 cubemapFaceSize = 16;
         u16 cubemapMips = 2;
@@ -58,7 +58,7 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics)
 
     // Test 2: Upload a 2d texture array of size 2 with 3 mips
     {
-        auto ctx = graphics->BeginScopedCommandContext(CommandQueueType::Copy, SubmissionPolicy::Immediate);
+        auto ctx = graphics->BeginScopedCommandContext(type, SubmissionPolicy::Immediate);
 
         u32 width = 16, height = 12, arraySize = 2;
         u16 mips = 3;
@@ -125,7 +125,7 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics)
 
     // Test 3: Upload a texture cube array of size 3 with 2 mips
     {
-        auto ctx = graphics->BeginScopedCommandContext(CommandQueueType::Copy, SubmissionPolicy::Immediate);
+        auto ctx = graphics->BeginScopedCommandContext(type, SubmissionPolicy::Immediate);
 
         u32 cubemapFaceSize = 16;
         u16 cubemapMips = 2;
@@ -185,7 +185,7 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics)
 
     // Test 4: Upload a 3d texture of depth 2 with 3 mips
     {
-        auto ctx = graphics->BeginScopedCommandContext(CommandQueueType::Copy, SubmissionPolicy::Immediate);
+        auto ctx = graphics->BeginScopedCommandContext(type, SubmissionPolicy::Immediate);
 
         // Cursed non-even sizes.
         u32 width = 121, height = 165, depth = 64;
