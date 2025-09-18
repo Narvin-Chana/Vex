@@ -341,7 +341,9 @@ void CommandContext::Copy(const Texture& source, const Texture& destination)
                          RHITextureBarrier{ destinationRHI,
                                             RHIBarrierSync::Copy,
                                             RHIBarrierAccess::CopyDest,
-                                            RHITextureLayout::CopyDest } };
+                                            cmdList->GetType() == CommandQueueType::Copy
+                                                ? RHITextureLayout::Common
+                                                : RHITextureLayout::CopyDest } };
     cmdList->Barrier({}, barriers);
     cmdList->Copy(sourceRHI, destinationRHI);
 }
@@ -376,7 +378,9 @@ void CommandContext::Copy(const Texture& source,
                          RHITextureBarrier{ destinationRHI,
                                             RHIBarrierSync::Copy,
                                             RHIBarrierAccess::CopyDest,
-                                            RHITextureLayout::CopyDest } };
+                                            cmdList->GetType() == CommandQueueType::Copy
+                                                ? RHITextureLayout::Common
+                                                : RHITextureLayout::CopyDest } };
     cmdList->Barrier({}, barriers);
     cmdList->Copy(sourceRHI, destinationRHI, regionMappings);
 }
@@ -424,7 +428,8 @@ void CommandContext::Copy(const Buffer& source, const Texture& destination)
     RHITextureBarrier destinationBarrier{ destinationRHI,
                                           RHIBarrierSync::Copy,
                                           RHIBarrierAccess::CopyDest,
-                                          RHITextureLayout::CopyDest };
+                                          cmdList->GetType() == CommandQueueType::Copy ? RHITextureLayout::Common
+                                                                                       : RHITextureLayout::CopyDest };
     cmdList->Barrier({ &sourceBarrier, 1 }, { &destinationBarrier, 1 });
     cmdList->Copy(sourceRHI, destinationRHI);
 }
@@ -451,7 +456,8 @@ void CommandContext::Copy(const Buffer& source,
     RHITextureBarrier destinationBarrier{ destinationRHI,
                                           RHIBarrierSync::Copy,
                                           RHIBarrierAccess::CopyDest,
-                                          RHITextureLayout::CopyDest };
+                                          cmdList->GetType() == CommandQueueType::Copy ? RHITextureLayout::Common
+                                                                                       : RHITextureLayout::CopyDest };
     cmdList->Barrier({ &sourceBarrier, 1 }, { &destinationBarrier, 1 });
 
     cmdList->Copy(sourceRHI, destinationRHI, copyDescriptions);
@@ -544,15 +550,11 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
     rhiStagingBuffer.Unmap();
 
     RHIBufferBarrier stagingBufferBarrier{ rhiStagingBuffer, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource };
-    RHITextureBarrier textureBarrier{
-        rhiDestTexture,
-        RHIBarrierSync::Copy,
-        RHIBarrierAccess::CopyDest,
-        // Keeping a common layout allows this function to be called with a Copy command list.
-        // This is because swizzling/compression happens when you transition the texture, which Copy command lists do
-        // not support.
-        RHITextureLayout::Common
-    };
+    RHITextureBarrier textureBarrier{ rhiDestTexture,
+                                      RHIBarrierSync::Copy,
+                                      RHIBarrierAccess::CopyDest,
+                                      cmdList->GetType() == CommandQueueType::Copy ? RHITextureLayout::Common
+                                                                                   : RHITextureLayout::CopyDest };
     cmdList->Barrier({ &stagingBufferBarrier, 1 }, { &textureBarrier, 1 });
 
     const bool isFullUpload = uploadRegions.empty();
