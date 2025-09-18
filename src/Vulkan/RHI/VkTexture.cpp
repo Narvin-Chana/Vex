@@ -337,7 +337,6 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
     case TextureType::Texture3D:
         createInfo.extent = ::vk::Extent3D{ description.width, description.height, description.depthOrArraySize };
         createInfo.imageType = ::vk::ImageType::e3D;
-        // VUID-VkImageCreateInfo-imageType-00961: If imageType is VK_IMAGE_TYPE_3D, arrayLayers must be 1
         createInfo.arrayLayers = 1;
         break;
     default:;
