@@ -194,7 +194,7 @@ u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc,
 
         const u32 width = region.extent.width;
         const u32 height = region.extent.height;
-        u32 depth = region.extent.depth;
+        const u32 depth = region.extent.depth;
 
         // The staging buffer should have a row pitch alignment of 256 and mip alignment of 512 due to API constraints.
         u64 regionSize = AlignUp<u64>(width * pixelByteSize, RowPitchAlignment) * height * depth;
@@ -219,7 +219,7 @@ u64 ComputePackedUploadDataByteSize(const TextureDescription& desc, std::span<co
 
         const u32 width = region.extent.width;
         const u32 height = region.extent.height;
-        u32 depth = region.extent.depth;
+        const u32 depth = region.extent.depth;
 
         // Calculate tightly packed size for this region
         totalSize += width * pixelByteSize * height * depth;
