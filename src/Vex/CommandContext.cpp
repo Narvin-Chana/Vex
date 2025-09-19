@@ -156,7 +156,9 @@ CommandContext::CommandContext(NonNullPtr<GfxBackend> backend,
     cmdList->Open();
     if (cmdList->GetType() != CommandQueueType::Copy)
     {
-        cmdList->SetDescriptorPool(*backend->descriptorPool, backend->psCache->GetResourceLayout());
+        RHIResourceLayout& resourceLayout = backend->psCache->GetResourceLayout();
+        cmdList->SetDescriptorPool(*backend->descriptorPool, resourceLayout);
+        cmdList->SetLayout(resourceLayout);
     }
 }
 
@@ -284,10 +286,10 @@ void CommandContext::Dispatch(const ShaderKey& shader,
         cachedComputePSOKey = psoKey;
     }
 
-    // Sets the resource layout to use for the dispatch.
-    RHIResourceLayout& resourceLayout = backend->psCache->GetResourceLayout();
-    resourceLayout.SetLayoutResources(constants);
-    cmdList->SetLayout(resourceLayout);
+    if (constants)
+    {
+        cmdList->SetLocalConstants(constants->data);
+    }
 
     // Validate dispatch (vs platform/api constraints)
     // backend->ValidateDispatch(groupCount);
@@ -311,11 +313,10 @@ void CommandContext::TraceRays(const RayTracingPassDescription& rayTracingPassDe
     }
     cmdList->SetPipelineState(*pipelineState);
 
-    // Sets the resource layout to use for the ray trace.
-    RHIResourceLayout& resourceLayout = backend->psCache->GetResourceLayout();
-    resourceLayout.SetLayoutResources(constants);
-
-    cmdList->SetLayout(resourceLayout);
+    if (constants)
+    {
+        cmdList->SetLocalConstants(constants->data);
+    }
 
     // Validate ray trace (vs platform/api constraints)
     // backend->ValidateTraceRays(widthHeightDepth);
@@ -734,11 +735,10 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDescri
         cachedGraphicsPSOKey = graphicsPSOKey;
     }
 
-    // Setup the layout for our pass.
-    RHIResourceLayout& resourceLayout = backend->psCache->GetResourceLayout();
-    resourceLayout.SetLayoutResources(constants);
-
-    cmdList->SetLayout(resourceLayout);
+    if (constants)
+    {
+        cmdList->SetLocalConstants(constants->data);
+    }
 
     if (!cachedInputAssembly || drawDesc.inputAssembly != cachedInputAssembly)
     {

@@ -24,7 +24,8 @@ public:
     virtual void SetPipelineState(const RHIComputePipelineState& computePipelineState) override;
     virtual void SetPipelineState(const RHIRayTracingPipelineState& rayTracingPipelineState) override;
 
-    virtual void SetLayout(RHIResourceLayout& layout) override;
+    virtual void SetLayout(RHIResourceLayout& resourceLayout) override;
+    virtual void SetLocalConstants(std::span<const byte> localConstantData) override;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) override;
     virtual void SetInputAssembly(InputAssembly inputAssembly) override;
 

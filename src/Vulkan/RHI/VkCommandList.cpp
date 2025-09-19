@@ -5,7 +5,6 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/ByteUtils.h>
-#include <Vex/DrawHelpers.h>
 
 #include <RHI/RHIBindings.h>
 
@@ -91,13 +90,19 @@ void VkCommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTracin
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-void VkCommandList::SetLayout(RHIResourceLayout& layout)
+void VkCommandList::SetLayout(RHIResourceLayout& resourceLayout)
 {
-    std::span<const byte> localConstantsData = layout.GetLocalConstantsData();
-    if (localConstantsData.empty())
+    pipelineLayout = *resourceLayout.pipelineLayout;
+}
+
+void VkCommandList::SetLocalConstants(std::span<const byte> localConstantData)
+{
+    if (localConstantData.empty())
     {
         return;
     }
+
+    VEX_ASSERT(pipelineLayout, "VkPipelineLayout should be set via the SetLayout method");
 
     ::vk::ShaderStageFlags stageFlags;
     switch (type)
@@ -111,22 +116,20 @@ void VkCommandList::SetLayout(RHIResourceLayout& layout)
         VEX_ASSERT(false, "Operation not supported on this queue type");
     }
 
-    commandBuffer->pushConstants(*layout.pipelineLayout,
-                                 stageFlags,
-                                 0,
-                                 localConstantsData.size(),
-                                 localConstantsData.data());
+    commandBuffer->pushConstants(pipelineLayout, stageFlags, 0, localConstantData.size(), localConstantData.data());
 }
 
 void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)
 {
+    VEX_ASSERT(pipelineLayout, "VkPipelineLayout should be set via the SetLayout method");
+
     std::array descriptorSets{ *resourceLayout.GetSamplerDescriptor().descriptorSet,
                                *descriptorPool.bindlessSet->descriptorSet };
     switch (type)
     {
     case CommandQueueTypes::Graphics:
         commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eGraphics,
-                                          *resourceLayout.pipelineLayout,
+                                          pipelineLayout,
                                           0,
                                           descriptorSets.size(),
                                           descriptorSets.data(),
@@ -134,7 +137,7 @@ void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIReso
                                           nullptr);
     case CommandQueueTypes::Compute:
         commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eCompute,
-                                          *resourceLayout.pipelineLayout,
+                                          pipelineLayout,
                                           0,
                                           descriptorSets.size(),
                                           descriptorSets.data(),

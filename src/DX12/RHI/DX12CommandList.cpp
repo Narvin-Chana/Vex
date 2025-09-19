@@ -114,9 +114,9 @@ void DX12CommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTrac
     commandList->SetPipelineState1(rayTracingPipelineState.stateObject.Get());
 }
 
-void DX12CommandList::SetLayout(RHIResourceLayout& layout)
+void DX12CommandList::SetLayout(RHIResourceLayout& resourceLayout)
 {
-    ID3D12RootSignature* globalRootSignature = layout.GetRootSignature().Get();
+    ID3D12RootSignature* globalRootSignature = resourceLayout.GetRootSignature().Get();
 
     // Set root signature.
     switch (type)
@@ -129,9 +129,11 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
     default:
         break;
     }
+}
 
-    std::span<const byte> localConstantsData = layout.GetLocalConstantsData();
-    if (localConstantsData.empty())
+void DX12CommandList::SetLocalConstants(std::span<const byte> localConstantData)
+{
+    if (localConstantData.empty())
     {
         return;
     }
@@ -141,14 +143,14 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
     case CommandQueueType::Graphics:
         // Set local constants (in first slot of root signature).
         commandList->SetGraphicsRoot32BitConstants(0,
-                                                   static_cast<u32>(localConstantsData.size()),
-                                                   localConstantsData.data(),
+                                                   static_cast<u32>(localConstantData.size()),
+                                                   localConstantData.data(),
                                                    0);
     case CommandQueueType::Compute:
         // Set local constants (in first slot of root signature).
         commandList->SetComputeRoot32BitConstants(0,
-                                                  static_cast<u32>(localConstantsData.size()),
-                                                  localConstantsData.data(),
+                                                  static_cast<u32>(localConstantData.size()),
+                                                  localConstantData.data(),
                                                   0);
     case CommandQueueType::Copy:
     default:
