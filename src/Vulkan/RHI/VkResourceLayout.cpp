@@ -17,21 +17,32 @@ namespace vex::vk
 
 VkResourceLayout::VkResourceLayout(NonNullPtr<VkGPUContext> ctx, NonNullPtr<VkDescriptorPool> descriptorPool)
     : ctx{ ctx }
-    , descriptorPool{ descriptorPool }
+    , samplerDescriptorPool{ descriptorPool }
 {
     std::array<::vk::DescriptorType, MaxSamplerCount> descriptorTypes{};
     std::fill_n(descriptorTypes.begin(), samplers.size(), ::vk::DescriptorType::eSampler);
     samplerSet = VkDescriptorSet(ctx, *descriptorPool->descriptorPool, descriptorTypes);
 }
 
-const VkDescriptorSet& VkResourceLayout::GetSamplerDescriptor()
+const VkDescriptorSet& VkResourceLayout::GetSamplerDescriptorSet()
+{
+    RefreshCache();
+    return *samplerSet;
+}
+
+::vk::PipelineLayout VkResourceLayout::GetPipelineLayout()
+{
+    RefreshCache();
+    return *pipelineLayout;
+}
+
+void VkResourceLayout::RefreshCache()
 {
     if (isDirty)
     {
         pipelineLayout = CreateLayout();
         isDirty = false;
     }
-    return *samplerSet;
 }
 
 ::vk::UniquePipelineLayout VkResourceLayout::CreateLayout()
@@ -41,7 +52,7 @@ const VkDescriptorSet& VkResourceLayout::GetSamplerDescriptor()
                                    .offset = 0,
                                    .size = GPhysicalDevice->featureChecker->GetMaxLocalConstantsByteSize() };
 
-    std::array layouts = { *samplerSet->descriptorLayout, *descriptorPool->GetBindlessSet().descriptorLayout };
+    std::array layouts = { *samplerSet->descriptorLayout, *samplerDescriptorPool->GetBindlessSet().descriptorLayout };
     ::vk::PipelineLayoutCreateInfo createInfo{ .setLayoutCount = static_cast<u32>(layouts.size()),
                                                .pSetLayouts = layouts.data(),
                                                .pushConstantRangeCount = 1,

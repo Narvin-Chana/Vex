@@ -156,9 +156,8 @@ CommandContext::CommandContext(NonNullPtr<GfxBackend> backend,
     cmdList->Open();
     if (cmdList->GetType() != CommandQueueType::Copy)
     {
-        RHIResourceLayout& resourceLayout = backend->psCache->GetResourceLayout();
-        cmdList->SetDescriptorPool(*backend->descriptorPool, resourceLayout);
-        cmdList->SetLayout(resourceLayout);
+        cmdList->SetLayout(backend->psCache->GetResourceLayout());
+        cmdList->SetDescriptorPool(*backend->descriptorPool);
     }
 }
 

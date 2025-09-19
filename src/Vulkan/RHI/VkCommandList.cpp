@@ -92,7 +92,8 @@ void VkCommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTracin
 
 void VkCommandList::SetLayout(RHIResourceLayout& resourceLayout)
 {
-    pipelineLayout = *resourceLayout.pipelineLayout;
+    samplerDescriptorSet = *resourceLayout.GetSamplerDescriptorSet().descriptorSet;
+    pipelineLayout = resourceLayout.GetPipelineLayout();
 }
 
 void VkCommandList::SetLocalConstants(std::span<const byte> localConstantData)
@@ -119,12 +120,13 @@ void VkCommandList::SetLocalConstants(std::span<const byte> localConstantData)
     commandBuffer->pushConstants(pipelineLayout, stageFlags, 0, localConstantData.size(), localConstantData.data());
 }
 
-void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)
+void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool)
 {
-    VEX_ASSERT(pipelineLayout, "VkPipelineLayout should be set via the SetLayout method");
+    VEX_ASSERT(pipelineLayout && samplerDescriptorSet,
+               "the pipeline layout and sampler descriptor set should be set via the SetLayout method. Call it before "
+               "SetDescriptorPool");
 
-    std::array descriptorSets{ *resourceLayout.GetSamplerDescriptor().descriptorSet,
-                               *descriptorPool.bindlessSet->descriptorSet };
+    std::array descriptorSets{ samplerDescriptorSet, *descriptorPool.bindlessSet->descriptorSet };
     switch (type)
     {
     case CommandQueueTypes::Graphics:

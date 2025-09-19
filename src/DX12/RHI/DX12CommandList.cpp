@@ -158,7 +158,7 @@ void DX12CommandList::SetLocalConstants(std::span<const byte> localConstantData)
     }
 }
 
-void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& layout)
+void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool)
 {
     commandList->SetDescriptorHeaps(1, descriptorPool.gpuHeap.GetNativeDescriptorHeap().GetAddressOf());
 }

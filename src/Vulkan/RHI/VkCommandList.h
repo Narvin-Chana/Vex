@@ -35,7 +35,7 @@ public:
 
     virtual void SetLayout(RHIResourceLayout& resourceLayout) override;
     virtual void SetLocalConstants(std::span<const byte> localConstantData) override;
-    virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) override;
+    virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool) override;
     virtual void SetInputAssembly(InputAssembly inputAssembly) override;
     virtual void ClearTexture(const RHITextureBinding& binding,
                               TextureUsage::Type usage,
@@ -77,6 +77,7 @@ private:
     NonNullPtr<VkGPUContext> ctx;
     ::vk::UniqueCommandBuffer commandBuffer;
     ::vk::PipelineLayout pipelineLayout{};
+    ::vk::DescriptorSet samplerDescriptorSet{};
 
     bool isRendering = false;
 

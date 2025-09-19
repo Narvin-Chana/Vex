@@ -16,16 +16,18 @@ class VkResourceLayout final : public RHIResourceLayoutBase
 public:
     VkResourceLayout(NonNullPtr<VkGPUContext> ctx, NonNullPtr<VkDescriptorPool> descriptorPool);
 
-    ::vk::UniquePipelineLayout pipelineLayout;
-    const VkDescriptorSet& GetSamplerDescriptor();
+    const VkDescriptorSet& GetSamplerDescriptorSet();
+    ::vk::PipelineLayout GetPipelineLayout();
 
 private:
+    void RefreshCache();
     ::vk::UniquePipelineLayout CreateLayout();
     MaybeUninitialized<VkDescriptorSet> samplerSet;
     std::vector<::vk::UniqueSampler> vkSamplers;
 
     NonNullPtr<VkGPUContext> ctx;
-    NonNullPtr<VkDescriptorPool> descriptorPool;
+    NonNullPtr<VkDescriptorPool> samplerDescriptorPool;
+    ::vk::UniquePipelineLayout pipelineLayout;
 };
 
 } // namespace vex::vk

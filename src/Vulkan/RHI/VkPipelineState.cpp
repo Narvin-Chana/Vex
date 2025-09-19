@@ -188,7 +188,7 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
                                                          .pDepthStencilState = &depthStateCI,
                                                          .pColorBlendState = &blendStateCI,
                                                          .pDynamicState = &dynamicStateInfo,
-                                                         .layout = *resourceLayout.pipelineLayout,
+                                                         .layout = resourceLayout.GetPipelineLayout(),
                                                          .renderPass = nullptr,
                                                          .subpass = 0,
                                                          .basePipelineHandle = nullptr,
@@ -232,7 +232,7 @@ void VkComputePipelineState::Compile(const Shader& computeShader, RHIResourceLay
                 .module = *computeShaderModule,
                 .pName = "CSMain",
             },
-        .layout = *resourceLayout.pipelineLayout,
+        .layout = resourceLayout.GetPipelineLayout(),
     };
 
     computePipeline = VEX_VK_CHECK <<= device.createComputePipelineUnique(PSOCache, computePipelineCreateInfo);

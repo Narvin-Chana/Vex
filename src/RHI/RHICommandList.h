@@ -56,7 +56,7 @@ public:
     virtual void SetLocalConstants(std::span<const byte> localConstantData) = 0;
 
     // Sets descriptor heaps/sets according to the layout
-    virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) = 0;
+    virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool) = 0;
 
     virtual void SetInputAssembly(InputAssembly inputAssembly) = 0;
 
