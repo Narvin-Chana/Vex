@@ -1,8 +1,9 @@
 #pragma once
 
 #include <Vex/Containers/FreeList.h>
-#include <Vex/RHIFwd.h>
 #include <Vex/Resource.h>
+
+#include <RHI/RHIFwd.h>
 
 namespace vex
 {
