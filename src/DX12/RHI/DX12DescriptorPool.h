@@ -36,4 +36,5 @@ private:
 
     friend class DX12CommandList;
 };
+
 } // namespace vex::dx12

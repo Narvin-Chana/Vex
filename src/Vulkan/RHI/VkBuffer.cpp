@@ -92,7 +92,7 @@ BindlessHandle VkBuffer::GetOrCreateBindlessView(BufferBindingUsage usage,
 
     const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
 
-    descriptorPool.UpdateDescriptor(
+    descriptorPool.GetBindlessSet().UpdateDescriptor(
         handle,
         desc.usage == BufferUsage::UniformBuffer ? ::vk::DescriptorType::eUniformBuffer
                                                  : ::vk::DescriptorType::eStorageBuffer,

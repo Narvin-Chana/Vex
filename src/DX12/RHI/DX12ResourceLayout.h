@@ -18,6 +18,9 @@ public:
 
     ComPtr<ID3D12RootSignature>& GetRootSignature();
 
+    DX12ResourceLayout(DX12ResourceLayout&&) = default;
+    DX12ResourceLayout& operator=(DX12ResourceLayout&&) = default;
+
 private:
     void CompileRootSignature();
 

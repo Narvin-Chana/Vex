@@ -111,7 +111,7 @@ D3D12_INDEX_BUFFER_VIEW DX12Buffer::GetIndexBufferView(const BufferBinding& bind
 
 BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
                                                    std::optional<u32> strideByteSize,
-                                                   DX12DescriptorPool& descriptorPool)
+                                                   RHIDescriptorPool& descriptorPool)
 {
     bool isCBV = usage == BufferBindingUsage::ConstantBuffer;
     bool isSRV = usage == BufferBindingUsage::StructuredBuffer || usage == BufferBindingUsage::ByteAddressBuffer;

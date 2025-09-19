@@ -187,6 +187,20 @@ HelloCubeApplication::HelloCubeApplication()
 
         stbi_image_free(imageData);
     }
+
+    std::vector samplers{ vex::TextureSampler{
+                              .minFilter = vex::FilterMode::Linear,
+                              .magFilter = vex::FilterMode::Linear,
+                              .addressU = vex::AddressMode::Clamp,
+                              .addressV = vex::AddressMode::Clamp,
+                          },
+                          vex::TextureSampler{
+                              .minFilter = vex::FilterMode::Point,
+                              .magFilter = vex::FilterMode::Point,
+                              .addressU = vex::AddressMode::Clamp,
+                              .addressV = vex::AddressMode::Clamp,
+                          } };
+    graphics->SetSamplers(samplers);
 }
 
 void HelloCubeApplication::Run()

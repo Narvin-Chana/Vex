@@ -31,20 +31,20 @@ struct RHIBase
     virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() = 0;
     virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) = 0;
 
-    virtual UniqueHandle<RHISwapChain> CreateSwapChain(const SwapChainDescription& description,
-                                                       const PlatformWindow& platformWindow) = 0;
+    virtual RHISwapChain CreateSwapChain(const SwapChainDescription& description,
+                                         const PlatformWindow& platformWindow) = 0;
 
-    virtual UniqueHandle<RHICommandPool> CreateCommandPool() = 0;
+    virtual RHICommandPool CreateCommandPool() = 0;
 
     virtual RHIGraphicsPipelineState CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key) = 0;
     virtual RHIComputePipelineState CreateComputePipelineState(const ComputePipelineStateKey& key) = 0;
     virtual RHIRayTracingPipelineState CreateRayTracingPipelineState(const RayTracingPipelineStateKey& key) = 0;
-    virtual UniqueHandle<RHIResourceLayout> CreateResourceLayout(RHIDescriptorPool& descriptorPool) = 0;
+    virtual RHIResourceLayout CreateResourceLayout(RHIDescriptorPool& descriptorPool) = 0;
 
     virtual RHITexture CreateTexture(RHIAllocator& allocator, const TextureDescription& description) = 0;
     virtual RHIBuffer CreateBuffer(RHIAllocator& allocator, const BufferDescription& description) = 0;
 
-    virtual UniqueHandle<RHIDescriptorPool> CreateDescriptorPool() = 0;
+    virtual RHIDescriptorPool CreateDescriptorPool() = 0;
 
     virtual RHIAllocator CreateAllocator() = 0;
 

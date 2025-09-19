@@ -6,7 +6,7 @@ namespace vex::dx12
 DX12DescriptorPool::DX12DescriptorPool(ComPtr<DX12Device>& device)
     // TODO: allow resizing, currently disallowed
     : device{ device }
-    , gpuHeap(device, DefaultPoolSize)
+    , gpuHeap(device, GDefaultDescriptorPoolSize)
     , nullHeap(device, 1)
 {
     // Fill in the null heap with a null SRV.
