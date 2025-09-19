@@ -315,17 +315,18 @@ void ValidateCompatibleTextureDescriptions(const TextureDescription& srcDesc, co
 
 std::vector<TextureUploadRegion> TextureUploadRegion::UploadAllMips(const TextureDescription& textureDescription)
 {
-    std::vector<TextureUploadRegion> regions(textureDescription.mips * textureDescription.GetArraySize());
+    const u32 arraySize = textureDescription.GetArraySize();
+    std::vector<TextureUploadRegion> regions(textureDescription.mips * arraySize);
 
     u32 width = textureDescription.width;
     u32 height = textureDescription.height;
     u32 depth = textureDescription.GetDepth();
 
-    for (u16 mip = 0; mip < regions.size(); ++mip)
+    for (u16 mip = 0; mip < textureDescription.mips; ++mip)
     {
-        for (u32 slice = 0; slice < textureDescription.GetArraySize(); ++slice)
+        for (u32 slice = 0; slice < arraySize; ++slice)
         {
-            regions[mip + slice] = {
+            regions[mip * arraySize + slice] = {
                 .mip = mip,
                 .slice = slice,
                 .offset = { 0, 0, 0 },
@@ -347,13 +348,14 @@ std::vector<TextureUploadRegion> TextureUploadRegion::UploadAllMips(const Textur
 std::vector<TextureUploadRegion> TextureUploadRegion::UploadFullMip(u16 mipIndex,
                                                                     const TextureDescription& textureDescription)
 {
-    std::vector<TextureUploadRegion> regions(textureDescription.GetArraySize());
+    const u32 arraySize = textureDescription.GetArraySize();
+    std::vector<TextureUploadRegion> regions(arraySize);
 
     const u32 width = std::max(1u, textureDescription.width >> mipIndex);
     const u32 height = std::max(1u, textureDescription.height >> mipIndex);
     const u32 depth = std::max(1u, textureDescription.GetDepth() >> mipIndex);
 
-    for (u32 slice = 0; slice < textureDescription.GetArraySize(); ++slice)
+    for (u32 slice = 0; slice < arraySize; ++slice)
     {
         regions[slice] = {
             .mip = mipIndex,
@@ -364,6 +366,127 @@ std::vector<TextureUploadRegion> TextureUploadRegion::UploadFullMip(u16 mipIndex
     }
 
     return regions;
+}
+
+TextureDescription TextureDescription::CreateTexture2D(std::string name,
+                                                       TextureFormat format,
+                                                       u32 width,
+                                                       u32 height,
+                                                       u16 mips,
+                                                       TextureUsage::Flags usage,
+                                                       TextureClearValue clearValue,
+                                                       ResourceMemoryLocality memoryLocality)
+{
+    TextureDescription description{
+        .name = std::move(name),
+        .type = TextureType::Texture2D,
+        .format = format,
+        .width = width,
+        .height = height,
+        .depthOrArraySize = 1,
+        .mips = mips,
+        .usage = usage,
+        .clearValue = std::move(clearValue),
+        .memoryLocality = memoryLocality,
+    };
+    return description;
+}
+
+TextureDescription TextureDescription::CreateTexture2DArray(std::string name,
+                                                            TextureFormat format,
+                                                            u32 width,
+                                                            u32 height,
+                                                            u32 arraySize,
+                                                            u16 mips,
+                                                            TextureUsage::Flags usage,
+                                                            TextureClearValue clearValue,
+                                                            ResourceMemoryLocality memoryLocality)
+{
+    TextureDescription description{
+        .name = std::move(name),
+        .type = TextureType::Texture2D,
+        .format = format,
+        .width = width,
+        .height = height,
+        .depthOrArraySize = arraySize,
+        .mips = mips,
+        .usage = usage,
+        .clearValue = std::move(clearValue),
+        .memoryLocality = memoryLocality,
+    };
+    return description;
+}
+
+TextureDescription TextureDescription::CreateTextureCube(std::string name,
+                                                         TextureFormat format,
+                                                         u32 faceSize,
+                                                         u16 mips,
+                                                         TextureUsage::Flags usage,
+                                                         TextureClearValue clearValue,
+                                                         ResourceMemoryLocality memoryLocality)
+{
+    TextureDescription description{
+        .name = std::move(name),
+        .type = TextureType::TextureCube,
+        .format = format,
+        .width = faceSize,
+        .height = faceSize,
+        .depthOrArraySize = 1,
+        .mips = mips,
+        .usage = usage,
+        .clearValue = std::move(clearValue),
+        .memoryLocality = memoryLocality,
+    };
+    return description;
+}
+
+TextureDescription TextureDescription::CreateTextureCubeArray(std::string name,
+                                                              TextureFormat format,
+                                                              u32 faceSize,
+                                                              u32 arraySize,
+                                                              u16 mips,
+                                                              TextureUsage::Flags usage,
+                                                              TextureClearValue clearValue,
+                                                              ResourceMemoryLocality memoryLocality)
+{
+    TextureDescription description{
+        .name = std::move(name),
+        .type = TextureType::TextureCube,
+        .format = format,
+        .width = faceSize,
+        .height = faceSize,
+        .depthOrArraySize = arraySize,
+        .mips = mips,
+        .usage = usage,
+        .clearValue = std::move(clearValue),
+        .memoryLocality = memoryLocality,
+    };
+    return description;
+}
+
+TextureDescription TextureDescription::CreateTexture3D(std::string name,
+                                                       TextureFormat format,
+                                                       u32 width,
+                                                       u32 height,
+                                                       u32 depth,
+                                                       u16 mips,
+                                                       TextureUsage::Flags usage,
+                                                       TextureClearValue clearValue,
+                                                       ResourceMemoryLocality memoryLocality)
+{
+    TextureDescription description{
+        .name = std::move(name),
+        .type = TextureType::Texture3D,
+        .format = format,
+        .width = width,
+        .height = height,
+        .depthOrArraySize = depth,
+        .mips = mips,
+        .usage = usage,
+        .clearValue = std::move(clearValue),
+        .memoryLocality = memoryLocality,
+    };
+    return description;
 }
 
 } // namespace vex
