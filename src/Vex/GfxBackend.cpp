@@ -74,23 +74,23 @@ GfxBackend::GfxBackend(const BackendDescription& description)
             description.platformWindow.width,
             description.platformWindow.height);
 
-    commandPool = rhi.CreateCommandPool();
+    commandPool.emplace(rhi.CreateCommandPool());
 
     descriptorPool = rhi.CreateDescriptorPool();
 
-    psCache = PipelineStateCache(&rhi, *descriptorPool, &resourceCleanup, description.shaderCompilerSettings);
+    psCache.emplace(&rhi, *descriptorPool, &resourceCleanup, description.shaderCompilerSettings);
 
     allocator = rhi.CreateAllocator();
 
     if (description.useSwapChain)
     {
-        swapChain = rhi.CreateSwapChain(
+        swapChain.emplace(rhi.CreateSwapChain(
             {
                 .format = description.swapChainFormat,
                 .frameBuffering = description.frameBuffering,
                 .useVSync = description.useVSync,
             },
-            description.platformWindow);
+            description.platformWindow));
 
         CreatePresentTextures();
     }
@@ -219,7 +219,7 @@ void GfxBackend::CleanupResources()
 
     // Send all shader errors to the user, we do this every time we cleanup, since cleanup occurs when we submit or
     // present.
-    psCache.GetShaderCompiler().FlushCompilationErrors();
+    psCache->GetShaderCompiler().FlushCompilationErrors();
 }
 
 std::vector<SyncToken> GfxBackend::EndCommandContext(CommandContext& ctx)
@@ -447,7 +447,7 @@ void GfxBackend::RecompileAllShaders()
 {
     if (description.shaderCompilerSettings.enableShaderDebugging)
     {
-        psCache.GetShaderCompiler().MarkAllShadersDirty();
+        psCache->GetShaderCompiler().MarkAllShadersDirty();
     }
     else
     {
@@ -459,7 +459,7 @@ void GfxBackend::SetShaderCompilationErrorsCallback(std::function<ShaderCompileE
 {
     if (description.shaderCompilerSettings.enableShaderDebugging)
     {
-        psCache.GetShaderCompiler().SetCompilationErrorsCallback(callback);
+        psCache->GetShaderCompiler().SetCompilationErrorsCallback(callback);
     }
     else
     {
@@ -469,12 +469,12 @@ void GfxBackend::SetShaderCompilationErrorsCallback(std::function<ShaderCompileE
 
 void GfxBackend::SetSamplers(std::span<TextureSampler> newSamplers)
 {
-    psCache.GetResourceLayout().SetSamplers(newSamplers);
+    psCache->GetResourceLayout().SetSamplers(newSamplers);
 }
 
 RenderExtension* GfxBackend::RegisterRenderExtension(UniqueHandle<RenderExtension>&& renderExtension)
 {
-    renderExtension->data = RenderExtensionData{ .rhi = &rhi, .descriptorPool = descriptorPool.get() };
+    renderExtension->data = RenderExtensionData{ .rhi = &rhi, .descriptorPool = &*descriptorPool };
     renderExtension->Initialize();
     renderExtensions.push_back(std::move(renderExtension));
     return renderExtensions.back().get();
@@ -496,7 +496,7 @@ void GfxBackend::RecompileChangedShaders()
 {
     if (description.shaderCompilerSettings.enableShaderDebugging)
     {
-        psCache.GetShaderCompiler().MarkAllStaleShadersDirty();
+        psCache->GetShaderCompiler().MarkAllStaleShadersDirty();
     }
     else
     {
@@ -506,7 +506,7 @@ void GfxBackend::RecompileChangedShaders()
 
 PipelineStateCache& GfxBackend::GetPipelineStateCache()
 {
-    return psCache;
+    return *psCache;
 }
 
 RHITexture& GfxBackend::GetRHITexture(TextureHandle textureHandle)

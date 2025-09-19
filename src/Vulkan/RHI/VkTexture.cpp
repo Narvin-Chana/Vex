@@ -180,9 +180,9 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
         .format = TextureUtil::GetTextureFormat(binding),
         .usage = static_cast<TextureUsage::Type>(binding.usage),
         .mipBias = binding.mipBias,
-        .mipCount = (binding.mipCount == 0) ? description.mips : binding.mipCount,
+        .mipCount = (binding.mipCount == 0) ? VK_REMAINING_MIP_LEVELS : binding.mipCount,
         .startSlice = binding.startSlice,
-        .sliceCount = (binding.sliceCount == 0) ? description.depthOrArraySize : binding.sliceCount,
+        .sliceCount = (binding.sliceCount == 0) ? VK_REMAINING_ARRAY_LAYERS : binding.sliceCount,
     };
     if (auto it = bindlessCache.find(view); it != bindlessCache.end() && descriptorPool.IsValid(it->second.handle))
     {
@@ -216,7 +216,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
         VEX_LOG(Fatal, "Unsupported binding usage for texture {}.", binding.texture.description.name);
     }
 
-    descriptorPool.UpdateDescriptor(
+    descriptorPool.GetBindlessSet().UpdateDescriptor(
         handle,
         ::vk::DescriptorImageInfo{ .sampler = nullptr, .imageView = *imageView, .imageLayout = viewLayout },
         view.usage & TextureUsage::ShaderReadWrite);

@@ -35,7 +35,7 @@ void RHICommandPoolBase::ReclaimCommandLists()
                 bool areAllTokensComplete = true;
                 for (auto tokens = cmdList->GetSyncTokens(); auto& token : tokens)
                 {
-                    if (!rhi.IsTokenComplete(token))
+                    if (!rhi->IsTokenComplete(token))
                     {
                         areAllTokensComplete = false;
                         break;

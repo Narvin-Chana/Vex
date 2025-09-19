@@ -7,8 +7,8 @@ namespace vex
 
 RHIDescriptorPoolBase::RHIDescriptorPoolBase()
     : allocator({
-          .generations = std::vector<u8>(DefaultPoolSize),
-          .handles = FreeListAllocator(DefaultPoolSize),
+          .generations = std::vector<u8>(GDefaultDescriptorPoolSize),
+          .handles = FreeListAllocator(GDefaultDescriptorPoolSize),
       })
 {
 }
@@ -51,5 +51,4 @@ bool RHIDescriptorPoolBase::IsValid(BindlessHandle handle)
 {
     return handle.GetGeneration() == allocator.generations[handle.GetIndex()];
 }
-
 } // namespace vex
