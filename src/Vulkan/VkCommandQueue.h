@@ -10,7 +10,7 @@ namespace vex::vk
 
 struct VkCommandQueue
 {
-    CommandQueueTypes::Value type;
+    CommandQueueTypes::Value type = CommandQueueTypes::Invalid;
     u32 family = 0;
     ::vk::Queue queue;
 };
