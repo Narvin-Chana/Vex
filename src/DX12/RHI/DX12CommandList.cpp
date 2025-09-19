@@ -245,7 +245,7 @@ void DX12CommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
     std::vector<D3D12_TEXTURE_BARRIER> dx12TextureBarriers;
     dx12TextureBarriers.reserve(textureBarriers.size());
 
-    for (auto& bufferBarrier : bufferBarriers)
+    for (const auto& bufferBarrier : bufferBarriers)
     {
         D3D12_BUFFER_BARRIER dx12Barrier = {};
         dx12Barrier.SyncBefore = RHIBarrierSyncToDX12(bufferBarrier.srcSync);
@@ -262,7 +262,7 @@ void DX12CommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
         bufferBarrier.buffer->SetLastSync(bufferBarrier.dstSync);
         bufferBarrier.buffer->SetLastAccess(bufferBarrier.dstAccess);
     }
-    for (auto& textureBarrier : textureBarriers)
+    for (const auto& textureBarrier : textureBarriers)
     {
         D3D12_TEXTURE_BARRIER dx12Barrier = {};
         dx12Barrier.SyncBefore = RHIBarrierSyncToDX12(textureBarrier.srcSync);
@@ -272,6 +272,14 @@ void DX12CommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
         dx12Barrier.LayoutBefore = RHITextureLayoutToDX12(textureBarrier.srcLayout);
         dx12Barrier.LayoutAfter = RHITextureLayoutToDX12(textureBarrier.dstLayout);
         dx12Barrier.pResource = textureBarrier.texture->GetRawTexture();
+
+        // Copy command queues do not support the CopyDest stage.
+        bool remapToCommon = false;
+        if (type == CommandQueueType::Copy && textureBarrier.dstLayout == RHITextureLayout::CopyDest)
+        {
+            dx12Barrier.LayoutAfter = D3D12_BARRIER_LAYOUT_COMMON;
+            remapToCommon = true;
+        }
 
         if (dx12Barrier.AccessAfter & D3D12_BARRIER_ACCESS_NO_ACCESS)
         {
@@ -292,7 +300,7 @@ void DX12CommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
         // Update last sync, access and layout.
         textureBarrier.texture->SetLastSync(textureBarrier.dstSync);
         textureBarrier.texture->SetLastAccess(textureBarrier.dstAccess);
-        textureBarrier.texture->SetLastLayout(textureBarrier.dstLayout);
+        textureBarrier.texture->SetLastLayout(remapToCommon ? RHITextureLayout::Common : textureBarrier.dstLayout);
     }
 
     // Take our barriers and now insert them into "groups" to be sent to the command list.
