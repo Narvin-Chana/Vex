@@ -27,6 +27,7 @@
 
 namespace vex
 {
+class ReadBackContext;
 
 class CommandContext;
 struct PhysicalDevice;
@@ -101,6 +102,10 @@ public:
 
     // Called when the underlying window resizes, allows the swapchain to be resized.
     void OnWindowResized(u32 newWidth, u32 newHeight);
+    [[nodiscard]] bool UsesSwapChain() const noexcept
+    {
+        return description.useSwapChain;
+    };
 
     // Obtains the current present texture handle. If the swapchain is enabled, Vex uses a present texture which is
     // copied to the backbuffer when presenting.
@@ -119,6 +124,14 @@ public:
     RenderExtension* RegisterRenderExtension(UniqueHandle<RenderExtension>&& renderExtension);
     // You can manually unregister a RenderExtension by passing in the pointer returned on creation.
     void UnregisterRenderExtension(NonNullPtr<RenderExtension> renderExtension);
+
+    // Reads the data from the staging buffer from the specified context.
+    // The readback token allows to wait on the CPU for the readback operations to be done
+    // This should be used unless the waiting has been done separately prior to this call. Always passing the respective
+    // token is recommended
+    void ExecuteReadback(const ReadBackContext& context,
+                         std::span<byte> outputData,
+                         const std::optional<SyncToken>& readbackToken);
 
 private:
     void SubmitDeferredWork();

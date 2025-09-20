@@ -65,7 +65,10 @@ public:
     virtual void Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& regionMappings) override;
     virtual void Copy(RHIBuffer& src,
                       RHITexture& dst,
-                      std::span<const BufferToTextureCopyDescription> regionMappings) override;
+                      std::span<const BufferTextureCopyDescription> regionMappings) override;
+    virtual void Copy(RHITexture& src,
+                      RHIBuffer& dst,
+                      std::span<const BufferTextureCopyDescription> regionMappings) override;
 
     ::vk::CommandBuffer GetNativeCommandList()
     {

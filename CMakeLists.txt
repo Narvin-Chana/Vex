@@ -196,13 +196,16 @@ add_library(Vex STATIC
     "src/Vex/Shaders/CompilerBase.h"
     "src/Vex/SubmissionPolicy.h"
     "src/Vex/Synchronization.h"
-    "src/Tests/SynchronizationTorture.h"
-    "src/Tests/SynchronizationTorture.cpp"
     "src/Vex/ResourceCopy.h"
     "src/Vex/ResourceCopy.cpp"
     "src/Vex/Concepts.h"
     "src/Tests/TextureUpload.h"
     "src/Tests/TextureUpload.cpp"
+    # Vex Tests
+    "src/Tests/SynchronizationTorture.h"
+    "src/Tests/SynchronizationTorture.cpp"
+    "src/Tests/TextureUploadTests.cpp"
+    "src/Tests/TextureUploadTests.h"
 )
 
 if(WIN32)

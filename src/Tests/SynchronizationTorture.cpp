@@ -13,7 +13,7 @@ namespace vex
 
 void SynchronizationTortureTest(GfxBackend& graphics)
 {
-    VEX_LOG(Info, "Starting Synchronization Torture Test...");
+    VEX_LOG(Info, "---- Starting Synchronization Torture Test... ----");
 
     // Test 1: Basic Immediate vs Deferred Submission
     VEX_LOG(Info, "Test 1: Basic Immediate vs Deferred Submission");
@@ -28,40 +28,42 @@ void SynchronizationTortureTest(GfxBackend& graphics)
     // Test 2: Cross-Queue Dependencies
     VEX_LOG(Info, "Test 2: Cross-Queue Dependencies");
     {
-        std::vector<SyncToken> tokens;
-        std::vector<SyncToken> graphicsTokens;
+        SyncToken tokens;
+        SyncToken graphicsTokens;
 
         // Submit work on compute queue
         {
             auto computeCtx =
                 graphics.BeginScopedCommandContext(CommandQueueType::Compute, SubmissionPolicy::Immediate);
-            tokens = computeCtx.Submit();
+            tokens = *computeCtx.Submit();
             VEX_LOG(Info,
                     "Submitted compute work, token: {}/{}",
-                    magic_enum::enum_name(tokens[0].queueType),
-                    tokens[0].value);
+                    magic_enum::enum_name(tokens.queueType),
+                    tokens.value);
         }
 
         // Submit work on graphics queue that depends on compute
         {
-            auto graphicsCtx =
-                graphics.BeginScopedCommandContext(CommandQueueType::Graphics, SubmissionPolicy::Immediate, tokens);
-            graphicsTokens = graphicsCtx.Submit();
+            auto graphicsCtx = graphics.BeginScopedCommandContext(CommandQueueType::Graphics,
+                                                                  SubmissionPolicy::Immediate,
+                                                                  { &tokens, 1 });
+            graphicsTokens = *graphicsCtx.Submit();
             VEX_LOG(Info,
                     "Submitted graphics work dependent on compute, token: {}/{}",
-                    magic_enum::enum_name(graphicsTokens[0].queueType),
-                    graphicsTokens[0].value);
+                    magic_enum::enum_name(graphicsTokens.queueType),
+                    graphicsTokens.value);
         }
 
         // Submit copy work that depends on graphics
         {
-            auto copyCtx =
-                graphics.BeginScopedCommandContext(CommandQueueType::Copy, SubmissionPolicy::Immediate, graphicsTokens);
-            auto copyTokens = copyCtx.Submit();
+            auto copyCtx = graphics.BeginScopedCommandContext(CommandQueueType::Copy,
+                                                              SubmissionPolicy::Immediate,
+                                                              { &graphicsTokens, 1 });
+            auto copyTokens = *copyCtx.Submit();
             VEX_LOG(Info,
                     "Submitted copy work dependent on graphics, token: {}/{}",
-                    magic_enum::enum_name(copyTokens[0].queueType),
-                    copyTokens[0].value);
+                    magic_enum::enum_name(copyTokens.queueType),
+                    copyTokens.value);
         }
     }
 
@@ -130,8 +132,7 @@ void SynchronizationTortureTest(GfxBackend& graphics)
                 VEX_LOG(Verbose, "Copy: Copied buffer {} to {}", srcIdx, dstIdx);
             }
 
-            auto tokens = ctx.Submit();
-            allTokens.insert(allTokens.end(), tokens.begin(), tokens.end());
+            allTokens.push_back(*ctx.Submit());
 
             VEX_LOG(Verbose, "Iteration {}: Submitted to {} queue", iteration, magic_enum::enum_name(queueType));
         }
@@ -139,7 +140,7 @@ void SynchronizationTortureTest(GfxBackend& graphics)
         // Wait for some random tokens to complete
         for (int i = 0; i < std::min(5, static_cast<int>(allTokens.size())); ++i)
         {
-            int tokenIdx = std::uniform_int_distribution<>(0, allTokens.size() - 1)(gen);
+            int tokenIdx = std::uniform_int_distribution<>(0, allTokens.size() - 1uz)(gen);
             VEX_LOG(Info,
                     "Waiting for token {}/{}",
                     magic_enum::enum_name(allTokens[tokenIdx].queueType),
@@ -172,13 +173,12 @@ void SynchronizationTortureTest(GfxBackend& graphics)
             std::span<SyncToken> deps;
             if (!tokens.empty() && (i % 3 == 0))
             {
-                deps = std::span<SyncToken>(tokens.end() - 1, tokens.end());
+                deps = std::span(tokens.end() - 1, tokens.end());
             }
 
             {
                 auto ctx = graphics.BeginScopedCommandContext(queueType, SubmissionPolicy::Immediate, deps);
-                auto newTokens = ctx.Submit();
-                tokens.insert(tokens.end(), newTokens.begin(), newTokens.end());
+                tokens.push_back(*ctx.Submit());
             }
 
             // Occasionally flush GPU
@@ -200,7 +200,7 @@ void SynchronizationTortureTest(GfxBackend& graphics)
         // Create some immediate work
         {
             auto ctx1 = graphics.BeginScopedCommandContext(CommandQueueType::Compute, SubmissionPolicy::Immediate);
-            immediateTokens = ctx1.Submit();
+            immediateTokens.push_back(*ctx1.Submit());
         }
 
         // Create deferred work that depends on immediate work
@@ -214,8 +214,8 @@ void SynchronizationTortureTest(GfxBackend& graphics)
         // Create more immediate work
         {
             auto ctx3 = graphics.BeginScopedCommandContext(CommandQueueType::Copy, SubmissionPolicy::Immediate);
-            auto moreTokens = ctx3.Submit();
-            immediateTokens.insert(immediateTokens.end(), moreTokens.begin(), moreTokens.end());
+            auto moreTokens = *ctx3.Submit();
+            immediateTokens.push_back(moreTokens);
         }
 
         // Wait for immediate work
@@ -261,11 +261,10 @@ void SynchronizationTortureTest(GfxBackend& graphics)
 
             // Generate dummy data
             std::vector<byte> dummyData(1024, static_cast<byte>(i));
-            ctx.EnqueueDataUpload(uploadBuffer, dummyData);
+            ctx.EnqueueDataUpload(uploadBuffer, dummyData, BufferSubresource{ 0, 1024 });
             ctx.Copy(uploadBuffer, targetTexture);
 
-            auto tokens = ctx.Submit();
-            uploadTokens.insert(uploadTokens.end(), tokens.begin(), tokens.end());
+            uploadTokens.push_back(*ctx.Submit());
 
             VEX_LOG(Verbose, "Upload iteration {}", i);
         }
@@ -352,8 +351,7 @@ void SynchronizationTortureTest(GfxBackend& graphics)
 
                 if (policy == SubmissionPolicy::Immediate)
                 {
-                    auto tokens = ctx.Submit();
-                    allTokens.insert(allTokens.end(), tokens.begin(), tokens.end());
+                    allTokens.push_back(*ctx.Submit());
                 }
             }
 
@@ -383,22 +381,37 @@ void SynchronizationTortureTest(GfxBackend& graphics)
         }
     }
 
-    // Test Present to trigger any deferred submissions
-    VEX_LOG(Info, "Testing Present to trigger deferred submissions...");
-    graphics.Present(false);
+    if (graphics.UsesSwapChain())
+    {
+        // Test Present to trigger any deferred submissions
+        VEX_LOG(Info, "Testing Present to trigger deferred submissions...");
+        graphics.Present(false);
+    }
+    else
+    {
+        VEX_LOG(Info, "Skipping Presents before flush because backend doesn't use a SwapChain");
+    }
 
     // Final flush to ensure everything is done
     VEX_LOG(Info, "Final GPU flush...");
     graphics.FlushGPU();
-    // Test Present to trigger any deferred submissions
-    VEX_LOG(Info, "Testing Present to trigger deferred submissions...");
-    graphics.Present(false);
-    // Test Present to trigger any deferred submissions
-    VEX_LOG(Info, "Testing Present to trigger deferred submissions...");
-    graphics.Present(false);
-    // Test Present to trigger any deferred submissions
-    VEX_LOG(Info, "Testing Present to trigger deferred submissions...");
-    graphics.Present(false);
+
+    if (graphics.UsesSwapChain())
+    {
+        // Test Present to trigger any deferred submissions
+        VEX_LOG(Info, "Testing Present to trigger deferred submissions...");
+        graphics.Present(false);
+        // Test Present to trigger any deferred submissions
+        VEX_LOG(Info, "Testing Present to trigger deferred submissions...");
+        graphics.Present(false);
+        // Test Present to trigger any deferred submissions
+        VEX_LOG(Info, "Testing Present to trigger deferred submissions...");
+        graphics.Present(false);
+    }
+    else
+    {
+        VEX_LOG(Info, "Skipping Presents after flush because backend doesn't use a SwapChain");
+    }
 
     VEX_LOG(Info, "Synchronization Torture Test completed successfully!");
 }

@@ -233,10 +233,6 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
         break;
     }
 
-    if (!(description.usage & TextureUsage::ShaderRead))
-    {
-        texDesc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
-    }
     if (description.usage & TextureUsage::RenderTarget)
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
@@ -248,6 +244,10 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
     if (description.usage & TextureUsage::DepthStencil)
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+        if (!(description.usage & TextureUsage::ShaderRead))
+        {
+            texDesc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+        }
     }
 
     static const D3D12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
