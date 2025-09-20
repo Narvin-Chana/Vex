@@ -22,6 +22,59 @@
 namespace vex::dx12
 {
 
+namespace CommandList_Internal
+{
+
+struct DX12BufferTextureCopyDesc
+{
+    D3D12_TEXTURE_COPY_LOCATION bufferLoc;
+    D3D12_TEXTURE_COPY_LOCATION textureLoc;
+    D3D12_BOX box;
+};
+
+DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(RHIBuffer& buffer,
+                                                       RHITexture& texture,
+                                                       const BufferTextureCopyDescription& desc)
+{
+    float formatPixelByteSize = TextureUtil::GetPixelByteSizeFromFormat(texture.GetDescription().format);
+
+    const u32 alignedRowPitch =
+        AlignUp<u32>(desc.extent.width * formatPixelByteSize, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+
+    VEX_CHECK(IsAligned<u64>(desc.bufferSubresource.offset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
+              "Source offset should be aligned to 512 bytes!");
+
+    D3D12_TEXTURE_COPY_LOCATION bufferLoc = {};
+    bufferLoc.pResource = buffer.GetRawBuffer();
+    bufferLoc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+
+    D3D12_PLACED_SUBRESOURCE_FOOTPRINT& footprint = bufferLoc.PlacedFootprint;
+    footprint.Offset = desc.bufferSubresource.offset;
+    footprint.Footprint.Format = TextureFormatToDXGI(texture.GetDescription().format);
+    footprint.Footprint.Width = desc.extent.width;
+    footprint.Footprint.Height = desc.extent.height;
+    footprint.Footprint.Depth = desc.extent.depth;
+    footprint.Footprint.RowPitch = alignedRowPitch;
+
+    D3D12_TEXTURE_COPY_LOCATION textureLoc = {};
+    textureLoc.pResource = texture.GetRawTexture();
+    textureLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+    textureLoc.SubresourceIndex =
+        desc.textureSubresource.startSlice * texture.GetDescription().mips + desc.textureSubresource.mip;
+
+    D3D12_BOX box = {};
+    box.left = 0;
+    box.top = 0;
+    box.front = 0;
+    box.right = desc.extent.width;
+    box.bottom = desc.extent.height;
+    box.back = desc.extent.depth;
+
+    return { bufferLoc, textureLoc, box };
+}
+
+} // namespace CommandList_Internal
+
 DX12CommandList::DX12CommandList(const ComPtr<DX12Device>& device, CommandQueueType type)
     : RHICommandListBase{ type }
     , device{ device }
@@ -523,57 +576,38 @@ void DX12CommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescr
 
 void DX12CommandList::Copy(RHIBuffer& src,
                            RHITexture& dst,
-                           std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions)
+                           std::span<const BufferTextureCopyDescription> copyDescriptions)
 {
     // TODO(https://trello.com/c/KEnbDLG6): this way of uploading makes it so that texture arrays are copied slice by
     // slice, when instead they could be copied mip element by mip. Would require considerable effort to fix and is only
     // a slight optimization so will probably be done later on.
+    // Potentially use GetCopyableFootprints
 
-    ID3D12Resource* srcBuffer = src.GetRawBuffer();
-    ID3D12Resource* dstTexture = dst.GetRawTexture();
-
-    float formatPixelByteSize = TextureUtil::GetPixelByteSizeFromFormat(dst.GetDescription().format);
-
-    for (const BufferToTextureCopyDescription& copyDesc : bufferToTextureCopyDescriptions)
+    for (const BufferTextureCopyDescription& copyDesc : copyDescriptions)
     {
-        const u32 alignedRowPitch =
-            AlignUp<u32>(copyDesc.extent.width * formatPixelByteSize, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+        auto locations = CommandList_Internal::GetCopyLocationsFromCopyDesc(src, dst, copyDesc);
+        commandList->CopyTextureRegion(&locations.textureLoc,
+                                       copyDesc.textureSubresource.offset.width,
+                                       copyDesc.textureSubresource.offset.height,
+                                       copyDesc.textureSubresource.offset.depth,
+                                       &locations.bufferLoc,
+                                       &locations.box);
+    }
+}
 
-        VEX_CHECK(IsAligned<u64>(copyDesc.srcSubresource.offset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
-                  "Source offset should be aligned to 512 bytes!");
-
-        D3D12_TEXTURE_COPY_LOCATION srcLoc = {};
-        srcLoc.pResource = srcBuffer;
-        srcLoc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-
-        D3D12_PLACED_SUBRESOURCE_FOOTPRINT& footprint = srcLoc.PlacedFootprint;
-        footprint.Offset = copyDesc.srcSubresource.offset;
-        footprint.Footprint.Format = TextureFormatToDXGI(dst.GetDescription().format);
-        footprint.Footprint.Width = copyDesc.extent.width;
-        footprint.Footprint.Height = copyDesc.extent.height;
-        footprint.Footprint.Depth = copyDesc.extent.depth;
-        footprint.Footprint.RowPitch = alignedRowPitch;
-
-        D3D12_TEXTURE_COPY_LOCATION dstLoc = {};
-        dstLoc.pResource = dstTexture;
-        dstLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        dstLoc.SubresourceIndex =
-            copyDesc.dstSubresource.startSlice * dst.GetDescription().mips + copyDesc.dstSubresource.mip;
-
-        D3D12_BOX srcBox = {};
-        srcBox.left = 0;
-        srcBox.top = 0;
-        srcBox.front = 0;
-        srcBox.right = copyDesc.extent.width;
-        srcBox.bottom = copyDesc.extent.height;
-        srcBox.back = copyDesc.extent.depth;
-
-        commandList->CopyTextureRegion(&dstLoc,
-                                       copyDesc.dstSubresource.offset.width,
-                                       copyDesc.dstSubresource.offset.height,
-                                       copyDesc.dstSubresource.offset.depth,
-                                       &srcLoc,
-                                       &srcBox);
+void DX12CommandList::Copy(RHITexture& src,
+                           RHIBuffer& dst,
+                           std::span<const BufferTextureCopyDescription> copyDescriptions)
+{
+    for (const BufferTextureCopyDescription& copyDesc : copyDescriptions)
+    {
+        auto locations = CommandList_Internal::GetCopyLocationsFromCopyDesc(dst, src, copyDesc);
+        commandList->CopyTextureRegion(&locations.bufferLoc,
+                                       copyDesc.textureSubresource.offset.width,
+                                       copyDesc.textureSubresource.offset.height,
+                                       copyDesc.textureSubresource.offset.depth,
+                                       &locations.textureLoc,
+                                       &locations.box);
     }
 }
 

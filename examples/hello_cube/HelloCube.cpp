@@ -112,14 +112,20 @@ HelloCubeApplication::HelloCubeApplication()
                                       .width = static_cast<vex::u32>(width),
                                       .height = static_cast<vex::u32>(height),
                                       .depthOrArraySize = 1,
-                                      .mips = 0, // 0 means max mips (down to 1x1)
-                                      .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
+                                      .mips = 0,
+                                      .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
+                                    vex::ResourceLifetime::Static);
+
+        // Upload the entirety of both mips using the default value.
+        ctx.EnqueueDataUpload(uvGuideTexture,
+                              std::as_bytes(std::span(fullImageData)),
+                              vex::TextureRegion::AllMips(uvGuideTexture.description));
 
         // Upload only to the first mip
         ctx.EnqueueDataUpload(
             uvGuideTexture,
             std::as_bytes(std::span(fullImageData.begin(), fullImageData.begin() + width * height * channels)),
-            vex::TextureUploadRegion::UploadFullMip(0, uvGuideTexture.description));
+            vex::TextureRegion::FullMip(0, uvGuideTexture.description));
 
         // Fill in all mips using the first one.
         ctx.GenerateMips(uvGuideTexture);

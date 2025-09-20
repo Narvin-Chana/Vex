@@ -31,25 +31,69 @@ namespace vex
 namespace CommandContext_Internal
 {
 
-static std::vector<RHIBufferBarrier> CreateBarriersFromBindings(const std::vector<RHIBufferBinding>& rhiBufferBindings)
+static std::vector<BufferTextureCopyDescription> GetBufferToTextureCopiesFromTextureRegions(
+    const TextureDescription& desc, std::span<const TextureRegion> regions)
+{
+    // Otherwise we have to translate the TextureUploadRegions to their equivalent BufferToTextureCopyDescriptions.
+    std::vector<BufferTextureCopyDescription> copyDescriptions;
+    copyDescriptions.reserve(regions.size());
+
+    const float bytesPerPixel = TextureUtil::GetPixelByteSizeFromFormat(desc.format);
+    u64 stagingBufferOffset = 0;
+
+    for (const TextureRegion& region : regions)
+    {
+        const u32 mipWidth = std::max(1u, desc.width >> region.mip);
+        const u32 mipHeight = std::max(1u, desc.height >> region.mip);
+        const u32 mipDepth = std::max(1u, desc.GetDepth() >> region.mip);
+
+        // Use region extent if specified, otherwise use full mip dimensions.
+        const u32 regionWidth = (region.extent.width == 0) ? mipWidth : region.extent.width;
+        const u32 regionHeight = (region.extent.height == 0) ? mipHeight : region.extent.height;
+        const u32 regionDepth = (region.extent.depth == 0) ? mipDepth : region.extent.depth;
+
+        // Calculate the size of this region in the staging buffer.
+        const u32 alignedRowPitch = AlignUp<u32>(regionWidth * bytesPerPixel, TextureUtil::RowPitchAlignment);
+        const u64 regionStagingSize = static_cast<u64>(alignedRowPitch) * regionHeight * regionDepth;
+
+        BufferTextureCopyDescription copyDesc{
+            .bufferSubresource = { .offset = stagingBufferOffset, .size = regionStagingSize, },
+            .textureSubresource = { .mip = region.mip,
+                                .startSlice = region.slice,
+                                .sliceCount = 1,
+                                .offset = region.offset, },
+            .extent = { .width = regionWidth, .height = regionHeight, .depth = regionDepth, }
+        };
+
+        copyDescriptions.push_back(std::move(copyDesc));
+
+        // Move to next aligned position in staging buffer.
+        stagingBufferOffset += AlignUp<u64>(regionStagingSize, TextureUtil::MipAlignment);
+    }
+
+    return copyDescriptions;
+}
+
+static std::vector<RHIBufferBarrier> CreateBarriersFromBindings(RHIBarrierSync dstSync,
+                                                                const std::vector<RHIBufferBinding>& rhiBufferBindings)
 {
     std::vector<RHIBufferBarrier> barriers;
     barriers.reserve(rhiBufferBindings.size());
     for (const auto& rhiBinding : rhiBufferBindings)
     {
-        barriers.push_back(ResourceBindingUtils::CreateBarrierFromRHIBinding(rhiBinding));
+        barriers.push_back(ResourceBindingUtils::CreateBarrierFromRHIBinding(dstSync, rhiBinding));
     }
     return barriers;
 }
 
 static std::vector<RHITextureBarrier> CreateBarriersFromBindings(
-    const std::vector<RHITextureBinding>& rhiTextureBindings)
+    RHIBarrierSync dstSync, const std::vector<RHITextureBinding>& rhiTextureBindings)
 {
     std::vector<RHITextureBarrier> barriers;
     barriers.reserve(rhiTextureBindings.size());
     for (const auto& rhiBinding : rhiTextureBindings)
     {
-        barriers.push_back(ResourceBindingUtils::CreateBarrierFromRHIBinding(rhiBinding));
+        barriers.push_back(ResourceBindingUtils::CreateBarrierFromRHIBinding(dstSync, rhiBinding));
     }
     return barriers;
 }
@@ -81,59 +125,50 @@ static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDescript
     return key;
 }
 
-static void UploadTextureDataAligned(const TextureDescription& textureDesc,
-                                     std::span<const TextureUploadRegion> uploadRegions,
-                                     std::span<const byte> packedData,
-                                     std::span<byte> stagingBuffer)
-
+static BufferDescription GetReadbackBufferDescription(const std::string& name, u64 byteSize)
 {
-    const u32 bytesPerPixel = TextureUtil::GetPixelByteSizeFromFormat(textureDesc.format);
-    const byte* srcData = packedData.data();
-    byte* dstData = stagingBuffer.data();
-    u64 srcOffset = 0;
-    u64 dstOffset = 0;
-
-    for (const TextureUploadRegion& region : uploadRegions)
-    {
-        const u32 regionWidth = region.extent.width;
-        const u32 regionHeight = region.extent.height;
-        const u32 regionDepth = region.extent.depth;
-
-        const u32 packedRowPitch = regionWidth * bytesPerPixel;
-        const u32 alignedRowPitch = AlignUp<u32>(packedRowPitch, TextureUtil::RowPitchAlignment);
-        const u32 packedSlicePitch = packedRowPitch * regionHeight;
-        const u32 alignedSlicePitch = alignedRowPitch * regionHeight;
-
-        // Copy each depth slice (for 3D textures).
-        for (u32 depthSlice = 0; depthSlice < regionDepth; ++depthSlice)
-        {
-            // Copy each row one-by-one with alignment.
-            for (u32 row = 0; row < regionHeight; ++row)
-            {
-                const byte* srcRow = srcData + srcOffset + depthSlice * packedSlicePitch + row * packedRowPitch;
-                byte* dstRow = dstData + dstOffset + depthSlice * alignedSlicePitch + row * alignedRowPitch;
-
-                std::memcpy(dstRow, srcRow, packedRowPitch);
-#if !VEX_SHIPPING
-                // Zero out padding bytes for debugging purposes.
-                if (alignedRowPitch > packedRowPitch)
-                {
-                    std::memset(dstRow + packedRowPitch, 0, alignedRowPitch - packedRowPitch);
-                }
-#endif
-            }
-        }
-
-        // Move to next region in the packed source data.
-        srcOffset += static_cast<u64>(packedSlicePitch) * regionDepth;
-
-        // Move to next aligned position in staging buffer.
-        u64 regionStagingSize = static_cast<u64>(alignedSlicePitch) * regionDepth;
-        dstOffset += AlignUp<u64>(regionStagingSize, TextureUtil::MipAlignment);
-    }
+    BufferDescription description;
+    description.byteSize = byteSize;
+    description.name = std::string(name) + "_readback";
+    description.usage = BufferUsage::None;
+    description.memoryLocality = ResourceMemoryLocality::CPURead;
+    return description;
 }
 
 } // namespace CommandContext_Internal
+
+TextureReadbackContext::TextureReadbackContext(const Buffer& buffer,
+                                               std::span<const TextureRegion> textureRegions,
+                                               const TextureDescription& desc,
+                                               GfxBackend& backend)
+    : buffer{ buffer }
+    , textureRegions{ textureRegions.begin(), textureRegions.end() }
+    , textureDesc{ desc }
+    , backend{ backend }
+{
+}
+
+TextureReadbackContext::~TextureReadbackContext()
+{
+    if (buffer.handle != GInvalidBufferHandle)
+    {
+        backend->DestroyBuffer(buffer);
+    }
+}
+
+void TextureReadbackContext::ReadData(std::span<byte> outData)
+{
+    RHIBuffer& rhiBuffer = backend->GetRHIBuffer(buffer.handle);
+
+    std::span<byte> bufferData = rhiBuffer.Map();
+    TextureCopyUtil::ReadTextureDataAligned(textureDesc, textureRegions, bufferData, outData);
+    rhiBuffer.Unmap();
+}
+
+u64 TextureReadbackContext::GetByteDataSize() const noexcept
+{
+    return TextureUtil::ComputePackedTextureDataByteSize(textureDesc, textureRegions);
+}
 
 CommandContext::CommandContext(NonNullPtr<GfxBackend> backend,
                                NonNullPtr<RHICommandList> cmdList,
@@ -426,14 +461,14 @@ void CommandContext::Copy(const Buffer& source, const Texture& destination)
 
 void CommandContext::Copy(const Buffer& source,
                           const Texture& destination,
-                          const BufferToTextureCopyDescription& copyDesc)
+                          const BufferTextureCopyDescription& copyDesc)
 {
     Copy(source, destination, { &copyDesc, 1 });
 }
 
 void CommandContext::Copy(const Buffer& source,
                           const Texture& destination,
-                          std::span<const BufferToTextureCopyDescription> copyDescriptions)
+                          std::span<const BufferTextureCopyDescription> copyDescriptions)
 {
     for (auto& copyDesc : copyDescriptions)
     {
@@ -452,10 +487,39 @@ void CommandContext::Copy(const Buffer& source,
     cmdList->Copy(sourceRHI, destinationRHI, copyDescriptions);
 }
 
+void CommandContext::Copy(const Texture& source, const Buffer& destination)
+{
+    Copy(source, destination, BufferTextureCopyDescription::AllMips(source.description));
+}
+
+void CommandContext::Copy(const Texture& source,
+                          const Buffer& destination,
+                          std::span<const BufferTextureCopyDescription> bufferToTextureCopyDescriptions)
+{
+    for (auto& copyDesc : bufferToTextureCopyDescriptions)
+    {
+        TextureCopyUtil::ValidateBufferToTextureCopyDescription(destination.description, source.description, copyDesc);
+    }
+
+    RHITexture& sourceRHI = backend->GetRHITexture(source.handle);
+    RHIBuffer& destinationRHI = backend->GetRHIBuffer(destination.handle);
+    RHITextureBarrier sourceBarrier{ sourceRHI,
+                                     RHIBarrierSync::Copy,
+                                     RHIBarrierAccess::CopySource,
+                                     RHITextureLayout::CopySource };
+    RHIBufferBarrier destinationBarrier{ destinationRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest };
+    cmdList->Barrier({ &destinationBarrier, 1 }, { &sourceBarrier, 1 });
+
+    cmdList->Copy(sourceRHI, destinationRHI, bufferToTextureCopyDescriptions);
+}
+
 void CommandContext::EnqueueDataUpload(const Buffer& buffer,
                                        std::span<const byte> data,
                                        const std::optional<BufferSubresource>& subresource)
 {
+    VEX_CHECK(buffer.description.memoryLocality != ResourceMemoryLocality::CPURead,
+              "Cannot upload data in a CPURead buffer as it will never be sent to the GPU")
+
     bool isFullUpload = !subresource.has_value();
     if (isFullUpload)
     {
@@ -475,7 +539,7 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer,
     if (buffer.description.memoryLocality == ResourceMemoryLocality::CPUWrite)
     {
         RHIBuffer& rhiDestBuffer = backend->GetRHIBuffer(buffer.handle);
-        ResourceMappedMemory(rhiDestBuffer).SetData(data, actualSubresource.offset);
+        ResourceMappedMemory(rhiDestBuffer).WriteData(data, actualSubresource.offset);
         return;
     }
 
@@ -485,128 +549,101 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer,
     Buffer stagingBuffer = backend->CreateBuffer(
         BufferDescription::CreateStagingBufferDesc(buffer.description.name + "_Staging", actualSubresource.size));
 
-    // So fetch buffers only AFTER creating the staging buffer.
     RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
-    RHIBuffer& rhiDestBuffer = backend->GetRHIBuffer(buffer.handle);
+    ResourceMappedMemory(rhiStagingBuffer).WriteData(data);
 
-    ResourceMappedMemory(rhiStagingBuffer).SetData(data);
-
-    std::array barriers{ RHIBufferBarrier{ rhiStagingBuffer, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource },
-                         RHIBufferBarrier{ rhiDestBuffer, RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest } };
-    cmdList->Barrier(barriers, {});
-
-    // Schedule a copy from the staging buffer to the destination texture.
-    cmdList->Copy(rhiStagingBuffer,
-                  rhiDestBuffer,
-                  BufferCopyDescription{
-                      .srcOffset = 0,
-                      .dstOffset = actualSubresource.offset,
-                      .size = actualSubresource.size,
-                  });
+    Copy(stagingBuffer,
+         buffer,
+         BufferCopyDescription{
+             .srcOffset = 0,
+             .dstOffset = actualSubresource.offset,
+             .size = actualSubresource.size,
+         });
 
     // Schedule a cleanup of the staging buffer.
     temporaryResources.emplace_back(std::move(rhiStagingBuffer));
 }
 
 void CommandContext::EnqueueDataUpload(const Texture& texture,
-                                       std::span<const byte> data,
-                                       std::span<const TextureUploadRegion> uploadRegions)
+                                       std::span<const byte> packedData,
+                                       std::span<const TextureRegion> textureRegions)
 {
     // Validate that the upload regions match the raw data passed in.
-    u64 packedDataByteSize = TextureUtil::ComputePackedUploadDataByteSize(texture.description, uploadRegions);
-    VEX_CHECK(data.size_bytes() == packedDataByteSize,
+    u64 packedDataByteSize = TextureUtil::ComputePackedTextureDataByteSize(texture.description, textureRegions);
+    VEX_CHECK(packedData.size_bytes() == packedDataByteSize,
               "Cannot enqueue a data upload: The passed in packed data's size ({}) must be equal to the total texture "
               "size computed from your specified upload regions ({}).",
-              data.size_bytes(),
+              packedData.size_bytes(),
               packedDataByteSize);
 
     // Create aligned staging buffer.
-    u64 stagingBufferByteSize = TextureUtil::ComputeAlignedUploadBufferByteSize(texture.description, uploadRegions);
+    u64 stagingBufferByteSize = TextureUtil::ComputeAlignedUploadBufferByteSize(texture.description, textureRegions);
 
     const BufferDescription stagingBufferDesc =
         BufferDescription::CreateStagingBufferDesc(texture.description.name + "_Staging", stagingBufferByteSize);
 
     Buffer stagingBuffer = backend->CreateBuffer(stagingBufferDesc);
     RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
-    RHITexture& rhiDestTexture = backend->GetRHITexture(texture.handle);
 
     // The staging buffer has to respect the alignment that which Vex uses for uploads.
     // We suppose however that user data is tightly packed.
     std::span<byte> stagingBufferData = rhiStagingBuffer.Map();
-    CommandContext_Internal::UploadTextureDataAligned(texture.description, uploadRegions, data, stagingBufferData);
+    TextureCopyUtil::WriteTextureDataAligned(texture.description, textureRegions, packedData, stagingBufferData);
     rhiStagingBuffer.Unmap();
 
-    RHIBufferBarrier stagingBufferBarrier{ rhiStagingBuffer, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource };
-    RHITextureBarrier textureBarrier{ rhiDestTexture,
-                                      RHIBarrierSync::Copy,
-                                      RHIBarrierAccess::CopyDest,
-                                      RHITextureLayout::CopyDest };
-    cmdList->Barrier({ &stagingBufferBarrier, 1 }, { &textureBarrier, 1 });
-
-    const bool isFullUpload = uploadRegions.empty();
-    if (isFullUpload)
+    if (textureRegions.empty())
     {
-        // Perform a full copy, using the entire resource.
-        cmdList->Copy(rhiStagingBuffer, rhiDestTexture);
+        Copy(stagingBuffer, texture);
     }
     else
     {
-        // Otherwise we have to translate the TextureUploadRegions to their equivalent BufferToTextureCopyDescriptions.
-        std::vector<BufferToTextureCopyDescription> copyDescriptions;
-        copyDescriptions.reserve(uploadRegions.size());
-
-        const float bytesPerPixel = TextureUtil::GetPixelByteSizeFromFormat(texture.description.format);
-        u64 stagingBufferOffset = 0;
-
-        for (const TextureUploadRegion& region : uploadRegions)
-        {
-            const u32 mipWidth = std::max(1u, texture.description.width >> region.mip);
-            const u32 mipHeight = std::max(1u, texture.description.height >> region.mip);
-            const u32 mipDepth = std::max(1u, texture.description.GetDepth() >> region.mip);
-
-            // Use region extent if specified, otherwise use full mip dimensions.
-            const u32 regionWidth = (region.extent.width == 0) ? mipWidth : region.extent.width;
-            const u32 regionHeight = (region.extent.height == 0) ? mipHeight : region.extent.height;
-            const u32 regionDepth = (region.extent.depth == 0) ? mipDepth : region.extent.depth;
-
-            // Calculate the size of this region in the staging buffer.
-            const u32 alignedRowPitch = AlignUp<u32>(regionWidth * bytesPerPixel, TextureUtil::RowPitchAlignment);
-            const u64 regionStagingSize = static_cast<u64>(alignedRowPitch) * regionHeight * regionDepth;
-
-            BufferToTextureCopyDescription copyDesc{
-                .srcSubresource = { .offset = stagingBufferOffset, .size = regionStagingSize, },
-                .dstSubresource = { .mip = region.mip,
-                                    .startSlice = region.slice,
-                                    .sliceCount = 1,
-                                    .offset = region.offset, },
-                .extent = { .width = regionWidth, .height = regionHeight, .depth = regionDepth, }
-            };
-
-            // Validate the translated description.
-            TextureCopyUtil::ValidateBufferToTextureCopyDescription(stagingBufferDesc, texture.description, copyDesc);
-
-            copyDescriptions.push_back(std::move(copyDesc));
-
-            // Move to next aligned position in staging buffer.
-            stagingBufferOffset += AlignUp<u64>(regionStagingSize, TextureUtil::MipAlignment);
-        }
-        cmdList->Copy(rhiStagingBuffer, rhiDestTexture, copyDescriptions);
+        std::vector<BufferTextureCopyDescription> bufferToTexDescs =
+            CommandContext_Internal::GetBufferToTextureCopiesFromTextureRegions(texture.description, textureRegions);
+        Copy(stagingBuffer, texture, bufferToTexDescs);
     }
 
     // Schedule a cleanup of the staging buffer.
     temporaryResources.emplace_back(std::move(rhiStagingBuffer));
 }
 
-void CommandContext::EnqueueDataReadback(const Buffer& buffer, std::span<byte> output)
+TextureReadbackContext CommandContext::EnqueueDataReadback(const Texture& srcTexture,
+                                                           std::span<const TextureRegion> textureRegions)
 {
-    // TODO(https://trello.com/c/WLWD8hyA): implement buffer readback
-    VEX_NOT_YET_IMPLEMENTED();
+    // Create aligned staging buffer.
+    u64 stagingBufferByteSize = TextureUtil::ComputeAlignedUploadBufferByteSize(srcTexture.description, textureRegions);
+
+    const BufferDescription stagingBufferDesc =
+        CommandContext_Internal::GetReadbackBufferDescription(srcTexture.description.name, stagingBufferByteSize);
+
+    Buffer stagingBuffer = backend->CreateBuffer(stagingBufferDesc, ResourceLifetime::Static);
+
+    if (textureRegions.empty())
+    {
+        Copy(srcTexture, stagingBuffer);
+    }
+    else
+    {
+        Copy(srcTexture,
+             stagingBuffer,
+             CommandContext_Internal::GetBufferToTextureCopiesFromTextureRegions(srcTexture.description,
+                                                                                 textureRegions));
+    }
+
+    return { stagingBuffer, textureRegions, srcTexture.description, *backend };
 }
 
-void CommandContext::EnqueueDataReadback(const Texture& texture, std::span<byte> output)
+Buffer CommandContext::EnqueueDataReadback(const Buffer& srcBuffer)
 {
-    // TODO(https://trello.com/c/WLWD8hyA): implement texture readback
-    VEX_NOT_YET_IMPLEMENTED();
+    // Create aligned staging buffer.
+    const BufferDescription stagingBufferDesc =
+        CommandContext_Internal::GetReadbackBufferDescription(srcBuffer.description.name,
+                                                              srcBuffer.description.byteSize);
+
+    Buffer stagingBuffer = backend->CreateBuffer(stagingBufferDesc, ResourceLifetime::Static);
+
+    Copy(srcBuffer, stagingBuffer);
+
+    return stagingBuffer;
 }
 
 BindlessHandle CommandContext::GetBindlessHandle(const ResourceBinding& resourceBinding)
@@ -640,8 +677,12 @@ void CommandContext::TransitionBindings(std::span<const ResourceBinding> resourc
 
     // This code will be greatly simplified when we add caching of transitions until the next GPU operation.
     // See: https://trello.com/c/kJWhd2iu
-    auto bufferBarriers = CommandContext_Internal::CreateBarriersFromBindings(rhiBufferBindings);
-    auto textureBarriers = CommandContext_Internal::CreateBarriersFromBindings(rhiTextureBindings);
+
+    const RHIBarrierSync dstSync =
+        cmdList->GetType() == CommandQueueTypes::Compute ? RHIBarrierSync::ComputeShader : RHIBarrierSync::AllGraphics;
+
+    auto bufferBarriers = CommandContext_Internal::CreateBarriersFromBindings(dstSync, rhiBufferBindings);
+    auto textureBarriers = CommandContext_Internal::CreateBarriersFromBindings(dstSync, rhiTextureBindings);
     cmdList->Barrier(bufferBarriers, textureBarriers);
 }
 
@@ -658,7 +699,7 @@ void CommandContext::Barrier(const Buffer& buffer, RHIBarrierSync newSync, RHIBa
     cmdList->BufferBarrier(backend->GetRHIBuffer(buffer.handle), newSync, newAccess);
 }
 
-std::vector<SyncToken> CommandContext::Submit()
+std::optional<SyncToken> CommandContext::Submit()
 {
     if (submissionPolicy != SubmissionPolicy::Immediate)
     {
@@ -666,7 +707,9 @@ std::vector<SyncToken> CommandContext::Submit()
                 "Cannot call submit when your submission policy is anything other than SubmissionPolicy::Immediate.");
     }
     hasSubmitted = true;
-    return backend->EndCommandContext(*this);
+
+    std::vector<SyncToken> tokens = backend->EndCommandContext(*this);
+    return !tokens.empty() ? std::optional{ tokens[0] } : std::nullopt;
 }
 
 void CommandContext::ExecuteInDrawContext(std::span<const TextureBinding> renderTargets,

@@ -74,7 +74,19 @@ TEST(GraphicsTests, SynchronizationTortureTest)
         .enableGPUBasedValidation = true,
     } };
 
-    VEX_LOG(Info, "Starting Synchronization Torture Test...");
+    VEX_LOG(Info, "---- Starting Synchronization Torture Test... ----");
+
+    // TODO: We need to clear before presenting if we havent touched the present texture before present on DX12
+    // See: https://trello.com/c/k8hUPouM
+    // Clear backbuffer.
+    vex::TextureClearValue clearValue{ .flags = vex::TextureClear::ClearColor, .color = { 0.2f, 0.2f, 0.2f, 1 } };
+
+    graphics.BeginScopedCommandContext(vex::CommandQueueType::Graphics, vex::SubmissionPolicy::Immediate)
+        .ClearTexture(
+            vex::TextureBinding{
+                .texture = graphics.GetCurrentPresentTexture(),
+            },
+            clearValue);
 
     // Test 1: Basic Immediate Submission of each queue type
     VEX_LOG(Info, "Test 1: Basic Immediate Submission");
@@ -90,40 +102,42 @@ TEST(GraphicsTests, SynchronizationTortureTest)
     // Test 2: Cross-Queue Dependencies
     VEX_LOG(Info, "Test 2: Cross-Queue Dependencies");
     {
-        std::vector<SyncToken> tokens;
-        std::vector<SyncToken> graphicsTokens;
+        SyncToken tokens;
+        SyncToken graphicsTokens;
 
         // Submit work on compute queue
         {
             auto computeCtx =
                 graphics.BeginScopedCommandContext(CommandQueueType::Compute, SubmissionPolicy::Immediate);
-            tokens = computeCtx.Submit();
+            tokens = *computeCtx.Submit();
             VEX_LOG(Info,
                     "Submitted compute work, token: {}/{}",
-                    magic_enum::enum_name(tokens[0].queueType),
-                    tokens[0].value);
+                    magic_enum::enum_name(tokens.queueType),
+                    tokens.value);
         }
 
         // Submit work on graphics queue that depends on compute
         {
-            auto graphicsCtx =
-                graphics.BeginScopedCommandContext(CommandQueueType::Graphics, SubmissionPolicy::Immediate, tokens);
-            graphicsTokens = graphicsCtx.Submit();
+            auto graphicsCtx = graphics.BeginScopedCommandContext(CommandQueueType::Graphics,
+                                                                  SubmissionPolicy::Immediate,
+                                                                  { &tokens, 1 });
+            graphicsTokens = *graphicsCtx.Submit();
             VEX_LOG(Info,
                     "Submitted graphics work dependent on compute, token: {}/{}",
-                    magic_enum::enum_name(graphicsTokens[0].queueType),
-                    graphicsTokens[0].value);
+                    magic_enum::enum_name(graphicsTokens.queueType),
+                    graphicsTokens.value);
         }
 
         // Submit copy work that depends on graphics
         {
-            auto copyCtx =
-                graphics.BeginScopedCommandContext(CommandQueueType::Copy, SubmissionPolicy::Immediate, graphicsTokens);
-            auto copyTokens = copyCtx.Submit();
+            auto copyCtx = graphics.BeginScopedCommandContext(CommandQueueType::Copy,
+                                                              SubmissionPolicy::Immediate,
+                                                              { &graphicsTokens, 1 });
+            auto copyTokens = *copyCtx.Submit();
             VEX_LOG(Info,
                     "Submitted copy work dependent on graphics, token: {}/{}",
-                    magic_enum::enum_name(copyTokens[0].queueType),
-                    copyTokens[0].value);
+                    magic_enum::enum_name(copyTokens.queueType),
+                    copyTokens.value);
         }
     }
 
@@ -192,8 +206,7 @@ TEST(GraphicsTests, SynchronizationTortureTest)
                 VEX_LOG(Verbose, "Copy: Copied buffer {} to {}", srcIdx, dstIdx);
             }
 
-            auto tokens = ctx.Submit();
-            allTokens.insert(allTokens.end(), tokens.begin(), tokens.end());
+            allTokens.push_back(*ctx.Submit());
 
             VEX_LOG(Verbose, "Iteration {}: Submitted to {} queue", iteration, magic_enum::enum_name(queueType));
         }
@@ -201,7 +214,7 @@ TEST(GraphicsTests, SynchronizationTortureTest)
         // Wait for some random tokens to complete
         for (int i = 0; i < std::min(5, static_cast<int>(allTokens.size())); ++i)
         {
-            int tokenIdx = std::uniform_int_distribution<>(0, allTokens.size() - 1)(gen);
+            int tokenIdx = std::uniform_int_distribution<>(0, allTokens.size() - 1uz)(gen);
             VEX_LOG(Info,
                     "Waiting for token {}/{}",
                     magic_enum::enum_name(allTokens[tokenIdx].queueType),
@@ -234,13 +247,12 @@ TEST(GraphicsTests, SynchronizationTortureTest)
             std::span<SyncToken> deps;
             if (!tokens.empty() && (i % 3 == 0))
             {
-                deps = std::span<SyncToken>(tokens.end() - 1, tokens.end());
+                deps = std::span(tokens.end() - 1, tokens.end());
             }
 
             {
                 auto ctx = graphics.BeginScopedCommandContext(queueType, SubmissionPolicy::Immediate, deps);
-                auto newTokens = ctx.Submit();
-                tokens.insert(tokens.end(), newTokens.begin(), newTokens.end());
+                tokens.push_back(*ctx.Submit());
             }
 
             // Occasionally flush GPU
@@ -262,7 +274,7 @@ TEST(GraphicsTests, SynchronizationTortureTest)
         // Create some immediate work
         {
             auto ctx1 = graphics.BeginScopedCommandContext(CommandQueueType::Compute, SubmissionPolicy::Immediate);
-            immediateTokens = ctx1.Submit();
+            immediateTokens.push_back(*ctx1.Submit());
         }
 
         // Create work that depends on immediate work
@@ -275,8 +287,8 @@ TEST(GraphicsTests, SynchronizationTortureTest)
         // Create more immediate work
         {
             auto ctx3 = graphics.BeginScopedCommandContext(CommandQueueType::Copy, SubmissionPolicy::Immediate);
-            auto moreTokens = ctx3.Submit();
-            immediateTokens.insert(immediateTokens.end(), moreTokens.begin(), moreTokens.end());
+            auto moreTokens = *ctx3.Submit();
+            immediateTokens.push_back(moreTokens);
         }
 
         // Wait for first and third immediate work
@@ -325,8 +337,7 @@ TEST(GraphicsTests, SynchronizationTortureTest)
             ctx.EnqueueDataUpload(uploadBuffer, dummyData, BufferSubresource{ .offset = 1024u * i, .size = 1024 });
             ctx.Copy(uploadBuffer, targetTexture);
 
-            auto tokens = ctx.Submit();
-            uploadTokens.insert(uploadTokens.end(), tokens.begin(), tokens.end());
+            uploadTokens.push_back(*ctx.Submit());
 
             VEX_LOG(Verbose, "Upload iteration {}", i);
         }

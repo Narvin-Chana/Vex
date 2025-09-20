@@ -334,12 +334,13 @@ ResourceMappedMemory GfxBackend::MapResource(const Buffer& buffer)
 {
     RHIBuffer& rhiBuffer = GetRHIBuffer(buffer.handle);
 
-    if (rhiBuffer.GetDescription().memoryLocality != ResourceMemoryLocality::CPUWrite)
+    if (rhiBuffer.GetDescription().memoryLocality != ResourceMemoryLocality::CPUWrite &&
+        rhiBuffer.GetDescription().memoryLocality != ResourceMemoryLocality::CPURead)
     {
         VEX_LOG(Fatal, "Buffer needs to have CPUWrite locality to be mapped to");
     }
 
-    return ResourceMappedMemory(rhiBuffer);
+    return { rhiBuffer };
 }
 
 ResourceMappedMemory GfxBackend::MapResource(const Texture& texture)
@@ -351,7 +352,7 @@ ResourceMappedMemory GfxBackend::MapResource(const Texture& texture)
         VEX_LOG(Fatal, "Texture needs to have CPUWrite locality to be mapped to directly");
     }
 
-    return ResourceMappedMemory(rhiTexture);
+    return { rhiTexture };
 }
 
 void GfxBackend::DestroyTexture(const Texture& texture)

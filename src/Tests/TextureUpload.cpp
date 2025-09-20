@@ -1,5 +1,3 @@
-#include "TextureUpload.h"
-
 #include <Vex.h>
 
 namespace vex
@@ -52,7 +50,7 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics, CommandQueueType type)
 
         ctx.EnqueueDataUpload(cubemapTexture,
                               std::as_bytes(std::span(cubemapData)),
-                              TextureUploadRegion::UploadAllMips(cubemapTexture.description));
+                              TextureRegion::AllMips(cubemapTexture.description));
 
         ctx.Submit();
         graphics->DestroyTexture(cubemapTexture);
@@ -120,7 +118,7 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics, CommandQueueType type)
 
         ctx.EnqueueDataUpload(texture,
                               std::as_bytes(std::span(data)),
-                              TextureUploadRegion::UploadAllMips(texture.description));
+                              TextureRegion::AllMips(texture.description));
         ctx.Submit();
         graphics->DestroyTexture(texture);
     }
@@ -178,7 +176,7 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics, CommandQueueType type)
 
         ctx.EnqueueDataUpload(cubemapTexture,
                               std::as_bytes(std::span(cubemapData)),
-                              TextureUploadRegion::UploadAllMips(cubemapTexture.description));
+                              TextureRegion::AllMips(cubemapTexture.description));
 
         ctx.Submit();
         graphics->DestroyTexture(cubemapTexture);
@@ -248,7 +246,7 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics, CommandQueueType type)
 
         ctx.EnqueueDataUpload(texture,
                               std::as_bytes(std::span(data)),
-                              TextureUploadRegion::UploadAllMips(texture.description));
+                              TextureRegion::AllMips(texture.description));
         ctx.Submit();
         graphics->DestroyTexture(texture);
     }

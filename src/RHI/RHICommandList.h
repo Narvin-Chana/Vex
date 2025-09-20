@@ -97,7 +97,12 @@ public:
     // Copies the different regions of buffers to dst texture regions.
     virtual void Copy(RHIBuffer& src,
                       RHITexture& dst,
-                      std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions) = 0;
+                      std::span<const BufferTextureCopyDescription> copyDescriptions) = 0;
+
+    virtual void Copy(RHITexture& src, RHIBuffer& dst);
+    virtual void Copy(RHITexture& src,
+                      RHIBuffer& dst,
+                      std::span<const BufferTextureCopyDescription> copyDescriptions) = 0;
 
     CommandQueueType GetType() const
     {

@@ -179,13 +179,12 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
     return 0;
 }
 
-u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc,
-                                       std::span<const TextureUploadRegion> uploadRegions)
+u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc, std::span<const TextureRegion> uploadRegions)
 {
     const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
     float totalSize = 0;
 
-    for (const TextureUploadRegion& region : uploadRegions)
+    for (const TextureRegion& region : uploadRegions)
     {
         VEX_CHECK(region.slice < desc.GetArraySize(),
                   "Cannot upload to a slice index ({}) greater or equal to the the texture's slice count ({})!",
@@ -204,13 +203,13 @@ u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc,
     return static_cast<u64>(std::ceil(totalSize));
 }
 
-u64 ComputePackedUploadDataByteSize(const TextureDescription& desc, std::span<const TextureUploadRegion> uploadRegions)
+u64 ComputePackedTextureDataByteSize(const TextureDescription& desc, std::span<const TextureRegion> textureRegions)
 {
     // Pixel byte size could be less than 1 (BlockCompressed formats).
     const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
     float totalSize = 0;
 
-    for (const TextureUploadRegion& region : uploadRegions)
+    for (const TextureRegion& region : textureRegions)
     {
         VEX_CHECK(region.slice < desc.GetArraySize(),
                   "Cannot upload to a slice index ({}) greater or equal to the the texture's slice count ({})!",
@@ -313,10 +312,10 @@ void ValidateCompatibleTextureDescriptions(const TextureDescription& srcDesc, co
 
 } // namespace TextureUtil
 
-std::vector<TextureUploadRegion> TextureUploadRegion::UploadAllMips(const TextureDescription& textureDescription)
+std::vector<TextureRegion> TextureRegion::AllMips(const TextureDescription& textureDescription)
 {
     const u32 arraySize = textureDescription.GetArraySize();
-    std::vector<TextureUploadRegion> regions(textureDescription.mips * arraySize);
+    std::vector<TextureRegion> regions(textureDescription.mips * arraySize);
 
     u32 width = textureDescription.width;
     u32 height = textureDescription.height;
@@ -345,11 +344,10 @@ std::vector<TextureUploadRegion> TextureUploadRegion::UploadAllMips(const Textur
     return regions;
 }
 
-std::vector<TextureUploadRegion> TextureUploadRegion::UploadFullMip(u16 mipIndex,
-                                                                    const TextureDescription& textureDescription)
+std::vector<TextureRegion> TextureRegion::FullMip(u16 mipIndex, const TextureDescription& textureDescription)
 {
     const u32 arraySize = textureDescription.GetArraySize();
-    std::vector<TextureUploadRegion> regions(arraySize);
+    std::vector<TextureRegion> regions(arraySize);
 
     const u32 width = std::max(1u, textureDescription.width >> mipIndex);
     const u32 height = std::max(1u, textureDescription.height >> mipIndex);
