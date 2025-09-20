@@ -11,6 +11,12 @@ struct BufferToTextureCopyDescription
     BufferSubresource srcSubresource{};
     TextureSubresource dstSubresource{};
     TextureExtent extent{};
+
+    // Uploads the entirety of the texture (all mips and all depth slices).
+    static std::vector<BufferToTextureCopyDescription> CopyAllMips(const TextureDescription& textureDescription);
+    // Uploads the entirety of a specific mip of the texture (1 mip and all depth slices).
+    static std::vector<BufferToTextureCopyDescription> CopyMip(u16 mipIndex,
+                                                               const TextureDescription& textureDescription);
 };
 
 namespace TextureCopyUtil

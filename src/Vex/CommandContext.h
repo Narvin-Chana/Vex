@@ -31,6 +31,16 @@ struct DrawResources;
 struct ComputeResources;
 struct RayTracingPassDescription;
 
+class ReadBackContext
+{
+    std::function<void(std::span<byte> output)> copyFunc;
+
+    friend class CommandContext;
+
+public:
+    void Readback(GfxBackend& backend, std::span<byte> output, const SyncToken& readbackToken);
+};
+
 class CommandContext
 {
 private:
@@ -107,6 +117,10 @@ public:
     void Copy(const Buffer& source,
               const Texture& destination,
               std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions);
+    void Copy(const Texture& source, const Buffer& destination);
+    void Copy(const Texture& source,
+              const Buffer& destination,
+              std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions);
 
     // ---------------------------------------------------------------------------------------------------------------
     // Buffer Data Operations
@@ -135,7 +149,7 @@ public:
 
     // Enqueues for the entirety of a texture to be readback from the GPU to the specified output.
     // Will automatically use a staging buffer if necessary.
-    void EnqueueDataReadback(const Texture& texture, std::span<byte> output);
+    ReadBackContext EnqueueDataReadback(const Texture& srcTexture, std::span<TextureUploadRegion> uploadRegions);
 
     // ---------------------------------------------------------------------------------------------------------------
 

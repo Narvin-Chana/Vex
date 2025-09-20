@@ -97,6 +97,11 @@ public:
                       RHITexture& dst,
                       std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions) = 0;
 
+    virtual void Copy(RHITexture& src, RHIBuffer& dst);
+    virtual void Copy(RHITexture& src,
+                      RHIBuffer& dst,
+                      std::span<const BufferToTextureCopyDescription> regionMappings) = 0;
+
     CommandQueueType GetType() const
     {
         return type;

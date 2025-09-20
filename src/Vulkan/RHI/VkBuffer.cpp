@@ -49,7 +49,8 @@ VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, VkAllocator& allocator, const B
 {
     auto bufferUsage = GetVkBufferUsageFromDesc(desc);
 
-    if (desc.memoryLocality == ResourceMemoryLocality::GPUOnly)
+    if (desc.memoryLocality == ResourceMemoryLocality::GPUOnly ||
+        desc.memoryLocality == ResourceMemoryLocality::CPURead)
     {
         // Needs to get its data from somewhere. Will therefore always need a transfer dest usage
         bufferUsage |= ::vk::BufferUsageFlagBits::eTransferDst;
