@@ -81,6 +81,8 @@ int main()
         };
         std::vector<vex::BindlessHandle> handles = ctx.GetBindlessHandles(bindings);
 
+        ctx.TransitionBindings(bindings);
+
         ctx.Dispatch(
             vex::ShaderKey{
                 .path = WorkingDir / "Transform.hlsl",

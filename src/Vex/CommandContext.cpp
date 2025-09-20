@@ -73,25 +73,26 @@ static std::vector<BufferToTextureCopyDescription> GetBufferToTextureCopiesFromT
     return copyDescriptions;
 }
 
-static std::vector<RHIBufferBarrier> CreateBarriersFromBindings(const std::vector<RHIBufferBinding>& rhiBufferBindings)
+static std::vector<RHIBufferBarrier> CreateBarriersFromBindings(RHIBarrierSync dstSync,
+                                                                const std::vector<RHIBufferBinding>& rhiBufferBindings)
 {
     std::vector<RHIBufferBarrier> barriers;
     barriers.reserve(rhiBufferBindings.size());
     for (const auto& rhiBinding : rhiBufferBindings)
     {
-        barriers.push_back(ResourceBindingUtils::CreateBarrierFromRHIBinding(rhiBinding));
+        barriers.push_back(ResourceBindingUtils::CreateBarrierFromRHIBinding(dstSync, rhiBinding));
     }
     return barriers;
 }
 
 static std::vector<RHITextureBarrier> CreateBarriersFromBindings(
-    const std::vector<RHITextureBinding>& rhiTextureBindings)
+    RHIBarrierSync dstSync, const std::vector<RHITextureBinding>& rhiTextureBindings)
 {
     std::vector<RHITextureBarrier> barriers;
     barriers.reserve(rhiTextureBindings.size());
     for (const auto& rhiBinding : rhiTextureBindings)
     {
-        barriers.push_back(ResourceBindingUtils::CreateBarrierFromRHIBinding(rhiBinding));
+        barriers.push_back(ResourceBindingUtils::CreateBarrierFromRHIBinding(dstSync, rhiBinding));
     }
     return barriers;
 }
@@ -810,8 +811,12 @@ void CommandContext::TransitionBindings(std::span<const ResourceBinding> resourc
 
     // This code will be greatly simplified when we add caching of transitions until the next GPU operation.
     // See: https://trello.com/c/kJWhd2iu
-    auto bufferBarriers = CommandContext_Internal::CreateBarriersFromBindings(rhiBufferBindings);
-    auto textureBarriers = CommandContext_Internal::CreateBarriersFromBindings(rhiTextureBindings);
+
+    const RHIBarrierSync dstSync =
+        cmdList->GetType() == CommandQueueTypes::Compute ? RHIBarrierSync::ComputeShader : RHIBarrierSync::AllGraphics;
+
+    auto bufferBarriers = CommandContext_Internal::CreateBarriersFromBindings(dstSync, rhiBufferBindings);
+    auto textureBarriers = CommandContext_Internal::CreateBarriersFromBindings(dstSync, rhiTextureBindings);
     cmdList->Barrier(bufferBarriers, textureBarriers);
 }
 
