@@ -326,17 +326,18 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
     {
     case TextureType::Texture2D:
         createInfo.extent = ::vk::Extent3D{ description.width, description.height, 1 };
-        createInfo.arrayLayers = description.depthOrArraySize;
         createInfo.imageType = ::vk::ImageType::e2D;
+        createInfo.arrayLayers = description.depthOrArraySize;
         break;
     case TextureType::TextureCube:
         createInfo.extent = ::vk::Extent3D{ description.width, description.height, 1 };
         createInfo.imageType = ::vk::ImageType::e2D;
-        createInfo.arrayLayers = 6;
+        createInfo.arrayLayers = description.GetArraySize();
         break;
     case TextureType::Texture3D:
         createInfo.extent = ::vk::Extent3D{ description.width, description.height, description.depthOrArraySize };
         createInfo.imageType = ::vk::ImageType::e3D;
+        createInfo.arrayLayers = 1;
         break;
     default:;
     }

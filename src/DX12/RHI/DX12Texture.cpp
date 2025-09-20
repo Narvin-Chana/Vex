@@ -215,14 +215,15 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
     switch (description.type)
     {
     case TextureType::TextureCube:
-        VEX_ASSERT(description.depthOrArraySize == 6, "A texture cube must have a depthOrArraySize of 6.");
     case TextureType::Texture2D:
+    {
         texDesc = CD3DX12_RESOURCE_DESC::Tex2D(TextureFormatToDXGI(description.format),
                                                description.width,
                                                description.height,
-                                               description.depthOrArraySize,
+                                               description.GetArraySize(),
                                                description.mips);
         break;
+    }
     case TextureType::Texture3D:
         texDesc = CD3DX12_RESOURCE_DESC::Tex3D(TextureFormatToDXGI(description.format),
                                                description.width,

@@ -245,7 +245,7 @@ void DX12CommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
     std::vector<D3D12_TEXTURE_BARRIER> dx12TextureBarriers;
     dx12TextureBarriers.reserve(textureBarriers.size());
 
-    for (auto& bufferBarrier : bufferBarriers)
+    for (const auto& bufferBarrier : bufferBarriers)
     {
         D3D12_BUFFER_BARRIER dx12Barrier = {};
         dx12Barrier.SyncBefore = RHIBarrierSyncToDX12(bufferBarrier.srcSync);
@@ -262,7 +262,7 @@ void DX12CommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
         bufferBarrier.buffer->SetLastSync(bufferBarrier.dstSync);
         bufferBarrier.buffer->SetLastAccess(bufferBarrier.dstAccess);
     }
-    for (auto& textureBarrier : textureBarriers)
+    for (const auto& textureBarrier : textureBarriers)
     {
         D3D12_TEXTURE_BARRIER dx12Barrier = {};
         dx12Barrier.SyncBefore = RHIBarrierSyncToDX12(textureBarrier.srcSync);
@@ -272,6 +272,14 @@ void DX12CommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
         dx12Barrier.LayoutBefore = RHITextureLayoutToDX12(textureBarrier.srcLayout);
         dx12Barrier.LayoutAfter = RHITextureLayoutToDX12(textureBarrier.dstLayout);
         dx12Barrier.pResource = textureBarrier.texture->GetRawTexture();
+
+        // Copy command queues do not support the CopyDest stage.
+        bool remapToCommon = false;
+        if (type == CommandQueueType::Copy && textureBarrier.dstLayout == RHITextureLayout::CopyDest)
+        {
+            dx12Barrier.LayoutAfter = D3D12_BARRIER_LAYOUT_COMMON;
+            remapToCommon = true;
+        }
 
         if (dx12Barrier.AccessAfter & D3D12_BARRIER_ACCESS_NO_ACCESS)
         {
@@ -292,7 +300,7 @@ void DX12CommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
         // Update last sync, access and layout.
         textureBarrier.texture->SetLastSync(textureBarrier.dstSync);
         textureBarrier.texture->SetLastAccess(textureBarrier.dstAccess);
-        textureBarrier.texture->SetLastLayout(textureBarrier.dstLayout);
+        textureBarrier.texture->SetLastLayout(remapToCommon ? RHITextureLayout::Common : textureBarrier.dstLayout);
     }
 
     // Take our barriers and now insert them into "groups" to be sent to the command list.
@@ -465,7 +473,38 @@ void DX12CommandList::Copy(RHITexture& src,
                            RHITexture& dst,
                            std::span<const TextureCopyDescription> textureCopyDescriptions)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    ID3D12Resource* srcTexture = src.GetRawTexture();
+    ID3D12Resource* dstTexture = dst.GetRawTexture();
+
+    for (const TextureCopyDescription& copyDesc : textureCopyDescriptions)
+    {
+        D3D12_TEXTURE_COPY_LOCATION srcLoc = {};
+        srcLoc.pResource = srcTexture;
+        srcLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        srcLoc.SubresourceIndex =
+            copyDesc.srcSubresource.startSlice * src.GetDescription().mips + copyDesc.srcSubresource.mip;
+
+        D3D12_TEXTURE_COPY_LOCATION dstLoc = {};
+        dstLoc.pResource = dstTexture;
+        dstLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        dstLoc.SubresourceIndex =
+            copyDesc.dstSubresource.startSlice * dst.GetDescription().mips + copyDesc.dstSubresource.mip;
+
+        D3D12_BOX srcBox = {};
+        srcBox.left = copyDesc.srcSubresource.offset.width;
+        srcBox.top = copyDesc.srcSubresource.offset.height;
+        srcBox.front = copyDesc.srcSubresource.offset.depth;
+        srcBox.right = copyDesc.srcSubresource.offset.width + copyDesc.extent.width;
+        srcBox.bottom = copyDesc.srcSubresource.offset.height + copyDesc.extent.height;
+        srcBox.back = copyDesc.srcSubresource.offset.depth + copyDesc.extent.depth;
+
+        commandList->CopyTextureRegion(&dstLoc,
+                                       copyDesc.dstSubresource.offset.width,
+                                       copyDesc.dstSubresource.offset.height,
+                                       copyDesc.dstSubresource.offset.depth,
+                                       &srcLoc,
+                                       &srcBox);
+    }
 }
 
 void DX12CommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& bufferCopyDescription)
@@ -481,6 +520,10 @@ void DX12CommandList::Copy(RHIBuffer& src,
                            RHITexture& dst,
                            std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions)
 {
+    // TODO(https://trello.com/c/KEnbDLG6): this way of uploading makes it so that texture arrays are copied slice by
+    // slice, when instead they could be copied mip element by mip. Would require considerable effort to fix and is only
+    // a slight optimization so will probably be done later on.
+
     ID3D12Resource* srcBuffer = src.GetRawBuffer();
     ID3D12Resource* dstTexture = dst.GetRawTexture();
 
