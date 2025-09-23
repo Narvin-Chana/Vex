@@ -90,41 +90,10 @@ void VkCommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTracin
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-void VkCommandList::SetLayout(RHIResourceLayout& resourceLayout)
+void VkCommandList::SetStaticState(RHIResourceLayout& resourceLayout, RHIDescriptorPool& descriptorPool)
 {
     samplerDescriptorSet = *resourceLayout.GetSamplerDescriptorSet().descriptorSet;
     pipelineLayout = resourceLayout.GetPipelineLayout();
-}
-
-void VkCommandList::SetLocalConstants(std::span<const byte> localConstantData)
-{
-    if (localConstantData.empty())
-    {
-        return;
-    }
-
-    VEX_ASSERT(pipelineLayout, "VkPipelineLayout should be set via the SetLayout method");
-
-    ::vk::ShaderStageFlags stageFlags;
-    switch (type)
-    {
-    case CommandQueueTypes::Graphics:
-        stageFlags |= ::vk::ShaderStageFlagBits::eAllGraphics;
-    case CommandQueueTypes::Compute:
-        stageFlags |= ::vk::ShaderStageFlagBits::eCompute;
-        break;
-    default:
-        VEX_ASSERT(false, "Operation not supported on this queue type");
-    }
-
-    commandBuffer->pushConstants(pipelineLayout, stageFlags, 0, localConstantData.size(), localConstantData.data());
-}
-
-void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool)
-{
-    VEX_ASSERT(pipelineLayout && samplerDescriptorSet,
-               "the pipeline layout and sampler descriptor set should be set via the SetLayout method. Call it before "
-               "SetDescriptorPool");
 
     std::array descriptorSets{ samplerDescriptorSet, *descriptorPool.bindlessSet->descriptorSet };
     switch (type)
@@ -150,6 +119,30 @@ void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool)
         VEX_ASSERT(false, "Operation not supported on this queue type");
         break;
     }
+}
+
+void VkCommandList::SetLocalConstants(std::span<const byte> localConstantData)
+{
+    if (localConstantData.empty())
+    {
+        return;
+    }
+
+    VEX_ASSERT(pipelineLayout, "VkPipelineLayout should be set via the SetLayout method");
+
+    ::vk::ShaderStageFlags stageFlags;
+    switch (type)
+    {
+    case CommandQueueTypes::Graphics:
+        stageFlags |= ::vk::ShaderStageFlagBits::eAllGraphics;
+    case CommandQueueTypes::Compute:
+        stageFlags |= ::vk::ShaderStageFlagBits::eCompute;
+        break;
+    default:
+        VEX_ASSERT(false, "Operation not supported on this queue type");
+    }
+
+    commandBuffer->pushConstants(pipelineLayout, stageFlags, 0, localConstantData.size(), localConstantData.data());
 }
 
 void VkCommandList::SetInputAssembly(InputAssembly inputAssembly)

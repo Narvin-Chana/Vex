@@ -114,23 +114,6 @@ void DX12CommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTrac
     commandList->SetPipelineState1(rayTracingPipelineState.stateObject.Get());
 }
 
-void DX12CommandList::SetLayout(RHIResourceLayout& resourceLayout)
-{
-    ID3D12RootSignature* globalRootSignature = resourceLayout.GetRootSignature().Get();
-
-    // Set root signature.
-    switch (type)
-    {
-    case CommandQueueType::Graphics:
-        commandList->SetGraphicsRootSignature(globalRootSignature);
-    case CommandQueueType::Compute:
-        commandList->SetComputeRootSignature(globalRootSignature);
-    case CommandQueueType::Copy:
-    default:
-        break;
-    }
-}
-
 void DX12CommandList::SetLocalConstants(std::span<const byte> localConstantData)
 {
     if (localConstantData.empty())
@@ -158,9 +141,23 @@ void DX12CommandList::SetLocalConstants(std::span<const byte> localConstantData)
     }
 }
 
-void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool)
+void DX12CommandList::SetStaticState(RHIResourceLayout& resourceLayout, RHIDescriptorPool& descriptorPool)
 {
     commandList->SetDescriptorHeaps(1, descriptorPool.gpuHeap.GetNativeDescriptorHeap().GetAddressOf());
+
+    ID3D12RootSignature* globalRootSignature = resourceLayout.GetRootSignature().Get();
+
+    // Set root signature.
+    switch (type)
+    {
+    case CommandQueueType::Graphics:
+        commandList->SetGraphicsRootSignature(globalRootSignature);
+    case CommandQueueType::Compute:
+        commandList->SetComputeRootSignature(globalRootSignature);
+    case CommandQueueType::Copy:
+    default:
+        break;
+    }
 }
 
 void DX12CommandList::SetInputAssembly(InputAssembly inputAssembly)

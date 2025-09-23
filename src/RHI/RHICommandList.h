@@ -48,15 +48,9 @@ public:
     virtual void SetPipelineState(const RHIComputePipelineState& computePipelineState) = 0;
     virtual void SetPipelineState(const RHIRayTracingPipelineState& rayTracingPipelineState) = 0;
 
-    // This set the layout to be used for the lifetime of the commandList.
-    // This should be set once as the layout is immutable while the context is recording
-    virtual void SetLayout(RHIResourceLayout& resourceLayout) = 0;
-
     // Sets constants on the pipeline
     virtual void SetLocalConstants(std::span<const byte> localConstantData) = 0;
-
-    // Sets descriptor heaps/sets according to the layout
-    virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool) = 0;
+    virtual void SetStaticState(RHIResourceLayout& resourceLayout, RHIDescriptorPool& descriptorPool) = 0;
 
     virtual void SetInputAssembly(InputAssembly inputAssembly) = 0;
 
