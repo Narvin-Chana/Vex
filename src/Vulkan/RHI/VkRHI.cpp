@@ -2,6 +2,7 @@
 
 #include <set>
 
+#include <Vex/CommandContext.h>
 #include <Vex/Logger.h>
 #include <Vex/PlatformWindow.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
@@ -129,7 +130,10 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
 
-    InitWindow(windowHandle);
+    if (windowHandle.window)
+    {
+        InitWindow(windowHandle);
+    }
 }
 
 VkRHI::~VkRHI() = default;
@@ -182,9 +186,10 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     u32 i = 0;
     for (const auto& property : queueFamilies)
     {
-        bool presentSupported = VEX_VK_CHECK <<= physDevice.getSurfaceSupportKHR(i, *surface);
+        bool presentSupported = surface && (VEX_VK_CHECK <<= physDevice.getSurfaceSupportKHR(i, *surface));
 
-        if (graphicsQueueFamily == -1 && presentSupported && property.queueFlags & ::vk::QueueFlagBits::eGraphics)
+        if (graphicsQueueFamily == -1 && (!surface || (surface && presentSupported)) &&
+            property.queueFlags & ::vk::QueueFlagBits::eGraphics)
         {
             graphicsQueueFamily = static_cast<i32>(i);
         }
@@ -273,17 +278,20 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*device);
 
-    if (graphicsQueueFamily == -1)
+    if (graphicsQueueFamily != -1)
+    {
+        queues[CommandQueueTypes::Graphics] = VkCommandQueue{
+            .type = CommandQueueTypes::Graphics,
+            .family = static_cast<u32>(graphicsQueueFamily),
+            .queue = device->getQueue(graphicsQueueFamily, 0),
+        };
+        SetDebugName(*device, device->getQueue(graphicsQueueFamily, 0), "Graphics Queue");
+    }
+    // When we have a surface we should have a graphics queue family
+    else if (surface)
     {
         VEX_LOG(Fatal, "Unable to create graphics queue on device!");
     }
-    queues[CommandQueueTypes::Graphics] = VkCommandQueue{
-        .type = CommandQueueTypes::Graphics,
-        .family = static_cast<u32>(graphicsQueueFamily),
-        .queue = device->getQueue(graphicsQueueFamily, 0),
-    };
-
-    SetDebugName(*device, device->getQueue(graphicsQueueFamily, 0), "Graphics Queue");
 
     if (computeQueueFamily != -1)
     {
@@ -495,6 +503,16 @@ void VkRHI::FlushGPU()
     {
         CommandQueueType queueType = static_cast<CommandQueueType>(i);
         const auto& queue = queues[queueType];
+        if (queue.type == CommandQueueTypes::Invalid)
+        {
+            continue;
+        }
+
+        if (!queue.queue)
+        {
+            VEX_LOG(Warning, "VkQueue was invalid on flush, skipping flush operations on it")
+            continue;
+        }
         // Force immediate queue flush
         VEX_VK_CHECK << queue.queue.waitIdle();
 

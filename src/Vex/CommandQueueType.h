@@ -9,6 +9,7 @@ namespace CommandQueueTypes
 {
 enum Value : u8
 {
+    Invalid = 0xff,
     // Transfer-only operations
     Copy = 0,
     // Compute operations (includes Copy capabilites)
