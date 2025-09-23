@@ -8,7 +8,6 @@ int main()
 
     vex::GfxBackend backend{ vex::BackendDescription{
         .useSwapChain = false,
-        .frameBuffering = vex::FrameBuffering::Triple,
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING,
     } };
