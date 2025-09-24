@@ -199,13 +199,11 @@ add_library(Vex STATIC
     "src/Vex/ResourceCopy.h"
     "src/Vex/ResourceCopy.cpp"
     "src/Vex/Concepts.h"
-    "src/Tests/TextureUpload.h"
-    "src/Tests/TextureUpload.cpp"
     # Vex Tests
     "src/Tests/SynchronizationTorture.h"
     "src/Tests/SynchronizationTorture.cpp"
-    "src/Tests/TextureUploadTests.cpp"
-    "src/Tests/TextureUploadTests.h"
+    "src/Tests/TextureUploadReadback.cpp"
+    "src/Tests/TextureUploadReadback.h"
 )
 
 if(WIN32)

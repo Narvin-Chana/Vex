@@ -1,5 +1,5 @@
 ﻿#include <Tests/SynchronizationTorture.h>
-#include <Tests/TextureUploadTests.h>
+#include <Tests/TextureUploadReadback.h>
 
 #include <Vex/GfxBackend.h>
 
