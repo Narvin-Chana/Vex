@@ -49,20 +49,20 @@ int main()
     Image srcImg = ReadImage(WorkingDir / "Input.jpg");
     vex::Texture srcTexture = backend.CreateTexture({ .name = "Input Image",
                                                       .type = vex::TextureType::Texture2D,
+                                                      .format = vex::TextureFormat::RGBA8_UNORM,
                                                       .width = srcImg.width,
                                                       .height = srcImg.height,
                                                       .depthOrArraySize = 1,
                                                       .mips = 1,
-                                                      .format = vex::TextureFormat::RGBA8_UNORM,
                                                       .usage = vex::TextureUsage::ShaderReadWrite },
                                                     vex::ResourceLifetime::Static);
     vex::Texture dstTexture = backend.CreateTexture({ .name = "Output Image",
                                                       .type = vex::TextureType::Texture2D,
+                                                      .format = vex::TextureFormat::RGBA8_UNORM,
                                                       .width = srcImg.width,
                                                       .height = srcImg.height,
                                                       .depthOrArraySize = 1,
                                                       .mips = 1,
-                                                      .format = vex::TextureFormat::RGBA8_UNORM,
                                                       .usage = vex::TextureUsage::ShaderReadWrite },
                                                     vex::ResourceLifetime::Static);
 

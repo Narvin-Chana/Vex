@@ -133,22 +133,22 @@ void RunTestsForTextureSize(GfxBackend& graphics, u32 width, u32 height, u32& te
 {
     static const TextureDescription textureDesc_1mip = { .name = std::format("{}x{}_1mip", width, height),
                                                          .type = TextureType::Texture2D,
+                                                         .format = TextureFormat::RGBA8_UNORM,
                                                          .width = width,
                                                          .height = height,
                                                          .depthOrArraySize = 1,
                                                          .mips = 1,
-                                                         .format = TextureFormat::RGBA8_UNORM,
                                                          .usage =
                                                              TextureUsage::ShaderRead | TextureUsage::ShaderReadWrite };
     static const std::vector<TextureUploadRegion> regions_1mip = TextureUploadRegion::UploadAllMips(textureDesc_1mip);
 
     static const TextureDescription textureDesc_2mip = { .name = std::format("{}x{}_2mip", width, height),
                                                          .type = TextureType::Texture2D,
+                                                         .format = TextureFormat::RGBA8_UNORM,
                                                          .width = width,
                                                          .height = height,
                                                          .depthOrArraySize = 1,
                                                          .mips = 2,
-                                                         .format = TextureFormat::RGBA8_UNORM,
                                                          .usage =
                                                              TextureUsage::ShaderRead | TextureUsage::ShaderReadWrite };
     static const std::vector<TextureUploadRegion> regions_2mip = TextureUploadRegion::UploadAllMips(textureDesc_2mip);
