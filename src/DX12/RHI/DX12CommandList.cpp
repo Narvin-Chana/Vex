@@ -32,9 +32,9 @@ struct DX12BufferTextureCopyDesc
     D3D12_BOX box;
 };
 
-DX12BufferTextureCopyDesc GetCopyLocationsFromSubresource(RHIBuffer& buffer,
-                                                          RHITexture& texture,
-                                                          const BufferTextureCopyDescription& desc)
+DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(RHIBuffer& buffer,
+                                                       RHITexture& texture,
+                                                       const BufferTextureCopyDescription& desc)
 {
     float formatPixelByteSize = TextureUtil::GetPixelByteSizeFromFormat(texture.GetDescription().format);
 
@@ -579,7 +579,7 @@ void DX12CommandList::Copy(RHIBuffer& src,
 
     for (const BufferTextureCopyDescription& copyDesc : bufferToTextureCopyDescriptions)
     {
-        auto locations = CommandList_Internal::GetCopyLocationsFromSubresource(src, dst, copyDesc);
+        auto locations = CommandList_Internal::GetCopyLocationsFromCopyDesc(src, dst, copyDesc);
         commandList->CopyTextureRegion(&locations.textureLoc,
                                        copyDesc.textureSubresource.offset.width,
                                        copyDesc.textureSubresource.offset.height,
@@ -595,7 +595,7 @@ void DX12CommandList::Copy(RHITexture& src,
 {
     for (const BufferTextureCopyDescription& copyDesc : bufferToTextureCopyDescriptions)
     {
-        auto locations = CommandList_Internal::GetCopyLocationsFromSubresource(dst, src, copyDesc);
+        auto locations = CommandList_Internal::GetCopyLocationsFromCopyDesc(dst, src, copyDesc);
         commandList->CopyTextureRegion(&locations.bufferLoc,
                                        copyDesc.textureSubresource.offset.width,
                                        copyDesc.textureSubresource.offset.height,
