@@ -36,9 +36,9 @@ enum class BorderColor : u8
 
 struct TextureSampler
 {
-    FilterMode minFilter = FilterMode::Linear;
-    FilterMode magFilter = FilterMode::Linear;
-    FilterMode mipFilter = FilterMode::Linear;
+    FilterMode minFilter = FilterMode::Point;
+    FilterMode magFilter = FilterMode::Point;
+    FilterMode mipFilter = FilterMode::Point;
     AddressMode addressU = AddressMode::Wrap;
     AddressMode addressV = AddressMode::Wrap;
     AddressMode addressW = AddressMode::Wrap;
@@ -48,6 +48,23 @@ struct TextureSampler
     BorderColor borderColor = BorderColor::TransparentBlackFloat;
     float minLOD = 0.0f;
     float maxLOD = std::numeric_limits<float>::max();
+
+    static constexpr TextureSampler CreateSampler(FilterMode filterMode,
+                                                  AddressMode addressMode,
+                                                  float mipLODBias = 0.0f,
+                                                  u32 maxAnisotropy = 1)
+    {
+        return {
+            .minFilter = filterMode,
+            .magFilter = filterMode,
+            .mipFilter = filterMode,
+            .addressU = addressMode,
+            .addressV = addressMode,
+            .addressW = addressMode,
+            .mipLODBias = mipLODBias,
+            .maxAnisotropy = maxAnisotropy,
+        };
+    }
 };
 
 } // namespace vex

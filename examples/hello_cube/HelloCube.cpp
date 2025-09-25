@@ -172,7 +172,7 @@ HelloCubeApplication::HelloCubeApplication()
 
         // TODO(https://trello.com/c/L6TkjaGl): this causes a Vulkan synchronization error! Very probably some sort of
         // missing barrier stage. Upload a single RGBA pixel to position x=10, y=10.
-        std::vector<vex::u8> pixel{ 255, 255, 255, 255 };
+        std::array<vex::u8, 4> pixel{ 255, 255, 255, 255 };
         ctx.EnqueueDataUpload(
             uvGuideTexture,
             std::as_bytes(std::span(pixel)),
@@ -188,18 +188,10 @@ HelloCubeApplication::HelloCubeApplication()
         stbi_image_free(imageData);
     }
 
-    std::vector samplers{ vex::TextureSampler{
-                              .minFilter = vex::FilterMode::Linear,
-                              .magFilter = vex::FilterMode::Linear,
-                              .addressU = vex::AddressMode::Clamp,
-                              .addressV = vex::AddressMode::Clamp,
-                          },
-                          vex::TextureSampler{
-                              .minFilter = vex::FilterMode::Point,
-                              .magFilter = vex::FilterMode::Point,
-                              .addressU = vex::AddressMode::Clamp,
-                              .addressV = vex::AddressMode::Clamp,
-                          } };
+    std::array samplers{
+        vex::TextureSampler::CreateSampler(vex::FilterMode::Linear, vex::AddressMode::Clamp),
+        vex::TextureSampler::CreateSampler(vex::FilterMode::Point, vex::AddressMode::Clamp),
+    };
     graphics->SetSamplers(samplers);
 }
 

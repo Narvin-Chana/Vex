@@ -2,6 +2,7 @@
 
 #include <span>
 
+#include <Vex/Concepts.h>
 #include <Vex/Handle.h>
 #include <Vex/Types.h>
 
@@ -58,6 +59,7 @@ public:
     void SetData(std::span<byte> inData, u32 offset);
 
     template <class T>
+        requires(not IsContainer<T>)
     void SetData(const T& inData);
 
 private:
@@ -69,10 +71,11 @@ private:
 };
 
 template <class T>
+    requires(not IsContainer<T>)
 void ResourceMappedMemory::SetData(const T& inData)
 {
     const u8* dataPtr = reinterpret_cast<const u8*>(&inData);
-    SetData(std::span{ dataPtr, sizeof(T) });
+    SetData(std::as_bytes(std::span{ dataPtr, sizeof(T) }));
 }
 
 } // namespace vex

@@ -7,3 +7,5 @@
 #endif
 
 #define GetBindlessResource(index) ResourceDescriptorHeap[index & 0x00FFFFFF];
+
+static const uint GInvalidBindlessHandle = ~0U;

@@ -27,8 +27,6 @@ struct Texture;
 struct Buffer;
 struct TextureClearValue;
 struct DrawDescription;
-struct DrawResources;
-struct ComputeResources;
 struct RayTracingPassDescription;
 
 class CommandContext

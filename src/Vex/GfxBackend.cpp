@@ -191,6 +191,13 @@ CommandContext GfxBackend::BeginScopedCommandContext(CommandQueueType queueType,
                                                      SubmissionPolicy submissionPolicy,
                                                      std::span<SyncToken> dependencies)
 {
+    if (submissionPolicy == SubmissionPolicy::DeferToPresent && !description.useSwapChain)
+    {
+        VEX_LOG(Fatal,
+                "Cannot use deferred submission policy when your graphics backend has no swapchain. Use "
+                "SubmissionPolicy::Immediate instead!");
+    }
+
     return CommandContext{ *this, commandPool->GetOrCreateCommandList(queueType), submissionPolicy, dependencies };
 }
 
@@ -467,7 +474,7 @@ void GfxBackend::SetShaderCompilationErrorsCallback(std::function<ShaderCompileE
     }
 }
 
-void GfxBackend::SetSamplers(std::span<TextureSampler> newSamplers)
+void GfxBackend::SetSamplers(std::span<const TextureSampler> newSamplers)
 {
     psCache->GetResourceLayout().SetSamplers(newSamplers);
 }

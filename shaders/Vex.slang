@@ -20,3 +20,5 @@ public DescriptorHandle<T> GetBindlessResource(uint index) where T : IOpaqueDesc
 {
     return { index & 0x00FFFFFF };
 }
+
+static const uint GInvalidBindlessHandle = ~0U;
