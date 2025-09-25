@@ -499,6 +499,17 @@ void GfxBackend::UnregisterRenderExtension(NonNullPtr<RenderExtension> renderExt
     }
 }
 
+void GfxBackend::ExecuteReadback(const ReadBackContext& context,
+                                 std::span<byte> outputData,
+                                 const std::optional<SyncToken>& readbackToken)
+{
+    if (readbackToken)
+    {
+        WaitForTokenOnCPU(*readbackToken);
+    }
+    context.copyFunc(*this, outputData);
+}
+
 void GfxBackend::RecompileChangedShaders()
 {
     if (description.shaderCompilerSettings.enableShaderDebugging)

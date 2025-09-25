@@ -29,6 +29,14 @@ struct TextureClearValue;
 struct DrawDescription;
 struct RayTracingPassDescription;
 
+class ReadBackContext
+{
+    std::function<void(GfxBackend& backend, std::span<byte> output)> copyFunc;
+
+    friend class CommandContext;
+    friend class GfxBackend;
+};
+
 class CommandContext
 {
 private:
@@ -100,11 +108,15 @@ public:
     // Copies the contents of the buffer to a specified region in the texture.
     void Copy(const Buffer& source,
               const Texture& destination,
-              const BufferToTextureCopyDescription& bufferToTextureCopyDescription);
+              const BufferTextureCopyDescription& bufferToTextureCopyDescription);
     // Copies the contents of the buffer to multiple specified regions in the texture.
     void Copy(const Buffer& source,
               const Texture& destination,
-              std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions);
+              std::span<const BufferTextureCopyDescription> bufferToTextureCopyDescriptions);
+    void Copy(const Texture& source, const Buffer& destination);
+    void Copy(const Texture& source,
+              const Buffer& destination,
+              std::span<const BufferTextureCopyDescription> bufferToTextureCopyDescriptions);
 
     // ---------------------------------------------------------------------------------------------------------------
     // Buffer Data Operations
@@ -133,7 +145,7 @@ public:
 
     // Enqueues for the entirety of a texture to be readback from the GPU to the specified output.
     // Will automatically use a staging buffer if necessary.
-    void EnqueueDataReadback(const Texture& texture, std::span<byte> output);
+    ReadBackContext EnqueueDataReadback(const Texture& srcTexture, std::span<const TextureUploadRegion> uploadRegions);
 
     // ---------------------------------------------------------------------------------------------------------------
 
@@ -161,7 +173,7 @@ public:
 
     // Allows you to manually submit the command context, receiving SyncTokens that allow you to later perform a CPU
     // wait for the work to be done.
-    std::vector<SyncToken> Submit();
+    std::optional<SyncToken> Submit();
 
     // Useful for calling native API draws when wanting to render to a specific Render Target.
     // Allows the passed in lambda to be executed in a draw scope.
