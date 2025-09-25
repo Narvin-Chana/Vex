@@ -8,6 +8,8 @@
 namespace vex
 {
 
+namespace TextureTests
+{
 using PixelApplicator =
     std::function<void(const TextureUploadRegion& region, u32 x, u32 y, u32 z, std::span<byte, 4> pixel)>;
 
@@ -239,51 +241,56 @@ void RunTestsFor2DTextureSize(GfxBackend& graphics, u32 width, u32 height, u32& 
 
 void RunMiscTests(GfxBackend& graphics, CommandQueueType type, u32& testId)
 {
+    PixelApplicator cubemapApplicator =
+        [](const TextureUploadRegion& region, u32 x, u32 y, u32 z, std::span<byte, 4> pixel)
+    {
+        switch (region.mip)
+        {
+        case 0:
+            pixel[0] = static_cast<std::byte>(32 * region.slice);
+            pixel[1] = std::byte{ 64 };
+            pixel[2] = std::byte{ 128 };
+            pixel[3] = std::byte{ 255 };
+            break;
+        case 1:
+            pixel[0] = static_cast<std::byte>((region.slice % 2 == 0) * 255);
+            pixel[1] = std::byte{ 0 };
+            pixel[2] = std::byte{ 0 };
+            pixel[3] = std::byte{ 255 };
+        case 2:
+            pixel[0] = std::byte{ 255 };
+            pixel[1] = static_cast<std::byte>((region.slice % 2 == 0) * 255);
+            pixel[2] = static_cast<std::byte>((region.slice % 2 != 0) * 255);
+            pixel[3] = std::byte{ 255 };
+        default:
+            pixel[0] = std::byte{ 17 };
+            pixel[1] = std::byte{ 17 };
+            pixel[2] = std::byte{ 17 };
+            pixel[3] = std::byte{ 17 };
+            break;
+        }
+    };
+
     VEX_LOG(Info, "Test {}: Upload a cubemap with two mips", testId++);
     {
         auto ctx = graphics.BeginScopedCommandContext(type, SubmissionPolicy::Immediate);
 
-        u32 cubemapFaceSize = 16;
-        u16 cubemapMips = 2;
-        Texture cubemapTexture = graphics.CreateTexture(
-            TextureDescription::CreateTextureCube("Cubemap", TextureFormat::RGBA8_UNORM, cubemapFaceSize, cubemapMips),
-            ResourceLifetime::Static);
+        TextureDescription cubemapDesc =
+            TextureDescription::CreateTextureCube("Cubemap", TextureFormat::RGBA8_UNORM, 16, 2);
 
-        std::vector<u8> cubemapData;
-        cubemapData.reserve(cubemapFaceSize * cubemapFaceSize * GTextureCubeFaceCount * 4 * cubemapMips);
-        for (u8 face = 0; face < GTextureCubeFaceCount; ++face)
-        {
-            for (unsigned int x = 0; x < cubemapFaceSize; ++x)
-            {
-                for (unsigned int y = 0; y < cubemapFaceSize; ++y)
-                {
-                    cubemapData.push_back(32 * face);
-                    cubemapData.push_back(64);
-                    cubemapData.push_back(128);
-                    cubemapData.push_back(255);
-                }
-            }
-        }
-        cubemapFaceSize /= 2;
-        for (u8 face = 0; face < GTextureCubeFaceCount; ++face)
-        {
-            for (unsigned int x = 0; x < cubemapFaceSize; ++x)
-            {
-                for (unsigned int y = 0; y < cubemapFaceSize; ++y)
-                {
-                    cubemapData.push_back((face % 2 == 0) * 255);
-                    cubemapData.push_back(0);
-                    cubemapData.push_back(0);
-                    cubemapData.push_back(255);
-                }
-            }
-        }
+        Texture cubemapTexture = graphics.CreateTexture(cubemapDesc, ResourceLifetime::Static);
 
-        ctx.EnqueueDataUpload(cubemapTexture,
-                              std::as_bytes(std::span(cubemapData)),
-                              TextureUploadRegion::UploadAllMips(cubemapTexture.description));
+        std::vector<TextureUploadRegion> regions = TextureUploadRegion::UploadAllMips(cubemapTexture.description);
+
+        std::vector<byte> fullImageData;
+        fullImageData.resize(TextureUtil::ComputePackedUploadDataByteSize(cubemapDesc, regions));
+
+        ForEachPixelInRegions(regions, fullImageData, cubemapApplicator);
+
+        ctx.EnqueueDataUpload(cubemapTexture, std::as_bytes(std::span(fullImageData)), regions);
 
         ctx.Submit();
+
         graphics.DestroyTexture(cubemapTexture);
     }
 
@@ -291,66 +298,22 @@ void RunMiscTests(GfxBackend& graphics, CommandQueueType type, u32& testId)
     {
         auto ctx = graphics.BeginScopedCommandContext(type, SubmissionPolicy::Immediate);
 
-        u32 width = 16, height = 12, arraySize = 2;
-        u16 mips = 3;
-        Texture texture = graphics.CreateTexture(TextureDescription::CreateTexture2DArray("2dTextureArray",
-                                                                                          TextureFormat::RGBA8_UNORM,
-                                                                                          width,
-                                                                                          height,
-                                                                                          arraySize,
-                                                                                          mips),
-                                                 ResourceLifetime::Static);
+        TextureDescription cubemapDesc =
+            TextureDescription::CreateTexture2DArray("2dTextureArray", TextureFormat::RGBA8_UNORM, 16, 12, 2, 3);
 
-        std::vector<u8> data;
-        data.reserve(width * height * arraySize * 4 * mips);
-        for (u8 slice = 0; slice < arraySize; ++slice)
-        {
-            for (unsigned int x = 0; x < width; ++x)
-            {
-                for (unsigned int y = 0; y < height; ++y)
-                {
-                    data.push_back(32 * slice);
-                    data.push_back(64);
-                    data.push_back(128);
-                    data.push_back(255);
-                }
-            }
-        }
-        width /= 2;
-        height /= 2;
-        for (u8 slice = 0; slice < arraySize; ++slice)
-        {
-            for (unsigned int x = 0; x < width; ++x)
-            {
-                for (unsigned int y = 0; y < height; ++y)
-                {
-                    data.push_back((slice % 2 == 0) * 255);
-                    data.push_back(0);
-                    data.push_back(0);
-                    data.push_back(255);
-                }
-            }
-        }
-        width /= 2;
-        height /= 2;
-        for (u8 slice = 0; slice < arraySize; ++slice)
-        {
-            for (unsigned int x = 0; x < width; ++x)
-            {
-                for (unsigned int y = 0; y < height; ++y)
-                {
-                    data.push_back(255);
-                    data.push_back((slice % 2 == 0) * 255);
-                    data.push_back((slice % 2 != 0) * 255);
-                    data.push_back(255);
-                }
-            }
-        }
+        std::vector<TextureUploadRegion> regions = TextureUploadRegion::UploadAllMips(cubemapDesc);
 
-        ctx.EnqueueDataUpload(texture,
-                              std::as_bytes(std::span(data)),
-                              TextureUploadRegion::UploadAllMips(texture.description));
+        Texture texture = graphics.CreateTexture(cubemapDesc, ResourceLifetime::Static);
+
+        std::vector<byte> fullImageData;
+        fullImageData.resize(TextureUtil::ComputePackedUploadDataByteSize(cubemapDesc, regions));
+
+        ForEachPixelInRegions(regions, fullImageData, cubemapApplicator);
+
+        ctx.EnqueueDataUpload(texture, std::as_bytes(std::span(fullImageData)), regions);
+
         ctx.Submit();
+
         graphics.DestroyTexture(texture);
     }
 
@@ -358,59 +321,22 @@ void RunMiscTests(GfxBackend& graphics, CommandQueueType type, u32& testId)
     {
         auto ctx = graphics.BeginScopedCommandContext(type, SubmissionPolicy::Immediate);
 
-        u32 cubemapFaceSize = 16;
-        u16 cubemapMips = 2;
-        u16 cubemapArraySize = 3;
-        Texture cubemapTexture =
-            graphics.CreateTexture(TextureDescription::CreateTextureCubeArray("CubemapArray",
-                                                                              TextureFormat::RGBA8_UNORM,
-                                                                              cubemapFaceSize,
-                                                                              cubemapArraySize,
-                                                                              cubemapMips),
-                                   ResourceLifetime::Static);
+        TextureDescription cubemapDesc =
+            TextureDescription::CreateTextureCubeArray("CubemapArray", TextureFormat::RGBA8_UNORM, 16, 3, 2);
 
-        std::vector<u8> cubemapData;
-        cubemapData.reserve(cubemapFaceSize * cubemapFaceSize * GTextureCubeFaceCount * cubemapArraySize * 4 *
-                            cubemapMips);
-        for (u8 face = 0; face < GTextureCubeFaceCount; ++face)
-        {
-            for (u32 slice = 0; slice < cubemapArraySize; ++slice)
-            {
-                for (unsigned int x = 0; x < cubemapFaceSize; ++x)
-                {
-                    for (unsigned int y = 0; y < cubemapFaceSize; ++y)
-                    {
-                        cubemapData.push_back(255);
-                        cubemapData.push_back(32 * slice);
-                        cubemapData.push_back(128);
-                        cubemapData.push_back(255);
-                    }
-                }
-            }
-        }
-        cubemapFaceSize /= 2;
-        for (u8 face = 0; face < GTextureCubeFaceCount; ++face)
-        {
-            for (u32 slice = 0; slice < cubemapArraySize; ++slice)
-            {
-                for (unsigned int x = 0; x < cubemapFaceSize; ++x)
-                {
-                    for (unsigned int y = 0; y < cubemapFaceSize; ++y)
-                    {
-                        cubemapData.push_back((face % 2 == 0) * 255);
-                        cubemapData.push_back(0);
-                        cubemapData.push_back(0);
-                        cubemapData.push_back(255);
-                    }
-                }
-            }
-        }
+        std::vector<TextureUploadRegion> regions = TextureUploadRegion::UploadAllMips(cubemapDesc);
 
-        ctx.EnqueueDataUpload(cubemapTexture,
-                              std::as_bytes(std::span(cubemapData)),
-                              TextureUploadRegion::UploadAllMips(cubemapTexture.description));
+        Texture cubemapTexture = graphics.CreateTexture(cubemapDesc, ResourceLifetime::Static);
+
+        std::vector<byte> fullImageData;
+        fullImageData.resize(TextureUtil::ComputePackedUploadDataByteSize(cubemapDesc, regions));
+
+        ForEachPixelInRegions(regions, fullImageData, cubemapApplicator);
+
+        ctx.EnqueueDataUpload(cubemapTexture, std::as_bytes(std::span(fullImageData)), regions);
 
         ctx.Submit();
+
         graphics.DestroyTexture(cubemapTexture);
     }
 
@@ -419,67 +345,27 @@ void RunMiscTests(GfxBackend& graphics, CommandQueueType type, u32& testId)
         auto ctx = graphics.BeginScopedCommandContext(type, SubmissionPolicy::Immediate);
 
         // Cursed non-even sizes.
-        u32 width = 121, height = 165, depth = 64;
-        u16 mips = 3;
-        Texture texture = graphics.CreateTexture(
-            TextureDescription::CreateTexture3D("3DTexture", TextureFormat::RGBA8_UNORM, width, height, depth, mips),
-            ResourceLifetime::Static);
+        TextureDescription cubemapDesc =
+            TextureDescription::CreateTexture3D("3DTexture", TextureFormat::RGBA8_UNORM, 121, 165, 64, 3);
 
-        std::vector<u8> data;
-        data.reserve(width * height * depth * 4 * mips);
-        for (u8 slice = 0; slice < depth; ++slice)
-        {
-            for (unsigned int x = 0; x < width; ++x)
-            {
-                for (unsigned int y = 0; y < height; ++y)
-                {
-                    data.push_back(32 * slice);
-                    data.push_back(64);
-                    data.push_back(128);
-                    data.push_back(255);
-                }
-            }
-        }
-        width /= 2;
-        height /= 2;
-        depth /= 2;
-        for (u8 slice = 0; slice < depth; ++slice)
-        {
-            for (unsigned int x = 0; x < width; ++x)
-            {
-                for (unsigned int y = 0; y < height; ++y)
-                {
-                    data.push_back((slice % 2 == 0) * 255);
-                    data.push_back(0);
-                    data.push_back(0);
-                    data.push_back(255);
-                }
-            }
-        }
-        width /= 2;
-        height /= 2;
-        depth /= 2;
-        for (u8 slice = 0; slice < depth; ++slice)
-        {
-            for (unsigned int x = 0; x < width; ++x)
-            {
-                for (unsigned int y = 0; y < height; ++y)
-                {
-                    data.push_back(255);
-                    data.push_back((slice % 2 == 0) * 255);
-                    data.push_back((slice % 2 != 0) * 255);
-                    data.push_back(255);
-                }
-            }
-        }
+        std::vector<TextureUploadRegion> regions = TextureUploadRegion::UploadAllMips(cubemapDesc);
 
-        ctx.EnqueueDataUpload(texture,
-                              std::as_bytes(std::span(data)),
-                              TextureUploadRegion::UploadAllMips(texture.description));
+        Texture texture = graphics.CreateTexture(cubemapDesc, ResourceLifetime::Static);
+
+        std::vector<byte> fullImageData;
+        fullImageData.resize(TextureUtil::ComputePackedUploadDataByteSize(cubemapDesc, regions));
+
+        ForEachPixelInRegions(regions, fullImageData, cubemapApplicator);
+
+        ctx.EnqueueDataUpload(texture, std::as_bytes(std::span(fullImageData)), regions);
+
         ctx.Submit();
+
         graphics.DestroyTexture(texture);
     }
 }
+
+} // namespace TextureTests
 
 void TextureUploadDownladTests(GfxBackend& graphics)
 {
@@ -487,9 +373,9 @@ void TextureUploadDownladTests(GfxBackend& graphics)
 
     u32 testId = 1;
 
-    RunTestsFor2DTextureSize(graphics, 256, 256, testId);
-    RunTestsFor2DTextureSize(graphics, 546, 627, testId);
-    RunMiscTests(graphics, CommandQueueType::Graphics, testId);
+    TextureTests::RunTestsFor2DTextureSize(graphics, 256, 256, testId);
+    TextureTests::RunTestsFor2DTextureSize(graphics, 546, 627, testId);
+    TextureTests::RunMiscTests(graphics, CommandQueueType::Graphics, testId);
 
     graphics.FlushGPU();
 }

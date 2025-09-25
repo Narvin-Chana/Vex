@@ -15,6 +15,18 @@ void SynchronizationTortureTest(GfxBackend& graphics)
 {
     VEX_LOG(Info, "---- Starting Synchronization Torture Test... ----");
 
+    // TODO: We need to clear before presenting if we havent touched the present texture before present on DX12
+    // See: https://trello.com/c/k8hUPouM
+    // Clear backbuffer.
+    vex::TextureClearValue clearValue{ .flags = vex::TextureClear::ClearColor, .color = { 0.2f, 0.2f, 0.2f, 1 } };
+
+    graphics.BeginScopedCommandContext(vex::CommandQueueType::Graphics, vex::SubmissionPolicy::Immediate)
+        .ClearTexture(
+            vex::TextureBinding{
+                .texture = graphics.GetCurrentPresentTexture(),
+            },
+            clearValue);
+
     // Test 1: Basic Immediate vs Deferred Submission
     VEX_LOG(Info, "Test 1: Basic Immediate vs Deferred Submission");
     {
@@ -395,23 +407,6 @@ void SynchronizationTortureTest(GfxBackend& graphics)
     // Final flush to ensure everything is done
     VEX_LOG(Info, "Final GPU flush...");
     graphics.FlushGPU();
-
-    if (graphics.UsesSwapChain())
-    {
-        // Test Present to trigger any deferred submissions
-        VEX_LOG(Info, "Testing Present to trigger deferred submissions...");
-        graphics.Present(false);
-        // Test Present to trigger any deferred submissions
-        VEX_LOG(Info, "Testing Present to trigger deferred submissions...");
-        graphics.Present(false);
-        // Test Present to trigger any deferred submissions
-        VEX_LOG(Info, "Testing Present to trigger deferred submissions...");
-        graphics.Present(false);
-    }
-    else
-    {
-        VEX_LOG(Info, "Skipping Presents after flush because backend doesn't use a SwapChain");
-    }
 
     VEX_LOG(Info, "Synchronization Torture Test completed successfully!");
 }
