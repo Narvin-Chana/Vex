@@ -571,13 +571,13 @@ void DX12CommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescr
 
 void DX12CommandList::Copy(RHIBuffer& src,
                            RHITexture& dst,
-                           std::span<const BufferTextureCopyDescription> bufferToTextureCopyDescriptions)
+                           std::span<const BufferTextureCopyDescription> copyDescriptions)
 {
     // TODO(https://trello.com/c/KEnbDLG6): this way of uploading makes it so that texture arrays are copied slice by
     // slice, when instead they could be copied mip element by mip. Would require considerable effort to fix and is only
     // a slight optimization so will probably be done later on.
 
-    for (const BufferTextureCopyDescription& copyDesc : bufferToTextureCopyDescriptions)
+    for (const BufferTextureCopyDescription& copyDesc : copyDescriptions)
     {
         auto locations = CommandList_Internal::GetCopyLocationsFromCopyDesc(src, dst, copyDesc);
         commandList->CopyTextureRegion(&locations.textureLoc,
@@ -591,9 +591,9 @@ void DX12CommandList::Copy(RHIBuffer& src,
 
 void DX12CommandList::Copy(RHITexture& src,
                            RHIBuffer& dst,
-                           std::span<const BufferTextureCopyDescription> bufferToTextureCopyDescriptions)
+                           std::span<const BufferTextureCopyDescription> copyDescriptions)
 {
-    for (const BufferTextureCopyDescription& copyDesc : bufferToTextureCopyDescriptions)
+    for (const BufferTextureCopyDescription& copyDesc : copyDescriptions)
     {
         auto locations = CommandList_Internal::GetCopyLocationsFromCopyDesc(dst, src, copyDesc);
         commandList->CopyTextureRegion(&locations.bufferLoc,

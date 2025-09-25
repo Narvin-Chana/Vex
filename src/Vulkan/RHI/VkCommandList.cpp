@@ -519,9 +519,9 @@ void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescrip
 
 void VkCommandList::Copy(RHIBuffer& src,
                          RHITexture& dst,
-                         std::span<const BufferTextureCopyDescription> bufferToTextureCopyDescriptions)
+                         std::span<const BufferTextureCopyDescription> copyDescriptions)
 {
-    auto regions = GetBufferImageCopyFromBufferToImageDescriptions(dst, bufferToTextureCopyDescriptions);
+    auto regions = GetBufferImageCopyFromBufferToImageDescriptions(dst, copyDescriptions);
 
     commandBuffer->copyBufferToImage(src.GetNativeBuffer(),
                                      dst.GetResource(),
@@ -532,9 +532,9 @@ void VkCommandList::Copy(RHIBuffer& src,
 
 void VkCommandList::Copy(RHITexture& src,
                          RHIBuffer& dst,
-                         std::span<const BufferTextureCopyDescription> bufferToTextureCopyDescriptions)
+                         std::span<const BufferTextureCopyDescription> copyDescriptions)
 {
-    auto regions = GetBufferImageCopyFromBufferToImageDescriptions(src, bufferToTextureCopyDescriptions);
+    auto regions = GetBufferImageCopyFromBufferToImageDescriptions(src, copyDescriptions);
 
     commandBuffer->copyImageToBuffer(src.GetResource(),
                                      RHITextureLayoutToVulkan(src.GetLastLayout()),
