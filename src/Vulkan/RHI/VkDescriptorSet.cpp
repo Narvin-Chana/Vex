@@ -2,14 +2,13 @@
 
 #include <Vex/Formattable.h>
 #include <Vex/PhysicalDevice.h>
+#include <Vex/Validation.h>
 
 #include <RHI/RHIDescriptorPool.h>
 
 #include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkGPUContext.h>
-
-#include <Vex/Validation.h>
 
 namespace vex::vk
 {

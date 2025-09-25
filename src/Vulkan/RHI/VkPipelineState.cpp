@@ -44,10 +44,10 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
 
     std::array stages{ ::vk::PipelineShaderStageCreateInfo{ .stage = ::vk::ShaderStageFlagBits::eVertex,
                                                             .module = *vsShaderModule,
-                                                            .pName = "VSMain" },
+                                                            .pName = key.vertexShader.entryPoint.c_str() },
                        ::vk::PipelineShaderStageCreateInfo{ .stage = ::vk::ShaderStageFlagBits::eFragment,
                                                             .module = *psShaderModule,
-                                                            .pName = "PSMain" } };
+                                                            .pName = key.pixelShader.entryPoint.c_str() } };
 
     std::vector<::vk::VertexInputBindingDescription> bindings{ key.vertexInputLayout.bindings.size() };
     // Requires including the heavy <algorithm>
@@ -230,7 +230,7 @@ void VkComputePipelineState::Compile(const Shader& computeShader, RHIResourceLay
             ::vk::PipelineShaderStageCreateInfo{
                 .stage = ::vk::ShaderStageFlagBits::eCompute,
                 .module = *computeShaderModule,
-                .pName = "CSMain",
+                .pName = key.computeShader.entryPoint.c_str(),
             },
         .layout = *resourceLayout.pipelineLayout,
     };

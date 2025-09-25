@@ -113,7 +113,7 @@ public:
     void RecompileAllShaders();
     void SetShaderCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback);
 
-    void SetSamplers(std::span<TextureSampler> newSamplers);
+    void SetSamplers(std::span<const TextureSampler> newSamplers);
 
     // Register a custom RenderExtension, it will be automatically unregistered when the graphics backend is destroyed.
     RenderExtension* RegisterRenderExtension(UniqueHandle<RenderExtension>&& renderExtension);

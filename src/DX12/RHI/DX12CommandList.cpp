@@ -358,7 +358,7 @@ void DX12CommandList::BeginRendering(const RHIDrawResources& resources)
     if (type == CommandQueueType::Graphics)
     {
         CD3DX12_CPU_DESCRIPTOR_HANDLE* dsvHandlePtr = dsvHandle.has_value() ? &dsvHandle.value() : nullptr;
-        commandList->OMSetRenderTargets(static_cast<u32>(rtvHandles.size()), rtvHandles.data(), true, dsvHandlePtr);
+        commandList->OMSetRenderTargets(static_cast<u32>(rtvHandles.size()), rtvHandles.data(), false, dsvHandlePtr);
     }
     else
     {

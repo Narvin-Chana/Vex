@@ -85,7 +85,7 @@ static D3D12_DEPTH_STENCIL_VIEW_DESC CreateDepthStencilViewDesc(DX12TextureView 
 static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(DX12TextureView view)
 {
     D3D12_SHADER_RESOURCE_VIEW_DESC desc{
-        .Format = view.format,
+        .Format = GetDX12FormatForShaderResourceViewFormat(view.format),
         .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
     };
 
@@ -261,9 +261,15 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
         clearValue->DepthStencil = { .Depth = description.clearValue.depth, .Stencil = description.clearValue.stencil };
     }
 
+    // In order to allow for a depth stencil texture to be read as an SRV, it must have the equivalent typeless format
+    // (converted to the equivalent typed/D_ format for the actual view).
+    if (description.usage & TextureUsage::DepthStencil && description.usage & TextureUsage::ShaderRead)
+    {
+        texDesc.Format = GetTypelessFormatForDepthStencilCompatibleDX12Format(texDesc.Format);
+    }
     // For SRGB handling in DX12, the texture should have a typeless format.
     // We then decide when creating the SRV/RTV if we want automatic SRGB conversions or not (via the SRV/RTV's format).
-    if (FormatHasSRGBEquivalent(description.format))
+    else if (FormatHasSRGBEquivalent(description.format))
     {
         texDesc.Format = GetTypelessFormatForSRGBCompatibleDX12Format(texDesc.Format);
     }
@@ -486,12 +492,20 @@ DX12TextureView::DX12TextureView(const TextureBinding& binding)
     : usage{ binding.usage != TextureBindingUsage::None ? static_cast<TextureUsage::Type>(binding.usage)
                                                         : TextureUsage::None }
     , dimension{ TextureUtil::GetTextureViewType(binding) }
-    , format{ TextureFormatToDXGI(TextureUtil::GetTextureFormat(binding)) }
     , mipBias{ binding.mipBias }
     , mipCount{ (binding.mipCount == 0) ? binding.texture.description.mips : binding.mipCount }
     , startSlice{ binding.startSlice }
     , sliceCount{ (binding.sliceCount == 0) ? binding.texture.description.depthOrArraySize : binding.sliceCount }
 {
+    format = TextureFormatToDXGI(TextureUtil::GetTextureFormat(binding));
+    if (binding.usage == TextureBindingUsage::ShaderRead)
+    {
+        if (binding.texture.description.usage & TextureUsage::DepthStencil &&
+            binding.texture.description.usage & TextureUsage::ShaderRead)
+        {
+            format = GetTypelessFormatForDepthStencilCompatibleDX12Format(format);
+        }
+    }
 }
 
 } // namespace vex::dx12

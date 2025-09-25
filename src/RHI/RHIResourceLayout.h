@@ -24,7 +24,7 @@ public:
     ~RHIResourceLayoutBase();
     void SetLayoutResources(const std::optional<ConstantBinding>& constants);
 
-    void SetSamplers(std::span<TextureSampler> newSamplers);
+    void SetSamplers(std::span<const TextureSampler> newSamplers);
     std::span<const TextureSampler> GetStaticSamplers() const;
 
     std::span<const byte> GetLocalConstantsData() const;

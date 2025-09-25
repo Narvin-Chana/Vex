@@ -256,6 +256,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     features12.timelineSemaphore = true;
     features12.descriptorIndexing = true;
     features12.runtimeDescriptorArray = true;
+    features12.shaderSampledImageArrayNonUniformIndexing = true;
     features12.descriptorBindingPartiallyBound = true;
     features12.descriptorBindingUniformBufferUpdateAfterBind = true;
     features12.descriptorBindingStorageBufferUpdateAfterBind = true;

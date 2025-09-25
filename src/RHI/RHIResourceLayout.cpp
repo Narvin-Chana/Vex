@@ -42,7 +42,7 @@ void RHIResourceLayoutBase::SetLayoutResources(const std::optional<ConstantBindi
     }
 }
 
-void RHIResourceLayoutBase::SetSamplers(std::span<TextureSampler> newSamplers)
+void RHIResourceLayoutBase::SetSamplers(std::span<const TextureSampler> newSamplers)
 {
     samplers = { newSamplers.begin(), newSamplers.end() };
     isDirty = true;
