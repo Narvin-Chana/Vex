@@ -141,7 +141,11 @@ void RHIAllocatorBase::Free(const Allocation& allocation)
     auto& memoryPages = pageInfos[allocation.memoryTypeIndex];
     auto& page = memoryPages[allocation.pageHandle];
 #if !VEX_SHIPPING
-    VEX_LOG(Verbose, "Freed range: size {} offset {}", allocation.memoryRange.size, allocation.memoryRange.offset);
+    VEX_LOG(Verbose,
+            "Freed range: size {} offset {} type {}",
+            allocation.memoryRange.size,
+            allocation.memoryRange.offset,
+            allocation.memoryTypeIndex);
 #endif
     page.Free(allocation.memoryRange);
 

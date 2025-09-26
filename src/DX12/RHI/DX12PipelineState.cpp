@@ -63,7 +63,7 @@ void DX12GraphicsPipelineState::Compile(const Shader& vertexShader,
     pixelShaderVersion = pixelShader.version;
 
 #if !VEX_SHIPPING
-    chk << graphicsPSO->SetName(StringToWString(std::format("{}", key)).c_str());
+    chk << graphicsPSO->SetName(StringToWString(std::format("GraphicsPSO: {}", key)).c_str());
 #endif
 }
 
@@ -115,6 +115,10 @@ void DX12ComputePipelineState::Compile(const Shader& computeShader, RHIResourceL
     // Update versions for staleness purposes.
     rootSignatureVersion = resourceLayout.version;
     computeShaderVersion = computeShader.version;
+
+#if !VEX_SHIPPING
+    chk << computePSO->SetName(StringToWString(std::format("ComputePSO: {}", key)).c_str());
+#endif
 }
 
 void DX12ComputePipelineState::Cleanup(ResourceCleanup& resourceCleanup)

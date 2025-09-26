@@ -4,7 +4,6 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/Logger.h>
-#include <Vex/Platform/Windows/WString.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
 
@@ -206,8 +205,6 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
     : RHITextureBase(allocator)
     , texture(nullptr)
     , device(device)
-    , rtvHeap(device, MaxViewCountPerHeap)
-    , dsvHeap(device, MaxViewCountPerHeap)
 {
     description = desc;
 
@@ -240,6 +237,8 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
     if (description.usage & TextureUsage::RenderTarget)
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+        rtvHeap = DX12DescriptorHeap<DX12HeapType::RTV>(device, MaxViewCountPerRTVHeap, description.name);
+        rtvHeapAllocator = FreeListAllocator(MaxViewCountPerRTVHeap);
     }
     if (description.usage & TextureUsage::ShaderReadWrite)
     {
@@ -248,6 +247,8 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
     if (description.usage & TextureUsage::DepthStencil)
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+        dsvHeap = DX12DescriptorHeap<DX12HeapType::DSV>(device, MaxViewCountPerDSVHeap, description.name);
+        dsvHeapAllocator = FreeListAllocator(MaxViewCountPerDSVHeap);
     }
 
     static const D3D12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
@@ -290,18 +291,18 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
 #endif
 
 #if !VEX_SHIPPING
-    chk << texture->SetName(StringToWString(description.name).data());
+    chk << texture->SetName(
+        StringToWString(std::format("{}: {}", magic_enum::enum_name(description.type), description.name)).data());
 #endif
 }
 
 DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID3D12Resource> nativeTex)
     : texture(std::move(nativeTex))
     , device(device)
-    , rtvHeap(device, MaxViewCountPerHeap)
-    , dsvHeap(device, MaxViewCountPerHeap)
 {
     VEX_ASSERT(texture, "The texture passed in should be defined!");
     description.name = std::move(name);
+
     D3D12_RESOURCE_DESC nativeDesc = texture->GetDesc();
     if (nativeDesc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D)
     {
@@ -337,6 +338,8 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
     if (nativeDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
     {
         description.usage |= TextureUsage::RenderTarget;
+        rtvHeap = DX12DescriptorHeap<DX12HeapType::RTV>(device, MaxViewCountPerRTVHeap, description.name);
+        rtvHeapAllocator = FreeListAllocator(MaxViewCountPerRTVHeap);
     }
     if (nativeDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)
     {
@@ -345,10 +348,13 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
     if (nativeDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
     {
         description.usage |= TextureUsage::DepthStencil;
+        dsvHeap = DX12DescriptorHeap<DX12HeapType::DSV>(device, MaxViewCountPerDSVHeap, description.name);
+        dsvHeapAllocator = FreeListAllocator(MaxViewCountPerDSVHeap);
     }
 
 #if !VEX_SHIPPING
-    chk << texture->SetName(StringToWString(description.name).data());
+    chk << texture->SetName(
+        StringToWString(std::format("{}: {}", magic_enum::enum_name(description.type), description.name)).data());
 #endif
 }
 

@@ -110,6 +110,9 @@ void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
                                        .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
                                        .NodeMask = 0 };
         chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetNativeQueue(CommandQueueType::Graphics)));
+#if !VEX_SHIPPING
+        GetNativeQueue(CommandQueueType::Graphics)->SetName(L"CommandQueue: Graphics");
+#endif
     }
 
     {
@@ -118,6 +121,9 @@ void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
                                        .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
                                        .NodeMask = 0 };
         chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetNativeQueue(CommandQueueType::Compute)));
+#if !VEX_SHIPPING
+        GetNativeQueue(CommandQueueType::Graphics)->SetName(L"CommandQueue: Compute");
+#endif
     }
 
     {
@@ -126,6 +132,9 @@ void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
                                        .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
                                        .NodeMask = 0 };
         chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetNativeQueue(CommandQueueType::Copy)));
+#if !VEX_SHIPPING
+        GetNativeQueue(CommandQueueType::Graphics)->SetName(L"CommandQueue: Copy");
+#endif
     }
 
     fences = DX12RHI_Internal::CreateFences(device);
