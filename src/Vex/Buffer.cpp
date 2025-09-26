@@ -39,4 +39,68 @@ void ValidateSimpleBufferCopy(const BufferDescription& srcDesc, const BufferDesc
 
 } // namespace BufferUtil
 
+BufferDescription BufferDescription::CreateUniformBufferDesc(std::string name, u64 byteSize)
+{
+    return {
+        .name = std::move(name),
+        .byteSize = byteSize,
+        .usage = BufferUsage::UniformBuffer,
+        .memoryLocality = ResourceMemoryLocality::CPUWrite,
+    };
+}
+
+BufferDescription BufferDescription::CreateVertexBufferDesc(std::string name, u64 byteSize, bool allowShaderRead)
+{
+    BufferUsage::Flags usageFlags = BufferUsage::VertexBuffer;
+    if (allowShaderRead)
+    {
+        usageFlags |= BufferUsage::GenericBuffer;
+    }
+    return {
+        .name = std::move(name),
+        .byteSize = byteSize,
+        .usage = usageFlags,
+        .memoryLocality = ResourceMemoryLocality::GPUOnly,
+    };
+}
+
+BufferDescription BufferDescription::CreateIndexBufferDesc(std::string name, u64 byteSize, bool allowShaderRead)
+{
+    BufferUsage::Flags usageFlags = BufferUsage::IndexBuffer;
+    if (allowShaderRead)
+    {
+        usageFlags |= BufferUsage::GenericBuffer;
+    }
+    return {
+        .name = std::move(name),
+        .byteSize = byteSize,
+        .usage = usageFlags,
+        .memoryLocality = ResourceMemoryLocality::GPUOnly,
+    };
+}
+
+BufferDescription BufferDescription::CreateStagingBufferDesc(std::string name,
+                                                             u64 byteSize,
+                                                             BufferUsage::Flags usageFlags)
+{
+    return {
+        .name = std::move(name),
+        .byteSize = byteSize,
+        .usage = usageFlags,
+        .memoryLocality = ResourceMemoryLocality::CPUWrite,
+    };
+}
+
+BufferDescription BufferDescription::CreateReadbackBufferDesc(std::string name,
+                                                              u64 byteSize,
+                                                              BufferUsage::Flags usageFlags)
+{
+    return {
+        .name = std::move(name),
+        .byteSize = byteSize,
+        .usage = usageFlags,
+        .memoryLocality = ResourceMemoryLocality::CPURead,
+    };
+}
+
 } // namespace vex

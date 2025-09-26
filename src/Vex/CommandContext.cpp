@@ -81,16 +81,6 @@ static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDescript
     return key;
 }
 
-static BufferDescription GetStagingBufferDescription(const std::string& name, u64 byteSize)
-{
-    BufferDescription description;
-    description.byteSize = byteSize;
-    description.name = std::string(name) + "_staging";
-    description.usage = BufferUsage::None;
-    description.memoryLocality = ResourceMemoryLocality::CPUWrite;
-    return description;
-}
-
 static void UploadTextureDataAligned(const TextureDescription& textureDesc,
                                      std::span<const TextureUploadRegion> uploadRegions,
                                      std::span<const byte> packedData,
@@ -491,11 +481,9 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer,
 
     BufferUtil::ValidateBufferSubresource(buffer.description, actualSubresource);
 
-    const BufferDescription stagingBufferDesc =
-        CommandContext_Internal::GetStagingBufferDescription(buffer.description.name, actualSubresource.size);
-
     // Buffer creation invalidates pointers to existing RHI buffers.
-    Buffer stagingBuffer = backend->CreateBuffer(stagingBufferDesc, ResourceLifetime::Static);
+    Buffer stagingBuffer = backend->CreateBuffer(
+        BufferDescription::CreateStagingBufferDesc(buffer.description.name + "_Staging", actualSubresource.size));
 
     // So fetch buffers only AFTER creating the staging buffer.
     RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
@@ -536,9 +524,9 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
     u64 stagingBufferByteSize = TextureUtil::ComputeAlignedUploadBufferByteSize(texture.description, uploadRegions);
 
     const BufferDescription stagingBufferDesc =
-        CommandContext_Internal::GetStagingBufferDescription(texture.description.name, stagingBufferByteSize);
+        BufferDescription::CreateStagingBufferDesc(texture.description.name + "_Staging", stagingBufferByteSize);
 
-    Buffer stagingBuffer = backend->CreateBuffer(stagingBufferDesc, ResourceLifetime::Static);
+    Buffer stagingBuffer = backend->CreateBuffer(stagingBufferDesc);
     RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
     RHITexture& rhiDestTexture = backend->GetRHITexture(texture.handle);
 

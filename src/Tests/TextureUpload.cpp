@@ -14,9 +14,11 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics, CommandQueueType type)
 
         u32 cubemapFaceSize = 16;
         u16 cubemapMips = 2;
-        Texture cubemapTexture = graphics->CreateTexture(
-            TextureDescription::CreateTextureCube("Cubemap", TextureFormat::RGBA8_UNORM, cubemapFaceSize, cubemapMips),
-            ResourceLifetime::Static);
+        Texture cubemapTexture =
+            graphics->CreateTexture(TextureDescription::CreateTextureCubeDesc("Cubemap",
+                                                                              TextureFormat::RGBA8_UNORM,
+                                                                              cubemapFaceSize,
+                                                                              cubemapMips));
 
         std::vector<u8> cubemapData;
         cubemapData.reserve(cubemapFaceSize * cubemapFaceSize * GTextureCubeFaceCount * 4 * cubemapMips);
@@ -62,13 +64,13 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics, CommandQueueType type)
 
         u32 width = 16, height = 12, arraySize = 2;
         u16 mips = 3;
-        Texture texture = graphics->CreateTexture(TextureDescription::CreateTexture2DArray("2dTextureArray",
-                                                                                           TextureFormat::RGBA8_UNORM,
-                                                                                           width,
-                                                                                           height,
-                                                                                           arraySize,
-                                                                                           mips),
-                                                  ResourceLifetime::Static);
+        Texture texture =
+            graphics->CreateTexture(TextureDescription::CreateTexture2DArrayDesc("2dTextureArray",
+                                                                                 TextureFormat::RGBA8_UNORM,
+                                                                                 width,
+                                                                                 height,
+                                                                                 arraySize,
+                                                                                 mips));
 
         std::vector<u8> data;
         data.reserve(width * height * arraySize * 4 * mips);
@@ -131,12 +133,11 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics, CommandQueueType type)
         u16 cubemapMips = 2;
         u16 cubemapArraySize = 3;
         Texture cubemapTexture =
-            graphics->CreateTexture(TextureDescription::CreateTextureCubeArray("CubemapArray",
-                                                                               TextureFormat::RGBA8_UNORM,
-                                                                               cubemapFaceSize,
-                                                                               cubemapArraySize,
-                                                                               cubemapMips),
-                                    ResourceLifetime::Static);
+            graphics->CreateTexture(TextureDescription::CreateTextureCubeArrayDesc("CubemapArray",
+                                                                                   TextureFormat::RGBA8_UNORM,
+                                                                                   cubemapFaceSize,
+                                                                                   cubemapArraySize,
+                                                                                   cubemapMips));
 
         std::vector<u8> cubemapData;
         cubemapData.reserve(cubemapFaceSize * cubemapFaceSize * GTextureCubeFaceCount * cubemapArraySize * 4 *
@@ -190,9 +191,12 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics, CommandQueueType type)
         // Cursed non-even sizes.
         u32 width = 121, height = 165, depth = 64;
         u16 mips = 3;
-        Texture texture = graphics->CreateTexture(
-            TextureDescription::CreateTexture3D("3DTexture", TextureFormat::RGBA8_UNORM, width, height, depth, mips),
-            ResourceLifetime::Static);
+        Texture texture = graphics->CreateTexture(TextureDescription::CreateTexture3DDesc("3DTexture",
+                                                                                          TextureFormat::RGBA8_UNORM,
+                                                                                          width,
+                                                                                          height,
+                                                                                          depth,
+                                                                                          mips));
 
         std::vector<u8> data;
         data.reserve(width * height * depth * 4 * mips);
