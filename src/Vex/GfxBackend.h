@@ -40,7 +40,10 @@ struct BackendDescription
     PlatformWindow platformWindow;
     bool useSwapChain = true;
     TextureFormat swapChainFormat;
+    // Clear value to use for present textures.
+    TextureClearValue presentTextureClearValue = { .flags = TextureClear::ClearColor, .color = { 0, 0, 0, 0 } };
     bool useVSync = false;
+    // Determines the minimum number of backbuffers the application will leverage at once.
     FrameBuffering frameBuffering = FrameBuffering::Triple;
     bool enableGPUDebugLayer = !VEX_SHIPPING;
     bool enableGPUBasedValidation = !VEX_SHIPPING;
@@ -65,10 +68,10 @@ public:
                                              std::span<SyncToken> dependencies = {});
 
     // Creates a new texture, the handle passed back should be kept.
-    Texture CreateTexture(TextureDescription description, ResourceLifetime lifetime);
+    Texture CreateTexture(TextureDescription description, ResourceLifetime lifetime = ResourceLifetime::Static);
 
     // Creates a new buffer with specified description, the buffer will be refered using the Buffer object returned
-    Buffer CreateBuffer(BufferDescription description, ResourceLifetime lifetime);
+    Buffer CreateBuffer(BufferDescription description, ResourceLifetime lifetime = ResourceLifetime::Static);
 
     // Writes data to buffer memory. This only supports buffers with ResourceMemoryLocality::CPUWrite.
     ResourceMappedMemory MapResource(const Buffer& buffer);
