@@ -54,7 +54,7 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
 #endif
 
 #if !VEX_SHIPPING
-    chk << buffer->SetName(StringToWString(desc.name).data());
+    chk << buffer->SetName(StringToWString(std::format("Buffer: {}", desc.name)).data());
 #endif
 }
 
@@ -135,7 +135,7 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
     {
         D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
         cbvDesc.BufferLocation = buffer->GetGPUVirtualAddress();
-        cbvDesc.SizeInBytes = AlignUp<u32>(desc.byteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+        cbvDesc.SizeInBytes = AlignUp<u64>(desc.byteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
         device->CreateConstantBufferView(&cbvDesc, cpuHandle);
     }

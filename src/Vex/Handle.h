@@ -14,29 +14,33 @@ struct Handle
     // 255).
     u32 value = ~0U;
 
-    static Derived CreateHandle(u32 index, u8 generation)
+    constexpr static Derived CreateHandle(u32 index, u8 generation)
     {
         Derived handle;
         handle.SetHandle(index, generation);
         return handle;
     }
-    void SetHandle(u32 index, u8 generation)
+    constexpr void SetHandle(u32 index, u8 generation)
     {
         value = 0;
         value |= (index & 0x00FFFFFF);
         value |= static_cast<u32>(generation) << 24;
     }
-    u32 GetIndex() const
+    constexpr u32 GetIndex() const
     {
         return value & 0x00FFFFFF;
     }
-    u8 GetGeneration() const
+    constexpr u8 GetGeneration() const
     {
         return value >> 24;
     }
     constexpr bool operator==(Handle other) const
     {
         return value == other.value;
+    }
+    constexpr bool IsValid() const
+    {
+        return value != ~0;
     }
 };
 

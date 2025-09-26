@@ -4,7 +4,10 @@
 
 #include <Vex/Debug.h>
 #include <Vex/Logger.h>
+#include <Vex/Platform/Platform.h>
 #include <Vex/RHIImpl/RHI.h>
+
+#include <DX12/HRChecker.h>
 
 namespace vex::dx12
 {
@@ -34,6 +37,11 @@ NonNullPtr<RHICommandList> DX12CommandPool::GetOrCreateCommandList(CommandQueueT
         // No more available command lists, create and return a new one.
         pool.push_back(MakeUnique<DX12CommandList>(device, queueType));
         cmdListPtr = pool.back().get();
+#if !VEX_SHIPPING
+        chk << cmdListPtr->GetNativeCommandList()->SetName(
+            StringToWString(std::format("CommandList: {}_{}", magic_enum::enum_name(queueType), pool.size() - 1))
+                .c_str());
+#endif
         VEX_LOG(Verbose, "Created new commandlist for queue {}", magic_enum::enum_name(queueType));
     }
 

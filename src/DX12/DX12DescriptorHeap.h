@@ -1,6 +1,11 @@
 #pragma once
 
+#include <format>
+
+#include <magic_enum/magic_enum.hpp>
+
 #include <Vex/Debug.h>
+#include <Vex/Platform/Platform.h>
 #include <Vex/Types.h>
 
 #include <DX12/DX12Headers.h>
@@ -31,7 +36,7 @@ class DX12DescriptorHeap
 
 public:
     DX12DescriptorHeap() = default;
-    DX12DescriptorHeap(ComPtr<DX12Device>& device, u32 heapSize)
+    DX12DescriptorHeap(ComPtr<DX12Device>& device, u32 heapSize, const std::string& name)
         : size{ heapSize }
     {
         // These are in this constructor because there is a small compilation speed gain when not directly in a
@@ -47,6 +52,13 @@ public:
         chk << device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&heap));
 
         descriptorByteSize = device->GetDescriptorHandleIncrementSize(static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(Type));
+#if !VEX_SHIPPING
+        chk << heap->SetName(StringToWString(std::format("DescriptorHeap: {} {} ({})",
+                                                         name,
+                                                         magic_enum::enum_name(Type),
+                                                         magic_enum::enum_name(Flags)))
+                                 .c_str());
+#endif
     }
 
     CD3DX12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(u32 index) const
