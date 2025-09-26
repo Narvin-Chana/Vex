@@ -22,8 +22,7 @@ HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
     colorBuffer = graphics->CreateBuffer({ .name = "Color Buffer",
                                            .byteSize = sizeof(float) * 4,
                                            .usage = vex::BufferUsage::UniformBuffer,
-                                           .memoryLocality = vex::ResourceMemoryLocality::GPUOnly },
-                                         vex::ResourceLifetime::Static);
+                                           .memoryLocality = vex::ResourceMemoryLocality::GPUOnly });
 
     // Working texture we'll fill in then copy to the backbuffer.
     workingTexture =
@@ -34,8 +33,7 @@ HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
                                   .height = DefaultHeight,
                                   .depthOrArraySize = 1,
                                   .mips = 1,
-                                  .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
-                                vex::ResourceLifetime::Static);
+                                  .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
 }
 
 void HelloTriangleGraphicsApplication::Run()
@@ -155,6 +153,5 @@ void HelloTriangleGraphicsApplication::OnResize(GLFWwindow* window, uint32_t wid
                                   .height = height,
                                   .depthOrArraySize = 1,
                                   .mips = 1,
-                                  .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
-                                vex::ResourceLifetime::Static);
+                                  .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
 }

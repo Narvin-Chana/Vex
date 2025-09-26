@@ -31,34 +31,26 @@ HelloCubeApplication::HelloCubeApplication()
     SetupShaderErrorHandling();
 
     // Depth texture
-    depthTexture = graphics->CreateTexture(
-        {
-            .name = "Depth Texture",
-            .type = vex::TextureType::Texture2D,
-            .format = vex::TextureFormat::D32_FLOAT,
-            .width = static_cast<vex::u32>(width),
-            .height = static_cast<vex::u32>(height),
-            .usage = vex::TextureUsage::DepthStencil,
-            .clearValue =
-                vex::TextureClearValue{
-                    .flags = vex::TextureClear::ClearDepth,
-                    .depth = 0,
-                },
-        },
-        vex::ResourceLifetime::Static);
+    depthTexture = graphics->CreateTexture({
+        .name = "Depth Texture",
+        .type = vex::TextureType::Texture2D,
+        .format = vex::TextureFormat::D32_FLOAT,
+        .width = static_cast<vex::u32>(width),
+        .height = static_cast<vex::u32>(height),
+        .usage = vex::TextureUsage::DepthStencil,
+        .clearValue =
+            vex::TextureClearValue{
+                .flags = vex::TextureClear::ClearDepth,
+                .depth = 0,
+            },
+    });
 
     // Vertex buffer
-    vertexBuffer = graphics->CreateBuffer({ .name = "Vertex Buffer",
-                                            .byteSize = sizeof(Vertex) * VertexCount,
-                                            .usage = vex::BufferUsage::VertexBuffer,
-                                            .memoryLocality = vex::ResourceMemoryLocality::GPUOnly },
-                                          vex::ResourceLifetime::Static);
+    vertexBuffer = graphics->CreateBuffer(
+        vex::BufferDescription::CreateVertexBufferDesc("Vertex Buffer", sizeof(Vertex) * VertexCount));
     // Index buffer
-    indexBuffer = graphics->CreateBuffer({ .name = "Index Buffer",
-                                           .byteSize = sizeof(vex::u32) * IndexCount,
-                                           .usage = vex::BufferUsage::IndexBuffer,
-                                           .memoryLocality = vex::ResourceMemoryLocality::GPUOnly },
-                                         vex::ResourceLifetime::Static);
+    indexBuffer = graphics->CreateBuffer(
+        vex::BufferDescription::CreateIndexBufferDesc("Index Buffer", sizeof(vex::u32) * IndexCount));
 
     {
         // Immediate submission means the commands are instantly submitted upon destruction.
@@ -136,8 +128,7 @@ HelloCubeApplication::HelloCubeApplication()
                                       .height = static_cast<vex::u32>(height),
                                       .depthOrArraySize = 1,
                                       .mips = 2,
-                                      .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
-                                    vex::ResourceLifetime::Static);
+                                      .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
 
         // Upload the entirety of both mips using the default value.
         ctx.EnqueueDataUpload(uvGuideTexture,
@@ -345,19 +336,17 @@ void HelloCubeApplication::OnResize(GLFWwindow* window, uint32_t width, uint32_t
 
     ExampleApplication::OnResize(window, width, height);
 
-    depthTexture = graphics->CreateTexture(
-        {
-            .name = "Depth Texture",
-            .type = vex::TextureType::Texture2D,
-            .format = vex::TextureFormat::D32_FLOAT,
-            .width = static_cast<vex::u32>(width),
-            .height = static_cast<vex::u32>(height),
-            .usage = vex::TextureUsage::DepthStencil,
-            .clearValue =
-                vex::TextureClearValue{
-                    .flags = vex::TextureClear::ClearDepth,
-                    .depth = 0,
-                },
-        },
-        vex::ResourceLifetime::Static);
+    depthTexture = graphics->CreateTexture({
+        .name = "Depth Texture",
+        .type = vex::TextureType::Texture2D,
+        .format = vex::TextureFormat::D32_FLOAT,
+        .width = static_cast<vex::u32>(width),
+        .height = static_cast<vex::u32>(height),
+        .usage = vex::TextureUsage::DepthStencil,
+        .clearValue =
+            vex::TextureClearValue{
+                .flags = vex::TextureClear::ClearDepth,
+                .depth = 0,
+            },
+    });
 }

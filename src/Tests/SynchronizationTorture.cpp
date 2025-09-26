@@ -81,14 +81,14 @@ void SynchronizationTortureTest(GfxBackend& graphics)
             texDesc.height = 512;
             texDesc.format = TextureFormat::RGBA8_UNORM;
             texDesc.usage = TextureUsage::ShaderRead;
-            textures.push_back(graphics.CreateTexture(texDesc, ResourceLifetime::Static));
+            textures.push_back(graphics.CreateTexture(texDesc));
 
             BufferDescription bufDesc{};
             bufDesc.name = std::format("Test3 Buf_{}", i);
             bufDesc.byteSize = 1024 * 1024; // 1MB
             bufDesc.usage = BufferUsage::GenericBuffer;
             bufDesc.memoryLocality = ResourceMemoryLocality::GPUOnly;
-            buffers.push_back(graphics.CreateBuffer(bufDesc, ResourceLifetime::Static));
+            buffers.push_back(graphics.CreateBuffer(bufDesc));
 
             VEX_LOG(Verbose, "Created texture {} and buffer {}", i, i);
         }
@@ -237,7 +237,7 @@ void SynchronizationTortureTest(GfxBackend& graphics)
         uploadBufDesc.byteSize = 1024 * 1024; // 1MB
         uploadBufDesc.usage = BufferUsage::None;
         uploadBufDesc.memoryLocality = ResourceMemoryLocality::CPUWrite;
-        auto uploadBuffer = graphics.CreateBuffer(uploadBufDesc, ResourceLifetime::Static);
+        auto uploadBuffer = graphics.CreateBuffer(uploadBufDesc);
 
         // Create target texture
         TextureDescription texDesc{};
@@ -246,7 +246,7 @@ void SynchronizationTortureTest(GfxBackend& graphics)
         texDesc.height = 256;
         texDesc.format = TextureFormat::RGBA8_UNORM;
         texDesc.usage = TextureUsage::ShaderRead;
-        auto targetTexture = graphics.CreateTexture(texDesc, ResourceLifetime::Static);
+        auto targetTexture = graphics.CreateTexture(texDesc);
 
         std::vector<SyncToken> uploadTokens;
 
@@ -297,14 +297,14 @@ void SynchronizationTortureTest(GfxBackend& graphics)
             texDesc.height = 128;
             texDesc.format = TextureFormat::RGBA8_UNORM;
             texDesc.usage = TextureUsage::ShaderRead;
-            textures.push_back(graphics.CreateTexture(texDesc, ResourceLifetime::Static));
+            textures.push_back(graphics.CreateTexture(texDesc));
 
             BufferDescription bufDesc{};
             bufDesc.name = std::format("Test7 Buf_{}", i);
             bufDesc.byteSize = 64 * 1024;
             bufDesc.usage = BufferUsage::GenericBuffer;
             bufDesc.memoryLocality = ResourceMemoryLocality::GPUOnly;
-            buffers.push_back(graphics.CreateBuffer(bufDesc, ResourceLifetime::Static));
+            buffers.push_back(graphics.CreateBuffer(bufDesc));
         }
 
         // Chaotic submission pattern

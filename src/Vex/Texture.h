@@ -104,18 +104,19 @@ struct TextureDescription
         return arraySize;
     }
 
-    // Helpers to create a description.
+    // Helpers to create a texture description.
 
-    static TextureDescription CreateTexture2D(std::string name,
-                                              TextureFormat format,
-                                              u32 width,
-                                              u32 height,
-                                              u16 mips = 1,
-                                              TextureUsage::Flags usage = TextureUsage::ShaderRead,
-                                              TextureClearValue clearValue = {},
-                                              ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
+    static TextureDescription CreateTexture2DDesc(
+        std::string name,
+        TextureFormat format,
+        u32 width,
+        u32 height,
+        u16 mips = 1,
+        TextureUsage::Flags usage = TextureUsage::ShaderRead,
+        TextureClearValue clearValue = {},
+        ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
 
-    static TextureDescription CreateTexture2DArray(
+    static TextureDescription CreateTexture2DArrayDesc(
         std::string name,
         TextureFormat format,
         u32 width,
@@ -126,7 +127,7 @@ struct TextureDescription
         TextureClearValue clearValue = {},
         ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
 
-    static TextureDescription CreateTextureCube(
+    static TextureDescription CreateTextureCubeDesc(
         std::string name,
         TextureFormat format,
         u32 faceSize,
@@ -135,7 +136,7 @@ struct TextureDescription
         TextureClearValue clearValue = {},
         ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
 
-    static TextureDescription CreateTextureCubeArray(
+    static TextureDescription CreateTextureCubeArrayDesc(
         std::string name,
         TextureFormat format,
         u32 faceSize,
@@ -145,15 +146,16 @@ struct TextureDescription
         TextureClearValue clearValue = {},
         ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
 
-    static TextureDescription CreateTexture3D(std::string name,
-                                              TextureFormat format,
-                                              u32 width,
-                                              u32 height,
-                                              u32 depth,
-                                              u16 mips = 1,
-                                              TextureUsage::Flags usage = TextureUsage::ShaderRead,
-                                              TextureClearValue clearValue = {},
-                                              ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
+    static TextureDescription CreateTexture3DDesc(
+        std::string name,
+        TextureFormat format,
+        u32 width,
+        u32 height,
+        u32 depth,
+        u16 mips = 1,
+        TextureUsage::Flags usage = TextureUsage::ShaderRead,
+        TextureClearValue clearValue = {},
+        ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
 };
 
 // Strongly defined type represents a texture.
