@@ -77,6 +77,8 @@ public:
     virtual void TraceRays(const std::array<u32, 3>& widthHeightDepth,
                            const RHIRayTracingPipelineState& rayTracingPipelineState) = 0;
 
+    virtual void GenerateMips(RHITexture& texture) = 0;
+
     // Copies the whole texture data from src to dst. These textures should have the same size, mips, slice, type,
     // etc...
     virtual void Copy(RHITexture& src, RHITexture& dst);

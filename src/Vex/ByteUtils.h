@@ -24,10 +24,10 @@ constexpr bool IsAligned(T value, T alignment)
     return value % alignment == 0;
 }
 
-inline u8 ComputeMipCount(std::tuple<u32, u32, u32> maxDimension)
+inline u8 ComputeMipCount(std::tuple<u32, u32, u32> dimensions)
 {
-    auto [width, height, depth] = maxDimension;
-    return static_cast<u8>(1 + std::log2(std::max(std::max(width, height), depth)));
+    auto [width, height, depth] = dimensions;
+    return static_cast<u8>(1 + std::floor(std::log2(std::max(std::max(width, height), depth))));
 }
 
 } // namespace vex

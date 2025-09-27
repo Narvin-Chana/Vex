@@ -79,6 +79,9 @@ public:
                    const std::optional<ConstantBinding>& constants,
                    std::array<u32, 3> widthHeightDepth);
 
+    // Fills in all mips with downsampled version of mip 0.
+    void GenerateMips(const Texture& texture);
+
     // ---------------------------------------------------------------------------------------------------------------
     // Resource Copy - Will automatically transition the resources into the correct states.
     // ---------------------------------------------------------------------------------------------------------------

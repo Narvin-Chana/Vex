@@ -2,10 +2,13 @@
 
 #include <Vex/Logger.h>
 
+#include <Vulkan/VkFormats.h>
+
 namespace vex::vk
 {
 
 VkFeatureChecker::VkFeatureChecker(const ::vk::PhysicalDevice& physicalDevice)
+    : physDevice(physicalDevice)
 {
     deviceProperties = physicalDevice.getProperties();
     deviceFeatures = physicalDevice.getFeatures();
@@ -58,6 +61,9 @@ bool VkFeatureChecker::IsFeatureSupported(Feature feature) const
                descriptorIndexingFeatures.descriptorBindingUniformBufferUpdateAfterBind &&
                descriptorIndexingFeatures.shaderStorageBufferArrayNonUniformIndexing &&
                descriptorIndexingFeatures.descriptorBindingStorageBufferUpdateAfterBind;
+    case Feature::MipGeneration:
+        // Vk can use vkCmdBlitImage to generate mips.
+        return true;
     default:
         return false;
     }
@@ -193,6 +199,12 @@ std::string_view VkFeatureChecker::GetMaxSupportedSpirVVersion() const
         return "spirv_1_3";
     }
     return "spirv_1_0";
+}
+
+bool VkFeatureChecker::DoesTextureFormatSupportLinearFiltering(TextureFormat format)
+{
+    ::vk::FormatProperties formatProperties = physDevice.getFormatProperties(TextureFormatToVulkan(format));
+    return !!(formatProperties.optimalTilingFeatures & ::vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
 }
 
 } // namespace vex::vk

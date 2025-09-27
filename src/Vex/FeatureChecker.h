@@ -10,7 +10,8 @@ enum class Feature : u8
 {
     MeshShader,
     RayTracing,
-    BindlessResources
+    BindlessResources,
+    MipGeneration,
     // TODO: add other features to this list.
 };
 
