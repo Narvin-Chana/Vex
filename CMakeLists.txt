@@ -198,8 +198,6 @@ add_library(Vex STATIC
     "src/Vex/Shaders/CompilerBase.h"
     "src/Vex/SubmissionPolicy.h"
     "src/Vex/Synchronization.h"
-    "src/Tests/SynchronizationTorture.h"
-    "src/Tests/SynchronizationTorture.cpp"
     "src/Vex/ResourceCopy.h"
     "src/Vex/ResourceCopy.cpp"
     "src/Vex/Concepts.h"

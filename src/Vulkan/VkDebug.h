@@ -11,11 +11,19 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(::vk::DebugUtilsMessageSeverityFlag
                                              const ::vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData,
                                              void* pUserData);
 
+// Debug name can only be enabled when GPU debugging is active.
+inline bool GEnableDebugName = false;
+
 #if !VEX_SHIPPING
 // Only pass Vk types
 template <class T>
 void SetDebugName(::vk::Device device, const T& object, const char* name)
 {
+    if (!GEnableDebugName)
+    {
+        return;
+    }
+
     ::vk::DebugUtilsObjectNameInfoEXT debugNameInfo{
         .objectType = T::objectType,
         .objectHandle = reinterpret_cast<uint64_t>(typename T::NativeType(object)),
