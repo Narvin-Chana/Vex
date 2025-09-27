@@ -5,6 +5,7 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include <Vex.h>
+#include <Vex/ByteUtils.h>
 #include <Vex/CommandContext.h>
 #include <Vex/FeatureChecker.h>
 #include <Vex/Logger.h>
@@ -279,6 +280,12 @@ std::vector<SyncToken> GfxBackend::EndCommandContext(CommandContext& ctx)
 Texture GfxBackend::CreateTexture(TextureDescription description, ResourceLifetime lifetime)
 {
     TextureUtil::ValidateTextureDescription(description);
+
+    if (description.mips == 0)
+    {
+        description.mips =
+            ComputeMipCount(std::make_tuple(description.width, description.height, description.GetDepth()));
+    }
 
     if (lifetime == ResourceLifetime::Dynamic)
     {

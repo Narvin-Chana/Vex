@@ -64,15 +64,15 @@ public:
                                              SubmissionPolicy submissionPolicy = SubmissionPolicy::DeferToPresent,
                                              std::span<SyncToken> dependencies = {});
 
-    // Creates a new texture, the handle passed back should be kept.
-    Texture CreateTexture(TextureDescription description, ResourceLifetime lifetime);
+    // Creates a new texture with the specified description.
+    [[nodiscard]] Texture CreateTexture(TextureDescription description, ResourceLifetime lifetime);
 
-    // Creates a new buffer with specified description, the buffer will be refered using the Buffer object returned
-    Buffer CreateBuffer(BufferDescription description, ResourceLifetime lifetime);
+    // Creates a new buffer with specified description.
+    [[nodiscard]] Buffer CreateBuffer(BufferDescription description, ResourceLifetime lifetime);
 
     // Writes data to buffer memory. This only supports buffers with ResourceMemoryLocality::CPUWrite.
-    ResourceMappedMemory MapResource(const Buffer& buffer);
-    ResourceMappedMemory MapResource(const Texture& texture);
+    [[nodiscard]] ResourceMappedMemory MapResource(const Buffer& buffer);
+    [[nodiscard]] ResourceMappedMemory MapResource(const Texture& texture);
 
     // Destroys a texture, the handle passed in must be the one obtained from calling CreateTexture earlier.
     // Once destroyed, the handle passed in is invalid and should no longer be used.
@@ -83,14 +83,14 @@ public:
     void DestroyBuffer(const Buffer& buffer);
 
     // Allows users to fetch the bindless handles for a texture binding
-    BindlessHandle GetTextureBindlessHandle(const TextureBinding& bindlessResource);
+    [[nodiscard]] BindlessHandle GetTextureBindlessHandle(const TextureBinding& bindlessResource);
     // Allows users to fetch the bindless handles for a buffer binding
-    BindlessHandle GetBufferBindlessHandle(const BufferBinding& bindlessResource);
+    [[nodiscard]] BindlessHandle GetBufferBindlessHandle(const BufferBinding& bindlessResource);
 
     // Has the passed-in sync token been executed on the GPU yet?
-    bool IsTokenComplete(const SyncToken& token) const;
+    [[nodiscard]] bool IsTokenComplete(const SyncToken& token) const;
     // Have the passed-in sync tokens been executed on the GPU yet?
-    bool AreTokensComplete(std::span<const SyncToken> tokens) const;
+    [[nodiscard]] bool AreTokensComplete(std::span<const SyncToken> tokens) const;
     // Waits for the passed in token to be done.
     void WaitForTokenOnCPU(const SyncToken& syncToken);
     // Flushes all currently submitted GPU commands.
@@ -104,7 +104,7 @@ public:
 
     // Obtains the current present texture handle. If the swapchain is enabled, Vex uses a present texture which is
     // copied to the backbuffer when presenting.
-    Texture GetCurrentPresentTexture();
+    [[nodiscard]] Texture GetCurrentPresentTexture();
 
     // Recompiles all shader which have changed since the last compilation. Useful for shader development and
     // hot-reloading. You generally want to avoid calling this too often if your application has many shaders.
