@@ -88,7 +88,7 @@ Allocation RHIAllocatorBase::Allocate(u64 size, u64 alignment, u32 memoryTypeInd
         if (auto res = it->Allocate(size, alignment))
         {
 #if !VEX_SHIPPING
-            VEX_LOG(Verbose, "Allocated range: size {} offset {}", res.value().size, res.value().offset);
+            VEX_LOG(Verbose, "Allocated subresource: size {} offset {}", res.value().size, res.value().offset);
 #endif
 
             return Allocation{
@@ -112,7 +112,7 @@ Allocation RHIAllocatorBase::Allocate(u64 size, u64 alignment, u32 memoryTypeInd
     if (auto res = memoryPages[pageHandle].Allocate(size, alignment))
     {
 #if !VEX_SHIPPING
-        VEX_LOG(Verbose, "Allocated range: size {} offset {}", res.value().size, res.value().offset);
+        VEX_LOG(Verbose, "Allocated subresource: size {} offset {}", res.value().size, res.value().offset);
 #endif
         OnPageAllocated(pageHandle, memoryTypeIndex);
         return Allocation{
@@ -142,7 +142,7 @@ void RHIAllocatorBase::Free(const Allocation& allocation)
     auto& page = memoryPages[allocation.pageHandle];
 #if !VEX_SHIPPING
     VEX_LOG(Verbose,
-            "Freed range: size {} offset {} type {}",
+            "Freed subresource: size {} offset {} type {}",
             allocation.memoryRange.size,
             allocation.memoryRange.offset,
             allocation.memoryTypeIndex);

@@ -23,7 +23,7 @@ void CSMain(uint3 dtid : SV_DispatchThreadID)
     for (int y = -blurSize; y <= blurSize; ++y) {
         for (int x = -blurSize; x <= blurSize; ++x) {
             int2 coord = (int2)dtid.xy + int2(x, y);
-            if (coord.x < 0 || coord.x > width || coord.y < 0 || coord.y > height)
+            if (coord.x < 0 || coord.x >= width || coord.y < 0 || coord.y >= height)
             {
                 continue;
             }

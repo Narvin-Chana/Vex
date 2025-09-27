@@ -11,7 +11,7 @@ HelloTriangleApplication::HelloTriangleApplication()
     vex::PlatformWindowHandle platformWindow{ .window = glfwGetX11Window(window), .display = glfwGetX11Display() };
 #endif
 
-    graphics = CreateGraphicsBackend(vex::BackendDescription{
+    graphics = CreateGraphicsBackend(vex::GraphicsCreateDesc{
         .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
         .swapChainFormat = vex::TextureFormat::RGBA8_UNORM,
         .frameBuffering = vex::FrameBuffering::Triple,
@@ -26,7 +26,7 @@ HelloTriangleApplication::HelloTriangleApplication()
                                   .format = vex::TextureFormat::RGBA8_UNORM,
                                   .width = DefaultWidth,
                                   .height = DefaultHeight,
-                                  .depthOrArraySize = 1,
+                                  .depthOrSliceCount = 1,
                                   .mips = 1,
                                   .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
     finalOutputTexture =
@@ -35,7 +35,7 @@ HelloTriangleApplication::HelloTriangleApplication()
                                   .format = vex::TextureFormat::RGBA8_UNORM,
                                   .width = DefaultWidth,
                                   .height = DefaultHeight,
-                                  .depthOrArraySize = 1,
+                                  .depthOrSliceCount = 1,
                                   .mips = 1,
                                   .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
 
@@ -65,7 +65,7 @@ void HelloTriangleApplication::Run()
             float invOscillatedColor = 1 - oscillatedColor;
             float color[] = { invOscillatedColor, oscillatedColor, invOscillatedColor, 1.0 };
 
-            auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
+            auto ctx = graphics->BeginScopedCommandContext(vex::QueueType::Graphics);
 
             // Create the bindings and obtain the bindless handles we need for our compute passes.
             std::array<vex::ResourceBinding, 3> pass1Bindings{
@@ -201,7 +201,7 @@ void HelloTriangleApplication::OnResize(GLFWwindow* window, uint32_t newWidth, u
                                   .format = vex::TextureFormat::RGBA8_UNORM,
                                   .width = newWidth,
                                   .height = newHeight,
-                                  .depthOrArraySize = 1,
+                                  .depthOrSliceCount = 1,
                                   .mips = 1,
                                   .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
     workingTexture =
@@ -210,7 +210,7 @@ void HelloTriangleApplication::OnResize(GLFWwindow* window, uint32_t newWidth, u
                                   .format = vex::TextureFormat::RGBA8_UNORM,
                                   .width = newWidth,
                                   .height = newHeight,
-                                  .depthOrArraySize = 1,
+                                  .depthOrSliceCount = 1,
                                   .mips = 1,
                                   .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
 }

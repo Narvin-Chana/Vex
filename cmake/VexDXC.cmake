@@ -41,11 +41,20 @@ function(build_with_dxc target)
 endfunction()
 
 function(link_with_dxc target)
-    message(STATUS "Linked ${target} with DirectXCompiler.")
-    # Copies the Vex helper shader file to the target's working directory.
-    add_custom_command(TARGET ${target} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${VEX_ROOT_DIR}/shaders/Vex.hlsli"
-            "$<TARGET_FILE_DIR:${target}>/Vex.hlsli"
+    message(STATUS "Linked ${target} with DirectXCompiler, scanning for Vex shader files...")
+    # Copies the Vex helper shader files to the target's working directory.
+    file(GLOB VEX_SHADER_FILES
+        "${VEX_ROOT_DIR}/shaders/*.hlsl"
+        "${VEX_ROOT_DIR}/shaders/*.hlsli"
     )
+    foreach(SHADER_FILE ${VEX_SHADER_FILES})
+        message(STATUS "  - Found shader ${SHADER_FILE}") 
+        get_filename_component(FILE_NAME ${SHADER_FILE} NAME)
+        add_custom_command(TARGET ${target} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${SHADER_FILE}
+                "$<TARGET_FILE_DIR:${target}>/${FILE_NAME}"
+            COMMENT "Copying Vex shader ${FILE_NAME}"
+        )
+    endforeach()
 endfunction()

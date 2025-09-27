@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Vex/CommandQueueType.h>
+#include <Vex/QueueType.h>
 #include <Vex/Hash.h>
 #include <Vex/Types.h>
 
@@ -9,7 +9,7 @@ namespace vex
 
 struct SyncToken
 {
-    CommandQueueType queueType = CommandQueueType::Graphics;
+    QueueType queueType = QueueType::Graphics;
     u64 value = 0;
 
     constexpr bool operator==(const SyncToken& other) const = default;

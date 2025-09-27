@@ -1,11 +1,14 @@
 #pragma once
 
-#include <Vex/CommandQueueType.h>
+#include <vector>
+
+#include <Vex/QueueType.h>
 #include <Vex/Logger.h>
 #include <Vex/MemoryAllocation.h>
 #include <Vex/Resource.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
+#include <Vex/Validation.h>
 
 #include <RHI/RHIBarrier.h>
 #include <RHI/RHIFwd.h>
@@ -32,9 +35,9 @@ public:
 
     virtual RHITextureBarrier GetClearTextureBarrier() = 0;
 
-    const TextureDescription& GetDescription() const
+    const TextureDesc& GetDesc() const
     {
-        return description;
+        return desc;
     }
 
     const Allocation& GetAllocation() const noexcept
@@ -44,36 +47,98 @@ public:
 
     [[nodiscard]] RHIBarrierSync GetLastSync() const
     {
-        return lastSync;
+        VEX_CHECK(IsLastBarrierStateUniform(),
+                  "Resource is in a non-uniform state, call GetLastSyncForSubresource instead.");
+        return uniformLastBarrierState->lastSync;
     }
-    void SetLastSync(RHIBarrierSync sync)
-    {
-        lastSync = sync;
-    }
-
     [[nodiscard]] RHIBarrierAccess GetLastAccess() const
     {
-        return lastAccess;
+        VEX_CHECK(IsLastBarrierStateUniform(),
+                  "Resource is in a non-uniform state, call GetLastAccessForSubresource instead.");
+        return uniformLastBarrierState->lastAccess;
     }
-    void SetLastAccess(RHIBarrierAccess access)
-    {
-        lastAccess = access;
-    }
-
     [[nodiscard]] RHITextureLayout GetLastLayout() const
     {
-        return lastLayout;
+        VEX_CHECK(IsLastBarrierStateUniform(),
+                  "Resource is in a non-uniform state, call GetLastLayoutForSubresource instead.");
+        return uniformLastBarrierState->lastLayout;
     }
-    void SetLastLayout(RHITextureLayout layout)
+
+    [[nodiscard]] RHIBarrierSync GetLastSyncForSubresource(u16 mip, u32 slice) const
     {
-        lastLayout = layout;
+        VEX_CHECK(!IsLastBarrierStateUniform(), "Resource is in a uniform state, call GetLastSync instead.");
+        return perSubresourceLastBarrierState[GetSubresourceIndex(mip, slice)].lastSync;
+    }
+    [[nodiscard]] RHIBarrierAccess GetLastAccessForSubresource(u16 mip, u32 slice) const
+    {
+        VEX_CHECK(!IsLastBarrierStateUniform(), "Resource is in a uniform state, call GetLastAccess instead.");
+        return perSubresourceLastBarrierState[GetSubresourceIndex(mip, slice)].lastAccess;
+    }
+    [[nodiscard]] RHITextureLayout GetLastLayoutForSubresource(u16 mip, u32 slice) const
+    {
+        VEX_CHECK(!IsLastBarrierStateUniform(), "Resource is in a uniform state, call GetLastLayout instead.");
+        return perSubresourceLastBarrierState[GetSubresourceIndex(mip, slice)].lastLayout;
+    }
+
+    void SetLastBarrierState(RHIBarrierSync sync, RHIBarrierAccess access, RHITextureLayout layout)
+    {
+        uniformLastBarrierState = { .lastSync = sync, .lastAccess = access, .lastLayout = layout };
+        // Reset the per-subresource info (since we're using uniform last barrier state).
+        perSubresourceLastBarrierState.clear();
+    }
+
+    void SetLastBarrierStateForSubresource(
+        RHIBarrierSync sync, RHIBarrierAccess access, RHITextureLayout layout, u16 mip, u32 slice)
+    {
+        // Now update the subresource with the required last barrier state.
+        perSubresourceLastBarrierState[GetSubresourceIndex(mip, slice)] = { sync, access, layout };
+    }
+
+    void EnsureLastBarrierStateNonUniform()
+    {
+        // If the perSubresourceLastBarrierState is already setup, we do nothing.
+        if (!IsLastBarrierStateUniform())
+        {
+            return;
+        }
+
+        // If we still haven't allocated the perSubresource last barrier state vector, do it now!
+        perSubresourceLastBarrierState.resize(desc.mips * desc.GetSliceCount());
+        for (u16 mip = 0; mip < desc.mips; ++mip)
+        {
+            for (u32 slice = 0; slice < desc.GetSliceCount(); ++slice)
+            {
+                perSubresourceLastBarrierState[mip * desc.GetSliceCount() + slice] = *uniformLastBarrierState;
+            }
+        }
+        // Reset the uniform last barrier state, so that future barriers are split per subresource.
+        uniformLastBarrierState.reset();
+    }
+
+    bool IsLastBarrierStateUniform() const
+    {
+        return uniformLastBarrierState.has_value();
     }
 
 protected:
-    TextureDescription description;
-    RHIBarrierSync lastSync = RHIBarrierSync::None;
-    RHIBarrierAccess lastAccess = RHIBarrierAccess::NoAccess;
-    RHITextureLayout lastLayout = RHITextureLayout::Undefined;
+    u32 GetSubresourceIndex(u16 mip, u32 slice) const
+    {
+        return static_cast<u32>(mip) + slice * desc.mips;
+    }
+
+    TextureDesc desc;
+
+    struct LastBarrierState
+    {
+        RHIBarrierSync lastSync = RHIBarrierSync::None;
+        RHIBarrierAccess lastAccess = RHIBarrierAccess::NoAccess;
+        RHITextureLayout lastLayout = RHITextureLayout::Undefined;
+    };
+
+    // Fast path for if the resource has a fully uniform state.
+    std::optional<LastBarrierState> uniformLastBarrierState = LastBarrierState{};
+    // Slower path for if the resource has a non-uniform state.
+    std::vector<LastBarrierState> perSubresourceLastBarrierState;
 
     RHIAllocator* allocator{};
     Allocation allocation;

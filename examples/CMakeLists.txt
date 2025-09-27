@@ -83,7 +83,7 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
             message(STATUS "  - ${FILE}")
         endforeach()
         
-        add_executable(${EXAMPLE_NAME} ${EXAMPLE_SOURCES} "ExampleApplication.h" "ExampleApplication.cpp" "GLFWIncludes.h")
+        add_executable(${EXAMPLE_NAME} ${EXAMPLE_SOURCES} "ExampleApplication.h" "ExampleApplication.cpp" "ExamplePaths.h" "GLFWIncludes.h")
 
         # Setup the runtime dependencies of Vex
         vex_setup_runtime(${EXAMPLE_NAME})

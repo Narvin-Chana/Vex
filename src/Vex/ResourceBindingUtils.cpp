@@ -60,20 +60,7 @@ RHITextureBarrier ResourceBindingUtils::CreateBarrierFromRHIBinding(RHIBarrierSy
         VEX_LOG(Fatal, "Invalid texture binding!");
     }
 
-    return RHITextureBarrier{ texture, dstSync, dstAccess, dstLayout };
-}
-
-void ResourceBindingUtils::ValidateResourceBindings(std::span<const ResourceBinding> bindings)
-{
-    for (const auto& resource : bindings)
-    {
-        std::visit(
-            Visitor{
-                [](const TextureBinding& binding) { binding.Validate(); },
-                [](const BufferBinding& binding) { binding.Validate(); },
-            },
-            resource.binding);
-    }
+    return RHITextureBarrier{ texture, rhiTextureBinding.binding.subresource, dstSync, dstAccess, dstLayout };
 }
 
 void ResourceBindingUtils::CollectRHIResources(GfxBackend& backend,
@@ -113,6 +100,7 @@ RHIDrawResources ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(GfxBac
         auto& texture = backend.GetRHITexture(renderTarget.texture.handle);
         barriers.push_back(RHITextureBarrier{
             texture,
+            renderTarget.subresource,
             RHIBarrierSync::RenderTarget,
             // This technically doesn't support Vk's RenderTargetRead...
             RHIBarrierAccess::RenderTarget,
@@ -126,10 +114,11 @@ RHIDrawResources ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(GfxBac
 
         // TODO: This deduces depth and/or stencil from the texture's format, ideally we'd pass this info along in
         // the binding somehow.
-        bool supportsStencil = DoesFormatSupportStencil(texture.GetDescription().format);
+        bool supportsStencil = DoesFormatSupportStencil(texture.GetDesc().format);
 
         barriers.push_back(RHITextureBarrier{
             texture,
+            depthStencil->subresource,
             supportsStencil ? RHIBarrierSync::DepthStencil : RHIBarrierSync::Depth,
             // TODO: What about if we want to do DepthRead? Would require a flag in the binding!
             RHIBarrierAccess::DepthStencil,

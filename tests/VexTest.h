@@ -5,7 +5,8 @@
 
 namespace vex
 {
-static const auto VexRootPath = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path();
+static const auto VexRootPath =
+    std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path().parent_path();
 
 template <class ParamT>
 struct VexTestParam : testing::TestWithParam<ParamT>
@@ -13,7 +14,7 @@ struct VexTestParam : testing::TestWithParam<ParamT>
     GfxBackend graphics;
 
     VexTestParam()
-        : graphics{ BackendDescription{
+        : graphics{ GraphicsCreateDesc{
               .useSwapChain = false,
               .enableGPUDebugLayer = false,
               .enableGPUBasedValidation = false,
@@ -28,7 +29,7 @@ struct VexTest : testing::Test
     GfxBackend graphics;
 
     VexTest()
-        : graphics{ BackendDescription{
+        : graphics{ GraphicsCreateDesc{
               .useSwapChain = false,
               .enableGPUDebugLayer = false,
               .enableGPUBasedValidation = false,

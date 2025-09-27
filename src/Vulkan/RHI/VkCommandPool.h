@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <Vex/CommandQueueType.h>
+#include <Vex/QueueType.h>
 #include <Vex/NonNullPtr.h>
 #include <Vex/UniqueHandle.h>
 
@@ -19,20 +19,20 @@ class VkCommandPool final : public RHICommandPoolBase
 public:
     VkCommandPool(RHI& rhi,
                   NonNullPtr<VkGPUContext> ctx,
-                  const std::array<VkCommandQueue, CommandQueueTypes::Count>& commandQueues);
+                  const std::array<VkCommandQueue, QueueTypes::Count>& commandQueues);
     ~VkCommandPool();
 
     VkCommandPool(VkCommandPool&&) = default;
     VkCommandPool& operator=(VkCommandPool&&) = default;
 
-    virtual NonNullPtr<RHICommandList> GetOrCreateCommandList(CommandQueueType queueType) override;
+    virtual NonNullPtr<RHICommandList> GetOrCreateCommandList(QueueType queueType) override;
 
 private:
-    ::vk::UniqueCommandPool& GetCommandPool(CommandQueueType queueType);
+    ::vk::UniqueCommandPool& GetCommandPool(QueueType queueType);
 
     NonNullPtr<VkGPUContext> ctx;
 
-    std::array<::vk::UniqueCommandPool, CommandQueueTypes::Count> commandPoolPerQueue;
+    std::array<::vk::UniqueCommandPool, QueueTypes::Count> commandPoolPerQueue;
 };
 
 } // namespace vex::vk

@@ -32,7 +32,7 @@ public:
 
 private:
     NonNullPtr<RHI> rhi;
-    std::vector<std::pair<CleanupVariant, std::array<SyncToken, CommandQueueTypes::Count>>> resourcesInFlight;
+    std::vector<std::pair<CleanupVariant, std::array<SyncToken, QueueTypes::Count>>> resourcesInFlight;
 };
 
 } // namespace vex

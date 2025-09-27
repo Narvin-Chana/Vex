@@ -347,7 +347,7 @@ void DX12RayTracingPipelineState::CreateShaderTables(ResourceCleanup& resourceCl
         resourceCleanup.CleanupResource(std::move(rayCallableShaderTable->buffer));
     }
 
-    BufferDescription shaderTableDescription{
+    BufferDesc shaderTableDescription{
         .usage = BufferUsage::GenericBuffer,
         .memoryLocality = ResourceMemoryLocality::CPUWrite,
     };

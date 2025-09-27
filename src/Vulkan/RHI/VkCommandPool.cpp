@@ -15,11 +15,11 @@ namespace vex::vk
 
 VkCommandPool::VkCommandPool(RHI& rhi,
                              NonNullPtr<VkGPUContext> ctx,
-                             const std::array<VkCommandQueue, CommandQueueTypes::Count>& commandQueues)
+                             const std::array<VkCommandQueue, QueueTypes::Count>& commandQueues)
     : RHICommandPoolBase{ rhi }
     , ctx{ ctx }
 {
-    for (u8 i = 0; i < CommandQueueTypes::Count; ++i)
+    for (u8 i = 0; i < QueueTypes::Count; ++i)
     {
         commandPoolPerQueue[i] = VEX_VK_CHECK <<= ctx->device.createCommandPoolUnique({
             .flags = ::vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
@@ -35,7 +35,7 @@ VkCommandPool::~VkCommandPool()
     // Command pool will now be destroyed by class destructor.
 }
 
-NonNullPtr<RHICommandList> VkCommandPool::GetOrCreateCommandList(CommandQueueType queueType)
+NonNullPtr<RHICommandList> VkCommandPool::GetOrCreateCommandList(QueueType queueType)
 {
     VkCommandList* cmdListPtr = nullptr;
 
@@ -69,7 +69,7 @@ NonNullPtr<RHICommandList> VkCommandPool::GetOrCreateCommandList(CommandQueueTyp
     return NonNullPtr(cmdListPtr);
 }
 
-::vk::UniqueCommandPool& VkCommandPool::GetCommandPool(CommandQueueType queueType)
+::vk::UniqueCommandPool& VkCommandPool::GetCommandPool(QueueType queueType)
 {
     return commandPoolPerQueue[queueType];
 }

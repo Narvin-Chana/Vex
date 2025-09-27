@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Vex/CommandQueueType.h>
+#include <Vex/QueueType.h>
 #include <RHI/RHIFwd.h>
 #include <Vex/UniqueHandle.h>
 
@@ -27,7 +27,7 @@ public:
 
     virtual void Resize(u32 width, u32 height) override;
 
-    virtual TextureDescription GetBackBufferTextureDescription() const override;
+    virtual TextureDesc GetBackBufferTextureDescription() const override;
 
     virtual void SetVSync(bool enableVSync) override;
     virtual bool NeedsFlushForVSyncToggle() override;
@@ -42,7 +42,7 @@ private:
     static u8 GetBackBufferCount(FrameBuffering frameBuffering);
 
     ComPtr<DX12Device> device;
-    SwapChainDescription description;
+    SwapChainDescription desc;
     ComPtr<ID3D12CommandQueue> graphicsCommandQueue;
     ComPtr<IDXGISwapChain4> swapChain;
 };

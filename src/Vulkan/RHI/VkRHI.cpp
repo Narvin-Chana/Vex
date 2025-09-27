@@ -23,6 +23,7 @@
 #include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkExtensions.h>
+#include <Vulkan/VkFeatureChecker.h>
 #include <Vulkan/VkGraphicsPipeline.h>
 #include <Vulkan/VkHeaders.h>
 #include <Vulkan/VkPhysicalDevice.h>
@@ -287,8 +288,8 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
 
     if (graphicsQueueFamily != -1)
     {
-        queues[CommandQueueTypes::Graphics] = VkCommandQueue{
-            .type = CommandQueueTypes::Graphics,
+        queues[QueueTypes::Graphics] = VkCommandQueue{
+            .type = QueueTypes::Graphics,
             .family = static_cast<u32>(graphicsQueueFamily),
             .queue = device->getQueue(graphicsQueueFamily, 0),
         };
@@ -302,8 +303,8 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
 
     if (computeQueueFamily != -1)
     {
-        queues[CommandQueueTypes::Compute] = VkCommandQueue{
-            .type = CommandQueueTypes::Compute,
+        queues[QueueTypes::Compute] = VkCommandQueue{
+            .type = QueueTypes::Compute,
             .family = static_cast<u32>(computeQueueFamily),
             .queue = device->getQueue(computeQueueFamily, 0),
         };
@@ -312,8 +313,8 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
 
     if (copyQueueFamily != -1)
     {
-        queues[CommandQueueTypes::Copy] = VkCommandQueue{
-            .type = CommandQueueTypes::Copy,
+        queues[QueueTypes::Copy] = VkCommandQueue{
+            .type = QueueTypes::Copy,
             .family = static_cast<u32>(copyQueueFamily),
             .queue = device->getQueue(copyQueueFamily, 0),
         };
@@ -328,9 +329,9 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     GetGPUContext();
 }
 
-RHISwapChain VkRHI::CreateSwapChain(const SwapChainDescription& description, const PlatformWindow& platformWindow)
+RHISwapChain VkRHI::CreateSwapChain(const SwapChainDescription& desc, const PlatformWindow& platformWindow)
 {
-    return { GetGPUContext(), description, platformWindow };
+    return { GetGPUContext(), desc, platformWindow };
 }
 
 RHICommandPool VkRHI::CreateCommandPool()
@@ -358,14 +359,14 @@ RHIResourceLayout VkRHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool)
     return { GetGPUContext(), descriptorPool };
 }
 
-RHITexture VkRHI::CreateTexture(RHIAllocator& allocator, const TextureDescription& description)
+RHITexture VkRHI::CreateTexture(RHIAllocator& allocator, const TextureDesc& desc)
 {
-    return { GetGPUContext(), allocator, TextureDescription(description) };
+    return { GetGPUContext(), allocator, TextureDesc(desc) };
 }
 
-RHIBuffer VkRHI::CreateBuffer(RHIAllocator& allocator, const BufferDescription& description)
+RHIBuffer VkRHI::CreateBuffer(RHIAllocator& allocator, const BufferDesc& desc)
 {
-    return { GetGPUContext(), allocator, description };
+    return { GetGPUContext(), allocator, desc };
 }
 
 RHIDescriptorPool VkRHI::CreateDescriptorPool()
@@ -386,6 +387,10 @@ void VkRHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBacken
         shaderEnv.args.emplace_back(L"-fvk-bind-resource-heap");
         shaderEnv.args.emplace_back(L"0");
         shaderEnv.args.emplace_back(L"1");
+        shaderEnv.args.emplace_back(std::format(
+            L"-fspv-target-env={}",
+            StringToWString(std::string(reinterpret_cast<VkFeatureChecker&>(*GPhysicalDevice->featureChecker)
+                                            .GetMaxSupportedVulkanVersion()))));
         shaderEnv.args.emplace_back(L"-fvk-use-dx-layout");
     }
 
@@ -404,18 +409,18 @@ bool VkRHI::IsTokenComplete(const SyncToken& syncToken) const
     return fence.GetValue() >= syncToken.value;
 }
 
-void VkRHI::WaitForTokenOnGPU(CommandQueueType waitingQueue, const SyncToken& waitFor)
+void VkRHI::WaitForTokenOnGPU(QueueType waitingQueue, const SyncToken& waitFor)
 {
     pendingWaits[waitingQueue].push_back(waitFor);
 }
 
-std::array<SyncToken, CommandQueueTypes::Count> VkRHI::GetMostRecentSyncTokenPerQueue() const
+std::array<SyncToken, QueueTypes::Count> VkRHI::GetMostRecentSyncTokenPerQueue() const
 {
-    std::array<SyncToken, CommandQueueTypes::Count> highestSyncTokens;
+    std::array<SyncToken, QueueTypes::Count> highestSyncTokens;
 
-    for (u8 i = 0; i < CommandQueueTypes::Count; ++i)
+    for (u8 i = 0; i < QueueTypes::Count; ++i)
     {
-        highestSyncTokens[i] = { static_cast<CommandQueueType>(i),
+        highestSyncTokens[i] = { static_cast<QueueType>(i),
                                  ((*fences)[i].nextSignalValue != 0) * ((*fences)[i].nextSignalValue - 1) };
     }
 
@@ -430,7 +435,7 @@ void VkRHI::AddDependencyWait(std::vector<::vk::SemaphoreSubmitInfo>& waitSemaph
                                .stageMask = ::vk::PipelineStageFlagBits2::eAllCommands });
 }
 
-SyncToken VkRHI::SubmitToQueue(CommandQueueType queueType,
+SyncToken VkRHI::SubmitToQueue(QueueType queueType,
                                std::span<::vk::CommandBufferSubmitInfo> commandBuffers,
                                std::span<::vk::SemaphoreSubmitInfo> waitSemaphores,
                                std::vector<::vk::SemaphoreSubmitInfo> signalSemaphores)
@@ -462,7 +467,7 @@ std::vector<SyncToken> VkRHI::Submit(std::span<NonNullPtr<RHICommandList>> comma
                                      std::span<SyncToken> dependencies)
 {
     // Group by queue type
-    std::array<std::vector<::vk::CommandBufferSubmitInfo>, CommandQueueTypes::Count> commandListsPerQueue;
+    std::array<std::vector<::vk::CommandBufferSubmitInfo>, QueueTypes::Count> commandListsPerQueue;
     for (NonNullPtr<RHICommandList> cmdList : commandLists)
     {
         commandListsPerQueue[cmdList->GetType()].push_back(
@@ -470,16 +475,16 @@ std::vector<SyncToken> VkRHI::Submit(std::span<NonNullPtr<RHICommandList>> comma
     }
 
     std::vector<SyncToken> syncTokens;
-    syncTokens.reserve(CommandQueueTypes::Count);
+    syncTokens.reserve(QueueTypes::Count);
 
     // Submit each queue separately
-    for (u8 i = 0; i < CommandQueueTypes::Count; ++i)
+    for (u8 i = 0; i < QueueTypes::Count; ++i)
     {
         auto& cmdLists = commandListsPerQueue[i];
         if (cmdLists.empty())
             continue;
 
-        CommandQueueType queueType = static_cast<CommandQueueType>(i);
+        QueueType queueType = static_cast<QueueType>(i);
 
         // Collect all waits for this queue
         std::vector<::vk::SemaphoreSubmitInfo> waitSemaphores;
@@ -507,11 +512,11 @@ std::vector<SyncToken> VkRHI::Submit(std::span<NonNullPtr<RHICommandList>> comma
 
 void VkRHI::FlushGPU()
 {
-    for (u8 i = 0; i < CommandQueueTypes::Count; ++i)
+    for (u8 i = 0; i < QueueTypes::Count; ++i)
     {
-        CommandQueueType queueType = static_cast<CommandQueueType>(i);
+        QueueType queueType = static_cast<QueueType>(i);
         const auto& queue = queues[queueType];
-        if (queue.type == CommandQueueTypes::Invalid)
+        if (queue.type == QueueTypes::Invalid)
         {
             continue;
         }
@@ -543,8 +548,8 @@ NonNullPtr<VkGPUContext> VkRHI::GetGPUContext()
         ctx = MakeUnique<VkGPUContext>(*device,
                                        physDevice,
                                        *surface,
-                                       queues[CommandQueueType::Graphics],
-                                       (*fences)[CommandQueueType::Graphics]);
+                                       queues[QueueType::Graphics],
+                                       (*fences)[QueueType::Graphics]);
     }
     return NonNullPtr(*ctx);
 }

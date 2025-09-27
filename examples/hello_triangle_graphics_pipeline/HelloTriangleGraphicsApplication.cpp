@@ -11,7 +11,7 @@ HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
     vex::PlatformWindowHandle platformWindow{ .window = glfwGetX11Window(window), .display = glfwGetX11Display() };
 #endif
 
-    graphics = CreateGraphicsBackend(vex::BackendDescription{
+    graphics = CreateGraphicsBackend(vex::GraphicsCreateDesc{
         .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
         .swapChainFormat = vex::TextureFormat::RGBA8_UNORM,
         .enableGPUDebugLayer = !VEX_SHIPPING,
@@ -31,7 +31,7 @@ HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
                                   .format = vex::TextureFormat::RGBA8_UNORM,
                                   .width = DefaultWidth,
                                   .height = DefaultHeight,
-                                  .depthOrArraySize = 1,
+                                  .depthOrSliceCount = 1,
                                   .mips = 1,
                                   .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
 }
@@ -50,7 +50,7 @@ void HelloTriangleGraphicsApplication::Run()
             float color[4] = { invOscillatedColor, oscillatedColor, invOscillatedColor, 1.0 };
 
             // Scoped command context will submit commands automatically upon destruction.
-            auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
+            auto ctx = graphics->BeginScopedCommandContext(vex::QueueType::Graphics);
 
             VEX_GPU_SCOPED_EVENT_COL(ctx, "Triangles", 1, 0, 1)
 
@@ -67,7 +67,7 @@ void HelloTriangleGraphicsApplication::Run()
                 clearValue);
 
             // Setup our draw call's description...
-            vex::DrawDescription hlslDrawDesc{
+            vex::DrawDesc hlslDrawDesc{
                 .vertexShader = { .path = ExamplesDir / "hello_triangle_graphics_pipeline" /
                                           "HelloTriangleGraphicsShader.hlsl",
                                   .entryPoint = "VSMain",
@@ -78,7 +78,7 @@ void HelloTriangleGraphicsApplication::Run()
                                  .type = vex::ShaderType::PixelShader, },
             };
 #if VEX_SLANG
-            vex::DrawDescription slangDrawDesc{
+            vex::DrawDesc slangDrawDesc{
                 .vertexShader = { .path = ExamplesDir / "hello_triangle_graphics_pipeline" /
                                           "HelloTriangleGraphicsShader.slang",
                                   .entryPoint = "VSMain",
@@ -153,7 +153,7 @@ void HelloTriangleGraphicsApplication::OnResize(GLFWwindow* window, uint32_t wid
                                   .format = vex::TextureFormat::RGBA8_UNORM,
                                   .width = width,
                                   .height = height,
-                                  .depthOrArraySize = 1,
+                                  .depthOrSliceCount = 1,
                                   .mips = 1,
                                   .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
 }

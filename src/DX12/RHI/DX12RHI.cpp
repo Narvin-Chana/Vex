@@ -27,7 +27,7 @@ namespace vex::dx12
 namespace DX12RHI_Internal
 {
 
-static std::array<DX12Fence, CommandQueueTypes::Count> CreateFences(ComPtr<DX12Device>& device)
+static std::array<DX12Fence, QueueTypes::Count> CreateFences(ComPtr<DX12Device>& device)
 {
     return { DX12Fence(device), DX12Fence(device), DX12Fence(device) };
 }
@@ -109,9 +109,9 @@ void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
                                        .Priority = D3D12_COMMAND_QUEUE_PRIORITY_HIGH,
                                        .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
                                        .NodeMask = 0 };
-        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetNativeQueue(CommandQueueType::Graphics)));
+        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetNativeQueue(QueueType::Graphics)));
 #if !VEX_SHIPPING
-        GetNativeQueue(CommandQueueType::Graphics)->SetName(L"CommandQueue: Graphics");
+        GetNativeQueue(QueueType::Graphics)->SetName(L"CommandQueue: Graphics");
 #endif
     }
 
@@ -120,9 +120,9 @@ void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
                                        .Priority = D3D12_COMMAND_QUEUE_PRIORITY_HIGH,
                                        .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
                                        .NodeMask = 0 };
-        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetNativeQueue(CommandQueueType::Compute)));
+        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetNativeQueue(QueueType::Compute)));
 #if !VEX_SHIPPING
-        GetNativeQueue(CommandQueueType::Graphics)->SetName(L"CommandQueue: Compute");
+        GetNativeQueue(QueueType::Graphics)->SetName(L"CommandQueue: Compute");
 #endif
     }
 
@@ -131,18 +131,18 @@ void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
                                        .Priority = D3D12_COMMAND_QUEUE_PRIORITY_HIGH,
                                        .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
                                        .NodeMask = 0 };
-        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetNativeQueue(CommandQueueType::Copy)));
+        chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetNativeQueue(QueueType::Copy)));
 #if !VEX_SHIPPING
-        GetNativeQueue(CommandQueueType::Graphics)->SetName(L"CommandQueue: Copy");
+        GetNativeQueue(QueueType::Graphics)->SetName(L"CommandQueue: Copy");
 #endif
     }
 
     fences = DX12RHI_Internal::CreateFences(device);
 }
 
-RHISwapChain DX12RHI::CreateSwapChain(const SwapChainDescription& description, const PlatformWindow& platformWindow)
+RHISwapChain DX12RHI::CreateSwapChain(const SwapChainDescription& desc, const PlatformWindow& platformWindow)
 {
-    return DX12SwapChain(device, description, GetNativeQueue(CommandQueueType::Graphics), platformWindow);
+    return DX12SwapChain(device, desc, GetNativeQueue(QueueType::Graphics), platformWindow);
 }
 
 RHICommandPool DX12RHI::CreateCommandPool()
@@ -173,14 +173,14 @@ RHIResourceLayout DX12RHI::CreateResourceLayout(RHIDescriptorPool& descriptorPoo
     return DX12ResourceLayout(device);
 }
 
-RHITexture DX12RHI::CreateTexture(RHIAllocator& allocator, const TextureDescription& description)
+RHITexture DX12RHI::CreateTexture(RHIAllocator& allocator, const TextureDesc& desc)
 {
-    return DX12Texture(device, allocator, description);
+    return DX12Texture(device, allocator, desc);
 }
 
-RHIBuffer DX12RHI::CreateBuffer(RHIAllocator& allocator, const BufferDescription& description)
+RHIBuffer DX12RHI::CreateBuffer(RHIAllocator& allocator, const BufferDesc& desc)
 {
-    return DX12Buffer(device, allocator, description);
+    return DX12Buffer(device, allocator, desc);
 }
 
 RHIDescriptorPool DX12RHI::CreateDescriptorPool()
@@ -215,7 +215,7 @@ bool DX12RHI::IsTokenComplete(const SyncToken& syncToken) const
     return fence.GetValue() >= syncToken.value;
 }
 
-void DX12RHI::WaitForTokenOnGPU(CommandQueueType waitingQueue, const SyncToken& waitFor)
+void DX12RHI::WaitForTokenOnGPU(QueueType waitingQueue, const SyncToken& waitFor)
 {
     auto& waitingFence = (*fences)[waitingQueue];
     auto& signalingFence = (*fences)[waitFor.queueType];
@@ -224,13 +224,13 @@ void DX12RHI::WaitForTokenOnGPU(CommandQueueType waitingQueue, const SyncToken& 
     chk << GetNativeQueue(waitingQueue)->Wait(signalingFence.fence.Get(), waitFor.value);
 }
 
-std::array<SyncToken, CommandQueueTypes::Count> DX12RHI::GetMostRecentSyncTokenPerQueue() const
+std::array<SyncToken, QueueTypes::Count> DX12RHI::GetMostRecentSyncTokenPerQueue() const
 {
-    std::array<SyncToken, CommandQueueTypes::Count> highestSyncTokens;
+    std::array<SyncToken, QueueTypes::Count> highestSyncTokens;
 
-    for (u8 i = 0; i < CommandQueueTypes::Count; ++i)
+    for (u8 i = 0; i < QueueTypes::Count; ++i)
     {
-        highestSyncTokens[i] = { static_cast<CommandQueueType>(i),
+        highestSyncTokens[i] = { static_cast<QueueType>(i),
                                  ((*fences)[i].nextSignalValue != 0) * ((*fences)[i].nextSignalValue - 1) };
     }
 
@@ -241,8 +241,8 @@ std::vector<SyncToken> DX12RHI::Submit(std::span<NonNullPtr<RHICommandList>> com
                                        std::span<SyncToken> dependencies)
 {
     // Submit command lists
-    std::array<std::vector<ID3D12CommandList*>, CommandQueueTypes::Count> rawCommandListsPerQueue;
-    std::array<std::vector<NonNullPtr<RHICommandList>>, CommandQueueTypes::Count> commandListsPerQueue;
+    std::array<std::vector<ID3D12CommandList*>, QueueTypes::Count> rawCommandListsPerQueue;
+    std::array<std::vector<NonNullPtr<RHICommandList>>, QueueTypes::Count> commandListsPerQueue;
     for (NonNullPtr<RHICommandList> cmdList : commandLists)
     {
         rawCommandListsPerQueue[cmdList->GetType()].push_back(cmdList->GetNativeCommandList().Get());
@@ -250,9 +250,9 @@ std::vector<SyncToken> DX12RHI::Submit(std::span<NonNullPtr<RHICommandList>> com
     }
 
     std::vector<SyncToken> syncTokens;
-    syncTokens.reserve(CommandQueueTypes::Count);
+    syncTokens.reserve(QueueTypes::Count);
 
-    for (u32 i = 0; i < CommandQueueTypes::Count; ++i)
+    for (u32 i = 0; i < QueueTypes::Count; ++i)
     {
         const auto& rawCmdLists = rawCommandListsPerQueue[i];
         if (rawCmdLists.empty())
@@ -262,7 +262,7 @@ std::vector<SyncToken> DX12RHI::Submit(std::span<NonNullPtr<RHICommandList>> com
         queues[i]->ExecuteCommandLists(rawCmdLists.size(), rawCmdLists.data());
 
         // Signal N, and increment the queue fence.
-        CommandQueueType queueType = static_cast<CommandQueueType>(i);
+        QueueType queueType = static_cast<QueueType>(i);
         auto& fence = (*fences)[queueType];
         u64 signalValue = fence.nextSignalValue++;
         chk << GetNativeQueue(queueType)->Signal(fence.fence.Get(), signalValue);
@@ -276,9 +276,9 @@ std::vector<SyncToken> DX12RHI::Submit(std::span<NonNullPtr<RHICommandList>> com
 void DX12RHI::FlushGPU()
 {
     // Wait for all queues to complete their latest work (the most recently signaled values)
-    for (u32 i = 0; i < CommandQueueTypes::Count; ++i)
+    for (u32 i = 0; i < QueueTypes::Count; ++i)
     {
-        auto& fence = (*fences)[static_cast<CommandQueueType>(i)];
+        auto& fence = (*fences)[static_cast<QueueType>(i)];
         fence.WaitOnCPU((fence.nextSignalValue != 0) * (fence.nextSignalValue - 1));
     }
 }
@@ -288,7 +288,7 @@ ComPtr<DX12Device>& DX12RHI::GetNativeDevice()
     return device;
 }
 
-ComPtr<ID3D12CommandQueue>& DX12RHI::GetNativeQueue(CommandQueueType queueType)
+ComPtr<ID3D12CommandQueue>& DX12RHI::GetNativeQueue(QueueType queueType)
 {
     return queues[queueType];
 }

@@ -9,34 +9,13 @@
     {
       "name": "base",
       "hidden": true,
-      "generator": "Ninja",
+      "generator": "Ninja Multi-Config",
       "binaryDir": "${sourceDir}/out/build/${presetName}",
       "installDir": "${sourceDir}/out/install/${presetName}",
       "cacheVariables": {
         "VEX_BUILD_TESTS": "ON",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "YES",
         "FETCHCONTENT_BASE_DIR": "${sourceDir}/out/_deps"
-      }
-    },
-    {
-      "name": "debug-build",
-      "hidden": true,
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
-      }
-    },
-    {
-      "name": "development-build",
-      "hidden": true,
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
-      }
-    },
-    {
-      "name": "shipping-build",
-      "hidden": true,
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
@@ -64,44 +43,24 @@
       "name": "clang-compiler",
       "hidden": true,
       "environment": {
-        "CC": "clang",
-        "CXX": "clang++"
+        "CC": "clang-cl",
+        "CXX": "clang-cl"
       }
     },
     {
-      "name": "msvc-debug-dx12",
-      "displayName": "MSVC | Debug | DirectX 12",
-      "inherits": [ "base", "msvc-compiler", "debug-build", "dx12-api" ]
+      "name": "msvc-dx12",
+      "displayName": "MSVC | DirectX 12",
+      "inherits": [ "base", "msvc-compiler", "dx12-api" ]
     },
     {
-      "name": "msvc-debug-vulkan",
-      "displayName": "MSVC | Debug | Vulkan",
-      "inherits": [ "base", "msvc-compiler", "debug-build", "vulkan-api" ]
+      "name": "msvc-vulkan",
+      "displayName": "MSVC | Vulkan",
+      "inherits": [ "base", "msvc-compiler", "vulkan-api" ]
     },
     {
-      "name": "msvc-development-dx12",
-      "displayName": "MSVC | Development | DirectX 12",
-      "inherits": [ "base", "msvc-compiler", "development-build", "dx12-api" ]
-    },
-    {
-      "name": "msvc-development-vulkan",
-      "displayName": "MSVC | Development | Vulkan",
-      "inherits": [ "base", "msvc-compiler", "development-build", "vulkan-api" ]
-    },
-    {
-      "name": "msvc-shipping-dx12",
-      "displayName": "MSVC | Release | DirectX 12",
-      "inherits": [ "base", "msvc-compiler", "shipping-build", "dx12-api" ]
-    },
-    {
-      "name": "msvc-shipping-vulkan",
-      "displayName": "MSVC | Release | Vulkan",
-      "inherits": [ "base", "msvc-compiler", "shipping-build", "vulkan-api" ]
-    },
-    {
-      "name": "clang-debug-dx12",
-      "displayName": "Clang | Debug | DirectX 12",
-      "inherits": [ "base", "clang-compiler", "debug-build", "dx12-api" ],
+      "name": "clang-dx12",
+      "displayName": "Clang | DirectX 12",
+      "inherits": [ "base", "clang-compiler", "dx12-api" ],
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
@@ -109,39 +68,83 @@
       }
     },
     {
-      "name": "clang-debug-vulkan",
-      "displayName": "Clang | Debug | Vulkan",
-      "inherits": [ "base", "clang-compiler", "debug-build", "vulkan-api" ]
+      "name": "clang-vulkan",
+      "displayName": "Clang | Vulkan",
+      "inherits": [ "base", "clang-compiler", "vulkan-api" ]
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "msvc-dx12-debug",
+      "displayName": "Debug",
+      "configurePreset": "msvc-dx12",
+      "configuration": "Debug"
     },
     {
-      "name": "clang-development-dx12",
-      "displayName": "Clang | Development | DirectX 12",
-      "inherits": [ "base", "clang-compiler", "development-build", "dx12-api" ],
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
-      }
+      "name": "msvc-vulkan-debug",
+      "displayName": "Debug",
+      "configurePreset": "msvc-vulkan",
+      "configuration": "Debug"
     },
     {
-      "name": "clang-development-vulkan",
-      "displayName": "Clang | Development | Vulkan",
-      "inherits": [ "base", "clang-compiler", "development-build", "vulkan-api" ]
+      "name": "msvc-dx12-development",
+      "displayName": "Development",
+      "configurePreset": "msvc-dx12",
+      "configuration": "RelWithDebInfo"
     },
     {
-      "name": "clang-shipping-dx12",
-      "displayName": "Clang | Release | DirectX 12",
-      "inherits": [ "base", "clang-compiler", "shipping-build", "dx12-api" ],
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
-      }
+      "name": "msvc-vulkan-development",
+      "displayName": "Development",
+      "configurePreset": "msvc-vulkan",
+      "configuration": "RelWithDebInfo"
     },
     {
-      "name": "clang-shipping-vulkan",
-      "displayName": "Clang | Release | Vulkan",
-      "inherits": [ "base", "clang-compiler", "shipping-build", "vulkan-api" ]
+      "name": "msvc-dx12-shipping",
+      "displayName": "Shipping",
+      "configurePreset": "msvc-dx12",
+      "configuration": "Release"
+    },
+    {
+      "name": "msvc-vulkan-shipping",
+      "displayName": "Shipping",
+      "configurePreset": "msvc-vulkan",
+      "configuration": "Release"
+    },
+    {
+      "name": "clang-dx12-debug",
+      "displayName": "Debug",
+      "configurePreset": "clang-dx12",
+      "configuration": "Debug"
+    },
+    {
+      "name": "clang-vulkan-debug",
+      "displayName": "Debug",
+      "configurePreset": "clang-vulkan",
+      "configuration": "Debug"
+    },
+    {
+      "name": "clang-dx12-development",
+      "displayName": "Development",
+      "configurePreset": "clang-dx12",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "clang-vulkan-development",
+      "displayName": "Development",
+      "configurePreset": "clang-vulkan",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "clang-dx12-shipping",
+      "displayName": "Shipping",
+      "configurePreset": "clang-dx12",
+      "configuration": "Release"
+    },
+    {
+      "name": "clang-vulkan-shipping",
+      "displayName": "Shipping",
+      "configurePreset": "clang-vulkan",
+      "configuration": "Release"
     }
   ]
 }

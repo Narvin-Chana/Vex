@@ -8,7 +8,7 @@ RHIBufferBase::RHIBufferBase(RHIAllocator& allocator)
 {
 }
 
-RHIBufferBase::RHIBufferBase(RHIAllocator& allocator, const BufferDescription& desc)
+RHIBufferBase::RHIBufferBase(RHIAllocator& allocator, const BufferDesc& desc)
     : desc{ desc }
     , allocator{ allocator }
 {

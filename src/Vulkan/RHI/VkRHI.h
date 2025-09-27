@@ -32,7 +32,7 @@ public:
     virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() override;
     virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) override;
 
-    virtual RHISwapChain CreateSwapChain(const SwapChainDescription& description,
+    virtual RHISwapChain CreateSwapChain(const SwapChainDescription& desc,
                                          const PlatformWindow& platformWindow) override;
 
     virtual RHICommandPool CreateCommandPool() override;
@@ -42,8 +42,8 @@ public:
     virtual RHIRayTracingPipelineState CreateRayTracingPipelineState(const RayTracingPipelineStateKey& key) override;
     virtual RHIResourceLayout CreateResourceLayout(RHIDescriptorPool& descriptorPool) override;
 
-    virtual RHITexture CreateTexture(RHIAllocator& allocator, const TextureDescription& description) override;
-    virtual RHIBuffer CreateBuffer(RHIAllocator& allocator, const BufferDescription& description) override;
+    virtual RHITexture CreateTexture(RHIAllocator& allocator, const TextureDesc& desc) override;
+    virtual RHIBuffer CreateBuffer(RHIAllocator& allocator, const BufferDesc& desc) override;
 
     virtual RHIDescriptorPool CreateDescriptorPool() override;
 
@@ -60,7 +60,7 @@ public:
     {
         return *device;
     }
-    const VkCommandQueue& GetCommandQueue(CommandQueueType queueType)
+    const VkCommandQueue& GetCommandQueue(QueueType queueType)
     {
         return queues[std::to_underlying(queueType)];
     }
@@ -75,8 +75,8 @@ public:
 
     virtual void WaitForTokenOnCPU(const SyncToken& syncToken) override;
     virtual bool IsTokenComplete(const SyncToken& syncToken) const override;
-    virtual void WaitForTokenOnGPU(CommandQueueType waitingQueue, const SyncToken& waitFor) override;
-    virtual std::array<SyncToken, CommandQueueTypes::Count> GetMostRecentSyncTokenPerQueue() const override;
+    virtual void WaitForTokenOnGPU(QueueType waitingQueue, const SyncToken& waitFor) override;
+    virtual std::array<SyncToken, QueueTypes::Count> GetMostRecentSyncTokenPerQueue() const override;
 
     virtual std::vector<SyncToken> Submit(std::span<NonNullPtr<RHICommandList>> commandLists,
                                           std::span<SyncToken> dependencies) override;
@@ -87,7 +87,7 @@ private:
     void InitWindow(const PlatformWindowHandle& windowHandle);
 
     void AddDependencyWait(std::vector<::vk::SemaphoreSubmitInfo>& waitSemaphores, SyncToken syncToken);
-    SyncToken SubmitToQueue(CommandQueueType queueType,
+    SyncToken SubmitToQueue(QueueType queueType,
                             std::span<::vk::CommandBufferSubmitInfo> commandBuffers,
                             std::span<::vk::SemaphoreSubmitInfo> waitSemaphores,
                             std::vector<::vk::SemaphoreSubmitInfo> signalSemaphores = {});
@@ -103,11 +103,11 @@ private:
     ::vk::PhysicalDevice physDevice;
     ::vk::UniquePipelineCache PSOCache;
 
-    std::array<VkCommandQueue, CommandQueueTypes::Count> queues;
-    std::optional<std::array<VkFence, CommandQueueTypes::Count>> fences;
+    std::array<VkCommandQueue, QueueTypes::Count> queues;
+    std::optional<std::array<VkFence, QueueTypes::Count>> fences;
 
     // To be submitted when the next submission happens. Avoids submitting with an empty command buffer.
-    std::array<std::vector<SyncToken>, CommandQueueTypes::Count> pendingWaits;
+    std::array<std::vector<SyncToken>, QueueTypes::Count> pendingWaits;
 
     friend class VkSwapChain;
 };

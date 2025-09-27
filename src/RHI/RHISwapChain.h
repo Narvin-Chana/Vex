@@ -12,7 +12,7 @@ namespace vex
 {
 
 struct SyncToken;
-struct TextureDescription;
+struct TextureDesc;
 
 struct SwapChainDescription
 {
@@ -26,7 +26,7 @@ class RHISwapChainBase
 public:
     virtual void Resize(u32 width, u32 height) = 0;
 
-    virtual TextureDescription GetBackBufferTextureDescription() const = 0;
+    virtual TextureDesc GetBackBufferTextureDescription() const = 0;
 
     // Could lead to recreating the swapchain (eg: for Vulkan).
     virtual void SetVSync(bool enableVSync) = 0;
