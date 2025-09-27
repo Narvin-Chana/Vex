@@ -458,6 +458,11 @@ void DX12CommandList::TraceRays(const std::array<u32, 3>& widthHeightDepth,
     }
 }
 
+void DX12CommandList::GenerateMips(RHITexture& texture)
+{
+    VEX_CHECK(false, "DX12 does not currently support built-in mip generation.");
+}
+
 void DX12CommandList::Copy(RHITexture& src, RHITexture& dst)
 {
     VEX_ASSERT(src.GetDescription().width == dst.GetDescription().width &&

@@ -11,6 +11,7 @@
 #include <Vex/GfxBackend.h>
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
+#include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
@@ -323,12 +324,25 @@ void CommandContext::TraceRays(const RayTracingPassDescription& rayTracingPassDe
     cmdList->TraceRays(widthHeightDepth, *pipelineState);
 }
 
+void CommandContext::GenerateMips(const Texture& texture)
+{
+    VEX_CHECK(texture.description.mips > 1,
+              "The texture must have atleast more than 1 mip in order to have the other mips generated.");
+
+    if (GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::MipGeneration))
+    {
+        // Leverage the API's built-in mip generation feature.
+        cmdList->GenerateMips(backend->GetRHITexture(texture.handle));
+        return;
+    }
+
+    // We have to perform a manual mip generation if not supported by the graphics API.
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
 void CommandContext::Copy(const Texture& source, const Texture& destination)
 {
-    if (source.handle == destination.handle)
-    {
-        VEX_LOG(Fatal, "Cannot copy a texture to itself!");
-    }
+    VEX_CHECK(source.handle != destination.handle, "Cannot copy a texture to itself!");
 
     TextureUtil::ValidateCompatibleTextureDescriptions(source.description, destination.description);
 
@@ -357,10 +371,7 @@ void CommandContext::Copy(const Texture& source,
                           const Texture& destination,
                           std::span<const TextureCopyDescription> regionMappings)
 {
-    if (source.handle == destination.handle)
-    {
-        VEX_LOG(Fatal, "Cannot copy a texture to itself!");
-    }
+    VEX_CHECK(source.handle != destination.handle, "Cannot copy a texture to itself!");
 
     for (auto& mapping : regionMappings)
     {
@@ -383,10 +394,7 @@ void CommandContext::Copy(const Texture& source,
 
 void CommandContext::Copy(const Buffer& source, const Buffer& destination)
 {
-    if (source.handle == destination.handle)
-    {
-        VEX_LOG(Fatal, "Cannot copy a buffer to itself!");
-    }
+    VEX_CHECK(source.handle != destination.handle, "Cannot copy a buffer to itself!");
 
     BufferUtil::ValidateSimpleBufferCopy(source.description, destination.description);
 
@@ -400,10 +408,7 @@ void CommandContext::Copy(const Buffer& source, const Buffer& destination)
 
 void CommandContext::Copy(const Buffer& source, const Buffer& destination, const BufferCopyDescription& regionMappings)
 {
-    if (source.handle == destination.handle)
-    {
-        VEX_LOG(Fatal, "Cannot copy a buffer to itself!");
-    }
+    VEX_CHECK(source.handle != destination.handle, "Cannot copy a buffer to itself!");
 
     BufferUtil::ValidateBufferCopyDescription(source.description, destination.description, regionMappings);
 

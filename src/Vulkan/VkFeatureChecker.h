@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Vex/FeatureChecker.h>
+#include <Vex/Formats.h>
 
 #include <Vulkan/VkHeaders.h>
 
@@ -25,6 +26,8 @@ public:
 
     std::string_view GetMaxSupportedSpirVVersion() const;
 
+    bool DoesTextureFormatSupportLinearFiltering(TextureFormat format);
+
 private:
     ::vk::PhysicalDeviceProperties deviceProperties;
     ::vk::PhysicalDeviceFeatures deviceFeatures;
@@ -33,5 +36,7 @@ private:
     ::vk::PhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures;
     ::vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingFeatures;
     ::vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures;
+
+    ::vk::PhysicalDevice physDevice;
 };
 } // namespace vex::vk

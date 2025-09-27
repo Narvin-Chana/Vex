@@ -110,23 +110,8 @@ HelloCubeApplication::HelloCubeApplication()
         // Vex requires that the upload data for textures be tightly packed together! This shouldn't be an issue as most
         // file formats tightly pack data to avoid wasting space with padding.
         std::vector<vex::u8> fullImageData;
-        fullImageData.reserve((width * height + (width / 2) * (height / 2)) * channels);
+        fullImageData.reserve(width * height * channels);
         std::copy_n(static_cast<vex::u8*>(imageData), width * height * channels, std::back_inserter(fullImageData));
-
-        // Checkerboard pattern for mip index 1
-        for (int x = 0; x < width / 2; ++x)
-        {
-            for (int y = 0; y < height / 2; ++y)
-            {
-                bool evenX = (x / 20) % 2 == 0;
-                bool evenY = (y / 20) % 2 == 0;
-
-                fullImageData.push_back(evenX ^ evenY ? 0 : 0xFF);
-                fullImageData.push_back(0x00);
-                fullImageData.push_back(0x00);
-                fullImageData.push_back(0xFF);
-            }
-        }
 
         uvGuideTexture =
             graphics->CreateTexture({ .name = "UV Guide",
@@ -135,48 +120,18 @@ HelloCubeApplication::HelloCubeApplication()
                                       .width = static_cast<vex::u32>(width),
                                       .height = static_cast<vex::u32>(height),
                                       .depthOrArraySize = 1,
-                                      .mips = 2,
+                                      .mips = 0, // 0 means max mips (down to 1x1)
                                       .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
                                     vex::ResourceLifetime::Static);
 
-        // Upload the entirety of both mips using the default value.
-        ctx.EnqueueDataUpload(uvGuideTexture,
-                              std::as_bytes(std::span(fullImageData)),
-                              vex::TextureUploadRegion::UploadAllMips(uvGuideTexture.description));
-
-        // Some other examples of the EnqueueDataUpload api:
-
-        // Upload only the first mip
+        // Upload only to the first mip
         ctx.EnqueueDataUpload(
             uvGuideTexture,
             std::as_bytes(std::span(fullImageData.begin(), fullImageData.begin() + width * height * channels)),
             vex::TextureUploadRegion::UploadFullMip(0, uvGuideTexture.description));
 
-        // Upload only the second mip
-        ctx.EnqueueDataUpload(
-            uvGuideTexture,
-            std::as_bytes(std::span(fullImageData.begin() + width * height * channels, fullImageData.end())),
-            vex::TextureUploadRegion::UploadFullMip(1, uvGuideTexture.description));
-
-        // Upload only to the top half of the first mip and the bottom half of the second mip.
-        // Requires having halfImageData which is half the first mip and half the second mip packed together.
-        // ctx.EnqueueDataUpload(
-        //    uvGuideTexture,
-        //    std::as_bytes(std::span(halfImageData)),
-        //    { {
-        //        vex::TextureUploadRegion{ .mip = 0, .extent = { 0, static_cast<vex::u32>(height) / 2, 0 } },
-        //        vex::TextureUploadRegion{ .mip = 1,
-        //                                  .offset = { 0, static_cast<vex::u32>(height) / 2 / 2, 0 },
-        //                                  .extent = { 0, static_cast<vex::u32>(height) / 2 / 2, 0 } },
-        //    } });
-
-        // TODO(https://trello.com/c/L6TkjaGl): this causes a Vulkan synchronization error! Very probably some sort of
-        // missing barrier stage. Upload a single RGBA pixel to position x=10, y=10.
-        std::array<vex::u8, 4> pixel{ 255, 255, 255, 255 };
-        ctx.EnqueueDataUpload(
-            uvGuideTexture,
-            std::as_bytes(std::span(pixel)),
-            { { vex::TextureUploadRegion{ .mip = 0, .offset = { 10, 10, 0 }, .extent = { 1, 1, 1 } } } });
+        // Fill in all mips using the first one.
+        ctx.GenerateMips(uvGuideTexture);
 
         // The texture will now only be used as a read-only shader resource. Avoids having to place a barrier later on.
         // We use PixelShader sync since it will only be used there.
