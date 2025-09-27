@@ -26,7 +26,7 @@ struct ResourceBinding;
 struct Texture;
 struct Buffer;
 struct TextureClearValue;
-struct DrawDescription;
+struct DrawDesc;
 struct RayTracingPassDescription;
 
 class BufferReadbackContext
@@ -52,7 +52,7 @@ public:
 
     void ReadData(std::span<byte> outData);
     [[nodiscard]] u64 GetDataByteSize() const noexcept;
-    [[nodiscard]] TextureDescription GetSourceTextureDescription() const noexcept
+    [[nodiscard]] TextureDesc GetSourceTextureDescription() const noexcept
     {
         return textureDesc;
     };
@@ -64,14 +64,14 @@ public:
 private:
     TextureReadbackContext(const Buffer& buffer,
                            std::span<const TextureRegion> textureRegions,
-                           const TextureDescription& textureDesc,
+                           const TextureDesc& textureDesc,
                            GfxBackend& backend);
 
     // Buffer contains readback data from the GPU.
     // This data is aligned according to Vex internal alignment
     Buffer buffer;
     std::vector<TextureRegion> textureRegions;
-    TextureDescription textureDesc;
+    TextureDesc textureDesc;
 
     NonNullPtr<GfxBackend> backend;
     friend class CommandContext;
@@ -102,7 +102,7 @@ public:
                       std::optional<TextureClearValue> textureClearValue = std::nullopt,
                       std::optional<std::array<float, 4>> clearRect = std::nullopt);
 
-    void Draw(const DrawDescription& drawDesc,
+    void Draw(const DrawDesc& drawDesc,
               const DrawResourceBinding& drawBindings,
               std::optional<ConstantBinding> constants,
               u32 vertexCount,
@@ -110,7 +110,7 @@ public:
               u32 vertexOffset = 0,
               u32 instanceOffset = 0);
 
-    void DrawIndexed(const DrawDescription& drawDesc,
+    void DrawIndexed(const DrawDesc& drawDesc,
                      const DrawResourceBinding& drawBindings,
                      std::optional<ConstantBinding> constants,
                      u32 indexCount,
@@ -137,39 +137,37 @@ public:
     // Copies the entirety of the source texture (all mips and array levels) to the destination texture.
     void Copy(const Texture& source, const Texture& destination);
     // Copies a region of the source texture to the destination texture.
-    void Copy(const Texture& source, const Texture& destination, const TextureCopyDescription& textureCopyDescription);
+    void Copy(const Texture& source, const Texture& destination, const TextureCopyDesc& textureCopyDescription);
     // Copies multiple regions of the source texture to the destination texture.
     void Copy(const Texture& source,
               const Texture& destination,
-              std::span<const TextureCopyDescription> textureCopyDescriptions);
+              std::span<const TextureCopyDesc> textureCopyDescriptions);
     // Copies the entirety of the source buffer to the destination buffer.
     void Copy(const Buffer& source, const Buffer& destination);
     // Copies the specified region from the source buffer to the destination buffer.
-    void Copy(const Buffer& source, const Buffer& destination, const BufferCopyDescription& bufferCopyDescription);
+    void Copy(const Buffer& source, const Buffer& destination, const BufferCopyDesc& bufferCopyDescription);
     // Copies the contents of the buffer to the specified texture.
     void Copy(const Buffer& source, const Texture& destination);
     // Copies the contents of the buffer to a specified region in the texture.
-    void Copy(const Buffer& source,
-              const Texture& destination,
-              const BufferTextureCopyDescription& bufferToTextureCopyDescription);
+    void Copy(const Buffer& source, const Texture& destination, const BufferTextureCopyDesc& bufferToTextureCopyDesc);
     // Copies the contents of the buffer to multiple specified regions in the texture.
     void Copy(const Buffer& source,
               const Texture& destination,
-              std::span<const BufferTextureCopyDescription> bufferToTextureCopyDescriptions);
+              std::span<const BufferTextureCopyDesc> bufferToTextureCopyDescs);
     void Copy(const Texture& source, const Buffer& destination);
     void Copy(const Texture& source,
               const Buffer& destination,
-              std::span<const BufferTextureCopyDescription> bufferToTextureCopyDescriptions);
+              std::span<const BufferTextureCopyDesc> bufferToTextureCopyDescs);
 
     // ---------------------------------------------------------------------------------------------------------------
     // Buffer Data Operations
     // ---------------------------------------------------------------------------------------------------------------
 
-    // Enqueues data to be uploaded to a specific subresource inside the destination buffer, using a staging buffer when
-    // necessary. Will upload data to the entirety of the destination buffer if a subresource is not specified.
+    // Enqueues data to be uploaded to a specific region inside the destination buffer, using a staging buffer when
+    // necessary. Will upload data to the entirety of the destination buffer if a region is not specified.
     void EnqueueDataUpload(const Buffer& buffer,
                            std::span<const byte> data,
-                           const std::optional<BufferSubresource>& subresource = std::nullopt);
+                           const std::optional<BufferRegion>& region = std::nullopt);
 
     // Enqueues a readback operation on the GPU and returns the buffer in which the data can be read.
     // Will automatically create a staging buffer with the appropriate size
@@ -180,17 +178,21 @@ public:
     // ---------------------------------------------------------------------------------------------------------------
 
     // Enqueues data to be uploaded to a texture, using a staging buffer when necessary.
-    // This allows for multiple uploads to various subresources inside the texture.
+    // This allows for multiple uploads to various regions inside the texture.
     // The uploadRegions should match the layout of the tightly packed 'data' parameter.
     // If the uploadRegions are empty, we suppose that you intend to upload to the entirety of the texture.
     void EnqueueDataUpload(const Texture& texture,
                            std::span<const byte> packedData,
                            std::span<const TextureRegion> textureRegions);
+    void EnqueueDataUpload(const Texture& texture,
+                           std::span<const byte> packedData,
+                           const TextureRegion& textureRegion);
 
     // Enqueues for the entirety of a texture to be readback from the GPU to the specified output.
     // Will automatically use a staging buffer if necessary.
     TextureReadbackContext EnqueueDataReadback(const Texture& srcTexture,
                                                std::span<const TextureRegion> textureRegions);
+    TextureReadbackContext EnqueueDataReadback(const Texture& srcTexture, const TextureRegion& textureRegion);
 
     // ---------------------------------------------------------------------------------------------------------------
 
@@ -231,7 +233,7 @@ public:
     RHICommandList& GetRHICommandList();
 
 private:
-    std::optional<RHIDrawResources> PrepareDrawCall(const DrawDescription& drawDesc,
+    std::optional<RHIDrawResources> PrepareDrawCall(const DrawDesc& drawDesc,
                                                     const DrawResourceBinding& drawBindings,
                                                     std::optional<ConstantBinding> constants);
     void SetVertexBuffers(u32 vertexBuffersFirstSlot, std::span<BufferBinding> vertexBuffers);

@@ -36,6 +36,7 @@ D3D12_BARRIER_SYNC RHIBarrierSyncToDX12(RHIBarrierSync barrierSync)
     case ComputeShader:
         return D3D12_BARRIER_SYNC_COMPUTE_SHADING;
     case Copy:
+    case Blit:
         return D3D12_BARRIER_SYNC_COPY;
     case RenderTarget:
         return D3D12_BARRIER_SYNC_RENDER_TARGET;

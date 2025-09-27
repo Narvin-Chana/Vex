@@ -10,7 +10,7 @@ FetchContent_MakeAvailable(GTest)
 include(GoogleTest)
 
 add_executable(vex_tests
-	"SynchronisationTest.cpp"
+	"SynchronizationTest.cpp"
 	"UploadReadbackTest.cpp"
 )
 

@@ -42,9 +42,9 @@ void WriteImage(const Image& img, const std::filesystem::path& path)
 
 int main()
 {
-    vex::GfxBackend backend = vex::GfxBackend(vex::BackendDescription{ .useSwapChain = false,
-                                                                       .enableGPUDebugLayer = !VEX_SHIPPING,
-                                                                       .enableGPUBasedValidation = !VEX_SHIPPING });
+    vex::GfxBackend backend{ vex::GraphicsCreateDesc{ .useSwapChain = false,
+                                                      .enableGPUDebugLayer = !VEX_SHIPPING,
+                                                      .enableGPUBasedValidation = !VEX_SHIPPING } };
 
     Image srcImg = ReadImage(WorkingDir / "Input.jpg");
     vex::Texture srcTexture = backend.CreateTexture({ .name = "Input Image",
@@ -52,7 +52,7 @@ int main()
                                                       .format = vex::TextureFormat::RGBA8_UNORM,
                                                       .width = srcImg.width,
                                                       .height = srcImg.height,
-                                                      .depthOrArraySize = 1,
+                                                      .depthOrSliceCount = 1,
                                                       .mips = 1,
                                                       .usage = vex::TextureUsage::ShaderReadWrite });
     vex::Texture dstTexture = backend.CreateTexture({ .name = "Output Image",
@@ -60,14 +60,14 @@ int main()
                                                       .format = vex::TextureFormat::RGBA8_UNORM,
                                                       .width = srcImg.width,
                                                       .height = srcImg.height,
-                                                      .depthOrArraySize = 1,
+                                                      .depthOrSliceCount = 1,
                                                       .mips = 2,
                                                       .usage = vex::TextureUsage::ShaderReadWrite });
 
     vex::CommandContext ctx =
         backend.BeginScopedCommandContext(vex::CommandQueueType::Compute, vex::SubmissionPolicy::Immediate);
 
-    ctx.EnqueueDataUpload(srcTexture, srcImg.data, vex::TextureRegion::AllMips(srcTexture.description));
+    ctx.EnqueueDataUpload(srcTexture, srcImg.data, vex::TextureRegion::AllMips());
 
     std::array<vex::ResourceBinding, 2> bindings{
         vex::TextureBinding{
@@ -78,8 +78,7 @@ int main()
         vex::TextureBinding{
             .texture = dstTexture,
             .usage = vex::TextureBindingUsage::ShaderReadWrite,
-            .mipBias = 1,
-            .mipCount = 1,
+            .subresource = { .startMip = 1, .mipCount = 1 },
         },
     };
     std::vector<vex::BindlessHandle> handles = ctx.GetBindlessHandles(bindings);
@@ -100,8 +99,7 @@ int main()
         });
 
     // Pull only mip 1 with output
-    vex::TextureReadbackContext readbackContext =
-        ctx.EnqueueDataReadback(dstTexture, vex::TextureRegion::FullMip(1, dstTexture.description));
+    vex::TextureReadbackContext readbackContext = ctx.EnqueueDataReadback(dstTexture, vex::TextureRegion::SingleMip(1));
 
     // Wait on the GPU to do its readback copy operations
     backend.WaitForTokenOnCPU(ctx.Submit());

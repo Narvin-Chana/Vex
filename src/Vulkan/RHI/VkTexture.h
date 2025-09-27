@@ -24,14 +24,13 @@ namespace VkTextureUtil
 
 struct VkTextureViewDesc
 {
+    VkTextureViewDesc(const TextureBinding& binding);
+
     TextureViewType viewType = TextureViewType::Texture2D;
     TextureFormat format = TextureFormat::UNKNOWN;
     TextureUsage::Type usage = TextureUsage::None;
 
-    u32 mipBias = 0;
-    u32 mipCount = 1;
-    u32 startSlice = 0;
-    u32 sliceCount = 1;
+    TextureSubresource subresource;
 
     bool operator==(const VkTextureViewDesc&) const = default;
 };
@@ -43,10 +42,7 @@ VEX_MAKE_HASHABLE(vex::vk::VkTextureViewDesc,
     VEX_HASH_COMBINE(seed, obj.viewType);
     VEX_HASH_COMBINE(seed, obj.format);
     VEX_HASH_COMBINE(seed, obj.usage);
-    VEX_HASH_COMBINE(seed, obj.mipBias);
-    VEX_HASH_COMBINE(seed, obj.mipCount);
-    VEX_HASH_COMBINE(seed, obj.startSlice);
-    VEX_HASH_COMBINE(seed, obj.sliceCount);
+    VEX_HASH_COMBINE(seed, obj.subresource);
 );
 // clang-format on
 
@@ -59,15 +55,15 @@ class VkTexture : public RHITextureBase
 {
 public:
     // BackBuffer constructor:
-    VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& description, ::vk::Image backbufferImage);
+    VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDesc&& desc, ::vk::Image backbufferImage);
 
     // UniqueImage constructors:
     // Takes ownership of the image
-    VkTexture(const NonNullPtr<VkGPUContext> ctx, const TextureDescription& description, ::vk::UniqueImage rawImage);
-    VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& description, ::vk::UniqueImage rawImage);
+    VkTexture(const NonNullPtr<VkGPUContext> ctx, const TextureDesc& desc, ::vk::UniqueImage rawImage);
+    VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDesc&& desc, ::vk::UniqueImage rawImage);
 
     // Creates a new image from the description
-    VkTexture(NonNullPtr<VkGPUContext> ctx, RHIAllocator& allocator, TextureDescription&& description);
+    VkTexture(NonNullPtr<VkGPUContext> ctx, RHIAllocator& allocator, TextureDesc&& desc);
 
     [[nodiscard]] ::vk::Image GetResource();
 

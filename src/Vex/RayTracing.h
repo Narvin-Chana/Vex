@@ -38,7 +38,7 @@ struct RayTracingPassDescription
 
     bool operator==(const RayTracingPassDescription& other) const = default;
 
-    static void ValidateShaderTypes(const RayTracingPassDescription& description);
+    static void ValidateShaderTypes(const RayTracingPassDescription& desc);
 };
 
 // Mirrored to RayTracingPassDescription, but with the actual shader objects instead of keys (for PSO compilation).

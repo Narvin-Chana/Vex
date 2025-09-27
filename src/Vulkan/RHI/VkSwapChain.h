@@ -33,12 +33,12 @@ class VkSwapChain final : public RHISwapChainBase
 
 public:
     VkSwapChain(NonNullPtr<VkGPUContext> ctx,
-                const SwapChainDescription& description,
+                const SwapChainDescription& desc,
                 const PlatformWindow& platformWindow);
 
     virtual void Resize(u32 width, u32 height) override;
 
-    virtual TextureDescription GetBackBufferTextureDescription() const override;
+    virtual TextureDesc GetBackBufferTextureDescription() const override;
 
     virtual void SetVSync(bool enableVSync) override;
     virtual bool NeedsFlushForVSyncToggle() override;
@@ -58,7 +58,7 @@ private:
     ::vk::PresentModeKHR presentMode;
     ::vk::SurfaceFormatKHR surfaceFormat;
 
-    SwapChainDescription description;
+    SwapChainDescription desc;
 
     ::vk::UniqueSwapchainKHR swapchain;
 

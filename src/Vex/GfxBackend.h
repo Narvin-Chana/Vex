@@ -36,7 +36,7 @@ struct TextureSampler;
 struct BufferBinding;
 class RenderExtension;
 
-struct BackendDescription
+struct GraphicsCreateDesc
 {
     PlatformWindow platformWindow;
     bool useSwapChain = true;
@@ -54,7 +54,7 @@ struct BackendDescription
 class GfxBackend
 {
 public:
-    GfxBackend(const BackendDescription& description);
+    GfxBackend(const GraphicsCreateDesc& desc);
     ~GfxBackend();
 
     // Presents the current presentTexture to the swapchain. Will stall if the GPU's next backbuffer is not yet ready
@@ -69,12 +69,10 @@ public:
                                              std::span<SyncToken> dependencies = {});
 
     // Creates a new texture with the specified description.
-    [[nodiscard]] Texture CreateTexture(TextureDescription description,
-                                        ResourceLifetime lifetime = ResourceLifetime::Static);
+    [[nodiscard]] Texture CreateTexture(TextureDesc desc, ResourceLifetime lifetime = ResourceLifetime::Static);
 
     // Creates a new buffer with the specified description.
-    [[nodiscard]] Buffer CreateBuffer(BufferDescription description,
-                                      ResourceLifetime lifetime = ResourceLifetime::Static);
+    [[nodiscard]] Buffer CreateBuffer(BufferDesc desc, ResourceLifetime lifetime = ResourceLifetime::Static);
 
     // Writes data to buffer memory. This only supports buffers with ResourceMemoryLocality::CPUWrite.
     [[nodiscard]] ResourceMappedMemory MapResource(const Buffer& buffer);
@@ -109,7 +107,7 @@ public:
     void OnWindowResized(u32 newWidth, u32 newHeight);
     [[nodiscard]] bool UsesSwapChain() const noexcept
     {
-        return description.useSwapChain;
+        return desc.useSwapChain;
     };
 
     // Obtains the current present texture handle. If the swapchain is enabled, Vex uses a present texture which is
@@ -151,9 +149,9 @@ private:
     // presents/backbuffers.
     u8 currentFrameIndex = 0;
 
-    RHI rhi;
+    GraphicsCreateDesc desc;
 
-    BackendDescription description;
+    RHI rhi;
 
     ResourceCleanup resourceCleanup;
 
@@ -186,13 +184,15 @@ private:
 
     std::vector<UniqueHandle<RenderExtension>> renderExtensions;
 
+    bool isSwapchainValid = true;
+    u32 builtInLinearSamplerSlot = ~0;
+
     static constexpr u32 DefaultRegistrySize = 1024;
 
     friend class CommandContext;
     friend struct ResourceBindingUtils;
     friend class TextureReadbackContext;
     friend class BufferReadbackContext;
-    bool isSwapchainValid = true;
 };
 
 } // namespace vex

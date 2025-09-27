@@ -11,7 +11,7 @@ struct VexTestParam : testing::TestWithParam<ParamT>
     GfxBackend graphics;
 
     VexTestParam()
-        : graphics{ BackendDescription{
+        : graphics{ GraphicsCreateDesc{
               .useSwapChain = false,
               .enableGPUDebugLayer = false,
               .enableGPUBasedValidation = false,
@@ -26,7 +26,7 @@ struct VexTest : testing::Test
     GfxBackend graphics;
 
     VexTest()
-        : graphics{ BackendDescription{
+        : graphics{ GraphicsCreateDesc{
               .useSwapChain = false,
               .enableGPUDebugLayer = false,
               .enableGPUBasedValidation = false,
