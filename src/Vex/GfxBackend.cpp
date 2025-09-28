@@ -30,6 +30,8 @@ GfxBackend::GfxBackend(const GraphicsCreateDesc& desc)
     , presentTextures(std::to_underlying(desc.frameBuffering))
     , presentTokens(std::to_underlying(desc.frameBuffering))
 {
+    VEX_LOG(Info, "Creating Graphics Backend with API Support:\n\tDX12: {} Vulkan: {}", VEX_DX12, VEX_VULKAN);
+
     std::string vexTargetName;
     if (VEX_DEBUG)
     {
