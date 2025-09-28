@@ -176,11 +176,13 @@ private:
 
     std::vector<UniqueHandle<RenderExtension>> renderExtensions;
 
+    bool isSwapchainValid = true;
+    u32 builtInLinearSamplerSlot = ~0;
+
     static constexpr u32 DefaultRegistrySize = 1024;
 
     friend class CommandContext;
     friend struct ResourceBindingUtils;
-    bool isSwapchainValid = true;
 };
 
 } // namespace vex

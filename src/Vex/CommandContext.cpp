@@ -336,8 +336,80 @@ void CommandContext::GenerateMips(const Texture& texture)
         return;
     }
 
+    std::string entryPoint;
+    switch (texture.description.type)
+    {
+    case TextureType::Texture2D:
+        entryPoint = texture.description.GetArraySize() > 1 ? "MipGenerationTexture2DArray" : "MipGenerationTexture2D";
+        break;
+    case TextureType::TextureCube:
+        entryPoint =
+            texture.description.GetArraySize() > 1 ? "MipGenerationTextureCubeArray" : "MipGenerationTextureCube";
+        break;
+    case TextureType::Texture3D:
+        entryPoint = "MipGenerationTexture3D";
+        break;
+    }
+
     // We have to perform a manual mip generation if not supported by the graphics API.
-    VEX_NOT_YET_IMPLEMENTED();
+    ShaderKey mipGenerationShaderKey{
+        .path = std::filesystem::current_path() / "MipGeneration.hlsl",
+        .entryPoint = std::move(entryPoint),
+        .type = ShaderType::ComputeShader,
+        .defines = { ShaderDefine{ "TEXTURE_TYPE", std::string(GetFormatHLSLType(texture.description.format)) },
+                     ShaderDefine{ "LINEAR_SAMPLER_SLOT", std::format("s{}", backend->builtInLinearSamplerSlot) } }
+    };
+
+    struct Uniforms
+    {
+        BindlessHandle sourceMipHandle;
+        BindlessHandle destinationMipHandle;
+        std::array<float, 3> texelSize;
+        u32 sourceMipLevel;
+    };
+
+    u32 width = texture.description.width;
+    u32 height = texture.description.height;
+    u32 depth = texture.description.GetDepth();
+
+    for (u16 mip = 1; mip < texture.description.mips; ++mip)
+    {
+        std::array<ResourceBinding, 2> bindings{
+            TextureBinding{
+                .texture = texture,
+                .usage = TextureBindingUsage::ShaderRead,
+                .mipBias = mip - 1u,
+                .mipCount = 1,
+            },
+            TextureBinding{
+                .texture = texture,
+                .usage = TextureBindingUsage::ShaderReadWrite,
+                .mipBias = mip,
+                .mipCount = 1,
+            },
+        };
+        auto handles = GetBindlessHandles(bindings);
+        // TODO: add possibility of barriers per-mip! :(
+        // Barrier();
+
+        Uniforms uniforms{
+            handles[0],
+            handles[1],
+            {
+                1.0f / width,
+                1.0f / height,
+                1.0f / depth,
+            },
+            mip - 1u,
+        };
+
+        std::array<u32, 3> dispatchGroupCount = { (width + 7u) / 8u, (height + 7u) / 8u, (depth + 7u) / 8u };
+        Dispatch(mipGenerationShaderKey, ConstantBinding(uniforms), dispatchGroupCount);
+
+        width = std::max(1u, width / 2);
+        height = std::max(1u, height / 2);
+        depth = std::max(1u, depth / 2);
+    }
 }
 
 void CommandContext::Copy(const Texture& source, const Texture& destination)

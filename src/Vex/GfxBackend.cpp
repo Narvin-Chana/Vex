@@ -95,6 +95,9 @@ GfxBackend::GfxBackend(const BackendDescription& description)
 
         CreatePresentTextures();
     }
+
+    // TODO(https://trello.com/c/T1DY4QOT): See the comment inside SetSampler().
+    SetSamplers({});
 }
 
 GfxBackend::~GfxBackend()
@@ -483,7 +486,13 @@ void GfxBackend::SetShaderCompilationErrorsCallback(std::function<ShaderCompileE
 
 void GfxBackend::SetSamplers(std::span<const TextureSampler> newSamplers)
 {
-    psCache->GetResourceLayout().SetSamplers(newSamplers);
+    // TODO(https://trello.com/c/T1DY4QOT): This is not the cleanest, we need a linear sampler for the mip generation
+    // shader, so we add it to the end of the users samplers. Instead we should probably have a way to declare a
+    // specific sampler per-pass? Or support bindless samplers? Unsure...
+    std::vector<TextureSampler> samplers = { newSamplers.begin(), newSamplers.end() };
+    samplers.push_back(TextureSampler::CreateSampler(FilterMode::Linear, AddressMode::Clamp));
+    builtInLinearSamplerSlot = samplers.size() - 1u;
+    psCache->GetResourceLayout().SetSamplers(samplers);
 }
 
 RenderExtension* GfxBackend::RegisterRenderExtension(UniqueHandle<RenderExtension>&& renderExtension)
