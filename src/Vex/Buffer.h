@@ -61,7 +61,7 @@ inline bool IsBindingUsageCompatibleWithBufferUsage(BufferUsage::Flags usages, B
     return true;
 }
 
-struct BufferDescription
+struct BufferDesc
 {
     std::string name;
     u64 byteSize = 0;
@@ -80,30 +80,39 @@ static constexpr BufferHandle GInvalidBufferHandle;
 struct Buffer final
 {
     BufferHandle handle;
-    BufferDescription description;
+    BufferDesc desc;
 };
 
-struct BufferSubresource
+static constexpr u64 GBufferWholeSize = ~static_cast<u64>(0);
+
+struct BufferRegion
 {
-    u64 offset;
-    u64 size;
+    u64 offset = 0;
+    u64 size = GBufferWholeSize;
+
+    // Inserts actual size instead of the placeholder value.
+    BufferRegion Resolve(const BufferDesc& desc) const;
+    constexpr bool operator==(const BufferRegion&) const = default;
 };
 
-struct BufferCopyDescription
+struct BufferCopyDesc
 {
     u64 srcOffset;
     u64 dstOffset;
-    u64 size;
+    u64 size = GBufferWholeSize;
+
+    // Inserts the actual size instead of the placeholder value.
+    BufferCopyDesc Resolve(const BufferDesc& srcBuffer, const BufferDesc& dstBuffer) const;
+    constexpr bool operator==(const BufferCopyDesc&) const = default;
 };
 
 namespace BufferUtil
 {
-void ValidateBufferDescription(const BufferDescription& desc);
-void ValidateBufferCopyDescription(const BufferDescription& srcDesc,
-                                   const BufferDescription& dstDesc,
-                                   const BufferCopyDescription& copyDesc);
-void ValidateBufferSubresource(const BufferDescription& desc, const BufferSubresource& subresource);
-void ValidateSimpleBufferCopy(const BufferDescription& srcDesc, const BufferDescription& dstDesc);
+
+void ValidateBufferDesc(const BufferDesc& desc);
+void ValidateBufferCopyDesc(const BufferDesc& srcDesc, const BufferDesc& dstDesc, const BufferCopyDesc& copyDesc);
+void ValidateBufferRegion(const BufferDesc& desc, const BufferRegion& region);
+void ValidateSimpleBufferCopy(const BufferDesc& srcDesc, const BufferDesc& dstDesc);
 
 } // namespace BufferUtil
 

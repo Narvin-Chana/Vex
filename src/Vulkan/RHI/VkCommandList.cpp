@@ -159,11 +159,15 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
                                  TextureUsage::Type usage,
                                  const TextureClearValue& clearValue)
 {
-    const TextureDescription& desc = binding.texture->GetDescription();
+    const ::vk::ImageSubresourceRange ranges{
+        .aspectMask = static_cast<::vk::ImageAspectFlagBits>(clearValue.flags),
+        .baseMipLevel = binding.binding.subresource.startMip,
+        .levelCount = binding.binding.subresource.mipCount,
+        .baseArrayLayer = binding.binding.subresource.startSlice,
+        .layerCount = binding.binding.subresource.sliceCount,
+    };
 
-    u32 layerCount = binding.binding.sliceCount == 0 ? desc.depthOrArraySize : binding.binding.sliceCount;
-    u32 mipCount = binding.binding.mipCount == 0 ? desc.mips : binding.binding.mipCount;
-    //
+    // const TextureDesc& desc = binding.texture->GetDesc();
     // if (desc.usage & TextureUsage::RenderTarget && clearValue.flags & TextureClear::ClearColor)
     // {
     //     ::vk::ClearAttachment clearAttachment{
@@ -196,15 +200,6 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
             .depth = clearValue.depth,
             .stencil = clearValue.stencil,
         };
-
-        ::vk::ImageSubresourceRange ranges{
-            .aspectMask = static_cast<::vk::ImageAspectFlagBits>(clearValue.flags),
-            .baseMipLevel = binding.binding.mipBias,
-            .levelCount = mipCount,
-            .baseArrayLayer = binding.binding.startSlice,
-            .layerCount = layerCount,
-        };
-
         commandBuffer->clearDepthStencilImage(binding.texture->GetResource(),
                                               RHITextureLayoutToVulkan(binding.texture->GetLastLayout()),
                                               &clearVal,
@@ -214,15 +209,6 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
     else
     {
         ::vk::ClearColorValue clearVal{ .float32 = clearValue.color };
-
-        ::vk::ImageSubresourceRange ranges{
-            .aspectMask = static_cast<::vk::ImageAspectFlagBits>(clearValue.flags),
-            .baseMipLevel = binding.binding.mipBias,
-            .levelCount = mipCount,
-            .baseArrayLayer = binding.binding.startSlice,
-            .layerCount = layerCount,
-        };
-
         commandBuffer->clearColorImage(binding.texture->GetResource(),
                                        RHITextureLayoutToVulkan(binding.texture->GetLastLayout()),
                                        &clearVal,
@@ -242,9 +228,9 @@ void VkCommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
     for (auto& bufferBarrier : bufferBarriers)
     {
         ::vk::BufferMemoryBarrier2 vkBarrier = {};
-        vkBarrier.srcStageMask = RHIBarrierSyncToVulkan(bufferBarrier.srcSync);
+        vkBarrier.srcStageMask = RHIBarrierSyncToVulkan(bufferBarrier.buffer->GetLastSync());
         vkBarrier.dstStageMask = RHIBarrierSyncToVulkan(bufferBarrier.dstSync);
-        vkBarrier.srcAccessMask = RHIBarrierAccessToVulkan(bufferBarrier.srcAccess);
+        vkBarrier.srcAccessMask = RHIBarrierAccessToVulkan(bufferBarrier.buffer->GetLastAccess());
         vkBarrier.dstAccessMask = RHIBarrierAccessToVulkan(bufferBarrier.dstAccess);
         vkBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         vkBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -260,10 +246,11 @@ void VkCommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
     }
     for (auto& textureBarrier : textureBarriers)
     {
-        const TextureDescription& desc = textureBarrier.texture->GetDescription();
+        const TextureDesc& desc = textureBarrier.texture->GetDesc();
 
         ::vk::ImageMemoryBarrier2 vkBarrier = {};
-        if (textureBarrier.texture->IsBackBufferTexture() && textureBarrier.srcLayout == RHITextureLayout::Undefined)
+        if (textureBarrier.texture->IsBackBufferTexture() &&
+            textureBarrier.texture->GetLastLayout() == RHITextureLayout::Undefined)
         {
             // Synchronize with vkAcquireNextImageKHR
             vkBarrier.srcStageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput;
@@ -271,10 +258,10 @@ void VkCommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
         }
         else
         {
-            vkBarrier.srcStageMask = RHIBarrierSyncToVulkan(textureBarrier.srcSync);
-            vkBarrier.srcAccessMask = RHIBarrierAccessToVulkan(textureBarrier.srcAccess);
+            vkBarrier.srcStageMask = RHIBarrierSyncToVulkan(textureBarrier.texture->GetLastSync());
+            vkBarrier.srcAccessMask = RHIBarrierAccessToVulkan(textureBarrier.texture->GetLastAccess());
         }
-        vkBarrier.oldLayout = RHITextureLayoutToVulkan(textureBarrier.srcLayout);
+        vkBarrier.oldLayout = RHITextureLayoutToVulkan(textureBarrier.texture->GetLastLayout());
         vkBarrier.dstStageMask = RHIBarrierSyncToVulkan(textureBarrier.dstSync);
         vkBarrier.dstAccessMask = RHIBarrierAccessToVulkan(textureBarrier.dstAccess);
         vkBarrier.newLayout = RHITextureLayoutToVulkan(textureBarrier.dstLayout);
@@ -285,7 +272,7 @@ void VkCommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
                                        .baseMipLevel = 0,
                                        .levelCount = desc.mips,
                                        .baseArrayLayer = 0,
-                                       .layerCount = desc.GetArraySize() },
+                                       .layerCount = desc.GetSliceCount() },
 
         vkTextureBarriers.push_back(std::move(vkBarrier));
 
@@ -312,8 +299,8 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
     ::vk::Rect2D maxArea{ { 0, 0 }, { std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max() } };
     for (auto& renderTargets : resources.renderTargets)
     {
-        maxArea.extent.width = std::min(renderTargets.texture->GetDescription().width, maxArea.extent.width);
-        maxArea.extent.height = std::min(renderTargets.texture->GetDescription().height, maxArea.extent.height);
+        maxArea.extent.width = std::min(renderTargets.texture->GetDesc().width, maxArea.extent.width);
+        maxArea.extent.height = std::min(renderTargets.texture->GetDesc().height, maxArea.extent.height);
     }
 
     std::vector<::vk::RenderingAttachmentInfo> colorAttachmentsInfo(resources.renderTargets.size());
@@ -331,7 +318,7 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
         });
 
     std::optional<::vk::RenderingAttachmentInfo> depthInfo;
-    if (resources.depthStencil && resources.depthStencil->texture->GetDescription().usage & TextureUsage::DepthStencil)
+    if (resources.depthStencil && resources.depthStencil->texture->GetDesc().usage & TextureUsage::DepthStencil)
     {
         depthInfo = ::vk::RenderingAttachmentInfo{
             .imageView = resources.depthStencil->texture->GetOrCreateImageView(resources.depthStencil->binding,
@@ -347,10 +334,9 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
         .colorAttachmentCount = static_cast<uint32_t>(colorAttachmentsInfo.size()),
         .pColorAttachments = colorAttachmentsInfo.data(),
         .pDepthAttachment = depthInfo ? &*depthInfo : nullptr,
-        .pStencilAttachment =
-            depthInfo && DoesFormatSupportStencil(resources.depthStencil->texture->GetDescription().format)
-                ? &*depthInfo
-                : nullptr,
+        .pStencilAttachment = depthInfo && DoesFormatSupportStencil(resources.depthStencil->texture->GetDesc().format)
+                                  ? &*depthInfo
+                                  : nullptr,
     };
 
     commandBuffer->beginRendering(info);
@@ -449,15 +435,15 @@ void VkCommandList::TraceRays(const std::array<u32, 3>& widthHeightDepth,
 void VkCommandList::GenerateMips(RHITexture& texture)
 {
     if (auto featureChecker = reinterpret_cast<VkFeatureChecker&>(*GPhysicalDevice->featureChecker);
-        !featureChecker.DoesTextureFormatSupportLinearFiltering(texture.GetDescription().format))
+        !featureChecker.DoesTextureFormatSupportLinearFiltering(texture.GetDesc().format))
     {
         VEX_LOG(Fatal,
                 "Cannot generate mips for texture: {}! The format {} does not support linear image filtering!",
-                texture.GetDescription().name,
-                magic_enum::enum_name(texture.GetDescription().format));
+                texture.GetDesc().name,
+                magic_enum::enum_name(texture.GetDesc().format));
     }
 
-    bool isDepthStencilFormat = FormatIsDepthStencilCompatible(texture.GetDescription().format);
+    bool isDepthStencilFormat = FormatIsDepthStencilCompatible(texture.GetDesc().format);
     ::vk::ImageAspectFlags aspectMask =
         isDepthStencilFormat ? ::vk::ImageAspectFlagBits::eDepth : ::vk::ImageAspectFlagBits::eColor;
 
@@ -469,9 +455,9 @@ void VkCommandList::GenerateMips(RHITexture& texture)
     };
     barrier.subresourceRange.aspectMask = aspectMask;
     barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = texture.GetDescription().GetArraySize();
+    barrier.subresourceRange.layerCount = texture.GetDesc().GetSliceCount();
     barrier.subresourceRange.baseMipLevel = 1;
-    barrier.subresourceRange.levelCount = texture.GetDescription().mips - 1;
+    barrier.subresourceRange.levelCount = texture.GetDesc().mips - 1;
     barrier.srcStageMask = RHIBarrierSyncToVulkan(texture.GetLastSync());
     barrier.srcAccessMask = RHIBarrierAccessToVulkan(texture.GetLastAccess());
     barrier.oldLayout = RHITextureLayoutToVulkan(texture.GetLastLayout());
@@ -482,11 +468,11 @@ void VkCommandList::GenerateMips(RHITexture& texture)
     ::vk::DependencyInfo info{ .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &barrier };
     commandBuffer->pipelineBarrier2(&info);
 
-    i32 mipWidth = texture.GetDescription().width;
-    i32 mipHeight = texture.GetDescription().height;
-    i32 mipDepth = texture.GetDescription().GetDepth();
+    i32 mipWidth = texture.GetDesc().width;
+    i32 mipHeight = texture.GetDesc().height;
+    i32 mipDepth = texture.GetDesc().GetDepth();
 
-    for (u16 i = 1; i < texture.GetDescription().mips; ++i)
+    for (u16 i = 1; i < texture.GetDesc().mips; ++i)
     {
         // Transition the (i-1)th mip to transferSrc.
         barrier.subresourceRange.baseMipLevel = i - 1;
@@ -514,14 +500,14 @@ void VkCommandList::GenerateMips(RHITexture& texture)
         blit.srcSubresource.aspectMask = aspectMask;
         blit.srcSubresource.mipLevel = i - 1;
         blit.srcSubresource.baseArrayLayer = 0;
-        blit.srcSubresource.layerCount = texture.GetDescription().GetArraySize();
+        blit.srcSubresource.layerCount = texture.GetDesc().GetSliceCount();
         blit.srcOffsets[0] = ::vk::Offset3D{ 0, 0, 0 };
         blit.srcOffsets[1] = ::vk::Offset3D{ mipWidth, mipHeight, mipDepth };
 
         blit.dstSubresource.aspectMask = aspectMask;
         blit.dstSubresource.mipLevel = i;
         blit.dstSubresource.baseArrayLayer = 0;
-        blit.dstSubresource.layerCount = texture.GetDescription().GetArraySize();
+        blit.dstSubresource.layerCount = texture.GetDesc().GetSliceCount();
         blit.dstOffsets[0] = ::vk::Offset3D{ 0, 0, 0 };
         blit.dstOffsets[1] = ::vk::Offset3D{ mipWidth > 1 ? mipWidth / 2 : 1,
                                              mipHeight > 1 ? mipHeight / 2 : 1,
@@ -534,22 +520,13 @@ void VkCommandList::GenerateMips(RHITexture& texture)
                                  blit,
                                  ::vk::Filter::eLinear);
 
-        if (mipWidth > 1)
-        {
-            mipWidth /= 2;
-        }
-        if (mipHeight > 1)
-        {
-            mipHeight /= 2;
-        }
-        if (mipDepth > 1)
-        {
-            mipDepth /= 2;
-        }
+        mipWidth = std::max(1u, mipWidth / 2u);
+        mipHeight = std::max(1u, mipHeight / 2u);
+        mipDepth = std::max(1u, mipDepth / 2u);
     }
 
     // Transition the last mip to keep uniform states across the entire resource.
-    barrier.subresourceRange.baseMipLevel = texture.GetDescription().mips - 1;
+    barrier.subresourceRange.baseMipLevel = texture.GetDesc().mips - 1;
     barrier.srcStageMask = ::vk::PipelineStageFlagBits2::eBlit;
     barrier.srcAccessMask = ::vk::AccessFlagBits2::eTransferWrite;
     barrier.oldLayout = ::vk::ImageLayout::eTransferDstOptimal;
@@ -563,12 +540,10 @@ void VkCommandList::GenerateMips(RHITexture& texture)
     texture.SetLastLayout(RHITextureLayout::CopySource);
 }
 
-void VkCommandList::Copy(RHITexture& src,
-                         RHITexture& dst,
-                         std::span<const TextureCopyDescription> textureCopyDescriptions)
+void VkCommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDesc> textureCopyDescriptions)
 {
-    const auto& srcDesc = src.description;
-    const auto& dstDesc = dst.description;
+    const auto& srcDesc = src.desc;
+    const auto& dstDesc = dst.desc;
 
     std::vector<::vk::ImageCopy> copyRegions{};
 
@@ -576,22 +551,20 @@ void VkCommandList::Copy(RHITexture& src,
     const ::vk::ImageAspectFlags dstAspectMask = VkTextureUtil::GetFormatAspectFlags(dstDesc.format);
 
     copyRegions.reserve(textureCopyDescriptions.size());
-    for (const auto& [srcSubresource, dstSubresource, extent] : textureCopyDescriptions)
+    for (const auto& [srcRegion, dstRegion] : textureCopyDescriptions)
     {
         copyRegions.push_back(::vk::ImageCopy{
             .srcSubresource = { .aspectMask = srcAspectMask,
-                                .mipLevel = srcSubresource.mip,
-                                .baseArrayLayer = srcSubresource.startSlice,
-                                .layerCount = srcSubresource.sliceCount },
-            .srcOffset =
-                ::vk::Offset3D(srcSubresource.offset.width, srcSubresource.offset.height, srcSubresource.offset.depth),
+                                .mipLevel = srcRegion.subresource.startMip,
+                                .baseArrayLayer = srcRegion.subresource.startSlice,
+                                .layerCount = srcRegion.subresource.sliceCount },
+            .srcOffset = ::vk::Offset3D(srcRegion.offset.width, srcRegion.offset.height, srcRegion.offset.depth),
             .dstSubresource = { .aspectMask = dstAspectMask,
-                                .mipLevel = dstSubresource.mip,
-                                .baseArrayLayer = dstSubresource.startSlice,
-                                .layerCount = dstSubresource.sliceCount },
-            .dstOffset =
-                ::vk::Offset3D(dstSubresource.offset.width, dstSubresource.offset.height, dstSubresource.offset.depth),
-            .extent = ::vk::Extent3D{ extent.width, extent.height, extent.depth } });
+                                .mipLevel = dstRegion.subresource.startMip,
+                                .baseArrayLayer = dstRegion.subresource.startSlice,
+                                .layerCount = dstRegion.subresource.sliceCount },
+            .dstOffset = ::vk::Offset3D(dstRegion.offset.width, dstRegion.offset.height, dstRegion.offset.depth),
+            .extent = ::vk::Extent3D{ dstRegion.extent.width, dstRegion.extent.height, dstRegion.extent.depth } });
     }
 
     commandBuffer->copyImage(src.GetResource(),
@@ -602,7 +575,7 @@ void VkCommandList::Copy(RHITexture& src,
                              copyRegions.data());
 }
 
-void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& bufferCopyDescription)
+void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDesc& bufferCopyDescription)
 {
     const ::vk::BufferCopy copy{ .srcOffset = bufferCopyDescription.srcOffset,
                                  .dstOffset = bufferCopyDescription.dstOffset,
@@ -612,37 +585,36 @@ void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescrip
 
 void VkCommandList::Copy(RHIBuffer& src,
                          RHITexture& dst,
-                         std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions)
+                         std::span<const BufferToTextureCopyDesc> bufferToTextureCopyDescriptions)
 {
     const ::vk::ImageAspectFlags dstAspectMask =
-        FormatIsDepthStencilCompatible(dst.description.format)
+        FormatIsDepthStencilCompatible(dst.desc.format)
             ? ::vk::ImageAspectFlagBits::eDepth | ::vk::ImageAspectFlagBits::eStencil
             : ::vk::ImageAspectFlagBits::eColor;
 
-    float pixelByteSize = TextureUtil::GetPixelByteSizeFromFormat(dst.GetDescription().format);
+    float pixelByteSize = TextureUtil::GetPixelByteSizeFromFormat(dst.GetDesc().format);
 
     std::vector<::vk::BufferImageCopy> regions;
     regions.reserve(bufferToTextureCopyDescriptions.size());
-    for (const auto& [srcSubresource, dstSubresource, extent] : bufferToTextureCopyDescriptions)
+    for (const auto& [srcRegion, dstRegion] : bufferToTextureCopyDescriptions)
     {
         u32 alignedRowPitch =
-            static_cast<u32>(AlignUp<u64>(extent.width * pixelByteSize, TextureUtil::RowPitchAlignment));
+            static_cast<u32>(AlignUp<u64>(dstRegion.extent.width * pixelByteSize, TextureUtil::RowPitchAlignment));
 
         regions.push_back(::vk::BufferImageCopy{
-            .bufferOffset = srcSubresource.offset,
+            .bufferOffset = srcRegion.offset,
             // Buffer row length is in pixels.
             .bufferRowLength = static_cast<u32>(alignedRowPitch / pixelByteSize),
             .bufferImageHeight = 0,
             .imageSubresource =
                 ::vk::ImageSubresourceLayers{
                     .aspectMask = dstAspectMask,
-                    .mipLevel = dstSubresource.mip,
-                    .baseArrayLayer = dstSubresource.startSlice,
-                    .layerCount = dstSubresource.sliceCount,
+                    .mipLevel = dstRegion.subresource.startMip,
+                    .baseArrayLayer = dstRegion.subresource.startSlice,
+                    .layerCount = dstRegion.subresource.sliceCount,
                 },
-            .imageOffset =
-                ::vk::Offset3D(dstSubresource.offset.width, dstSubresource.offset.height, dstSubresource.offset.depth),
-            .imageExtent = { extent.width, extent.height, extent.depth } });
+            .imageOffset = ::vk::Offset3D(dstRegion.offset.width, dstRegion.offset.height, dstRegion.offset.depth),
+            .imageExtent = { dstRegion.extent.width, dstRegion.extent.height, dstRegion.extent.depth } });
     }
 
     commandBuffer->copyBufferToImage(src.GetNativeBuffer(),

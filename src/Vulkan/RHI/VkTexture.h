@@ -59,15 +59,15 @@ class VkTexture : public RHITextureBase
 {
 public:
     // BackBuffer constructor:
-    VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& description, ::vk::Image backbufferImage);
+    VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDesc&& desc, ::vk::Image backbufferImage);
 
     // UniqueImage constructors:
     // Takes ownership of the image
-    VkTexture(const NonNullPtr<VkGPUContext> ctx, const TextureDescription& description, ::vk::UniqueImage rawImage);
-    VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& description, ::vk::UniqueImage rawImage);
+    VkTexture(const NonNullPtr<VkGPUContext> ctx, const TextureDesc& desc, ::vk::UniqueImage rawImage);
+    VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDesc&& desc, ::vk::UniqueImage rawImage);
 
     // Creates a new image from the description
-    VkTexture(NonNullPtr<VkGPUContext> ctx, RHIAllocator& allocator, TextureDescription&& description);
+    VkTexture(NonNullPtr<VkGPUContext> ctx, RHIAllocator& allocator, TextureDesc&& desc);
 
     [[nodiscard]] ::vk::Image GetResource();
 

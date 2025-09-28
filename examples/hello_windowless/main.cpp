@@ -6,7 +6,7 @@ int main()
     const uint32_t width = 500;
     const uint32_t height = 500;
 
-    vex::GfxBackend backend{ vex::BackendDescription{
+    vex::GfxBackend backend{ vex::GraphicsCreateDesc{
         .useSwapChain = false,
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING,

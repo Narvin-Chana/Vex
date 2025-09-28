@@ -180,13 +180,13 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
     {
         DX12TextureView dxTextureView{ clearBinding };
         dxTextureView.usage = TextureUsage::RenderTarget;
-        dxTextureView.mipCount = 1;
+        dxTextureView.subresource.mipCount = 1;
 
-        for (u32 mip = clearBinding.mipBias;
-             mip < ((clearBinding.mipCount == 0) ? 1 : (clearBinding.mipBias + clearBinding.mipCount));
+        for (u32 mip = clearBinding.subresource.startMip;
+             mip < clearBinding.subresource.startMip + clearBinding.subresource.mipCount;
              ++mip)
         {
-            dxTextureView.mipBias = mip;
+            dxTextureView.subresource.startMip = mip;
             VEX_ASSERT(clearValue.flags & TextureClear::ClearColor,
                        "Clearing the color requires the TextureClear::ClearColor flag for texture: {}.",
                        desc.name);
@@ -200,12 +200,12 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
     {
         DX12TextureView dxTextureView{ clearBinding };
         dxTextureView.usage = TextureUsage::DepthStencil;
-        dxTextureView.mipCount = 1;
-        for (u32 mip = clearBinding.mipBias;
-             mip < ((clearBinding.mipCount == 0) ? 1 : (clearBinding.mipBias + clearBinding.mipCount));
+        dxTextureView.subresource.mipCount = 1;
+        for (u32 mip = clearBinding.subresource.startMip;
+             mip < clearBinding.subresource.startMip + clearBinding.subresource.mipCount;
              ++mip)
         {
-            dxTextureView.mipBias = mip;
+            dxTextureView.subresource.startMip = mip;
             D3D12_CLEAR_FLAGS clearFlags = static_cast<D3D12_CLEAR_FLAGS>(0);
             if (clearValue.flags & TextureClear::ClearDepth)
             {
@@ -218,7 +218,7 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
             VEX_ASSERT(std::to_underlying(clearFlags) != 0,
                        "Clear flags for the depth-stencil cannot be 0, you must either clear depth, stencil, or both "
                        "for texture: {}!",
-                       clearBinding.texture.description.name);
+                       clearBinding.texture.desc.name);
 
             commandList->ClearDepthStencilView(binding.texture->GetOrCreateRTVDSVView(dxTextureView),
                                                clearFlags,
@@ -233,7 +233,7 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
         VEX_LOG(Fatal,
                 "The usage of the passed binding \"{}\" doesn't support clearing. Make sure you specify "
                 "the correct usage.",
-                clearBinding.texture.description.name);
+                clearBinding.texture.desc.name);
     }
 }
 
@@ -248,9 +248,9 @@ void DX12CommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
     for (const auto& bufferBarrier : bufferBarriers)
     {
         D3D12_BUFFER_BARRIER dx12Barrier = {};
-        dx12Barrier.SyncBefore = RHIBarrierSyncToDX12(bufferBarrier.srcSync);
+        dx12Barrier.SyncBefore = RHIBarrierSyncToDX12(bufferBarrier.buffer->GetLastSync());
         dx12Barrier.SyncAfter = RHIBarrierSyncToDX12(bufferBarrier.dstSync);
-        dx12Barrier.AccessBefore = RHIBarrierAccessToDX12(bufferBarrier.srcAccess);
+        dx12Barrier.AccessBefore = RHIBarrierAccessToDX12(bufferBarrier.buffer->GetLastAccess());
         dx12Barrier.AccessAfter = RHIBarrierAccessToDX12(bufferBarrier.dstAccess);
         dx12Barrier.pResource = bufferBarrier.buffer->GetRawBuffer();
         // Buffer range - for now, barrier entire buffer.
@@ -265,11 +265,11 @@ void DX12CommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
     for (const auto& textureBarrier : textureBarriers)
     {
         D3D12_TEXTURE_BARRIER dx12Barrier = {};
-        dx12Barrier.SyncBefore = RHIBarrierSyncToDX12(textureBarrier.srcSync);
+        dx12Barrier.SyncBefore = RHIBarrierSyncToDX12(textureBarrier.texture->GetLastSync());
         dx12Barrier.SyncAfter = RHIBarrierSyncToDX12(textureBarrier.dstSync);
-        dx12Barrier.AccessBefore = RHIBarrierAccessToDX12(textureBarrier.srcAccess);
+        dx12Barrier.AccessBefore = RHIBarrierAccessToDX12(textureBarrier.texture->GetLastAccess());
         dx12Barrier.AccessAfter = RHIBarrierAccessToDX12(textureBarrier.dstAccess);
-        dx12Barrier.LayoutBefore = RHITextureLayoutToDX12(textureBarrier.srcLayout);
+        dx12Barrier.LayoutBefore = RHITextureLayoutToDX12(textureBarrier.texture->GetLastLayout());
         dx12Barrier.LayoutAfter = RHITextureLayoutToDX12(textureBarrier.dstLayout);
         dx12Barrier.pResource = textureBarrier.texture->GetRawTexture();
 
@@ -289,9 +289,9 @@ void DX12CommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
         // Handle subresources - for now, barrier all subresources.
         // We might want to extend RHIBarrier to specify subresource ranges (...one day...maybe...).
         dx12Barrier.Subresources.IndexOrFirstMipLevel = 0;
-        dx12Barrier.Subresources.NumMipLevels = textureBarrier.texture->GetDescription().mips;
+        dx12Barrier.Subresources.NumMipLevels = textureBarrier.texture->GetDesc().mips;
         dx12Barrier.Subresources.FirstArraySlice = 0;
-        dx12Barrier.Subresources.NumArraySlices = textureBarrier.texture->GetDescription().GetArraySize();
+        dx12Barrier.Subresources.NumArraySlices = textureBarrier.texture->GetDesc().GetSliceCount();
         dx12Barrier.Subresources.FirstPlane = 0;
         dx12Barrier.Subresources.NumPlanes = 1; // Most textures have 1 plane
         dx12Barrier.Flags = D3D12_TEXTURE_BARRIER_FLAG_NONE;
@@ -465,54 +465,50 @@ void DX12CommandList::GenerateMips(RHITexture& texture)
 
 void DX12CommandList::Copy(RHITexture& src, RHITexture& dst)
 {
-    VEX_ASSERT(src.GetDescription().width == dst.GetDescription().width &&
-                   src.GetDescription().height == dst.GetDescription().height &&
-                   src.GetDescription().depthOrArraySize == dst.GetDescription().depthOrArraySize &&
-                   src.GetDescription().mips == dst.GetDescription().mips &&
-                   src.GetDescription().format == dst.GetDescription().format,
+    VEX_ASSERT(src.GetDesc().width == dst.GetDesc().width && src.GetDesc().height == dst.GetDesc().height &&
+                   src.GetDesc().depthOrSliceCount == dst.GetDesc().depthOrSliceCount &&
+                   src.GetDesc().mips == dst.GetDesc().mips && src.GetDesc().format == dst.GetDesc().format,
                "The two textures must be compatible in order to Copy to be useable.");
     commandList->CopyResource(dst.GetRawTexture(), src.GetRawTexture());
 }
 
-void DX12CommandList::Copy(RHITexture& src,
-                           RHITexture& dst,
-                           std::span<const TextureCopyDescription> textureCopyDescriptions)
+void DX12CommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDesc> textureCopyDescs)
 {
     ID3D12Resource* srcTexture = src.GetRawTexture();
     ID3D12Resource* dstTexture = dst.GetRawTexture();
 
-    for (const TextureCopyDescription& copyDesc : textureCopyDescriptions)
+    for (const TextureCopyDesc& copyDesc : textureCopyDescs)
     {
         D3D12_TEXTURE_COPY_LOCATION srcLoc = {};
         srcLoc.pResource = srcTexture;
         srcLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
         srcLoc.SubresourceIndex =
-            copyDesc.srcSubresource.startSlice * src.GetDescription().mips + copyDesc.srcSubresource.mip;
+            copyDesc.srcRegion.subresource.startSlice * src.GetDesc().mips + copyDesc.srcRegion.subresource.startMip;
 
         D3D12_TEXTURE_COPY_LOCATION dstLoc = {};
         dstLoc.pResource = dstTexture;
         dstLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
         dstLoc.SubresourceIndex =
-            copyDesc.dstSubresource.startSlice * dst.GetDescription().mips + copyDesc.dstSubresource.mip;
+            copyDesc.dstRegion.subresource.startSlice * dst.GetDesc().mips + copyDesc.dstRegion.subresource.startMip;
 
         D3D12_BOX srcBox = {};
-        srcBox.left = copyDesc.srcSubresource.offset.width;
-        srcBox.top = copyDesc.srcSubresource.offset.height;
-        srcBox.front = copyDesc.srcSubresource.offset.depth;
-        srcBox.right = copyDesc.srcSubresource.offset.width + copyDesc.extent.width;
-        srcBox.bottom = copyDesc.srcSubresource.offset.height + copyDesc.extent.height;
-        srcBox.back = copyDesc.srcSubresource.offset.depth + copyDesc.extent.depth;
+        srcBox.left = copyDesc.srcRegion.offset.width;
+        srcBox.top = copyDesc.srcRegion.offset.height;
+        srcBox.front = copyDesc.srcRegion.offset.depth;
+        srcBox.right = copyDesc.srcRegion.offset.width + copyDesc.srcRegion.extent.width;
+        srcBox.bottom = copyDesc.srcRegion.offset.height + copyDesc.srcRegion.extent.height;
+        srcBox.back = copyDesc.srcRegion.offset.depth + copyDesc.srcRegion.extent.depth;
 
         commandList->CopyTextureRegion(&dstLoc,
-                                       copyDesc.dstSubresource.offset.width,
-                                       copyDesc.dstSubresource.offset.height,
-                                       copyDesc.dstSubresource.offset.depth,
+                                       copyDesc.dstRegion.offset.width,
+                                       copyDesc.dstRegion.offset.height,
+                                       copyDesc.dstRegion.offset.depth,
                                        &srcLoc,
                                        &srcBox);
     }
 }
 
-void DX12CommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& bufferCopyDescription)
+void DX12CommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDesc& bufferCopyDescription)
 {
     commandList->CopyBufferRegion(dst.GetRawBuffer(),
                                   bufferCopyDescription.dstOffset,
@@ -523,7 +519,7 @@ void DX12CommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescr
 
 void DX12CommandList::Copy(RHIBuffer& src,
                            RHITexture& dst,
-                           std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions)
+                           std::span<const BufferToTextureCopyDesc> bufferToTextureCopyDescriptions)
 {
     // TODO(https://trello.com/c/KEnbDLG6): this way of uploading makes it so that texture arrays are copied slice by
     // slice, when instead they could be copied mip element by mip. Would require considerable effort to fix and is only
@@ -532,14 +528,14 @@ void DX12CommandList::Copy(RHIBuffer& src,
     ID3D12Resource* srcBuffer = src.GetRawBuffer();
     ID3D12Resource* dstTexture = dst.GetRawTexture();
 
-    float formatPixelByteSize = TextureUtil::GetPixelByteSizeFromFormat(dst.GetDescription().format);
+    float formatPixelByteSize = TextureUtil::GetPixelByteSizeFromFormat(dst.GetDesc().format);
 
-    for (const BufferToTextureCopyDescription& copyDesc : bufferToTextureCopyDescriptions)
+    for (const BufferToTextureCopyDesc& copyDesc : bufferToTextureCopyDescriptions)
     {
         const u32 alignedRowPitch =
-            AlignUp<u32>(copyDesc.extent.width * formatPixelByteSize, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+            AlignUp<u32>(copyDesc.dstRegion.extent.width * formatPixelByteSize, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
 
-        VEX_CHECK(IsAligned<u64>(copyDesc.srcSubresource.offset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
+        VEX_CHECK(IsAligned<u64>(copyDesc.srcRegion.offset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
                   "Source offset should be aligned to 512 bytes!");
 
         D3D12_TEXTURE_COPY_LOCATION srcLoc = {};
@@ -547,31 +543,31 @@ void DX12CommandList::Copy(RHIBuffer& src,
         srcLoc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT& footprint = srcLoc.PlacedFootprint;
-        footprint.Offset = copyDesc.srcSubresource.offset;
-        footprint.Footprint.Format = TextureFormatToDXGI(dst.GetDescription().format);
-        footprint.Footprint.Width = copyDesc.extent.width;
-        footprint.Footprint.Height = copyDesc.extent.height;
-        footprint.Footprint.Depth = copyDesc.extent.depth;
+        footprint.Offset = copyDesc.srcRegion.offset;
+        footprint.Footprint.Format = TextureFormatToDXGI(dst.GetDesc().format);
+        footprint.Footprint.Width = copyDesc.dstRegion.extent.width;
+        footprint.Footprint.Height = copyDesc.dstRegion.extent.height;
+        footprint.Footprint.Depth = copyDesc.dstRegion.extent.depth;
         footprint.Footprint.RowPitch = alignedRowPitch;
 
         D3D12_TEXTURE_COPY_LOCATION dstLoc = {};
         dstLoc.pResource = dstTexture;
         dstLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
         dstLoc.SubresourceIndex =
-            copyDesc.dstSubresource.startSlice * dst.GetDescription().mips + copyDesc.dstSubresource.mip;
+            copyDesc.dstRegion.subresource.startSlice * dst.GetDesc().mips + copyDesc.dstRegion.subresource.startMip;
 
         D3D12_BOX srcBox = {};
         srcBox.left = 0;
         srcBox.top = 0;
         srcBox.front = 0;
-        srcBox.right = copyDesc.extent.width;
-        srcBox.bottom = copyDesc.extent.height;
-        srcBox.back = copyDesc.extent.depth;
+        srcBox.right = copyDesc.dstRegion.extent.width;
+        srcBox.bottom = copyDesc.dstRegion.extent.height;
+        srcBox.back = copyDesc.dstRegion.extent.depth;
 
         commandList->CopyTextureRegion(&dstLoc,
-                                       copyDesc.dstSubresource.offset.width,
-                                       copyDesc.dstSubresource.offset.height,
-                                       copyDesc.dstSubresource.offset.depth,
+                                       copyDesc.dstRegion.offset.width,
+                                       copyDesc.dstRegion.offset.height,
+                                       copyDesc.dstRegion.offset.depth,
                                        &srcLoc,
                                        &srcBox);
     }

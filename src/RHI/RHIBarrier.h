@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Vex/NonNullPtr.h>
+#include <Vex/Texture.h>
 #include <Vex/Types.h>
 
 #include <RHI/RHIFwd.h>
@@ -75,9 +76,6 @@ struct RHIBufferBarrier
 
     NonNullPtr<RHIBuffer> buffer;
 
-    RHIBarrierSync srcSync;
-    RHIBarrierAccess srcAccess;
-
     RHIBarrierSync dstSync;
     RHIBarrierAccess dstAccess;
 };
@@ -87,13 +85,14 @@ struct RHITextureBarrier
     RHITextureBarrier(NonNullPtr<RHITexture> texture,
                       RHIBarrierSync dstSync,
                       RHIBarrierAccess dstAccess,
-                      RHITextureLayout dstLayout);
+                      RHITextureLayout dstLayout,
+                      TextureSubresource subresource = {});
 
     NonNullPtr<RHITexture> texture;
 
-    RHIBarrierSync srcSync;
-    RHIBarrierAccess srcAccess;
-    RHITextureLayout srcLayout;
+    // Allows for applying a barrier to a specific texture subresource.
+    // By default the barrier will be applied to the entire resource.
+    TextureSubresource subresource;
 
     RHIBarrierSync dstSync;
     RHIBarrierAccess dstAccess;

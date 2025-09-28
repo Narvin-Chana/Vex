@@ -6,18 +6,20 @@
 namespace vex
 {
 
-struct BufferToTextureCopyDescription
+struct BufferToTextureCopyDesc
 {
-    BufferSubresource srcSubresource{};
-    TextureSubresource dstSubresource{};
-    TextureExtent extent{};
+    BufferRegion srcRegion;
+    TextureRegion dstRegion;
+
+    BufferToTextureCopyDesc Resolve(const BufferDesc& srcDesc, const TextureDesc& dstDesc) const;
+    constexpr bool operator==(const BufferToTextureCopyDesc&) const = default;
 };
 
 namespace TextureCopyUtil
 {
-void ValidateBufferToTextureCopyDescription(const BufferDescription& srcDesc,
-                                            const TextureDescription& dstDesc,
-                                            const BufferToTextureCopyDescription& copyDesc);
+void ValidateBufferToTextureCopyDesc(const BufferDesc& srcDesc,
+                                     const TextureDesc& dstDesc,
+                                     const BufferToTextureCopyDesc& copyDesc);
 } // namespace TextureCopyUtil
 
 } // namespace vex

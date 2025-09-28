@@ -5,6 +5,7 @@
 #include <Vex/EnumFlags.h>
 #include <Vex/Formats.h>
 #include <Vex/Handle.h>
+#include <Vex/Hash.h>
 #include <Vex/Resource.h>
 #include <Vex/Types.h>
 
@@ -47,10 +48,6 @@ enum class TextureBindingUsage : u8
     ShaderReadWrite = TextureUsage::ShaderReadWrite, // Equivalent to UAV in DX12.
 };
 
-struct ResourceBinding;
-struct TextureBinding;
-struct TextureDescription;
-
 // clang-format off
 
 BEGIN_VEX_ENUM_FLAGS(TextureClear, u8)
@@ -72,13 +69,12 @@ struct TextureClearValue
 
 static constexpr u8 GTextureCubeFaceCount = 6U;
 
-struct TextureDescription
+struct TextureDesc
 {
     std::string name;
     TextureType type;
     TextureFormat format;
-    u32 width, height, depthOrArraySize = 1;
-    // mips = 0 indicates that you want max mips
+    u32 width = 1, height = 1, depthOrSliceCount = 1;
     u16 mips = 1;
     TextureUsage::Flags usage = TextureUsage::ShaderRead;
     TextureClearValue clearValue;
@@ -86,74 +82,67 @@ struct TextureDescription
 
     [[nodiscard]] u32 GetDepth() const noexcept
     {
-        return type == TextureType::Texture3D ? depthOrArraySize : 1;
+        return type == TextureType::Texture3D ? depthOrSliceCount : 1;
     }
-    [[nodiscard]] u32 GetArraySize() const noexcept
+    [[nodiscard]] u32 GetSliceCount() const noexcept
     {
         if (type == TextureType::Texture3D)
         {
             return 1;
         }
 
-        u32 arraySize = depthOrArraySize;
+        u32 sliceCount = depthOrSliceCount;
         if (type == TextureType::TextureCube)
         {
             // Cubemaps are just a Texture2DArray with an array size which is a multiple of 6.
-            arraySize *= GTextureCubeFaceCount;
+            sliceCount *= GTextureCubeFaceCount;
         }
-        return arraySize;
+        return sliceCount;
     }
 
     // Helpers to create a description.
 
-    static TextureDescription CreateTexture2D(std::string name,
+    static TextureDesc CreateTexture2D(std::string name,
+                                       TextureFormat format,
+                                       u32 width,
+                                       u32 height,
+                                       u16 mips = 1,
+                                       TextureUsage::Flags usage = TextureUsage::ShaderRead,
+                                       TextureClearValue clearValue = {},
+                                       ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
+    static TextureDesc CreateTexture2DArray(std::string name,
+                                            TextureFormat format,
+                                            u32 width,
+                                            u32 height,
+                                            u32 arraySize,
+                                            u16 mips = 1,
+                                            TextureUsage::Flags usage = TextureUsage::ShaderRead,
+                                            TextureClearValue clearValue = {},
+                                            ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
+    static TextureDesc CreateTextureCube(std::string name,
+                                         TextureFormat format,
+                                         u32 faceSize,
+                                         u16 mips = 1,
+                                         TextureUsage::Flags usage = TextureUsage::ShaderRead,
+                                         TextureClearValue clearValue = {},
+                                         ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
+    static TextureDesc CreateTextureCubeArray(std::string name,
                                               TextureFormat format,
-                                              u32 width,
-                                              u32 height,
+                                              u32 faceSize,
+                                              u32 arraySize,
                                               u16 mips = 1,
                                               TextureUsage::Flags usage = TextureUsage::ShaderRead,
                                               TextureClearValue clearValue = {},
                                               ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
-
-    static TextureDescription CreateTexture2DArray(
-        std::string name,
-        TextureFormat format,
-        u32 width,
-        u32 height,
-        u32 arraySize,
-        u16 mips = 1,
-        TextureUsage::Flags usage = TextureUsage::ShaderRead,
-        TextureClearValue clearValue = {},
-        ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
-
-    static TextureDescription CreateTextureCube(
-        std::string name,
-        TextureFormat format,
-        u32 faceSize,
-        u16 mips = 1,
-        TextureUsage::Flags usage = TextureUsage::ShaderRead,
-        TextureClearValue clearValue = {},
-        ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
-
-    static TextureDescription CreateTextureCubeArray(
-        std::string name,
-        TextureFormat format,
-        u32 faceSize,
-        u32 arraySize,
-        u16 mips = 1,
-        TextureUsage::Flags usage = TextureUsage::ShaderRead,
-        TextureClearValue clearValue = {},
-        ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
-
-    static TextureDescription CreateTexture3D(std::string name,
-                                              TextureFormat format,
-                                              u32 width,
-                                              u32 height,
-                                              u32 depth,
-                                              u16 mips = 1,
-                                              TextureUsage::Flags usage = TextureUsage::ShaderRead,
-                                              TextureClearValue clearValue = {},
-                                              ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
+    static TextureDesc CreateTexture3D(std::string name,
+                                       TextureFormat format,
+                                       u32 width,
+                                       u32 height,
+                                       u32 depth,
+                                       u16 mips = 1,
+                                       TextureUsage::Flags usage = TextureUsage::ShaderRead,
+                                       TextureClearValue clearValue = {},
+                                       ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
 };
 
 // Strongly defined type represents a texture.
@@ -167,44 +156,94 @@ static constexpr TextureHandle GInvalidTextureHandle;
 struct Texture final
 {
     TextureHandle handle;
-    TextureDescription description;
+    TextureDesc desc;
 };
 
-struct TextureExtent
+static constexpr u32 GTextureExtentMax = ~static_cast<u32>(0);
+
+struct TextureExtent3D
 {
-    u32 width = 1;
-    u32 height = 1;
-    u32 depth = 1;
+    u32 width = GTextureExtentMax;
+    u32 height = GTextureExtentMax;
+    u32 depth = GTextureExtentMax;
+
+    TextureExtent3D Resolve(const TextureDesc& desc) const;
+    constexpr bool operator==(const TextureExtent3D&) const = default;
 };
+
+struct TextureOffset3D
+{
+    u32 width = 0;
+    u32 height = 0;
+    u32 depth = 0;
+
+    constexpr bool operator==(const TextureOffset3D&) const = default;
+};
+
+static constexpr u16 GTextureAllMips = ~static_cast<u16>(0);
+static constexpr u32 GTextureAllSlices = ~static_cast<u32>(0);
 
 struct TextureSubresource
 {
-    // Mip index (0-based).
-    u16 mip = 0;
+    u16 startMip = 0;
+    u16 mipCount = GTextureAllMips;
     u32 startSlice = 0;
-    u32 sliceCount = 1;
-    TextureExtent offset{ 0, 0, 0 };
+    u32 sliceCount = GTextureAllSlices;
+
+    // Validates the subresource for a specific texture.
+    void Validate(const TextureDesc& desc) const;
+    // Inserts actual mip-count / slice-counts instead of the placeholder values.
+    TextureSubresource Resolve(const TextureDesc& desc) const;
+
+    constexpr bool operator==(const TextureSubresource&) const = default;
 };
 
-struct TextureCopyDescription
+struct TextureRegion
 {
-    TextureSubresource srcSubresource;
-    TextureSubresource dstSubresource;
-    TextureExtent extent;
+    TextureSubresource subresource;
+    TextureOffset3D offset;
+    TextureExtent3D extent;
+
+    // Validates the region for a specific texture.
+    void Validate(const TextureDesc& desc) const;
+    // Inserts actual subresource/extents instead of the placeholder values.
+    TextureRegion Resolve(const TextureDesc& desc) const;
+
+    constexpr bool operator==(const TextureRegion&) const = default;
+
+    // The entirety of the texture (all mips and all slices).
+    static TextureRegion AllMips();
+    // The entirety of a single mip (one mip and all slices).
+    static TextureRegion SingleMip(u16 mipIndex);
+};
+
+struct TextureCopyDesc
+{
+    TextureRegion srcRegion;
+    TextureRegion dstRegion;
+
+    // Inserts actual subresource/extents instead of the placeholder values in the copy desc regions.
+    TextureCopyDesc Resolve(const TextureDesc& srcDesc, const TextureDesc& dstDesc) const;
+
+    constexpr bool operator==(const TextureCopyDesc&) const = default;
 };
 
 struct TextureUploadRegion
 {
     u16 mip = 0;
     u32 slice = 0;
-    TextureExtent offset{ 0, 0, 0 };
-    TextureExtent extent{ 0, 0, 0 };
+    TextureOffset3D offset{ 0, 0, 0 };
+    TextureExtent3D extent{ 0, 0, 0 };
+
+    constexpr bool operator==(const TextureUploadRegion&) const = default;
 
     // Uploads the entirety of the texture (all mips and all depth slices).
-    static std::vector<TextureUploadRegion> UploadAllMips(const TextureDescription& textureDescription);
+    static std::vector<TextureUploadRegion> UploadAllMips(const TextureDesc& textureDescription);
     // Uploads the entirety of a specific mip of the texture (1 mip and all depth slices).
-    static std::vector<TextureUploadRegion> UploadFullMip(u16 mipIndex, const TextureDescription& textureDescription);
+    static std::vector<TextureUploadRegion> UploadFullMip(u16 mipIndex, const TextureDesc& textureDescription);
 };
+
+struct TextureBinding;
 
 namespace TextureUtil
 {
@@ -212,27 +251,29 @@ namespace TextureUtil
 static constexpr u64 RowPitchAlignment = 256;
 static constexpr u64 MipAlignment = 512;
 
-std::tuple<u32, u32, u32> GetMipSize(const TextureDescription& desc, u32 mip);
+std::tuple<u32, u32, u32> GetMipSize(const TextureDesc& desc, u32 mip);
 TextureViewType GetTextureViewType(const TextureBinding& binding);
 TextureFormat GetTextureFormat(const TextureBinding& binding);
-void ValidateTextureDescription(const TextureDescription& description);
+void ValidateTextureDescription(const TextureDesc& desc);
 float GetPixelByteSizeFromFormat(TextureFormat format);
 
-u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc,
-                                       std::span<const TextureUploadRegion> uploadRegions);
-u64 ComputePackedUploadDataByteSize(const TextureDescription& desc, std::span<const TextureUploadRegion> uploadRegions);
+u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, std::span<const TextureUploadRegion> uploadRegions);
+u64 ComputePackedUploadDataByteSize(const TextureDesc& desc, std::span<const TextureUploadRegion> uploadRegions);
 
 bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage);
 
-void ValidateTextureSubresource(const TextureDescription& description, const TextureSubresource& subresource);
-void ValidateTextureCopyDescription(const TextureDescription& srcDesc,
-                                    const TextureDescription& dstDesc,
-                                    const TextureCopyDescription& copyDesc);
-void ValidateTextureExtent(const TextureDescription& description,
-                           const TextureSubresource& subresource,
-                           const TextureExtent& extent);
-void ValidateCompatibleTextureDescriptions(const TextureDescription& srcDesc, const TextureDescription& dstDesc);
+void ValidateTextureCopyDesc(const TextureDesc& srcDesc, const TextureDesc& dstDesc, const TextureCopyDesc& copyDesc);
+void ValidateCompatibleTextureDescriptions(const TextureDesc& srcDesc, const TextureDesc& dstDesc);
 
 } // namespace TextureUtil
 
 } // namespace vex
+
+// clang-format off
+VEX_MAKE_HASHABLE(vex::TextureSubresource,
+    VEX_HASH_COMBINE(seed, obj.startMip);
+    VEX_HASH_COMBINE(seed, obj.mipCount);
+    VEX_HASH_COMBINE(seed, obj.startSlice);
+    VEX_HASH_COMBINE(seed, obj.sliceCount);
+);
+// clang-format on

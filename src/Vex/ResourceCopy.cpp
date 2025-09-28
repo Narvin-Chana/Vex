@@ -9,22 +9,30 @@ namespace vex
 
 namespace TextureCopyUtil
 {
-void ValidateBufferToTextureCopyDescription(const BufferDescription& srcDesc,
-                                            const TextureDescription& dstDesc,
-                                            const BufferToTextureCopyDescription& copyDesc)
+void ValidateBufferToTextureCopyDesc(const BufferDesc& srcDesc,
+                                     const TextureDesc& dstDesc,
+                                     const BufferToTextureCopyDesc& copyDesc)
 {
-    BufferUtil::ValidateBufferSubresource(srcDesc, copyDesc.srcSubresource);
-    TextureUtil::ValidateTextureSubresource(dstDesc, copyDesc.dstSubresource);
+    BufferUtil::ValidateBufferRegion(srcDesc, copyDesc.srcRegion);
+    copyDesc.dstRegion.Validate(dstDesc);
 
-    auto [mipWidth, mipHeight, mipDepth] = copyDesc.extent;
-    const u32 requiredByteSize = static_cast<u32>(
-        std::ceil(mipWidth * mipHeight * mipDepth * TextureUtil::GetPixelByteSizeFromFormat(dstDesc.format)));
+    auto [width, height, depth] = copyDesc.dstRegion.extent;
+    const u32 requiredPackedByteSize =
+        static_cast<u32>(std::ceil(width * height * depth * TextureUtil::GetPixelByteSizeFromFormat(dstDesc.format)));
 
-    VEX_CHECK(copyDesc.srcSubresource.size >= requiredByteSize,
+    VEX_CHECK(copyDesc.srcRegion.size >= requiredPackedByteSize,
               "Buffer not big enough to copy to texture. buffer size: {}, required mip byte size: {}",
               srcDesc.byteSize,
-              requiredByteSize);
+              requiredPackedByteSize);
 }
 } // namespace TextureCopyUtil
+
+BufferToTextureCopyDesc BufferToTextureCopyDesc::Resolve(const BufferDesc& srcDesc, const TextureDesc& dstDesc) const
+{
+    return BufferToTextureCopyDesc{
+        .srcRegion = srcRegion.Resolve(srcDesc),
+        .dstRegion = dstRegion.Resolve(dstDesc),
+    };
+}
 
 } // namespace vex

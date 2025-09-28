@@ -35,7 +35,7 @@ struct TextureSampler;
 struct BufferBinding;
 class RenderExtension;
 
-struct BackendDescription
+struct GraphicsCreateDesc
 {
     PlatformWindow platformWindow;
     bool useSwapChain = true;
@@ -50,7 +50,7 @@ struct BackendDescription
 class GfxBackend
 {
 public:
-    GfxBackend(const BackendDescription& description);
+    GfxBackend(const GraphicsCreateDesc& desc);
     ~GfxBackend();
 
     // Presents the current presentTexture to the swapchain. Will stall if the GPU's next backbuffer is not yet ready
@@ -65,10 +65,10 @@ public:
                                              std::span<SyncToken> dependencies = {});
 
     // Creates a new texture with the specified description.
-    [[nodiscard]] Texture CreateTexture(TextureDescription description, ResourceLifetime lifetime);
+    [[nodiscard]] Texture CreateTexture(TextureDesc desc, ResourceLifetime lifetime);
 
     // Creates a new buffer with specified description.
-    [[nodiscard]] Buffer CreateBuffer(BufferDescription description, ResourceLifetime lifetime);
+    [[nodiscard]] Buffer CreateBuffer(BufferDesc desc, ResourceLifetime lifetime);
 
     // Writes data to buffer memory. This only supports buffers with ResourceMemoryLocality::CPUWrite.
     [[nodiscard]] ResourceMappedMemory MapResource(const Buffer& buffer);
@@ -143,7 +143,7 @@ private:
 
     RHI rhi;
 
-    BackendDescription description;
+    GraphicsCreateDesc desc;
 
     ResourceCleanup resourceCleanup;
 

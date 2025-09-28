@@ -79,20 +79,20 @@ static ::vk::Extent2D GetBestSwapExtent(const VkSwapChainSupportDetails& details
 }
 
 VkSwapChain::VkSwapChain(NonNullPtr<VkGPUContext> ctx,
-                         const SwapChainDescription& description,
+                         const SwapChainDescription& desc,
                          const PlatformWindow& platformWindow)
     : ctx{ ctx }
-    , description{ description }
+    , desc{ desc }
 {
     VEX_ASSERT(IsSwapChainSupported(ctx->physDevice, ctx->surface));
 
     supportDetails = GetSwapChainSupportDetails(ctx->physDevice, ctx->surface);
-    surfaceFormat = GetBestSurfaceFormat(supportDetails, TextureFormatToVulkan(description.format));
-    presentMode = GetBestPresentMode(supportDetails, description.useVSync);
+    surfaceFormat = GetBestSurfaceFormat(supportDetails, TextureFormatToVulkan(desc.format));
+    presentMode = GetBestPresentMode(supportDetails, desc.useVSync);
 
     u32 maxSupportedImageCount =
         std::max(supportDetails.capabilities.minImageCount + 1, supportDetails.capabilities.maxImageCount);
-    u8 requestedImageCount = std::to_underlying(description.frameBuffering);
+    u8 requestedImageCount = std::to_underlying(desc.frameBuffering);
 
     // Need to have at least the requested amount of swap chain images
     VEX_ASSERT(maxSupportedImageCount >= requestedImageCount);
@@ -118,14 +118,14 @@ void VkSwapChain::Resize(u32 width, u32 height)
     InitSwapchainResource(width, height);
 }
 
-TextureDescription VkSwapChain::GetBackBufferTextureDescription() const
+TextureDesc VkSwapChain::GetBackBufferTextureDescription() const
 {
-    return TextureDescription{ .name = "backbuffer",
+    return TextureDesc{ .name = "backbuffer",
                                .type = TextureType::Texture2D,
                                .format = VulkanToTextureFormat(surfaceFormat.format),
                                .width = width,
                                .height = height,
-                               .depthOrArraySize = 1,
+                               .depthOrSliceCount = 1,
                                .mips = 1,
                                .usage = TextureUsage::RenderTarget | TextureUsage::ShaderRead };
 }
@@ -133,7 +133,7 @@ TextureDescription VkSwapChain::GetBackBufferTextureDescription() const
 void VkSwapChain::SetVSync(bool enableVSync)
 {
     presentMode = GetBestPresentMode(supportDetails, enableVSync);
-    description.useVSync = enableVSync;
+    desc.useVSync = enableVSync;
     InitSwapchainResource(width, height);
 }
 
@@ -160,7 +160,7 @@ std::optional<RHITexture> VkSwapChain::AcquireBackBuffer(u8 frameIndex)
     // Return the acquired backbuffer.
     auto backbufferImages = VEX_VK_CHECK <<= ctx->device.getSwapchainImagesKHR(*swapchain);
 
-    TextureDescription desc = GetBackBufferTextureDescription();
+    TextureDesc desc = GetBackBufferTextureDescription();
     desc.name = std::format("backbuffer_{}", currentBackbufferId);
     return RHITexture{ ctx, std::move(desc), backbufferImages[currentBackbufferId] };
 }
@@ -212,7 +212,7 @@ void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
     ::vk::Extent2D extent = GetBestSwapExtent(supportDetails, width, height);
 
     ::vk::SwapchainCreateInfoKHR swapChainCreateInfo{ .surface = ctx->surface,
-                                                      .minImageCount = std::to_underlying(description.frameBuffering),
+                                                      .minImageCount = std::to_underlying(desc.frameBuffering),
                                                       .imageFormat = surfaceFormat.format,
                                                       .imageColorSpace = surfaceFormat.colorSpace,
                                                       .imageExtent = extent,

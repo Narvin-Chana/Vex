@@ -67,19 +67,14 @@ struct BufferBinding
 
 struct TextureBinding
 {
-    // The texture to bind
+    // The texture to bind.
     Texture texture;
     // The usage of the texture.
     TextureBindingUsage usage = TextureBindingUsage::None;
+    // Special flags for the texture binding.
     TextureBindingFlags::Flags flags = TextureBindingFlags::None;
-
-    u32 mipBias = 0;
-    // 0 means to use every mip.
-    u32 mipCount = 0;
-
-    u32 startSlice = 0;
-    // 0 means to use every slice.
-    u32 sliceCount = 0;
+    // Subresource of the texture, defaults to all mips and all slices (so the entirety of the resource).
+    TextureSubresource subresource;
 
     void ValidateForShaderUse(TextureUsage::Flags validTextureUsageFlags) const;
     void Validate() const;

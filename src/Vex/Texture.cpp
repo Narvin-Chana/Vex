@@ -14,7 +14,7 @@ namespace vex
 namespace TextureUtil
 {
 
-std::tuple<u32, u32, u32> GetMipSize(const TextureDescription& desc, u32 mip)
+std::tuple<u32, u32, u32> GetMipSize(const TextureDesc& desc, u32 mip)
 {
     VEX_ASSERT(mip < desc.mips);
 
@@ -23,14 +23,14 @@ std::tuple<u32, u32, u32> GetMipSize(const TextureDescription& desc, u32 mip)
 
 TextureViewType GetTextureViewType(const TextureBinding& binding)
 {
-    switch (binding.texture.description.type)
+    switch (binding.texture.desc.type)
     {
     case TextureType::Texture2D:
-        return (binding.texture.description.depthOrArraySize > 1) ? TextureViewType::Texture2DArray
-                                                                  : TextureViewType::Texture2D;
+        return (binding.texture.desc.depthOrSliceCount > 1) ? TextureViewType::Texture2DArray
+                                                            : TextureViewType::Texture2D;
     case TextureType::TextureCube:
-        return (binding.texture.description.depthOrArraySize > 1) ? TextureViewType::TextureCubeArray
-                                                                  : TextureViewType::TextureCube;
+        return (binding.texture.desc.depthOrSliceCount > 1) ? TextureViewType::TextureCubeArray
+                                                            : TextureViewType::TextureCube;
     case TextureType::Texture3D:
         return TextureViewType::Texture3D;
     default:
@@ -43,45 +43,44 @@ TextureFormat GetTextureFormat(const TextureBinding& binding)
 {
     if (binding.flags & TextureBindingFlags::SRGB)
     {
-        if (!IsFormatSRGB(binding.texture.description.format) ||
-            !FormatHasSRGBEquivalent(binding.texture.description.format))
+        if (!IsFormatSRGB(binding.texture.desc.format) || !FormatHasSRGBEquivalent(binding.texture.desc.format))
         {
             VEX_LOG(Fatal,
                     "Format {} cannot support SRGB loads. Please use an SRGB-compatible texture format.",
-                    binding.texture.description.format);
+                    binding.texture.desc.format);
         }
 
-        return GetSRGBEquivalentFormat(binding.texture.description.format);
+        return GetSRGBEquivalentFormat(binding.texture.desc.format);
     }
 
-    return binding.texture.description.format;
+    return binding.texture.desc.format;
 }
 
-void ValidateTextureDescription(const TextureDescription& description)
+void ValidateTextureDescription(const TextureDesc& desc)
 {
-    bool isDepthStencilFormat = FormatIsDepthStencilCompatible(description.format);
-    if (isDepthStencilFormat && !(description.usage & TextureUsage::DepthStencil))
+    bool isDepthStencilFormat = FormatIsDepthStencilCompatible(desc.format);
+    if (isDepthStencilFormat && !(desc.usage & TextureUsage::DepthStencil))
     {
         VEX_LOG(Fatal,
                 "Invalid Texture description for texture \"{}\": A texture that has a DepthStencil usage must have a "
                 "format that supports it",
-                description.name);
+                desc.name);
     }
 
-    if (!isDepthStencilFormat && (description.usage & TextureUsage::DepthStencil))
+    if (!isDepthStencilFormat && (desc.usage & TextureUsage::DepthStencil))
     {
         VEX_LOG(Fatal,
                 "Invalid Texture description for texture \"{}\": A texture that has a non-depth-stencil compatible "
                 "format must allow for DepthStencil usage.",
-                description.name);
+                desc.name);
     }
 
-    if ((description.usage & TextureUsage::RenderTarget) && (description.usage & TextureUsage::DepthStencil))
+    if ((desc.usage & TextureUsage::RenderTarget) && (desc.usage & TextureUsage::DepthStencil))
     {
         VEX_LOG(Fatal,
                 "Invalid Texture description for texture \"{}\": A texture cannot have both RenderTarget AND "
                 "DepthStencil usage.",
-                description.name);
+                desc.name);
     }
 }
 
@@ -179,18 +178,17 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
     return 0;
 }
 
-u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc,
-                                       std::span<const TextureUploadRegion> uploadRegions)
+u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, std::span<const TextureUploadRegion> uploadRegions)
 {
     const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
     float totalSize = 0;
 
     for (const TextureUploadRegion& region : uploadRegions)
     {
-        VEX_CHECK(region.slice < desc.GetArraySize(),
+        VEX_CHECK(region.slice < desc.GetSliceCount(),
                   "Cannot upload to a slice index ({}) greater or equal to the the texture's slice count ({})!",
                   region.slice,
-                  desc.GetArraySize());
+                  desc.GetSliceCount());
 
         const u32 width = region.extent.width;
         const u32 height = region.extent.height;
@@ -204,7 +202,7 @@ u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc,
     return static_cast<u64>(std::ceil(totalSize));
 }
 
-u64 ComputePackedUploadDataByteSize(const TextureDescription& desc, std::span<const TextureUploadRegion> uploadRegions)
+u64 ComputePackedUploadDataByteSize(const TextureDesc& desc, std::span<const TextureUploadRegion> uploadRegions)
 {
     // Pixel byte size could be less than 1 (BlockCompressed formats).
     const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
@@ -212,10 +210,10 @@ u64 ComputePackedUploadDataByteSize(const TextureDescription& desc, std::span<co
 
     for (const TextureUploadRegion& region : uploadRegions)
     {
-        VEX_CHECK(region.slice < desc.GetArraySize(),
+        VEX_CHECK(region.slice < desc.GetSliceCount(),
                   "Cannot upload to a slice index ({}) greater or equal to the the texture's slice count ({})!",
                   region.slice,
-                  desc.GetArraySize());
+                  desc.GetSliceCount());
 
         const u32 width = region.extent.width;
         const u32 height = region.extent.height;
@@ -243,68 +241,15 @@ bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags usages,
     return true;
 }
 
-void ValidateTextureSubresource(const TextureDescription& description, const TextureSubresource& subresource)
+void ValidateTextureCopyDesc(const TextureDesc& srcDesc, const TextureDesc& dstDesc, const TextureCopyDesc& copyDesc)
 {
-    VEX_CHECK(
-        subresource.mip < description.mips,
-        "Validation failed: Subresource mip is greater than texture's mip count. Subresource mip: {}, texture copy: {}",
-        subresource.mip,
-        description.mips);
-
-    VEX_CHECK(subresource.startSlice < description.GetArraySize(),
-              "Subresource start slice is greater than texture's array size. Start slice: {}, array size: {}",
-              subresource.startSlice,
-              description.GetArraySize());
-
-    VEX_CHECK(
-        subresource.startSlice + subresource.sliceCount <= description.GetArraySize(),
-        "Subresource accesses more slices than available. Start slice: {}, slice count: {}, texture array size: {}",
-        subresource.startSlice,
-        subresource.sliceCount,
-        description.GetArraySize());
-
-    const auto [mipWidth, mipHeight, mipDepth] = GetMipSize(description, subresource.mip);
-    VEX_CHECK(subresource.offset.width < mipWidth && subresource.offset.height < mipHeight &&
-                  subresource.offset.depth < mipDepth,
-              "Subresource offset is beyond the mip's resource size. Mip size: {}x{}x{}, subresource offset: {}x{}x{}",
-              mipWidth,
-              mipHeight,
-              mipDepth,
-              subresource.offset.width,
-              subresource.offset.height,
-              subresource.offset.depth);
+    copyDesc.srcRegion.Validate(srcDesc);
+    copyDesc.dstRegion.Validate(dstDesc);
 }
 
-void ValidateTextureCopyDescription(const TextureDescription& srcDesc,
-                                    const TextureDescription& dstDesc,
-                                    const TextureCopyDescription& copyDesc)
+void ValidateCompatibleTextureDescriptions(const TextureDesc& srcDesc, const TextureDesc& dstDesc)
 {
-    ValidateTextureSubresource(srcDesc, copyDesc.srcSubresource);
-    ValidateTextureSubresource(dstDesc, copyDesc.dstSubresource);
-    ValidateTextureExtent(srcDesc, copyDesc.srcSubresource, copyDesc.extent);
-    ValidateTextureExtent(dstDesc, copyDesc.dstSubresource, copyDesc.extent);
-}
-void ValidateTextureExtent(const TextureDescription& description,
-                           const TextureSubresource& subresource,
-                           const TextureExtent& extent)
-{
-    const auto [mipWidth, mipHeight, mipDepth] = GetMipSize(description, subresource.mip);
-    const auto offsetExtentWidth = subresource.offset.width + extent.width;
-    const auto offsetExtentHeight = subresource.offset.height + extent.height;
-    const auto offsetExtentDepth = subresource.offset.depth + extent.depth;
-    VEX_CHECK(offsetExtentWidth <= mipWidth && offsetExtentHeight <= mipHeight && offsetExtentDepth <= mipDepth,
-              "Copy description extent goes beyon mip size: Extent + offset: {}x{}x{}, mip size: {}x{}x{}",
-              offsetExtentWidth,
-              offsetExtentHeight,
-              offsetExtentDepth,
-              mipWidth,
-              mipHeight,
-              mipDepth);
-}
-
-void ValidateCompatibleTextureDescriptions(const TextureDescription& srcDesc, const TextureDescription& dstDesc)
-{
-    VEX_CHECK(srcDesc.depthOrArraySize == dstDesc.depthOrArraySize && srcDesc.width == dstDesc.width &&
+    VEX_CHECK(srcDesc.depthOrSliceCount == dstDesc.depthOrSliceCount && srcDesc.width == dstDesc.width &&
                   srcDesc.height == dstDesc.height && srcDesc.mips == dstDesc.mips &&
                   srcDesc.format == dstDesc.format && srcDesc.type == dstDesc.type,
               "Textures must have the same width, height, depth/array size, mips, format and type to be able to do a "
@@ -313,9 +258,9 @@ void ValidateCompatibleTextureDescriptions(const TextureDescription& srcDesc, co
 
 } // namespace TextureUtil
 
-std::vector<TextureUploadRegion> TextureUploadRegion::UploadAllMips(const TextureDescription& textureDescription)
+std::vector<TextureUploadRegion> TextureUploadRegion::UploadAllMips(const TextureDesc& textureDescription)
 {
-    const u32 arraySize = textureDescription.GetArraySize();
+    const u32 arraySize = textureDescription.GetSliceCount();
     std::vector<TextureUploadRegion> regions(textureDescription.mips * arraySize);
 
     u32 width = textureDescription.width;
@@ -345,10 +290,9 @@ std::vector<TextureUploadRegion> TextureUploadRegion::UploadAllMips(const Textur
     return regions;
 }
 
-std::vector<TextureUploadRegion> TextureUploadRegion::UploadFullMip(u16 mipIndex,
-                                                                    const TextureDescription& textureDescription)
+std::vector<TextureUploadRegion> TextureUploadRegion::UploadFullMip(u16 mipIndex, const TextureDesc& textureDescription)
 {
-    const u32 arraySize = textureDescription.GetArraySize();
+    const u32 arraySize = textureDescription.GetSliceCount();
     std::vector<TextureUploadRegion> regions(arraySize);
 
     const u32 width = std::max(1u, textureDescription.width >> mipIndex);
@@ -368,125 +312,264 @@ std::vector<TextureUploadRegion> TextureUploadRegion::UploadFullMip(u16 mipIndex
     return regions;
 }
 
-TextureDescription TextureDescription::CreateTexture2D(std::string name,
-                                                       TextureFormat format,
-                                                       u32 width,
-                                                       u32 height,
-                                                       u16 mips,
-                                                       TextureUsage::Flags usage,
-                                                       TextureClearValue clearValue,
-                                                       ResourceMemoryLocality memoryLocality)
+TextureDesc TextureDesc::CreateTexture2D(std::string name,
+                                         TextureFormat format,
+                                         u32 width,
+                                         u32 height,
+                                         u16 mips,
+                                         TextureUsage::Flags usage,
+                                         TextureClearValue clearValue,
+                                         ResourceMemoryLocality memoryLocality)
 {
-    TextureDescription description{
+    TextureDesc desc{
         .name = std::move(name),
         .type = TextureType::Texture2D,
         .format = format,
         .width = width,
         .height = height,
-        .depthOrArraySize = 1,
+        .depthOrSliceCount = 1,
         .mips = mips,
         .usage = usage,
         .clearValue = std::move(clearValue),
         .memoryLocality = memoryLocality,
     };
-    return description;
+    return desc;
 }
 
-TextureDescription TextureDescription::CreateTexture2DArray(std::string name,
-                                                            TextureFormat format,
-                                                            u32 width,
-                                                            u32 height,
-                                                            u32 arraySize,
-                                                            u16 mips,
-                                                            TextureUsage::Flags usage,
-                                                            TextureClearValue clearValue,
-                                                            ResourceMemoryLocality memoryLocality)
+TextureDesc TextureDesc::CreateTexture2DArray(std::string name,
+                                              TextureFormat format,
+                                              u32 width,
+                                              u32 height,
+                                              u32 arraySize,
+                                              u16 mips,
+                                              TextureUsage::Flags usage,
+                                              TextureClearValue clearValue,
+                                              ResourceMemoryLocality memoryLocality)
 {
-    TextureDescription description{
+    TextureDesc desc{
         .name = std::move(name),
         .type = TextureType::Texture2D,
         .format = format,
         .width = width,
         .height = height,
-        .depthOrArraySize = arraySize,
+        .depthOrSliceCount = arraySize,
         .mips = mips,
         .usage = usage,
         .clearValue = std::move(clearValue),
         .memoryLocality = memoryLocality,
     };
-    return description;
+    return desc;
 }
 
-TextureDescription TextureDescription::CreateTextureCube(std::string name,
-                                                         TextureFormat format,
-                                                         u32 faceSize,
-                                                         u16 mips,
-                                                         TextureUsage::Flags usage,
-                                                         TextureClearValue clearValue,
-                                                         ResourceMemoryLocality memoryLocality)
+TextureDesc TextureDesc::CreateTextureCube(std::string name,
+                                           TextureFormat format,
+                                           u32 faceSize,
+                                           u16 mips,
+                                           TextureUsage::Flags usage,
+                                           TextureClearValue clearValue,
+                                           ResourceMemoryLocality memoryLocality)
 {
-    TextureDescription description{
+    TextureDesc desc{
         .name = std::move(name),
         .type = TextureType::TextureCube,
         .format = format,
         .width = faceSize,
         .height = faceSize,
-        .depthOrArraySize = 1,
+        .depthOrSliceCount = 1,
         .mips = mips,
         .usage = usage,
         .clearValue = std::move(clearValue),
         .memoryLocality = memoryLocality,
     };
-    return description;
+    return desc;
 }
 
-TextureDescription TextureDescription::CreateTextureCubeArray(std::string name,
-                                                              TextureFormat format,
-                                                              u32 faceSize,
-                                                              u32 arraySize,
-                                                              u16 mips,
-                                                              TextureUsage::Flags usage,
-                                                              TextureClearValue clearValue,
-                                                              ResourceMemoryLocality memoryLocality)
+TextureDesc TextureDesc::CreateTextureCubeArray(std::string name,
+                                                TextureFormat format,
+                                                u32 faceSize,
+                                                u32 arraySize,
+                                                u16 mips,
+                                                TextureUsage::Flags usage,
+                                                TextureClearValue clearValue,
+                                                ResourceMemoryLocality memoryLocality)
 {
-    TextureDescription description{
+    TextureDesc desc{
         .name = std::move(name),
         .type = TextureType::TextureCube,
         .format = format,
         .width = faceSize,
         .height = faceSize,
-        .depthOrArraySize = arraySize,
+        .depthOrSliceCount = arraySize,
         .mips = mips,
         .usage = usage,
         .clearValue = std::move(clearValue),
         .memoryLocality = memoryLocality,
     };
-    return description;
+    return desc;
 }
 
-TextureDescription TextureDescription::CreateTexture3D(std::string name,
-                                                       TextureFormat format,
-                                                       u32 width,
-                                                       u32 height,
-                                                       u32 depth,
-                                                       u16 mips,
-                                                       TextureUsage::Flags usage,
-                                                       TextureClearValue clearValue,
-                                                       ResourceMemoryLocality memoryLocality)
+TextureDesc TextureDesc::CreateTexture3D(std::string name,
+                                         TextureFormat format,
+                                         u32 width,
+                                         u32 height,
+                                         u32 depth,
+                                         u16 mips,
+                                         TextureUsage::Flags usage,
+                                         TextureClearValue clearValue,
+                                         ResourceMemoryLocality memoryLocality)
 {
-    TextureDescription description{
+    TextureDesc desc{
         .name = std::move(name),
         .type = TextureType::Texture3D,
         .format = format,
         .width = width,
         .height = height,
-        .depthOrArraySize = depth,
+        .depthOrSliceCount = depth,
         .mips = mips,
         .usage = usage,
         .clearValue = std::move(clearValue),
         .memoryLocality = memoryLocality,
     };
-    return description;
+    return desc;
+}
+
+TextureExtent3D TextureExtent3D::Resolve(const TextureDesc& desc) const
+{
+    return TextureExtent3D{
+        .width = (width != GTextureExtentMax) ? width : desc.width,
+        .height = (height != GTextureExtentMax) ? height : desc.height,
+        .depth = (depth != GTextureExtentMax) ? depth : desc.GetDepth(),
+    };
+}
+
+void TextureSubresource::Validate(const TextureDesc& desc) const
+{
+    VEX_CHECK(startMip < desc.mips,
+              "Invalid subresource for resource \"{}\": The subresource's startMip ({}) cannot be larger than the "
+              "actual texture's mip count ({}).",
+              desc.name,
+              startMip,
+              desc.mips);
+
+    if (mipCount != GTextureAllMips)
+    {
+        VEX_CHECK(
+            startMip + mipCount <= desc.mips,
+            "Invalid subresource for resource \"{}\": TextureSubresource accesses more mips than available, startMip : "
+            "{}, mipCount: "
+            "{}, texture mip count: {}",
+            desc.name,
+            startMip,
+            mipCount,
+            desc.mips);
+    }
+
+    VEX_CHECK(
+        startSlice < desc.GetSliceCount(),
+        "Invalid subresource for resource \"{}\": The subresource's starting slice ({}) cannot be larger than the "
+        "actual texture's array size ({}).",
+        desc.name,
+        startSlice,
+        desc.GetSliceCount());
+
+    if (sliceCount != GTextureAllSlices)
+    {
+        VEX_CHECK(startSlice + sliceCount <= desc.GetSliceCount(),
+                  "Invalid subresource for resource \"{}\": The subresource accesses more slices than available, "
+                  "startSlice: {}, sliceCount: {}, "
+                  " texture slice count {}",
+                  desc.name,
+                  startSlice,
+                  sliceCount,
+                  desc.GetSliceCount());
+    }
+}
+
+TextureSubresource TextureSubresource::Resolve(const TextureDesc& desc) const
+{
+    return TextureSubresource{
+        .startMip = startMip,
+        .mipCount = (mipCount != GTextureAllMips) ? mipCount : desc.mips,
+        .startSlice = startSlice,
+        .sliceCount = (sliceCount != GTextureAllSlices) ? sliceCount : desc.GetSliceCount(),
+    };
+}
+
+void TextureRegion::Validate(const TextureDesc& desc) const
+{
+    subresource.Validate(desc);
+
+    // If any of the extents is not set to GTextureExtentMax, we validate that the underlying subresource only has 1
+    // mip! (this requires a span of regions, since the extent is only valid for one mip).
+    if (extent.width != GTextureExtentMax || extent.height != GTextureExtentMax || extent.depth != GTextureExtentMax)
+    {
+        VEX_CHECK(subresource.mipCount == 1,
+                  "Invalid region for resource \"{}\": If you use a non-default region extent, your region may only "
+                  "describe a single mip.",
+                  desc.name);
+    }
+
+    auto [mipWidth, mipHeight, mipDepth] = TextureUtil::GetMipSize(desc, subresource.startMip);
+    for (u32 mip = subresource.startMip; mip < subresource.mipCount; ++mip)
+    {
+        VEX_CHECK(offset.width < mipWidth && offset.height < mipHeight && offset.depth < mipDepth,
+                  "Invalid region for resource \"{}\": Region offset is beyond the mip's resource size. Mip size: "
+                  "{}x{}x{}, region offset: {}x{}x{}",
+                  desc.name,
+                  mipWidth,
+                  mipHeight,
+                  mipDepth,
+                  offset.width,
+                  offset.height,
+                  offset.depth);
+
+        const u32 offsetExtentWidth = (extent.width != GTextureExtentMax) ? offset.width + extent.width : mipWidth;
+        const u32 offsetExtentHeight = (extent.height != GTextureExtentMax) ? offset.height + extent.height : mipHeight;
+        const u32 offsetExtentDepth = (extent.depth != GTextureExtentMax) ? offset.depth + extent.depth : mipDepth;
+        VEX_CHECK(offsetExtentWidth <= mipWidth && offsetExtentHeight <= mipHeight && offsetExtentDepth <= mipDepth,
+                  "Invalid region for resource \"{}\": Region extent goes beyond mip {} size: Extent + offset: "
+                  "{}x{}x{}, Mip size: {}x{}x{}",
+                  desc.name,
+                  mip,
+                  offsetExtentWidth,
+                  offsetExtentHeight,
+                  offsetExtentDepth,
+                  mipWidth,
+                  mipHeight,
+                  mipDepth);
+
+        mipWidth = std::max(1u, mipWidth / 2u);
+        mipHeight = std::max(1u, mipHeight / 2u);
+        mipDepth = std::max(1u, mipDepth / 2u);
+    }
+}
+
+TextureRegion TextureRegion::Resolve(const TextureDesc& desc) const
+{
+    return TextureRegion{
+        .subresource = subresource.Resolve(desc),
+        .offset = offset,
+        .extent = extent.Resolve(desc),
+    };
+}
+
+TextureRegion TextureRegion::AllMips()
+{
+    // Defaults will specify all mips and all slices.
+    return TextureRegion{};
+}
+
+TextureRegion TextureRegion::SingleMip(u16 mipIndex)
+{
+    return TextureRegion{ .subresource = { .startMip = mipIndex, .mipCount = 1 } };
+}
+
+TextureCopyDesc TextureCopyDesc::Resolve(const TextureDesc& srcDesc, const TextureDesc& dstDesc) const
+{
+    return TextureCopyDesc{
+        .srcRegion = srcRegion.Resolve(srcDesc),
+        .dstRegion = dstRegion.Resolve(dstDesc),
+    };
 }
 
 } // namespace vex

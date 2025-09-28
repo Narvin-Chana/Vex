@@ -13,7 +13,7 @@
 
 namespace vex
 {
-struct BufferDescription;
+struct BufferDesc;
 } // namespace vex
 
 namespace vex::vk
@@ -25,7 +25,7 @@ struct VkDirectBufferMemory;
 class VkBuffer final : public RHIBufferBase
 {
 public:
-    VkBuffer(NonNullPtr<VkGPUContext> ctx, VkAllocator& allocator, const BufferDescription& desc);
+    VkBuffer(NonNullPtr<VkGPUContext> ctx, VkAllocator& allocator, const BufferDesc& desc);
 
     virtual BindlessHandle GetOrCreateBindlessView(BufferBindingUsage usage,
                                                    std::optional<u32> strideByteSize,

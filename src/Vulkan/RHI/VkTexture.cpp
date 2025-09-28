@@ -111,41 +111,39 @@ namespace VkTextureUtil
 //     return *sampler;
 // }
 
-VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescription, ::vk::Image backbufferImage)
+VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDesc&& inDescription, ::vk::Image backbufferImage)
     : ctx(ctx)
     , isBackBuffer(true)
     , image{ backbufferImage }
 {
-    description = std::move(inDescription);
-    SetDebugName(ctx->device, backbufferImage, description.name.c_str());
+    desc = std::move(inDescription);
+    SetDebugName(ctx->device, backbufferImage, desc.name.c_str());
 }
 
-VkTexture::VkTexture(const NonNullPtr<VkGPUContext> ctx,
-                     const TextureDescription& inDescription,
-                     ::vk::UniqueImage rawImage)
+VkTexture::VkTexture(const NonNullPtr<VkGPUContext> ctx, const TextureDesc& inDescription, ::vk::UniqueImage rawImage)
     : ctx(ctx)
     , isBackBuffer(false)
     , image{ std::move(rawImage) }
 {
-    description = inDescription;
-    SetDebugName(ctx->device, *rawImage, description.name.c_str());
+    desc = inDescription;
+    SetDebugName(ctx->device, *rawImage, desc.name.c_str());
 }
 
-VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDescription&& inDescription, ::vk::UniqueImage rawImage)
+VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDesc&& inDescription, ::vk::UniqueImage rawImage)
     : ctx(ctx)
     , isBackBuffer(false)
     , image{ std::move(rawImage) }
 {
-    description = std::move(inDescription);
-    SetDebugName(ctx->device, *rawImage, description.name.c_str());
+    desc = std::move(inDescription);
+    SetDebugName(ctx->device, *rawImage, desc.name.c_str());
 }
 
-VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, RHIAllocator& allocator, TextureDescription&& inDescription)
+VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, RHIAllocator& allocator, TextureDesc&& inDescription)
     : RHITextureBase(allocator)
     , ctx(ctx)
     , isBackBuffer(false)
 {
-    description = std::move(inDescription);
+    desc = std::move(inDescription);
     CreateImage(allocator);
 }
 
@@ -179,10 +177,11 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
         .viewType = TextureUtil::GetTextureViewType(binding),
         .format = TextureUtil::GetTextureFormat(binding),
         .usage = static_cast<TextureUsage::Type>(binding.usage),
-        .mipBias = binding.mipBias,
-        .mipCount = (binding.mipCount == 0) ? VK_REMAINING_MIP_LEVELS : binding.mipCount,
-        .startSlice = binding.startSlice,
-        .sliceCount = (binding.sliceCount == 0) ? VK_REMAINING_ARRAY_LAYERS : binding.sliceCount,
+        .mipBias = binding.subresource.startMip,
+        .mipCount = (binding.subresource.mipCount == 0) ? VK_REMAINING_MIP_LEVELS : binding.subresource.mipCount,
+        .startSlice = binding.subresource.startSlice,
+        .sliceCount =
+            (binding.subresource.sliceCount == 0) ? VK_REMAINING_ARRAY_LAYERS : binding.subresource.sliceCount,
     };
     if (auto it = bindlessCache.find(view); it != bindlessCache.end() && descriptorPool.IsValid(it->second.handle))
     {
@@ -213,7 +212,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
         viewLayout = ::vk::ImageLayout::eGeneral;
         break;
     default:
-        VEX_LOG(Fatal, "Unsupported binding usage for texture {}.", binding.texture.description.name);
+        VEX_LOG(Fatal, "Unsupported binding usage for texture {}.", binding.texture.desc.name);
     }
 
     descriptorPool.GetBindlessSet().UpdateDescriptor(
@@ -232,10 +231,10 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
         .viewType = TextureUtil::GetTextureViewType(binding),
         .format = TextureUtil::GetTextureFormat(binding),
         .usage = usage,
-        .mipBias = binding.mipBias,
-        .mipCount = (binding.mipCount == 0) ? description.mips : binding.mipCount,
-        .startSlice = binding.startSlice,
-        .sliceCount = (binding.sliceCount == 0) ? description.depthOrArraySize : binding.sliceCount,
+        .mipBias = binding.subresource.startMip,
+        .mipCount = binding.subresource.mipCount,
+        .startSlice = binding.subresource.startSlice,
+        .sliceCount = binding.subresource.sliceCount,
     };
     if (auto it = viewCache.find(view); it != viewCache.end())
     {
@@ -292,7 +291,7 @@ std::span<byte> VkTexture::Map()
 {
     if (!allocator)
     {
-        VEX_LOG(Fatal, "Texture {} cannot be mapped to", description.name);
+        VEX_LOG(Fatal, "Texture {} cannot be mapped to", desc.name);
     }
     return allocator->MapAllocation(allocation);
 }
@@ -301,7 +300,7 @@ void VkTexture::Unmap()
 {
     if (!allocator)
     {
-        VEX_LOG(Fatal, "Texture {} cannot be unmapped", description.name);
+        VEX_LOG(Fatal, "Texture {} cannot be unmapped", desc.name);
     }
     allocator->UnmapAllocation(allocation);
 }
@@ -315,46 +314,46 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
     }
 
     ::vk::ImageCreateInfo createInfo{};
-    createInfo.format = TextureFormatToVulkan(description.format);
+    createInfo.format = TextureFormatToVulkan(desc.format);
     createInfo.sharingMode = ::vk::SharingMode::eExclusive;
     createInfo.tiling = ::vk::ImageTiling::eOptimal;
     createInfo.initialLayout = ::vk::ImageLayout::eUndefined;
-    createInfo.mipLevels = description.mips;
+    createInfo.mipLevels = desc.mips;
     createInfo.samples = ::vk::SampleCountFlagBits::e1;
 
-    switch (description.type)
+    switch (desc.type)
     {
     case TextureType::Texture2D:
-        createInfo.extent = ::vk::Extent3D{ description.width, description.height, 1 };
+        createInfo.extent = ::vk::Extent3D{ desc.width, desc.height, 1 };
         createInfo.imageType = ::vk::ImageType::e2D;
-        createInfo.arrayLayers = description.depthOrArraySize;
+        createInfo.arrayLayers = desc.depthOrSliceCount;
         break;
     case TextureType::TextureCube:
-        createInfo.extent = ::vk::Extent3D{ description.width, description.height, 1 };
+        createInfo.extent = ::vk::Extent3D{ desc.width, desc.height, 1 };
         createInfo.imageType = ::vk::ImageType::e2D;
-        createInfo.arrayLayers = description.GetArraySize();
+        createInfo.arrayLayers = desc.GetSliceCount();
         break;
     case TextureType::Texture3D:
-        createInfo.extent = ::vk::Extent3D{ description.width, description.height, description.depthOrArraySize };
+        createInfo.extent = ::vk::Extent3D{ desc.width, desc.height, desc.depthOrSliceCount };
         createInfo.imageType = ::vk::ImageType::e3D;
         createInfo.arrayLayers = 1;
         break;
     default:;
     }
 
-    if (description.usage & TextureUsage::DepthStencil)
+    if (desc.usage & TextureUsage::DepthStencil)
     {
         createInfo.usage |= ::vk::ImageUsageFlagBits::eDepthStencilAttachment;
     }
-    if (description.usage & TextureUsage::ShaderRead)
+    if (desc.usage & TextureUsage::ShaderRead)
     {
         createInfo.usage |= ::vk::ImageUsageFlagBits::eSampled;
     }
-    if (description.usage & TextureUsage::ShaderReadWrite)
+    if (desc.usage & TextureUsage::ShaderReadWrite)
     {
         createInfo.usage |= ::vk::ImageUsageFlagBits::eStorage;
     }
-    if (description.usage & TextureUsage::RenderTarget)
+    if (desc.usage & TextureUsage::RenderTarget)
     {
         createInfo.usage |= ::vk::ImageUsageFlagBits::eColorAttachment;
     }
@@ -366,7 +365,7 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
     ::vk::MemoryRequirements imageMemoryReq = ctx->device.getImageMemoryRequirements(*imageTmp);
 
 #if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
-    auto [memory, newAllocation] = allocator.AllocateResource(description.memoryLocality, imageMemoryReq);
+    auto [memory, newAllocation] = allocator.AllocateResource(desc.memoryLocality, imageMemoryReq);
     allocation = newAllocation;
     VEX_VK_CHECK << ctx->device.bindImageMemory(*imageTmp, memory, allocation.memoryRange.offset);
 #else
@@ -378,10 +377,10 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
                                                                         ::vk::MemoryPropertyFlagBits::eDeviceLocal),
     };
     memory = VEX_VK_CHECK <<= ctx->device.allocateMemoryUnique(allocateInfo);
-    SetDebugName(ctx->device, *memory, std::format("{}_Memory", description.name).c_str());
+    SetDebugName(ctx->device, *memory, std::format("{}_Memory", desc.name).c_str());
     VEX_VK_CHECK << ctx->device.bindImageMemory(*imageTmp, *memory, 0);
 #endif
-    SetDebugName(ctx->device, imageTmp.get(), description.name.c_str());
+    SetDebugName(ctx->device, imageTmp.get(), desc.name.c_str());
 
     image = std::move(imageTmp);
 }

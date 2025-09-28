@@ -75,7 +75,7 @@ void SynchronizationTortureTest(GfxBackend& graphics)
         // Create a bunch of resources
         for (int i = 0; i < 10; ++i)
         {
-            TextureDescription texDesc{};
+            TextureDesc texDesc{};
             texDesc.name = std::format("Test3 Tex_{}", i);
             texDesc.width = 512;
             texDesc.height = 512;
@@ -83,7 +83,7 @@ void SynchronizationTortureTest(GfxBackend& graphics)
             texDesc.usage = TextureUsage::ShaderRead;
             textures.push_back(graphics.CreateTexture(texDesc, ResourceLifetime::Static));
 
-            BufferDescription bufDesc{};
+            BufferDesc bufDesc{};
             bufDesc.name = std::format("Test3 Buf_{}", i);
             bufDesc.byteSize = 1024 * 1024; // 1MB
             bufDesc.usage = BufferUsage::GenericBuffer;
@@ -232,7 +232,7 @@ void SynchronizationTortureTest(GfxBackend& graphics)
     VEX_LOG(Info, "Test 6: Resource Upload Torture");
     {
         // Create upload buffer
-        BufferDescription uploadBufDesc{};
+        BufferDesc uploadBufDesc{};
         uploadBufDesc.name = "Test6 Buf";
         uploadBufDesc.byteSize = 1024 * 1024; // 1MB
         uploadBufDesc.usage = BufferUsage::None;
@@ -240,7 +240,7 @@ void SynchronizationTortureTest(GfxBackend& graphics)
         auto uploadBuffer = graphics.CreateBuffer(uploadBufDesc, ResourceLifetime::Static);
 
         // Create target texture
-        TextureDescription texDesc{};
+        TextureDesc texDesc{};
         texDesc.name = "Test6 Tex";
         texDesc.width = 256;
         texDesc.height = 256;
@@ -291,7 +291,7 @@ void SynchronizationTortureTest(GfxBackend& graphics)
         // Create resources
         for (int i = 0; i < 5; ++i)
         {
-            TextureDescription texDesc{};
+            TextureDesc texDesc{};
             texDesc.name = std::format("Test7 Tex_{}", i);
             texDesc.width = 128;
             texDesc.height = 128;
@@ -299,7 +299,7 @@ void SynchronizationTortureTest(GfxBackend& graphics)
             texDesc.usage = TextureUsage::ShaderRead;
             textures.push_back(graphics.CreateTexture(texDesc, ResourceLifetime::Static));
 
-            BufferDescription bufDesc{};
+            BufferDesc bufDesc{};
             bufDesc.name = std::format("Test7 Buf_{}", i);
             bufDesc.byteSize = 64 * 1024;
             bufDesc.usage = BufferUsage::GenericBuffer;

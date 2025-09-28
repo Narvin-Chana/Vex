@@ -31,12 +31,9 @@ struct DX12TextureView
     // TYPELESS!).
     DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
 
-    u32 mipBias;
-    u32 mipCount;
-    u32 startSlice;
-    u32 sliceCount;
+    TextureSubresource subresource;
 
-    bool operator==(const DX12TextureView&) const = default;
+    constexpr bool operator==(const DX12TextureView&) const = default;
 };
 
 } // namespace vex::dx12
@@ -46,10 +43,7 @@ VEX_MAKE_HASHABLE(vex::dx12::DX12TextureView,
     VEX_HASH_COMBINE(seed, obj.usage);
     VEX_HASH_COMBINE(seed, obj.dimension);
     VEX_HASH_COMBINE(seed, obj.format);
-    VEX_HASH_COMBINE(seed, obj.mipBias);
-    VEX_HASH_COMBINE(seed, obj.mipCount);
-    VEX_HASH_COMBINE(seed, obj.startSlice);
-    VEX_HASH_COMBINE(seed, obj.sliceCount);
+    VEX_HASH_COMBINE(seed, obj.subresource);
 )
 // clang-format on
 
@@ -59,7 +53,7 @@ namespace vex::dx12
 class DX12Texture final : public RHITextureBase
 {
 public:
-    DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, const TextureDescription& description);
+    DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, const TextureDesc& desc);
     // Takes ownership of the passed in texture.
     DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID3D12Resource> rawTex);
 
@@ -75,7 +69,7 @@ public:
         return texture.Get();
     }
 
-    CD3DX12_CPU_DESCRIPTOR_HANDLE GetOrCreateRTVDSVView(DX12TextureView view);
+    CD3DX12_CPU_DESCRIPTOR_HANDLE GetOrCreateRTVDSVView(const DX12TextureView& view);
 
     virtual std::span<byte> Map() override;
     virtual void Unmap() override;

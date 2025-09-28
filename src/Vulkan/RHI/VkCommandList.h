@@ -63,11 +63,11 @@ public:
     using RHICommandListBase::Copy;
     virtual void Copy(RHITexture& src,
                       RHITexture& dst,
-                      std::span<const TextureCopyDescription> regionMappings) override;
-    virtual void Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& regionMappings) override;
+                      std::span<const TextureCopyDesc> regionMappings) override;
+    virtual void Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDesc& regionMappings) override;
     virtual void Copy(RHIBuffer& src,
                       RHITexture& dst,
-                      std::span<const BufferToTextureCopyDescription> regionMappings) override;
+                      std::span<const BufferToTextureCopyDesc> regionMappings) override;
 
     ::vk::CommandBuffer GetNativeCommandList()
     {

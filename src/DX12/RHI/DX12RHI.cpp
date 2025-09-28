@@ -140,9 +140,9 @@ void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
     fences = DX12RHI_Internal::CreateFences(device);
 }
 
-RHISwapChain DX12RHI::CreateSwapChain(const SwapChainDescription& description, const PlatformWindow& platformWindow)
+RHISwapChain DX12RHI::CreateSwapChain(const SwapChainDescription& desc, const PlatformWindow& platformWindow)
 {
-    return DX12SwapChain(device, description, GetNativeQueue(CommandQueueType::Graphics), platformWindow);
+    return DX12SwapChain(device, desc, GetNativeQueue(CommandQueueType::Graphics), platformWindow);
 }
 
 RHICommandPool DX12RHI::CreateCommandPool()
@@ -173,14 +173,14 @@ RHIResourceLayout DX12RHI::CreateResourceLayout(RHIDescriptorPool& descriptorPoo
     return DX12ResourceLayout(device);
 }
 
-RHITexture DX12RHI::CreateTexture(RHIAllocator& allocator, const TextureDescription& description)
+RHITexture DX12RHI::CreateTexture(RHIAllocator& allocator, const TextureDesc& desc)
 {
-    return DX12Texture(device, allocator, description);
+    return DX12Texture(device, allocator, desc);
 }
 
-RHIBuffer DX12RHI::CreateBuffer(RHIAllocator& allocator, const BufferDescription& description)
+RHIBuffer DX12RHI::CreateBuffer(RHIAllocator& allocator, const BufferDesc& desc)
 {
-    return DX12Buffer(device, allocator, description);
+    return DX12Buffer(device, allocator, desc);
 }
 
 RHIDescriptorPool DX12RHI::CreateDescriptorPool()

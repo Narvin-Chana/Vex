@@ -322,9 +322,9 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     GetGPUContext();
 }
 
-RHISwapChain VkRHI::CreateSwapChain(const SwapChainDescription& description, const PlatformWindow& platformWindow)
+RHISwapChain VkRHI::CreateSwapChain(const SwapChainDescription& desc, const PlatformWindow& platformWindow)
 {
-    return { GetGPUContext(), description, platformWindow };
+    return { GetGPUContext(), desc, platformWindow };
 }
 
 RHICommandPool VkRHI::CreateCommandPool()
@@ -352,14 +352,14 @@ RHIResourceLayout VkRHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool)
     return { GetGPUContext(), descriptorPool };
 }
 
-RHITexture VkRHI::CreateTexture(RHIAllocator& allocator, const TextureDescription& description)
+RHITexture VkRHI::CreateTexture(RHIAllocator& allocator, const TextureDesc& desc)
 {
-    return { GetGPUContext(), allocator, TextureDescription(description) };
+    return { GetGPUContext(), allocator, TextureDesc(desc) };
 }
 
-RHIBuffer VkRHI::CreateBuffer(RHIAllocator& allocator, const BufferDescription& description)
+RHIBuffer VkRHI::CreateBuffer(RHIAllocator& allocator, const BufferDesc& desc)
 {
-    return { GetGPUContext(), allocator, description };
+    return { GetGPUContext(), allocator, desc };
 }
 
 RHIDescriptorPool VkRHI::CreateDescriptorPool()

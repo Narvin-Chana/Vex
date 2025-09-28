@@ -54,7 +54,7 @@ static std::vector<RHITextureBarrier> CreateBarriersFromBindings(
     return barriers;
 }
 
-static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDescription& drawDesc,
+static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDesc& drawDesc,
                                                               const RHIDrawResources& rhiDrawRes)
 {
     GraphicsPipelineStateKey key{ .vertexShader = drawDesc.vertexShader,
@@ -67,12 +67,12 @@ static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDescript
 
     for (const RHITextureBinding& rhiBinding : rhiDrawRes.renderTargets)
     {
-        key.renderTargetState.colorFormats.emplace_back(rhiBinding.binding.texture.description.format);
+        key.renderTargetState.colorFormats.emplace_back(rhiBinding.binding.texture.desc.format);
     }
 
     if (rhiDrawRes.depthStencil)
     {
-        key.renderTargetState.depthStencilFormat = rhiDrawRes.depthStencil->binding.texture.description.format;
+        key.renderTargetState.depthStencilFormat = rhiDrawRes.depthStencil->binding.texture.desc.format;
     }
 
     // Ensure each render target has atleast a default color attachment (no blending, write all).
@@ -81,17 +81,17 @@ static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDescript
     return key;
 }
 
-static BufferDescription GetStagingBufferDescription(const std::string& name, u64 byteSize)
+static BufferDesc GetStagingBufferDescription(const std::string& name, u64 byteSize)
 {
-    BufferDescription description;
-    description.byteSize = byteSize;
-    description.name = std::string(name) + "_staging";
-    description.usage = BufferUsage::None;
-    description.memoryLocality = ResourceMemoryLocality::CPUWrite;
-    return description;
+    BufferDesc desc;
+    desc.byteSize = byteSize;
+    desc.name = std::string(name) + "_staging";
+    desc.usage = BufferUsage::None;
+    desc.memoryLocality = ResourceMemoryLocality::CPUWrite;
+    return desc;
 }
 
-static void UploadTextureDataAligned(const TextureDescription& textureDesc,
+static void UploadTextureDataAligned(const TextureDesc& textureDesc,
                                      std::span<const TextureUploadRegion> uploadRegions,
                                      std::span<const byte> packedData,
                                      std::span<byte> stagingBuffer)
@@ -185,7 +185,7 @@ void CommandContext::ClearTexture(const TextureBinding& binding,
                                   std::optional<TextureClearValue> textureClearValue,
                                   std::optional<std::array<float, 4>> clearRect)
 {
-    if (!(binding.texture.description.usage & (TextureUsage::RenderTarget | TextureUsage::DepthStencil)))
+    if (!(binding.texture.desc.usage & (TextureUsage::RenderTarget | TextureUsage::DepthStencil)))
     {
         VEX_LOG(Fatal,
                 "ClearUsage not supported on this texture, it must be either usable as a render target or as a depth "
@@ -201,14 +201,17 @@ void CommandContext::ClearTexture(const TextureBinding& binding,
     RHITexture& texture = backend->GetRHITexture(binding.texture.handle);
     RHITextureBarrier barrier = texture.GetClearTextureBarrier();
     cmdList->Barrier({}, { &barrier, 1 });
-    cmdList->ClearTexture({ binding, NonNullPtr(texture) },
+
+    TextureBinding resolvedBinding = binding;
+    resolvedBinding.subresource = resolvedBinding.subresource.Resolve(texture.GetDesc());
+    cmdList->ClearTexture({ resolvedBinding, NonNullPtr(texture) },
                           // This is a safe cast, textures can only contain one of the two usages (RT/DS).
-                          static_cast<TextureUsage::Type>(binding.texture.description.usage &
+                          static_cast<TextureUsage::Type>(resolvedBinding.texture.desc.usage &
                                                           (TextureUsage::RenderTarget | TextureUsage::DepthStencil)),
-                          textureClearValue.value_or(binding.texture.description.clearValue));
+                          textureClearValue.value_or(resolvedBinding.texture.desc.clearValue));
 }
 
-void CommandContext::Draw(const DrawDescription& drawDesc,
+void CommandContext::Draw(const DrawDesc& drawDesc,
                           const DrawResourceBinding& drawBindings,
                           std::optional<ConstantBinding> constants,
                           u32 vertexCount,
@@ -237,7 +240,7 @@ void CommandContext::Draw(const DrawDescription& drawDesc,
     cmdList->EndRendering();
 }
 
-void CommandContext::DrawIndexed(const DrawDescription& drawDesc,
+void CommandContext::DrawIndexed(const DrawDesc& drawDesc,
                                  const DrawResourceBinding& drawBindings,
                                  std::optional<ConstantBinding> constants,
                                  u32 indexCount,
@@ -326,7 +329,7 @@ void CommandContext::TraceRays(const RayTracingPassDescription& rayTracingPassDe
 
 void CommandContext::GenerateMips(const Texture& texture)
 {
-    VEX_CHECK(texture.description.mips > 1,
+    VEX_CHECK(texture.desc.mips > 1,
               "The texture must have atleast more than 1 mip in order to have the other mips generated.");
 
     if (GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::MipGeneration))
@@ -336,87 +339,14 @@ void CommandContext::GenerateMips(const Texture& texture)
         return;
     }
 
-    std::string entryPoint;
-    switch (texture.description.type)
-    {
-    case TextureType::Texture2D:
-        entryPoint = texture.description.GetArraySize() > 1 ? "MipGenerationTexture2DArray" : "MipGenerationTexture2D";
-        break;
-    case TextureType::TextureCube:
-        entryPoint =
-            texture.description.GetArraySize() > 1 ? "MipGenerationTextureCubeArray" : "MipGenerationTextureCube";
-        break;
-    case TextureType::Texture3D:
-        entryPoint = "MipGenerationTexture3D";
-        break;
-    }
-
-    // We have to perform a manual mip generation if not supported by the graphics API.
-    ShaderKey mipGenerationShaderKey{
-        .path = std::filesystem::current_path() / "MipGeneration.hlsl",
-        .entryPoint = std::move(entryPoint),
-        .type = ShaderType::ComputeShader,
-        .defines = { ShaderDefine{ "TEXTURE_TYPE", std::string(GetFormatHLSLType(texture.description.format)) },
-                     ShaderDefine{ "LINEAR_SAMPLER_SLOT", std::format("s{}", backend->builtInLinearSamplerSlot) } }
-    };
-
-    struct Uniforms
-    {
-        BindlessHandle sourceMipHandle;
-        BindlessHandle destinationMipHandle;
-        std::array<float, 3> texelSize;
-        u32 sourceMipLevel;
-    };
-
-    u32 width = texture.description.width;
-    u32 height = texture.description.height;
-    u32 depth = texture.description.GetDepth();
-
-    for (u16 mip = 1; mip < texture.description.mips; ++mip)
-    {
-        std::array<ResourceBinding, 2> bindings{
-            TextureBinding{
-                .texture = texture,
-                .usage = TextureBindingUsage::ShaderRead,
-                .mipBias = mip - 1u,
-                .mipCount = 1,
-            },
-            TextureBinding{
-                .texture = texture,
-                .usage = TextureBindingUsage::ShaderReadWrite,
-                .mipBias = mip,
-                .mipCount = 1,
-            },
-        };
-        auto handles = GetBindlessHandles(bindings);
-        // TODO: add possibility of barriers per-mip! :(
-        // Barrier();
-
-        Uniforms uniforms{
-            handles[0],
-            handles[1],
-            {
-                1.0f / width,
-                1.0f / height,
-                1.0f / depth,
-            },
-            mip - 1u,
-        };
-
-        std::array<u32, 3> dispatchGroupCount = { (width + 7u) / 8u, (height + 7u) / 8u, (depth + 7u) / 8u };
-        Dispatch(mipGenerationShaderKey, ConstantBinding(uniforms), dispatchGroupCount);
-
-        width = std::max(1u, width / 2);
-        height = std::max(1u, height / 2);
-        depth = std::max(1u, depth / 2);
-    }
+    // VEX_NOT_YET_IMPLEMENTED();
 }
 
 void CommandContext::Copy(const Texture& source, const Texture& destination)
 {
     VEX_CHECK(source.handle != destination.handle, "Cannot copy a texture to itself!");
 
-    TextureUtil::ValidateCompatibleTextureDescriptions(source.description, destination.description);
+    TextureUtil::ValidateCompatibleTextureDescriptions(source.desc, destination.desc);
 
     RHITexture& sourceRHI = backend->GetRHITexture(source.handle);
     RHITexture& destinationRHI = backend->GetRHITexture(destination.handle);
@@ -432,22 +362,20 @@ void CommandContext::Copy(const Texture& source, const Texture& destination)
     cmdList->Copy(sourceRHI, destinationRHI);
 }
 
-void CommandContext::Copy(const Texture& source,
-                          const Texture& destination,
-                          const TextureCopyDescription& regionMapping)
+void CommandContext::Copy(const Texture& source, const Texture& destination, const TextureCopyDesc& regionMapping)
 {
     Copy(source, destination, { &regionMapping, 1 });
 }
 
 void CommandContext::Copy(const Texture& source,
                           const Texture& destination,
-                          std::span<const TextureCopyDescription> regionMappings)
+                          std::span<const TextureCopyDesc> regionMappings)
 {
     VEX_CHECK(source.handle != destination.handle, "Cannot copy a texture to itself!");
 
     for (auto& mapping : regionMappings)
     {
-        TextureUtil::ValidateTextureCopyDescription(source.description, destination.description, mapping);
+        TextureUtil::ValidateTextureCopyDesc(source.desc, destination.desc, mapping);
     }
 
     RHITexture& sourceRHI = backend->GetRHITexture(source.handle);
@@ -468,7 +396,7 @@ void CommandContext::Copy(const Buffer& source, const Buffer& destination)
 {
     VEX_CHECK(source.handle != destination.handle, "Cannot copy a buffer to itself!");
 
-    BufferUtil::ValidateSimpleBufferCopy(source.description, destination.description);
+    BufferUtil::ValidateSimpleBufferCopy(source.desc, destination.desc);
 
     RHIBuffer& sourceRHI = backend->GetRHIBuffer(source.handle);
     RHIBuffer& destinationRHI = backend->GetRHIBuffer(destination.handle);
@@ -478,11 +406,11 @@ void CommandContext::Copy(const Buffer& source, const Buffer& destination)
     cmdList->Copy(sourceRHI, destinationRHI);
 }
 
-void CommandContext::Copy(const Buffer& source, const Buffer& destination, const BufferCopyDescription& regionMappings)
+void CommandContext::Copy(const Buffer& source, const Buffer& destination, const BufferCopyDesc& regionMappings)
 {
     VEX_CHECK(source.handle != destination.handle, "Cannot copy a buffer to itself!");
 
-    BufferUtil::ValidateBufferCopyDescription(source.description, destination.description, regionMappings);
+    BufferUtil::ValidateBufferCopyDesc(source.desc, destination.desc, regionMappings);
 
     RHIBuffer& sourceRHI = backend->GetRHIBuffer(source.handle);
     RHIBuffer& destinationRHI = backend->GetRHIBuffer(destination.handle);
@@ -506,20 +434,18 @@ void CommandContext::Copy(const Buffer& source, const Texture& destination)
     cmdList->Copy(sourceRHI, destinationRHI);
 }
 
-void CommandContext::Copy(const Buffer& source,
-                          const Texture& destination,
-                          const BufferToTextureCopyDescription& copyDesc)
+void CommandContext::Copy(const Buffer& source, const Texture& destination, const BufferToTextureCopyDesc& copyDesc)
 {
     Copy(source, destination, { &copyDesc, 1 });
 }
 
 void CommandContext::Copy(const Buffer& source,
                           const Texture& destination,
-                          std::span<const BufferToTextureCopyDescription> copyDescriptions)
+                          std::span<const BufferToTextureCopyDesc> copyDescriptions)
 {
     for (auto& copyDesc : copyDescriptions)
     {
-        TextureCopyUtil::ValidateBufferToTextureCopyDescription(source.description, destination.description, copyDesc);
+        TextureCopyUtil::ValidateBufferToTextureCopyDesc(source.desc, destination.desc, copyDesc);
     }
 
     RHIBuffer& sourceRHI = backend->GetRHIBuffer(source.handle);
@@ -530,41 +456,40 @@ void CommandContext::Copy(const Buffer& source,
                                           RHIBarrierAccess::CopyDest,
                                           RHITextureLayout::CopyDest };
     cmdList->Barrier({ &sourceBarrier, 1 }, { &destinationBarrier, 1 });
-
     cmdList->Copy(sourceRHI, destinationRHI, copyDescriptions);
 }
 
 void CommandContext::EnqueueDataUpload(const Buffer& buffer,
                                        std::span<const byte> data,
-                                       const std::optional<BufferSubresource>& subresource)
+                                       const std::optional<BufferRegion>& range)
 {
-    bool isFullUpload = !subresource.has_value();
+    bool isFullUpload = !range.has_value();
     if (isFullUpload)
     {
         // Error out if data does not have the same byte size as the buffer.
         // We prefer an explicit subresource for partial uploads to better diagnose mistakes.
-        VEX_CHECK(data.size_bytes() == buffer.description.byteSize,
+        VEX_CHECK(data.size_bytes() == buffer.desc.byteSize,
                   "Passing in no subresource indicates that a total upload is desired. This is not possible since the "
                   "data passed in has a different size to the actual buffer's byteSize.");
     }
 
     // Unspecified subresource means we upload the entirety of the data array at offset 0.
-    BufferSubresource actualSubresource{
-        .offset = !isFullUpload ? subresource->offset : 0,
-        .size = !isFullUpload ? subresource->size : data.size_bytes(),
+    BufferRegion actualSubresource{
+        .offset = !isFullUpload ? range->offset : 0,
+        .size = !isFullUpload ? range->size : data.size_bytes(),
     };
 
-    if (buffer.description.memoryLocality == ResourceMemoryLocality::CPUWrite)
+    if (buffer.desc.memoryLocality == ResourceMemoryLocality::CPUWrite)
     {
         RHIBuffer& rhiDestBuffer = backend->GetRHIBuffer(buffer.handle);
         ResourceMappedMemory(rhiDestBuffer).SetData(data, actualSubresource.offset);
         return;
     }
 
-    BufferUtil::ValidateBufferSubresource(buffer.description, actualSubresource);
+    BufferUtil::ValidateBufferRegion(buffer.desc, actualSubresource);
 
-    const BufferDescription stagingBufferDesc =
-        CommandContext_Internal::GetStagingBufferDescription(buffer.description.name, actualSubresource.size);
+    const BufferDesc stagingBufferDesc =
+        CommandContext_Internal::GetStagingBufferDescription(buffer.desc.name, actualSubresource.size);
 
     // Buffer creation invalidates pointers to existing RHI buffers.
     Buffer stagingBuffer = backend->CreateBuffer(stagingBufferDesc, ResourceLifetime::Static);
@@ -582,7 +507,7 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer,
     // Schedule a copy from the staging buffer to the destination texture.
     cmdList->Copy(rhiStagingBuffer,
                   rhiDestBuffer,
-                  BufferCopyDescription{
+                  BufferCopyDesc{
                       .srcOffset = 0,
                       .dstOffset = actualSubresource.offset,
                       .size = actualSubresource.size,
@@ -597,7 +522,7 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
                                        std::span<const TextureUploadRegion> uploadRegions)
 {
     // Validate that the upload regions match the raw data passed in.
-    u64 packedDataByteSize = TextureUtil::ComputePackedUploadDataByteSize(texture.description, uploadRegions);
+    u64 packedDataByteSize = TextureUtil::ComputePackedUploadDataByteSize(texture.desc, uploadRegions);
     VEX_CHECK(data.size_bytes() == packedDataByteSize,
               "Cannot enqueue a data upload: The passed in packed data's size ({}) must be equal to the total texture "
               "size computed from your specified upload regions ({}).",
@@ -605,19 +530,18 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
               packedDataByteSize);
 
     // Create aligned staging buffer.
-    u64 stagingBufferByteSize = TextureUtil::ComputeAlignedUploadBufferByteSize(texture.description, uploadRegions);
+    u64 stagingBufferByteSize = TextureUtil::ComputeAlignedUploadBufferByteSize(texture.desc, uploadRegions);
 
-    const BufferDescription stagingBufferDesc =
-        CommandContext_Internal::GetStagingBufferDescription(texture.description.name, stagingBufferByteSize);
-
-    Buffer stagingBuffer = backend->CreateBuffer(stagingBufferDesc, ResourceLifetime::Static);
+    Buffer stagingBuffer = backend->CreateBuffer(
+        CommandContext_Internal::GetStagingBufferDescription(texture.desc.name, stagingBufferByteSize),
+        ResourceLifetime::Static);
     RHIBuffer& rhiStagingBuffer = backend->GetRHIBuffer(stagingBuffer.handle);
     RHITexture& rhiDestTexture = backend->GetRHITexture(texture.handle);
 
     // The staging buffer has to respect the alignment that which Vex uses for uploads.
     // We suppose however that user data is tightly packed.
     std::span<byte> stagingBufferData = rhiStagingBuffer.Map();
-    CommandContext_Internal::UploadTextureDataAligned(texture.description, uploadRegions, data, stagingBufferData);
+    CommandContext_Internal::UploadTextureDataAligned(texture.desc, uploadRegions, data, stagingBufferData);
     rhiStagingBuffer.Unmap();
 
     RHIBufferBarrier stagingBufferBarrier{ rhiStagingBuffer, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource };
@@ -636,17 +560,17 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
     else
     {
         // Otherwise we have to translate the TextureUploadRegions to their equivalent BufferToTextureCopyDescriptions.
-        std::vector<BufferToTextureCopyDescription> copyDescriptions;
+        std::vector<BufferToTextureCopyDesc> copyDescriptions;
         copyDescriptions.reserve(uploadRegions.size());
 
-        const float bytesPerPixel = TextureUtil::GetPixelByteSizeFromFormat(texture.description.format);
+        const float bytesPerPixel = TextureUtil::GetPixelByteSizeFromFormat(texture.desc.format);
         u64 stagingBufferOffset = 0;
 
         for (const TextureUploadRegion& region : uploadRegions)
         {
-            const u32 mipWidth = std::max(1u, texture.description.width >> region.mip);
-            const u32 mipHeight = std::max(1u, texture.description.height >> region.mip);
-            const u32 mipDepth = std::max(1u, texture.description.GetDepth() >> region.mip);
+            const u32 mipWidth = std::max(1u, texture.desc.width >> region.mip);
+            const u32 mipHeight = std::max(1u, texture.desc.height >> region.mip);
+            const u32 mipDepth = std::max(1u, texture.desc.GetDepth() >> region.mip);
 
             // Use region extent if specified, otherwise use full mip dimensions.
             const u32 regionWidth = (region.extent.width == 0) ? mipWidth : region.extent.width;
@@ -657,18 +581,24 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
             const u32 alignedRowPitch = AlignUp<u32>(regionWidth * bytesPerPixel, TextureUtil::RowPitchAlignment);
             const u64 regionStagingSize = static_cast<u64>(alignedRowPitch) * regionHeight * regionDepth;
 
-            BufferToTextureCopyDescription copyDesc{
-                .srcSubresource = { .offset = stagingBufferOffset, .size = regionStagingSize, },
-                .dstSubresource = { .mip = region.mip,
-                                    .startSlice = region.slice,
-                                    .sliceCount = 1,
-                                    .offset = region.offset, },
-                .extent = { .width = regionWidth, .height = regionHeight, .depth = regionDepth, }
+            BufferToTextureCopyDesc copyDesc{
+                .srcRegion = BufferRegion{ .offset = stagingBufferOffset, .size = regionStagingSize },
+                .dstRegion =
+                    TextureRegion{
+                        .subresource =
+                            TextureSubresource{
+                                .startMip = region.mip,
+                                .mipCount = 1,
+                                .startSlice = region.slice,
+                                .sliceCount = 1,
+                            },
+                        .offset = region.offset,
+                        .extent = TextureExtent3D{ .width = regionWidth, .height = regionHeight, .depth = regionDepth },
+                    }
             };
-
             // Validate the translated description.
-            TextureCopyUtil::ValidateBufferToTextureCopyDescription(stagingBufferDesc, texture.description, copyDesc);
-
+            TextureCopyUtil::ValidateBufferToTextureCopyDesc(stagingBuffer.desc, texture.desc, copyDesc);
+            copyDesc = copyDesc.Resolve(stagingBuffer.desc, texture.desc);
             copyDescriptions.push_back(std::move(copyDesc));
 
             // Move to next aligned position in staging buffer.
@@ -772,14 +702,14 @@ RHICommandList& CommandContext::GetRHICommandList()
     return *cmdList;
 }
 
-std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDescription& drawDesc,
+std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& drawDesc,
                                                                 const DrawResourceBinding& drawBindings,
                                                                 std::optional<ConstantBinding> constants)
 {
-    VEX_CHECK(!drawBindings.depthStencil ||
-                  (drawBindings.depthStencil &&
-                   FormatIsDepthStencilCompatible(drawBindings.depthStencil->texture.description.format)),
-              "The provided depth stencil should have a depth stencil format");
+    VEX_CHECK(
+        !drawBindings.depthStencil || (drawBindings.depthStencil &&
+                                       FormatIsDepthStencilCompatible(drawBindings.depthStencil->texture.desc.format)),
+        "The provided depth stencil should have a depth stencil format");
     VEX_CHECK(drawDesc.vertexShader.type == ShaderType::VertexShader,
               "Invalid type passed to Draw call for vertex shader: {}",
               drawDesc.vertexShader.type);

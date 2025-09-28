@@ -126,7 +126,7 @@ RHIDrawResources ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(GfxBac
 
         // TODO: This deduces depth and/or stencil from the texture's format, ideally we'd pass this info along in
         // the binding somehow.
-        bool supportsStencil = DoesFormatSupportStencil(texture.GetDescription().format);
+        bool supportsStencil = DoesFormatSupportStencil(texture.GetDesc().format);
 
         barriers.push_back(RHITextureBarrier{
             texture,

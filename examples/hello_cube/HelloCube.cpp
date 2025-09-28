@@ -23,7 +23,7 @@ HelloCubeApplication::HelloCubeApplication()
     vex::PlatformWindowHandle platformWindow{ .window = glfwGetX11Window(window), .display = glfwGetX11Display() };
 #endif
 
-    graphics = CreateGraphicsBackend(vex::BackendDescription{
+    graphics = CreateGraphicsBackend(vex::GraphicsCreateDesc{
         .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
         .swapChainFormat = vex::TextureFormat::RGBA8_UNORM,
         .enableGPUDebugLayer = !VEX_SHIPPING,
@@ -119,7 +119,7 @@ HelloCubeApplication::HelloCubeApplication()
                                       .format = vex::TextureFormat::RGBA8_UNORM,
                                       .width = static_cast<vex::u32>(width),
                                       .height = static_cast<vex::u32>(height),
-                                      .depthOrArraySize = 1,
+                                      .depthOrSliceCount = 1,
                                       .mips = 0, // 0 means max mips (down to 1x1)
                                       .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
                                     vex::ResourceLifetime::Static);
@@ -128,7 +128,7 @@ HelloCubeApplication::HelloCubeApplication()
         ctx.EnqueueDataUpload(
             uvGuideTexture,
             std::as_bytes(std::span(fullImageData.begin(), fullImageData.begin() + width * height * channels)),
-            vex::TextureUploadRegion::UploadFullMip(0, uvGuideTexture.description));
+            vex::TextureUploadRegion::UploadFullMip(0, uvGuideTexture.desc));
 
         // Fill in all mips using the first one.
         ctx.GenerateMips(uvGuideTexture);
@@ -211,7 +211,7 @@ void HelloCubeApplication::Run()
             };
 
             // Setup our draw call's description...
-            vex::DrawDescription hlslDrawDesc{
+            vex::DrawDesc hlslDrawDesc{
                 .vertexShader = { .path = ExamplesDir / "hello_cube" /
                                           "HelloCubeShader.hlsl",
                                   .entryPoint = "VSMain",
@@ -224,7 +224,7 @@ void HelloCubeApplication::Run()
                 .depthStencilState = depthStencilState,
             };
 #if VEX_SLANG
-            vex::DrawDescription slangDrawDesc{
+            vex::DrawDesc slangDrawDesc{
                 .vertexShader = { .path = ExamplesDir / "hello_cube" /
                                           "HelloCubeShader.slang",
                                   .entryPoint = "VSMain",

@@ -15,7 +15,7 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics, CommandQueueType type)
         u32 cubemapFaceSize = 16;
         u16 cubemapMips = 2;
         Texture cubemapTexture = graphics->CreateTexture(
-            TextureDescription::CreateTextureCube("Cubemap", TextureFormat::RGBA8_UNORM, cubemapFaceSize, cubemapMips),
+            TextureDesc::CreateTextureCube("Cubemap", TextureFormat::RGBA8_UNORM, cubemapFaceSize, cubemapMips),
             ResourceLifetime::Static);
 
         std::vector<u8> cubemapData;
@@ -50,7 +50,7 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics, CommandQueueType type)
 
         ctx.EnqueueDataUpload(cubemapTexture,
                               std::as_bytes(std::span(cubemapData)),
-                              TextureUploadRegion::UploadAllMips(cubemapTexture.description));
+                              TextureUploadRegion::UploadAllMips(cubemapTexture.desc));
 
         ctx.Submit();
         graphics->DestroyTexture(cubemapTexture);
@@ -62,7 +62,7 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics, CommandQueueType type)
 
         u32 width = 16, height = 12, arraySize = 2;
         u16 mips = 3;
-        Texture texture = graphics->CreateTexture(TextureDescription::CreateTexture2DArray("2dTextureArray",
+        Texture texture = graphics->CreateTexture(TextureDesc::CreateTexture2DArray("2dTextureArray",
                                                                                            TextureFormat::RGBA8_UNORM,
                                                                                            width,
                                                                                            height,
@@ -118,7 +118,7 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics, CommandQueueType type)
 
         ctx.EnqueueDataUpload(texture,
                               std::as_bytes(std::span(data)),
-                              TextureUploadRegion::UploadAllMips(texture.description));
+                              TextureUploadRegion::UploadAllMips(texture.desc));
         ctx.Submit();
         graphics->DestroyTexture(texture);
     }
@@ -131,7 +131,7 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics, CommandQueueType type)
         u16 cubemapMips = 2;
         u16 cubemapArraySize = 3;
         Texture cubemapTexture =
-            graphics->CreateTexture(TextureDescription::CreateTextureCubeArray("CubemapArray",
+            graphics->CreateTexture(TextureDesc::CreateTextureCubeArray("CubemapArray",
                                                                                TextureFormat::RGBA8_UNORM,
                                                                                cubemapFaceSize,
                                                                                cubemapArraySize,
@@ -177,7 +177,7 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics, CommandQueueType type)
 
         ctx.EnqueueDataUpload(cubemapTexture,
                               std::as_bytes(std::span(cubemapData)),
-                              TextureUploadRegion::UploadAllMips(cubemapTexture.description));
+                              TextureUploadRegion::UploadAllMips(cubemapTexture.desc));
 
         ctx.Submit();
         graphics->DestroyTexture(cubemapTexture);
@@ -191,7 +191,7 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics, CommandQueueType type)
         u32 width = 121, height = 165, depth = 64;
         u16 mips = 3;
         Texture texture = graphics->CreateTexture(
-            TextureDescription::CreateTexture3D("3DTexture", TextureFormat::RGBA8_UNORM, width, height, depth, mips),
+            TextureDesc::CreateTexture3D("3DTexture", TextureFormat::RGBA8_UNORM, width, height, depth, mips),
             ResourceLifetime::Static);
 
         std::vector<u8> data;
@@ -244,7 +244,7 @@ void TestTextureUpload(NonNullPtr<GfxBackend> graphics, CommandQueueType type)
 
         ctx.EnqueueDataUpload(texture,
                               std::as_bytes(std::span(data)),
-                              TextureUploadRegion::UploadAllMips(texture.description));
+                              TextureUploadRegion::UploadAllMips(texture.desc));
         ctx.Submit();
         graphics->DestroyTexture(texture);
     }

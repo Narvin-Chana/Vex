@@ -26,7 +26,7 @@ struct ResourceBinding;
 struct Texture;
 struct Buffer;
 struct TextureClearValue;
-struct DrawDescription;
+struct DrawDesc;
 struct RayTracingPassDescription;
 
 class CommandContext
@@ -54,7 +54,7 @@ public:
                       std::optional<TextureClearValue> textureClearValue = std::nullopt,
                       std::optional<std::array<float, 4>> clearRect = std::nullopt);
 
-    void Draw(const DrawDescription& drawDesc,
+    void Draw(const DrawDesc& drawDesc,
               const DrawResourceBinding& drawBindings,
               std::optional<ConstantBinding> constants,
               u32 vertexCount,
@@ -62,7 +62,7 @@ public:
               u32 vertexOffset = 0,
               u32 instanceOffset = 0);
 
-    void DrawIndexed(const DrawDescription& drawDesc,
+    void DrawIndexed(const DrawDesc& drawDesc,
                      const DrawResourceBinding& drawBindings,
                      std::optional<ConstantBinding> constants,
                      u32 indexCount,
@@ -89,25 +89,25 @@ public:
     // Copies the entirety of the source texture (all mips and array levels) to the destination texture.
     void Copy(const Texture& source, const Texture& destination);
     // Copies a region of the source texture to the destination texture.
-    void Copy(const Texture& source, const Texture& destination, const TextureCopyDescription& textureCopyDescription);
+    void Copy(const Texture& source, const Texture& destination, const TextureCopyDesc& textureCopyDescription);
     // Copies multiple regions of the source texture to the destination texture.
     void Copy(const Texture& source,
               const Texture& destination,
-              std::span<const TextureCopyDescription> textureCopyDescriptions);
+              std::span<const TextureCopyDesc> textureCopyDescriptions);
     // Copies the entirety of the source buffer to the destination buffer.
     void Copy(const Buffer& source, const Buffer& destination);
     // Copies the specified region from the source buffer to the destination buffer.
-    void Copy(const Buffer& source, const Buffer& destination, const BufferCopyDescription& bufferCopyDescription);
+    void Copy(const Buffer& source, const Buffer& destination, const BufferCopyDesc& bufferCopyDescription);
     // Copies the contents of the buffer to the specified texture.
     void Copy(const Buffer& source, const Texture& destination);
     // Copies the contents of the buffer to a specified region in the texture.
     void Copy(const Buffer& source,
               const Texture& destination,
-              const BufferToTextureCopyDescription& bufferToTextureCopyDescription);
+              const BufferToTextureCopyDesc& bufferToTextureCopyDescription);
     // Copies the contents of the buffer to multiple specified regions in the texture.
     void Copy(const Buffer& source,
               const Texture& destination,
-              std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions);
+              std::span<const BufferToTextureCopyDesc> bufferToTextureCopyDescriptions);
 
     // ---------------------------------------------------------------------------------------------------------------
     // Buffer Data Operations
@@ -117,7 +117,7 @@ public:
     // necessary. Will upload data to the entirety of the destination buffer if a subresource is not specified.
     void EnqueueDataUpload(const Buffer& buffer,
                            std::span<const byte> data,
-                           const std::optional<BufferSubresource>& subresource = std::nullopt);
+                           const std::optional<BufferRegion>& range = std::nullopt);
     // Enqueues for the entirety of a buffer to be readback from the GPU to the specified output.
     // Will automatically use a staging buffer if necessary.
     void EnqueueDataReadback(const Buffer& buffer, std::span<byte> output);
@@ -177,7 +177,7 @@ public:
     RHICommandList& GetRHICommandList();
 
 private:
-    std::optional<RHIDrawResources> PrepareDrawCall(const DrawDescription& drawDesc,
+    std::optional<RHIDrawResources> PrepareDrawCall(const DrawDesc& drawDesc,
                                                     const DrawResourceBinding& drawBindings,
                                                     std::optional<ConstantBinding> constants);
     void SetVertexBuffers(u32 vertexBuffersFirstSlot, std::span<BufferBinding> vertexBuffers);

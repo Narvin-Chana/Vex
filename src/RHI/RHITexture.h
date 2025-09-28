@@ -32,9 +32,9 @@ public:
 
     virtual RHITextureBarrier GetClearTextureBarrier() = 0;
 
-    const TextureDescription& GetDescription() const
+    const TextureDesc& GetDesc() const
     {
-        return description;
+        return desc;
     }
 
     const Allocation& GetAllocation() const noexcept
@@ -70,7 +70,7 @@ public:
     }
 
 protected:
-    TextureDescription description;
+    TextureDesc desc;
     RHIBarrierSync lastSync = RHIBarrierSync::None;
     RHIBarrierAccess lastAccess = RHIBarrierAccess::NoAccess;
     RHITextureLayout lastLayout = RHITextureLayout::Undefined;

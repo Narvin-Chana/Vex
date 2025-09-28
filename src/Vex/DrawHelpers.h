@@ -10,7 +10,7 @@
 namespace vex
 {
 
-struct DrawDescription
+struct DrawDesc
 {
     ShaderKey vertexShader;
     ShaderKey pixelShader;

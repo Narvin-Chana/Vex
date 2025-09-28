@@ -8,8 +8,6 @@ namespace vex
 
 RHIBufferBarrier::RHIBufferBarrier(NonNullPtr<RHIBuffer> buffer, RHIBarrierSync dstSync, RHIBarrierAccess dstAccess)
     : buffer(buffer)
-    , srcSync(buffer->GetLastSync())
-    , srcAccess(buffer->GetLastAccess())
     , dstSync(dstSync)
     , dstAccess(dstAccess)
 {
@@ -18,11 +16,10 @@ RHIBufferBarrier::RHIBufferBarrier(NonNullPtr<RHIBuffer> buffer, RHIBarrierSync 
 RHITextureBarrier::RHITextureBarrier(NonNullPtr<RHITexture> texture,
                                      RHIBarrierSync dstSync,
                                      RHIBarrierAccess dstAccess,
-                                     RHITextureLayout dstLayout)
+                                     RHITextureLayout dstLayout,
+                                     TextureSubresource subresource)
     : texture(texture)
-    , srcSync(texture->GetLastSync())
-    , srcAccess(texture->GetLastAccess())
-    , srcLayout(texture->GetLastLayout())
+    , subresource(subresource)
     , dstSync(dstSync)
     , dstAccess(dstAccess)
     , dstLayout(dstLayout)
