@@ -141,9 +141,9 @@ private:
     // presents/backbuffers.
     u8 currentFrameIndex = 0;
 
-    RHI rhi;
-
     GraphicsCreateDesc desc;
+
+    RHI rhi;
 
     ResourceCleanup resourceCleanup;
 

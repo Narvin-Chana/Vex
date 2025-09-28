@@ -22,26 +22,26 @@ namespace vex
 {
 
 GfxBackend::GfxBackend(const GraphicsCreateDesc& desc)
-    : rhi(RHI(desc.platformWindow.windowHandle, desc.enableGPUDebugLayer, desc.enableGPUBasedValidation))
-    , desc(desc)
+    : desc(desc)
+    , rhi(desc.platformWindow.windowHandle, desc.enableGPUDebugLayer, desc.enableGPUBasedValidation)
     , resourceCleanup(rhi)
     , textureRegistry(DefaultRegistrySize)
     , bufferRegistry(DefaultRegistrySize)
     , presentTextures(std::to_underlying(desc.frameBuffering))
     , presentTokens(std::to_underlying(desc.frameBuffering))
 {
-    VEX_LOG(Info, "Creating Graphics Backend with API Support:\n\tDX12: {} Vulkan: {}", VEX_DX12, VEX_VULKAN);
+    VEX_LOG(Info, "Creating Vex Graphics Backend with API Support:\n\tDX12: {} Vulkan: {}", VEX_DX12, VEX_VULKAN);
 
     std::string vexTargetName;
-    if (VEX_DEBUG)
+    if constexpr (VEX_DEBUG)
     {
         vexTargetName = "Debug (no optimizations with debug symbols)";
     }
-    else if (VEX_DEVELOPMENT)
+    else if constexpr (VEX_DEVELOPMENT)
     {
         vexTargetName = "Development (full optimizations with debug symbols)";
     }
-    else if (VEX_SHIPPING)
+    else if constexpr (VEX_SHIPPING)
     {
         vexTargetName = "Shipping (full optimizations with no debug symbols)";
     }
