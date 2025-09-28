@@ -27,12 +27,4 @@ void ValidateBufferToTextureCopyDesc(const BufferDesc& srcDesc,
 }
 } // namespace TextureCopyUtil
 
-BufferToTextureCopyDesc BufferToTextureCopyDesc::Resolve(const BufferDesc& srcDesc, const TextureDesc& dstDesc) const
-{
-    return BufferToTextureCopyDesc{
-        .srcRegion = srcRegion.Resolve(srcDesc),
-        .dstRegion = dstRegion.Resolve(dstDesc),
-    };
-}
-
 } // namespace vex

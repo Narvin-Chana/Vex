@@ -202,13 +202,11 @@ void CommandContext::ClearTexture(const TextureBinding& binding,
     RHITextureBarrier barrier = texture.GetClearTextureBarrier();
     cmdList->Barrier({}, { &barrier, 1 });
 
-    TextureBinding resolvedBinding = binding;
-    resolvedBinding.subresource = resolvedBinding.subresource.Resolve(texture.GetDesc());
-    cmdList->ClearTexture({ resolvedBinding, NonNullPtr(texture) },
+    cmdList->ClearTexture({ binding, NonNullPtr(texture) },
                           // This is a safe cast, textures can only contain one of the two usages (RT/DS).
-                          static_cast<TextureUsage::Type>(resolvedBinding.texture.desc.usage &
+                          static_cast<TextureUsage::Type>(binding.texture.desc.usage &
                                                           (TextureUsage::RenderTarget | TextureUsage::DepthStencil)),
-                          textureClearValue.value_or(resolvedBinding.texture.desc.clearValue));
+                          textureClearValue.value_or(binding.texture.desc.clearValue));
 }
 
 void CommandContext::Draw(const DrawDesc& drawDesc,
@@ -598,7 +596,6 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
             };
             // Validate the translated description.
             TextureCopyUtil::ValidateBufferToTextureCopyDesc(stagingBuffer.desc, texture.desc, copyDesc);
-            copyDesc = copyDesc.Resolve(stagingBuffer.desc, texture.desc);
             copyDescriptions.push_back(std::move(copyDesc));
 
             // Move to next aligned position in staging buffer.

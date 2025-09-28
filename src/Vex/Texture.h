@@ -167,7 +167,10 @@ struct TextureExtent3D
     u32 height = GTextureExtentMax;
     u32 depth = GTextureExtentMax;
 
-    TextureExtent3D Resolve(const TextureDesc& desc) const;
+    u32 GetWidth(const TextureDesc& desc) const;
+    u32 GetHeight(const TextureDesc& desc) const;
+    u32 GetDepth(const TextureDesc& desc) const;
+
     constexpr bool operator==(const TextureExtent3D&) const = default;
 };
 
@@ -190,10 +193,11 @@ struct TextureSubresource
     u32 startSlice = 0;
     u32 sliceCount = GTextureAllSlices;
 
+    u16 GetMipCount(const TextureDesc& desc) const;
+    u32 GetSliceCount(const TextureDesc& desc) const;
+
     // Validates the subresource for a specific texture.
     void Validate(const TextureDesc& desc) const;
-    // Inserts actual mip-count / slice-counts instead of the placeholder values.
-    TextureSubresource Resolve(const TextureDesc& desc) const;
 
     constexpr bool operator==(const TextureSubresource&) const = default;
 };
@@ -206,8 +210,6 @@ struct TextureRegion
 
     // Validates the region for a specific texture.
     void Validate(const TextureDesc& desc) const;
-    // Inserts actual subresource/extents instead of the placeholder values.
-    TextureRegion Resolve(const TextureDesc& desc) const;
 
     constexpr bool operator==(const TextureRegion&) const = default;
 
@@ -221,9 +223,6 @@ struct TextureCopyDesc
 {
     TextureRegion srcRegion;
     TextureRegion dstRegion;
-
-    // Inserts actual subresource/extents instead of the placeholder values in the copy desc regions.
-    TextureCopyDesc Resolve(const TextureDesc& srcDesc, const TextureDesc& dstDesc) const;
 
     constexpr bool operator==(const TextureCopyDesc&) const = default;
 };

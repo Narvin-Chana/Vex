@@ -173,16 +173,7 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, RHIAllocator& allocator, Text
 
 BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding, RHIDescriptorPool& descriptorPool)
 {
-    VkTextureViewDesc view{
-        .viewType = TextureUtil::GetTextureViewType(binding),
-        .format = TextureUtil::GetTextureFormat(binding),
-        .usage = static_cast<TextureUsage::Type>(binding.usage),
-        .mipBias = binding.subresource.startMip,
-        .mipCount = (binding.subresource.mipCount == 0) ? VK_REMAINING_MIP_LEVELS : binding.subresource.mipCount,
-        .startSlice = binding.subresource.startSlice,
-        .sliceCount =
-            (binding.subresource.sliceCount == 0) ? VK_REMAINING_ARRAY_LAYERS : binding.subresource.sliceCount,
-    };
+    VkTextureViewDesc view{ binding };
     if (auto it = bindlessCache.find(view); it != bindlessCache.end() && descriptorPool.IsValid(it->second.handle))
     {
         return it->second.handle;
@@ -193,10 +184,10 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
                                                 .format = TextureFormatToVulkan(view.format),
                                                 .subresourceRange = {
                                                     .aspectMask = VkTextureUtil::GetFormatAspectFlags(view.format),
-                                                    .baseMipLevel = view.mipBias,
-                                                    .levelCount = view.mipCount,
-                                                    .baseArrayLayer = view.startSlice,
-                                                    .layerCount = view.sliceCount,
+                                                    .baseMipLevel = view.subresource.startMip,
+                                                    .levelCount = view.subresource.mipCount,
+                                                    .baseArrayLayer = view.subresource.startSlice,
+                                                    .layerCount = view.subresource.sliceCount,
                                                 } };
 
     ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx->device.createImageViewUnique(viewCreate);
@@ -227,15 +218,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
 
 ::vk::ImageView VkTexture::GetOrCreateImageView(const TextureBinding& binding, TextureUsage::Type usage)
 {
-    VkTextureViewDesc view{
-        .viewType = TextureUtil::GetTextureViewType(binding),
-        .format = TextureUtil::GetTextureFormat(binding),
-        .usage = usage,
-        .mipBias = binding.subresource.startMip,
-        .mipCount = binding.subresource.mipCount,
-        .startSlice = binding.subresource.startSlice,
-        .sliceCount = binding.subresource.sliceCount,
-    };
+    VkTextureViewDesc view{ binding };
     if (auto it = viewCache.find(view); it != viewCache.end())
     {
         return *it->second;
@@ -248,10 +231,10 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
                                                     .aspectMask = usage == TextureUsage::DepthStencil
                                                                       ? VkTextureUtil::GetDepthAspectFlags(view.format)
                                                                       : ::vk::ImageAspectFlagBits::eColor,
-                                                    .baseMipLevel = view.mipBias,
-                                                    .levelCount = view.mipCount,
-                                                    .baseArrayLayer = view.startSlice,
-                                                    .layerCount = view.sliceCount,
+                                                    .baseMipLevel = view.subresource.startMip,
+                                                    .levelCount = view.subresource.mipCount,
+                                                    .baseArrayLayer = view.subresource.startSlice,
+                                                    .layerCount = view.subresource.sliceCount,
                                                 } };
 
     ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx->device.createImageViewUnique(viewCreate);
@@ -383,6 +366,18 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
     SetDebugName(ctx->device, imageTmp.get(), desc.name.c_str());
 
     image = std::move(imageTmp);
+}
+
+VkTextureViewDesc::VkTextureViewDesc(const TextureBinding& binding)
+
+    : viewType{ TextureUtil::GetTextureViewType(binding) }
+    , format{ TextureUtil::GetTextureFormat(binding) }
+    , usage{ static_cast<TextureUsage::Type>(binding.usage) }
+    , subresource{ binding.subresource }
+{
+    // Resolve subresource (replacing MAX values with the actual value).
+    subresource.mipCount = subresource.GetMipCount(binding.texture.desc);
+    subresource.sliceCount = subresource.GetSliceCount(binding.texture.desc);
 }
 
 } // namespace vex::vk

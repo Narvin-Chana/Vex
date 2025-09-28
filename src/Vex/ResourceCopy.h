@@ -11,7 +11,6 @@ struct BufferToTextureCopyDesc
     BufferRegion srcRegion;
     TextureRegion dstRegion;
 
-    BufferToTextureCopyDesc Resolve(const BufferDesc& srcDesc, const TextureDesc& dstDesc) const;
     constexpr bool operator==(const BufferToTextureCopyDesc&) const = default;
 };
 

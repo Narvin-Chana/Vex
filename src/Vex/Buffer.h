@@ -90,8 +90,6 @@ struct BufferRegion
     u64 offset = 0;
     u64 size = GBufferWholeSize;
 
-    // Inserts actual size instead of the placeholder value.
-    BufferRegion Resolve(const BufferDesc& desc) const;
     constexpr bool operator==(const BufferRegion&) const = default;
 };
 
@@ -101,8 +99,6 @@ struct BufferCopyDesc
     u64 dstOffset;
     u64 size = GBufferWholeSize;
 
-    // Inserts the actual size instead of the placeholder value.
-    BufferCopyDesc Resolve(const BufferDesc& srcBuffer, const BufferDesc& dstBuffer) const;
     constexpr bool operator==(const BufferCopyDesc&) const = default;
 };
 

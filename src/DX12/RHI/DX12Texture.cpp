@@ -503,6 +503,10 @@ DX12TextureView::DX12TextureView(const TextureBinding& binding)
             format = GetTypelessFormatForDepthStencilCompatibleDX12Format(format);
         }
     }
+
+    // Resolve subresource (replacing MAX values with the actual value).
+    subresource.mipCount = subresource.GetMipCount(binding.texture.desc);
+    subresource.sliceCount = subresource.GetSliceCount(binding.texture.desc);
 }
 
 } // namespace vex::dx12

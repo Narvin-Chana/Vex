@@ -162,9 +162,9 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
     const ::vk::ImageSubresourceRange ranges{
         .aspectMask = static_cast<::vk::ImageAspectFlagBits>(clearValue.flags),
         .baseMipLevel = binding.binding.subresource.startMip,
-        .levelCount = binding.binding.subresource.mipCount,
+        .levelCount = binding.binding.subresource.GetMipCount(binding.texture->GetDesc()),
         .baseArrayLayer = binding.binding.subresource.startSlice,
-        .layerCount = binding.binding.subresource.sliceCount,
+        .layerCount = binding.binding.subresource.GetSliceCount(binding.texture->GetDesc()),
     };
 
     // const TextureDesc& desc = binding.texture->GetDesc();
@@ -557,14 +557,16 @@ void VkCommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const Textu
             .srcSubresource = { .aspectMask = srcAspectMask,
                                 .mipLevel = srcRegion.subresource.startMip,
                                 .baseArrayLayer = srcRegion.subresource.startSlice,
-                                .layerCount = srcRegion.subresource.sliceCount },
+                                .layerCount = srcRegion.subresource.GetSliceCount(src.desc) },
             .srcOffset = ::vk::Offset3D(srcRegion.offset.width, srcRegion.offset.height, srcRegion.offset.depth),
             .dstSubresource = { .aspectMask = dstAspectMask,
                                 .mipLevel = dstRegion.subresource.startMip,
                                 .baseArrayLayer = dstRegion.subresource.startSlice,
-                                .layerCount = dstRegion.subresource.sliceCount },
+                                .layerCount = dstRegion.subresource.GetSliceCount(dst.desc) },
             .dstOffset = ::vk::Offset3D(dstRegion.offset.width, dstRegion.offset.height, dstRegion.offset.depth),
-            .extent = ::vk::Extent3D{ dstRegion.extent.width, dstRegion.extent.height, dstRegion.extent.depth } });
+            .extent = ::vk::Extent3D{ dstRegion.extent.GetWidth(dstDesc),
+                                      dstRegion.extent.GetHeight(dstDesc),
+                                      dstRegion.extent.GetDepth(dstDesc) } });
     }
 
     commandBuffer->copyImage(src.GetResource(),
@@ -598,8 +600,8 @@ void VkCommandList::Copy(RHIBuffer& src,
     regions.reserve(bufferToTextureCopyDescriptions.size());
     for (const auto& [srcRegion, dstRegion] : bufferToTextureCopyDescriptions)
     {
-        u32 alignedRowPitch =
-            static_cast<u32>(AlignUp<u64>(dstRegion.extent.width * pixelByteSize, TextureUtil::RowPitchAlignment));
+        u32 alignedRowPitch = static_cast<u32>(
+            AlignUp<u64>(dstRegion.extent.GetWidth(dst.desc) * pixelByteSize, TextureUtil::RowPitchAlignment));
 
         regions.push_back(::vk::BufferImageCopy{
             .bufferOffset = srcRegion.offset,
@@ -611,10 +613,12 @@ void VkCommandList::Copy(RHIBuffer& src,
                     .aspectMask = dstAspectMask,
                     .mipLevel = dstRegion.subresource.startMip,
                     .baseArrayLayer = dstRegion.subresource.startSlice,
-                    .layerCount = dstRegion.subresource.sliceCount,
+                    .layerCount = dstRegion.subresource.GetSliceCount(dst.desc),
                 },
             .imageOffset = ::vk::Offset3D(dstRegion.offset.width, dstRegion.offset.height, dstRegion.offset.depth),
-            .imageExtent = { dstRegion.extent.width, dstRegion.extent.height, dstRegion.extent.depth } });
+            .imageExtent = { dstRegion.extent.GetWidth(dst.desc),
+                             dstRegion.extent.GetHeight(dst.desc),
+                             dstRegion.extent.GetDepth(dst.desc) } });
     }
 
     commandBuffer->copyBufferToImage(src.GetNativeBuffer(),

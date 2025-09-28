@@ -170,21 +170,18 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
                                    TextureUsage::Type usage,
                                    const TextureClearValue& clearValue)
 {
-    const TextureBinding& clearBinding = binding.binding;
+    DX12TextureView dxTextureView{ binding.binding };
+    const u32 maxMip = dxTextureView.subresource.startMip + dxTextureView.subresource.mipCount;
+    // We'll be creating a RTV/DSV view per-mip.
+    dxTextureView.subresource.mipCount = 1;
 
     // Clearing in DX12 allows for multiple slices to be cleared, however you cannot clear multiple mips with one
     // call.
     // Instead we iterate on the mips passed in by the user.
-
     if (usage == TextureUsage::RenderTarget)
     {
-        DX12TextureView dxTextureView{ clearBinding };
         dxTextureView.usage = TextureUsage::RenderTarget;
-        dxTextureView.subresource.mipCount = 1;
-
-        for (u32 mip = clearBinding.subresource.startMip;
-             mip < clearBinding.subresource.startMip + clearBinding.subresource.mipCount;
-             ++mip)
+        for (u32 mip = dxTextureView.subresource.startMip; mip < maxMip; ++mip)
         {
             dxTextureView.subresource.startMip = mip;
             VEX_ASSERT(clearValue.flags & TextureClear::ClearColor,
@@ -198,12 +195,8 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
     }
     else if (usage == TextureUsage::DepthStencil)
     {
-        DX12TextureView dxTextureView{ clearBinding };
         dxTextureView.usage = TextureUsage::DepthStencil;
-        dxTextureView.subresource.mipCount = 1;
-        for (u32 mip = clearBinding.subresource.startMip;
-             mip < clearBinding.subresource.startMip + clearBinding.subresource.mipCount;
-             ++mip)
+        for (u32 mip = dxTextureView.subresource.startMip; mip < maxMip; ++mip)
         {
             dxTextureView.subresource.startMip = mip;
             D3D12_CLEAR_FLAGS clearFlags = static_cast<D3D12_CLEAR_FLAGS>(0);
@@ -218,7 +211,7 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
             VEX_ASSERT(std::to_underlying(clearFlags) != 0,
                        "Clear flags for the depth-stencil cannot be 0, you must either clear depth, stencil, or both "
                        "for texture: {}!",
-                       clearBinding.texture.desc.name);
+                       binding.texture->GetDesc().name);
 
             commandList->ClearDepthStencilView(binding.texture->GetOrCreateRTVDSVView(dxTextureView),
                                                clearFlags,
@@ -233,7 +226,7 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
         VEX_LOG(Fatal,
                 "The usage of the passed binding \"{}\" doesn't support clearing. Make sure you specify "
                 "the correct usage.",
-                clearBinding.texture.desc.name);
+                binding.texture->GetDesc().name);
     }
 }
 
@@ -495,9 +488,9 @@ void DX12CommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const Tex
         srcBox.left = copyDesc.srcRegion.offset.width;
         srcBox.top = copyDesc.srcRegion.offset.height;
         srcBox.front = copyDesc.srcRegion.offset.depth;
-        srcBox.right = copyDesc.srcRegion.offset.width + copyDesc.srcRegion.extent.width;
-        srcBox.bottom = copyDesc.srcRegion.offset.height + copyDesc.srcRegion.extent.height;
-        srcBox.back = copyDesc.srcRegion.offset.depth + copyDesc.srcRegion.extent.depth;
+        srcBox.right = copyDesc.srcRegion.offset.width + copyDesc.srcRegion.extent.GetWidth(src.GetDesc());
+        srcBox.bottom = copyDesc.srcRegion.offset.height + copyDesc.srcRegion.extent.GetHeight(src.GetDesc());
+        srcBox.back = copyDesc.srcRegion.offset.depth + copyDesc.srcRegion.extent.GetDepth(src.GetDesc());
 
         commandList->CopyTextureRegion(&dstLoc,
                                        copyDesc.dstRegion.offset.width,
@@ -533,7 +526,8 @@ void DX12CommandList::Copy(RHIBuffer& src,
     for (const BufferToTextureCopyDesc& copyDesc : bufferToTextureCopyDescriptions)
     {
         const u32 alignedRowPitch =
-            AlignUp<u32>(copyDesc.dstRegion.extent.width * formatPixelByteSize, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+            AlignUp<u32>(copyDesc.dstRegion.extent.GetWidth(dst.GetDesc()) * formatPixelByteSize,
+                         D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
 
         VEX_CHECK(IsAligned<u64>(copyDesc.srcRegion.offset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
                   "Source offset should be aligned to 512 bytes!");
@@ -545,9 +539,9 @@ void DX12CommandList::Copy(RHIBuffer& src,
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT& footprint = srcLoc.PlacedFootprint;
         footprint.Offset = copyDesc.srcRegion.offset;
         footprint.Footprint.Format = TextureFormatToDXGI(dst.GetDesc().format);
-        footprint.Footprint.Width = copyDesc.dstRegion.extent.width;
-        footprint.Footprint.Height = copyDesc.dstRegion.extent.height;
-        footprint.Footprint.Depth = copyDesc.dstRegion.extent.depth;
+        footprint.Footprint.Width = copyDesc.dstRegion.extent.GetWidth(dst.GetDesc());
+        footprint.Footprint.Height = copyDesc.dstRegion.extent.GetHeight(dst.GetDesc());
+        footprint.Footprint.Depth = copyDesc.dstRegion.extent.GetDepth(dst.GetDesc());
         footprint.Footprint.RowPitch = alignedRowPitch;
 
         D3D12_TEXTURE_COPY_LOCATION dstLoc = {};
@@ -560,9 +554,9 @@ void DX12CommandList::Copy(RHIBuffer& src,
         srcBox.left = 0;
         srcBox.top = 0;
         srcBox.front = 0;
-        srcBox.right = copyDesc.dstRegion.extent.width;
-        srcBox.bottom = copyDesc.dstRegion.extent.height;
-        srcBox.back = copyDesc.dstRegion.extent.depth;
+        srcBox.right = copyDesc.dstRegion.extent.GetWidth(dst.GetDesc());
+        srcBox.bottom = copyDesc.dstRegion.extent.GetHeight(dst.GetDesc());
+        srcBox.back = copyDesc.dstRegion.extent.GetDepth(dst.GetDesc());
 
         commandList->CopyTextureRegion(&dstLoc,
                                        copyDesc.dstRegion.offset.width,

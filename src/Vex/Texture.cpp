@@ -433,13 +433,14 @@ TextureDesc TextureDesc::CreateTexture3D(std::string name,
     return desc;
 }
 
-TextureExtent3D TextureExtent3D::Resolve(const TextureDesc& desc) const
+u16 TextureSubresource::GetMipCount(const TextureDesc& desc) const
 {
-    return TextureExtent3D{
-        .width = (width != GTextureExtentMax) ? width : desc.width,
-        .height = (height != GTextureExtentMax) ? height : desc.height,
-        .depth = (depth != GTextureExtentMax) ? depth : desc.GetDepth(),
-    };
+    return mipCount == GTextureAllMips ? desc.mips : mipCount;
+}
+
+u32 TextureSubresource::GetSliceCount(const TextureDesc& desc) const
+{
+    return sliceCount == GTextureAllSlices ? desc.GetSliceCount() : sliceCount;
 }
 
 void TextureSubresource::Validate(const TextureDesc& desc) const
@@ -483,16 +484,6 @@ void TextureSubresource::Validate(const TextureDesc& desc) const
                   sliceCount,
                   desc.GetSliceCount());
     }
-}
-
-TextureSubresource TextureSubresource::Resolve(const TextureDesc& desc) const
-{
-    return TextureSubresource{
-        .startMip = startMip,
-        .mipCount = (mipCount != GTextureAllMips) ? mipCount : desc.mips,
-        .startSlice = startSlice,
-        .sliceCount = (sliceCount != GTextureAllSlices) ? sliceCount : desc.GetSliceCount(),
-    };
 }
 
 void TextureRegion::Validate(const TextureDesc& desc) const
@@ -544,15 +535,6 @@ void TextureRegion::Validate(const TextureDesc& desc) const
     }
 }
 
-TextureRegion TextureRegion::Resolve(const TextureDesc& desc) const
-{
-    return TextureRegion{
-        .subresource = subresource.Resolve(desc),
-        .offset = offset,
-        .extent = extent.Resolve(desc),
-    };
-}
-
 TextureRegion TextureRegion::AllMips()
 {
     // Defaults will specify all mips and all slices.
@@ -564,12 +546,19 @@ TextureRegion TextureRegion::SingleMip(u16 mipIndex)
     return TextureRegion{ .subresource = { .startMip = mipIndex, .mipCount = 1 } };
 }
 
-TextureCopyDesc TextureCopyDesc::Resolve(const TextureDesc& srcDesc, const TextureDesc& dstDesc) const
+u32 TextureExtent3D::GetWidth(const TextureDesc& desc) const
 {
-    return TextureCopyDesc{
-        .srcRegion = srcRegion.Resolve(srcDesc),
-        .dstRegion = dstRegion.Resolve(dstDesc),
-    };
+    return width == GTextureExtentMax ? desc.width : width;
+}
+
+u32 TextureExtent3D::GetHeight(const TextureDesc& desc) const
+{
+    return height == GTextureExtentMax ? desc.height : height;
+}
+
+u32 TextureExtent3D::GetDepth(const TextureDesc& desc) const
+{
+    return depth == GTextureExtentMax ? desc.GetDepth() : depth;
 }
 
 } // namespace vex

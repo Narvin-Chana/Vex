@@ -25,7 +25,7 @@ void RHICommandListBase::TextureBarrier(RHITexture& texture,
 
 void RHICommandListBase::Copy(RHITexture& src, RHITexture& dst)
 {
-    TextureCopyDesc copyDesc = TextureCopyDesc{}.Resolve(src.GetDesc(), dst.GetDesc());
+    TextureCopyDesc copyDesc;
     Copy(src, dst, std::span(&copyDesc, 1));
 }
 
