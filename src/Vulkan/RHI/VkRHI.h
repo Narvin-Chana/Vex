@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Vex/MaybeUninitialized.h>
 #include <Vex/NonNullPtr.h>
 #include <Vex/RHIImpl/RHIFence.h>
 
@@ -90,6 +91,11 @@ private:
                             std::span<::vk::CommandBufferSubmitInfo> commandBuffers,
                             std::span<::vk::SemaphoreSubmitInfo> waitSemaphores,
                             std::vector<::vk::SemaphoreSubmitInfo> signalSemaphores = {});
+
+    // TODO: Can't use maybe uninitialized since VkGPUContext has deleted move constructor (which in effect removes
+    // VkRHI's defaulted move constructor). Would require using NonNullPtr in VkGPUContext, which causes changes in a
+    // lot of places.
+    UniqueHandle<VkGPUContext> ctx;
 
     ::vk::UniqueInstance instance;
     ::vk::UniqueSurfaceKHR surface;

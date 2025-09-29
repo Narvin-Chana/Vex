@@ -32,7 +32,7 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 namespace vex::vk
 {
 
-// Should be redone properly
+// Should be redone properly. NC: ?? Should it?
 static ::vk::PhysicalDeviceProperties GetHighestApiVersionDevice()
 {
     // Create temporary instance to check device properties
@@ -56,6 +56,9 @@ static ::vk::PhysicalDeviceProperties GetHighestApiVersionDevice()
 
 VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation)
 {
+    // Reset global dispatcher, avoids potentially using stale pointers if a VulkanRHI was created previously.
+    VULKAN_HPP_DEFAULT_DISPATCHER = {};
+
     VULKAN_HPP_DEFAULT_DISPATCHER.init();
 
     ::vk::ApplicationInfo appInfo{
@@ -129,6 +132,9 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
     instance = VEX_VK_CHECK <<= ::vk::createInstanceUnique(instanceCI);
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
+
+    // Only activate setting debug names if the debug layer is active. Otherwise Vulkan will error out.
+    GEnableDebugName = enableGPUDebugLayer;
 
     if (windowHandle.window)
     {
@@ -531,12 +537,15 @@ void VkRHI::FlushGPU()
 
 NonNullPtr<VkGPUContext> VkRHI::GetGPUContext()
 {
-    static VkGPUContext ctx{ *device,
-                             physDevice,
-                             *surface,
-                             queues[CommandQueueType::Graphics],
-                             (*fences)[CommandQueueType::Graphics] };
-    return NonNullPtr(ctx);
+    if (!ctx)
+    {
+        ctx = MakeUnique<VkGPUContext>(*device,
+                                       physDevice,
+                                       *surface,
+                                       queues[CommandQueueType::Graphics],
+                                       (*fences)[CommandQueueType::Graphics]);
+    }
+    return NonNullPtr(*ctx);
 }
 
 } // namespace vex::vk

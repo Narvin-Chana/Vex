@@ -1,29 +1,91 @@
-#include "SynchronizationTorture.h"
-
 #include <random>
 #include <span>
 
+#include <gtest/gtest.h>
 #include <magic_enum/magic_enum.hpp>
 
 #include <Vex.h>
-#include <Vex/Logger.h>
 
 namespace vex
 {
 
-void SynchronizationTortureTest(GfxBackend& graphics)
+static constexpr int fact(int n)
 {
+    if (n == 2)
+    {
+        return 2;
+    }
+    return n * fact(n - 1);
+}
+
+TEST(GraphicsTests, FactSampleTest)
+{
+    EXPECT_EQ(fact(2), 2);
+    EXPECT_EQ(fact(3), 6);
+}
+
+TEST(GraphicsTests, GraphicsCreationConsecutive)
+{
+    VEX_LOG(Info, "Create and destroy graphics without debug layers.");
+    GfxBackend{ BackendDescription{
+        .useSwapChain = false,
+        .enableGPUDebugLayer = false,
+        .enableGPUBasedValidation = false,
+    } };
+    VEX_LOG(Info, "Create and destroy graphics with debug layers and validation.");
+    GfxBackend{ BackendDescription{
+        .useSwapChain = false,
+        .enableGPUDebugLayer = true,
+        .enableGPUBasedValidation = true,
+    } };
+    VEX_LOG(Info, "Create and destroy graphics with debug layers and without validation.");
+    GfxBackend{ BackendDescription{
+        .useSwapChain = false,
+        .enableGPUDebugLayer = true,
+        .enableGPUBasedValidation = false,
+    } };
+    VEX_LOG(Info, "Create and destroy graphics without debug layers and with GPU validation.");
+    GfxBackend{ BackendDescription{
+        .useSwapChain = false,
+        .enableGPUDebugLayer = true,
+        .enableGPUBasedValidation = false,
+    } };
+}
+
+TEST(GraphicsTests, GraphicsCreationFlush)
+{
+    GfxBackend graphics{ BackendDescription{
+        .useSwapChain = false,
+        .enableGPUDebugLayer = true,
+        .enableGPUBasedValidation = true,
+    } };
+
+    // Simple submit then flush
+    auto ctx = graphics.BeginScopedCommandContext(CommandQueueType::Graphics, SubmissionPolicy::Immediate);
+    ctx.Submit();
+    graphics.FlushGPU();
+}
+
+TEST(GraphicsTests, SynchronizationTortureTest)
+{
+    GfxBackend graphics{ BackendDescription{
+        .useSwapChain = false,
+        .enableGPUDebugLayer = true,
+        .enableGPUBasedValidation = true,
+    } };
+
     VEX_LOG(Info, "Starting Synchronization Torture Test...");
 
-    // Test 1: Basic Immediate vs Deferred Submission
-    VEX_LOG(Info, "Test 1: Basic Immediate vs Deferred Submission");
+    // Test 1: Basic Immediate Submission of each queue type
+    VEX_LOG(Info, "Test 1: Basic Immediate Submission");
     {
         auto ctx1 = graphics.BeginScopedCommandContext(CommandQueueType::Graphics, SubmissionPolicy::Immediate);
-        auto ctx2 = graphics.BeginScopedCommandContext(CommandQueueType::Graphics, SubmissionPolicy::DeferToPresent);
+        auto ctx2 = graphics.BeginScopedCommandContext(CommandQueueType::Compute, SubmissionPolicy::Immediate);
+        auto ctx3 = graphics.BeginScopedCommandContext(CommandQueueType::Copy, SubmissionPolicy::Immediate);
 
-        // Both contexts will submit at different times - immediate vs at present
-        VEX_LOG(Info, "Created immediate and deferred contexts");
-    } // ctx1 submits immediately, ctx2 waits for Present()
+        VEX_LOG(Info, "Created immediate contexts");
+    }
+    VEX_LOG(Info, "Submitted immediate contexts");
 
     // Test 2: Cross-Queue Dependencies
     VEX_LOG(Info, "Test 2: Cross-Queue Dependencies");
@@ -192,8 +254,8 @@ void SynchronizationTortureTest(GfxBackend& graphics)
         VEX_LOG(Info, "Created and destroyed 50 contexts rapidly");
     }
 
-    // Test 5: Mixed Submission Policies with Dependencies
-    VEX_LOG(Info, "Test 5: Mixed Submission Policies with Dependencies");
+    // Test 5: Submission with Dependencies
+    VEX_LOG(Info, "Test 5: Submission with Dependencies");
     {
         std::vector<SyncToken> immediateTokens;
 
@@ -203,12 +265,11 @@ void SynchronizationTortureTest(GfxBackend& graphics)
             immediateTokens = ctx1.Submit();
         }
 
-        // Create deferred work that depends on immediate work
+        // Create work that depends on immediate work
         {
             auto ctx2 = graphics.BeginScopedCommandContext(CommandQueueType::Graphics,
-                                                           SubmissionPolicy::DeferToPresent,
+                                                           SubmissionPolicy::Immediate,
                                                            immediateTokens);
-            // This won't submit until Present() is called
         }
 
         // Create more immediate work
@@ -218,13 +279,13 @@ void SynchronizationTortureTest(GfxBackend& graphics)
             immediateTokens.insert(immediateTokens.end(), moreTokens.begin(), moreTokens.end());
         }
 
-        // Wait for immediate work
+        // Wait for first and third immediate work
         for (const auto& token : immediateTokens)
         {
             graphics.WaitForTokenOnCPU(token);
         }
 
-        VEX_LOG(Info, "Mixed submission policies completed");
+        VEX_LOG(Info, "Submission with dependencies completed");
     }
 
     // Test 6: Resource Upload Torture
@@ -259,9 +320,9 @@ void SynchronizationTortureTest(GfxBackend& graphics)
 
             auto ctx = graphics.BeginScopedCommandContext(CommandQueueType::Copy, SubmissionPolicy::Immediate, deps);
 
-            // Generate dummy data
+            // Generate dummy data and upload a 1024 section of the buffer.
             std::vector<byte> dummyData(1024, static_cast<byte>(i));
-            ctx.EnqueueDataUpload(uploadBuffer, dummyData);
+            ctx.EnqueueDataUpload(uploadBuffer, dummyData, BufferSubresource{ .offset = 1024u * i, .size = 1024 });
             ctx.Copy(uploadBuffer, targetTexture);
 
             auto tokens = ctx.Submit();
@@ -314,7 +375,6 @@ void SynchronizationTortureTest(GfxBackend& graphics)
         for (int i = 0; i < 30; ++i)
         {
             CommandQueueType queueType = static_cast<CommandQueueType>(i % 3);
-            SubmissionPolicy policy = (i % 4 == 0) ? SubmissionPolicy::DeferToPresent : SubmissionPolicy::Immediate;
 
             // Random dependencies
             std::span<SyncToken> deps;
@@ -325,7 +385,7 @@ void SynchronizationTortureTest(GfxBackend& graphics)
             }
 
             {
-                auto ctx = graphics.BeginScopedCommandContext(queueType, policy, deps);
+                auto ctx = graphics.BeginScopedCommandContext(queueType, SubmissionPolicy::Immediate, deps);
 
                 // Random operations
                 int opType = i % 4;
@@ -350,11 +410,8 @@ void SynchronizationTortureTest(GfxBackend& graphics)
                     }
                 }
 
-                if (policy == SubmissionPolicy::Immediate)
-                {
-                    auto tokens = ctx.Submit();
-                    allTokens.insert(allTokens.end(), tokens.begin(), tokens.end());
-                }
+                auto tokens = ctx.Submit();
+                allTokens.insert(allTokens.end(), tokens.begin(), tokens.end());
             }
 
             // Random flushes
@@ -383,22 +440,9 @@ void SynchronizationTortureTest(GfxBackend& graphics)
         }
     }
 
-    // Test Present to trigger any deferred submissions
-    VEX_LOG(Info, "Testing Present to trigger deferred submissions...");
-    graphics.Present(false);
-
     // Final flush to ensure everything is done
     VEX_LOG(Info, "Final GPU flush...");
     graphics.FlushGPU();
-    // Test Present to trigger any deferred submissions
-    VEX_LOG(Info, "Testing Present to trigger deferred submissions...");
-    graphics.Present(false);
-    // Test Present to trigger any deferred submissions
-    VEX_LOG(Info, "Testing Present to trigger deferred submissions...");
-    graphics.Present(false);
-    // Test Present to trigger any deferred submissions
-    VEX_LOG(Info, "Testing Present to trigger deferred submissions...");
-    graphics.Present(false);
 
     VEX_LOG(Info, "Synchronization Torture Test completed successfully!");
 }

@@ -11,6 +11,8 @@ set(VEX_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 # Make VEX_ROOT_DIR available to downstream projects that use this library
 set(VEX_ROOT_DIR "${VEX_ROOT_DIR}" CACHE INTERNAL "Path to Vex's library root directory")
 
+option(VEX_BUILD_TESTS "Build Vex tests" OFF)
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # CMake Helpers
@@ -196,8 +198,6 @@ add_library(Vex STATIC
     "src/Vex/Shaders/CompilerBase.h"
     "src/Vex/SubmissionPolicy.h"
     "src/Vex/Synchronization.h"
-    "src/Tests/SynchronizationTorture.h"
-    "src/Tests/SynchronizationTorture.cpp"
     "src/Vex/ResourceCopy.h"
     "src/Vex/ResourceCopy.cpp"
     "src/Vex/Concepts.h"
@@ -327,6 +327,12 @@ else()
 endif()
 if(VEX_BUILD_EXAMPLES)
     add_subdirectory(examples)
+endif()
+
+# Add the tests project.
+if (VEX_BUILD_TESTS)
+    message(STATUS "Building Vex tests...")
+    add_subdirectory(tests)
 endif()
 
 install(EXPORT VexTargets
