@@ -55,7 +55,7 @@ void RHICommandListBase::Copy(RHIBuffer& src, RHIBuffer& dst)
 void RHICommandListBase::Copy(RHIBuffer& src, RHITexture& dst)
 {
     std::vector<BufferTextureCopyDescription> bufferToTextureCopies =
-        BufferTextureCopyDescription::CopyAllMips(dst.GetDescription());
+        BufferTextureCopyDescription::AllMips(dst.GetDescription());
 
     for (const auto& copy : bufferToTextureCopies)
     {
@@ -68,7 +68,7 @@ void RHICommandListBase::Copy(RHIBuffer& src, RHITexture& dst)
 void RHICommandListBase::Copy(RHITexture& src, RHIBuffer& dst)
 {
     std::vector<BufferTextureCopyDescription> bufferToTextureCopies =
-        BufferTextureCopyDescription::CopyAllMips(src.GetDescription());
+        BufferTextureCopyDescription::AllMips(src.GetDescription());
 
     for (const auto& copy : bufferToTextureCopies)
     {

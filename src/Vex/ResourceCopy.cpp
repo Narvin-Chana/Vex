@@ -3,6 +3,8 @@
 #include <cmath>
 
 #include <Vex/ByteUtils.h>
+#include <Vex/CommandContext.h>
+#include <Vex/GfxBackend.h>
 #include <Vex/Validation.h>
 
 namespace vex
@@ -26,9 +28,122 @@ void ValidateBufferToTextureCopyDescription(const BufferDescription& srcDesc,
               srcDesc.byteSize,
               requiredByteSize);
 }
+
+void ReadTextureDataAligned(const TextureDescription& textureDesc,
+                            std::span<const TextureRegion> textureRegions,
+                            std::span<const byte> alignedTextureData,
+                            std::span<byte> packedOutputData)
+
+{
+    const u32 bytesPerPixel = TextureUtil::GetPixelByteSizeFromFormat(textureDesc.format);
+    const byte* srcData = alignedTextureData.data();
+    byte* dstData = packedOutputData.data();
+    u64 srcOffset = 0;
+    u64 dstOffset = 0;
+
+    for (const auto& region : textureRegions)
+    {
+        const u32 regionWidth = region.extent.width;
+        const u32 regionHeight = region.extent.height;
+        const u32 regionDepth = region.extent.depth;
+
+        const u32 packedRowPitch = regionWidth * bytesPerPixel;
+        const u32 alignedRowPitch = AlignUp<u32>(packedRowPitch, TextureUtil::RowPitchAlignment);
+        const u32 packedSlicePitch = packedRowPitch * regionHeight;
+        const u32 alignedSlicePitch = alignedRowPitch * regionHeight;
+
+        // Copy each depth slice (for 3D textures).
+        for (u32 depthSlice = 0; depthSlice < regionDepth; ++depthSlice)
+        {
+            // Copy each row one-by-one with alignment.
+            for (u32 row = 0; row < regionHeight; ++row)
+            {
+                // From aligned to packed
+                const byte* srcRow = srcData + srcOffset + depthSlice * alignedSlicePitch + row * alignedRowPitch;
+                byte* dstRow = dstData + dstOffset + depthSlice * packedSlicePitch + row * packedRowPitch;
+
+                std::memcpy(dstRow, srcRow, packedRowPitch);
+#if !VEX_SHIPPING
+                // Zero out padding bytes for debugging purposes.
+                if (alignedRowPitch > packedRowPitch)
+                {
+                    std::memset(dstRow + packedRowPitch, 0, alignedRowPitch - packedRowPitch);
+                }
+#endif
+            }
+        }
+
+        // Move to next region in the packed source data.
+        srcOffset += static_cast<u64>(alignedSlicePitch) * regionDepth;
+
+        // Move to next aligned position in staging buffer.
+        u64 regionStagingSize = static_cast<u64>(packedSlicePitch) * regionDepth;
+        dstOffset += AlignUp<u64>(regionStagingSize, TextureUtil::MipAlignment);
+    }
+}
+
+void ReadTextureReadbackContextData(const TextureReadbackContext& readbackContext, std::span<byte> packedOutputData)
+{
+    ReadTextureDataAligned(readbackContext.textureDesc,
+                           readbackContext.textureRegions,
+                           readbackContext.MapResource().GetMappedRange(),
+                           packedOutputData);
+}
+
+void WriteTextureDataAligned(const TextureDescription& textureDesc,
+                             std::span<const TextureRegion> textureRegions,
+                             std::span<const byte> packedData,
+                             std::span<byte> alignedOutData)
+{
+    const u32 bytesPerPixel = TextureUtil::GetPixelByteSizeFromFormat(textureDesc.format);
+    const byte* srcData = packedData.data();
+    byte* dstData = alignedOutData.data();
+    u64 srcOffset = 0;
+    u64 dstOffset = 0;
+
+    for (const TextureRegion& region : textureRegions)
+    {
+        const u32 regionWidth = region.extent.width;
+        const u32 regionHeight = region.extent.height;
+        const u32 regionDepth = region.extent.depth;
+
+        const u32 packedRowPitch = regionWidth * bytesPerPixel;
+        const u32 alignedRowPitch = AlignUp<u32>(packedRowPitch, TextureUtil::RowPitchAlignment);
+        const u32 packedSlicePitch = packedRowPitch * regionHeight;
+        const u32 alignedSlicePitch = alignedRowPitch * regionHeight;
+
+        // Copy each depth slice (for 3D textures).
+        for (u32 depthSlice = 0; depthSlice < regionDepth; ++depthSlice)
+        {
+            // Copy each row one-by-one with alignment.
+            for (u32 row = 0; row < regionHeight; ++row)
+            {
+                const byte* srcRow = srcData + srcOffset + depthSlice * packedSlicePitch + row * packedRowPitch;
+                byte* dstRow = dstData + dstOffset + depthSlice * alignedSlicePitch + row * alignedRowPitch;
+
+                std::memcpy(dstRow, srcRow, packedRowPitch);
+#if !VEX_SHIPPING
+                // Zero out padding bytes for debugging purposes.
+                if (alignedRowPitch > packedRowPitch)
+                {
+                    std::memset(dstRow + packedRowPitch, 0, alignedRowPitch - packedRowPitch);
+                }
+#endif
+            }
+        }
+
+        // Move to next region in the packed source data.
+        srcOffset += static_cast<u64>(packedSlicePitch) * regionDepth;
+
+        // Move to next aligned position in staging buffer.
+        u64 regionStagingSize = static_cast<u64>(alignedSlicePitch) * regionDepth;
+        dstOffset += AlignUp<u64>(regionStagingSize, TextureUtil::MipAlignment);
+    }
+}
+
 } // namespace TextureCopyUtil
 
-std::vector<BufferTextureCopyDescription> BufferTextureCopyDescription::CopyAllMips(const TextureDescription& desc)
+std::vector<BufferTextureCopyDescription> BufferTextureCopyDescription::AllMips(const TextureDescription& desc)
 {
     const float texelByteSize = TextureUtil::GetPixelByteSizeFromFormat(desc.format);
 
@@ -85,8 +200,8 @@ std::vector<BufferTextureCopyDescription> BufferTextureCopyDescription::CopyAllM
     return bufferToTextureCopyDescriptions;
 }
 
-std::vector<BufferTextureCopyDescription> BufferTextureCopyDescription::CopyMip(u16 mipIndex,
-                                                                                const TextureDescription& desc)
+std::vector<BufferTextureCopyDescription> BufferTextureCopyDescription::AllMip(u16 mipIndex,
+                                                                               const TextureDescription& desc)
 {
     const float texelByteSize = TextureUtil::GetPixelByteSizeFromFormat(desc.format);
 

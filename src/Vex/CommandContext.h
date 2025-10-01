@@ -31,12 +31,33 @@ struct DrawResources;
 struct ComputeResources;
 struct RayTracingPassDescription;
 
-class ReadBackContext
+class TextureReadbackContext
 {
-    std::function<void(GfxBackend& backend, std::span<byte> output)> copyFunc;
+public:
+    // Buffer contains readback data from the GPU.
+    // This data is aligned according to Vex internal alignment
+    Buffer buffer;
+    // Regions laid out in the buffer
+    std::vector<TextureRegion> textureRegions;
+    // Description of original texture
+    TextureDescription textureDesc;
 
+    [[nodiscard]] ResourceMappedMemory MapResource() const;
+
+    TextureReadbackContext(const TextureReadbackContext&) = delete;
+    TextureReadbackContext& operator=(const TextureReadbackContext&) = delete;
+    TextureReadbackContext(TextureReadbackContext&&) = default;
+    TextureReadbackContext& operator=(TextureReadbackContext&&) = default;
+    ~TextureReadbackContext();
+
+private:
+    TextureReadbackContext(const Buffer& buffer,
+                           std::span<const TextureRegion> textureRegions,
+                           const TextureDescription& textureDesc,
+                           GfxBackend& backend);
+
+    NonNullPtr<GfxBackend> backend;
     friend class CommandContext;
-    friend class GfxBackend;
 };
 
 class CommandContext
@@ -129,9 +150,9 @@ public:
     void EnqueueDataUpload(const Buffer& buffer,
                            std::span<const byte> data,
                            const std::optional<BufferSubresource>& subresource = std::nullopt);
-    // Enqueues for the entirety of a buffer to be readback from the GPU to the specified output.
-    // Will automatically use a staging buffer if necessary.
-    void EnqueueDataReadback(const Buffer& buffer, std::span<byte> output);
+
+    // Enqueues a readback operation on the GPU and returns the buffer in which the data can be read.
+    Buffer EnqueueDataReadback(const Buffer& srcBuffer);
 
     // ---------------------------------------------------------------------------------------------------------------
     // Texture Data Operations
@@ -142,12 +163,13 @@ public:
     // The uploadRegions should match the layout of the tightly packed 'data' parameter.
     // If the uploadRegions are empty, we suppose that you intend to upload to the entirety of the texture.
     void EnqueueDataUpload(const Texture& texture,
-                           std::span<const byte> data,
-                           std::span<const TextureUploadRegion> uploadRegions);
+                           std::span<const byte> packedData,
+                           std::span<const TextureRegion> textureRegions);
 
     // Enqueues for the entirety of a texture to be readback from the GPU to the specified output.
     // Will automatically use a staging buffer if necessary.
-    ReadBackContext EnqueueDataReadback(const Texture& srcTexture, std::span<const TextureUploadRegion> uploadRegions);
+    TextureReadbackContext EnqueueDataReadback(const Texture& srcTexture,
+                                               std::span<const TextureRegion> textureRegions);
 
     // ---------------------------------------------------------------------------------------------------------------
 

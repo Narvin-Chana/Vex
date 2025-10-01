@@ -62,16 +62,16 @@ int main()
                                                       .width = srcImg.width,
                                                       .height = srcImg.height,
                                                       .depthOrArraySize = 1,
-                                                      .mips = 1,
+                                                      .mips = 2,
                                                       .usage = vex::TextureUsage::ShaderReadWrite },
                                                     vex::ResourceLifetime::Static);
 
-    Image dstImg{ .data = std::vector<vex::byte>(srcImg.data.size()),
-                  .width = srcImg.width,
-                  .height = srcImg.height,
+    Image dstImg{ .data = std::vector<vex::byte>(srcImg.data.size() / 4),
+                  .width = srcImg.width / 2,
+                  .height = srcImg.height / 2,
                   .nbComponents = srcImg.nbComponents };
 
-    auto regions = vex::TextureUploadRegion::UploadAllMips(srcTexture.description);
+    auto regions = vex::TextureRegion::AllMips(srcTexture.description);
 
     vex::CommandContext ctx =
         backend.BeginScopedCommandContext(vex::CommandQueueType::Compute, vex::SubmissionPolicy::Immediate);
@@ -83,9 +83,12 @@ int main()
             .texture = srcTexture,
             .usage = vex::TextureBindingUsage::ShaderReadWrite,
         },
+        // Write output to mip 1
         vex::TextureBinding{
             .texture = dstTexture,
             .usage = vex::TextureBindingUsage::ShaderReadWrite,
+            .mipBias = 1,
+            .mipCount = 1,
         },
     };
     std::vector<vex::BindlessHandle> handles = ctx.GetBindlessHandles(bindings);
@@ -105,9 +108,15 @@ int main()
             1u,
         });
 
-    vex::ReadBackContext readbackContext = ctx.EnqueueDataReadback(dstTexture, regions);
+    // Pull only mip 1 with output
+    vex::TextureReadbackContext readbackContext =
+        ctx.EnqueueDataReadback(dstTexture, vex::TextureRegion::FullMip(1, dstTexture.description));
 
-    backend.ExecuteReadback(readbackContext, dstImg.data, ctx.Submit());
+    // Wait on the GPU to do its readback copy operations
+    backend.WaitForTokenOnCPU(*ctx.Submit());
+
+    // Read data from readback buffer
+    vex::TextureCopyUtil::ReadTextureReadbackContextData(readbackContext, dstImg.data);
 
     WriteImage(dstImg, WorkingDir / "Output.png");
 }

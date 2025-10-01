@@ -142,7 +142,7 @@ HelloCubeApplication::HelloCubeApplication()
         // Upload the entirety of both mips using the default value.
         ctx.EnqueueDataUpload(uvGuideTexture,
                               std::as_bytes(std::span(fullImageData)),
-                              vex::TextureUploadRegion::UploadAllMips(uvGuideTexture.description));
+                              vex::TextureRegion::AllMips(uvGuideTexture.description));
 
         // Some other examples of the EnqueueDataUpload api:
 
@@ -150,13 +150,13 @@ HelloCubeApplication::HelloCubeApplication()
         ctx.EnqueueDataUpload(
             uvGuideTexture,
             std::as_bytes(std::span(fullImageData.begin(), fullImageData.begin() + width * height * channels)),
-            vex::TextureUploadRegion::UploadFullMip(0, uvGuideTexture.description));
+            vex::TextureRegion::FullMip(0, uvGuideTexture.description));
 
         // Upload only the second mip
         ctx.EnqueueDataUpload(
             uvGuideTexture,
             std::as_bytes(std::span(fullImageData.begin() + width * height * channels, fullImageData.end())),
-            vex::TextureUploadRegion::UploadFullMip(1, uvGuideTexture.description));
+            vex::TextureRegion::FullMip(1, uvGuideTexture.description));
 
         // Upload only to the top half of the first mip and the bottom half of the second mip.
         // Requires having halfImageData which is half the first mip and half the second mip packed together.
@@ -173,10 +173,9 @@ HelloCubeApplication::HelloCubeApplication()
         // TODO(https://trello.com/c/L6TkjaGl): this causes a Vulkan synchronization error! Very probably some sort of
         // missing barrier stage. Upload a single RGBA pixel to position x=10, y=10.
         std::vector<vex::u8> pixel{ 255, 255, 255, 255 };
-        ctx.EnqueueDataUpload(
-            uvGuideTexture,
-            std::as_bytes(std::span(pixel)),
-            { { vex::TextureUploadRegion{ .mip = 0, .offset = { 10, 10, 0 }, .extent = { 1, 1, 1 } } } });
+        ctx.EnqueueDataUpload(uvGuideTexture,
+                              std::as_bytes(std::span(pixel)),
+                              { { vex::TextureRegion{ .mip = 0, .offset = { 10, 10, 0 }, .extent = { 1, 1, 1 } } } });
 
         // The texture will now only be used as a read-only shader resource. Avoids having to place a barrier later on.
         // We use PixelShader sync since it will only be used there.

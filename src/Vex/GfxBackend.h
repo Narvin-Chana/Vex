@@ -27,7 +27,7 @@
 
 namespace vex
 {
-class ReadBackContext;
+class TextureReadbackContext;
 
 class CommandContext;
 struct PhysicalDevice;
@@ -125,14 +125,6 @@ public:
     // You can manually unregister a RenderExtension by passing in the pointer returned on creation.
     void UnregisterRenderExtension(NonNullPtr<RenderExtension> renderExtension);
 
-    // Reads the data from the staging buffer from the specified context.
-    // The readback token allows to wait on the CPU for the readback operations to be done
-    // This should be used unless the waiting has been done separately prior to this call. Always passing the respective
-    // token is recommended
-    void ExecuteReadback(const ReadBackContext& context,
-                         std::span<byte> outputData,
-                         const std::optional<SyncToken>& readbackToken);
-
 private:
     void SubmitDeferredWork();
     void CleanupResources();
@@ -193,6 +185,7 @@ private:
 
     friend class CommandContext;
     friend struct ResourceBindingUtils;
+    friend class TextureReadbackContext;
     bool isSwapchainValid = true;
 };
 

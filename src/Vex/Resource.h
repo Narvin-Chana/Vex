@@ -52,13 +52,22 @@ public:
     ResourceMappedMemory(MappableResourceInterface& resource);
 
     ~ResourceMappedMemory();
-    void SetData(std::span<const byte> inData);
-    void SetData(std::span<byte> inData);
-    void SetData(std::span<const byte> inData, u32 offset);
-    void SetData(std::span<byte> inData, u32 offset);
+    void WriteData(std::span<const byte> inData);
+    void WriteData(std::span<byte> inData);
+    void WriteData(std::span<const byte> inData, u32 offset);
+    void WriteData(std::span<byte> inData, u32 offset);
+    void ReadData(u32 offset, std::span<byte> outData);
+    void ReadData(std::span<byte> outData);
 
     template <class T>
-    void SetData(const T& inData);
+    void WriteData(const T& inData);
+    template <class T>
+    void ReadData(T& outData);
+
+    [[nodiscard]] std::span<byte> GetMappedRange() const
+    {
+        return mappedData;
+    };
 
 private:
     std::span<byte> mappedData;
@@ -69,10 +78,17 @@ private:
 };
 
 template <class T>
-void ResourceMappedMemory::SetData(const T& inData)
+void ResourceMappedMemory::WriteData(const T& inData)
 {
     const u8* dataPtr = reinterpret_cast<const u8*>(&inData);
-    SetData(std::span{ dataPtr, sizeof(T) });
+    WriteData(std::span{ dataPtr, sizeof(T) });
+}
+
+template <class T>
+void ResourceMappedMemory::ReadData(T& outData)
+{
+    u8* dataPtr = reinterpret_cast<u8*>(&outData);
+    ReadData(std::span{ dataPtr, sizeof(T) });
 }
 
 } // namespace vex

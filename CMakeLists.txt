@@ -102,6 +102,11 @@ FetchContent_MakeAvailable(magic_enum)
 add_library(Vex STATIC
     # Platform
     "src/Vex/Platform/Platform.h"
+    # Vex Tests
+    "src/Tests/SynchronizationTorture.h"
+    "src/Tests/SynchronizationTorture.cpp"
+    "src/Tests/TextureUploadReadback.cpp"
+    "src/Tests/TextureUploadReadback.h"
     # RHI
     "src/RHI/RHIFwd.h"
     "src/RHI/RHI.h"  
@@ -199,11 +204,6 @@ add_library(Vex STATIC
     "src/Vex/ResourceCopy.h"
     "src/Vex/ResourceCopy.cpp"
     "src/Vex/Concepts.h"
-    # Vex Tests
-    "src/Tests/SynchronizationTorture.h"
-    "src/Tests/SynchronizationTorture.cpp"
-    "src/Tests/TextureUploadReadback.cpp"
-    "src/Tests/TextureUploadReadback.h"
 )
 
 if(WIN32)

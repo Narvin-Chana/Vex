@@ -1,24 +1,18 @@
-﻿#include <Vex.hlsli>
+﻿import Vex;
 
-struct UniformStruct
-{
-    uint inputTextureHandle;
-    uint outputTextureHandle;
-};
-
-VEX_UNIFORMS(UniformStruct, Uniforms);
-
-static const RWTexture2D<float4> InputTexture = GetBindlessResource(Uniforms.inputTextureHandle);
-static const RWTexture2D<float4> OutputTexture = GetBindlessResource(Uniforms.outputTextureHandle);
 static const int blurSize = 3;
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
-void CSMain(uint3 dtid : SV_DispatchThreadID)
+void CSMain(uint3 dtid : SV_DispatchThreadID, uniform uint inputTextureHandle, uniform uint outputTextureHandle)
 {
+    let InputTexture = GetBindlessResource<Texture2D<float4>>(inputTextureHandle);
+    let OutputTexture = GetBindlessResource<RWTexture2D<float4>>(outputTextureHandle);
+
     uint width, height;
     InputTexture.GetDimensions(width, height);
 
-    float4 value = 0.0f.xxxx;
+    float4 value = float4(0, 0, 0, 0);
 
     for (int y = -blurSize; y <= blurSize; ++y) {
         for (int x = -blurSize; x <= blurSize; ++x) {
