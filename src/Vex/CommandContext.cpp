@@ -507,7 +507,7 @@ void CommandContext::Copy(const Texture& source,
     RHIBufferBarrier destinationBarrier{ destinationRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest };
     cmdList->Barrier({ &destinationBarrier, 1 }, { &sourceBarrier, 1 });
 
-    cmdList->Copy(destinationRHI, sourceRHI, bufferToTextureCopyDescriptions);
+    cmdList->Copy(sourceRHI, destinationRHI, bufferToTextureCopyDescriptions);
 }
 
 void CommandContext::EnqueueDataUpload(const Buffer& buffer,
