@@ -6,6 +6,7 @@
 #include <Vex/Bindings.h>
 #include <Vex/ByteUtils.h>
 #include <Vex/DrawHelpers.h>
+#include <Vex/PhysicalDevice.h>
 
 #include <RHI/RHIBindings.h>
 
@@ -16,6 +17,7 @@
 #include <Vulkan/RHI/VkResourceLayout.h>
 #include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkErrorHandler.h>
+#include <Vulkan/VkFeatureChecker.h>
 #include <Vulkan/VkFormats.h>
 #include <Vulkan/VkGPUContext.h>
 #include <Vulkan/VkGraphicsPipeline.h>
@@ -442,6 +444,123 @@ void VkCommandList::TraceRays(const std::array<u32, 3>& widthHeightDepth,
                               const RHIRayTracingPipelineState& rayTracingPipelineState)
 {
     VEX_NOT_YET_IMPLEMENTED();
+}
+
+void VkCommandList::GenerateMips(RHITexture& texture)
+{
+    if (auto featureChecker = reinterpret_cast<VkFeatureChecker&>(*GPhysicalDevice->featureChecker);
+        !featureChecker.DoesTextureFormatSupportLinearFiltering(texture.GetDescription().format))
+    {
+        VEX_LOG(Fatal,
+                "Cannot generate mips for texture: {}! The format {} does not support linear image filtering!",
+                texture.GetDescription().name,
+                magic_enum::enum_name(texture.GetDescription().format));
+    }
+
+    bool isDepthStencilFormat = FormatIsDepthStencilCompatible(texture.GetDescription().format);
+    ::vk::ImageAspectFlags aspectMask =
+        isDepthStencilFormat ? ::vk::ImageAspectFlagBits::eDepth : ::vk::ImageAspectFlagBits::eColor;
+
+    // Transition all mips except the first to transferDst.
+    ::vk::ImageMemoryBarrier2 barrier{
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = texture.GetResource(),
+    };
+    barrier.subresourceRange.aspectMask = aspectMask;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = texture.GetDescription().GetArraySize();
+    barrier.subresourceRange.baseMipLevel = 1;
+    barrier.subresourceRange.levelCount = texture.GetDescription().mips - 1;
+    barrier.srcStageMask = RHIBarrierSyncToVulkan(texture.GetLastSync());
+    barrier.srcAccessMask = RHIBarrierAccessToVulkan(texture.GetLastAccess());
+    barrier.oldLayout = RHITextureLayoutToVulkan(texture.GetLastLayout());
+    barrier.dstStageMask = ::vk::PipelineStageFlagBits2::eTransfer;
+    barrier.dstAccessMask = ::vk::AccessFlagBits2::eTransferWrite;
+    barrier.newLayout = ::vk::ImageLayout::eTransferDstOptimal;
+
+    ::vk::DependencyInfo info{ .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &barrier };
+    commandBuffer->pipelineBarrier2(&info);
+
+    i32 mipWidth = texture.GetDescription().width;
+    i32 mipHeight = texture.GetDescription().height;
+    i32 mipDepth = texture.GetDescription().GetDepth();
+
+    for (u16 i = 1; i < texture.GetDescription().mips; ++i)
+    {
+        // Transition the (i-1)th mip to transferSrc.
+        barrier.subresourceRange.baseMipLevel = i - 1;
+        barrier.subresourceRange.levelCount = 1;
+        // First mip is still in the texture's original state.
+        if (i == 1)
+        {
+            barrier.srcStageMask = RHIBarrierSyncToVulkan(texture.GetLastSync());
+            barrier.srcAccessMask = RHIBarrierAccessToVulkan(texture.GetLastAccess());
+            barrier.oldLayout = RHITextureLayoutToVulkan(texture.GetLastLayout());
+        }
+        else
+        {
+            // All other mips are in TransferDst.
+            barrier.srcStageMask = ::vk::PipelineStageFlagBits2::eBlit;
+            barrier.srcAccessMask = ::vk::AccessFlagBits2::eTransferWrite;
+            barrier.oldLayout = ::vk::ImageLayout::eTransferDstOptimal;
+        }
+        barrier.dstStageMask = ::vk::PipelineStageFlagBits2::eTransfer;
+        barrier.dstAccessMask = ::vk::AccessFlagBits2::eTransferRead;
+        barrier.newLayout = ::vk::ImageLayout::eTransferSrcOptimal;
+        commandBuffer->pipelineBarrier2(&info);
+
+        ::vk::ImageBlit blit{};
+        blit.srcSubresource.aspectMask = aspectMask;
+        blit.srcSubresource.mipLevel = i - 1;
+        blit.srcSubresource.baseArrayLayer = 0;
+        blit.srcSubresource.layerCount = texture.GetDescription().GetArraySize();
+        blit.srcOffsets[0] = ::vk::Offset3D{ 0, 0, 0 };
+        blit.srcOffsets[1] = ::vk::Offset3D{ mipWidth, mipHeight, mipDepth };
+
+        blit.dstSubresource.aspectMask = aspectMask;
+        blit.dstSubresource.mipLevel = i;
+        blit.dstSubresource.baseArrayLayer = 0;
+        blit.dstSubresource.layerCount = texture.GetDescription().GetArraySize();
+        blit.dstOffsets[0] = ::vk::Offset3D{ 0, 0, 0 };
+        blit.dstOffsets[1] = ::vk::Offset3D{ mipWidth > 1 ? mipWidth / 2 : 1,
+                                             mipHeight > 1 ? mipHeight / 2 : 1,
+                                             mipDepth > 1 ? mipDepth / 2 : 1 };
+
+        commandBuffer->blitImage(texture.GetResource(),
+                                 ::vk::ImageLayout::eTransferSrcOptimal,
+                                 texture.GetResource(),
+                                 ::vk::ImageLayout::eTransferDstOptimal,
+                                 blit,
+                                 ::vk::Filter::eLinear);
+
+        if (mipWidth > 1)
+        {
+            mipWidth /= 2;
+        }
+        if (mipHeight > 1)
+        {
+            mipHeight /= 2;
+        }
+        if (mipDepth > 1)
+        {
+            mipDepth /= 2;
+        }
+    }
+
+    // Transition the last mip to keep uniform states across the entire resource.
+    barrier.subresourceRange.baseMipLevel = texture.GetDescription().mips - 1;
+    barrier.srcStageMask = ::vk::PipelineStageFlagBits2::eBlit;
+    barrier.srcAccessMask = ::vk::AccessFlagBits2::eTransferWrite;
+    barrier.oldLayout = ::vk::ImageLayout::eTransferDstOptimal;
+    barrier.dstStageMask = ::vk::PipelineStageFlagBits2::eTransfer;
+    barrier.dstAccessMask = ::vk::AccessFlagBits2::eTransferRead;
+    barrier.newLayout = ::vk::ImageLayout::eTransferSrcOptimal;
+    commandBuffer->pipelineBarrier2(&info);
+
+    texture.SetLastSync(RHIBarrierSync::Copy);
+    texture.SetLastAccess(RHIBarrierAccess::CopySource);
+    texture.SetLastLayout(RHITextureLayout::CopySource);
 }
 
 void VkCommandList::Copy(RHITexture& src,

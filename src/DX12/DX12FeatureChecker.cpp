@@ -84,6 +84,9 @@ bool DX12FeatureChecker::IsFeatureSupported(Feature feature) const
         return rayTracingSupported;
     case Feature::BindlessResources:
         return shaderModel.HighestShaderModel >= D3D_SHADER_MODEL_6_6;
+    case Feature::MipGeneration:
+        // DX12 has no built-in way to generate mip-maps.
+        return false;
     default:
         return false;
     }
