@@ -415,6 +415,7 @@ RHITextureBarrier DX12Texture::GetClearTextureBarrier()
     if (desc.usage & TextureUsage::RenderTarget)
     {
         return RHITextureBarrier{ *this,
+                                  TextureSubresource{},
                                   RHIBarrierSync::RenderTarget,
                                   RHIBarrierAccess::RenderTarget,
                                   RHITextureLayout::RenderTarget };
@@ -423,6 +424,7 @@ RHITextureBarrier DX12Texture::GetClearTextureBarrier()
     if (desc.usage & TextureUsage::DepthStencil)
     {
         return RHITextureBarrier{ *this,
+                                  TextureSubresource{},
                                   RHIBarrierSync::DepthStencil,
                                   RHIBarrierAccess::DepthStencilWrite,
                                   RHITextureLayout::DepthStencilWrite };

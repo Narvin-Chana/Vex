@@ -23,10 +23,9 @@ public:
     virtual ResourceBindingTier GetResourceBindingTier() const override;
     virtual ShaderModel GetShaderModel() const override;
     virtual u32 GetMaxLocalConstantsByteSize() const override;
+    bool DoesFormatSupportLinearFiltering(TextureFormat format) const override;
 
     std::string_view GetMaxSupportedSpirVVersion() const;
-
-    bool DoesTextureFormatSupportLinearFiltering(TextureFormat format);
 
 private:
     ::vk::PhysicalDeviceProperties deviceProperties;

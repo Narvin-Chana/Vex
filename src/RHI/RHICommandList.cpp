@@ -19,7 +19,7 @@ void RHICommandListBase::TextureBarrier(RHITexture& texture,
                                         RHIBarrierAccess access,
                                         RHITextureLayout layout)
 {
-    RHITextureBarrier barrier{ texture, sync, access, layout };
+    RHITextureBarrier barrier{ texture, TextureSubresource{}, sync, access, layout };
     Barrier({}, { &barrier, 1 });
 }
 

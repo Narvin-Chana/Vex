@@ -328,16 +328,137 @@ void CommandContext::TraceRays(const RayTracingPassDescription& rayTracingPassDe
 void CommandContext::GenerateMips(const Texture& texture)
 {
     VEX_CHECK(texture.desc.mips > 1,
-              "The texture must have atleast more than 1 mip in order to have the other mips generated.");
+              "The texture must have more than atleast 1 mip in order to have the other mips generated.");
 
-    if (GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::MipGeneration))
+    if (GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::MipGeneration) &&
+        GPhysicalDevice->featureChecker->DoesFormatSupportLinearFiltering(texture.desc.format))
     {
-        // Leverage the API's built-in mip generation feature.
+        // Leverage the API's built-in mip generation feature (if the format supports it).
         cmdList->GenerateMips(backend->GetRHITexture(texture.handle));
         return;
     }
 
-    // VEX_NOT_YET_IMPLEMENTED();
+    std::string entryPoint;
+    switch (texture.desc.type)
+    {
+    case TextureType::Texture2D:
+        entryPoint = texture.desc.GetSliceCount() > 1 ? "MipGenerationTexture2DArray" : "MipGenerationTexture2D";
+        break;
+    case TextureType::TextureCube:
+        entryPoint = texture.desc.GetSliceCount() > 1 ? "MipGenerationTextureCubeArray" : "MipGenerationTextureCube";
+        break;
+    case TextureType::Texture3D:
+        entryPoint = "MipGenerationTexture3D";
+        break;
+    }
+
+    u32 powerOfTwoMode = 0;
+    if ((texture.desc.width > 1) && (texture.desc.height & 1))
+    {
+        // X is odd
+        powerOfTwoMode |= 1;
+    }
+    if ((texture.desc.height > 1) && (texture.desc.height & 1))
+    {
+        // Y is odd
+        powerOfTwoMode |= 2;
+    }
+
+    // We have to perform a manual mip generation if not supported by the graphics API.
+    ShaderKey mipGenerationShaderKey{
+        .path = std::filesystem::current_path() / "MipGeneration.hlsl",
+        .entryPoint = std::move(entryPoint),
+        .type = ShaderType::ComputeShader,
+        .defines = { ShaderDefine{ "TEXTURE_TYPE", std::string(GetFormatHLSLType(texture.desc.format)) },
+                     ShaderDefine{ "LINEAR_SAMPLER_SLOT", std::format("s{}", backend->builtInLinearSamplerSlot) },
+                     ShaderDefine{ "NON_POWER_OF_TWO", std::to_string(powerOfTwoMode) } }
+    };
+
+    if (IsFormatSRGB(texture.desc.format))
+    {
+        mipGenerationShaderKey.defines.emplace_back("CONVERT_TO_SRGB", "1");
+    }
+
+    struct Uniforms
+    {
+        std::array<float, 3> texelSize;
+        BindlessHandle sourceMipHandle;
+        u32 sourceMipLevel;
+        u32 numMips;
+        BindlessHandle destinationMip0;
+        BindlessHandle destinationMip1;
+    };
+
+    u32 width = texture.desc.width;
+    u32 height = texture.desc.height;
+    u32 depth = texture.desc.GetDepth();
+    bool isLastIteration = false;
+
+    for (u16 mip = 1; mip < texture.desc.mips;)
+    {
+        if (mip + 1 >= texture.desc.mips)
+        {
+            isLastIteration = true;
+        }
+
+        std::vector<ResourceBinding> bindings{
+            TextureBinding{
+                .texture = texture,
+                .usage = TextureBindingUsage::ShaderRead,
+                .subresource = { .startMip = static_cast<u16>(mip - 1u), .mipCount = 1 },
+            },
+            TextureBinding{
+                .texture = texture,
+                .usage = TextureBindingUsage::ShaderReadWrite,
+                .subresource = { .startMip = mip, .mipCount = 1 },
+            },
+        };
+        if (!isLastIteration)
+        {
+            bindings.push_back(TextureBinding{
+                .texture = texture,
+                .usage = TextureBindingUsage::ShaderReadWrite,
+                .subresource = { .startMip = static_cast<u16>(mip + 1u), .mipCount = 1 },
+            });
+        }
+        auto handles = GetBindlessHandles(bindings);
+        TransitionBindings(bindings);
+
+        Uniforms uniforms{
+            {
+                2.0f / width,
+                2.0f / height,
+                2.0f / depth,
+            },
+            handles[0],
+            mip - 1u,
+            1u + !isLastIteration,
+            handles[1],
+            !isLastIteration ? handles[2] : BindlessHandle{},
+        };
+
+        std::array<u32, 3> dispatchGroupCount;
+        if (texture.desc.type == TextureType::Texture3D)
+        {
+            // For 3D textures, downsample in all 3 dimensions
+            dispatchGroupCount = { (width + 7u) / 8u, (height + 7u) / 8u, (depth + 7u) / 8u };
+        }
+        else
+        {
+            // For 2D: arraySize = 1
+            // For 2DArray: arraySize = number of slices
+            // For Cube: arraySize = 6 (faces)
+            // For CubeArray: arraySize = 6 * numCubes
+            dispatchGroupCount = { (width + 7u) / 8u, (height + 7u) / 8u, texture.desc.GetSliceCount() };
+        }
+        Dispatch(mipGenerationShaderKey, ConstantBinding(uniforms), dispatchGroupCount);
+
+        width = std::max(1u, width >> (1 + !isLastIteration));
+        height = std::max(1u, height >> (1 + !isLastIteration));
+        depth = std::max(1u, depth >> (1 + !isLastIteration));
+
+        mip += 1 + !isLastIteration;
+    }
 }
 
 void CommandContext::Copy(const Texture& source, const Texture& destination)
@@ -349,10 +470,12 @@ void CommandContext::Copy(const Texture& source, const Texture& destination)
     RHITexture& sourceRHI = backend->GetRHITexture(source.handle);
     RHITexture& destinationRHI = backend->GetRHITexture(destination.handle);
     std::array barriers{ RHITextureBarrier{ sourceRHI,
+                                            TextureSubresource{},
                                             RHIBarrierSync::Copy,
                                             RHIBarrierAccess::CopySource,
                                             RHITextureLayout::CopySource },
                          RHITextureBarrier{ destinationRHI,
+                                            TextureSubresource{},
                                             RHIBarrierSync::Copy,
                                             RHIBarrierAccess::CopyDest,
                                             RHITextureLayout::CopyDest } };
@@ -379,10 +502,12 @@ void CommandContext::Copy(const Texture& source,
     RHITexture& sourceRHI = backend->GetRHITexture(source.handle);
     RHITexture& destinationRHI = backend->GetRHITexture(destination.handle);
     std::array barriers{ RHITextureBarrier{ sourceRHI,
+                                            TextureSubresource{},
                                             RHIBarrierSync::Copy,
                                             RHIBarrierAccess::CopySource,
                                             RHITextureLayout::CopySource },
                          RHITextureBarrier{ destinationRHI,
+                                            TextureSubresource{},
                                             RHIBarrierSync::Copy,
                                             RHIBarrierAccess::CopyDest,
                                             RHITextureLayout::CopyDest } };
@@ -425,6 +550,7 @@ void CommandContext::Copy(const Buffer& source, const Texture& destination)
     RHITexture& destinationRHI = backend->GetRHITexture(destination.handle);
     RHIBufferBarrier sourceBarrier{ sourceRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource };
     RHITextureBarrier destinationBarrier{ destinationRHI,
+                                          TextureSubresource{},
                                           RHIBarrierSync::Copy,
                                           RHIBarrierAccess::CopyDest,
                                           RHITextureLayout::CopyDest };
@@ -450,6 +576,7 @@ void CommandContext::Copy(const Buffer& source,
     RHITexture& destinationRHI = backend->GetRHITexture(destination.handle);
     RHIBufferBarrier sourceBarrier{ sourceRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource };
     RHITextureBarrier destinationBarrier{ destinationRHI,
+                                          TextureSubresource{},
                                           RHIBarrierSync::Copy,
                                           RHIBarrierAccess::CopyDest,
                                           RHITextureLayout::CopyDest };
@@ -544,6 +671,7 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
 
     RHIBufferBarrier stagingBufferBarrier{ rhiStagingBuffer, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource };
     RHITextureBarrier textureBarrier{ rhiDestTexture,
+                                      TextureSubresource{},
                                       RHIBarrierSync::Copy,
                                       RHIBarrierAccess::CopyDest,
                                       RHITextureLayout::CopyDest };

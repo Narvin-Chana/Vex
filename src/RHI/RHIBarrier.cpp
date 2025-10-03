@@ -14,10 +14,10 @@ RHIBufferBarrier::RHIBufferBarrier(NonNullPtr<RHIBuffer> buffer, RHIBarrierSync 
 }
 
 RHITextureBarrier::RHITextureBarrier(NonNullPtr<RHITexture> texture,
+                                     TextureSubresource subresource,
                                      RHIBarrierSync dstSync,
                                      RHIBarrierAccess dstAccess,
-                                     RHITextureLayout dstLayout,
-                                     TextureSubresource subresource)
+                                     RHITextureLayout dstLayout)
     : texture(texture)
     , subresource(subresource)
     , dstSync(dstSync)

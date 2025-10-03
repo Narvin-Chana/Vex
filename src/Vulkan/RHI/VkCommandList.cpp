@@ -6,7 +6,6 @@
 #include <Vex/Bindings.h>
 #include <Vex/ByteUtils.h>
 #include <Vex/DrawHelpers.h>
-#include <Vex/PhysicalDevice.h>
 
 #include <RHI/RHIBindings.h>
 
@@ -434,15 +433,6 @@ void VkCommandList::TraceRays(const std::array<u32, 3>& widthHeightDepth,
 
 void VkCommandList::GenerateMips(RHITexture& texture)
 {
-    if (auto featureChecker = reinterpret_cast<VkFeatureChecker&>(*GPhysicalDevice->featureChecker);
-        !featureChecker.DoesTextureFormatSupportLinearFiltering(texture.GetDesc().format))
-    {
-        VEX_LOG(Fatal,
-                "Cannot generate mips for texture: {}! The format {} does not support linear image filtering!",
-                texture.GetDesc().name,
-                magic_enum::enum_name(texture.GetDesc().format));
-    }
-
     bool isDepthStencilFormat = FormatIsDepthStencilCompatible(texture.GetDesc().format);
     ::vk::ImageAspectFlags aspectMask =
         isDepthStencilFormat ? ::vk::ImageAspectFlagBits::eDepth : ::vk::ImageAspectFlagBits::eColor;

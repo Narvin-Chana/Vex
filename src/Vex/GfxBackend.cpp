@@ -163,12 +163,14 @@ void GfxBackend::Present(bool isFullscreenMode)
         std::array barriers = {
             RHITextureBarrier{
                 presentTexture,
+                TextureSubresource{},
                 RHIBarrierSync::Copy,
                 RHIBarrierAccess::CopySource,
                 RHITextureLayout::CopySource,
             },
             RHITextureBarrier{
                 *backBuffer,
+                TextureSubresource{},
                 RHIBarrierSync::Copy,
                 RHIBarrierAccess::CopyDest,
                 RHITextureLayout::CopyDest,

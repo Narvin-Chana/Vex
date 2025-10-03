@@ -201,7 +201,7 @@ std::string_view VkFeatureChecker::GetMaxSupportedSpirVVersion() const
     return "spirv_1_0";
 }
 
-bool VkFeatureChecker::DoesTextureFormatSupportLinearFiltering(TextureFormat format)
+bool VkFeatureChecker::DoesFormatSupportLinearFiltering(TextureFormat format) const
 {
     ::vk::FormatProperties formatProperties = physDevice.getFormatProperties(TextureFormatToVulkan(format));
     return !!(formatProperties.optimalTilingFeatures & ::vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
