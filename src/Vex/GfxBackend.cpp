@@ -157,6 +157,19 @@ void GfxBackend::Present(bool isFullscreenMode)
         // Must be a graphics queue in order to be able to move the backbuffer to the present state.
         NonNullPtr<RHICommandList> cmdList = commandPool->GetOrCreateCommandList(CommandQueueType::Graphics);
         cmdList->Open();
+
+        // If the present texture has not been used yet, its data is in a invalid state.
+        // Clear it with its clear color to ensure garbage is not shown.
+        bool presentTextureHasBeenUsed = presentTexture.GetLastAccess() != RHIBarrierAccess::NoAccess;
+        if (!presentTextureHasBeenUsed)
+        {
+            RHITextureBarrier barrier = presentTexture.GetClearTextureBarrier();
+            cmdList->Barrier({}, { &barrier, 1 });
+            cmdList->ClearTexture(RHITextureBinding(TextureBinding(GetCurrentPresentTexture()), presentTexture),
+                                  TextureUsage::RenderTarget,
+                                  presentTexture.GetDescription().clearValue);
+        }
+
         std::array barriers = {
             RHITextureBarrier{
                 presentTexture,
@@ -541,7 +554,8 @@ void GfxBackend::CreatePresentTextures()
     {
         TextureDescription presentTextureDesc = swapChain->GetBackBufferTextureDescription();
         presentTextureDesc.name = std::format("PresentTexture_{}", presentTextureIndex);
-        presentTextures[presentTextureIndex] = CreateTexture(presentTextureDesc, ResourceLifetime::Static);
+        presentTextureDesc.clearValue = description.presentTextureClearValue;
+        presentTextures[presentTextureIndex] = CreateTexture(presentTextureDesc);
     }
 }
 

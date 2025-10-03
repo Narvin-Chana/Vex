@@ -28,8 +28,7 @@ HelloTriangleApplication::HelloTriangleApplication()
                                   .height = DefaultHeight,
                                   .depthOrArraySize = 1,
                                   .mips = 1,
-                                  .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
-                                vex::ResourceLifetime::Static);
+                                  .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
     finalOutputTexture =
         graphics->CreateTexture({ .name = "Final Output Texture",
                                   .type = vex::TextureType::Texture2D,
@@ -38,22 +37,19 @@ HelloTriangleApplication::HelloTriangleApplication()
                                   .height = DefaultHeight,
                                   .depthOrArraySize = 1,
                                   .mips = 1,
-                                  .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
-                                vex::ResourceLifetime::Static);
+                                  .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
 
     // Example of CPU accessible buffer
     colorBuffer = graphics->CreateBuffer({ .name = "Color Buffer",
                                            .byteSize = sizeof(float) * 4,
                                            .usage = vex::BufferUsage::UniformBuffer,
-                                           .memoryLocality = vex::ResourceMemoryLocality::GPUOnly },
-                                         vex::ResourceLifetime::Static);
+                                           .memoryLocality = vex::ResourceMemoryLocality::GPUOnly });
 
     // Example of GPU only buffer
     commBuffer = graphics->CreateBuffer({ .name = "Comm Buffer",
                                           .byteSize = sizeof(float) * 4,
                                           .usage = vex::BufferUsage::ReadWriteBuffer | vex::BufferUsage::GenericBuffer,
-                                          .memoryLocality = vex::ResourceMemoryLocality::GPUOnly },
-                                        vex::ResourceLifetime::Static);
+                                          .memoryLocality = vex::ResourceMemoryLocality::GPUOnly });
 }
 
 void HelloTriangleApplication::Run()
@@ -201,18 +197,14 @@ void HelloTriangleApplication::OnResize(GLFWwindow* window, uint32_t newWidth, u
                                   .height = newHeight,
                                   .depthOrArraySize = 1,
                                   .mips = 1,
-                                  .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
-                                vex::ResourceLifetime::Static);
-    workingTexture = graphics->CreateTexture(
-        {
-            .name = "Working Texture",
-            .type = vex::TextureType::Texture2D,
-            .format = vex::TextureFormat::RGBA8_UNORM,
-            .width = newWidth,
-            .height = newHeight,
-            .depthOrArraySize = 1,
-            .mips = 1,
-            .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite,
-        },
-        vex::ResourceLifetime::Static);
+                                  .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
+    workingTexture =
+        graphics->CreateTexture({ .name = "Working Texture",
+                                  .type = vex::TextureType::Texture2D,
+                                  .format = vex::TextureFormat::RGBA8_UNORM,
+                                  .width = newWidth,
+                                  .height = newHeight,
+                                  .depthOrArraySize = 1,
+                                  .mips = 1,
+                                  .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
 }
