@@ -330,8 +330,10 @@ void CommandContext::GenerateMips(const Texture& texture)
     VEX_CHECK(texture.desc.mips > 1,
               "The texture must have more than atleast 1 mip in order to have the other mips generated.");
 
-    if (GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::MipGeneration) &&
-        GPhysicalDevice->featureChecker->DoesFormatSupportLinearFiltering(texture.desc.format))
+    const bool formatSupportsLinearFiltering =
+        GPhysicalDevice->featureChecker->DoesFormatSupportLinearFiltering(texture.desc.format);
+
+    if (GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::MipGeneration) && formatSupportsLinearFiltering)
     {
         // Leverage the API's built-in mip generation feature (if the format supports it).
         cmdList->GenerateMips(backend->GetRHITexture(texture.handle));
@@ -352,18 +354,6 @@ void CommandContext::GenerateMips(const Texture& texture)
         break;
     }
 
-    u32 powerOfTwoMode = 0;
-    if ((texture.desc.width > 1) && (texture.desc.height & 1))
-    {
-        // X is odd
-        powerOfTwoMode |= 1;
-    }
-    if ((texture.desc.height > 1) && (texture.desc.height & 1))
-    {
-        // Y is odd
-        powerOfTwoMode |= 2;
-    }
-
     // We have to perform a manual mip generation if not supported by the graphics API.
     ShaderKey mipGenerationShaderKey{
         .path = std::filesystem::current_path() / "MipGeneration.hlsl",
@@ -371,8 +361,10 @@ void CommandContext::GenerateMips(const Texture& texture)
         .type = ShaderType::ComputeShader,
         .defines = { ShaderDefine{ "TEXTURE_TYPE", std::string(GetFormatHLSLType(texture.desc.format)) },
                      ShaderDefine{ "LINEAR_SAMPLER_SLOT", std::format("s{}", backend->builtInLinearSamplerSlot) },
-                     ShaderDefine{ "NON_POWER_OF_TWO", std::to_string(powerOfTwoMode) } }
+                     ShaderDefine{ "POINT_SAMPLER_SLOT", std::format("s{}", backend->builtInPointSamplerSlot) },
+                     ShaderDefine{ "NON_POWER_OF_TWO" } }
     };
+    static constexpr u32 NonPowerOfTwoDefineIndex = 3;
 
     if (IsFormatSRGB(texture.desc.format))
     {
@@ -400,6 +392,19 @@ void CommandContext::GenerateMips(const Texture& texture)
         {
             isLastIteration = true;
         }
+
+        u32 powerOfTwoMode = 0;
+        if ((texture.desc.width > 1) && (texture.desc.height & 1))
+        {
+            // X is odd
+            powerOfTwoMode |= 1;
+        }
+        if ((texture.desc.height > 1) && (texture.desc.height & 1))
+        {
+            // Y is odd
+            powerOfTwoMode |= 2;
+        }
+        mipGenerationShaderKey.defines[NonPowerOfTwoDefineIndex].value = std::to_string(powerOfTwoMode);
 
         std::vector<ResourceBinding> bindings{
             TextureBinding{

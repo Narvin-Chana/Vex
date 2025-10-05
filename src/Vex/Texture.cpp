@@ -245,6 +245,7 @@ void ValidateTextureCopyDesc(const TextureDesc& srcDesc, const TextureDesc& dstD
 {
     copyDesc.srcRegion.Validate(srcDesc);
     copyDesc.dstRegion.Validate(dstDesc);
+    VEX_CHECK(copyDesc.srcRegion.extent == copyDesc.dstRegion.extent, "");
 }
 
 void ValidateCompatibleTextureDescriptions(const TextureDesc& srcDesc, const TextureDesc& dstDesc)
@@ -435,12 +436,12 @@ TextureDesc TextureDesc::CreateTexture3D(std::string name,
 
 u16 TextureSubresource::GetMipCount(const TextureDesc& desc) const
 {
-    return mipCount == GTextureAllMips ? desc.mips : mipCount;
+    return mipCount == GTextureAllMips ? (desc.mips - startMip) : mipCount;
 }
 
 u32 TextureSubresource::GetSliceCount(const TextureDesc& desc) const
 {
-    return sliceCount == GTextureAllSlices ? desc.GetSliceCount() : sliceCount;
+    return sliceCount == GTextureAllSlices ? (desc.GetSliceCount() - startSlice) : sliceCount;
 }
 
 void TextureSubresource::Validate(const TextureDesc& desc) const

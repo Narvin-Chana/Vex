@@ -492,6 +492,8 @@ void GfxBackend::SetSamplers(std::span<const TextureSampler> newSamplers)
     std::vector<TextureSampler> samplers = { newSamplers.begin(), newSamplers.end() };
     samplers.push_back(TextureSampler::CreateSampler(FilterMode::Linear, AddressMode::Clamp));
     builtInLinearSamplerSlot = samplers.size() - 1u;
+    samplers.push_back(TextureSampler::CreateSampler(FilterMode::Point, AddressMode::Clamp));
+    builtInPointSamplerSlot = samplers.size() - 1u;
     psCache->GetResourceLayout().SetSamplers(samplers);
 }
 

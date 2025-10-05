@@ -24,6 +24,77 @@
 namespace vex::vk
 {
 
+namespace CommandList_Internal
+{
+
+static bool CanMergeBarriers(const ::vk::ImageMemoryBarrier2& a, const ::vk::ImageMemoryBarrier2& b)
+{
+    // Must be for the same image
+    if (a.image != b.image)
+        return false;
+
+    // Must have the same sync/access/layout transitions
+    if (a.srcStageMask != b.srcStageMask || a.dstStageMask != b.dstStageMask)
+        return false;
+    if (a.srcAccessMask != b.srcAccessMask || a.dstAccessMask != b.dstAccessMask)
+        return false;
+    if (a.oldLayout != b.oldLayout || a.newLayout != b.newLayout)
+        return false;
+
+    // Must have the same queue family indices
+    if (a.srcQueueFamilyIndex != b.srcQueueFamilyIndex || a.dstQueueFamilyIndex != b.dstQueueFamilyIndex)
+        return false;
+
+    // Must have the same aspect mask
+    if (a.subresourceRange.aspectMask != b.subresourceRange.aspectMask)
+        return false;
+
+    // Check if subresources are contiguous
+    // Case 1: Adjacent mips in the same array layer
+    if (a.subresourceRange.baseArrayLayer == b.subresourceRange.baseArrayLayer &&
+        a.subresourceRange.layerCount == b.subresourceRange.layerCount && a.subresourceRange.layerCount == 1)
+    {
+        // Check if mips are adjacent
+        u32 aLastMip = a.subresourceRange.baseMipLevel + a.subresourceRange.levelCount;
+        if (aLastMip == b.subresourceRange.baseMipLevel)
+            return true;
+    }
+
+    // Case 2: Adjacent array layers with the same mip range
+    if (a.subresourceRange.baseMipLevel == b.subresourceRange.baseMipLevel &&
+        a.subresourceRange.levelCount == b.subresourceRange.levelCount)
+    {
+        // Check if array layers are adjacent
+        u32 aLastLayer = a.subresourceRange.baseArrayLayer + a.subresourceRange.layerCount;
+        if (aLastLayer == b.subresourceRange.baseArrayLayer)
+            return true;
+    }
+
+    return false;
+}
+
+static ::vk::ImageMemoryBarrier2 MergeBarriers(const ::vk::ImageMemoryBarrier2& a, const ::vk::ImageMemoryBarrier2& b)
+{
+    ::vk::ImageMemoryBarrier2 merged = a;
+
+    // Merge adjacent mips (same array layer)
+    if (a.subresourceRange.baseArrayLayer == b.subresourceRange.baseArrayLayer &&
+        a.subresourceRange.layerCount == b.subresourceRange.layerCount)
+    {
+        merged.subresourceRange.levelCount = a.subresourceRange.levelCount + b.subresourceRange.levelCount;
+    }
+    // Merge adjacent array layers (same mip range)
+    else if (a.subresourceRange.baseMipLevel == b.subresourceRange.baseMipLevel &&
+             a.subresourceRange.levelCount == b.subresourceRange.levelCount)
+    {
+        merged.subresourceRange.layerCount = a.subresourceRange.layerCount + b.subresourceRange.layerCount;
+    }
+
+    return merged;
+}
+
+} // namespace CommandList_Internal
+
 void VkCommandList::Open()
 {
     if (isOpen)
@@ -246,39 +317,121 @@ void VkCommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
     for (auto& textureBarrier : textureBarriers)
     {
         const TextureDesc& desc = textureBarrier.texture->GetDesc();
-
-        ::vk::ImageMemoryBarrier2 vkBarrier = {};
-        if (textureBarrier.texture->IsBackBufferTexture() &&
-            textureBarrier.texture->GetLastLayout() == RHITextureLayout::Undefined)
+        // Check if we can use the fast-path.
+        const bool isSubresourceFullResource = textureBarrier.subresource == TextureSubresource{};
+        if (isSubresourceFullResource && textureBarrier.texture->IsLastBarrierStateUniform())
         {
-            // Synchronize with vkAcquireNextImageKHR
-            vkBarrier.srcStageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput;
-            vkBarrier.srcAccessMask = ::vk::AccessFlagBits2::eNone;
+            ::vk::ImageMemoryBarrier2 vkBarrier = {};
+            if (textureBarrier.texture->IsBackBufferTexture() &&
+                textureBarrier.texture->GetLastLayout() == RHITextureLayout::Undefined)
+            {
+                // Synchronize with vkAcquireNextImageKHR
+                vkBarrier.srcStageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput;
+                vkBarrier.srcAccessMask = ::vk::AccessFlagBits2::eNone;
+            }
+            else
+            {
+                vkBarrier.srcStageMask = RHIBarrierSyncToVulkan(textureBarrier.texture->GetLastSync());
+                vkBarrier.srcAccessMask = RHIBarrierAccessToVulkan(textureBarrier.texture->GetLastAccess());
+            }
+            vkBarrier.oldLayout = RHITextureLayoutToVulkan(textureBarrier.texture->GetLastLayout());
+            vkBarrier.dstStageMask = RHIBarrierSyncToVulkan(textureBarrier.dstSync);
+            vkBarrier.dstAccessMask = RHIBarrierAccessToVulkan(textureBarrier.dstAccess);
+            vkBarrier.newLayout = RHITextureLayoutToVulkan(textureBarrier.dstLayout);
+            vkBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            vkBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            vkBarrier.image = textureBarrier.texture->GetResource();
+            vkBarrier.subresourceRange = { .aspectMask = VkTextureUtil::GetFormatAspectFlags(desc.format),
+                                           .baseMipLevel = 0,
+                                           .levelCount = desc.mips,
+                                           .baseArrayLayer = 0,
+                                           .layerCount = desc.GetSliceCount() },
+            vkTextureBarriers.push_back(std::move(vkBarrier));
+
+            // Update last barrier state for the resource.
+            textureBarrier.texture->SetLastBarrierState(textureBarrier.dstSync,
+                                                        textureBarrier.dstAccess,
+                                                        textureBarrier.dstLayout);
         }
         else
         {
-            vkBarrier.srcStageMask = RHIBarrierSyncToVulkan(textureBarrier.texture->GetLastSync());
-            vkBarrier.srcAccessMask = RHIBarrierAccessToVulkan(textureBarrier.texture->GetLastAccess());
+            // Ensures the texture uses non-uniform last barrier states.
+            textureBarrier.texture->EnsureLastBarrierStateNonUniform();
+
+            for (u16 mip = textureBarrier.subresource.startMip;
+                 mip < textureBarrier.subresource.startMip + textureBarrier.subresource.GetMipCount(desc);
+                 ++mip)
+            {
+                for (u32 slice = textureBarrier.subresource.startSlice;
+                     slice < textureBarrier.subresource.startSlice +
+                                 textureBarrier.subresource.GetSliceCount(textureBarrier.texture->GetDesc());
+                     ++slice)
+                {
+                    ::vk::ImageMemoryBarrier2 vkBarrier = {};
+                    if (textureBarrier.texture->IsBackBufferTexture() &&
+                        textureBarrier.texture->GetLastLayoutForSubresource(mip, slice) == RHITextureLayout::Undefined)
+                    {
+                        // Synchronize with vkAcquireNextImageKHR
+                        vkBarrier.srcStageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput;
+                        vkBarrier.srcAccessMask = ::vk::AccessFlagBits2::eNone;
+                    }
+                    else
+                    {
+                        vkBarrier.srcStageMask =
+                            RHIBarrierSyncToVulkan(textureBarrier.texture->GetLastSyncForSubresource(mip, slice));
+                        vkBarrier.srcAccessMask =
+                            RHIBarrierAccessToVulkan(textureBarrier.texture->GetLastAccessForSubresource(mip, slice));
+                    }
+                    vkBarrier.oldLayout =
+                        RHITextureLayoutToVulkan(textureBarrier.texture->GetLastLayoutForSubresource(mip, slice));
+                    vkBarrier.dstStageMask = RHIBarrierSyncToVulkan(textureBarrier.dstSync);
+                    vkBarrier.dstAccessMask = RHIBarrierAccessToVulkan(textureBarrier.dstAccess);
+                    vkBarrier.newLayout = RHITextureLayoutToVulkan(textureBarrier.dstLayout);
+                    vkBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                    vkBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                    vkBarrier.image = textureBarrier.texture->GetResource();
+                    vkBarrier.subresourceRange = { .aspectMask = VkTextureUtil::GetFormatAspectFlags(desc.format),
+                                                   .baseMipLevel = mip,
+                                                   .levelCount = 1,
+                                                   .baseArrayLayer = slice,
+                                                   .layerCount = 1 },
+                    vkTextureBarriers.push_back(std::move(vkBarrier));
+
+                    if (!isSubresourceFullResource)
+                    {
+                        // Update last barrier state for the subresource.
+                        textureBarrier.texture->SetLastBarrierStateForSubresource(textureBarrier.dstSync,
+                                                                                  textureBarrier.dstAccess,
+                                                                                  textureBarrier.dstLayout,
+                                                                                  mip,
+                                                                                  slice);
+                    }
+                }
+            }
+
+            // If the dst barrier is constant across the entire resource, we can just revert to uniform barriers.
+            if (isSubresourceFullResource)
+            {
+                textureBarrier.texture->SetLastBarrierState(textureBarrier.dstSync,
+                                                            textureBarrier.dstAccess,
+                                                            textureBarrier.dstLayout);
+            }
         }
-        vkBarrier.oldLayout = RHITextureLayoutToVulkan(textureBarrier.texture->GetLastLayout());
-        vkBarrier.dstStageMask = RHIBarrierSyncToVulkan(textureBarrier.dstSync);
-        vkBarrier.dstAccessMask = RHIBarrierAccessToVulkan(textureBarrier.dstAccess);
-        vkBarrier.newLayout = RHITextureLayoutToVulkan(textureBarrier.dstLayout);
-        vkBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        vkBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        vkBarrier.image = textureBarrier.texture->GetResource();
-        vkBarrier.subresourceRange = { .aspectMask = VkTextureUtil::GetFormatAspectFlags(desc.format),
-                                       .baseMipLevel = 0,
-                                       .levelCount = desc.mips,
-                                       .baseArrayLayer = 0,
-                                       .layerCount = desc.GetSliceCount() },
+    }
 
-        vkTextureBarriers.push_back(std::move(vkBarrier));
-
-        // Update last sync, access and layout.
-        textureBarrier.texture->SetLastSync(textureBarrier.dstSync);
-        textureBarrier.texture->SetLastAccess(textureBarrier.dstAccess);
-        textureBarrier.texture->SetLastLayout(textureBarrier.dstLayout);
+    std::vector<::vk::ImageMemoryBarrier2> compactedVkTextureBarriers;
+    compactedVkTextureBarriers.reserve(vkTextureBarriers.size());
+    for (u32 i = 0; i < vkTextureBarriers.size(); ++i)
+    {
+        ::vk::ImageMemoryBarrier2 current = vkTextureBarriers[i];
+        // Keep merging while possible.
+        while (i + 1 < vkTextureBarriers.size() &&
+               CommandList_Internal::CanMergeBarriers(current, vkTextureBarriers[i + 1]))
+        {
+            current = CommandList_Internal::MergeBarriers(current, vkTextureBarriers[i + 1]);
+            ++i; // Skip the merged barrier
+        }
+        compactedVkTextureBarriers.push_back(current);
     }
 
     if (vkBufferBarriers.empty() && vkTextureBarriers.empty())
@@ -438,25 +591,14 @@ void VkCommandList::GenerateMips(RHITexture& texture)
         isDepthStencilFormat ? ::vk::ImageAspectFlagBits::eDepth : ::vk::ImageAspectFlagBits::eColor;
 
     // Transition all mips except the first to transferDst.
-    ::vk::ImageMemoryBarrier2 barrier{
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = texture.GetResource(),
-    };
-    barrier.subresourceRange.aspectMask = aspectMask;
-    barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = texture.GetDesc().GetSliceCount();
-    barrier.subresourceRange.baseMipLevel = 1;
-    barrier.subresourceRange.levelCount = texture.GetDesc().mips - 1;
-    barrier.srcStageMask = RHIBarrierSyncToVulkan(texture.GetLastSync());
-    barrier.srcAccessMask = RHIBarrierAccessToVulkan(texture.GetLastAccess());
-    barrier.oldLayout = RHITextureLayoutToVulkan(texture.GetLastLayout());
-    barrier.dstStageMask = ::vk::PipelineStageFlagBits2::eTransfer;
-    barrier.dstAccessMask = ::vk::AccessFlagBits2::eTransferWrite;
-    barrier.newLayout = ::vk::ImageLayout::eTransferDstOptimal;
-
-    ::vk::DependencyInfo info{ .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &barrier };
-    commandBuffer->pipelineBarrier2(&info);
+    RHITextureBarrier barrier{ texture,
+                               TextureSubresource{
+                                   .startMip = 1,
+                               },
+                               RHIBarrierSync::Blit,
+                               RHIBarrierAccess::CopyDest,
+                               RHITextureLayout::CopyDest };
+    Barrier({}, { &barrier, 1 });
 
     i32 mipWidth = texture.GetDesc().width;
     i32 mipHeight = texture.GetDesc().height;
@@ -465,26 +607,12 @@ void VkCommandList::GenerateMips(RHITexture& texture)
     for (u16 i = 1; i < texture.GetDesc().mips; ++i)
     {
         // Transition the (i-1)th mip to transferSrc.
-        barrier.subresourceRange.baseMipLevel = i - 1;
-        barrier.subresourceRange.levelCount = 1;
-        // First mip is still in the texture's original state.
-        if (i == 1)
-        {
-            barrier.srcStageMask = RHIBarrierSyncToVulkan(texture.GetLastSync());
-            barrier.srcAccessMask = RHIBarrierAccessToVulkan(texture.GetLastAccess());
-            barrier.oldLayout = RHITextureLayoutToVulkan(texture.GetLastLayout());
-        }
-        else
-        {
-            // All other mips are in TransferDst.
-            barrier.srcStageMask = ::vk::PipelineStageFlagBits2::eBlit;
-            barrier.srcAccessMask = ::vk::AccessFlagBits2::eTransferWrite;
-            barrier.oldLayout = ::vk::ImageLayout::eTransferDstOptimal;
-        }
-        barrier.dstStageMask = ::vk::PipelineStageFlagBits2::eTransfer;
-        barrier.dstAccessMask = ::vk::AccessFlagBits2::eTransferRead;
-        barrier.newLayout = ::vk::ImageLayout::eTransferSrcOptimal;
-        commandBuffer->pipelineBarrier2(&info);
+        barrier.subresource.startMip = i - 1;
+        barrier.subresource.mipCount = 1;
+        barrier.dstSync = RHIBarrierSync::Copy;
+        barrier.dstAccess = RHIBarrierAccess::CopySource;
+        barrier.dstLayout = RHITextureLayout::CopySource;
+        Barrier({}, { &barrier, 1 });
 
         ::vk::ImageBlit blit{};
         blit.srcSubresource.aspectMask = aspectMask;
@@ -516,18 +644,12 @@ void VkCommandList::GenerateMips(RHITexture& texture)
     }
 
     // Transition the last mip to keep uniform states across the entire resource.
-    barrier.subresourceRange.baseMipLevel = texture.GetDesc().mips - 1;
-    barrier.srcStageMask = ::vk::PipelineStageFlagBits2::eBlit;
-    barrier.srcAccessMask = ::vk::AccessFlagBits2::eTransferWrite;
-    barrier.oldLayout = ::vk::ImageLayout::eTransferDstOptimal;
-    barrier.dstStageMask = ::vk::PipelineStageFlagBits2::eTransfer;
-    barrier.dstAccessMask = ::vk::AccessFlagBits2::eTransferRead;
-    barrier.newLayout = ::vk::ImageLayout::eTransferSrcOptimal;
-    commandBuffer->pipelineBarrier2(&info);
-
-    texture.SetLastSync(RHIBarrierSync::Copy);
-    texture.SetLastAccess(RHIBarrierAccess::CopySource);
-    texture.SetLastLayout(RHITextureLayout::CopySource);
+    barrier.subresource.startMip = texture.GetDesc().mips - 1;
+    barrier.subresource.mipCount = 1;
+    barrier.dstSync = RHIBarrierSync::Copy;
+    barrier.dstAccess = RHIBarrierAccess::CopySource;
+    barrier.dstLayout = RHITextureLayout::CopySource;
+    Barrier({}, { &barrier, 1 });
 }
 
 void VkCommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDesc> textureCopyDescriptions)

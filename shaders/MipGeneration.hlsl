@@ -9,11 +9,19 @@
 #define NON_POWER_OF_TWO 0
 #endif
 
+#ifndef CAN_BILINEAR_SAMPLE
+#define CAN_BILINEAR_SAMPLE 1
+#endif
+
 #ifndef LINEAR_SAMPLER_SLOT
 #define LINEAR_SAMPLER_SLOT s0
 #endif
-
 SamplerState LinearSampler : register(LINEAR_SAMPLER_SLOT);
+
+#ifndef POINT_SAMPLER_SLOT
+#define POINT_SAMPLER_SLOT s1
+#endif
+SamplerState PointSampler : register(POINT_SAMPLER_SLOT);
 
 struct Uniforms
 {
@@ -84,6 +92,71 @@ float PackColor<float>(float color)
 #endif
 }
 
+TEXTURE_TYPE SampleTexture2D(Texture2D<TEXTURE_TYPE> texture, float2 uv, uint mip)
+{
+#if CAN_BILINEAR_SAMPLE
+    return texture.SampleLevel(LinearSampler, uv, mip);
+#else
+    return texture.SampleLevel(PointSampler, uv, mip);
+#endif
+}
+
+TEXTURE_TYPE SampleTexture2DArray(Texture2DArray<TEXTURE_TYPE> texture, float3 uvSlice, uint mip)
+{
+#if CAN_BILINEAR_SAMPLE
+    return texture.SampleLevel(LinearSampler, uvSlice, mip);
+#else
+    return texture.SampleLevel(PointSampler, uvSlice, mip);
+#endif
+}
+
+// TextureCube requires a direction, we compute UVs. So conversion must be done.
+float3 CubeFaceUVToDirection(uint face, float2 uv)
+{
+    // Convert UV from [0,1] to [-1,1]
+    float2 coords = uv * 2.0f - 1.0f;
+    
+    // Face mapping (HLSL convention):
+    // 0: +X, 1: -X, 2: +Y, 3: -Y, 4: +Z, 5: -Z
+    switch (face)
+    {
+        case 0:
+            return float3(1.0f, -coords.y, -coords.x); // +X
+        case 1:
+            return float3(-1.0f, -coords.y, coords.x); // -X
+        case 2:
+            return float3(coords.x, 1.0f, coords.y); // +Y
+        case 3:
+            return float3(coords.x, -1.0f, -coords.y); // -Y
+        case 4:
+            return float3(coords.x, -coords.y, 1.0f); // +Z
+        case 5:
+            return float3(-coords.x, -coords.y, -1.0f); // -Z
+        default:
+            return float3(0, 0, 1);
+    }
+}
+
+TEXTURE_TYPE SampleTextureCube(TextureCube<TEXTURE_TYPE> texture, float2 uv, uint cubeFace, uint mip)
+{
+    float3 dir = CubeFaceUVToDirection(cubeFace, uv);
+#if CAN_BILINEAR_SAMPLE
+    return texture.SampleLevel(LinearSampler, dir, mip);
+#else
+    return texture.SampleLevel(PointSampler, dir, mip);
+#endif
+}
+
+TEXTURE_TYPE SampleTextureCubeArray(TextureCubeArray<TEXTURE_TYPE> texture, float2 uv, uint cubeFace, uint slice, uint mip)
+{
+    float3 dir = CubeFaceUVToDirection(cubeFace, uv);
+#if CAN_BILINEAR_SAMPLE
+    return texture.SampleLevel(LinearSampler, float4(dir, slice), mip);
+#else
+    return texture.SampleLevel(PointSampler, float4(dir, slice), mip);
+#endif
+}
+
 TEXTURE_TYPE DownsampleQuad(TEXTURE_TYPE sample)
 {
     TEXTURE_TYPE sampleRight = QuadReadAcrossX(sample);
@@ -107,8 +180,8 @@ void MipGenerationTexture2D(uint3 dtid : SV_DispatchThreadID, uint3 gtid : SV_Gr
     float2 offset = MipUniforms.texelSize.xy * float2(0.5f, 0);
     TEXTURE_TYPE sample = 0.5f * 
     (
-        sourceMip.SampleLevel(LinearSampler, uv, MipUniforms.sourceMipLevel) +
-        sourceMip.SampleLevel(LinearSampler, uv + offset, MipUniforms.sourceMipLevel)
+        SampleTexture2D(sourceMip, uv, MipUniforms.sourceMipLevel) +
+        SampleTexture2D(sourceMip, uv + offset, MipUniforms.sourceMipLevel)
     );
 #elif NON_POWER_OF_TWO == 2
     // > 2:1 ratio in y dimension.
@@ -116,17 +189,17 @@ void MipGenerationTexture2D(uint3 dtid : SV_DispatchThreadID, uint3 gtid : SV_Gr
     float2 offset = MipUniforms.texelSize.xy * float2(0, 0.5f);
     TEXTURE_TYPE sample = 0.5f * 
     (
-        sourceMip.SampleLevel(LinearSampler, uv, MipUniforms.sourceMipLevel) +
-        sourceMip.SampleLevel(LinearSampler, uv + offset, MipUniforms.sourceMipLevel)
+        SampleTexture2D(sourceMip, uv, MipUniforms.sourceMipLevel) +
+        SampleTexture2D(sourceMip, uv + offset, MipUniforms.sourceMipLevel)
     );
 #elif NON_POWER_OF_TWO == 3
     // > 2:1 ratio in both dimensions.
     float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.25f, 0.25f));
     float2 offset = MipUniforms.texelSize.xy * 0.5f;
-    TEXTURE_TYPE sample = sourceMip.SampleLevel(LinearSampler, uv, MipUniforms.sourceMipLevel);
-    sample += sourceMip.SampleLevel(LinearSampler, uv + float2(offset.x, 0), MipUniforms.sourceMipLevel);
-    sample += sourceMip.SampleLevel(LinearSampler, uv + float2(0, offset.y), MipUniforms.sourceMipLevel);
-    sample += sourceMip.SampleLevel(LinearSampler, uv + float2(offset.x, offset.y), MipUniforms.sourceMipLevel);
+    TEXTURE_TYPE sample = SampleTexture2D(sourceMip, uv, MipUniforms.sourceMipLevel);
+    sample += SampleTexture2D(sourceMip, uv + float2(offset.x, 0), MipUniforms.sourceMipLevel);
+    sample += SampleTexture2D(sourceMip, uv + float2(0, offset.y), MipUniforms.sourceMipLevel);
+    sample += SampleTexture2D(sourceMip, uv + float2(offset.x, offset.y), MipUniforms.sourceMipLevel);
     sample *= 0.25f;
 #endif
     
@@ -157,30 +230,30 @@ void MipGenerationTexture2DArray(uint3 dtid : SV_DispatchThreadID, uint3 gtid : 
     
 #if NON_POWER_OF_TWO == 0
     float2 uv = MipUniforms.texelSize.xy * (dtid.xy + 0.5f.xx);
-    TEXTURE_TYPE sample = sourceMip.SampleLevel(LinearSampler, float3(uv, dtid.z), MipUniforms.sourceMipLevel);
+    TEXTURE_TYPE sample = SampleTexture2DArray(sourceMip, float3(uv, dtid.z), MipUniforms.sourceMipLevel);
 #elif NON_POWER_OF_TWO == 1
     float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.25f, 0.5f));
     float2 offset = MipUniforms.texelSize.xy * float2(0.5f, 0);
     TEXTURE_TYPE sample = 0.5f * 
     (
-        sourceMip.SampleLevel(LinearSampler, float3(uv, dtid.z), MipUniforms.sourceMipLevel) +
-        sourceMip.SampleLevel(LinearSampler, float3(uv + offset, dtid.z), MipUniforms.sourceMipLevel)
+        SampleTexture2DArray(sourceMip, float3(uv, dtid.z), MipUniforms.sourceMipLevel) +
+        SampleTexture2DArray(sourceMip, float3(uv + offset, dtid.z), MipUniforms.sourceMipLevel)
     );
 #elif NON_POWER_OF_TWO == 2
     float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.5f, 0.25f));
     float2 offset = MipUniforms.texelSize.xy * float2(0, 0.5f);
     TEXTURE_TYPE sample = 0.5f * 
     (
-        sourceMip.SampleLevel(LinearSampler, float3(uv, dtid.z), MipUniforms.sourceMipLevel) +
-        sourceMip.SampleLevel(LinearSampler, float3(uv + offset, dtid.z), MipUniforms.sourceMipLevel)
+        SampleTexture2DArray(sourceMip, float3(uv, dtid.z), MipUniforms.sourceMipLevel) +
+        SampleTexture2DArray(sourceMip, float3(uv + offset, dtid.z), MipUniforms.sourceMipLevel)
     );
 #elif NON_POWER_OF_TWO == 3
     float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.25f, 0.25f));
     float2 offset = MipUniforms.texelSize.xy * 0.5f;
-    TEXTURE_TYPE sample = sourceMip.SampleLevel(LinearSampler, float3(uv, dtid.z), MipUniforms.sourceMipLevel);
-    sample += sourceMip.SampleLevel(LinearSampler, float3(uv + float2(offset.x, 0), dtid.z), MipUniforms.sourceMipLevel);
-    sample += sourceMip.SampleLevel(LinearSampler, float3(uv + float2(0, offset.y), dtid.z), MipUniforms.sourceMipLevel);
-    sample += sourceMip.SampleLevel(LinearSampler, float3(uv + float2(offset.x, offset.y), dtid.z), MipUniforms.sourceMipLevel);
+    TEXTURE_TYPE sample = SampleTexture2DArray(sourceMip, float3(uv, dtid.z), MipUniforms.sourceMipLevel);
+    sample += SampleTexture2DArray(sourceMip, float3(uv + float2(offset.x, 0), dtid.z), MipUniforms.sourceMipLevel);
+    sample += SampleTexture2DArray(sourceMip, float3(uv + float2(0, offset.y), dtid.z), MipUniforms.sourceMipLevel);
+    sample += SampleTexture2DArray(sourceMip, float3(uv + float2(offset.x, offset.y), dtid.z), MipUniforms.sourceMipLevel);
     sample *= 0.25f;
 #endif
     
@@ -202,35 +275,63 @@ void MipGenerationTexture2DArray(uint3 dtid : SV_DispatchThreadID, uint3 gtid : 
     }
 }
 
-// TextureCube requires a direction, we compute UVs. So conversion must be done.
-float3 CubeFaceUVToDirection(uint face, float2 uv)
+[numthreads(8, 8, 1)]
+void MipGenerationTextureCube(uint3 dtid : SV_DispatchThreadID, uint3 gtid : SV_GroupThreadID)
 {
-    // Convert UV from [0,1] to [-1,1]
-    float2 coords = uv * 2.0f - 1.0f;
+    TextureCube<TEXTURE_TYPE> sourceMip = GetBindlessResource(MipUniforms.sourceMipHandle);
     
-    // Face mapping (HLSL convention):
-    // 0: +X, 1: -X, 2: +Y, 3: -Y, 4: +Z, 5: -Z
-    switch (face)
+    // Extract face index from dtid.z
+    uint faceIndex = dtid.z % 6;
+    
+#if NON_POWER_OF_TWO == 0
+    float2 uv = MipUniforms.texelSize.xy * (dtid.xy + 0.5f.xx);
+    TEXTURE_TYPE sample = SampleTextureCube(sourceMip, uv, faceIndex, MipUniforms.sourceMipLevel);
+#elif NON_POWER_OF_TWO == 1
+    float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.25f, 0.5f));
+    float2 offset = MipUniforms.texelSize.xy * float2(0.5f, 0);
+    TEXTURE_TYPE sample = 0.5f * 
+    (
+        SampleTextureCube(sourceMip, uv, faceIndex, MipUniforms.sourceMipLevel) +
+        SampleTextureCube(sourceMip, uv + offset, faceIndex, MipUniforms.sourceMipLevel)
+    );
+#elif NON_POWER_OF_TWO == 2
+    float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.5f, 0.25f));
+    float2 offset = MipUniforms.texelSize.xy * float2(0, 0.5f);
+    TEXTURE_TYPE sample = 0.5f * 
+    (
+        SampleTextureCube(sourceMip, uv, faceIndex, MipUniforms.sourceMipLevel) +
+        SampleTextureCube(sourceMip, uv + offset, faceIndex, MipUniforms.sourceMipLevel)
+    );
+#elif NON_POWER_OF_TWO == 3
+    float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.25f, 0.25f));
+    float2 offset = MipUniforms.texelSize.xy * 0.5f;
+    TEXTURE_TYPE sample = SampleTextureCube(sourceMip, uv, faceIndex, MipUniforms.sourceMipLevel);
+    sample += SampleTextureCube(sourceMip, uv + float2(offset.x, 0), faceIndex, MipUniforms.sourceMipLevel);
+    sample += SampleTextureCube(sourceMip, uv + float2(0, offset.y), faceIndex, MipUniforms.sourceMipLevel);
+    sample += SampleTextureCube(sourceMip, uv + float2(offset.x, offset.y), faceIndex, MipUniforms.sourceMipLevel);
+    sample *= 0.25f;
+#endif
+    
+    RWTexture2DArray<TEXTURE_TYPE> destinationMip0 = GetBindlessResource(MipUniforms.destinationMipHandle0);
+    destinationMip0[dtid.xyz] = PackColor < TEXTURE_TYPE > (sample);
+    
+    if (MipUniforms.numMips == 1)
     {
-        case 0:
-            return float3(1.0f, -coords.y, -coords.x); // +X
-        case 1:
-            return float3(-1.0f, -coords.y, coords.x); // -X
-        case 2:
-            return float3(coords.x, 1.0f, coords.y); // +Y
-        case 3:
-            return float3(coords.x, -1.0f, -coords.y); // -Y
-        case 4:
-            return float3(coords.x, -coords.y, 1.0f); // +Z
-        case 5:
-            return float3(-coords.x, -coords.y, -1.0f); // -Z
-        default:
-            return float3(0, 0, 1);
+        return;
+    }
+    
+    TEXTURE_TYPE dstSample = DownsampleQuad(sample);
+    
+    const bool shouldWriteMip1 = ((gtid.x & 1) == 0) && ((gtid.y & 1) == 0);
+    if (shouldWriteMip1)
+    {
+        RWTexture2DArray<TEXTURE_TYPE> destinationMip1 = GetBindlessResource(MipUniforms.destinationMipHandle1);
+        destinationMip1[uint3(dtid.xy >> 1, dtid.z)] = PackColor < TEXTURE_TYPE > (dstSample);
     }
 }
 
 [numthreads(8, 8, 1)]
-void MipGenerationTextureCube(uint3 dtid : SV_DispatchThreadID, uint3 gtid : SV_GroupThreadID)
+void MipGenerationTextureCubeArray(uint3 dtid : SV_DispatchThreadID, uint3 gtid : SV_GroupThreadID)
 {
     TextureCubeArray<TEXTURE_TYPE> sourceMip = GetBindlessResource(MipUniforms.sourceMipHandle);
     
@@ -241,16 +342,14 @@ void MipGenerationTextureCube(uint3 dtid : SV_DispatchThreadID, uint3 gtid : SV_
 #if NON_POWER_OF_TWO == 0
     float2 uv = MipUniforms.texelSize.xy * (dtid.xy + 0.5f.xx);
     float3 dir = CubeFaceUVToDirection(faceIndex, uv);
-    TEXTURE_TYPE sample = sourceMip.SampleLevel(LinearSampler, float4(dir, cubeArrayIndex), MipUniforms.sourceMipLevel);
+    TEXTURE_TYPE sample = SampleTextureCubeArray(sourceMip, uv, faceIndex, cubeArrayIndex, MipUniforms.sourceMipLevel);
 #elif NON_POWER_OF_TWO == 1
     float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.25f, 0.5f));
     float2 offset = MipUniforms.texelSize.xy * float2(0.5f, 0);
-    float3 dir0 = CubeFaceUVToDirection(faceIndex, uv);
-    float3 dir1 = CubeFaceUVToDirection(faceIndex, uv + offset);
     TEXTURE_TYPE sample = 0.5f * 
     (
-        sourceMip.SampleLevel(LinearSampler, float4(dir0, cubeArrayIndex), MipUniforms.sourceMipLevel) +
-        sourceMip.SampleLevel(LinearSampler, float4(dir1, cubeArrayIndex), MipUniforms.sourceMipLevel)
+        SampleTextureCubeArray(sourceMip, uv, faceIndex, cubeArrayIndex, MipUniforms.sourceMipLevel) +
+        SampleTextureCubeArray(sourceMip, uv + offset, faceIndex, cubeArrayIndex, MipUniforms.sourceMipLevel)
     );
 #elif NON_POWER_OF_TWO == 2
     float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.5f, 0.25f));
@@ -259,20 +358,16 @@ void MipGenerationTextureCube(uint3 dtid : SV_DispatchThreadID, uint3 gtid : SV_
     float3 dir1 = CubeFaceUVToDirection(faceIndex, uv + offset);
     TEXTURE_TYPE sample = 0.5f * 
     (
-        sourceMip.SampleLevel(LinearSampler, float4(dir0, cubeArrayIndex), MipUniforms.sourceMipLevel) +
-        sourceMip.SampleLevel(LinearSampler, float4(dir1, cubeArrayIndex), MipUniforms.sourceMipLevel)
+        SampleTextureCubeArray(sourceMip, uv, faceIndex, cubeArrayIndex, MipUniforms.sourceMipLevel) +
+        SampleTextureCubeArray(sourceMip, uv + offset, faceIndex, cubeArrayIndex, MipUniforms.sourceMipLevel)
     );
 #elif NON_POWER_OF_TWO == 3
     float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.25f, 0.25f));
     float2 offset = MipUniforms.texelSize.xy * 0.5f;
-    float3 dir0 = CubeFaceUVToDirection(faceIndex, uv);
-    float3 dir1 = CubeFaceUVToDirection(faceIndex, uv + float2(offset.x, 0));
-    float3 dir2 = CubeFaceUVToDirection(faceIndex, uv + float2(0, offset.y));
-    float3 dir3 = CubeFaceUVToDirection(faceIndex, uv + float2(offset.x, offset.y));
-    TEXTURE_TYPE sample = sourceMip.SampleLevel(LinearSampler, float4(dir0, cubeArrayIndex), MipUniforms.sourceMipLevel);
-    sample += sourceMip.SampleLevel(LinearSampler, float4(dir1, cubeArrayIndex), MipUniforms.sourceMipLevel);
-    sample += sourceMip.SampleLevel(LinearSampler, float4(dir2, cubeArrayIndex), MipUniforms.sourceMipLevel);
-    sample += sourceMip.SampleLevel(LinearSampler, float4(dir3, cubeArrayIndex), MipUniforms.sourceMipLevel);
+    TEXTURE_TYPE sample = SampleTextureCubeArray(sourceMip, uv, faceIndex, cubeArrayIndex, MipUniforms.sourceMipLevel);
+    sample += SampleTextureCubeArray(sourceMip, uv + float2(offset.x, 0), faceIndex, cubeArrayIndex, MipUniforms.sourceMipLevel);
+    sample += SampleTextureCubeArray(sourceMip, uv + float2(0, offset.y), faceIndex, cubeArrayIndex, MipUniforms.sourceMipLevel);
+    sample += SampleTextureCubeArray(sourceMip, uv + float2(offset.x, offset.y), faceIndex, cubeArrayIndex, MipUniforms.sourceMipLevel);
     sample *= 0.25f;
 #endif
     

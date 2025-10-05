@@ -81,12 +81,30 @@ static D3D12_TEXTURE_BARRIER MergeBarriers(const D3D12_TEXTURE_BARRIER& a, const
     if (a.Subresources.FirstArraySlice == b.Subresources.FirstArraySlice &&
         a.Subresources.NumArraySlices == b.Subresources.NumArraySlices)
     {
+        // Determine which comes first
+        if (a.Subresources.IndexOrFirstMipLevel < b.Subresources.IndexOrFirstMipLevel)
+        {
+            merged.Subresources.IndexOrFirstMipLevel = a.Subresources.IndexOrFirstMipLevel;
+        }
+        else
+        {
+            merged.Subresources.IndexOrFirstMipLevel = b.Subresources.IndexOrFirstMipLevel;
+        }
         merged.Subresources.NumMipLevels = a.Subresources.NumMipLevels + b.Subresources.NumMipLevels;
     }
     // Merge adjacent array slices (same mip range)
     else if (a.Subresources.IndexOrFirstMipLevel == b.Subresources.IndexOrFirstMipLevel &&
              a.Subresources.NumMipLevels == b.Subresources.NumMipLevels)
     {
+        // Determine which comes first
+        if (a.Subresources.FirstArraySlice < b.Subresources.FirstArraySlice)
+        {
+            merged.Subresources.FirstArraySlice = a.Subresources.FirstArraySlice;
+        }
+        else
+        {
+            merged.Subresources.FirstArraySlice = b.Subresources.FirstArraySlice;
+        }
         merged.Subresources.NumArraySlices = a.Subresources.NumArraySlices + b.Subresources.NumArraySlices;
     }
 
@@ -454,8 +472,8 @@ void DX12CommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
 
     // Now we perform a compaction pass on texture barriers to catch neighboring barriers with the same src AND dst
     // values.
-    std::vector<D3D12_TEXTURE_BARRIER> optimalDX12TextureBarriers;
-    optimalDX12TextureBarriers.reserve(dx12TextureBarriers.size());
+    std::vector<D3D12_TEXTURE_BARRIER> compactedDX12TextureBarriers;
+    compactedDX12TextureBarriers.reserve(dx12TextureBarriers.size());
     for (u32 i = 0; i < dx12TextureBarriers.size(); ++i)
     {
         D3D12_TEXTURE_BARRIER current = dx12TextureBarriers[i];
@@ -466,19 +484,19 @@ void DX12CommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
             current = CommandList_Internal::MergeBarriers(current, dx12TextureBarriers[i + 1]);
             ++i; // Skip the merged barrier
         }
-        optimalDX12TextureBarriers.push_back(current);
+        compactedDX12TextureBarriers.push_back(current);
     }
 
     // Take our barriers and now insert them into "groups" to be sent to the command list.
     std::vector<D3D12_BARRIER_GROUP> barrierGroups;
-    barrierGroups.reserve(optimalDX12TextureBarriers.size() + dx12BufferBarriers.size());
+    barrierGroups.reserve(compactedDX12TextureBarriers.size() + dx12BufferBarriers.size());
 
-    if (!optimalDX12TextureBarriers.empty())
+    if (!compactedDX12TextureBarriers.empty())
     {
         D3D12_BARRIER_GROUP textureGroup = {};
         textureGroup.Type = D3D12_BARRIER_TYPE_TEXTURE;
-        textureGroup.NumBarriers = static_cast<UINT>(optimalDX12TextureBarriers.size());
-        textureGroup.pTextureBarriers = optimalDX12TextureBarriers.data();
+        textureGroup.NumBarriers = static_cast<UINT>(compactedDX12TextureBarriers.size());
+        textureGroup.pTextureBarriers = compactedDX12TextureBarriers.data();
         barrierGroups.push_back(textureGroup);
     }
 

@@ -176,6 +176,7 @@ struct TextureExtent3D
 
 struct TextureOffset3D
 {
+    // TODO: rename x, y, z
     u32 width = 0;
     u32 height = 0;
     u32 depth = 0;

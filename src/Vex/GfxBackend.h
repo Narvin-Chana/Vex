@@ -178,6 +178,7 @@ private:
 
     bool isSwapchainValid = true;
     u32 builtInLinearSamplerSlot = ~0;
+    u32 builtInPointSamplerSlot = ~0;
 
     static constexpr u32 DefaultRegistrySize = 1024;
 

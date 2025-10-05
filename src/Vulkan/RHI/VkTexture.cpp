@@ -248,6 +248,7 @@ RHITextureBarrier VkTexture::GetClearTextureBarrier()
 {
     // TMPO AllCommands, need to figure out clearing in a clean way.
     return RHITextureBarrier(*this,
+                             {},
                              RHIBarrierSync::AllCommands,
                              RHIBarrierAccess::CopyDest,
                              RHITextureLayout::CopyDest);
