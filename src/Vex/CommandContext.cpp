@@ -333,12 +333,12 @@ void CommandContext::GenerateMips(const Texture& texture)
     const bool formatSupportsLinearFiltering =
         GPhysicalDevice->featureChecker->DoesFormatSupportLinearFiltering(texture.desc.format);
 
-    if (GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::MipGeneration) && formatSupportsLinearFiltering)
-    {
-        // Leverage the API's built-in mip generation feature (if the format supports it).
-        cmdList->GenerateMips(backend->GetRHITexture(texture.handle));
-        return;
-    }
+    // if (GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::MipGeneration) && formatSupportsLinearFiltering)
+    //{
+    //     // Leverage the API's built-in mip generation feature (if the format supports it).
+    //     cmdList->GenerateMips(backend->GetRHITexture(texture.handle));
+    //     return;
+    // }
 
     std::string entryPoint;
     switch (texture.desc.type)

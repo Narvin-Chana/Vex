@@ -23,6 +23,7 @@
 #include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkExtensions.h>
+#include <Vulkan/VkFeatureChecker.h>
 #include <Vulkan/VkGraphicsPipeline.h>
 #include <Vulkan/VkHeaders.h>
 #include <Vulkan/VkPhysicalDevice.h>
@@ -380,6 +381,11 @@ void VkRHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBacken
         shaderEnv.args.emplace_back(L"-fvk-bind-resource-heap");
         shaderEnv.args.emplace_back(L"0");
         shaderEnv.args.emplace_back(L"1");
+
+        shaderEnv.args.emplace_back(std::format(
+            L"-fspv-target-env={}",
+            StringToWString(std::string(reinterpret_cast<VkFeatureChecker&>(*GPhysicalDevice->featureChecker)
+                                            .GetMaxSupportedVulkanVersion()))));
     }
 
     shaderEnv.defines.emplace_back("VEX_VULKAN");

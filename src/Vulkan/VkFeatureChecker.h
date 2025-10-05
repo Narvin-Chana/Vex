@@ -26,6 +26,7 @@ public:
     bool DoesFormatSupportLinearFiltering(TextureFormat format) const override;
 
     std::string_view GetMaxSupportedSpirVVersion() const;
+    std::string_view GetMaxSupportedVulkanVersion() const;
 
 private:
     ::vk::PhysicalDeviceProperties deviceProperties;
