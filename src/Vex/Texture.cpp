@@ -368,7 +368,7 @@ std::vector<TextureUploadRegion> TextureUploadRegion::UploadFullMip(u16 mipIndex
     return regions;
 }
 
-TextureDescription TextureDescription::CreateTexture2D(std::string name,
+TextureDescription TextureDescription::CreateTexture2DDesc(std::string name,
                                                        TextureFormat format,
                                                        u32 width,
                                                        u32 height,
@@ -392,7 +392,7 @@ TextureDescription TextureDescription::CreateTexture2D(std::string name,
     return description;
 }
 
-TextureDescription TextureDescription::CreateTexture2DArray(std::string name,
+TextureDescription TextureDescription::CreateTexture2DArrayDesc(std::string name,
                                                             TextureFormat format,
                                                             u32 width,
                                                             u32 height,
@@ -417,7 +417,7 @@ TextureDescription TextureDescription::CreateTexture2DArray(std::string name,
     return description;
 }
 
-TextureDescription TextureDescription::CreateTextureCube(std::string name,
+TextureDescription TextureDescription::CreateTextureCubeDesc(std::string name,
                                                          TextureFormat format,
                                                          u32 faceSize,
                                                          u16 mips,
@@ -440,7 +440,7 @@ TextureDescription TextureDescription::CreateTextureCube(std::string name,
     return description;
 }
 
-TextureDescription TextureDescription::CreateTextureCubeArray(std::string name,
+TextureDescription TextureDescription::CreateTextureCubeArrayDesc(std::string name,
                                                               TextureFormat format,
                                                               u32 faceSize,
                                                               u32 arraySize,
@@ -464,7 +464,7 @@ TextureDescription TextureDescription::CreateTextureCubeArray(std::string name,
     return description;
 }
 
-TextureDescription TextureDescription::CreateTexture3D(std::string name,
+TextureDescription TextureDescription::CreateTexture3DDesc(std::string name,
                                                        TextureFormat format,
                                                        u32 width,
                                                        u32 height,

@@ -17,7 +17,7 @@ namespace vex
 BEGIN_VEX_ENUM_FLAGS(BufferUsage, u8)
     None                            = 0,      // Buffers that will never be bound anywhere. Mostly used for staging buffers.
     GenericBuffer                   = 1 << 0, // Buffers that can be read from shaders (SRV)
-    UniformBuffer                   = 1 << 1, // Buffers with specific alignment constraints (CBV)
+    UniformBuffer                   = 1 << 1, // Buffers with specific alignment constraints uniformly read across waves (CBV)
     ReadWriteBuffer                 = 1 << 2, // Buffers with read and write operations in shaders (UAV)
     VertexBuffer                    = 1 << 3, // Buffers used for vertex buffers
     IndexBuffer                     = 1 << 4, // Buffers used for index buffers
@@ -27,9 +27,8 @@ END_VEX_ENUM_FLAGS();
 
 // clang-format on
 
-// Defines what the specific binding will bind as
-// maps directly to the type that will be used in the
-// shader to access the buffer
+// Defines what the specific binding will bind as maps directly to the type that will be used in the shader to access
+// the buffer.
 enum class BufferBindingUsage : u8
 {
     ConstantBuffer,
@@ -67,6 +66,23 @@ struct BufferDescription
     u64 byteSize = 0;
     BufferUsage::Flags usage = BufferUsage::GenericBuffer;
     ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly;
+
+    // Helpers to create a buffer description.
+
+    // Creates a CPUWrite buffer useable as a Uniform (/constant) Buffer.
+    static BufferDescription CreateUniformBufferDesc(std::string name, u64 byteSize);
+    // Creates a GPUOnly buffer useable as an Vertex Buffer.
+    static BufferDescription CreateVertexBufferDesc(std::string name, u64 byteSize, bool allowShaderRead = false);
+    // Creates a GPUOnly buffer useable as an Index Buffer.
+    static BufferDescription CreateIndexBufferDesc(std::string name, u64 byteSize, bool allowShaderRead = false);
+    // Creates a CPUWrite staging buffer useful for uploading data to GPUOnly resources.
+    static BufferDescription CreateStagingBufferDesc(std::string name,
+                                                     u64 byteSize,
+                                                     BufferUsage::Flags usageFlags = BufferUsage::None);
+    // Creates a CPURead readback buffer, used for performing data readback from the GPU to the CPU.
+    static BufferDescription CreateReadbackBufferDesc(std::string name,
+                                                      u64 byteSize,
+                                                      BufferUsage::Flags usageFlags = BufferUsage::None);
 };
 
 // Strongly defined type represents a buffer.
