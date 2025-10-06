@@ -44,26 +44,23 @@ def run_cmake_preset(preset_name):
             "-DVEX_BUILD_TESTS=ON"
             "-DVEX_BUILD_EXAMPLES=OFF"
         ], 
-        capture_output=True,  # Capture output instead of showing it
+        capture_output=False,  # Capture output instead of showing it
         text=True, 
         check=True
         )
         
         # Clear the line and show success
-        print(f"\r✓ Configured {preset_name}" + " " * 20)
+        #print(f"\r✓ Configured {preset_name}" + " " * 20)
         return True
         
     except subprocess.CalledProcessError as e:
         # Clear the line and show failure
         print(f"\r✗ Configuration failed for {preset_name}" + " " * 20)
-        
+
         # Show error details
         print("  Configuration error:")
         if e.stderr:
-            # Show only last few lines of error
-            error_lines = e.stderr.strip().split('\n')
-            for line in error_lines[-3:]:  # Last 3 lines
-                print(f"    {line}")
+            print(f"{e.stderr.strip()}")
         
         return False
 

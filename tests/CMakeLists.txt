@@ -10,7 +10,8 @@ FetchContent_MakeAvailable(GTest)
 include(GoogleTest)
 
 add_executable(vex_tests
-	"GraphicsTest.cpp"
+	"SynchronisationTest.cpp"
+	"UploadReadbackTest.cpp"
 )
 
 target_link_libraries(vex_tests 

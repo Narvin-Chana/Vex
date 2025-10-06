@@ -116,11 +116,6 @@ HelloCubeApplication::HelloCubeApplication()
                                       .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
                                     vex::ResourceLifetime::Static);
 
-        // Upload the entirety of both mips using the default value.
-        ctx.EnqueueDataUpload(uvGuideTexture,
-                              std::as_bytes(std::span(fullImageData)),
-                              vex::TextureRegion::AllMips(uvGuideTexture.description));
-
         // Upload only to the first mip
         ctx.EnqueueDataUpload(
             uvGuideTexture,

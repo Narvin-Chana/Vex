@@ -91,7 +91,7 @@ template <class T>
 void ResourceMappedMemory::ReadData(T& outData)
 {
     byte* dataPtr = reinterpret_cast<byte*>(&outData);
-    ReadData(std::as_bytes(std::span{ dataPtr, sizeof(T) }));
+    ReadData(std::span{ dataPtr, sizeof(T) });
 }
 
 } // namespace vex

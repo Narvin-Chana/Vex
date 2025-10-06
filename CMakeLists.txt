@@ -104,9 +104,6 @@ FetchContent_MakeAvailable(magic_enum)
 add_library(Vex STATIC
     # Platform
     "src/Vex/Platform/Platform.h"
-    # Vex Tests
-    "src/Tests/TextureUploadReadback.cpp"
-    "src/Tests/TextureUploadReadback.h"
     # RHI
     "src/RHI/RHIFwd.h"
     "src/RHI/RHI.h"  

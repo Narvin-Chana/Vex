@@ -63,22 +63,15 @@ void ReadTextureDataAligned(const TextureDescription& textureDesc,
                 byte* dstRow = dstData + dstOffset + depthSlice * packedSlicePitch + row * packedRowPitch;
 
                 std::memcpy(dstRow, srcRow, packedRowPitch);
-#if !VEX_SHIPPING
-                // Zero out padding bytes for debugging purposes.
-                if (alignedRowPitch > packedRowPitch)
-                {
-                    std::memset(dstRow + packedRowPitch, 0, alignedRowPitch - packedRowPitch);
-                }
-#endif
             }
         }
 
         // Move to next region in the packed source data.
-        srcOffset += static_cast<u64>(alignedSlicePitch) * regionDepth;
+        u64 regionStagingSize = static_cast<u64>(alignedSlicePitch) * regionDepth;
+        srcOffset += AlignUp<u64>(regionStagingSize, TextureUtil::MipAlignment);
 
         // Move to next aligned position in staging buffer.
-        u64 regionStagingSize = static_cast<u64>(packedSlicePitch) * regionDepth;
-        dstOffset += AlignUp<u64>(regionStagingSize, TextureUtil::MipAlignment);
+        dstOffset += static_cast<u64>(packedSlicePitch) * regionDepth;
     }
 }
 
