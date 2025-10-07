@@ -337,7 +337,7 @@ ResourceMappedMemory GfxBackend::MapResource(const Buffer& buffer)
     if (rhiBuffer.GetDescription().memoryLocality != ResourceMemoryLocality::CPUWrite &&
         rhiBuffer.GetDescription().memoryLocality != ResourceMemoryLocality::CPURead)
     {
-        VEX_LOG(Fatal, "Buffer needs to have CPUWrite locality to be mapped to");
+        VEX_LOG(Fatal, "A non CPU-visible buffer cannot be mapped to.");
     }
 
     return { rhiBuffer };
