@@ -112,9 +112,8 @@ HelloCubeApplication::HelloCubeApplication()
                                       .width = static_cast<vex::u32>(width),
                                       .height = static_cast<vex::u32>(height),
                                       .depthOrArraySize = 1,
-                                      .mips = 0,
-                                      .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite },
-                                    vex::ResourceLifetime::Static);
+                                      .mips = 0, // 0 means max mips (down to 1x1)
+                                      .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
 
         // Upload only to the first mip
         ctx.EnqueueDataUpload(
