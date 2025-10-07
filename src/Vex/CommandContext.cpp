@@ -148,6 +148,31 @@ TextureReadbackContext::TextureReadbackContext(const Buffer& buffer,
 {
 }
 
+void BufferReadbackContext::ReadData(std::span<byte> outData)
+{
+    RHIBuffer& rhiBuffer = backend->GetRHIBuffer(buffer.handle);
+
+    std::span<byte> bufferData = rhiBuffer.Map();
+    std::copy(bufferData.begin(), bufferData.end(), outData.begin());
+    rhiBuffer.Unmap();
+}
+
+u64 BufferReadbackContext::GetDataByteSize() const noexcept
+{
+    return buffer.description.byteSize;
+}
+
+BufferReadbackContext::~BufferReadbackContext()
+{
+    backend->DestroyBuffer(buffer);
+}
+
+BufferReadbackContext::BufferReadbackContext(const Buffer& buffer, GfxBackend& backend)
+    : buffer{ buffer }
+    , backend{ backend }
+{
+}
+
 TextureReadbackContext::~TextureReadbackContext()
 {
     if (buffer.handle != GInvalidBufferHandle)
@@ -165,7 +190,7 @@ void TextureReadbackContext::ReadData(std::span<byte> outData)
     rhiBuffer.Unmap();
 }
 
-u64 TextureReadbackContext::GetByteDataSize() const noexcept
+u64 TextureReadbackContext::GetDataByteSize() const noexcept
 {
     return TextureUtil::ComputePackedTextureDataByteSize(textureDesc, textureRegions);
 }
@@ -632,7 +657,7 @@ TextureReadbackContext CommandContext::EnqueueDataReadback(const Texture& srcTex
     return { stagingBuffer, textureRegions, srcTexture.description, *backend };
 }
 
-Buffer CommandContext::EnqueueDataReadback(const Buffer& srcBuffer)
+BufferReadbackContext CommandContext::EnqueueDataReadback(const Buffer& srcBuffer)
 {
     // Create aligned staging buffer.
     const BufferDescription stagingBufferDesc =
@@ -643,7 +668,7 @@ Buffer CommandContext::EnqueueDataReadback(const Buffer& srcBuffer)
 
     Copy(srcBuffer, stagingBuffer);
 
-    return stagingBuffer;
+    return { stagingBuffer, *backend };
 }
 
 BindlessHandle CommandContext::GetBindlessHandle(const ResourceBinding& resourceBinding)
@@ -699,7 +724,7 @@ void CommandContext::Barrier(const Buffer& buffer, RHIBarrierSync newSync, RHIBa
     cmdList->BufferBarrier(backend->GetRHIBuffer(buffer.handle), newSync, newAccess);
 }
 
-std::optional<SyncToken> CommandContext::Submit()
+SyncToken CommandContext::Submit()
 {
     if (submissionPolicy != SubmissionPolicy::Immediate)
     {
@@ -709,7 +734,8 @@ std::optional<SyncToken> CommandContext::Submit()
     hasSubmitted = true;
 
     std::vector<SyncToken> tokens = backend->EndCommandContext(*this);
-    return !tokens.empty() ? std::optional{ tokens[0] } : std::nullopt;
+    VEX_ASSERT(!tokens.empty());
+    return tokens[0];
 }
 
 void CommandContext::ExecuteInDrawContext(std::span<const TextureBinding> renderTargets,

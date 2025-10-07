@@ -44,13 +44,13 @@ def run_cmake_preset(preset_name):
             "-DVEX_BUILD_TESTS=ON"
             "-DVEX_BUILD_EXAMPLES=OFF"
         ], 
-        capture_output=False,  # Capture output instead of showing it
+        capture_output=True,  # Capture output instead of showing it
         text=True, 
         check=True
         )
         
         # Clear the line and show success
-        #print(f"\r✓ Configured {preset_name}" + " " * 20)
+        print(f"\r✓ Configured {preset_name}" + " " * 20)
         return True
         
     except subprocess.CalledProcessError as e:

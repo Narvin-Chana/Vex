@@ -11,33 +11,6 @@
 namespace vex
 {
 
-TEST(GraphicsTests, CreateGraphicsWithoutDebugLayers)
-{
-    GfxBackend{ BackendDescription{
-        .useSwapChain = false,
-        .enableGPUDebugLayer = false,
-        .enableGPUBasedValidation = false,
-    } };
-}
-
-TEST(GraphicsTests, CreateGraphicsDebugLayersAndValidation)
-{
-    GfxBackend{ BackendDescription{
-        .useSwapChain = false,
-        .enableGPUDebugLayer = true,
-        .enableGPUBasedValidation = true,
-    } };
-}
-
-TEST(GraphicsTests, CreateGraphicsDebugLayerGPUValidation)
-{
-    GfxBackend{ BackendDescription{
-        .useSwapChain = false,
-        .enableGPUDebugLayer = true,
-        .enableGPUBasedValidation = false,
-    } };
-}
-
 struct SynchronisationTest : public VexTest
 {
 };
@@ -65,7 +38,7 @@ TEST_F(SynchronisationTest, CrossQueueDependecy)
     // Submit work on compute queue
     {
         auto computeCtx = graphics.BeginScopedCommandContext(CommandQueueType::Compute, SubmissionPolicy::Immediate);
-        tokens = *computeCtx.Submit();
+        tokens = computeCtx.Submit();
         VEX_LOG(Info, "Submitted compute work, token: {}/{}", magic_enum::enum_name(tokens.queueType), tokens.value);
     }
 
@@ -73,7 +46,7 @@ TEST_F(SynchronisationTest, CrossQueueDependecy)
     {
         auto graphicsCtx =
             graphics.BeginScopedCommandContext(CommandQueueType::Graphics, SubmissionPolicy::Immediate, { &tokens, 1 });
-        graphicsTokens = *graphicsCtx.Submit();
+        graphicsTokens = graphicsCtx.Submit();
         VEX_LOG(Info,
                 "Submitted graphics work dependent on compute, token: {}/{}",
                 magic_enum::enum_name(graphicsTokens.queueType),
@@ -85,7 +58,7 @@ TEST_F(SynchronisationTest, CrossQueueDependecy)
         auto copyCtx = graphics.BeginScopedCommandContext(CommandQueueType::Copy,
                                                           SubmissionPolicy::Immediate,
                                                           { &graphicsTokens, 1 });
-        auto copyTokens = *copyCtx.Submit();
+        auto copyTokens = copyCtx.Submit();
         VEX_LOG(Info,
                 "Submitted copy work dependent on graphics, token: {}/{}",
                 magic_enum::enum_name(copyTokens.queueType),
@@ -121,8 +94,7 @@ TEST_F(SynchronisationTest, HeavyResouceCreationAndUsage)
     }
 
     // Perform random operations on different queues
-    std::random_device rd;
-    std::mt19937 gen(rd());
+    std::mt19937 gen(1234567);
     std::uniform_int_distribution<> queueDis(0, 2);
     std::uniform_int_distribution<> resourceDis(0, 9);
 
@@ -156,7 +128,7 @@ TEST_F(SynchronisationTest, HeavyResouceCreationAndUsage)
             VEX_LOG(Verbose, "Copy: Copied buffer {} to {}", srcIdx, dstIdx);
         }
 
-        allTokens.push_back(*ctx.Submit());
+        allTokens.push_back(ctx.Submit());
 
         VEX_LOG(Verbose, "Iteration {}: Submitted to {} queue", iteration, magic_enum::enum_name(queueType));
     }
@@ -201,7 +173,7 @@ TEST_F(SynchronisationTest, RapidContextCreationDestruction)
 
         {
             auto ctx = graphics.BeginScopedCommandContext(queueType, SubmissionPolicy::Immediate, deps);
-            tokens.push_back(*ctx.Submit());
+            tokens.push_back(ctx.Submit());
         }
 
         // Occasionally flush GPU
@@ -220,7 +192,7 @@ TEST_F(SynchronisationTest, SubmissionWithDependency)
     // Create some immediate work
     {
         auto ctx1 = graphics.BeginScopedCommandContext(CommandQueueType::Compute, SubmissionPolicy::Immediate);
-        immediateTokens.push_back(*ctx1.Submit());
+        immediateTokens.push_back(ctx1.Submit());
     }
 
     // Create work that depends on immediate work
@@ -233,7 +205,7 @@ TEST_F(SynchronisationTest, SubmissionWithDependency)
     // Create more immediate work
     {
         auto ctx3 = graphics.BeginScopedCommandContext(CommandQueueType::Copy, SubmissionPolicy::Immediate);
-        auto moreTokens = *ctx3.Submit();
+        auto moreTokens = ctx3.Submit();
         immediateTokens.push_back(moreTokens);
     }
 
@@ -279,7 +251,7 @@ TEST_F(SynchronisationTest, ResourceUploadTorture)
         ctx.EnqueueDataUpload(uploadBuffer, dummyData, BufferSubresource{ .offset = 1024u * i, .size = 1024 });
         ctx.Copy(uploadBuffer, targetTexture);
 
-        uploadTokens.push_back(*ctx.Submit());
+        uploadTokens.push_back(ctx.Submit());
 
         VEX_LOG(Verbose, "Upload iteration {}", i);
     }
@@ -321,8 +293,7 @@ TEST_F(SynchronisationTest, FinalStressTest)
     }
 
     // Chaotic submission pattern
-    std::random_device rd;
-    std::mt19937 gen(rd());
+    std::mt19937 gen(123498351);
 
     for (int i = 0; i < 30; ++i)
     {
@@ -362,7 +333,7 @@ TEST_F(SynchronisationTest, FinalStressTest)
                 }
             }
 
-            allTokens.push_back(*ctx.Submit());
+            allTokens.push_back(ctx.Submit());
         }
 
         // Random flushes

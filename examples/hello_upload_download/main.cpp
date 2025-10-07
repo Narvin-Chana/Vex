@@ -104,7 +104,7 @@ int main()
         ctx.EnqueueDataReadback(dstTexture, vex::TextureRegion::FullMip(1, dstTexture.description));
 
     // Wait on the GPU to do its readback copy operations
-    backend.WaitForTokenOnCPU(*ctx.Submit());
+    backend.WaitForTokenOnCPU(ctx.Submit());
 
     Image dstImg{ .data = std::vector<vex::byte>(srcImg.data.size() / 4),
                   .width = srcImg.width / 2,

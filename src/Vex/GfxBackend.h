@@ -191,6 +191,7 @@ private:
     friend class CommandContext;
     friend struct ResourceBindingUtils;
     friend class TextureReadbackContext;
+    friend class BufferReadbackContext;
     bool isSwapchainValid = true;
 };
 

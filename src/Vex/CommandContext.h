@@ -29,17 +29,29 @@ struct TextureClearValue;
 struct DrawDescription;
 struct RayTracingPassDescription;
 
+class BufferReadbackContext
+{
+public:
+    ~BufferReadbackContext();
+
+    void ReadData(std::span<byte> outData);
+    [[nodiscard]] u64 GetDataByteSize() const noexcept;
+
+private:
+    BufferReadbackContext(const Buffer& buffer, GfxBackend& backend);
+
+    Buffer buffer;
+    NonNullPtr<GfxBackend> backend;
+    friend class CommandContext;
+};
+
 class TextureReadbackContext
 {
 public:
-    TextureReadbackContext(const TextureReadbackContext&) = default;
-    TextureReadbackContext& operator=(const TextureReadbackContext&) = default;
-    TextureReadbackContext(TextureReadbackContext&&) = default;
-    TextureReadbackContext& operator=(TextureReadbackContext&&) = default;
     ~TextureReadbackContext();
 
     void ReadData(std::span<byte> outData);
-    u64 GetByteDataSize() const noexcept;
+    [[nodiscard]] u64 GetDataByteSize() const noexcept;
 
 private:
     TextureReadbackContext(const Buffer& buffer,
@@ -152,7 +164,8 @@ public:
                            const std::optional<BufferSubresource>& subresource = std::nullopt);
 
     // Enqueues a readback operation on the GPU and returns the buffer in which the data can be read.
-    Buffer EnqueueDataReadback(const Buffer& srcBuffer);
+    // Will automatically create a staging buffer with the appropriate size
+    BufferReadbackContext EnqueueDataReadback(const Buffer& srcBuffer);
 
     // ---------------------------------------------------------------------------------------------------------------
     // Texture Data Operations
@@ -197,7 +210,7 @@ public:
 
     // Allows you to manually submit the command context, receiving SyncTokens that allow you to later perform a CPU
     // wait for the work to be done.
-    std::optional<SyncToken> Submit();
+    SyncToken Submit();
 
     // Useful for calling native API draws when wanting to render to a specific Render Target.
     // Allows the passed in lambda to be executed in a draw scope.

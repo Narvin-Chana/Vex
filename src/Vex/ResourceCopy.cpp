@@ -3,8 +3,6 @@
 #include <cmath>
 
 #include <Vex/ByteUtils.h>
-#include <Vex/CommandContext.h>
-#include <Vex/GfxBackend.h>
 #include <Vex/Validation.h>
 
 namespace vex

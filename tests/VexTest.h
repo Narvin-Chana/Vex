@@ -17,11 +17,7 @@ struct VexTestParam : testing::TestWithParam<ParamT>
               .enableGPUBasedValidation = false,
           } }
     {
-    }
-
-    ~VexTestParam() override
-    {
-        graphics.FlushGPU();
+        GLogger.SetLogLevelFilter(Warning);
     }
 };
 
@@ -36,11 +32,7 @@ struct VexTest : testing::Test
               .enableGPUBasedValidation = false,
           } }
     {
-    }
-
-    ~VexTest() override
-    {
-        graphics.FlushGPU();
+        GLogger.SetLogLevelFilter(Warning);
     }
 };
 

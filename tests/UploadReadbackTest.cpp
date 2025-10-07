@@ -120,7 +120,7 @@ std::vector<byte> ReadbackTextureContent(GfxBackend& graphics,
     graphics.WaitForTokenOnCPU(*ctx.Submit());
 
     std::vector<byte> fullImageData;
-    fullImageData.resize(readbackCtx.GetByteDataSize());
+    fullImageData.resize(readbackCtx.GetDataByteSize());
     readbackCtx.ReadData(fullImageData);
 
     return fullImageData;
@@ -378,6 +378,8 @@ INSTANTIATE_TEST_SUITE_P(VariousSizes,
 
 INSTANTIATE_TEST_SUITE_P(PerCommandQueueType,
                          MiscTextureTests,
-                         testing::Values(CommandQueueType::Graphics, CommandQueueType::Compute));
+                         testing::Values(CommandQueueType::Graphics,
+                                         CommandQueueType::Compute,
+                                         CommandQueueType::Copy));
 
 } // namespace vex

@@ -347,9 +347,10 @@ ResourceMappedMemory GfxBackend::MapResource(const Texture& texture)
 {
     RHITexture& rhiTexture = GetRHITexture(texture.handle);
 
-    if (rhiTexture.GetDescription().memoryLocality != ResourceMemoryLocality::CPUWrite)
+    if (rhiTexture.GetDescription().memoryLocality != ResourceMemoryLocality::CPUWrite &&
+        rhiTexture.GetDescription().memoryLocality != ResourceMemoryLocality::CPURead)
     {
-        VEX_LOG(Fatal, "Texture needs to have CPUWrite locality to be mapped to directly");
+        VEX_LOG(Fatal, "Texture needs to have CPUWrite or CPURead locality to be mapped to directly");
     }
 
     return { rhiTexture };
