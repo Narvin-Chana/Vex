@@ -54,8 +54,7 @@ int main()
                                                       .height = srcImg.height,
                                                       .depthOrArraySize = 1,
                                                       .mips = 1,
-                                                      .usage = vex::TextureUsage::ShaderReadWrite },
-                                                    vex::ResourceLifetime::Static);
+                                                      .usage = vex::TextureUsage::ShaderReadWrite });
     vex::Texture dstTexture = backend.CreateTexture({ .name = "Output Image",
                                                       .type = vex::TextureType::Texture2D,
                                                       .format = vex::TextureFormat::RGBA8_UNORM,
@@ -63,8 +62,7 @@ int main()
                                                       .height = srcImg.height,
                                                       .depthOrArraySize = 1,
                                                       .mips = 2,
-                                                      .usage = vex::TextureUsage::ShaderReadWrite },
-                                                    vex::ResourceLifetime::Static);
+                                                      .usage = vex::TextureUsage::ShaderReadWrite });
 
     vex::CommandContext ctx =
         backend.BeginScopedCommandContext(vex::CommandQueueType::Compute, vex::SubmissionPolicy::Immediate);
