@@ -734,7 +734,7 @@ SyncToken CommandContext::Submit()
     hasSubmitted = true;
 
     std::vector<SyncToken> tokens = backend->EndCommandContext(*this);
-    VEX_ASSERT(!tokens.empty());
+    VEX_ASSERT(tokens.size() == 1);
     return tokens[0];
 }
 
