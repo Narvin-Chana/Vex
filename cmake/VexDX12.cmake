@@ -61,6 +61,8 @@ function(setup_dx12_backend TARGET)
         "src/DX12/RHI/DX12DescriptorPool.cpp"
         "src/DX12/RHI/DX12Allocator.h"
         "src/DX12/RHI/DX12Allocator.cpp"
+        "src/DX12/RHI/DX12ScopedDebugMarker.h"
+        "src/DX12/RHI/DX12ScopedDebugMarker.cpp"
         # DX12 API
         "src/DX12/DX12DescriptorHeap.h"
         "src/DX12/DX12Headers.h"

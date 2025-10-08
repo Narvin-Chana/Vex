@@ -70,6 +70,8 @@ public:
         return commandList;
     }
 
+    RHIScopedDebugMarker CreateScopedMarker(const char* label, std::array<float, 3> labelColor) override;
+
 private:
     ComPtr<DX12Device> device;
     ComPtr<ID3D12GraphicsCommandList10> commandList;

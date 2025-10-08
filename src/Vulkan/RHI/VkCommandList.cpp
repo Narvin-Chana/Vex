@@ -15,6 +15,7 @@
 #include <Vulkan/RHI/VkDescriptorPool.h>
 #include <Vulkan/RHI/VkPipelineState.h>
 #include <Vulkan/RHI/VkResourceLayout.h>
+#include <Vulkan/RHI/VkScopedDebugMarker.h>
 #include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkFeatureChecker.h>
@@ -660,6 +661,10 @@ void VkCommandList::Copy(RHITexture& src,
                                      dst.GetNativeBuffer(),
                                      static_cast<u32>(regions.size()),
                                      regions.data());
+}
+RHIScopedDebugMarker VkCommandList::CreateScopedMarker(const char* label, std::array<float, 3> labelColor)
+{
+    return { *commandBuffer, label, labelColor };
 }
 
 VkCommandList::VkCommandList(NonNullPtr<VkGPUContext> ctx,
