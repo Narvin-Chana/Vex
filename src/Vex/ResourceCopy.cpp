@@ -1,7 +1,7 @@
 #include "ResourceCopy.h"
 
 #include <cmath>
-#include <memory>
+#include <cstring>
 
 #include <Vex/ByteUtils.h>
 #include <Vex/Validation.h>
