@@ -52,6 +52,14 @@ public:
 
     void ReadData(std::span<byte> outData);
     [[nodiscard]] u64 GetDataByteSize() const noexcept;
+    [[nodiscard]] TextureDescription GetSourceTextureDescription() const noexcept
+    {
+        return textureDesc;
+    };
+    [[nodiscard]] std::vector<TextureRegion> GetReadbackRegions() const noexcept
+    {
+        return textureRegions;
+    }
 
 private:
     TextureReadbackContext(const Buffer& buffer,
