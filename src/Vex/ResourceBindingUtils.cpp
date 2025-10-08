@@ -9,13 +9,13 @@
 namespace vex
 {
 
-RHIBufferBarrier ResourceBindingUtils::CreateBarrierFromRHIBinding(const RHIBufferBinding& rhiBufferBinding)
+RHIBufferBarrier ResourceBindingUtils::CreateBarrierFromRHIBinding(RHIBarrierSync dstSync,
+                                                                   const RHIBufferBinding& rhiBufferBinding)
 {
     const auto& [binding, buffer] = rhiBufferBinding;
 
     // For now bindings are only used for Graphics passes (draws).
     // TODO: In the future we could improve this by considering individual shader stages (eg: pixel shader).
-    RHIBarrierSync dstSync = RHIBarrierSync::AllGraphics;
     RHIBarrierAccess dstAccess = RHIBarrierAccess::NoAccess;
     switch (binding.usage)
     {
@@ -37,13 +37,13 @@ RHIBufferBarrier ResourceBindingUtils::CreateBarrierFromRHIBinding(const RHIBuff
     return RHIBufferBarrier{ buffer, dstSync, dstAccess };
 }
 
-RHITextureBarrier ResourceBindingUtils::CreateBarrierFromRHIBinding(const RHITextureBinding& rhiTextureBinding)
+RHITextureBarrier ResourceBindingUtils::CreateBarrierFromRHIBinding(RHIBarrierSync dstSync,
+                                                                    const RHITextureBinding& rhiTextureBinding)
 {
     const auto& [binding, texture] = rhiTextureBinding;
 
     // For now bindings are only used for Graphics passes (draws).
     // TODO: In the future we could improve this by considering individual shader stages (eg: pixel shader).
-    RHIBarrierSync dstSync = RHIBarrierSync::AllGraphics;
     RHIBarrierAccess dstAccess = RHIBarrierAccess::NoAccess;
     RHITextureLayout dstLayout = RHITextureLayout::Common;
     switch (binding.usage)

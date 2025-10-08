@@ -56,14 +56,11 @@ def run_cmake_preset(preset_name):
     except subprocess.CalledProcessError as e:
         # Clear the line and show failure
         print(f"\r✗ Configuration failed for {preset_name}" + " " * 20)
-        
+
         # Show error details
         print("  Configuration error:")
         if e.stderr:
-            # Show only last few lines of error
-            error_lines = e.stderr.strip().split('\n')
-            for line in error_lines[-3:]:  # Last 3 lines
-                print(f"    {line}")
+            print(f"{e.stderr.strip()}")
         
         return False
 

@@ -29,6 +29,54 @@ struct TextureClearValue;
 struct DrawDescription;
 struct RayTracingPassDescription;
 
+class BufferReadbackContext
+{
+public:
+    ~BufferReadbackContext();
+
+    void ReadData(std::span<byte> outData);
+    [[nodiscard]] u64 GetDataByteSize() const noexcept;
+
+private:
+    BufferReadbackContext(const Buffer& buffer, GfxBackend& backend);
+
+    Buffer buffer;
+    NonNullPtr<GfxBackend> backend;
+    friend class CommandContext;
+};
+
+class TextureReadbackContext
+{
+public:
+    ~TextureReadbackContext();
+
+    void ReadData(std::span<byte> outData);
+    [[nodiscard]] u64 GetDataByteSize() const noexcept;
+    [[nodiscard]] TextureDescription GetSourceTextureDescription() const noexcept
+    {
+        return textureDesc;
+    };
+    [[nodiscard]] std::vector<TextureRegion> GetReadbackRegions() const noexcept
+    {
+        return textureRegions;
+    }
+
+private:
+    TextureReadbackContext(const Buffer& buffer,
+                           std::span<const TextureRegion> textureRegions,
+                           const TextureDescription& textureDesc,
+                           GfxBackend& backend);
+
+    // Buffer contains readback data from the GPU.
+    // This data is aligned according to Vex internal alignment
+    Buffer buffer;
+    std::vector<TextureRegion> textureRegions;
+    TextureDescription textureDesc;
+
+    NonNullPtr<GfxBackend> backend;
+    friend class CommandContext;
+};
+
 class CommandContext
 {
 private:
@@ -103,11 +151,15 @@ public:
     // Copies the contents of the buffer to a specified region in the texture.
     void Copy(const Buffer& source,
               const Texture& destination,
-              const BufferToTextureCopyDescription& bufferToTextureCopyDescription);
+              const BufferTextureCopyDescription& bufferToTextureCopyDescription);
     // Copies the contents of the buffer to multiple specified regions in the texture.
     void Copy(const Buffer& source,
               const Texture& destination,
-              std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions);
+              std::span<const BufferTextureCopyDescription> bufferToTextureCopyDescriptions);
+    void Copy(const Texture& source, const Buffer& destination);
+    void Copy(const Texture& source,
+              const Buffer& destination,
+              std::span<const BufferTextureCopyDescription> bufferToTextureCopyDescriptions);
 
     // ---------------------------------------------------------------------------------------------------------------
     // Buffer Data Operations
@@ -118,9 +170,10 @@ public:
     void EnqueueDataUpload(const Buffer& buffer,
                            std::span<const byte> data,
                            const std::optional<BufferSubresource>& subresource = std::nullopt);
-    // Enqueues for the entirety of a buffer to be readback from the GPU to the specified output.
-    // Will automatically use a staging buffer if necessary.
-    void EnqueueDataReadback(const Buffer& buffer, std::span<byte> output);
+
+    // Enqueues a readback operation on the GPU and returns the buffer in which the data can be read.
+    // Will automatically create a staging buffer with the appropriate size
+    BufferReadbackContext EnqueueDataReadback(const Buffer& srcBuffer);
 
     // ---------------------------------------------------------------------------------------------------------------
     // Texture Data Operations
@@ -131,12 +184,13 @@ public:
     // The uploadRegions should match the layout of the tightly packed 'data' parameter.
     // If the uploadRegions are empty, we suppose that you intend to upload to the entirety of the texture.
     void EnqueueDataUpload(const Texture& texture,
-                           std::span<const byte> data,
-                           std::span<const TextureUploadRegion> uploadRegions);
+                           std::span<const byte> packedData,
+                           std::span<const TextureRegion> textureRegions);
 
     // Enqueues for the entirety of a texture to be readback from the GPU to the specified output.
     // Will automatically use a staging buffer if necessary.
-    void EnqueueDataReadback(const Texture& texture, std::span<byte> output);
+    TextureReadbackContext EnqueueDataReadback(const Texture& srcTexture,
+                                               std::span<const TextureRegion> textureRegions);
 
     // ---------------------------------------------------------------------------------------------------------------
 
@@ -164,7 +218,7 @@ public:
 
     // Allows you to manually submit the command context, receiving SyncTokens that allow you to later perform a CPU
     // wait for the work to be done.
-    std::vector<SyncToken> Submit();
+    SyncToken Submit();
 
     // Useful for calling native API draws when wanting to render to a specific Render Target.
     // Allows the passed in lambda to be executed in a draw scope.

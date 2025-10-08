@@ -37,25 +37,36 @@ ResourceMappedMemory::~ResourceMappedMemory()
     }
 }
 
-void ResourceMappedMemory::SetData(std::span<const byte> inData)
+void ResourceMappedMemory::WriteData(std::span<const byte> inData)
 {
-    SetData(inData, 0);
+    WriteData(inData, 0);
 }
 
-void ResourceMappedMemory::SetData(std::span<byte> inData)
+void ResourceMappedMemory::WriteData(std::span<byte> inData)
 {
-    SetData(std::span<const byte>{ inData.begin(), inData.end() }, 0);
+    WriteData(std::span<const byte>{ inData.begin(), inData.end() }, 0);
 }
 
-void ResourceMappedMemory::SetData(std::span<const byte> inData, u32 offset)
+void ResourceMappedMemory::WriteData(std::span<const byte> inData, u32 offset)
 {
     VEX_ASSERT(mappedData.size() - offset >= inData.size());
     std::copy(inData.begin(), inData.end(), mappedData.begin() + offset);
 }
 
-void ResourceMappedMemory::SetData(std::span<byte> inData, u32 offset)
+void ResourceMappedMemory::WriteData(std::span<byte> inData, u32 offset)
 {
-    SetData(std::span<const byte>{ inData.begin(), inData.end() }, offset);
+    WriteData(std::span<const byte>{ inData.begin(), inData.end() }, offset);
+}
+
+void ResourceMappedMemory::ReadData(u32 offset, std::span<byte> outData)
+{
+    VEX_ASSERT(mappedData.size() - offset >= outData.size());
+    std::copy(mappedData.begin() + offset, mappedData.end(), outData.begin() + offset);
+}
+
+void ResourceMappedMemory::ReadData(std::span<byte> outData)
+{
+    ReadData(0, outData);
 }
 
 } // namespace vex

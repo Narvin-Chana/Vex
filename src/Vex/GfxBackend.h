@@ -27,6 +27,7 @@
 
 namespace vex
 {
+class TextureReadbackContext;
 
 class CommandContext;
 struct PhysicalDevice;
@@ -106,6 +107,10 @@ public:
 
     // Called when the underlying window resizes, allows the swapchain to be resized.
     void OnWindowResized(u32 newWidth, u32 newHeight);
+    [[nodiscard]] bool UsesSwapChain() const noexcept
+    {
+        return description.useSwapChain;
+    };
 
     // Obtains the current present texture handle. If the swapchain is enabled, Vex uses a present texture which is
     // copied to the backbuffer when presenting.
@@ -185,6 +190,8 @@ private:
 
     friend class CommandContext;
     friend struct ResourceBindingUtils;
+    friend class TextureReadbackContext;
+    friend class BufferReadbackContext;
     bool isSwapchainValid = true;
 };
 

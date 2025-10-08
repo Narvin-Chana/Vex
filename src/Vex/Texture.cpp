@@ -179,13 +179,12 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
     return 0;
 }
 
-u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc,
-                                       std::span<const TextureUploadRegion> uploadRegions)
+u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc, std::span<const TextureRegion> uploadRegions)
 {
     const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
     float totalSize = 0;
 
-    for (const TextureUploadRegion& region : uploadRegions)
+    for (const TextureRegion& region : uploadRegions)
     {
         VEX_CHECK(region.slice < desc.GetArraySize(),
                   "Cannot upload to a slice index ({}) greater or equal to the the texture's slice count ({})!",
@@ -204,13 +203,13 @@ u64 ComputeAlignedUploadBufferByteSize(const TextureDescription& desc,
     return static_cast<u64>(std::ceil(totalSize));
 }
 
-u64 ComputePackedUploadDataByteSize(const TextureDescription& desc, std::span<const TextureUploadRegion> uploadRegions)
+u64 ComputePackedTextureDataByteSize(const TextureDescription& desc, std::span<const TextureRegion> textureRegions)
 {
     // Pixel byte size could be less than 1 (BlockCompressed formats).
     const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
     float totalSize = 0;
 
-    for (const TextureUploadRegion& region : uploadRegions)
+    for (const TextureRegion& region : textureRegions)
     {
         VEX_CHECK(region.slice < desc.GetArraySize(),
                   "Cannot upload to a slice index ({}) greater or equal to the the texture's slice count ({})!",
@@ -313,16 +312,20 @@ void ValidateCompatibleTextureDescriptions(const TextureDescription& srcDesc, co
 
 } // namespace TextureUtil
 
-std::vector<TextureUploadRegion> TextureUploadRegion::UploadAllMips(const TextureDescription& textureDescription)
+std::vector<TextureRegion> TextureRegion::AllMips(const TextureDescription& textureDescription)
 {
     const u32 arraySize = textureDescription.GetArraySize();
-    std::vector<TextureUploadRegion> regions(textureDescription.mips * arraySize);
+    const u32 mips =
+        textureDescription.mips == 0
+            ? ComputeMipCount({ textureDescription.width, textureDescription.height, textureDescription.GetDepth() })
+            : textureDescription.mips;
+    std::vector<TextureRegion> regions(mips * arraySize);
 
     u32 width = textureDescription.width;
     u32 height = textureDescription.height;
     u32 depth = textureDescription.GetDepth();
 
-    for (u16 mip = 0; mip < textureDescription.mips; ++mip)
+    for (u16 mip = 0; mip < mips; ++mip)
     {
         for (u32 slice = 0; slice < arraySize; ++slice)
         {
@@ -345,11 +348,10 @@ std::vector<TextureUploadRegion> TextureUploadRegion::UploadAllMips(const Textur
     return regions;
 }
 
-std::vector<TextureUploadRegion> TextureUploadRegion::UploadFullMip(u16 mipIndex,
-                                                                    const TextureDescription& textureDescription)
+std::vector<TextureRegion> TextureRegion::FullMip(u16 mipIndex, const TextureDescription& textureDescription)
 {
     const u32 arraySize = textureDescription.GetArraySize();
-    std::vector<TextureUploadRegion> regions(arraySize);
+    std::vector<TextureRegion> regions(arraySize);
 
     const u32 width = std::max(1u, textureDescription.width >> mipIndex);
     const u32 height = std::max(1u, textureDescription.height >> mipIndex);
@@ -369,13 +371,13 @@ std::vector<TextureUploadRegion> TextureUploadRegion::UploadFullMip(u16 mipIndex
 }
 
 TextureDescription TextureDescription::CreateTexture2DDesc(std::string name,
-                                                       TextureFormat format,
-                                                       u32 width,
-                                                       u32 height,
-                                                       u16 mips,
-                                                       TextureUsage::Flags usage,
-                                                       TextureClearValue clearValue,
-                                                       ResourceMemoryLocality memoryLocality)
+                                                           TextureFormat format,
+                                                           u32 width,
+                                                           u32 height,
+                                                           u16 mips,
+                                                           TextureUsage::Flags usage,
+                                                           TextureClearValue clearValue,
+                                                           ResourceMemoryLocality memoryLocality)
 {
     TextureDescription description{
         .name = std::move(name),
@@ -393,14 +395,14 @@ TextureDescription TextureDescription::CreateTexture2DDesc(std::string name,
 }
 
 TextureDescription TextureDescription::CreateTexture2DArrayDesc(std::string name,
-                                                            TextureFormat format,
-                                                            u32 width,
-                                                            u32 height,
-                                                            u32 arraySize,
-                                                            u16 mips,
-                                                            TextureUsage::Flags usage,
-                                                            TextureClearValue clearValue,
-                                                            ResourceMemoryLocality memoryLocality)
+                                                                TextureFormat format,
+                                                                u32 width,
+                                                                u32 height,
+                                                                u32 arraySize,
+                                                                u16 mips,
+                                                                TextureUsage::Flags usage,
+                                                                TextureClearValue clearValue,
+                                                                ResourceMemoryLocality memoryLocality)
 {
     TextureDescription description{
         .name = std::move(name),
@@ -418,12 +420,12 @@ TextureDescription TextureDescription::CreateTexture2DArrayDesc(std::string name
 }
 
 TextureDescription TextureDescription::CreateTextureCubeDesc(std::string name,
-                                                         TextureFormat format,
-                                                         u32 faceSize,
-                                                         u16 mips,
-                                                         TextureUsage::Flags usage,
-                                                         TextureClearValue clearValue,
-                                                         ResourceMemoryLocality memoryLocality)
+                                                             TextureFormat format,
+                                                             u32 faceSize,
+                                                             u16 mips,
+                                                             TextureUsage::Flags usage,
+                                                             TextureClearValue clearValue,
+                                                             ResourceMemoryLocality memoryLocality)
 {
     TextureDescription description{
         .name = std::move(name),
@@ -441,13 +443,13 @@ TextureDescription TextureDescription::CreateTextureCubeDesc(std::string name,
 }
 
 TextureDescription TextureDescription::CreateTextureCubeArrayDesc(std::string name,
-                                                              TextureFormat format,
-                                                              u32 faceSize,
-                                                              u32 arraySize,
-                                                              u16 mips,
-                                                              TextureUsage::Flags usage,
-                                                              TextureClearValue clearValue,
-                                                              ResourceMemoryLocality memoryLocality)
+                                                                  TextureFormat format,
+                                                                  u32 faceSize,
+                                                                  u32 arraySize,
+                                                                  u16 mips,
+                                                                  TextureUsage::Flags usage,
+                                                                  TextureClearValue clearValue,
+                                                                  ResourceMemoryLocality memoryLocality)
 {
     TextureDescription description{
         .name = std::move(name),
@@ -465,14 +467,14 @@ TextureDescription TextureDescription::CreateTextureCubeArrayDesc(std::string na
 }
 
 TextureDescription TextureDescription::CreateTexture3DDesc(std::string name,
-                                                       TextureFormat format,
-                                                       u32 width,
-                                                       u32 height,
-                                                       u32 depth,
-                                                       u16 mips,
-                                                       TextureUsage::Flags usage,
-                                                       TextureClearValue clearValue,
-                                                       ResourceMemoryLocality memoryLocality)
+                                                           TextureFormat format,
+                                                           u32 width,
+                                                           u32 height,
+                                                           u32 depth,
+                                                           u16 mips,
+                                                           TextureUsage::Flags usage,
+                                                           TextureClearValue clearValue,
+                                                           ResourceMemoryLocality memoryLocality)
 {
     TextureDescription description{
         .name = std::move(name),

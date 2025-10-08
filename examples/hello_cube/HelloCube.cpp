@@ -119,7 +119,7 @@ HelloCubeApplication::HelloCubeApplication()
         ctx.EnqueueDataUpload(
             uvGuideTexture,
             std::as_bytes(std::span(fullImageData.begin(), fullImageData.begin() + width * height * channels)),
-            vex::TextureUploadRegion::UploadFullMip(0, uvGuideTexture.description));
+            vex::TextureRegion::FullMip(0, uvGuideTexture.description));
 
         // Fill in all mips using the first one.
         ctx.GenerateMips(uvGuideTexture);

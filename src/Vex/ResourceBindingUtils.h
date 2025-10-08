@@ -30,8 +30,9 @@ struct ResourceBindingUtils
                                                                std::optional<TextureBinding> depthStencil,
                                                                std::vector<RHITextureBarrier>& barriers);
 
-    static RHIBufferBarrier CreateBarrierFromRHIBinding(const RHIBufferBinding& rhiBufferBinding);
-    static RHITextureBarrier CreateBarrierFromRHIBinding(const RHITextureBinding& rhiTextureBinding);
+    static RHIBufferBarrier CreateBarrierFromRHIBinding(RHIBarrierSync stage, const RHIBufferBinding& rhiBufferBinding);
+    static RHITextureBarrier CreateBarrierFromRHIBinding(RHIBarrierSync stage,
+                                                         const RHITextureBinding& rhiTextureBinding);
 };
 
 } // namespace vex

@@ -334,24 +334,26 @@ ResourceMappedMemory GfxBackend::MapResource(const Buffer& buffer)
 {
     RHIBuffer& rhiBuffer = GetRHIBuffer(buffer.handle);
 
-    if (rhiBuffer.GetDescription().memoryLocality != ResourceMemoryLocality::CPUWrite)
+    if (rhiBuffer.GetDescription().memoryLocality != ResourceMemoryLocality::CPUWrite &&
+        rhiBuffer.GetDescription().memoryLocality != ResourceMemoryLocality::CPURead)
     {
-        VEX_LOG(Fatal, "Buffer needs to have CPUWrite locality to be mapped to");
+        VEX_LOG(Fatal, "A non CPU-visible buffer cannot be mapped to.");
     }
 
-    return ResourceMappedMemory(rhiBuffer);
+    return { rhiBuffer };
 }
 
 ResourceMappedMemory GfxBackend::MapResource(const Texture& texture)
 {
     RHITexture& rhiTexture = GetRHITexture(texture.handle);
 
-    if (rhiTexture.GetDescription().memoryLocality != ResourceMemoryLocality::CPUWrite)
+    if (rhiTexture.GetDescription().memoryLocality != ResourceMemoryLocality::CPUWrite &&
+        rhiTexture.GetDescription().memoryLocality != ResourceMemoryLocality::CPURead)
     {
-        VEX_LOG(Fatal, "Texture needs to have CPUWrite locality to be mapped to directly");
+        VEX_LOG(Fatal, "Texture needs to have CPUWrite or CPURead locality to be mapped to directly");
     }
 
-    return ResourceMappedMemory(rhiTexture);
+    return { rhiTexture };
 }
 
 void GfxBackend::DestroyTexture(const Texture& texture)

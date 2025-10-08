@@ -25,6 +25,43 @@
 namespace vex::vk
 {
 
+static std::vector<::vk::BufferImageCopy> GetBufferImageCopyFromBufferToImageDescriptions(
+    const RHITexture& texture, std::span<const BufferTextureCopyDescription> descriptions)
+{
+    const ::vk::ImageAspectFlags dstAspectMask =
+        FormatIsDepthStencilCompatible(texture.GetDescription().format)
+            ? ::vk::ImageAspectFlagBits::eDepth | ::vk::ImageAspectFlagBits::eStencil
+            : ::vk::ImageAspectFlagBits::eColor;
+
+    float pixelByteSize = TextureUtil::GetPixelByteSizeFromFormat(texture.GetDescription().format);
+
+    std::vector<::vk::BufferImageCopy> regions;
+    regions.reserve(descriptions.size());
+    for (const auto& [srcSubresource, dstSubresource, extent] : descriptions)
+    {
+        u32 alignedRowPitch =
+            static_cast<u32>(AlignUp<u64>(extent.width * pixelByteSize, TextureUtil::RowPitchAlignment));
+
+        regions.push_back(::vk::BufferImageCopy{
+            .bufferOffset = srcSubresource.offset,
+            // Buffer row length is in pixels.
+            .bufferRowLength = static_cast<u32>(alignedRowPitch / pixelByteSize),
+            .bufferImageHeight = 0,
+            .imageSubresource =
+                ::vk::ImageSubresourceLayers{
+                    .aspectMask = dstAspectMask,
+                    .mipLevel = dstSubresource.mip,
+                    .baseArrayLayer = dstSubresource.startSlice,
+                    .layerCount = dstSubresource.sliceCount,
+                },
+            .imageOffset =
+                ::vk::Offset3D(dstSubresource.offset.width, dstSubresource.offset.height, dstSubresource.offset.depth),
+            .imageExtent = { extent.width, extent.height, extent.depth } });
+    }
+
+    return regions;
+}
+
 void VkCommandList::Open()
 {
     if (isOpen)
@@ -101,20 +138,9 @@ void VkCommandList::SetLayout(RHIResourceLayout& layout)
         return;
     }
 
-    ::vk::ShaderStageFlags stageFlags;
-    switch (type)
-    {
-    case CommandQueueTypes::Graphics:
-        stageFlags |= ::vk::ShaderStageFlagBits::eAllGraphics;
-    case CommandQueueTypes::Compute:
-        stageFlags |= ::vk::ShaderStageFlagBits::eCompute;
-        break;
-    default:
-        VEX_ASSERT(false, "Operation not supported on this queue type");
-    }
-
+    // Stage flags must be the same as the push constant ranges defined in the layout
     commandBuffer->pushConstants(*layout.pipelineLayout,
-                                 stageFlags,
+                                 ::vk::ShaderStageFlagBits::eAllGraphics | ::vk::ShaderStageFlagBits::eCompute,
                                  0,
                                  localConstantsData.size(),
                                  localConstantsData.data());
@@ -612,42 +638,26 @@ void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescrip
 
 void VkCommandList::Copy(RHIBuffer& src,
                          RHITexture& dst,
-                         std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions)
+                         std::span<const BufferTextureCopyDescription> copyDescriptions)
 {
-    const ::vk::ImageAspectFlags dstAspectMask =
-        FormatIsDepthStencilCompatible(dst.description.format)
-            ? ::vk::ImageAspectFlagBits::eDepth | ::vk::ImageAspectFlagBits::eStencil
-            : ::vk::ImageAspectFlagBits::eColor;
-
-    float pixelByteSize = TextureUtil::GetPixelByteSizeFromFormat(dst.GetDescription().format);
-
-    std::vector<::vk::BufferImageCopy> regions;
-    regions.reserve(bufferToTextureCopyDescriptions.size());
-    for (const auto& [srcSubresource, dstSubresource, extent] : bufferToTextureCopyDescriptions)
-    {
-        u32 alignedRowPitch =
-            static_cast<u32>(AlignUp<u64>(extent.width * pixelByteSize, TextureUtil::RowPitchAlignment));
-
-        regions.push_back(::vk::BufferImageCopy{
-            .bufferOffset = srcSubresource.offset,
-            // Buffer row length is in pixels.
-            .bufferRowLength = static_cast<u32>(alignedRowPitch / pixelByteSize),
-            .bufferImageHeight = 0,
-            .imageSubresource =
-                ::vk::ImageSubresourceLayers{
-                    .aspectMask = dstAspectMask,
-                    .mipLevel = dstSubresource.mip,
-                    .baseArrayLayer = dstSubresource.startSlice,
-                    .layerCount = dstSubresource.sliceCount,
-                },
-            .imageOffset =
-                ::vk::Offset3D(dstSubresource.offset.width, dstSubresource.offset.height, dstSubresource.offset.depth),
-            .imageExtent = { extent.width, extent.height, extent.depth } });
-    }
+    auto regions = GetBufferImageCopyFromBufferToImageDescriptions(dst, copyDescriptions);
 
     commandBuffer->copyBufferToImage(src.GetNativeBuffer(),
                                      dst.GetResource(),
                                      RHITextureLayoutToVulkan(dst.GetLastLayout()),
+                                     static_cast<u32>(regions.size()),
+                                     regions.data());
+}
+
+void VkCommandList::Copy(RHITexture& src,
+                         RHIBuffer& dst,
+                         std::span<const BufferTextureCopyDescription> copyDescriptions)
+{
+    auto regions = GetBufferImageCopyFromBufferToImageDescriptions(src, copyDescriptions);
+
+    commandBuffer->copyImageToBuffer(src.GetResource(),
+                                     RHITextureLayoutToVulkan(src.GetLastLayout()),
+                                     dst.GetNativeBuffer(),
                                      static_cast<u32>(regions.size()),
                                      regions.data());
 }

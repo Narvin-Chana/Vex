@@ -60,7 +60,10 @@ public:
     virtual void Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& bufferCopyDescription) override;
     virtual void Copy(RHIBuffer& src,
                       RHITexture& dst,
-                      std::span<const BufferToTextureCopyDescription> bufferToTextureCopyDescriptions) override;
+                      std::span<const BufferTextureCopyDescription> copyDescriptions) override;
+    virtual void Copy(RHITexture& src,
+                      RHIBuffer& dst,
+                      std::span<const BufferTextureCopyDescription> copyDescriptions) override;
 
     ComPtr<ID3D12GraphicsCommandList10>& GetNativeCommandList()
     {

@@ -230,10 +230,6 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
         break;
     }
 
-    if (!(description.usage & TextureUsage::ShaderRead))
-    {
-        texDesc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
-    }
     if (description.usage & TextureUsage::RenderTarget)
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
