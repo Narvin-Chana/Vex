@@ -16,7 +16,7 @@ TEST(GraphicsTests, CreateGraphicsWithoutDebugLayers)
     } };
 }
 
-TEST(GraphicsTests, CreateGraphicsDebugLayersAndValidation)
+TEST(GraphicsTests, CreateGraphicsDebugLayersAndGPUValidation)
 {
     GfxBackend{ BackendDescription{
         .useSwapChain = false,
