@@ -20,17 +20,22 @@ protected:
     RHIScopedDebugMarkerBase& operator=(RHIScopedDebugMarkerBase&) = delete;
 
     RHIScopedDebugMarkerBase(RHIScopedDebugMarkerBase&& other) noexcept
-        : emitMarker{ std::exchange(other.emitMarker, false) }
+        : emitMarker{ other.emitMarker }
         , label{ std::move(other.label) }
-        , color{ std::exchange(other.color, { 0, 0, 0 }) }
+        , color{ other.color }
     {
+        other.color = { 0, 0, 0 };
+        other.emitMarker = false;
     }
 
     RHIScopedDebugMarkerBase& operator=(RHIScopedDebugMarkerBase&& other) noexcept
     {
-        emitMarker = std::exchange(other.emitMarker, false);
+        emitMarker = other.emitMarker;
         label = std::move(other.label);
-        color = std::exchange(other.color, { 0, 0, 0 });
+        color = other.color;
+
+        other.color = { 0, 0, 0 };
+        other.emitMarker = false;
         return *this;
     }
 
