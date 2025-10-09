@@ -1,6 +1,6 @@
 ﻿#include "DX12ScopedDebugMarker.h"
 
-#include <pix.h>
+#include <pix3.h>
 
 #include <Vex/Types.h>
 
@@ -13,8 +13,11 @@ DX12ScopedDebugMarker::DX12ScopedDebugMarker(const ComPtr<ID3D12GraphicsCommandL
     : RHIScopedDebugMarkerBase(label, color)
     , cmdList{ commandList }
 {
-    // Color/Metadata is not used on Windows so 0
-    PIXBeginEvent(cmdList.Get(), 0, label);
+    PIXBeginEvent(cmdList.Get(),
+                  PIX_COLOR(static_cast<BYTE>(color[0] * 255.0f),
+                            static_cast<BYTE>(color[1] * 255.0f),
+                            static_cast<BYTE>(color[2] * 255.0f)),
+                  label);
 }
 
 DX12ScopedDebugMarker::~DX12ScopedDebugMarker()

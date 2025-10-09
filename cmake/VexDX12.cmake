@@ -1,6 +1,16 @@
 # VexDX12.cmake - DX12 backend configuration
 
 function(setup_dx12_backend TARGET)
+    message(STATUS "Fetching PixEvents...")
+    FetchContent_Declare(
+            pix_events
+            GIT_REPOSITORY https://github.com/microsoft/PixEvents.git
+            GIT_TAG main
+    )
+    FetchContent_MakeAvailable(pix_events)
+
+    #add_header_only_dependency(${TARGET} pix_events "${pix_events_SOURCE_DIR}" "include" "pix_events")
+
     message(STATUS "Setting up DirectX 12 backend...")
 
     # Fetch DX12 Agility SDK
@@ -132,3 +142,5 @@ function(vex_setup_d3d12_agility_runtime TARGET)
         message(STATUS "D3D12 Agility SDK 1.${DX_AGILITY_SDK_VERSION}.0 will be deployed with ${TARGET}")
     endif()
 endfunction()
+
+
