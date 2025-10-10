@@ -1,8 +1,6 @@
 ﻿#include "DX12ScopedDebugMarker.h"
 
-#include <pix3.h>
-
-#include <Vex/Types.h>
+#include <WinPixEventRuntime/pix3.h>
 
 namespace vex::dx12
 {

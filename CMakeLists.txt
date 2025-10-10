@@ -240,6 +240,7 @@ function(vex_setup_runtime TARGET)
     if(VEX_ENABLE_DX12)
         include(VexDX12)
         vex_setup_d3d12_agility_runtime(${TARGET})
+        vex_setup_pix_events(${TARGET})
     endif()
 
     link_with_dxc(${TARGET})
