@@ -53,3 +53,19 @@ function(add_header_only_dependency TARGET DEP_NAME SOURCE_DIR INCLUDE_PATH INST
     set_property(GLOBAL APPEND PROPERTY HEADER_DIRS_TO_INSTALL 
                 "${SOURCE_DIR}/${INCLUDE_PATH}" "include/${INSTALL_PATH}")
 endfunction()
+
+function(download_and_decompress_archive ARCHIVE_URL ARCHIVE_DEST_DIR)
+    set(NUGET_DOWNLOAD_DIR "${CMAKE_BINARY_DIR}/temp.zip")
+
+    file(DOWNLOAD
+        "${ARCHIVE_URL}"
+        "${NUGET_DOWNLOAD_DIR}"
+    )
+
+    file(ARCHIVE_EXTRACT
+        INPUT "${NUGET_DOWNLOAD_DIR}"
+        DESTINATION "${ARCHIVE_DEST_DIR}"
+    )
+
+    file(REMOVE "${NUGET_DOWNLOAD_DIR}")
+endfunction()

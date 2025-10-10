@@ -52,6 +52,8 @@ void HelloTriangleGraphicsApplication::Run()
             // Scoped command context will submit commands automatically upon destruction.
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
 
+            VEX_GPU_SCOPED_DEBUG_REGION_COLORED(ctx, "Triangles", 1, 0, 1)
+
             ctx.EnqueueDataUpload(colorBuffer, std::as_bytes(std::span(color)));
 
             ctx.SetScissor(0, 0, width, height);

@@ -757,6 +757,11 @@ RHICommandList& CommandContext::GetRHICommandList()
     return *cmdList;
 }
 
+ScopedDebugMarker CommandContext::CreateScopedDebugMarker(const char* markerLabel, std::array<float, 3> color)
+{
+    return { cmdList->CreateScopedMarker(markerLabel, color) };
+}
+
 std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDescription& drawDesc,
                                                                 const DrawResourceBinding& drawBindings,
                                                                 std::optional<ConstantBinding> constants)
