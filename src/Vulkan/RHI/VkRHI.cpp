@@ -272,6 +272,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     features12.vulkanMemoryModel = true;
     features12.vulkanMemoryModelDeviceScope = true;
     features12.storageBuffer8BitAccess = true;
+    features12.scalarBlockLayout = true;
 
     auto physDeviceFeatures = physDevice.getFeatures();
     ::vk::DeviceCreateInfo deviceCreateInfo{ .pNext = &features12,
@@ -386,6 +387,7 @@ void VkRHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBacken
         shaderEnv.args.emplace_back(L"-fvk-bind-resource-heap");
         shaderEnv.args.emplace_back(L"0");
         shaderEnv.args.emplace_back(L"1");
+        shaderEnv.args.emplace_back(L"-fvk-use-scalar-layout");
     }
 
     shaderEnv.defines.emplace_back("VEX_VULKAN");
