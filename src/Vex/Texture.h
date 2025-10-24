@@ -214,6 +214,8 @@ struct TextureRegion
     TextureOffset3D offset;
     TextureExtent3D extent;
 
+    std::tuple<u32, u32, u32> GetExtents(const TextureDesc& desc, u16 mip) const;
+
     // Validates the region for a specific texture.
     void Validate(const TextureDesc& desc) const;
 

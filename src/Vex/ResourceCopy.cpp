@@ -17,15 +17,6 @@ void ValidateBufferTextureCopyDesc(const BufferDesc& srcDesc,
 {
     BufferUtil::ValidateBufferRegion(srcDesc, copyDesc.bufferRegion);
     copyDesc.textureRegion.Validate(dstDesc);
-
-    auto [width, height, depth] = copyDesc.textureRegion.extent;
-    const u32 requiredPackedByteSize =
-        static_cast<u32>(std::ceil(width * height * depth * TextureUtil::GetPixelByteSizeFromFormat(dstDesc.format)));
-
-    VEX_CHECK(copyDesc.bufferRegion.byteSize == requiredPackedByteSize,
-              "Buffer not big enough to copy to texture. buffer size: {}, required mip byte size: {}",
-              srcDesc.byteSize,
-              requiredPackedByteSize);
 }
 
 void ReadTextureDataAligned(const TextureDesc& desc,

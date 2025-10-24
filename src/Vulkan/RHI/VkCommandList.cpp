@@ -706,9 +706,11 @@ void VkCommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const Textu
                                 .baseArrayLayer = textureRegion.subresource.startSlice,
                                 .layerCount = textureRegion.subresource.GetSliceCount(dst.desc) },
             .dstOffset = ::vk::Offset3D(textureRegion.offset.x, textureRegion.offset.y, textureRegion.offset.z),
-            .extent = ::vk::Extent3D{ textureRegion.extent.GetWidth(dstDesc),
-                                      textureRegion.extent.GetHeight(dstDesc),
-                                      textureRegion.extent.GetDepth(dstDesc) } });
+            .extent = ::vk::Extent3D{
+                textureRegion.extent.GetWidth(dstDesc, textureRegion.subresource.startMip),
+                textureRegion.extent.GetHeight(dstDesc, textureRegion.subresource.startMip),
+                textureRegion.extent.GetDepth(dstDesc, textureRegion.subresource.startMip),
+            } });
     }
 
     commandBuffer->copyImage(src.GetResource(),
@@ -729,7 +731,7 @@ void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDesc& b
 
 void VkCommandList::Copy(RHIBuffer& src, RHITexture& dst, std::span<const BufferTextureCopyDesc> copyDescriptions)
 {
-    auto regions = GetBufferImageCopyFromBufferToImageDescriptions(dst, copyDescriptions);
+    auto regions = CommandList_Internal::GetBufferImageCopyFromBufferToImageDescriptions(dst, copyDescriptions);
 
     commandBuffer->copyBufferToImage(src.GetNativeBuffer(),
                                      dst.GetResource(),
@@ -740,7 +742,7 @@ void VkCommandList::Copy(RHIBuffer& src, RHITexture& dst, std::span<const Buffer
 
 void VkCommandList::Copy(RHITexture& src, RHIBuffer& dst, std::span<const BufferTextureCopyDesc> copyDescriptions)
 {
-    auto regions = GetBufferImageCopyFromBufferToImageDescriptions(src, copyDescriptions);
+    auto regions = CommandList_Internal::GetBufferImageCopyFromBufferToImageDescriptions(src, copyDescriptions);
 
     commandBuffer->copyImageToBuffer(src.GetResource(),
                                      RHITextureLayoutToVulkan(src.GetLastLayout()),

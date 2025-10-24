@@ -445,6 +445,11 @@ void TextureSubresource::Validate(const TextureDesc& desc) const
     }
 }
 
+std::tuple<u32, u32, u32> TextureRegion::GetExtents(const TextureDesc& desc, u16 mip) const
+{
+    return { extent.GetWidth(desc, mip), extent.GetHeight(desc, mip), extent.GetDepth(desc, mip) };
+}
+
 void TextureRegion::Validate(const TextureDesc& desc) const
 {
     subresource.Validate(desc);
