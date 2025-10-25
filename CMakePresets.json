@@ -63,8 +63,8 @@
       "name": "clang-compiler",
       "hidden": true,
       "environment": {
-        "CC": "clang",
-        "CXX": "clang++"
+        "CC": "clang-cl",
+        "CXX": "clang-cl"
       }
     },
     {
