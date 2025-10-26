@@ -202,9 +202,6 @@ struct TextureSubresource
     u16 GetMipCount(const TextureDesc& desc) const;
     u32 GetSliceCount(const TextureDesc& desc) const;
 
-    // Validates the subresource for a specific texture.
-    void Validate(const TextureDesc& desc) const;
-
     constexpr bool operator==(const TextureSubresource&) const = default;
 };
 
@@ -215,9 +212,6 @@ struct TextureRegion
     TextureExtent3D extent;
 
     std::tuple<u32, u32, u32> GetExtents(const TextureDesc& desc, u16 mip) const;
-
-    // Validates the region for a specific texture.
-    void Validate(const TextureDesc& desc) const;
 
     constexpr bool operator==(const TextureRegion&) const = default;
 
@@ -252,10 +246,12 @@ float GetPixelByteSizeFromFormat(TextureFormat format);
 u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, std::span<const TextureRegion> uploadRegions);
 u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, std::span<const TextureRegion> uploadRegions);
 
-bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage);
+bool IsBindingUsageCompatibleWithUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage);
 
-void ValidateTextureCopyDesc(const TextureDesc& srcDesc, const TextureDesc& dstDesc, const TextureCopyDesc& copyDesc);
-void ValidateCompatibleTextureDescriptions(const TextureDesc& srcDesc, const TextureDesc& dstDesc);
+void ValidateSubresource(const TextureSubresource& subresource, const TextureDesc& desc);
+void ValidateRegion(const TextureRegion& region, const TextureDesc& desc);
+void ValidateCopyDesc(const TextureDesc& srcDesc, const TextureDesc& dstDesc, const TextureCopyDesc& copyDesc);
+void ValidateCompatibleTextureDescs(const TextureDesc& srcDesc, const TextureDesc& dstDesc);
 
 } // namespace TextureUtil
 

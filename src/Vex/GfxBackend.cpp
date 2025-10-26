@@ -372,7 +372,7 @@ void GfxBackend::DestroyBuffer(const Buffer& buffer)
 
 BindlessHandle GfxBackend::GetTextureBindlessHandle(const TextureBinding& bindlessResource)
 {
-    bindlessResource.Validate();
+    BindingUtil::ValidateTextureBinding(bindlessResource, bindlessResource.texture.desc.usage);
 
     auto& texture = GetRHITexture(bindlessResource.texture.handle);
     return texture.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
@@ -380,7 +380,7 @@ BindlessHandle GfxBackend::GetTextureBindlessHandle(const TextureBinding& bindle
 
 BindlessHandle GfxBackend::GetBufferBindlessHandle(const BufferBinding& bindlessResource)
 {
-    bindlessResource.Validate();
+    BindingUtil::ValidateBufferBinding(bindlessResource, bindlessResource.buffer.desc.usage);
 
     auto& buffer = GetRHIBuffer(bindlessResource.buffer.handle);
     return buffer.GetOrCreateBindlessView(bindlessResource.usage, bindlessResource.strideByteSize, *descriptorPool);

@@ -52,8 +52,8 @@ public:
 
 TEST_F(MipGenerationTest, Texture2DPowOfTwo)
 {
-    u32 size = 1024;
-    u16 numMips = ComputeMipCount({ size, size, size });
+    u32 size = 512;
+    u16 numMips = ComputeMipCount({ size, size, 1 });
     Texture tex = graphics.CreateTexture(
         TextureDesc::CreateTexture2DDesc("Mip0",
                                          TextureFormat::RGBA32_FLOAT,

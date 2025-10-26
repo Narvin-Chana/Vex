@@ -243,7 +243,7 @@ u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, std::span<const Te
     return static_cast<u64>(std::ceil(totalSize));
 }
 
-bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage)
+bool IsBindingUsageCompatibleWithUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage)
 {
     if (bindingUsage == TextureBindingUsage::ShaderRead)
     {
@@ -258,15 +258,111 @@ bool IsTextureBindingUsageCompatibleWithTextureUsage(TextureUsage::Flags usages,
     return true;
 }
 
-void ValidateTextureCopyDesc(const TextureDesc& srcDesc, const TextureDesc& dstDesc, const TextureCopyDesc& copyDesc)
+void ValidateSubresource(const TextureSubresource& subresource, const TextureDesc& desc)
 {
-    copyDesc.srcRegion.Validate(srcDesc);
-    copyDesc.dstRegion.Validate(dstDesc);
+    VEX_CHECK(subresource.startMip < desc.mips,
+              "Invalid subresource for resource \"{}\": The subresource's startMip ({}) cannot be larger than the "
+              "actual texture's mip count ({}).",
+              desc.name,
+              subresource.startMip,
+              desc.mips);
+
+    if (subresource.mipCount != GTextureAllMips)
+    {
+        VEX_CHECK(
+            subresource.startMip + subresource.mipCount <= desc.mips,
+            "Invalid subresource for resource \"{}\": TextureSubresource accesses more mips than available, startMip : "
+            "{}, mipCount: "
+            "{}, texture mip count: {}",
+            desc.name,
+            subresource.startMip,
+            subresource.mipCount,
+            desc.mips);
+    }
+
+    VEX_CHECK(
+        subresource.startSlice < desc.GetSliceCount(),
+        "Invalid subresource for resource \"{}\": The subresource's starting slice ({}) cannot be larger than the "
+        "actual texture's array size ({}).",
+        desc.name,
+        subresource.startSlice,
+        desc.GetSliceCount());
+
+    if (subresource.sliceCount != GTextureAllSlices)
+    {
+        VEX_CHECK(subresource.startSlice + subresource.sliceCount <= desc.GetSliceCount(),
+                  "Invalid subresource for resource \"{}\": The subresource accesses more slices than available, "
+                  "startSlice: {}, sliceCount: {}, "
+                  " texture slice count {}",
+                  desc.name,
+                  subresource.startSlice,
+                  subresource.sliceCount,
+                  desc.GetSliceCount());
+    }
+}
+
+void ValidateRegion(const TextureRegion& region, const TextureDesc& desc)
+{
+    ValidateSubresource(region.subresource, desc);
+
+    // If any of the extents is not set to GTextureExtentMax, we validate that the underlying subresource only has 1
+    // mip! (this requires a span of regions, since the extent is only valid for one mip).
+    if (region.extent.width != GTextureExtentMax || region.extent.height != GTextureExtentMax ||
+        region.extent.depth != GTextureExtentMax)
+    {
+        VEX_CHECK(region.subresource.mipCount == 1,
+                  "Invalid region for resource \"{}\": If you use a non-default region extent, your region may only "
+                  "describe a single mip.",
+                  desc.name);
+    }
+
+    auto [mipWidth, mipHeight, mipDepth] = TextureUtil::GetMipSize(desc, region.subresource.startMip);
+    for (u32 mip = region.subresource.startMip; mip < region.subresource.mipCount; ++mip)
+    {
+        VEX_CHECK(region.offset.x < mipWidth && region.offset.y < mipHeight && region.offset.z < mipDepth,
+                  "Invalid region for resource \"{}\": Region offset is beyond the mip's resource size. Mip size: "
+                  "{}x{}x{}, region offset: {}x{}x{}",
+                  desc.name,
+                  mipWidth,
+                  mipHeight,
+                  mipDepth,
+                  region.offset.x,
+                  region.offset.y,
+                  region.offset.z);
+
+        const u32 offsetExtentWidth =
+            (region.extent.width != GTextureExtentMax) ? region.offset.x + region.extent.width : mipWidth;
+        const u32 offsetExtentHeight =
+            (region.extent.height != GTextureExtentMax) ? region.offset.y + region.extent.height : mipHeight;
+        const u32 offsetExtentDepth =
+            (region.extent.depth != GTextureExtentMax) ? region.offset.z + region.extent.depth : mipDepth;
+        VEX_CHECK(offsetExtentWidth <= mipWidth && offsetExtentHeight <= mipHeight && offsetExtentDepth <= mipDepth,
+                  "Invalid region for resource \"{}\": Region extent goes beyond mip {} size: Extent + offset: "
+                  "{}x{}x{}, Mip size: {}x{}x{}",
+                  desc.name,
+                  mip,
+                  offsetExtentWidth,
+                  offsetExtentHeight,
+                  offsetExtentDepth,
+                  mipWidth,
+                  mipHeight,
+                  mipDepth);
+
+        mipWidth = std::max(1u, mipWidth / 2u);
+        mipHeight = std::max(1u, mipHeight / 2u);
+        mipDepth = std::max(1u, mipDepth / 2u);
+    }
+}
+
+void ValidateCopyDesc(const TextureDesc& srcDesc, const TextureDesc& dstDesc, const TextureCopyDesc& copyDesc)
+{
+    ValidateRegion(copyDesc.srcRegion, srcDesc);
+    ValidateRegion(copyDesc.dstRegion, dstDesc);
     VEX_CHECK(copyDesc.srcRegion.extent == copyDesc.dstRegion.extent,
               "A texture copy's src and dst extents should match!");
 }
 
-void ValidateCompatibleTextureDescriptions(const TextureDesc& srcDesc, const TextureDesc& dstDesc)
+void ValidateCompatibleTextureDescs(const TextureDesc& srcDesc, const TextureDesc& dstDesc)
 {
     VEX_CHECK(srcDesc.depthOrSliceCount == dstDesc.depthOrSliceCount && srcDesc.width == dstDesc.width &&
                   srcDesc.height == dstDesc.height && srcDesc.mips == dstDesc.mips &&
@@ -408,101 +504,9 @@ u32 TextureSubresource::GetSliceCount(const TextureDesc& desc) const
     return sliceCount == GTextureAllSlices ? (desc.GetSliceCount() - startSlice) : sliceCount;
 }
 
-void TextureSubresource::Validate(const TextureDesc& desc) const
-{
-    VEX_CHECK(startMip < desc.mips,
-              "Invalid subresource for resource \"{}\": The subresource's startMip ({}) cannot be larger than the "
-              "actual texture's mip count ({}).",
-              desc.name,
-              startMip,
-              desc.mips);
-
-    if (mipCount != GTextureAllMips)
-    {
-        VEX_CHECK(
-            startMip + mipCount <= desc.mips,
-            "Invalid subresource for resource \"{}\": TextureSubresource accesses more mips than available, startMip : "
-            "{}, mipCount: "
-            "{}, texture mip count: {}",
-            desc.name,
-            startMip,
-            mipCount,
-            desc.mips);
-    }
-
-    VEX_CHECK(
-        startSlice < desc.GetSliceCount(),
-        "Invalid subresource for resource \"{}\": The subresource's starting slice ({}) cannot be larger than the "
-        "actual texture's array size ({}).",
-        desc.name,
-        startSlice,
-        desc.GetSliceCount());
-
-    if (sliceCount != GTextureAllSlices)
-    {
-        VEX_CHECK(startSlice + sliceCount <= desc.GetSliceCount(),
-                  "Invalid subresource for resource \"{}\": The subresource accesses more slices than available, "
-                  "startSlice: {}, sliceCount: {}, "
-                  " texture slice count {}",
-                  desc.name,
-                  startSlice,
-                  sliceCount,
-                  desc.GetSliceCount());
-    }
-}
-
 std::tuple<u32, u32, u32> TextureRegion::GetExtents(const TextureDesc& desc, u16 mip) const
 {
     return { extent.GetWidth(desc, mip), extent.GetHeight(desc, mip), extent.GetDepth(desc, mip) };
-}
-
-void TextureRegion::Validate(const TextureDesc& desc) const
-{
-    subresource.Validate(desc);
-
-    // If any of the extents is not set to GTextureExtentMax, we validate that the underlying subresource only has 1
-    // mip! (this requires a span of regions, since the extent is only valid for one mip).
-    if (extent.width != GTextureExtentMax || extent.height != GTextureExtentMax || extent.depth != GTextureExtentMax)
-    {
-        VEX_CHECK(subresource.mipCount == 1,
-                  "Invalid region for resource \"{}\": If you use a non-default region extent, your region may only "
-                  "describe a single mip.",
-                  desc.name);
-    }
-
-    auto [mipWidth, mipHeight, mipDepth] = TextureUtil::GetMipSize(desc, subresource.startMip);
-    for (u32 mip = subresource.startMip; mip < subresource.mipCount; ++mip)
-    {
-        VEX_CHECK(offset.x < mipWidth && offset.y < mipHeight && offset.z < mipDepth,
-                  "Invalid region for resource \"{}\": Region offset is beyond the mip's resource size. Mip size: "
-                  "{}x{}x{}, region offset: {}x{}x{}",
-                  desc.name,
-                  mipWidth,
-                  mipHeight,
-                  mipDepth,
-                  offset.x,
-                  offset.y,
-                  offset.z);
-
-        const u32 offsetExtentWidth = (extent.width != GTextureExtentMax) ? offset.x + extent.width : mipWidth;
-        const u32 offsetExtentHeight = (extent.height != GTextureExtentMax) ? offset.y + extent.height : mipHeight;
-        const u32 offsetExtentDepth = (extent.depth != GTextureExtentMax) ? offset.z + extent.depth : mipDepth;
-        VEX_CHECK(offsetExtentWidth <= mipWidth && offsetExtentHeight <= mipHeight && offsetExtentDepth <= mipDepth,
-                  "Invalid region for resource \"{}\": Region extent goes beyond mip {} size: Extent + offset: "
-                  "{}x{}x{}, Mip size: {}x{}x{}",
-                  desc.name,
-                  mip,
-                  offsetExtentWidth,
-                  offsetExtentHeight,
-                  offsetExtentDepth,
-                  mipWidth,
-                  mipHeight,
-                  mipDepth);
-
-        mipWidth = std::max(1u, mipWidth / 2u);
-        mipHeight = std::max(1u, mipHeight / 2u);
-        mipDepth = std::max(1u, mipDepth / 2u);
-    }
 }
 
 TextureRegion TextureRegion::AllMips()

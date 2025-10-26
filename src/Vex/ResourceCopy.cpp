@@ -16,7 +16,7 @@ void ValidateBufferTextureCopyDesc(const BufferDesc& srcDesc,
                                    const BufferTextureCopyDesc& copyDesc)
 {
     BufferUtil::ValidateBufferRegion(srcDesc, copyDesc.bufferRegion);
-    copyDesc.textureRegion.Validate(dstDesc);
+    TextureUtil::ValidateRegion(copyDesc.textureRegion, dstDesc);
 }
 
 void ReadTextureDataAligned(const TextureDesc& desc,
@@ -33,35 +33,40 @@ void ReadTextureDataAligned(const TextureDesc& desc,
 
     for (const auto& region : textureRegions)
     {
-        const u32 regionWidth = region.extent.GetWidth(desc, region.subresource.startMip);
-        const u32 regionHeight = region.extent.GetHeight(desc, region.subresource.startMip);
-        const u32 regionDepth = region.extent.GetDepth(desc, region.subresource.startMip);
-
-        const u32 packedRowPitch = regionWidth * bytesPerPixel;
-        const u32 alignedRowPitch = AlignUp<u32>(packedRowPitch, TextureUtil::RowPitchAlignment);
-        const u32 packedSlicePitch = packedRowPitch * regionHeight;
-        const u32 alignedSlicePitch = alignedRowPitch * regionHeight;
-
-        // Copy each depth slice (for 3D textures).
-        for (u32 depthSlice = 0; depthSlice < regionDepth; ++depthSlice)
+        for (u16 mip = region.subresource.startMip;
+             mip < region.subresource.startMip + region.subresource.GetMipCount(desc);
+             ++mip)
         {
-            // Copy each row one-by-one with alignment.
-            for (u32 row = 0; row < regionHeight; ++row)
+            const u32 mipWidth = region.extent.GetWidth(desc, mip);
+            const u32 mipHeight = region.extent.GetHeight(desc, mip);
+            const u32 mipDepth = region.extent.GetDepth(desc, mip);
+
+            const u32 packedRowPitch = mipWidth * bytesPerPixel;
+            const u32 alignedRowPitch = AlignUp<u32>(packedRowPitch, TextureUtil::RowPitchAlignment);
+            const u32 packedSlicePitch = packedRowPitch * mipHeight;
+            const u32 alignedSlicePitch = alignedRowPitch * mipHeight;
+
+            // Copy each depth slice (for 3D textures).
+            for (u32 depthSlice = 0; depthSlice < mipDepth; ++depthSlice)
             {
-                // From aligned to packed
-                const byte* srcRow = srcData + srcOffset + depthSlice * alignedSlicePitch + row * alignedRowPitch;
-                byte* dstRow = dstData + dstOffset + depthSlice * packedSlicePitch + row * packedRowPitch;
+                // Copy each row one-by-one with alignment.
+                for (u32 row = 0; row < mipHeight; ++row)
+                {
+                    // From aligned to packed
+                    const byte* srcRow = srcData + srcOffset + depthSlice * alignedSlicePitch + row * alignedRowPitch;
+                    byte* dstRow = dstData + dstOffset + depthSlice * packedSlicePitch + row * packedRowPitch;
 
-                std::memcpy(dstRow, srcRow, packedRowPitch);
+                    std::memcpy(dstRow, srcRow, packedRowPitch);
+                }
             }
+
+            // Move to next region in the packed source data.
+            u64 regionStagingSize = static_cast<u64>(alignedSlicePitch) * mipDepth;
+            srcOffset += AlignUp<u64>(regionStagingSize, TextureUtil::MipAlignment);
+
+            // Move to next aligned position in staging buffer.
+            dstOffset += static_cast<u64>(packedSlicePitch) * mipDepth;
         }
-
-        // Move to next region in the packed source data.
-        u64 regionStagingSize = static_cast<u64>(alignedSlicePitch) * regionDepth;
-        srcOffset += AlignUp<u64>(regionStagingSize, TextureUtil::MipAlignment);
-
-        // Move to next aligned position in staging buffer.
-        dstOffset += static_cast<u64>(packedSlicePitch) * regionDepth;
     }
 }
 

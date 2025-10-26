@@ -273,6 +273,8 @@ bool DoesFormatSupportMipGeneration(TextureFormat format)
     case RGBA32_SINT:
     case RGB10A2_UINT:
         return false;
+    default:
+        break;
     }
 
     if (format == UNKNOWN)

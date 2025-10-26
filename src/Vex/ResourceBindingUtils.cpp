@@ -63,19 +63,6 @@ RHITextureBarrier ResourceBindingUtils::CreateBarrierFromRHIBinding(RHIBarrierSy
     return RHITextureBarrier{ texture, rhiTextureBinding.binding.subresource, dstSync, dstAccess, dstLayout };
 }
 
-void ResourceBindingUtils::ValidateResourceBindings(std::span<const ResourceBinding> bindings)
-{
-    for (const auto& resource : bindings)
-    {
-        std::visit(
-            Visitor{
-                [](const TextureBinding& binding) { binding.Validate(); },
-                [](const BufferBinding& binding) { binding.Validate(); },
-            },
-            resource.binding);
-    }
-}
-
 void ResourceBindingUtils::CollectRHIResources(GfxBackend& backend,
                                                std::span<const ResourceBinding> resources,
                                                std::vector<RHITextureBinding>& textureBindings,

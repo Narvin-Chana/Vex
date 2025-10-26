@@ -54,7 +54,7 @@ PixelApplicator ValidateGrid(const GridParams& grid)
 }
 
 // returns number of bytes written
-u32 ForEachPixelInRegion(const TextureDesc& desc,
+u64 ForEachPixelInRegion(const TextureDesc& desc,
                          const TextureRegion& region,
                          std::span<byte> regionData,
                          const PixelApplicator& generator)
@@ -86,7 +86,7 @@ u32 ForEachPixelInRegion(const TextureDesc& desc,
 }
 
 // returns number of bytes written
-u32 ForEachPixelInRegions(const TextureDesc& desc,
+u64 ForEachPixelInRegions(const TextureDesc& desc,
                           std::span<const TextureRegion> regions,
                           std::span<byte> regionData,
                           const PixelApplicator& generator)
@@ -95,7 +95,7 @@ u32 ForEachPixelInRegions(const TextureDesc& desc,
     auto firstWritten = begin;
     for (const auto& region : regions)
     {
-        u32 writeCount = ForEachPixelInRegion(desc, region, { begin, regionData.end() }, generator);
+        u64 writeCount = ForEachPixelInRegion(desc, region, { begin, regionData.end() }, generator);
         std::advance(begin, writeCount);
     }
     return std::distance(firstWritten, begin);
@@ -132,8 +132,7 @@ std::vector<byte> ReadbackTextureContent(GfxBackend& graphics,
     TextureReadbackContext readbackCtx = ctx.EnqueueDataReadback(texture, regions);
     graphics.WaitForTokenOnCPU(ctx.Submit());
 
-    std::vector<byte> fullImageData;
-    fullImageData.resize(readbackCtx.GetDataByteSize());
+    std::vector<byte> fullImageData(readbackCtx.GetDataByteSize());
     readbackCtx.ReadData(fullImageData);
 
     return fullImageData;

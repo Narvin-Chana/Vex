@@ -402,9 +402,13 @@ void CommandContext::GenerateMips(const Texture& texture)
               "The texture's format must be a valid format for mip generation. Only uncompressed floating point / "
               "normalized color formats are supported.");
 
-    if (GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::MipGeneration))
+    VEX_CHECK(cmdList->GetType() != CommandQueueType::Copy,
+              "Mip Generation requires a Compute or Graphics command list type.");
+
+    // Built-in mip generation is leveraged if supported (and if we're using a graphics command queue).
+    if (GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::MipGeneration) &&
+        cmdList->GetType() == CommandQueueType::Graphics)
     {
-        // Leverage the API's built-in mip generation feature.
         cmdList->GenerateMips(backend->GetRHITexture(texture.handle));
         return;
     }
@@ -531,7 +535,7 @@ void CommandContext::Copy(const Texture& source, const Texture& destination)
 {
     VEX_CHECK(source.handle != destination.handle, "Cannot copy a texture to itself!");
 
-    TextureUtil::ValidateCompatibleTextureDescriptions(source.desc, destination.desc);
+    TextureUtil::ValidateCompatibleTextureDescs(source.desc, destination.desc);
 
     RHITexture& sourceRHI = backend->GetRHITexture(source.handle);
     RHITexture& destinationRHI = backend->GetRHITexture(destination.handle);
@@ -562,7 +566,7 @@ void CommandContext::Copy(const Texture& source,
 
     for (auto& mapping : regionMappings)
     {
-        TextureUtil::ValidateTextureCopyDesc(source.desc, destination.desc, mapping);
+        TextureUtil::ValidateCopyDesc(source.desc, destination.desc, mapping);
     }
 
     RHITexture& sourceRHI = backend->GetRHITexture(source.handle);
