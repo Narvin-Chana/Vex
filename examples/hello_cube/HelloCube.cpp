@@ -98,6 +98,7 @@ HelloCubeApplication::HelloCubeApplication()
         const std::filesystem::path uvImagePath = ExamplesDir / "uv-guide.png";
         vex::i32 width, height, channels;
         void* imageData = stbi_load(uvImagePath.string().c_str(), &width, &height, &channels, 4);
+        VEX_ASSERT(imageData != nullptr);
 
         // Vex requires that the upload data for textures be tightly packed together! This shouldn't be an issue as most
         // file formats tightly pack data to avoid wasting space with padding.

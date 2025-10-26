@@ -18,7 +18,12 @@ int main()
 
         ctx.Dispatch(
             vex::ShaderKey{
-                .path = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() /
+                .path = std::filesystem::current_path()
+                            .parent_path()
+                            .parent_path()
+                            .parent_path()
+                            .parent_path()
+                            .parent_path() /
                         "examples/hello_windowless/Dummy.hlsl",
                 .entryPoint = "CSMain",
                 .type = vex::ShaderType::ComputeShader,

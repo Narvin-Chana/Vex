@@ -6,6 +6,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Enable multi-config support (only if we're building vex directly, otherwise we don't want to change the configuration types).
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    if(CMAKE_GENERATOR MATCHES "Ninja Multi-Config")
+        set(CMAKE_CONFIGURATION_TYPES "Debug;RelWithDebInfo;Release" CACHE STRING "" FORCE)
+        # Don't set CMAKE_BUILD_TYPE for multi-config generators
+        unset(CMAKE_BUILD_TYPE CACHE)
+    endif()
+endif()
+
 # Store the root directory of Vex
 set(VEX_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 # Make VEX_ROOT_DIR available to downstream projects that use this library

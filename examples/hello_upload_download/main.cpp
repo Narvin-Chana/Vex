@@ -6,7 +6,7 @@
 #include <stb_image_write.h>
 
 static const std::filesystem::path WorkingDir =
-    std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() /
+    std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path().parent_path() /
     "examples/hello_upload_download";
 
 struct Image
