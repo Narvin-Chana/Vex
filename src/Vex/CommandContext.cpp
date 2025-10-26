@@ -421,6 +421,8 @@ void CommandContext::GenerateMips(const Texture& texture)
     case TextureType::TextureCube:
         entryPoint = texture.desc.GetSliceCount() > 1 ? "MipGenerationTextureCubeArray" : "MipGenerationTextureCube";
         break;
+    default:
+        break;
     }
 
     // We have to perform a manual mip generation if not supported by the graphics API.

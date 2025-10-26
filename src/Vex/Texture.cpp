@@ -130,6 +130,11 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
         return 8;
     }
 
+    if (index >= std::to_underlying(RGB32_UINT) && index <= std::to_underlying(RGB32_FLOAT))
+    {
+        return 12;
+    }
+
     if (index >= std::to_underlying(RGBA32_UINT) && index <= std::to_underlying(RGBA32_FLOAT))
     {
         return 16;
@@ -175,6 +180,7 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
         return 1;
     }
 
+    VEX_ASSERT(false, "Cannot have 0 width pixel texture format....");
     return 0;
 }
 

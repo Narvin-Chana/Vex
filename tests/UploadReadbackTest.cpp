@@ -54,18 +54,30 @@ PixelApplicator ValidateGrid(const GridParams& grid)
 }
 
 // returns number of bytes written
-u32 ForEachPixelInRegion(const TextureRegion& region, std::span<byte> regionData, const PixelApplicator& generator)
+u32 ForEachPixelInRegion(const TextureDesc& desc,
+                         const TextureRegion& region,
+                         std::span<byte> regionData,
+                         const PixelApplicator& generator)
 {
     auto it = regionData.begin();
     auto firstWritten = it;
-    for (u32 z = 0; z < region.extent.depth; z++)
+
+    for (u16 mip = region.subresource.startMip;
+         mip < region.subresource.startMip + region.subresource.GetMipCount(desc);
+         ++mip)
     {
-        for (u32 y = 0; y < region.extent.height; ++y)
+        TextureRegion currRegion = region;
+        currRegion.subresource.startMip = mip;
+        currRegion.subresource.mipCount = 1;
+        for (u32 z = 0; z < region.extent.GetDepth(desc, mip); z++)
         {
-            for (u32 x = 0; x < region.extent.width; ++x)
+            for (u32 y = 0; y < region.extent.GetHeight(desc, mip); ++y)
             {
-                generator(region, x, y, z, std::span<byte, 4>{ it, it + 4 });
-                std::advance(it, 4);
+                for (u32 x = 0; x < region.extent.GetWidth(desc, mip); ++x)
+                {
+                    generator(currRegion, x, y, z, std::span<byte, 4>{ it, it + 4 });
+                    std::advance(it, 4);
+                }
             }
         }
     }
@@ -74,7 +86,8 @@ u32 ForEachPixelInRegion(const TextureRegion& region, std::span<byte> regionData
 }
 
 // returns number of bytes written
-u32 ForEachPixelInRegions(std::span<const TextureRegion> regions,
+u32 ForEachPixelInRegions(const TextureDesc& desc,
+                          std::span<const TextureRegion> regions,
                           std::span<byte> regionData,
                           const PixelApplicator& generator)
 {
@@ -82,15 +95,15 @@ u32 ForEachPixelInRegions(std::span<const TextureRegion> regions,
     auto firstWritten = begin;
     for (const auto& region : regions)
     {
-        u32 writeCount = ForEachPixelInRegion(region, { begin, regionData.end() }, generator);
+        u32 writeCount = ForEachPixelInRegion(desc, region, { begin, regionData.end() }, generator);
         std::advance(begin, writeCount);
     }
     return std::distance(firstWritten, begin);
 }
 
-void ValidateGridRegions(std::span<const TextureRegion> regions, std::span<byte> regionData)
+void ValidateGridRegions(const TextureDesc& desc, std::span<const TextureRegion> regions, std::span<byte> regionData)
 {
-    ForEachPixelInRegions(regions, regionData, ValidateGrid(DefaultGridParams));
+    ForEachPixelInRegions(desc, regions, regionData, ValidateGrid(DefaultGridParams));
 }
 
 SyncToken UploadTestGridToTexture(GfxBackend& graphics, const Texture& texture, std::span<const TextureRegion> regions)
@@ -98,7 +111,7 @@ SyncToken UploadTestGridToTexture(GfxBackend& graphics, const Texture& texture, 
     std::vector<byte> fullImageData;
     fullImageData.resize(TextureUtil::ComputePackedTextureDataByteSize(texture.desc, regions));
 
-    ForEachPixelInRegions(regions, fullImageData, GenerateGrid(DefaultGridParams));
+    ForEachPixelInRegions(texture.desc, regions, fullImageData, GenerateGrid(DefaultGridParams));
 
     CommandContext ctx = graphics.BeginScopedCommandContext(CommandQueueType::Graphics, SubmissionPolicy::Immediate);
 
@@ -210,7 +223,7 @@ TEST_P(FixedSizeTexture2DTest, UploadReadbackFull1Mip)
 
     std::vector<byte> textureData = ReadbackTextureContent(graphics, texture, { &regions_1mip, 1 }, uploadToken);
 
-    ValidateGridRegions({ &regions_1mip, 1 }, textureData);
+    ValidateGridRegions(texture.desc, { &regions_1mip, 1 }, textureData);
 
     graphics.DestroyTexture(texture);
 }
@@ -223,7 +236,7 @@ TEST_P(FixedSizeTexture2DTest, UploadReadbackFull2Mips)
 
     std::vector<byte> textureData = ReadbackTextureContent(graphics, texture, { &regions_2mip, 1 }, uploadToken);
 
-    ValidateGridRegions({ &regions_2mip, 1 }, textureData);
+    ValidateGridRegions(texture.desc, { &regions_2mip, 1 }, textureData);
 
     graphics.DestroyTexture(texture);
 }
@@ -237,13 +250,13 @@ TEST_P(FixedSizeTexture2DTest, UploadFullReadbackSeparate2Mips)
     {
         std::vector<byte> textureData =
             ReadbackTextureContent(graphics, texture, { &regions_2mip_mip0, 1 }, uploadToken);
-        ValidateGridRegions({ &regions_2mip_mip0, 1 }, textureData);
+        ValidateGridRegions(texture.desc, { &regions_2mip_mip0, 1 }, textureData);
     }
 
     {
         std::vector<byte> textureData =
             ReadbackTextureContent(graphics, texture, { &regions_2mip_mip1, 1 }, uploadToken);
-        ValidateGridRegions({ &regions_2mip_mip1, 1 }, textureData);
+        ValidateGridRegions(texture.desc, { &regions_2mip_mip1, 1 }, textureData);
     }
 
     graphics.DestroyTexture(texture);
@@ -266,11 +279,13 @@ struct MiscTextureTests : public VexTestParam<CommandQueueType>
             pixel[1] = byte{ 0 };
             pixel[2] = byte{ 0 };
             pixel[3] = byte{ 255 };
+            break;
         case 2:
             pixel[0] = byte{ 255 };
             pixel[1] = static_cast<byte>((region.subresource.startSlice % 2 == 0) * 255);
             pixel[2] = static_cast<byte>((region.subresource.startSlice % 2 != 0) * 255);
             pixel[3] = byte{ 255 };
+            break;
         default:
             pixel[0] = byte{ 17 };
             pixel[1] = byte{ 17 };
@@ -294,7 +309,7 @@ TEST_P(MiscTextureTests, FullUploadCubemap2Mips)
     std::vector<byte> fullImageData;
     fullImageData.resize(TextureUtil::ComputePackedTextureDataByteSize(cubemapDesc, { &regions, 1 }));
 
-    ForEachPixelInRegions({ &regions, 1 }, fullImageData, cubemapApplicator);
+    ForEachPixelInRegions(cubemapTexture.desc, { &regions, 1 }, fullImageData, cubemapApplicator);
 
     ctx.EnqueueDataUpload(cubemapTexture, std::as_bytes(std::span(fullImageData)), regions);
 
@@ -317,7 +332,7 @@ TEST_P(MiscTextureTests, FullUpload2DTexture2Slices3Mips)
     std::vector<byte> fullImageData;
     fullImageData.resize(TextureUtil::ComputePackedTextureDataByteSize(cubemapDesc, { &regions, 1 }));
 
-    ForEachPixelInRegions({ &regions, 1 }, fullImageData, cubemapApplicator);
+    ForEachPixelInRegions(texture.desc, { &regions, 1 }, fullImageData, cubemapApplicator);
 
     ctx.EnqueueDataUpload(texture, std::as_bytes(std::span(fullImageData)), regions);
 
@@ -340,7 +355,7 @@ TEST_P(MiscTextureTests, FullUploadTextureCube3Slices2Mips)
     std::vector<byte> fullImageData;
     fullImageData.resize(TextureUtil::ComputePackedTextureDataByteSize(cubemapDesc, { &regions, 1 }));
 
-    ForEachPixelInRegions({ &regions, 1 }, fullImageData, cubemapApplicator);
+    ForEachPixelInRegions(cubemapTexture.desc, { &regions, 1 }, fullImageData, cubemapApplicator);
 
     ctx.EnqueueDataUpload(cubemapTexture, std::as_bytes(std::span(fullImageData)), regions);
 
@@ -364,7 +379,7 @@ TEST_P(MiscTextureTests, FullUpload3DTexture3Mips)
     std::vector<byte> fullImageData;
     fullImageData.resize(TextureUtil::ComputePackedTextureDataByteSize(cubemapDesc, { &regions, 1 }));
 
-    ForEachPixelInRegions({ &regions, 1 }, fullImageData, cubemapApplicator);
+    ForEachPixelInRegions(texture.desc, { &regions, 1 }, fullImageData, cubemapApplicator);
 
     ctx.EnqueueDataUpload(texture, std::as_bytes(std::span(fullImageData)), regions);
 

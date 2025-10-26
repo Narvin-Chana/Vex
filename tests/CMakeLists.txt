@@ -12,6 +12,7 @@ include(GoogleTest)
 add_executable(vex_tests
 	"SynchronizationTest.cpp"
 	"UploadReadbackTest.cpp"
+    "MipGenerationTest.cpp"
 )
 
 target_link_libraries(vex_tests 
