@@ -63,7 +63,7 @@ public:
 
     CD3DX12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(u32 index) const
     {
-        VEX_ASSERT(index < size, "Trying to access index outside of descriptor heap subresource.");
+        VEX_ASSERT(index < size, "Trying to access index outside of descriptor heap range.");
         CD3DX12_CPU_DESCRIPTOR_HANDLE handle(heap->GetCPUDescriptorHandleForHeapStart(), index, descriptorByteSize);
         return handle;
     }
@@ -71,7 +71,7 @@ public:
     CD3DX12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(u32 index) const
     {
         static_assert(Flags == SHADER_VISIBLE);
-        VEX_ASSERT(index < size, "Trying to access index outside of descriptor heap subresource.");
+        VEX_ASSERT(index < size, "Trying to access index outside of descriptor heap range.");
         CD3DX12_GPU_DESCRIPTOR_HANDLE handle(heap->GetGPUDescriptorHandleForHeapStart(), index, descriptorByteSize);
         return handle;
     }

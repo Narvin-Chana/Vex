@@ -222,7 +222,9 @@ std::string_view GetFormatHLSLType(TextureFormat format)
 
     // Error case
     case TextureFormat::UNKNOWN:
-        VEX_LOG(Fatal, "Invalid format!");
+    default:
+        VEX_LOG(Fatal, "Invalid or unsupported format!");
+        return "";
     }
     std::unreachable();
 }
