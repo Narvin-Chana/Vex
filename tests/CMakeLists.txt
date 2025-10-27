@@ -22,4 +22,7 @@ target_link_libraries(vex_tests
 
 vex_setup_runtime(vex_tests)
 
-gtest_discover_tests(vex_tests)
+gtest_discover_tests(
+    vex_tests
+    DISCOVERY_MODE PRE_TEST  # Discover tests when running CTest, not at build time
+)
