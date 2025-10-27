@@ -529,6 +529,15 @@ void CommandContext::GenerateMips(const Texture& texture)
 
         mip += 1 + !isLastIteration;
     }
+
+    // Transfers the entirety of the resource back to ShaderRead, ready for use in a shader.
+    TextureBinding finalBinding{
+        .texture = texture,
+        .usage = TextureBindingUsage::ShaderRead,
+        .flags = IsFormatSRGB(texture.desc.format) ? TextureBindingFlags::SRGB : TextureBindingFlags::None,
+        .subresource = {},
+    };
+    TransitionBindings(std::span<const ResourceBinding>{{ finalBinding }});
 }
 
 void CommandContext::Copy(const Texture& source, const Texture& destination)

@@ -145,7 +145,7 @@ static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const DX12Te
 
 static D3D12_UNORDERED_ACCESS_VIEW_DESC CreateUnorderedAccessViewDesc(const DX12TextureView& view)
 {
-    D3D12_UNORDERED_ACCESS_VIEW_DESC desc{ .Format = view.format };
+    D3D12_UNORDERED_ACCESS_VIEW_DESC desc{ .Format = GetNonSRGBEquivalentForSRGBCompatibleDX12Format(view.format) };
 
     switch (view.dimension)
     {
