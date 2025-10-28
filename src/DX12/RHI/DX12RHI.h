@@ -27,7 +27,7 @@ public:
     virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() override;
     virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) override;
 
-    virtual RHISwapChain CreateSwapChain(const SwapChainDescription& description,
+    virtual RHISwapChain CreateSwapChain(const SwapChainDescription& desc,
                                          const PlatformWindow& platformWindow) override;
 
     virtual RHICommandPool CreateCommandPool() override;
@@ -36,8 +36,8 @@ public:
     virtual RHIRayTracingPipelineState CreateRayTracingPipelineState(const RayTracingPipelineStateKey& key) override;
     virtual RHIResourceLayout CreateResourceLayout(RHIDescriptorPool& descriptorPool) override;
 
-    virtual RHITexture CreateTexture(RHIAllocator& allocator, const TextureDescription& description) override;
-    virtual RHIBuffer CreateBuffer(RHIAllocator& allocator, const BufferDescription& description) override;
+    virtual RHITexture CreateTexture(RHIAllocator& allocator, const TextureDesc& desc) override;
+    virtual RHIBuffer CreateBuffer(RHIAllocator& allocator, const BufferDesc& desc) override;
 
     virtual RHIDescriptorPool CreateDescriptorPool() override;
 

@@ -6,7 +6,7 @@ int main()
     const uint32_t width = 500;
     const uint32_t height = 500;
 
-    vex::GfxBackend backend{ vex::BackendDescription{
+    vex::GfxBackend backend{ vex::GraphicsCreateDesc{
         .useSwapChain = false,
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING,
@@ -18,7 +18,12 @@ int main()
 
         ctx.Dispatch(
             vex::ShaderKey{
-                .path = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path() /
+                .path = std::filesystem::current_path()
+                            .parent_path()
+                            .parent_path()
+                            .parent_path()
+                            .parent_path()
+                            .parent_path() /
                         "examples/hello_windowless/Dummy.hlsl",
                 .entryPoint = "CSMain",
                 .type = vex::ShaderType::ComputeShader,

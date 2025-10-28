@@ -11,30 +11,21 @@ namespace vex
 
 namespace TextureCopyUtil
 {
-void ValidateBufferToTextureCopyDescription(const BufferDescription& srcDesc,
-                                            const TextureDescription& dstDesc,
-                                            const BufferTextureCopyDescription& copyDesc)
+void ValidateBufferTextureCopyDesc(const BufferDesc& srcDesc,
+                                   const TextureDesc& dstDesc,
+                                   const BufferTextureCopyDesc& copyDesc)
 {
-    BufferUtil::ValidateBufferSubresource(srcDesc, copyDesc.bufferSubresource);
-    TextureUtil::ValidateTextureSubresource(dstDesc, copyDesc.textureSubresource);
-
-    auto [mipWidth, mipHeight, mipDepth] = copyDesc.extent;
-    const u32 requiredByteSize = static_cast<u32>(
-        std::ceil(mipWidth * mipHeight * mipDepth * TextureUtil::GetPixelByteSizeFromFormat(dstDesc.format)));
-
-    VEX_CHECK(copyDesc.bufferSubresource.size >= requiredByteSize,
-              "Buffer not big enough to copy to texture. buffer size: {}, required mip byte size: {}",
-              srcDesc.byteSize,
-              requiredByteSize);
+    BufferUtil::ValidateBufferRegion(srcDesc, copyDesc.bufferRegion);
+    TextureUtil::ValidateRegion(copyDesc.textureRegion, dstDesc);
 }
 
-void ReadTextureDataAligned(const TextureDescription& textureDesc,
+void ReadTextureDataAligned(const TextureDesc& desc,
                             std::span<const TextureRegion> textureRegions,
                             std::span<const byte> alignedTextureData,
                             std::span<byte> packedOutputData)
 
 {
-    const u32 bytesPerPixel = TextureUtil::GetPixelByteSizeFromFormat(textureDesc.format);
+    const u32 bytesPerPixel = TextureUtil::GetPixelByteSizeFromFormat(desc.format);
     const byte* srcData = alignedTextureData.data();
     byte* dstData = packedOutputData.data();
     u64 srcOffset = 0;
@@ -42,44 +33,49 @@ void ReadTextureDataAligned(const TextureDescription& textureDesc,
 
     for (const auto& region : textureRegions)
     {
-        const u32 regionWidth = region.extent.width;
-        const u32 regionHeight = region.extent.height;
-        const u32 regionDepth = region.extent.depth;
-
-        const u32 packedRowPitch = regionWidth * bytesPerPixel;
-        const u32 alignedRowPitch = AlignUp<u32>(packedRowPitch, TextureUtil::RowPitchAlignment);
-        const u32 packedSlicePitch = packedRowPitch * regionHeight;
-        const u32 alignedSlicePitch = alignedRowPitch * regionHeight;
-
-        // Copy each depth slice (for 3D textures).
-        for (u32 depthSlice = 0; depthSlice < regionDepth; ++depthSlice)
+        for (u16 mip = region.subresource.startMip;
+             mip < region.subresource.startMip + region.subresource.GetMipCount(desc);
+             ++mip)
         {
-            // Copy each row one-by-one with alignment.
-            for (u32 row = 0; row < regionHeight; ++row)
+            const u32 mipWidth = region.extent.GetWidth(desc, mip);
+            const u32 mipHeight = region.extent.GetHeight(desc, mip);
+            const u32 mipDepth = region.extent.GetDepth(desc, mip);
+
+            const u32 packedRowPitch = mipWidth * bytesPerPixel;
+            const u32 alignedRowPitch = AlignUp<u32>(packedRowPitch, TextureUtil::RowPitchAlignment);
+            const u32 packedSlicePitch = packedRowPitch * mipHeight;
+            const u32 alignedSlicePitch = alignedRowPitch * mipHeight;
+
+            // Copy each depth slice (for 3D textures).
+            for (u32 depthSlice = 0; depthSlice < mipDepth; ++depthSlice)
             {
-                // From aligned to packed
-                const byte* srcRow = srcData + srcOffset + depthSlice * alignedSlicePitch + row * alignedRowPitch;
-                byte* dstRow = dstData + dstOffset + depthSlice * packedSlicePitch + row * packedRowPitch;
+                // Copy each row one-by-one with alignment.
+                for (u32 row = 0; row < mipHeight; ++row)
+                {
+                    // From aligned to packed
+                    const byte* srcRow = srcData + srcOffset + depthSlice * alignedSlicePitch + row * alignedRowPitch;
+                    byte* dstRow = dstData + dstOffset + depthSlice * packedSlicePitch + row * packedRowPitch;
 
-                std::memcpy(dstRow, srcRow, packedRowPitch);
+                    std::memcpy(dstRow, srcRow, packedRowPitch);
+                }
             }
+
+            // Move to next region in the packed source data.
+            u64 regionStagingSize = static_cast<u64>(alignedSlicePitch) * mipDepth;
+            srcOffset += AlignUp<u64>(regionStagingSize, TextureUtil::MipAlignment);
+
+            // Move to next aligned position in staging buffer.
+            dstOffset += static_cast<u64>(packedSlicePitch) * mipDepth;
         }
-
-        // Move to next region in the packed source data.
-        u64 regionStagingSize = static_cast<u64>(alignedSlicePitch) * regionDepth;
-        srcOffset += AlignUp<u64>(regionStagingSize, TextureUtil::MipAlignment);
-
-        // Move to next aligned position in staging buffer.
-        dstOffset += static_cast<u64>(packedSlicePitch) * regionDepth;
     }
 }
 
-void WriteTextureDataAligned(const TextureDescription& textureDesc,
+void WriteTextureDataAligned(const TextureDesc& desc,
                              std::span<const TextureRegion> textureRegions,
                              std::span<const byte> packedData,
                              std::span<byte> alignedOutData)
 {
-    const u32 bytesPerPixel = TextureUtil::GetPixelByteSizeFromFormat(textureDesc.format);
+    const u32 bytesPerPixel = TextureUtil::GetPixelByteSizeFromFormat(desc.format);
     const byte* srcData = packedData.data();
     byte* dstData = alignedOutData.data();
     u64 srcOffset = 0;
@@ -87,54 +83,59 @@ void WriteTextureDataAligned(const TextureDescription& textureDesc,
 
     for (const TextureRegion& region : textureRegions)
     {
-        const u32 regionWidth = region.extent.width;
-        const u32 regionHeight = region.extent.height;
-        const u32 regionDepth = region.extent.depth;
-
-        const u32 packedRowPitch = regionWidth * bytesPerPixel;
-        const u32 alignedRowPitch = AlignUp<u32>(packedRowPitch, TextureUtil::RowPitchAlignment);
-        const u32 packedSlicePitch = packedRowPitch * regionHeight;
-        const u32 alignedSlicePitch = alignedRowPitch * regionHeight;
-
-        // Copy each depth slice (for 3D textures).
-        for (u32 depthSlice = 0; depthSlice < regionDepth; ++depthSlice)
+        for (u16 mip = region.subresource.startMip;
+             mip < region.subresource.startMip + region.subresource.GetMipCount(desc);
+             ++mip)
         {
-            // Copy each row one-by-one with alignment.
-            for (u32 row = 0; row < regionHeight; ++row)
+            const u32 mipWidth = region.extent.GetWidth(desc, mip);
+            const u32 mipHeight = region.extent.GetHeight(desc, mip);
+            const u32 mipDepth = region.extent.GetDepth(desc, mip);
+
+            const u32 packedRowPitch = mipWidth * bytesPerPixel;
+            const u32 alignedRowPitch = AlignUp<u32>(packedRowPitch, TextureUtil::RowPitchAlignment);
+            const u32 packedSlicePitch = packedRowPitch * mipHeight;
+            const u32 alignedSlicePitch = alignedRowPitch * mipHeight;
+
+            // Copy each depth slice (for 3D textures).
+            for (u32 depthSlice = 0; depthSlice < mipDepth; ++depthSlice)
             {
-                const byte* srcRow = srcData + srcOffset + depthSlice * packedSlicePitch + row * packedRowPitch;
-                byte* dstRow = dstData + dstOffset + depthSlice * alignedSlicePitch + row * alignedRowPitch;
-
-                std::memcpy(dstRow, srcRow, packedRowPitch);
-#if !VEX_SHIPPING
-                // Zero out padding bytes for debugging purposes.
-                if (alignedRowPitch > packedRowPitch)
+                // Copy each row one-by-one with alignment.
+                for (u32 row = 0; row < mipHeight; ++row)
                 {
-                    std::memset(dstRow + packedRowPitch, 0, alignedRowPitch - packedRowPitch);
-                }
+                    const byte* srcRow = srcData + srcOffset + depthSlice * packedSlicePitch + row * packedRowPitch;
+                    byte* dstRow = dstData + dstOffset + depthSlice * alignedSlicePitch + row * alignedRowPitch;
+
+                    std::memcpy(dstRow, srcRow, packedRowPitch);
+#if !VEX_SHIPPING
+                    // Zero out padding bytes for debugging purposes.
+                    if (alignedRowPitch > packedRowPitch)
+                    {
+                        std::memset(dstRow + packedRowPitch, 0, alignedRowPitch - packedRowPitch);
+                    }
 #endif
+                }
             }
+
+            // Move to next region in the packed source data.
+            srcOffset += static_cast<u64>(packedSlicePitch) * mipDepth;
+
+            // Move to next aligned position in staging buffer.
+            u64 regionStagingSize = static_cast<u64>(alignedSlicePitch) * mipDepth;
+            dstOffset += AlignUp<u64>(regionStagingSize, TextureUtil::MipAlignment);
         }
-
-        // Move to next region in the packed source data.
-        srcOffset += static_cast<u64>(packedSlicePitch) * regionDepth;
-
-        // Move to next aligned position in staging buffer.
-        u64 regionStagingSize = static_cast<u64>(alignedSlicePitch) * regionDepth;
-        dstOffset += AlignUp<u64>(regionStagingSize, TextureUtil::MipAlignment);
     }
 }
 
 } // namespace TextureCopyUtil
 
-std::vector<BufferTextureCopyDescription> BufferTextureCopyDescription::AllMips(const TextureDescription& desc)
+std::vector<BufferTextureCopyDesc> BufferTextureCopyDesc::AllMips(const TextureDesc& desc)
 {
     const float texelByteSize = TextureUtil::GetPixelByteSizeFromFormat(desc.format);
 
-    TextureExtent mipSize{ desc.width, desc.height, desc.GetDepth() };
+    TextureExtent3D mipSize{ desc.width, desc.height, desc.GetDepth() };
 
-    std::vector<BufferTextureCopyDescription> bufferToTextureCopyDescriptions;
-    bufferToTextureCopyDescriptions.reserve(desc.mips);
+    std::vector<BufferTextureCopyDesc> bufferTextureCopyDescriptions;
+    bufferTextureCopyDescriptions.reserve(desc.mips);
 
     u64 bufferOffset = 0;
     for (u16 mip = 0; mip < desc.mips; ++mip)
@@ -144,54 +145,54 @@ std::vector<BufferTextureCopyDescription> BufferTextureCopyDescription::AllMips(
         const u32 alignedRowPitch = AlignUp<u32>(packedRowSize, TextureUtil::RowPitchAlignment);
         const u32 alignedSlicePitch = alignedRowPitch * mipSize.height;
 
-        u32 depthCount, arrayCount;
+        u32 depthCount, sliceCount;
         if (desc.type == TextureType::Texture3D)
         {
             // For 3D textures: depth changes per mip, array count is always 1.
             depthCount = mipSize.depth;
-            arrayCount = 1;
+            sliceCount = 1;
         }
         else
         {
             // For 2D array textures: depth is always 1, array count is constant.
             depthCount = 1;
-            arrayCount = desc.depthOrArraySize;
+            sliceCount = desc.depthOrSliceCount;
         }
 
-        const u32 totalSlices = depthCount * arrayCount;
+        const u32 totalSlices = depthCount * sliceCount;
         const u64 alignedMipByteSize = static_cast<u64>(alignedSlicePitch) * totalSlices;
 
-        bufferToTextureCopyDescriptions.push_back(BufferTextureCopyDescription{
-            .bufferSubresource = BufferSubresource{ bufferOffset, alignedMipByteSize },
-            .textureSubresource =
-                TextureSubresource{
-                    .mip = mip,
+        bufferTextureCopyDescriptions.push_back(BufferTextureCopyDesc{
+            .bufferRegion = BufferRegion{ .offset = bufferOffset, .byteSize = alignedMipByteSize },
+            .textureRegion = TextureRegion{
+                .subresource = {
+                    .startMip = mip,
+                    .mipCount = 1,
                     .startSlice = 0,
-                    .sliceCount = arrayCount,
-                    .offset = { 0, 0, 0 },
+                    .sliceCount = sliceCount,
                 },
-            .extent = { mipSize.width, mipSize.height, mipSize.depth },
+                .extent = { mipSize.width, mipSize.height, mipSize.depth },
+            },
         });
 
         bufferOffset += alignedMipByteSize;
         bufferOffset = AlignUp<u64>(bufferOffset, TextureUtil::MipAlignment);
-        mipSize = TextureExtent{
+        mipSize = TextureExtent3D{
             std::max(1u, mipSize.width / 2u),
             std::max(1u, mipSize.height / 2u),
             std::max(1u, mipSize.depth / 2u),
         };
     }
-    return bufferToTextureCopyDescriptions;
+    return bufferTextureCopyDescriptions;
 }
 
-std::vector<BufferTextureCopyDescription> BufferTextureCopyDescription::AllMip(u16 mipIndex,
-                                                                               const TextureDescription& desc)
+std::vector<BufferTextureCopyDesc> BufferTextureCopyDesc::SingleMip(u16 mipIndex, const TextureDesc& desc)
 {
     const float texelByteSize = TextureUtil::GetPixelByteSizeFromFormat(desc.format);
 
-    std::vector<BufferTextureCopyDescription> bufferToTextureCopyDescriptions(desc.GetArraySize());
+    std::vector<BufferTextureCopyDesc> bufferTextureCopyDescriptions(desc.GetSliceCount());
 
-    TextureExtent mipSize = TextureExtent{
+    TextureExtent3D mipSize{
         std::max(1u, desc.width >> mipIndex),
         std::max(1u, desc.height >> mipIndex),
         std::max(1u, desc.GetDepth() >> mipIndex),
@@ -202,36 +203,37 @@ std::vector<BufferTextureCopyDescription> BufferTextureCopyDescription::AllMip(u
     const u32 alignedRowPitch = AlignUp<u32>(packedRowSize, TextureUtil::RowPitchAlignment);
     const u32 alignedSlicePitch = alignedRowPitch * mipSize.height;
 
-    u32 depthCount, arrayCount;
+    u32 depthCount, sliceCount;
     if (desc.type == TextureType::Texture3D)
     {
         // For 3D textures: depth changes per mip, array count is always 1.
         depthCount = mipSize.depth;
-        arrayCount = 1;
+        sliceCount = 1;
     }
     else
     {
         // For 2D array textures: depth is always 1, array count is constant.
         depthCount = 1;
-        arrayCount = desc.depthOrArraySize;
+        sliceCount = desc.depthOrSliceCount;
     }
 
-    const u32 totalSlices = depthCount * arrayCount;
+    const u32 totalSlices = depthCount * sliceCount;
     const u64 alignedMipByteSize = static_cast<u64>(alignedSlicePitch) * totalSlices;
 
-    bufferToTextureCopyDescriptions.push_back(BufferTextureCopyDescription{
-        .bufferSubresource = BufferSubresource{ 0, alignedMipByteSize },
-        .textureSubresource =
-            TextureSubresource{
-                .mip = mipIndex,
+    bufferTextureCopyDescriptions.push_back(BufferTextureCopyDesc{
+        .bufferRegion = BufferRegion{ .offset = 0, .byteSize = alignedMipByteSize },
+        .textureRegion = TextureRegion{
+            .subresource = {
+                .startMip = mipIndex,
+                .mipCount = 1,
                 .startSlice = 0,
-                .sliceCount = arrayCount,
-                .offset = { 0, 0, 0 },
+                .sliceCount = sliceCount,
             },
-        .extent = { mipSize.width, mipSize.height, mipSize.depth },
+            .extent = { mipSize.width, mipSize.height, mipSize.depth },
+        },
     });
 
-    return bufferToTextureCopyDescriptions;
+    return bufferTextureCopyDescriptions;
 }
 
 } // namespace vex

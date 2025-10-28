@@ -8,7 +8,7 @@ namespace vex::dx12
 
 DX12ShaderTable::DX12ShaderTable(ComPtr<DX12Device>& device,
                                  RHIAllocator& allocator,
-                                 const BufferDescription& desc,
+                                 const BufferDesc& desc,
                                  std::span<void*> shaderIdentifiers,
                                  u64 shaderIdentifierSize,
                                  u64 recordStride)
@@ -58,7 +58,7 @@ D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE DX12ShaderTable::GetVirtualAddressRan
 
     return D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE{
         .StartAddress = buffer.GetGPUVirtualAddress(),
-        .SizeInBytes = buffer.GetDescription().byteSize,
+        .SizeInBytes = buffer.GetDesc().byteSize,
         .StrideInBytes = shaderTableStride,
     };
 }

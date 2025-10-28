@@ -1,5 +1,6 @@
 #include "VexTest.h"
 
+#include <cstddef>
 #include <random>
 #include <span>
 
@@ -11,11 +12,11 @@
 namespace vex
 {
 
-struct SynchronisationTest : public VexTest
+struct SynchronizationTest : public VexTest
 {
 };
 
-TEST_F(SynchronisationTest, GraphicsCreationFlush)
+TEST_F(SynchronizationTest, GraphicsCreationFlush)
 {
     // Simple submit then flush
     auto ctx = graphics.BeginScopedCommandContext(CommandQueueType::Graphics, SubmissionPolicy::Immediate);
@@ -23,14 +24,14 @@ TEST_F(SynchronisationTest, GraphicsCreationFlush)
     graphics.FlushGPU();
 }
 
-TEST_F(SynchronisationTest, ImmediateSubmission)
+TEST_F(SynchronizationTest, ImmediateSubmission)
 {
     auto ctx1 = graphics.BeginScopedCommandContext(CommandQueueType::Graphics, SubmissionPolicy::Immediate);
     auto ctx2 = graphics.BeginScopedCommandContext(CommandQueueType::Compute, SubmissionPolicy::Immediate);
     auto ctx3 = graphics.BeginScopedCommandContext(CommandQueueType::Copy, SubmissionPolicy::Immediate);
 }
 
-TEST_F(SynchronisationTest, CrossQueueDependecy)
+TEST_F(SynchronizationTest, CrossQueueDependecy)
 {
     SyncToken tokens;
     SyncToken graphicsTokens;
@@ -66,7 +67,7 @@ TEST_F(SynchronisationTest, CrossQueueDependecy)
     }
 }
 
-TEST_F(SynchronisationTest, HeavyResouceCreationAndUsage)
+TEST_F(SynchronizationTest, HeavyResouceCreationAndUsage)
 {
     std::vector<Texture> textures;
     std::vector<Buffer> buffers;
@@ -75,7 +76,7 @@ TEST_F(SynchronisationTest, HeavyResouceCreationAndUsage)
     // Create a bunch of resources
     for (int i = 0; i < 10; ++i)
     {
-        TextureDescription texDesc{};
+        TextureDesc texDesc{};
         texDesc.name = std::format("Test3 Tex_{}", i);
         texDesc.width = 512;
         texDesc.height = 512;
@@ -83,9 +84,9 @@ TEST_F(SynchronisationTest, HeavyResouceCreationAndUsage)
         texDesc.usage = TextureUsage::ShaderRead;
         textures.push_back(graphics.CreateTexture(texDesc));
 
-        BufferDescription bufDesc{};
+        BufferDesc bufDesc{};
         bufDesc.name = std::format("Test3 Buf_{}", i);
-        bufDesc.byteSize = 1024 * 1024; // 1MB
+        bufDesc.byteSize = 1024ull * 1024ull; // 1MB
         bufDesc.usage = BufferUsage::GenericBuffer;
         bufDesc.memoryLocality = ResourceMemoryLocality::GPUOnly;
         buffers.push_back(graphics.CreateBuffer(bufDesc));
@@ -136,7 +137,7 @@ TEST_F(SynchronisationTest, HeavyResouceCreationAndUsage)
     // Wait for some random tokens to complete
     for (int i = 0; i < std::min(5, static_cast<int>(allTokens.size())); ++i)
     {
-        int tokenIdx = std::uniform_int_distribution<>(0, allTokens.size() - 1uz)(gen);
+        int tokenIdx = std::uniform_int_distribution<>(0, allTokens.size() - static_cast<std::size_t>(1))(gen);
         VEX_LOG(Info,
                 "Waiting for token {}/{}",
                 magic_enum::enum_name(allTokens[tokenIdx].queueType),
@@ -156,7 +157,7 @@ TEST_F(SynchronisationTest, HeavyResouceCreationAndUsage)
     }
 }
 
-TEST_F(SynchronisationTest, RapidContextCreationDestruction)
+TEST_F(SynchronizationTest, RapidContextCreationDestruction)
 {
     std::vector<SyncToken> tokens;
 
@@ -185,7 +186,7 @@ TEST_F(SynchronisationTest, RapidContextCreationDestruction)
     }
 }
 
-TEST_F(SynchronisationTest, SubmissionWithDependency)
+TEST_F(SynchronizationTest, SubmissionWithDependency)
 {
     std::vector<SyncToken> immediateTokens;
 
@@ -216,10 +217,10 @@ TEST_F(SynchronisationTest, SubmissionWithDependency)
     }
 }
 
-TEST_F(SynchronisationTest, ResourceUploadTorture)
+TEST_F(SynchronizationTest, ResourceUploadTorture)
 {
     // Create upload buffer
-    BufferDescription uploadBufDesc{};
+    BufferDesc uploadBufDesc{};
     uploadBufDesc.name = "Test6 Buf";
     uploadBufDesc.byteSize = 1024 * 1024; // 1MB
     uploadBufDesc.usage = BufferUsage::None;
@@ -227,7 +228,7 @@ TEST_F(SynchronisationTest, ResourceUploadTorture)
     auto uploadBuffer = graphics.CreateBuffer(uploadBufDesc);
 
     // Create target texture
-    TextureDescription texDesc{};
+    TextureDesc texDesc{};
     texDesc.name = "Test6 Tex";
     texDesc.width = 256;
     texDesc.height = 256;
@@ -248,7 +249,7 @@ TEST_F(SynchronisationTest, ResourceUploadTorture)
 
         // Generate dummy data and upload a 1024 section of the buffer.
         std::vector<byte> dummyData(1024, static_cast<byte>(i));
-        ctx.EnqueueDataUpload(uploadBuffer, dummyData, BufferSubresource{ .offset = 1024u * i, .size = 1024 });
+        ctx.EnqueueDataUpload(uploadBuffer, dummyData, BufferRegion{ .offset = 1024ull * i, .byteSize = 1024 });
         ctx.Copy(uploadBuffer, targetTexture);
 
         uploadTokens.push_back(ctx.Submit());
@@ -267,7 +268,7 @@ TEST_F(SynchronisationTest, ResourceUploadTorture)
     graphics.DestroyTexture(targetTexture);
 }
 
-TEST_F(SynchronisationTest, FinalStressTest)
+TEST_F(SynchronizationTest, FinalStressTest)
 {
     std::vector<SyncToken> allTokens;
     std::vector<Texture> textures;
@@ -276,7 +277,7 @@ TEST_F(SynchronisationTest, FinalStressTest)
     // Create resources
     for (int i = 0; i < 5; ++i)
     {
-        TextureDescription texDesc{};
+        TextureDesc texDesc{};
         texDesc.name = std::format("Test7 Tex_{}", i);
         texDesc.width = 128;
         texDesc.height = 128;
@@ -284,9 +285,9 @@ TEST_F(SynchronisationTest, FinalStressTest)
         texDesc.usage = TextureUsage::ShaderRead;
         textures.push_back(graphics.CreateTexture(texDesc));
 
-        BufferDescription bufDesc{};
+        BufferDesc bufDesc{};
         bufDesc.name = std::format("Test7 Buf_{}", i);
-        bufDesc.byteSize = 64 * 1024;
+        bufDesc.byteSize = 64ull * 1024ull;
         bufDesc.usage = BufferUsage::GenericBuffer;
         bufDesc.memoryLocality = ResourceMemoryLocality::GPUOnly;
         buffers.push_back(graphics.CreateBuffer(bufDesc));

@@ -11,8 +11,6 @@ set(VEX_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 # Make VEX_ROOT_DIR available to downstream projects that use this library
 set(VEX_ROOT_DIR "${VEX_ROOT_DIR}" CACHE INTERNAL "Path to Vex's library root directory")
 
-option(VEX_BUILD_TESTS "Build Vex tests" OFF)
-
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # CMake Helpers
@@ -320,13 +318,17 @@ endforeach()
 # Examples are used to develop Vex, they should not be used or included in projects that use Vex.
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     option(VEX_BUILD_EXAMPLES "Build the example programs" ON)
+    option(VEX_BUILD_TESTS "Build Vex tests" ON)
 else()
     option(VEX_BUILD_EXAMPLES "Build the example programs" OFF)
-endif()
-if(VEX_BUILD_EXAMPLES)
-    add_subdirectory(examples)
+    option(VEX_BUILD_TESTS "Build Vex tests" OFF)
 endif()
 
+# Add the examples projects.
+if(VEX_BUILD_EXAMPLES)
+    message(STATUS "Building Vex examples...")
+    add_subdirectory(examples)
+endif()
 # Add the tests project.
 if (VEX_BUILD_TESTS)
     message(STATUS "Building Vex tests...")

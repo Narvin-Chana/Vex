@@ -35,7 +35,7 @@ static D3D12_RESOURCE_DIMENSION ConvertTypeToDX12ResourceDimension(TextureType t
     std::unreachable();
 }
 
-static D3D12_RENDER_TARGET_VIEW_DESC CreateRenderTargetViewDesc(DX12TextureView view)
+static D3D12_RENDER_TARGET_VIEW_DESC CreateRenderTargetViewDesc(const DX12TextureView& view)
 {
     D3D12_RENDER_TARGET_VIEW_DESC desc{ .Format = view.format };
 
@@ -44,8 +44,8 @@ static D3D12_RENDER_TARGET_VIEW_DESC CreateRenderTargetViewDesc(DX12TextureView 
     case TextureViewType::Texture2D:
         desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
         desc.Texture2D = {
-            .MipSlice = view.mipBias,
-            .PlaneSlice = view.startSlice,
+            .MipSlice = view.subresource.startMip,
+            .PlaneSlice = view.subresource.startSlice,
         };
         break;
     case TextureViewType::Texture2DArray:
@@ -53,18 +53,18 @@ static D3D12_RENDER_TARGET_VIEW_DESC CreateRenderTargetViewDesc(DX12TextureView 
     case TextureViewType::TextureCubeArray:
         desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
         desc.Texture2DArray = {
-            .MipSlice = view.mipBias,
-            .FirstArraySlice = view.startSlice,
-            .ArraySize = view.sliceCount,
+            .MipSlice = view.subresource.startMip,
+            .FirstArraySlice = view.subresource.startSlice,
+            .ArraySize = view.subresource.sliceCount,
             .PlaneSlice = 0,
         };
         break;
     case TextureViewType::Texture3D:
         desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
         desc.Texture3D = {
-            .MipSlice = view.mipBias,
-            .FirstWSlice = view.startSlice,
-            .WSize = view.sliceCount,
+            .MipSlice = view.subresource.startMip,
+            .FirstWSlice = view.subresource.startSlice,
+            .WSize = view.subresource.sliceCount,
         };
         break;
     }
@@ -72,16 +72,16 @@ static D3D12_RENDER_TARGET_VIEW_DESC CreateRenderTargetViewDesc(DX12TextureView 
     return desc;
 }
 
-static D3D12_DEPTH_STENCIL_VIEW_DESC CreateDepthStencilViewDesc(DX12TextureView view)
+static D3D12_DEPTH_STENCIL_VIEW_DESC CreateDepthStencilViewDesc(const DX12TextureView& view)
 {
     // TODO: could eventually investigate setting the DepthRead / StencilRead flags for further optimization.
     D3D12_DEPTH_STENCIL_VIEW_DESC desc{ .Format = view.format,
                                         .ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D,
-                                        .Texture2D = { .MipSlice = view.mipBias } };
+                                        .Texture2D = { .MipSlice = view.subresource.startMip } };
     return desc;
 }
 
-static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(DX12TextureView view)
+static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const DX12TextureView& view)
 {
     D3D12_SHADER_RESOURCE_VIEW_DESC desc{
         .Format = GetDX12FormatForShaderResourceViewFormat(view.format),
@@ -94,8 +94,8 @@ static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(DX12TextureV
         desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         // All mips
         desc.Texture2D = {
-            .MostDetailedMip = view.mipBias,
-            .MipLevels = view.mipCount,
+            .MostDetailedMip = view.subresource.startMip,
+            .MipLevels = view.subresource.mipCount,
             .PlaneSlice = 0,
             .ResourceMinLODClamp = 0,
         };
@@ -104,10 +104,10 @@ static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(DX12TextureV
         desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
         // All mips and all slices
         desc.Texture2DArray = {
-            .MostDetailedMip = view.mipBias,
-            .MipLevels = view.mipCount,
-            .FirstArraySlice = view.startSlice,
-            .ArraySize = view.sliceCount,
+            .MostDetailedMip = view.subresource.startMip,
+            .MipLevels = view.subresource.mipCount,
+            .FirstArraySlice = view.subresource.startSlice,
+            .ArraySize = view.subresource.sliceCount,
             .PlaneSlice = 0,
             .ResourceMinLODClamp = 0,
         };
@@ -115,26 +115,26 @@ static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(DX12TextureV
     case TextureViewType::TextureCube:
         desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
         desc.TextureCube = {
-            .MostDetailedMip = view.mipBias,
-            .MipLevels = view.mipCount,
+            .MostDetailedMip = view.subresource.startMip,
+            .MipLevels = view.subresource.mipCount,
             .ResourceMinLODClamp = 0,
         };
         break;
     case TextureViewType::TextureCubeArray:
         desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
         desc.TextureCubeArray = {
-            .MostDetailedMip = view.mipBias,
-            .MipLevels = view.mipCount,
-            .First2DArrayFace = view.startSlice,
-            .NumCubes = view.sliceCount,
+            .MostDetailedMip = view.subresource.startMip,
+            .MipLevels = view.subresource.mipCount,
+            .First2DArrayFace = view.subresource.startSlice,
+            .NumCubes = view.subresource.sliceCount,
             .ResourceMinLODClamp = 0,
         };
         break;
     case TextureViewType::Texture3D:
         desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
         desc.Texture3D = {
-            .MostDetailedMip = view.mipBias,
-            .MipLevels = view.mipCount,
+            .MostDetailedMip = view.subresource.startMip,
+            .MipLevels = view.subresource.mipCount,
             .ResourceMinLODClamp = 0,
         };
         break;
@@ -143,9 +143,9 @@ static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(DX12TextureV
     return desc;
 }
 
-static D3D12_UNORDERED_ACCESS_VIEW_DESC CreateUnorderedAccessViewDesc(DX12TextureView view)
+static D3D12_UNORDERED_ACCESS_VIEW_DESC CreateUnorderedAccessViewDesc(const DX12TextureView& view)
 {
-    D3D12_UNORDERED_ACCESS_VIEW_DESC desc{ .Format = view.format };
+    D3D12_UNORDERED_ACCESS_VIEW_DESC desc{ .Format = GetNonSRGBEquivalentForSRGBCompatibleDX12Format(view.format) };
 
     switch (view.dimension)
     {
@@ -153,7 +153,7 @@ static D3D12_UNORDERED_ACCESS_VIEW_DESC CreateUnorderedAccessViewDesc(DX12Textur
         desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
         // Write to first mip slice
         desc.Texture2D = {
-            .MipSlice = view.mipBias,
+            .MipSlice = view.subresource.startMip,
             .PlaneSlice = 0,
         };
         break;
@@ -163,9 +163,9 @@ static D3D12_UNORDERED_ACCESS_VIEW_DESC CreateUnorderedAccessViewDesc(DX12Textur
         // RWTexture2DArray.
         desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
         desc.Texture2DArray = {
-            .MipSlice = view.mipBias,
-            .FirstArraySlice = view.startSlice,
-            .ArraySize = view.sliceCount,
+            .MipSlice = view.subresource.startMip,
+            .FirstArraySlice = view.subresource.startSlice,
+            .ArraySize = view.subresource.sliceCount,
             .PlaneSlice = 0,
         };
         break;
@@ -173,19 +173,19 @@ static D3D12_UNORDERED_ACCESS_VIEW_DESC CreateUnorderedAccessViewDesc(DX12Textur
         // For cube array, we can use texture2d array with 6x the array size
         desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
         desc.Texture2DArray = {
-            .MipSlice = view.mipBias,
+            .MipSlice = view.subresource.startMip,
             // Each cube face has 6 faces
-            .FirstArraySlice = view.startSlice * 6,
-            .ArraySize = view.sliceCount * 6,
+            .FirstArraySlice = view.subresource.startSlice * 6,
+            .ArraySize = view.subresource.sliceCount * 6,
             .PlaneSlice = 0,
         };
         break;
     case TextureViewType::Texture3D:
         desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
         desc.Texture3D = {
-            .MipSlice = view.mipBias,
-            .FirstWSlice = view.startSlice,
-            .WSize = view.sliceCount,
+            .MipSlice = view.subresource.startMip,
+            .FirstWSlice = view.subresource.startSlice,
+            .WSize = view.subresource.sliceCount,
         };
         break;
     default:
@@ -201,82 +201,84 @@ static D3D12_UNORDERED_ACCESS_VIEW_DESC CreateUnorderedAccessViewDesc(DX12Textur
 
 } // namespace Texture_Internal
 
-DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, const TextureDescription& desc)
+DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, const TextureDesc& desc)
     : RHITextureBase(allocator)
     , texture(nullptr)
     , device(device)
 {
-    description = desc;
+    this->desc = desc;
 
     CD3DX12_RESOURCE_DESC texDesc;
-    switch (description.type)
+    switch (desc.type)
     {
     case TextureType::TextureCube:
     case TextureType::Texture2D:
     {
-        texDesc = CD3DX12_RESOURCE_DESC::Tex2D(TextureFormatToDXGI(description.format),
-                                               description.width,
-                                               description.height,
-                                               description.GetArraySize(),
-                                               description.mips);
+        texDesc = CD3DX12_RESOURCE_DESC::Tex2D(TextureFormatToDXGI(desc.format),
+                                               desc.width,
+                                               desc.height,
+                                               desc.GetSliceCount(),
+                                               desc.mips);
         break;
     }
     case TextureType::Texture3D:
-        texDesc = CD3DX12_RESOURCE_DESC::Tex3D(TextureFormatToDXGI(description.format),
-                                               description.width,
-                                               description.height,
-                                               description.depthOrArraySize,
-                                               description.mips);
+        texDesc = CD3DX12_RESOURCE_DESC::Tex3D(TextureFormatToDXGI(desc.format),
+                                               desc.width,
+                                               desc.height,
+                                               desc.depthOrSliceCount,
+                                               desc.mips);
         break;
     }
 
-    if (description.usage & TextureUsage::RenderTarget)
+    if (desc.usage & TextureUsage::RenderTarget)
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-        rtvHeap = DX12DescriptorHeap<DX12HeapType::RTV>(device, MaxViewCountPerRTVHeap, description.name);
+        rtvHeap = DX12DescriptorHeap<DX12HeapType::RTV>(device, MaxViewCountPerRTVHeap, desc.name);
         rtvHeapAllocator = FreeListAllocator(MaxViewCountPerRTVHeap);
     }
-    if (description.usage & TextureUsage::ShaderReadWrite)
+    if (desc.usage & TextureUsage::ShaderReadWrite)
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
     }
-    if (description.usage & TextureUsage::DepthStencil)
+    if (desc.usage & TextureUsage::DepthStencil)
     {
+        if (!(desc.usage & TextureUsage::ShaderRead))
+        {
+            texDesc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+        }
+
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-        dsvHeap = DX12DescriptorHeap<DX12HeapType::DSV>(device, MaxViewCountPerDSVHeap, description.name);
+        dsvHeap = DX12DescriptorHeap<DX12HeapType::DSV>(device, MaxViewCountPerDSVHeap, desc.name);
         dsvHeapAllocator = FreeListAllocator(MaxViewCountPerDSVHeap);
     }
 
     static const D3D12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 
     std::optional<D3D12_CLEAR_VALUE> clearValue;
-    if (description.clearValue.flags != TextureClear::None)
+    if (desc.clearValue.flags != TextureClear::None)
     {
         clearValue = D3D12_CLEAR_VALUE();
         clearValue->Format = texDesc.Format;
-        std::memcpy(clearValue->Color, description.clearValue.color.data(), sizeof(float) * 4);
-        clearValue->DepthStencil = { .Depth = description.clearValue.depth, .Stencil = description.clearValue.stencil };
+        std::memcpy(clearValue->Color, desc.clearValue.color.data(), sizeof(float) * 4);
+        clearValue->DepthStencil = { .Depth = desc.clearValue.depth, .Stencil = desc.clearValue.stencil };
     }
 
     // In order to allow for a depth stencil texture to be read as an SRV, it must have the equivalent typeless format
     // (converted to the equivalent typed/D_ format for the actual view).
-    if (description.usage & TextureUsage::DepthStencil && description.usage & TextureUsage::ShaderRead)
+    if (desc.usage & TextureUsage::DepthStencil && desc.usage & TextureUsage::ShaderRead)
     {
         texDesc.Format = GetTypelessFormatForDepthStencilCompatibleDX12Format(texDesc.Format);
     }
     // For SRGB handling in DX12, the texture should have a typeless format.
     // We then decide when creating the SRV/RTV if we want automatic SRGB conversions or not (via the SRV/RTV's format).
-    else if (FormatHasSRGBEquivalent(description.format))
+    else if (FormatHasSRGBEquivalent(desc.format))
     {
         texDesc.Format = GetTypelessFormatForSRGBCompatibleDX12Format(texDesc.Format);
     }
 
 #if VEX_USE_CUSTOM_ALLOCATOR_TEXTURES
-    allocation = allocator.AllocateResource(texture,
-                                            texDesc,
-                                            description.memoryLocality,
-                                            D3D12_RESOURCE_STATE_COMMON,
-                                            clearValue);
+    allocation =
+        allocator.AllocateResource(texture, texDesc, desc.memoryLocality, D3D12_RESOURCE_STATE_COMMON, clearValue);
 #else
     chk << device->CreateCommittedResource(&heapProps,
                                            D3D12_HEAP_FLAG_NONE,
@@ -287,8 +289,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
 #endif
 
 #if !VEX_SHIPPING
-    chk << texture->SetName(
-        StringToWString(std::format("{}: {}", magic_enum::enum_name(description.type), description.name)).data());
+    chk << texture->SetName(StringToWString(std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name)).data());
 #endif
 }
 
@@ -297,7 +298,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
     , device(device)
 {
     VEX_ASSERT(texture, "The texture passed in should be defined!");
-    description.name = std::move(name);
+    desc.name = std::move(name);
 
     D3D12_RESOURCE_DESC nativeDesc = texture->GetDesc();
     if (nativeDesc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D)
@@ -305,52 +306,51 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
         // Array size of 6 and TEXTURE2D resource dimension means we suppose the texture is a cubemap.
         if (nativeDesc.DepthOrArraySize == 6)
         {
-            description.type = TextureType::TextureCube;
+            desc.type = TextureType::TextureCube;
         }
         else
         {
-            description.type = TextureType::Texture2D;
+            desc.type = TextureType::Texture2D;
         }
     }
     else if (nativeDesc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D)
     {
-        description.type = TextureType::Texture3D;
+        desc.type = TextureType::Texture3D;
     }
     else
     {
         VEX_LOG(Fatal, "Vex DX12 RHI does not support 1D textures.");
         return;
     }
-    description.width = static_cast<u32>(nativeDesc.Width);
-    description.height = nativeDesc.Height;
-    description.depthOrArraySize = static_cast<u32>(nativeDesc.DepthOrArraySize);
-    description.mips = nativeDesc.MipLevels;
-    description.format = DXGIToTextureFormat(nativeDesc.Format);
-    description.usage = TextureUsage::None;
+    desc.width = static_cast<u32>(nativeDesc.Width);
+    desc.height = nativeDesc.Height;
+    desc.depthOrSliceCount = static_cast<u32>(nativeDesc.DepthOrArraySize);
+    desc.mips = nativeDesc.MipLevels;
+    desc.format = DXGIToTextureFormat(nativeDesc.Format);
+    desc.usage = TextureUsage::None;
     if (!(nativeDesc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE))
     {
-        description.usage |= TextureUsage::ShaderRead;
+        desc.usage |= TextureUsage::ShaderRead;
     }
     if (nativeDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
     {
-        description.usage |= TextureUsage::RenderTarget;
-        rtvHeap = DX12DescriptorHeap<DX12HeapType::RTV>(device, MaxViewCountPerRTVHeap, description.name);
+        desc.usage |= TextureUsage::RenderTarget;
+        rtvHeap = DX12DescriptorHeap<DX12HeapType::RTV>(device, MaxViewCountPerRTVHeap, desc.name);
         rtvHeapAllocator = FreeListAllocator(MaxViewCountPerRTVHeap);
     }
     if (nativeDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)
     {
-        description.usage |= TextureUsage::ShaderReadWrite;
+        desc.usage |= TextureUsage::ShaderReadWrite;
     }
     if (nativeDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
     {
-        description.usage |= TextureUsage::DepthStencil;
-        dsvHeap = DX12DescriptorHeap<DX12HeapType::DSV>(device, MaxViewCountPerDSVHeap, description.name);
+        desc.usage |= TextureUsage::DepthStencil;
+        dsvHeap = DX12DescriptorHeap<DX12HeapType::DSV>(device, MaxViewCountPerDSVHeap, desc.name);
         dsvHeapAllocator = FreeListAllocator(MaxViewCountPerDSVHeap);
     }
 
 #if !VEX_SHIPPING
-    chk << texture->SetName(
-        StringToWString(std::format("{}: {}", magic_enum::enum_name(description.type), description.name)).data());
+    chk << texture->SetName(StringToWString(std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name)).data());
 #endif
 }
 
@@ -360,9 +360,8 @@ BindlessHandle DX12Texture::GetOrCreateBindlessView(const TextureBinding& bindin
 
     using namespace Texture_Internal;
 
-    bool isSRVView = (view.usage == TextureUsage::ShaderRead) && (description.usage & TextureUsage::ShaderRead);
-    bool isUAVView =
-        (view.usage == TextureUsage::ShaderReadWrite) && (description.usage & TextureUsage::ShaderReadWrite);
+    bool isSRVView = (view.usage == TextureUsage::ShaderRead) && (desc.usage & TextureUsage::ShaderRead);
+    bool isUAVView = (view.usage == TextureUsage::ShaderReadWrite) && (desc.usage & TextureUsage::ShaderReadWrite);
 
     VEX_ASSERT(isSRVView || isUAVView,
                "Texture view requested must be of type SRV or UAV AND the underlying texture must support this usage.");
@@ -414,17 +413,19 @@ void DX12Texture::FreeAllocation(RHIAllocator& allocator)
 
 RHITextureBarrier DX12Texture::GetClearTextureBarrier()
 {
-    if (description.usage & TextureUsage::RenderTarget)
+    if (desc.usage & TextureUsage::RenderTarget)
     {
         return RHITextureBarrier{ *this,
+                                  TextureSubresource{},
                                   RHIBarrierSync::RenderTarget,
                                   RHIBarrierAccess::RenderTarget,
                                   RHITextureLayout::RenderTarget };
     }
 
-    if (description.usage & TextureUsage::DepthStencil)
+    if (desc.usage & TextureUsage::DepthStencil)
     {
         return RHITextureBarrier{ *this,
+                                  TextureSubresource{},
                                   RHIBarrierSync::DepthStencil,
                                   RHIBarrierAccess::DepthStencilWrite,
                                   RHITextureLayout::DepthStencilWrite };
@@ -436,12 +437,12 @@ RHITextureBarrier DX12Texture::GetClearTextureBarrier()
     std::unreachable();
 }
 
-CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(DX12TextureView view)
+CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(const DX12TextureView& view)
 {
     using namespace Texture_Internal;
 
-    bool isRTVView = (view.usage == TextureUsage::RenderTarget) && (description.usage & TextureUsage::RenderTarget);
-    bool isDSVView = (view.usage == TextureUsage::DepthStencil) && (description.usage & TextureUsage::DepthStencil);
+    bool isRTVView = (view.usage == TextureUsage::RenderTarget) && (desc.usage & TextureUsage::RenderTarget);
+    bool isDSVView = (view.usage == TextureUsage::DepthStencil) && (desc.usage & TextureUsage::DepthStencil);
     VEX_ASSERT(isRTVView || isDSVView,
                "Texture view requested must be for an RTV or DSV AND the underlying texture must support this usage.");
 
@@ -494,20 +495,21 @@ DX12TextureView::DX12TextureView(const TextureBinding& binding)
     : usage{ binding.usage != TextureBindingUsage::None ? static_cast<TextureUsage::Type>(binding.usage)
                                                         : TextureUsage::None }
     , dimension{ TextureUtil::GetTextureViewType(binding) }
-    , mipBias{ binding.mipBias }
-    , mipCount{ (binding.mipCount == 0) ? binding.texture.description.mips : binding.mipCount }
-    , startSlice{ binding.startSlice }
-    , sliceCount{ (binding.sliceCount == 0) ? binding.texture.description.depthOrArraySize : binding.sliceCount }
+    , format{ TextureFormatToDXGI(TextureUtil::GetTextureFormat(binding)) }
+    , subresource{ binding.subresource }
 {
-    format = TextureFormatToDXGI(TextureUtil::GetTextureFormat(binding));
     if (binding.usage == TextureBindingUsage::ShaderRead)
     {
-        if (binding.texture.description.usage & TextureUsage::DepthStencil &&
-            binding.texture.description.usage & TextureUsage::ShaderRead)
+        if (binding.texture.desc.usage & TextureUsage::DepthStencil &&
+            binding.texture.desc.usage & TextureUsage::ShaderRead)
         {
             format = GetTypelessFormatForDepthStencilCompatibleDX12Format(format);
         }
     }
+
+    // Resolve subresource (replacing MAX values with the actual value).
+    subresource.mipCount = subresource.GetMipCount(binding.texture.desc);
+    subresource.sliceCount = subresource.GetSliceCount(binding.texture.desc);
 }
 
 } // namespace vex::dx12

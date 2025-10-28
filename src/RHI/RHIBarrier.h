@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Vex/NonNullPtr.h>
+#include <Vex/Texture.h>
 #include <Vex/Types.h>
 
 #include <RHI/RHIFwd.h>
@@ -29,6 +30,8 @@ enum class RHIBarrierSync : u8
     Host,
     AllGraphics,
     AllCommands,
+    // Supported only in Vulkan, is mapped to Copy in DX12.
+    Blit,
 };
 
 // Maps to VkAccessFlags and D3D12_BARRIER_ACCESS
@@ -75,9 +78,6 @@ struct RHIBufferBarrier
 
     NonNullPtr<RHIBuffer> buffer;
 
-    RHIBarrierSync srcSync;
-    RHIBarrierAccess srcAccess;
-
     RHIBarrierSync dstSync;
     RHIBarrierAccess dstAccess;
 };
@@ -85,15 +85,16 @@ struct RHIBufferBarrier
 struct RHITextureBarrier
 {
     RHITextureBarrier(NonNullPtr<RHITexture> texture,
+                      TextureSubresource subresource,
                       RHIBarrierSync dstSync,
                       RHIBarrierAccess dstAccess,
                       RHITextureLayout dstLayout);
 
     NonNullPtr<RHITexture> texture;
 
-    RHIBarrierSync srcSync;
-    RHIBarrierAccess srcAccess;
-    RHITextureLayout srcLayout;
+    // Allows for applying a barrier to a specific texture subresource.
+    // By default the barrier will be applied to the entire resource.
+    TextureSubresource subresource;
 
     RHIBarrierSync dstSync;
     RHIBarrierAccess dstAccess;

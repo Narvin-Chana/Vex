@@ -13,8 +13,8 @@
 namespace vex
 {
 
-struct BufferDescription;
-struct TextureDescription;
+struct BufferDesc;
+struct TextureDesc;
 struct PhysicalDevice;
 struct GraphicsPipelineStateKey;
 struct ComputePipelineStateKey;
@@ -31,7 +31,7 @@ struct RHIBase
     virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() = 0;
     virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) = 0;
 
-    virtual RHISwapChain CreateSwapChain(const SwapChainDescription& description,
+    virtual RHISwapChain CreateSwapChain(const SwapChainDescription& desc,
                                          const PlatformWindow& platformWindow) = 0;
 
     virtual RHICommandPool CreateCommandPool() = 0;
@@ -41,8 +41,8 @@ struct RHIBase
     virtual RHIRayTracingPipelineState CreateRayTracingPipelineState(const RayTracingPipelineStateKey& key) = 0;
     virtual RHIResourceLayout CreateResourceLayout(RHIDescriptorPool& descriptorPool) = 0;
 
-    virtual RHITexture CreateTexture(RHIAllocator& allocator, const TextureDescription& description) = 0;
-    virtual RHIBuffer CreateBuffer(RHIAllocator& allocator, const BufferDescription& description) = 0;
+    virtual RHITexture CreateTexture(RHIAllocator& allocator, const TextureDesc& desc) = 0;
+    virtual RHIBuffer CreateBuffer(RHIAllocator& allocator, const BufferDesc& desc) = 0;
 
     virtual RHIDescriptorPool CreateDescriptorPool() = 0;
 

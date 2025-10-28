@@ -19,7 +19,7 @@ public:
     DX12Allocator(const ComPtr<DX12Device>& device);
 
     Allocation AllocateResource(ComPtr<ID3D12Resource>& resource,
-                                const CD3DX12_RESOURCE_DESC& resourceDescription,
+                                const CD3DX12_RESOURCE_DESC& resourceDesc,
                                 HeapType heapType,
                                 D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON,
                                 std::optional<D3D12_CLEAR_VALUE> optionalClearValue = std::nullopt);

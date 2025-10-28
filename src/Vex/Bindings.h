@@ -60,29 +60,18 @@ struct BufferBinding
     std::optional<u32> strideByteSize;
     // Optional: The offset to apply when binding the buffer (in bytes).
     std::optional<u64> offsetByteSize;
-
-    void ValidateForShaderUse(BufferUsage::Flags validBufferUsageFlags) const;
-    void Validate() const;
 };
 
 struct TextureBinding
 {
-    // The texture to bind
+    // The texture to bind.
     Texture texture;
     // The usage of the texture.
     TextureBindingUsage usage = TextureBindingUsage::None;
+    // Special flags for the texture binding.
     TextureBindingFlags::Flags flags = TextureBindingFlags::None;
-
-    u32 mipBias = 0;
-    // 0 means to use every mip.
-    u32 mipCount = 0;
-
-    u32 startSlice = 0;
-    // 0 means to use every slice.
-    u32 sliceCount = 0;
-
-    void ValidateForShaderUse(TextureUsage::Flags validTextureUsageFlags) const;
-    void Validate() const;
+    // Subresource of the texture, defaults to all mips and all slices (so the entirety of the resource).
+    TextureSubresource subresource;
 };
 
 struct ResourceBinding
@@ -125,8 +114,15 @@ struct DrawResourceBinding
 
     // Index buffer used for DrawIndexed.
     std::optional<BufferBinding> indexBuffer;
-
-    void Validate() const;
 };
+
+namespace BindingUtil
+{
+
+void ValidateBufferBinding(const BufferBinding& binding, BufferUsage::Flags validBufferUsageFlags);
+void ValidateTextureBinding(const TextureBinding& binding, TextureUsage::Flags validTextureUsageFlags);
+void ValidateDrawResource(const DrawResourceBinding& binding);
+
+}
 
 } // namespace vex

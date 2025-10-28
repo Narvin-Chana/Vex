@@ -42,10 +42,15 @@ endfunction()
 
 function(link_with_dxc target)
     message(STATUS "Linked ${target} with DirectXCompiler.")
-    # Copies the Vex helper shader file to the target's working directory.
+    # Copies the Vex helper shader files to the target's working directory.
     add_custom_command(TARGET ${target} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${VEX_ROOT_DIR}/shaders/Vex.hlsli"
             "$<TARGET_FILE_DIR:${target}>/Vex.hlsli"
+    )
+    add_custom_command(TARGET ${target} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${VEX_ROOT_DIR}/shaders/MipGeneration.hlsl"
+            "$<TARGET_FILE_DIR:${target}>/MipGeneration.hlsl"
     )
 endfunction()
