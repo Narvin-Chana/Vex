@@ -389,10 +389,6 @@ void VkRHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBacken
         shaderEnv.args.emplace_back(L"1");
         shaderEnv.args.emplace_back(L"-fvk-use-scalar-layout");
     }
-    else if (compilerBackend == ShaderCompilerBackend::Slang)
-    {
-        shaderEnv.args.push_back(L"--scalar-block-layout");
-    }
 
     shaderEnv.defines.emplace_back("VEX_VULKAN");
 }

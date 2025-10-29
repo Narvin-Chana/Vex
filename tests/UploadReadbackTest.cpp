@@ -104,7 +104,7 @@ SyncToken UploadTestGridToTexture(GfxBackend& graphics, const Texture& texture, 
 
     ctx.EnqueueDataUpload(texture, std::as_bytes(std::span{ fullImageData }), regions);
 
-    return *ctx.Submit();
+    return ctx.Submit();
 }
 
 std::vector<byte> ReadbackTextureContent(GfxBackend& graphics,
@@ -117,7 +117,7 @@ std::vector<byte> ReadbackTextureContent(GfxBackend& graphics,
                                                             std::span{ &token, 1 });
 
     TextureReadbackContext readbackCtx = ctx.EnqueueDataReadback(texture, regions);
-    graphics.WaitForTokenOnCPU(*ctx.Submit());
+    graphics.WaitForTokenOnCPU(ctx.Submit());
 
     std::vector<byte> fullImageData;
     fullImageData.resize(readbackCtx.GetDataByteSize());
@@ -381,5 +381,85 @@ INSTANTIATE_TEST_SUITE_P(PerCommandQueueType,
                          testing::Values(CommandQueueType::Graphics,
                                          CommandQueueType::Compute,
                                          CommandQueueType::Copy));
+
+struct ScalarBlockLayoutTests : public VexTestParam<ShaderCompilerBackend>
+{
+    struct WierdlyPackedData
+    {
+        float vector1[3];
+        float vector2[3];
+        float vector3[3];
+    };
+};
+
+TEST_P(ScalarBlockLayoutTests, ComputeMisaligneData)
+{
+    auto ctx = graphics.BeginScopedCommandContext(CommandQueueType::Compute, SubmissionPolicy::Immediate);
+
+    std::array<WierdlyPackedData, 13> data;
+    for (int i = 0; i < 13; ++i)
+    {
+        int v1 = 1, v2 = 4, v3 = 7;
+        for (int j = 0; j < 3; ++j)
+        {
+            data[i].vector1[j] = v1++;
+            data[i].vector2[j] = v2++;
+            data[i].vector3[j] = v3++;
+        }
+    }
+
+    Buffer dataBuffer = graphics.CreateBuffer(
+        BufferDescription{ .name = "DataBuffer", .byteSize = data.size() * sizeof(WierdlyPackedData) });
+    Buffer resultBuffer =
+        graphics.CreateBuffer(BufferDescription{ .name = "ResultBuffer",
+                                                 .byteSize = 3 * sizeof(float),
+                                                 .usage = BufferUsage::GenericBuffer | BufferUsage::ReadWriteBuffer });
+
+    ctx.EnqueueDataUpload(dataBuffer, std::as_bytes(std::span{ data }));
+
+    ResourceBinding bindings[]{
+        BufferBinding{ .buffer = dataBuffer,
+                       .usage = BufferBindingUsage::StructuredBuffer,
+                       .strideByteSize = sizeof(WierdlyPackedData) },
+        BufferBinding{
+            .buffer = resultBuffer,
+            .usage = BufferBindingUsage::RWStructuredBuffer,
+            .strideByteSize = 3 * sizeof(float),
+        },
+    };
+    std::vector<BindlessHandle> handles = ctx.GetBindlessHandles(bindings);
+
+    ctx.TransitionBindings(bindings);
+
+    ctx.Dispatch(
+        {
+            .path = GetParam() == ShaderCompilerBackend::DXC
+                        ? VexRootPath / "tests/shaders/ScalarBlockLayoutTest.hlsl"
+                        : VexRootPath / "tests/shaders/ScalarBlockLayoutTest.slang",
+            .entryPoint = "CSMain",
+            .type = ShaderType::ComputeShader,
+        },
+        ConstantBinding(std::span(handles)),
+        {
+            1u,
+            1u,
+            1u,
+        });
+
+    auto readbackContext = ctx.EnqueueDataReadback(resultBuffer);
+
+    graphics.WaitForTokenOnCPU(ctx.Submit());
+
+    float result[3]{};
+    readbackContext.ReadData(std::as_writable_bytes(std::span{ result }));
+
+    EXPECT_TRUE(result[0] == 13 * (1 + 4 + 7));
+    EXPECT_TRUE(result[1] == 13 * (2 + 5 + 8));
+    EXPECT_TRUE(result[2] == 13 * (3 + 6 + 9));
+}
+
+INSTANTIATE_TEST_SUITE_P(PerShaderCompiler,
+                         ScalarBlockLayoutTests,
+                         testing::Values(ShaderCompilerBackend::DXC, ShaderCompilerBackend::Slang));
 
 } // namespace vex

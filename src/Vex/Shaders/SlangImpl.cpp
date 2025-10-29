@@ -191,6 +191,11 @@ Slang::ComPtr<slang::ISession> SlangCompilerImpl::CreateSession(const Shader& sh
         { .name = slang::CompilerOptionName::VulkanUseEntryPointName,
           .value = slang::CompilerOptionValue{ .kind = slang::CompilerOptionValueKind::Int, .intValue0 = true } });
 
+    // Forces SPIR-V code to use scalar block layout for Structured and ByteAddress buffers
+    compilerOptions.push_back(
+        { .name = slang::CompilerOptionName::GLSLForceScalarLayout,
+          .value = slang::CompilerOptionValue{ .kind = slang::CompilerOptionValueKind::Int, .intValue0 = true } });
+
     // Emit reflection information.
     compilerOptions.push_back(
         { .name = slang::CompilerOptionName::VulkanEmitReflection,
