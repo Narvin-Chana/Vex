@@ -384,7 +384,7 @@ INSTANTIATE_TEST_SUITE_P(PerCommandQueueType,
 
 struct ScalarBlockLayoutTests : public VexTestParam<ShaderCompilerBackend>
 {
-    struct WierdlyPackedData
+    struct WeirdlyPackedData
     {
         float vector1[3];
         float vector2[3];
@@ -396,7 +396,7 @@ TEST_P(ScalarBlockLayoutTests, ComputeMisaligneData)
 {
     auto ctx = graphics.BeginScopedCommandContext(CommandQueueType::Compute, SubmissionPolicy::Immediate);
 
-    std::array<WierdlyPackedData, 13> data;
+    std::array<WeirdlyPackedData, 13> data;
     for (int i = 0; i < 13; ++i)
     {
         int v1 = 1, v2 = 4, v3 = 7;
@@ -409,7 +409,7 @@ TEST_P(ScalarBlockLayoutTests, ComputeMisaligneData)
     }
 
     Buffer dataBuffer = graphics.CreateBuffer(
-        BufferDescription{ .name = "DataBuffer", .byteSize = data.size() * sizeof(WierdlyPackedData) });
+        BufferDescription{ .name = "DataBuffer", .byteSize = data.size() * sizeof(WeirdlyPackedData) });
     Buffer resultBuffer =
         graphics.CreateBuffer(BufferDescription{ .name = "ResultBuffer",
                                                  .byteSize = 3 * sizeof(float),
@@ -420,7 +420,7 @@ TEST_P(ScalarBlockLayoutTests, ComputeMisaligneData)
     ResourceBinding bindings[]{
         BufferBinding{ .buffer = dataBuffer,
                        .usage = BufferBindingUsage::StructuredBuffer,
-                       .strideByteSize = sizeof(WierdlyPackedData) },
+                       .strideByteSize = sizeof(WeirdlyPackedData) },
         BufferBinding{
             .buffer = resultBuffer,
             .usage = BufferBindingUsage::RWStructuredBuffer,
@@ -431,11 +431,24 @@ TEST_P(ScalarBlockLayoutTests, ComputeMisaligneData)
 
     ctx.TransitionBindings(bindings);
 
+    std::filesystem::path shaderPath;
+    switch (GetParam())
+    {
+    case ShaderCompilerBackend::DXC:
+        shaderPath = VexRootPath / "tests/shaders/ScalarBlockLayoutTest.hlsl";
+        break;
+#if VEX_SLANG
+    case ShaderCompilerBackend::Slang:
+        shaderPath = VexRootPath / "tests/shaders/ScalarBlockLayoutTest.slang";
+        break;
+#endif
+    default:
+        break;
+    };
+
     ctx.Dispatch(
         {
-            .path = GetParam() == ShaderCompilerBackend::DXC
-                        ? VexRootPath / "tests/shaders/ScalarBlockLayoutTest.hlsl"
-                        : VexRootPath / "tests/shaders/ScalarBlockLayoutTest.slang",
+            .path = shaderPath,
             .entryPoint = "CSMain",
             .type = ShaderType::ComputeShader,
         },
@@ -458,8 +471,12 @@ TEST_P(ScalarBlockLayoutTests, ComputeMisaligneData)
     EXPECT_TRUE(result[2] == 13 * (3 + 6 + 9));
 }
 
-INSTANTIATE_TEST_SUITE_P(PerShaderCompiler,
-                         ScalarBlockLayoutTests,
-                         testing::Values(ShaderCompilerBackend::DXC, ShaderCompilerBackend::Slang));
+static const auto a = testing::Values(ShaderCompilerBackend::DXC,
+#if VEX_SLANG
+                                      ShaderCompilerBackend::Slang
+#endif
+);
+
+INSTANTIATE_TEST_SUITE_P(PerShaderCompiler, ScalarBlockLayoutTests, a);
 
 } // namespace vex
