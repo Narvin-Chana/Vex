@@ -195,13 +195,13 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
     case CommandQueueType::Graphics:
         // Set local constants (in first slot of root signature).
         commandList->SetGraphicsRoot32BitConstants(0,
-                                                   static_cast<u32>(localConstantsData.size()),
+                                                   static_cast<u32>(DivRoundUp(localConstantsData.size(), sizeof(u32))),
                                                    localConstantsData.data(),
                                                    0);
     case CommandQueueType::Compute:
         // Set local constants (in first slot of root signature).
         commandList->SetComputeRoot32BitConstants(0,
-                                                  static_cast<u32>(localConstantsData.size()),
+                                                  static_cast<u32>(DivRoundUp(localConstantsData.size(), sizeof(u32))),
                                                   localConstantsData.data(),
                                                   0);
     case CommandQueueType::Copy:

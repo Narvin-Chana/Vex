@@ -10,6 +10,7 @@
 namespace vex
 {
 
+// Alignment must be power of two.
 template <class T>
     requires std::is_integral_v<T>
 constexpr T AlignUp(T value, T alignment)
@@ -22,6 +23,13 @@ template <class T>
 constexpr bool IsAligned(T value, T alignment)
 {
     return value % alignment == 0;
+}
+
+template <class T>
+    requires std::is_integral_v<T>
+constexpr T DivRoundUp(T numerator, T denominator)
+{
+    return (numerator + denominator - 1) / denominator;
 }
 
 inline u8 ComputeMipCount(std::tuple<u32, u32, u32> dimensions)

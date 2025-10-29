@@ -149,10 +149,14 @@ Slang::ComPtr<slang::ISession> SlangCompilerImpl::CreateSession(const Shader& sh
         // Ignored, Slang already natively includes most HLSL 202x features.
     }
 
-    // Add shader environment defines.
+    // Add shader environment and shader key defines.
     std::vector<slang::PreprocessorMacroDesc> slangDefines;
-    slangDefines.reserve(shaderEnv.defines.size());
+    slangDefines.reserve(shaderEnv.defines.size() + shader.key.defines.size());
     std::ranges::transform(shaderEnv.defines,
+                           std::back_inserter(slangDefines),
+                           [](const ShaderDefine& d) -> slang::PreprocessorMacroDesc
+                           { return { d.name.c_str(), d.value.c_str() }; });
+    std::ranges::transform(shader.key.defines,
                            std::back_inserter(slangDefines),
                            [](const ShaderDefine& d) -> slang::PreprocessorMacroDesc
                            { return { d.name.c_str(), d.value.c_str() }; });
