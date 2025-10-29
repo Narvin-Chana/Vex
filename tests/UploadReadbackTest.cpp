@@ -471,12 +471,12 @@ TEST_P(ScalarBlockLayoutTests, ComputeMisaligneData)
     EXPECT_TRUE(result[2] == 13 * (3 + 6 + 9));
 }
 
-static const auto a = testing::Values(ShaderCompilerBackend::DXC,
+static const auto ShaderCompilerBackendValues = testing::Values(ShaderCompilerBackend::DXC,
 #if VEX_SLANG
-                                      ShaderCompilerBackend::Slang
+                                                                ShaderCompilerBackend::Slang
 #endif
 );
 
-INSTANTIATE_TEST_SUITE_P(PerShaderCompiler, ScalarBlockLayoutTests, a);
+INSTANTIATE_TEST_SUITE_P(PerShaderCompiler, ScalarBlockLayoutTests, ShaderCompilerBackendValues);
 
 } // namespace vex
