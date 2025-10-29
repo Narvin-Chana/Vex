@@ -195,9 +195,9 @@ Slang::ComPtr<slang::ISession> SlangCompilerImpl::CreateSession(const Shader& sh
         { .name = slang::CompilerOptionName::VulkanUseEntryPointName,
           .value = slang::CompilerOptionValue{ .kind = slang::CompilerOptionValueKind::Int, .intValue0 = true } });
 
-    // Forces SPIR-V code to use scalar block layout for Structured and ByteAddress buffers
+    // Forces SPIR-V code to use DX's layout for buffers
     compilerOptions.push_back(
-        { .name = slang::CompilerOptionName::GLSLForceScalarLayout,
+        { .name = slang::CompilerOptionName::ForceDXLayout,
           .value = slang::CompilerOptionValue{ .kind = slang::CompilerOptionValueKind::Int, .intValue0 = true } });
 
     // Emit reflection information.
