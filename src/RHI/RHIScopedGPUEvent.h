@@ -6,20 +6,20 @@
 namespace vex
 {
 
-class RHIScopedDebugMarkerBase
+class RHIScopedGPUEventBase
 {
 protected:
-    RHIScopedDebugMarkerBase(std::string_view label, std::array<float, 3> color)
+    RHIScopedGPUEventBase(std::string_view label, std::array<float, 3> color)
         : emitMarker{ true }
         , label{ label }
         , color{ color }
     {
     }
 
-    RHIScopedDebugMarkerBase(const RHIScopedDebugMarkerBase&) = delete;
-    RHIScopedDebugMarkerBase& operator=(RHIScopedDebugMarkerBase&) = delete;
+    RHIScopedGPUEventBase(const RHIScopedGPUEventBase&) = delete;
+    RHIScopedGPUEventBase& operator=(RHIScopedGPUEventBase&) = delete;
 
-    RHIScopedDebugMarkerBase(RHIScopedDebugMarkerBase&& other) noexcept
+    RHIScopedGPUEventBase(RHIScopedGPUEventBase&& other) noexcept
         : emitMarker{ other.emitMarker }
         , label{ std::move(other.label) }
         , color{ other.color }
@@ -28,7 +28,7 @@ protected:
         other.emitMarker = false;
     }
 
-    RHIScopedDebugMarkerBase& operator=(RHIScopedDebugMarkerBase&& other) noexcept
+    RHIScopedGPUEventBase& operator=(RHIScopedGPUEventBase&& other) noexcept
     {
         emitMarker = other.emitMarker;
         label = std::move(other.label);

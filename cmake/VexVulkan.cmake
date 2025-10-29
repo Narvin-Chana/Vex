@@ -42,8 +42,8 @@ function(setup_vulkan_backend TARGET)
         "src/Vulkan/RHI/VkAllocator.cpp"
         "src/Vulkan/RHI/VkFence.h"
         "src/Vulkan/RHI/VkFence.cpp"
-        "src/Vulkan/RHI/VkScopedDebugMarker.h"
-        "src/Vulkan/RHI/VkScopedDebugMarker.cpp"
+        "src/Vulkan/RHI/VkScopedGPUEvent.h"
+        "src/Vulkan/RHI/VkScopedGPUEvent.cpp"
         # Vulkan API
         "src/Vulkan/VkGraphicsPipeline.h"
         "src/Vulkan/VkGraphicsPipeline.cpp"

@@ -17,7 +17,7 @@ class VkTexture;
 class VkBuffer;
 class VkRHI;
 class VkFence;
-class VkScopedDebugMarker;
+class VkScopedGPUEvent;
 
 } // namespace vex::vk
 
@@ -40,6 +40,6 @@ using RHITexture = vk::VkTexture;
 using RHIBuffer = vk::VkBuffer;
 using RHI = vk::VkRHI;
 using RHIFence = vk::VkFence;
-using RHIScopedDebugMarker = vk::VkScopedDebugMarker;
+using RHIScopedGPUEvent = vk::VkScopedGPUEvent;
 
 } // namespace vex

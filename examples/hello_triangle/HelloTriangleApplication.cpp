@@ -109,7 +109,7 @@ void HelloTriangleApplication::Run()
                 ctx.TransitionBindings(pass1Bindings);
 
                 {
-                    VEX_GPU_SCOPED_DEBUG_REGION_COLORED(ctx, "HLSL Triangle", 1, 0, 1)
+                    VEX_GPU_SCOPED_EVENT_COL(ctx, "HLSL Triangle", 1, 0, 1)
                     ctx.Dispatch(
                         {
                             .path = ExamplesDir / "hello_triangle" / "HelloTriangleShader.cs.hlsl",
@@ -126,7 +126,7 @@ void HelloTriangleApplication::Run()
 
 #if VEX_SLANG
                 {
-                    VEX_GPU_SCOPED_DEBUG_REGION_COLORED(ctx, "Slang Triangle", 1, 1, 0)
+                    VEX_GPU_SCOPED_EVENT_COL(ctx, "Slang Triangle", 1, 1, 0)
                     ctx.Dispatch(
                         {
                             .path = ExamplesDir / "hello_triangle" / "HelloTriangleShader.slang",

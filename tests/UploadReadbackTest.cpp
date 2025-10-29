@@ -104,7 +104,7 @@ SyncToken UploadTestGridToTexture(GfxBackend& graphics, const Texture& texture, 
 
     ctx.EnqueueDataUpload(texture, std::as_bytes(std::span{ fullImageData }), regions);
 
-    return *ctx.Submit();
+    return ctx.Submit();
 }
 
 std::vector<byte> ReadbackTextureContent(GfxBackend& graphics,
@@ -117,7 +117,7 @@ std::vector<byte> ReadbackTextureContent(GfxBackend& graphics,
                                                             std::span{ &token, 1 });
 
     TextureReadbackContext readbackCtx = ctx.EnqueueDataReadback(texture, regions);
-    graphics.WaitForTokenOnCPU(*ctx.Submit());
+    graphics.WaitForTokenOnCPU(ctx.Submit());
 
     std::vector<byte> fullImageData;
     fullImageData.resize(readbackCtx.GetDataByteSize());

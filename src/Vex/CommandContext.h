@@ -5,7 +5,7 @@
 
 #include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/NonNullPtr.h>
-#include <Vex/ScopedDebugMarker.h>
+#include <Vex/ScopedGPUEvent.h>
 #include <Vex/Shaders/ShaderKey.h>
 #include <Vex/SubmissionPolicy.h>
 #include <Vex/Synchronization.h>
@@ -233,7 +233,7 @@ public:
 
     // Returns an object which will scope a set of commands to label them for a external debug tool such as RenderDoc or
     // Pix
-    ScopedDebugMarker CreateScopedDebugMarker(const char* markerLabel, std::array<float, 3> color = { 1, 1, 1 });
+    ScopedGPUEvent CreateScopedDebugMarker(const char* markerLabel, std::array<float, 3> color = { 1, 1, 1 });
 
 private:
     std::optional<RHIDrawResources> PrepareDrawCall(const DrawDescription& drawDesc,

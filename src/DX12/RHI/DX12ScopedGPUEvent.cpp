@@ -1,14 +1,14 @@
-﻿#include "DX12ScopedDebugMarker.h"
+﻿#include "DX12ScopedGPUEvent.h"
 
 #include <WinPixEventRuntime/pix3.h>
 
 namespace vex::dx12
 {
 
-DX12ScopedDebugMarker::DX12ScopedDebugMarker(const ComPtr<ID3D12GraphicsCommandList>& commandList,
+DX12ScopedGPUEvent::DX12ScopedGPUEvent(const ComPtr<ID3D12GraphicsCommandList>& commandList,
                                              const char* label,
                                              std::array<float, 3> color)
-    : RHIScopedDebugMarkerBase(label, color)
+    : RHIScopedGPUEventBase(label, color)
     , cmdList{ commandList }
 {
     PIXBeginEvent(cmdList.Get(),
@@ -18,7 +18,7 @@ DX12ScopedDebugMarker::DX12ScopedDebugMarker(const ComPtr<ID3D12GraphicsCommandL
                   label);
 }
 
-DX12ScopedDebugMarker::~DX12ScopedDebugMarker()
+DX12ScopedGPUEvent::~DX12ScopedGPUEvent()
 {
     if (emitMarker)
     {

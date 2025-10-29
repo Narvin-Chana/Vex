@@ -1,4 +1,5 @@
 # VexDX12.cmake - DX12 backend configuration
+include(VexHelpers)
 
 function(setup_dx12_backend TARGET)
     set(PIX_EVENTS_DIR "${FETCHCONTENT_BASE_DIR}/PixEvents")
@@ -18,7 +19,7 @@ function(setup_dx12_backend TARGET)
 
     # Fetch DX12 Agility SDK
     set(DX_AGILITY_VERSION "616")
-    set(AGILITY_SDK_DIR "${FETCHCONTENT_BASE_DIR}/DirectX-AgilitySDK")
+    set(AGILITY_SDK_DIR "${FETCHCONTENT_BASE_DIR}/DirectX-AgilitySDK-${DX_AGILITY_VERSION}")
 
     # Download the NuGet package if not already downloaded
     if(NOT EXISTS "${AGILITY_SDK_DIR}/build")
@@ -64,8 +65,8 @@ function(setup_dx12_backend TARGET)
         "src/DX12/RHI/DX12DescriptorPool.cpp"
         "src/DX12/RHI/DX12Allocator.h"
         "src/DX12/RHI/DX12Allocator.cpp"
-        "src/DX12/RHI/DX12ScopedDebugMarker.h"
-        "src/DX12/RHI/DX12ScopedDebugMarker.cpp"
+        "src/DX12/RHI/DX12ScopedGPUEvent.h"
+        "src/DX12/RHI/DX12ScopedGPUEvent.cpp"
         # DX12 API
         "src/DX12/DX12DescriptorHeap.h"
         "src/DX12/DX12Headers.h"

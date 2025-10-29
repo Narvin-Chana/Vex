@@ -255,7 +255,7 @@ void HelloCubeApplication::Run()
             };
 
             {
-                VEX_GPU_SCOPED_DEBUG_REGION(ctx, "HLSL Cube");
+                VEX_GPU_SCOPED_EVENT(ctx, "HLSL Cube");
                 ctx.DrawIndexed(hlslDrawDesc,
                                 {
                                     .renderTargets = renderTargets,
@@ -269,7 +269,7 @@ void HelloCubeApplication::Run()
 
 #if VEX_SLANG
             {
-                VEX_GPU_SCOPED_DEBUG_REGION(ctx, "Slang Cube");
+                VEX_GPU_SCOPED_EVENT(ctx, "Slang Cube");
                 ctx.DrawIndexed(slangDrawDesc,
                                 {
                                     .renderTargets = renderTargets,

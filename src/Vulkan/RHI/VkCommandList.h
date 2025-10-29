@@ -77,7 +77,7 @@ public:
         return *commandBuffer;
     }
 
-    virtual RHIScopedDebugMarker CreateScopedMarker(const char* label, std::array<float, 3> labelColor) override;
+    virtual RHIScopedGPUEvent CreateScopedMarker(const char* label, std::array<float, 3> labelColor) override;
 
 private:
     NonNullPtr<VkGPUContext> ctx;

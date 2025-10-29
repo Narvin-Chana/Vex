@@ -757,7 +757,7 @@ RHICommandList& CommandContext::GetRHICommandList()
     return *cmdList;
 }
 
-ScopedDebugMarker CommandContext::CreateScopedDebugMarker(const char* markerLabel, std::array<float, 3> color)
+ScopedGPUEvent CommandContext::CreateScopedDebugMarker(const char* markerLabel, std::array<float, 3> color)
 {
     return { cmdList->CreateScopedMarker(markerLabel, color) };
 }

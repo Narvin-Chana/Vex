@@ -18,7 +18,7 @@ class DX12Texture;
 class DX12Buffer;
 class DX12RHI;
 class DX12Fence;
-class DX12ScopedDebugMarker;
+class DX12ScopedGPUEvent;
 
 } // namespace vex::dx12
 
@@ -41,6 +41,6 @@ using RHITexture = dx12::DX12Texture;
 using RHIBuffer = dx12::DX12Buffer;
 using RHI = dx12::DX12RHI;
 using RHIFence = dx12::DX12Fence;
-using RHIScopedDebugMarker = dx12::DX12ScopedDebugMarker;
+using RHIScopedGPUEvent = dx12::DX12ScopedGPUEvent;
 
 } // namespace vex
