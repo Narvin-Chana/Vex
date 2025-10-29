@@ -128,14 +128,21 @@ std::expected<std::vector<byte>, std::string> DXCCompilerImpl::CompileShader(
     std::vector<std::wstring> wStringPaths;
     FillInIncludeDirectories(args, wStringPaths);
 
-    std::vector<DxcDefine> dxcDefines;
+    // Fill in the defines with both the shaderEnv and the shader key's defines.
     std::vector<std::pair<std::wstring, std::wstring>> defineWStrings;
-    dxcDefines.reserve(shaderEnv.defines.size());
-    defineWStrings.reserve(shaderEnv.defines.size());
+    defineWStrings.reserve(shaderEnv.defines.size() + shader.key.defines.size());
     std::ranges::transform(shaderEnv.defines,
                            std::back_inserter(defineWStrings),
                            [](const ShaderDefine& d) -> std::pair<std::wstring, std::wstring>
                            { return { StringToWString(d.name), StringToWString(d.value) }; });
+    std::ranges::transform(shader.key.defines,
+                           std::back_inserter(defineWStrings),
+                           [](const ShaderDefine& d) -> std::pair<std::wstring, std::wstring>
+                           { return { StringToWString(d.name), StringToWString(d.value) }; });
+
+    // Convert to DxcDefine type.
+    std::vector<DxcDefine> dxcDefines;
+    dxcDefines.reserve(shaderEnv.defines.size() + shader.key.defines.size());
     std::ranges::transform(defineWStrings,
                            std::back_inserter(dxcDefines),
                            [](const std::pair<std::wstring, std::wstring>& d)
