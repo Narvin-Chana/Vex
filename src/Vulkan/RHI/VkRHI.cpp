@@ -272,7 +272,6 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     features12.vulkanMemoryModel = true;
     features12.vulkanMemoryModelDeviceScope = true;
     features12.storageBuffer8BitAccess = true;
-    features12.scalarBlockLayout = true;
 
     auto physDeviceFeatures = physDevice.getFeatures();
     ::vk::DeviceCreateInfo deviceCreateInfo{ .pNext = &features12,
