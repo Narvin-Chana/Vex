@@ -431,24 +431,11 @@ TEST_P(ScalarBlockLayoutTests, ComputeMisaligneData)
 
     ctx.TransitionBindings(bindings);
 
-    std::filesystem::path shaderPath;
-    switch (GetParam())
-    {
-    case ShaderCompilerBackend::DXC:
-        shaderPath = VexRootPath / "tests/shaders/ScalarBlockLayoutTest.hlsl";
-        break;
-#if VEX_SLANG
-    case ShaderCompilerBackend::Slang:
-        shaderPath = VexRootPath / "tests/shaders/ScalarBlockLayoutTest.slang";
-        break;
-#endif
-    default:
-        break;
-    };
-
     ctx.Dispatch(
         {
-            .path = shaderPath,
+            .path = GetParam() == ShaderCompilerBackend::DXC
+                        ? VexRootPath / "tests/shaders/ScalarBlockLayoutTest.hlsl"
+                        : VexRootPath / "tests/shaders/ScalarBlockLayoutTest.slang",
             .entryPoint = "CSMain",
             .type = ShaderType::ComputeShader,
         },
@@ -471,12 +458,8 @@ TEST_P(ScalarBlockLayoutTests, ComputeMisaligneData)
     EXPECT_TRUE(result[2] == 13 * (3 + 6 + 9));
 }
 
-static const auto ShaderCompilerBackendValues = testing::Values(ShaderCompilerBackend::DXC,
-#if VEX_SLANG
-                                                                ShaderCompilerBackend::Slang
-#endif
-);
-
-INSTANTIATE_TEST_SUITE_P(PerShaderCompiler, ScalarBlockLayoutTests, ShaderCompilerBackendValues);
+INSTANTIATE_TEST_SUITE_P(PerShaderCompiler,
+                         ScalarBlockLayoutTests,
+                         testing::Values(ShaderCompilerBackend::DXC, ShaderCompilerBackend::Slang));
 
 } // namespace vex
