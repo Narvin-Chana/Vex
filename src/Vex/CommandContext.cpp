@@ -228,6 +228,7 @@ u64 TextureReadbackContext::GetDataByteSize() const noexcept
 
 CommandContext::CommandContext(NonNullPtr<Graphics> backend,
                                NonNullPtr<RHICommandList> cmdList,
+                               NonNullPtr<RHITimestampQueryPool> queryPool,
                                SubmissionPolicy submissionPolicy,
                                std::span<SyncToken> dependencies)
     : backend(backend)
@@ -236,6 +237,7 @@ CommandContext::CommandContext(NonNullPtr<Graphics> backend,
     , dependencies{ dependencies.begin(), dependencies.end() }
 {
     cmdList->Open();
+    cmdList->SetTimestampQueryPool(queryPool);
     if (cmdList->GetType() != QueueType::Copy)
     {
         cmdList->SetDescriptorPool(*backend->descriptorPool, backend->psCache->GetResourceLayout());
@@ -922,6 +924,16 @@ void CommandContext::ExecuteInDrawContext(std::span<const TextureBinding> render
     cmdList->BeginRendering(drawResources);
     callback();
     cmdList->EndRendering();
+}
+
+QueryHandle CommandContext::BeginTimestampQuery()
+{
+    return cmdList->BeginTimestampQuery();
+}
+
+void CommandContext::EndTimestampQuery(QueryHandle handle)
+{
+    cmdList->EndTimestampQuery(handle);
 }
 
 RHICommandList& CommandContext::GetRHICommandList()

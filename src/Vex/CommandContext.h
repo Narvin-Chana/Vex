@@ -87,6 +87,7 @@ class CommandContext
 private:
     CommandContext(NonNullPtr<Graphics> backend,
                    NonNullPtr<RHICommandList> cmdList,
+                   NonNullPtr<RHITimestampQueryPool> queryPool,
                    SubmissionPolicy submissionPolicy,
                    std::span<SyncToken> dependencies);
 
@@ -243,6 +244,9 @@ public:
     void ExecuteInDrawContext(std::span<const TextureBinding> renderTargets,
                               std::optional<const TextureBinding> depthStencil,
                               const std::function<void()>& callback);
+
+    QueryHandle BeginTimestampQuery();
+    void EndTimestampQuery(QueryHandle handle);
 
     // Returns the RHI command list associated with this context (you should avoid using this unless you know
     // what you are doing).

@@ -3,11 +3,25 @@
 #include <Vex/ByteUtils.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHITexture.h>
+#include <Vex/RHIImpl/RHITimestampQueryPool.h>
 #include <Vex/Validation.h>
 
 namespace vex
 {
 
+void RHICommandListBase::Close()
+{
+    if (!isOpen)
+    {
+        VEX_LOG(Fatal, "Attempting to close an already closed command list.");
+        return;
+    }
+
+    if (!queries.empty())
+    {
+        queryPool->FetchQueriesTimestamps(reinterpret_cast<RHICommandList&>(*this), queries);
+    }
+}
 void RHICommandListBase::BufferBarrier(RHIBuffer& buffer, RHIBarrierSync sync, RHIBarrierAccess access)
 {
     RHIBufferBarrier barrier{ buffer, sync, access };
@@ -56,6 +70,19 @@ void RHICommandListBase::Copy(RHITexture& src, RHIBuffer& dst)
     }
 
     Copy(src, dst, bufferToTextureCopies);
+}
+void RHICommandListBase::SetSyncTokens(std::span<SyncToken> tokens)
+{
+    syncTokens = { tokens.begin(), tokens.end() };
+}
+
+void RHICommandListBase::UpdateTimestampQueryTokens(SyncToken token)
+{
+    if (queryPool)
+    {
+        queryPool->UpdateSyncTokens(token, queries);
+    }
+    queries.clear();
 }
 
 } // namespace vex

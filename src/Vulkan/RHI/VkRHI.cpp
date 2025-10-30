@@ -15,6 +15,7 @@
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITexture.h>
+#include <Vex/RHIImpl/RHITimestampQueryPool.h>
 #include <Vex/Shaders/ShaderCompilerSettings.h>
 #include <Vex/Shaders/ShaderEnvironment.h>
 #include <Vex/Synchronization.h>
@@ -271,6 +272,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     features12.vulkanMemoryModel = true;
     features12.vulkanMemoryModelDeviceScope = true;
     features12.storageBuffer8BitAccess = true;
+    features12.scalarBlockLayout = true;
 
     auto physDeviceFeatures = physDevice.getFeatures();
     ::vk::DeviceCreateInfo deviceCreateInfo{ .pNext = &features12,
@@ -374,7 +376,12 @@ RHIDescriptorPool VkRHI::CreateDescriptorPool()
 
 RHIAllocator VkRHI::CreateAllocator()
 {
-    return VkAllocator(GetGPUContext());
+    return { GetGPUContext() };
+}
+
+RHITimestampQueryPool VkRHI::CreateTimestampQueryPool(RHIAllocator& allocator)
+{
+    return { GetGPUContext(), *this, allocator };
 }
 
 void VkRHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBackend, ShaderEnvironment& shaderEnv)
@@ -502,7 +509,17 @@ std::vector<SyncToken> VkRHI::Submit(std::span<NonNullPtr<RHICommandList>> comma
         pending.clear();
 
         // Submit this queue's work
-        syncTokens.push_back(SubmitToQueue(queueType, cmdLists, waitSemaphores));
+        SyncToken cmdListToken = SubmitToQueue(queueType, cmdLists, waitSemaphores);
+
+        for (auto& cmdList : commandLists)
+        {
+            if (cmdList->GetType() == i)
+            {
+                cmdList->UpdateTimestampQueryTokens(cmdListToken);
+            }
+        }
+
+        syncTokens.push_back(cmdListToken);
     }
 
     return syncTokens;

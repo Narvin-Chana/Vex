@@ -8,6 +8,7 @@ VkScopedGPUEvent::VkScopedGPUEvent(::vk::CommandBuffer buffer, const char* label
     : RHIScopedGPUEventBase(label, color)
     , buffer{ buffer }
 {
+    // TODO: https://trello.com/c/14rCpNef skip this call if enableGPULayer is false
     std::array<float, 4> fullColor{ color[0], color[1], color[2], 1 };
     buffer.beginDebugUtilsLabelEXT(::vk::DebugUtilsLabelEXT{
         .pLabelName = label,

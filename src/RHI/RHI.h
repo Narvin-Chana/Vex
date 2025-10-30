@@ -3,8 +3,8 @@
 #include <span>
 #include <vector>
 
-#include <Vex/QueueType.h>
 #include <Vex/NonNullPtr.h>
+#include <Vex/QueueType.h>
 #include <Vex/Types.h>
 #include <Vex/UniqueHandle.h>
 
@@ -31,8 +31,7 @@ struct RHIBase
     virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() = 0;
     virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) = 0;
 
-    virtual RHISwapChain CreateSwapChain(const SwapChainDescription& desc,
-                                         const PlatformWindow& platformWindow) = 0;
+    virtual RHISwapChain CreateSwapChain(const SwapChainDescription& desc, const PlatformWindow& platformWindow) = 0;
 
     virtual RHICommandPool CreateCommandPool() = 0;
 
@@ -47,6 +46,8 @@ struct RHIBase
     virtual RHIDescriptorPool CreateDescriptorPool() = 0;
 
     virtual RHIAllocator CreateAllocator() = 0;
+
+    virtual RHITimestampQueryPool CreateTimestampQueryPool(RHIAllocator& allocator) = 0;
 
     virtual void ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBackend,
                                                  ShaderEnvironment& shaderEnv) = 0;
