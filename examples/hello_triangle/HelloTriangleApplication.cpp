@@ -63,7 +63,7 @@ void HelloTriangleApplication::Run()
         {
             float oscillatedColor = static_cast<float>(cos(currentTime) / 2 + 0.5);
             float invOscillatedColor = 1 - oscillatedColor;
-            float color[4] = { invOscillatedColor, oscillatedColor, invOscillatedColor, 1.0 };
+            float color[] = { invOscillatedColor, oscillatedColor, invOscillatedColor, 1.0 };
 
             auto ctx = graphics->BeginScopedCommandContext(vex::CommandQueueType::Graphics);
 

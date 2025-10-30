@@ -5,6 +5,8 @@
 
 namespace vex
 {
+static const auto VexRootPath = std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path();
+
 template <class ParamT>
 struct VexTestParam : testing::TestWithParam<ParamT>
 {
@@ -15,7 +17,7 @@ struct VexTestParam : testing::TestWithParam<ParamT>
               .useSwapChain = false,
               .enableGPUDebugLayer = false,
               .enableGPUBasedValidation = false,
-          } }
+              .shaderCompilerSettings = { .shaderIncludeDirectories = { VexRootPath / "shaders" } } } }
     {
         GLogger.SetLogLevelFilter(Warning);
     }
