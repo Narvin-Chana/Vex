@@ -9,6 +9,8 @@ FetchContent_MakeAvailable(GTest)
 
 include(GoogleTest)
 
+set(VEX_ENABLE_SLANG ON CACHE BOOL "Enable Slang support" FORCE)
+
 add_executable(vex_tests
 	"SynchronisationTest.cpp"
 	"UploadReadbackTest.cpp"
