@@ -104,6 +104,8 @@ public:
                       RHIBuffer& dst,
                       std::span<const BufferTextureCopyDescription> copyDescriptions) = 0;
 
+    virtual RHIScopedGPUEvent CreateScopedMarker(const char* label, std::array<float, 3> labelColor) = 0;
+
     CommandQueueType GetType() const
     {
         return type;

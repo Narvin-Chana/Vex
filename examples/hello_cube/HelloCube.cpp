@@ -254,25 +254,32 @@ void HelloCubeApplication::Run()
                 vex::BindlessHandle uvGuideHandle;
             };
 
-            ctx.DrawIndexed(hlslDrawDesc,
-                            {
-                                .renderTargets = renderTargets,
-                                .depthStencil = vex::TextureBinding(depthTexture),
-                                .vertexBuffers = { &vertexBufferBinding, 1 },
-                                .indexBuffer = indexBufferBinding,
-                            },
-                            vex::ConstantBinding(UniformData{ static_cast<float>(currentTime), uvGuideHandle }),
-                            IndexCount);
+            {
+                VEX_GPU_SCOPED_EVENT(ctx, "HLSL Cube");
+                ctx.DrawIndexed(hlslDrawDesc,
+                                {
+                                    .renderTargets = renderTargets,
+                                    .depthStencil = vex::TextureBinding(depthTexture),
+                                    .vertexBuffers = { &vertexBufferBinding, 1 },
+                                    .indexBuffer = indexBufferBinding,
+                                },
+                                vex::ConstantBinding(UniformData{ static_cast<float>(currentTime), uvGuideHandle }),
+                                IndexCount);
+            }
+
 #if VEX_SLANG
-            ctx.DrawIndexed(slangDrawDesc,
-                            {
-                                .renderTargets = renderTargets,
-                                .depthStencil = vex::TextureBinding(depthTexture),
-                                .vertexBuffers = { &vertexBufferBinding, 1 },
-                                .indexBuffer = indexBufferBinding,
-                            },
-                            vex::ConstantBinding(UniformData{ static_cast<float>(currentTime), uvGuideHandle }),
-                            IndexCount);
+            {
+                VEX_GPU_SCOPED_EVENT(ctx, "Slang Cube");
+                ctx.DrawIndexed(slangDrawDesc,
+                                {
+                                    .renderTargets = renderTargets,
+                                    .depthStencil = vex::TextureBinding(depthTexture),
+                                    .vertexBuffers = { &vertexBufferBinding, 1 },
+                                    .indexBuffer = indexBufferBinding,
+                                },
+                                vex::ConstantBinding(UniformData{ static_cast<float>(currentTime), uvGuideHandle }),
+                                IndexCount);
+            }
 #endif
         }
 

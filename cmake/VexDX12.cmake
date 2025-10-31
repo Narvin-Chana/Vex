@@ -1,32 +1,36 @@
 # VexDX12.cmake - DX12 backend configuration
+include(VexHelpers)
 
 function(setup_dx12_backend TARGET)
+    set(PIX_EVENTS_DIR "${FETCHCONTENT_BASE_DIR}/PixEvents")
+    if (NOT EXISTS PIX_EVENTS_DIR)
+        download_and_decompress_archive(
+            "https://www.nuget.org/api/v2/package/WinPixEventRuntime/1.0.240308001"
+            "${PIX_EVENTS_DIR}"
+        )
+
+        target_link_libraries(${TARGET} PRIVATE "${PIX_EVENTS_DIR}/bin/x64/WinPixEventRuntime.lib")
+        target_include_directories(${TARGET} PRIVATE "${PIX_EVENTS_DIR}/include/")
+
+        message(STATUS "Setup PixEvents")
+    endif()
+
     message(STATUS "Setting up DirectX 12 backend...")
 
     # Fetch DX12 Agility SDK
     set(DX_AGILITY_VERSION "616")
-    set(AGILITY_SDK_DIR "${CMAKE_BINARY_DIR}/DirectX-AgilitySDK")
-    set(AGILITY_SDK_NUPKG "${CMAKE_BINARY_DIR}/agility_sdk.nupkg")
+    set(AGILITY_SDK_DIR "${FETCHCONTENT_BASE_DIR}/DirectX-AgilitySDK-${DX_AGILITY_VERSION}")
 
     # Download the NuGet package if not already downloaded
     if(NOT EXISTS "${AGILITY_SDK_DIR}/build")
         message(STATUS "Downloading DX12 Agility SDK 1.${DX_AGILITY_VERSION}.1...")
 
-        file(DOWNLOAD
+        download_and_decompress_archive(
             "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.${DX_AGILITY_VERSION}.1"
-            "${AGILITY_SDK_NUPKG}"
-        )
-
-        # NuGet packages are ZIP files with different extension
-        file(ARCHIVE_EXTRACT
-            INPUT "${AGILITY_SDK_NUPKG}"
-            DESTINATION "${AGILITY_SDK_DIR}"
+            "${AGILITY_SDK_DIR}"
         )
 
         message(STATUS "DirectX Agility SDK extracted to: ${AGILITY_SDK_DIR}")
-
-        # Clean up the downloaded package
-        file(REMOVE "${AGILITY_SDK_NUPKG}")
     endif()
 
     # Set the variables for use in functions
@@ -61,6 +65,8 @@ function(setup_dx12_backend TARGET)
         "src/DX12/RHI/DX12DescriptorPool.cpp"
         "src/DX12/RHI/DX12Allocator.h"
         "src/DX12/RHI/DX12Allocator.cpp"
+        "src/DX12/RHI/DX12ScopedGPUEvent.h"
+        "src/DX12/RHI/DX12ScopedGPUEvent.cpp"
         # DX12 API
         "src/DX12/DX12DescriptorHeap.h"
         "src/DX12/DX12Headers.h"
@@ -93,6 +99,19 @@ function(setup_dx12_backend TARGET)
     add_header_only_dependency(${TARGET} DirectXAgilitySDK "${DX_AGILITY_SDK_SOURCE_DIR}" "include" "directx")
 
     message(STATUS "DirectX 12 backend configured successfully")
+endfunction()
+
+function(vex_setup_pix_events TARGET)
+    if (VEX_ENABLE_DX12)
+        set(PIX_EVENTS_DIR "${FETCHCONTENT_BASE_DIR}/PixEvents")
+
+        add_custom_command(TARGET ${TARGET} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${PIX_EVENTS_DIR}/bin/x64/WinPixEventRuntime.dll"
+            "$<TARGET_FILE_DIR:${TARGET}>/WinPixEventRuntime.dll"
+            COMMENT "Copying PixEvents DLLs to output directory : $<TARGET_FILE_DIR:${TARGET}>..."
+        )
+    endif()
 endfunction()
 
 function(vex_setup_d3d12_agility_runtime TARGET)
@@ -130,3 +149,5 @@ function(vex_setup_d3d12_agility_runtime TARGET)
         message(STATUS "D3D12 Agility SDK 1.${DX_AGILITY_SDK_VERSION}.0 will be deployed with ${TARGET}")
     endif()
 endfunction()
+
+

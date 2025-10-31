@@ -17,6 +17,7 @@
 #include <DX12/RHI/DX12Buffer.h>
 #include <DX12/RHI/DX12PipelineState.h>
 #include <DX12/RHI/DX12ResourceLayout.h>
+#include <DX12/RHI/DX12ScopedGPUEvent.h>
 #include <DX12/RHI/DX12Texture.h>
 
 namespace vex::dx12
@@ -609,6 +610,11 @@ void DX12CommandList::Copy(RHITexture& src,
                                        &locations.textureLoc,
                                        &locations.box);
     }
+}
+
+RHIScopedGPUEvent DX12CommandList::CreateScopedMarker(const char* label, std::array<float, 3> labelColor)
+{
+    return { commandList, label, labelColor };
 }
 
 } // namespace vex::dx12

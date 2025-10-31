@@ -108,32 +108,38 @@ void HelloTriangleApplication::Run()
             {
                 ctx.TransitionBindings(pass1Bindings);
 
-                ctx.Dispatch(
-                    {
-                        .path = ExamplesDir / "hello_triangle" / "HelloTriangleShader.cs.hlsl",
-                        .entryPoint = "CSMain",
-                        .type = vex::ShaderType::ComputeShader,
-                    },
-                    vex::ConstantBinding(std::span(pass1Handles)),
-                    {
-                        (width + 7u) / 8u,
-                        (height + 7u) / 8u,
-                        1u,
-                    });
+                {
+                    VEX_GPU_SCOPED_EVENT_COL(ctx, "HLSL Triangle", 1, 0, 1)
+                    ctx.Dispatch(
+                        {
+                            .path = ExamplesDir / "hello_triangle" / "HelloTriangleShader.cs.hlsl",
+                            .entryPoint = "CSMain",
+                            .type = vex::ShaderType::ComputeShader,
+                        },
+                        vex::ConstantBinding(std::span(pass1Handles)),
+                        {
+                            (width + 7u) / 8u,
+                            (height + 7u) / 8u,
+                            1u,
+                        });
+                }
 
 #if VEX_SLANG
-                ctx.Dispatch(
-                    {
-                        .path = ExamplesDir / "hello_triangle" / "HelloTriangleShader.slang",
-                        .entryPoint = "CSMain",
-                        .type = vex::ShaderType::ComputeShader,
-                    },
-                    vex::ConstantBinding(std::span(pass1Handles)),
-                    {
-                        (width + 7u) / 8u,
-                        (height + 7u) / 8u,
-                        1u,
-                    });
+                {
+                    VEX_GPU_SCOPED_EVENT_COL(ctx, "Slang Triangle", 1, 1, 0)
+                    ctx.Dispatch(
+                        {
+                            .path = ExamplesDir / "hello_triangle" / "HelloTriangleShader.slang",
+                            .entryPoint = "CSMain",
+                            .type = vex::ShaderType::ComputeShader,
+                        },
+                        vex::ConstantBinding(std::span(pass1Handles)),
+                        {
+                            (width + 7u) / 8u,
+                            (height + 7u) / 8u,
+                            1u,
+                        });
+                }
 #endif
             }
 
