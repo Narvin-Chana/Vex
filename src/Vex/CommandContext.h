@@ -233,7 +233,7 @@ public:
 
     // Returns an object which will scope a set of commands to label them for a external debug tool such as RenderDoc or
     // Pix
-    ScopedGPUEvent CreateScopedDebugMarker(const char* markerLabel, std::array<float, 3> color = { 1, 1, 1 });
+    ScopedGPUEvent CreateScopedGPUEvent(const char* markerLabel, std::array<float, 3> color = { 1, 1, 1 });
 
 private:
     std::optional<RHIDrawResources> PrepareDrawCall(const DrawDescription& drawDesc,

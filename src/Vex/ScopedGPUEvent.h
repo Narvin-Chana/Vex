@@ -21,13 +21,13 @@ class ScopedGPUEvent
 
 #if !VEX_SHIPPING
 
-#define COMBINE1(X, Y) X##Y // helper macro
-#define COMBINE(X, Y) COMBINE1(X, Y)
+#define VEX_COMBINE1(X, Y) X##Y // helper macro
+#define VEX_COMBINE(X, Y) VEX_COMBINE1(X, Y)
 
 #define VEX_GPU_SCOPED_EVENT(ctx, name)                                                                                \
-    auto COMBINE(zzz_vex_debug_marker_, __COUNTER__) = ctx.CreateScopedDebugMarker(name);
+    auto VEX_COMBINE(zzz_vex_debug_marker_, __COUNTER__) = ctx.CreateScopedGPUEvent(name);
 #define VEX_GPU_SCOPED_EVENT_COL(ctx, name, r, b, g)                                                                   \
-    auto COMBINE(zzz_vex_debug_marker_, __COUNTER__) = ctx.CreateScopedDebugMarker(name, { r, g, b });
+    auto VEX_COMBINE(zzz_vex_debug_marker_, __COUNTER__) = ctx.CreateScopedGPUEvent(name, { r, g, b });
 
 #else
 
