@@ -173,6 +173,8 @@ jobs:
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DVEX_BUILD_EXAMPLES=ON
+        -DVEX_BUILD_TESTS=ON
+        -DVEX_ENABLE_SLANG=ON
         ${{ matrix.graphics_api == 'directx12' && '-DVEX_GRAPHICS_BACKEND=DX12' || '' }}
         ${{ matrix.graphics_api == 'vulkan' && '-DVEX_GRAPHICS_BACKEND=VULKAN' || '' }}
         -S ${{ github.workspace }}
