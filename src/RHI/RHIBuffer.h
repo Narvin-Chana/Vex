@@ -29,7 +29,7 @@ public:
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeAllocation(RHIAllocator& allocator) = 0;
 
-    [[nodiscard]] const BufferDescription& GetDescription() const noexcept
+    [[nodiscard]] const BufferDesc& GetDesc() const noexcept
     {
         return desc;
     };
@@ -58,9 +58,9 @@ public:
     }
 
 protected:
-    explicit RHIBufferBase(RHIAllocator& allocator, const BufferDescription& desc);
+    explicit RHIBufferBase(RHIAllocator& allocator, const BufferDesc& desc);
 
-    BufferDescription desc;
+    BufferDesc desc;
     RHIBarrierSync lastSync = RHIBarrierSync::None;
     RHIBarrierAccess lastAccess = RHIBarrierAccess::NoAccess;
 

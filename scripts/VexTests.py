@@ -6,6 +6,9 @@ from pathlib import Path
 
 """ This script runs the cmake vex_tests target for each compiler/graphics-api permutation. """
 
+TargetOptimization = "RelWithDebInfo"
+TargetVexConfig = "development"
+
 def check_cmake():
     """Check that CMake exists in the path."""
     cmake_path = shutil.which("cmake")
@@ -73,8 +76,8 @@ def build_tests(preset_name):
     try:
         result = subprocess.run([
             "cmake",
-            "--build",
-            build_dir,
+            "--build", build_dir,
+            "--preset", preset_name + "-" + TargetVexConfig,
             "--target", "vex_tests",
             "--parallel"
         ], check=True, text=True)
@@ -90,12 +93,12 @@ def run_tests(preset_name):
     
     # Find the test executable
     if platform.system() == "Windows":
-        test_exe = build_dir / "tests" / "vex_tests.exe"
+        test_exe = build_dir / "tests" / TargetOptimization / "vex_tests.exe"
         if not test_exe.exists():
             # Try alternative locations
             test_exe = build_dir / "vex_tests.exe"
     else:
-        test_exe = build_dir / "tests" / "vex_tests"
+        test_exe = build_dir / "tests" / TargetOptimization / "vex_tests"
         if not test_exe.exists():
             test_exe = build_dir / "vex_tests"
     
@@ -122,17 +125,17 @@ def run_tests(preset_name):
 def get_available_configs():
     """Determine which configurations to test based on platform"""
     base_configs = [
-        "clang-debug-vulkan"
+        "clang-vulkan"
     ]
     
     # Only add dx12 and msvc on Windows
     if platform.system() == "Windows":
-        base_configs.extend([ "clang-debug-dx12" ])
+        base_configs.extend([ "clang-dx12" ])
         if check_msvc_requirements():
-            base_configs.extend([ "msvc-debug-vulkan", "msvc-debug-dx12" ])
+            base_configs.extend([ "msvc-vulkan", "msvc-dx12" ])
     # Linux GCC has not yet been used outside of CI, unsure if this will work. Keeping commented for now.
     #else:
-    #    base_configs.extend([ "gcc-debug-vulkan" ])
+    #    base_configs.extend([ "gcc-vulkan" ])
 
     return base_configs
 

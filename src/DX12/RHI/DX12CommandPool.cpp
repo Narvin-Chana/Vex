@@ -18,7 +18,7 @@ DX12CommandPool::DX12CommandPool(RHI& rhi, const ComPtr<DX12Device>& device)
 {
 }
 
-NonNullPtr<RHICommandList> DX12CommandPool::GetOrCreateCommandList(CommandQueueType queueType)
+NonNullPtr<RHICommandList> DX12CommandPool::GetOrCreateCommandList(QueueType queueType)
 {
     DX12CommandList* cmdListPtr = nullptr;
 

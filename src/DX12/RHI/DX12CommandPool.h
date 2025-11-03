@@ -20,7 +20,7 @@ class DX12CommandPool final : public RHICommandPoolBase
 public:
     DX12CommandPool(RHI& rhi, const ComPtr<DX12Device>& device);
 
-    virtual NonNullPtr<RHICommandList> GetOrCreateCommandList(CommandQueueType queueType) override;
+    virtual NonNullPtr<RHICommandList> GetOrCreateCommandList(QueueType queueType) override;
 
     DX12CommandPool(DX12CommandPool&&) = default;
     DX12CommandPool& operator=(DX12CommandPool&&) = default;

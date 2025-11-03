@@ -25,9 +25,9 @@ void RHICommandPoolBase::OnCommandListsSubmitted(std::span<NonNullPtr<RHICommand
 
 void RHICommandPoolBase::ReclaimCommandLists()
 {
-    for (u32 i = 0; i < CommandQueueTypes::Count; ++i)
+    for (u32 i = 0; i < QueueTypes::Count; ++i)
     {
-        for (auto& pool = GetCommandLists(static_cast<CommandQueueType>(i)); auto& cmdList : pool)
+        for (auto& pool = GetCommandLists(static_cast<QueueType>(i)); auto& cmdList : pool)
         {
             // We can only reclaim submitted command lists.
             if (cmdList->GetState() == RHICommandListState::Submitted)
@@ -52,7 +52,7 @@ void RHICommandPoolBase::ReclaimCommandLists()
     }
 }
 
-std::vector<UniqueHandle<RHICommandList>>& RHICommandPoolBase::GetCommandLists(CommandQueueType queueType)
+std::vector<UniqueHandle<RHICommandList>>& RHICommandPoolBase::GetCommandLists(QueueType queueType)
 {
     return commandListsPerQueue[queueType];
 }

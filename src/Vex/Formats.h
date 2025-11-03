@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string_view>
+
 #include <Vex/Hash.h>
 #include <Vex/Types.h>
 
@@ -90,6 +92,12 @@ bool FormatHasSRGBEquivalent(TextureFormat format);
 bool FormatIsDepthStencilCompatible(TextureFormat format);
 
 bool DoesFormatSupportStencil(TextureFormat format);
+
+std::string_view GetFormatHLSLType(TextureFormat format);
+
+bool IsFormatBlockCompressed(TextureFormat format);
+
+bool DoesFormatSupportMipGeneration(TextureFormat format);
 
 } // namespace vex
 

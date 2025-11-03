@@ -23,7 +23,7 @@ void ResourceCleanup::FlushResources(RHIDescriptorPool& descriptorPool, RHIAlloc
 {
     std::erase_if(resourcesInFlight,
                   [&rhi = rhi, &descriptorPool, &allocator](
-                      std::pair<CleanupVariant, std::array<SyncToken, CommandQueueTypes::Count>>& elem) -> bool
+                      std::pair<CleanupVariant, std::array<SyncToken, QueueTypes::Count>>& elem) -> bool
                   {
                       // See if all tokens are finished.
                       for (SyncToken& token : elem.second)

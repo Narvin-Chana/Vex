@@ -53,6 +53,7 @@ enum class ShaderModel : u8
     SM_6_9,
 };
 
+enum class TextureFormat : u8;
 class FeatureChecker
 {
 public:
@@ -62,6 +63,7 @@ public:
     virtual ResourceBindingTier GetResourceBindingTier() const = 0;
     virtual ShaderModel GetShaderModel() const = 0;
     virtual u32 GetMaxLocalConstantsByteSize() const = 0;
+    virtual bool DoesFormatSupportLinearFiltering(TextureFormat format) const = 0;
 };
 
 } // namespace vex

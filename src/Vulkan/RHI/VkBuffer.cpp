@@ -12,7 +12,7 @@
 
 namespace vex::vk
 {
-static ::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDescription& desc)
+static ::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDesc& desc)
 {
     using enum ::vk::BufferUsageFlagBits;
     ::vk::BufferUsageFlags flags = eTransferSrc;
@@ -43,7 +43,7 @@ static ::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDescription& 
     return flags;
 }
 
-VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, VkAllocator& allocator, const BufferDescription& desc)
+VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, VkAllocator& allocator, const BufferDesc& desc)
     : RHIBufferBase{ allocator, desc }
     , ctx{ ctx }
 {

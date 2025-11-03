@@ -20,7 +20,7 @@ class VkTexture;
 class VkCommandList final : public RHICommandListBase
 {
 public:
-    VkCommandList(NonNullPtr<VkGPUContext> ctx, ::vk::UniqueCommandBuffer&& commandBuffer, CommandQueueType type);
+    VkCommandList(NonNullPtr<VkGPUContext> ctx, ::vk::UniqueCommandBuffer&& commandBuffer, QueueType type);
 
     virtual void Open() override;
     virtual void Close() override;
@@ -63,14 +63,14 @@ public:
     using RHICommandListBase::Copy;
     virtual void Copy(RHITexture& src,
                       RHITexture& dst,
-                      std::span<const TextureCopyDescription> textureCopyDescriptions) override;
-    virtual void Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& bufferCopyDescription) override;
+                      std::span<const TextureCopyDesc> textureCopyDesc) override;
+    virtual void Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDesc& bufferCopyDesc) override;
     virtual void Copy(RHIBuffer& src,
                       RHITexture& dst,
-                      std::span<const BufferTextureCopyDescription> copyDescriptions) override;
+                      std::span<const BufferTextureCopyDesc> copyDesc) override;
     virtual void Copy(RHITexture& src,
                       RHIBuffer& dst,
-                      std::span<const BufferTextureCopyDescription> copyDescriptions) override;
+                      std::span<const BufferTextureCopyDesc> copyDesc) override;
 
     ::vk::CommandBuffer GetNativeCommandList()
     {

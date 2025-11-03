@@ -37,7 +37,7 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
     initInfo.Instance = data.rhi->GetNativeInstance();
     initInfo.PhysicalDevice = data.rhi->GetNativePhysicalDevice();
 
-    const auto& commandQueue = data.rhi->GetCommandQueue(vex::CommandQueueType::Graphics);
+    const auto& commandQueue = data.rhi->GetCommandQueue(vex::QueueType::Graphics);
     initInfo.Queue = commandQueue.queue;
     initInfo.QueueFamily = commandQueue.family;
     initInfo.ImageCount = std::to_underlying(data.buffering);
@@ -64,7 +64,7 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
 
     ImGui_ImplDX12_InitInfo initInfo;
     initInfo.Device = data.rhi->GetNativeDevice().Get();
-    initInfo.CommandQueue = data.rhi->GetNativeQueue(vex::CommandQueueType::Graphics).Get();
+    initInfo.CommandQueue = data.rhi->GetNativeQueue(vex::QueueType::Graphics).Get();
     initInfo.NumFramesInFlight = std::to_underlying(data.buffering);
     initInfo.RTVFormat = vex::dx12::TextureFormatToDXGI(data.swapchainFormat);
     initInfo.DSVFormat = vex::dx12::TextureFormatToDXGI(data.depthStencilFormat);

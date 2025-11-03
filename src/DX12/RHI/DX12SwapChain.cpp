@@ -19,7 +19,7 @@ DX12SwapChain::DX12SwapChain(ComPtr<DX12Device>& device,
                              const ComPtr<ID3D12CommandQueue>& graphicsCommandQueue,
                              const PlatformWindow& platformWindow)
     : device{ device }
-    , description(std::move(desc))
+    , desc(std::move(desc))
     , graphicsCommandQueue(graphicsCommandQueue)
 {
     auto ValidateFlipModelSupportedFormats = [](DXGI_FORMAT format)
@@ -28,7 +28,7 @@ DX12SwapChain::DX12SwapChain(ComPtr<DX12Device>& device,
                format == DXGI_FORMAT_R8G8B8A8_UNORM || format == DXGI_FORMAT_R10G10B10A2_UNORM;
     };
 
-    DXGI_FORMAT nativeFormat = TextureFormatToDXGI(description.format);
+    DXGI_FORMAT nativeFormat = TextureFormatToDXGI(desc.format);
     if (!ValidateFlipModelSupportedFormats(nativeFormat))
     {
         VEX_LOG(Fatal, "Invalid swapchain format for the _FLIP_ swap mode.");
@@ -42,7 +42,7 @@ DX12SwapChain::DX12SwapChain(ComPtr<DX12Device>& device,
         .Stereo = false,
         .SampleDesc = { .Count = 1, .Quality = 0 },
         .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
-        .BufferCount = GetBackBufferCount(description.frameBuffering),
+        .BufferCount = GetBackBufferCount(desc.frameBuffering),
         .Scaling = DXGI_SCALING_STRETCH,
         .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
         .AlphaMode = DXGI_ALPHA_MODE_IGNORE,
@@ -56,7 +56,7 @@ DX12SwapChain::~DX12SwapChain() = default;
 
 void DX12SwapChain::Resize(u32 width, u32 height)
 {
-    chk << swapChain->ResizeBuffers(GetBackBufferCount(description.frameBuffering),
+    chk << swapChain->ResizeBuffers(GetBackBufferCount(desc.frameBuffering),
                                     width,
                                     height,
                                     // DXGI_FORMAT_UNKNOWN keeps the previous format
@@ -64,14 +64,14 @@ void DX12SwapChain::Resize(u32 width, u32 height)
                                     DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING);
 }
 
-TextureDescription DX12SwapChain::GetBackBufferTextureDescription() const
+TextureDesc DX12SwapChain::GetBackBufferTextureDescription() const
 {
-    return const_cast<DX12SwapChain&>(*this).AcquireBackBuffer(0)->GetDescription();
+    return const_cast<DX12SwapChain&>(*this).AcquireBackBuffer(0)->GetDesc();
 }
 
 void DX12SwapChain::SetVSync(bool enableVSync)
 {
-    description.useVSync = enableVSync;
+    desc.useVSync = enableVSync;
 }
 
 bool DX12SwapChain::NeedsFlushForVSyncToggle()
@@ -93,14 +93,14 @@ SyncToken DX12SwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandL
     // We instead return the sync token post-present.
     rhi.Submit({ &commandList, 1 }, {});
 
-    chk << swapChain->Present(description.useVSync,
-                              (!description.useVSync && !isFullscreen) ? DXGI_PRESENT_ALLOW_TEARING : 0);
+    chk << swapChain->Present(desc.useVSync,
+                              (!desc.useVSync && !isFullscreen) ? DXGI_PRESENT_ALLOW_TEARING : 0);
 
-    auto& fence = (*rhi.fences)[CommandQueueType::Graphics];
+    auto& fence = (*rhi.fences)[QueueType::Graphics];
     u64 signalValue = fence.nextSignalValue++;
-    chk << rhi.GetNativeQueue(CommandQueueType::Graphics)->Signal(fence.fence.Get(), signalValue);
+    chk << rhi.GetNativeQueue(QueueType::Graphics)->Signal(fence.fence.Get(), signalValue);
 
-    return { CommandQueueType::Graphics, signalValue };
+    return { QueueType::Graphics, signalValue };
 }
 
 u8 DX12SwapChain::GetBackBufferCount(FrameBuffering frameBuffering)

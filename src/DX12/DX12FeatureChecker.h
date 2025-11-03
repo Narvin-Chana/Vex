@@ -18,6 +18,7 @@ public:
     virtual ResourceBindingTier GetResourceBindingTier() const override;
     virtual ShaderModel GetShaderModel() const override;
     virtual u32 GetMaxLocalConstantsByteSize() const override;
+    virtual bool DoesFormatSupportLinearFiltering(TextureFormat format) const override;
 
     static FeatureLevel ConvertDX12FeatureLevelToFeatureLevel(D3D_FEATURE_LEVEL featureLevel);
     static D3D_FEATURE_LEVEL ConvertFeatureLevelToDX12FeatureLevel(FeatureLevel featureLevel);
@@ -26,6 +27,8 @@ public:
     static ShaderModel ConvertDX12ShaderModelToShaderModel(D3D_SHADER_MODEL shaderModel);
 
 private:
+    ComPtr<ID3D12Device> device;
+
     // Cached feature support data (to avoid requerying the device).
     D3D12_FEATURE_DATA_D3D12_OPTIONS options;
     D3D12_FEATURE_DATA_D3D12_OPTIONS1 options1;

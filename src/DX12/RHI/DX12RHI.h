@@ -27,7 +27,7 @@ public:
     virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() override;
     virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) override;
 
-    virtual RHISwapChain CreateSwapChain(const SwapChainDescription& description,
+    virtual RHISwapChain CreateSwapChain(const SwapChainDescription& desc,
                                          const PlatformWindow& platformWindow) override;
 
     virtual RHICommandPool CreateCommandPool() override;
@@ -36,8 +36,8 @@ public:
     virtual RHIRayTracingPipelineState CreateRayTracingPipelineState(const RayTracingPipelineStateKey& key) override;
     virtual RHIResourceLayout CreateResourceLayout(RHIDescriptorPool& descriptorPool) override;
 
-    virtual RHITexture CreateTexture(RHIAllocator& allocator, const TextureDescription& description) override;
-    virtual RHIBuffer CreateBuffer(RHIAllocator& allocator, const BufferDescription& description) override;
+    virtual RHITexture CreateTexture(RHIAllocator& allocator, const TextureDesc& desc) override;
+    virtual RHIBuffer CreateBuffer(RHIAllocator& allocator, const BufferDesc& desc) override;
 
     virtual RHIDescriptorPool CreateDescriptorPool() override;
 
@@ -48,9 +48,9 @@ public:
 
     virtual void WaitForTokenOnCPU(const SyncToken& syncToken) override;
     virtual bool IsTokenComplete(const SyncToken& syncToken) const override;
-    virtual void WaitForTokenOnGPU(CommandQueueType waitingQueue, const SyncToken& waitFor) override;
+    virtual void WaitForTokenOnGPU(QueueType waitingQueue, const SyncToken& waitFor) override;
 
-    virtual std::array<SyncToken, CommandQueueTypes::Count> GetMostRecentSyncTokenPerQueue() const override;
+    virtual std::array<SyncToken, QueueTypes::Count> GetMostRecentSyncTokenPerQueue() const override;
 
     virtual std::vector<SyncToken> Submit(std::span<NonNullPtr<RHICommandList>> commandLists,
                                           std::span<SyncToken> dependencies) override;
@@ -58,7 +58,7 @@ public:
     virtual void FlushGPU() override;
 
     ComPtr<DX12Device>& GetNativeDevice();
-    ComPtr<ID3D12CommandQueue>& GetNativeQueue(CommandQueueType queueType);
+    ComPtr<ID3D12CommandQueue>& GetNativeQueue(QueueType queueType);
 
 private:
     bool enableGPUDebugLayer = false;
@@ -71,8 +71,8 @@ private:
 
     ComPtr<DX12Device> device;
 
-    std::array<ComPtr<ID3D12CommandQueue>, CommandQueueTypes::Count> queues;
-    std::optional<std::array<DX12Fence, CommandQueueTypes::Count>> fences;
+    std::array<ComPtr<ID3D12CommandQueue>, QueueTypes::Count> queues;
+    std::optional<std::array<DX12Fence, QueueTypes::Count>> fences;
 
     friend class DX12SwapChain;
 };

@@ -21,27 +21,27 @@
 namespace vex
 {
 
-GfxBackend::GfxBackend(const BackendDescription& description)
-    : rhi(RHI(description.platformWindow.windowHandle,
-              description.enableGPUDebugLayer,
-              description.enableGPUBasedValidation))
-    , description(description)
+GfxBackend::GfxBackend(const GraphicsCreateDesc& desc)
+    : desc(desc)
+    , rhi(desc.platformWindow.windowHandle, desc.enableGPUDebugLayer, desc.enableGPUBasedValidation)
     , resourceCleanup(rhi)
     , textureRegistry(DefaultRegistrySize)
     , bufferRegistry(DefaultRegistrySize)
-    , presentTextures(std::to_underlying(description.frameBuffering))
-    , presentTokens(std::to_underlying(description.frameBuffering))
+    , presentTextures(std::to_underlying(desc.frameBuffering))
+    , presentTokens(std::to_underlying(desc.frameBuffering))
 {
+    VEX_LOG(Info, "Creating Vex Graphics Backend with API Support:\n\tDX12: {} Vulkan: {}", VEX_DX12, VEX_VULKAN);
+
     std::string vexTargetName;
-    if (VEX_DEBUG)
+    if constexpr (VEX_DEBUG)
     {
         vexTargetName = "Debug (no optimizations with debug symbols)";
     }
-    else if (VEX_DEVELOPMENT)
+    else if constexpr (VEX_DEVELOPMENT)
     {
         vexTargetName = "Development (full optimizations with debug symbols)";
     }
-    else if (VEX_SHIPPING)
+    else if constexpr (VEX_SHIPPING)
     {
         vexTargetName = "Shipping (full optimizations with no debug symbols)";
     }
@@ -72,29 +72,32 @@ GfxBackend::GfxBackend(const BackendDescription& description)
 
     VEX_LOG(Info,
             "Created graphics backend with width {} and height {}.",
-            description.platformWindow.width,
-            description.platformWindow.height);
+            desc.platformWindow.width,
+            desc.platformWindow.height);
 
     commandPool.emplace(rhi.CreateCommandPool());
 
     descriptorPool = rhi.CreateDescriptorPool();
 
-    psCache.emplace(&rhi, *descriptorPool, &resourceCleanup, description.shaderCompilerSettings);
+    psCache.emplace(&rhi, *descriptorPool, &resourceCleanup, desc.shaderCompilerSettings);
 
     allocator = rhi.CreateAllocator();
 
-    if (description.useSwapChain)
+    if (desc.useSwapChain)
     {
         swapChain.emplace(rhi.CreateSwapChain(
             {
-                .format = description.swapChainFormat,
-                .frameBuffering = description.frameBuffering,
-                .useVSync = description.useVSync,
+                .format = desc.swapChainFormat,
+                .frameBuffering = desc.frameBuffering,
+                .useVSync = desc.useVSync,
             },
-            description.platformWindow));
+            desc.platformWindow));
 
         CreatePresentTextures();
     }
+
+    // TODO(https://trello.com/c/T1DY4QOT): See the comment inside SetSampler().
+    SetSamplers({});
 }
 
 GfxBackend::~GfxBackend()
@@ -121,7 +124,7 @@ GfxBackend::~GfxBackend()
 
 void GfxBackend::Present(bool isFullscreenMode)
 {
-    if (!description.useSwapChain)
+    if (!desc.useSwapChain)
     {
         VEX_LOG(Fatal, "Cannot present without using a swapchain!");
     }
@@ -155,7 +158,7 @@ void GfxBackend::Present(bool isFullscreenMode)
 
         // Copy the present texture to the backbuffer.
         // Must be a graphics queue in order to be able to move the backbuffer to the present state.
-        NonNullPtr<RHICommandList> cmdList = commandPool->GetOrCreateCommandList(CommandQueueType::Graphics);
+        NonNullPtr<RHICommandList> cmdList = commandPool->GetOrCreateCommandList(QueueType::Graphics);
         cmdList->Open();
 
         // If the present texture has not been used yet, its data is in a invalid state.
@@ -167,18 +170,20 @@ void GfxBackend::Present(bool isFullscreenMode)
             cmdList->Barrier({}, { &barrier, 1 });
             cmdList->ClearTexture(RHITextureBinding(TextureBinding(GetCurrentPresentTexture()), presentTexture),
                                   TextureUsage::RenderTarget,
-                                  presentTexture.GetDescription().clearValue);
+                                  presentTexture.GetDesc().clearValue);
         }
 
         std::array barriers = {
             RHITextureBarrier{
                 presentTexture,
+                TextureSubresource{},
                 RHIBarrierSync::Copy,
                 RHIBarrierAccess::CopySource,
                 RHITextureLayout::CopySource,
             },
             RHITextureBarrier{
                 *backBuffer,
+                TextureSubresource{},
                 RHIBarrierSync::Copy,
                 RHIBarrierAccess::CopyDest,
                 RHITextureLayout::CopyDest,
@@ -196,16 +201,16 @@ void GfxBackend::Present(bool isFullscreenMode)
         commandPool->OnCommandListsSubmitted({ &cmdList, 1 }, { &presentTokens[currentFrameIndex], 1 });
     }
 
-    currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(description.frameBuffering);
+    currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(desc.frameBuffering);
 
     CleanupResources();
 }
 
-CommandContext GfxBackend::BeginScopedCommandContext(CommandQueueType queueType,
+CommandContext GfxBackend::BeginScopedCommandContext(QueueType queueType,
                                                      SubmissionPolicy submissionPolicy,
                                                      std::span<SyncToken> dependencies)
 {
-    if (submissionPolicy == SubmissionPolicy::DeferToPresent && !description.useSwapChain)
+    if (submissionPolicy == SubmissionPolicy::DeferToPresent && !desc.useSwapChain)
     {
         VEX_LOG(Fatal,
                 "Cannot use deferred submission policy when your graphics backend has no swapchain. Use "
@@ -253,7 +258,7 @@ std::vector<SyncToken> GfxBackend::EndCommandContext(CommandContext& ctx)
     // No swapchain means we submit asap, since no presents will occur.
     // If we have dependencies, we submit asap, since in order to insert dependency signals, we have to submit this
     // separately anyways.
-    if (!description.useSwapChain || ctx.submissionPolicy == SubmissionPolicy::Immediate || !ctx.dependencies.empty())
+    if (!desc.useSwapChain || ctx.submissionPolicy == SubmissionPolicy::Immediate || !ctx.dependencies.empty())
     {
         syncTokens = rhi.Submit({ &ctx.cmdList, 1 }, ctx.dependencies);
 
@@ -269,7 +274,7 @@ std::vector<SyncToken> GfxBackend::EndCommandContext(CommandContext& ctx)
         // resources at this point.
         CleanupResources();
     }
-    else if (description.useSwapChain && (ctx.submissionPolicy == SubmissionPolicy::DeferToPresent))
+    else if (desc.useSwapChain && (ctx.submissionPolicy == SubmissionPolicy::DeferToPresent))
     {
         // The submitting of a commandList when we have a swapchain should be batched as much as possible for further
         // driver optimizations (allowed to append them together during execution or reorder if no dependencies
@@ -290,14 +295,13 @@ std::vector<SyncToken> GfxBackend::EndCommandContext(CommandContext& ctx)
     return syncTokens;
 }
 
-Texture GfxBackend::CreateTexture(TextureDescription description, ResourceLifetime lifetime)
+Texture GfxBackend::CreateTexture(TextureDesc desc, ResourceLifetime lifetime)
 {
-    TextureUtil::ValidateTextureDescription(description);
+    TextureUtil::ValidateTextureDescription(desc);
 
-    if (description.mips == 0)
+    if (desc.mips == 0)
     {
-        description.mips =
-            ComputeMipCount(std::make_tuple(description.width, description.height, description.GetDepth()));
+        desc.mips = ComputeMipCount(std::make_tuple(desc.width, desc.height, desc.GetDepth()));
     }
 
     if (lifetime == ResourceLifetime::Dynamic)
@@ -309,13 +313,13 @@ Texture GfxBackend::CreateTexture(TextureDescription description, ResourceLifeti
         VEX_NOT_YET_IMPLEMENTED();
     }
 
-    return Texture{ .handle = textureRegistry.AllocateElement(std::move(rhi.CreateTexture(*allocator, description))),
-                    .description = std::move(description) };
+    return Texture{ .handle = textureRegistry.AllocateElement(std::move(rhi.CreateTexture(*allocator, desc))),
+                    .desc = std::move(desc) };
 }
 
-Buffer GfxBackend::CreateBuffer(BufferDescription description, ResourceLifetime lifetime)
+Buffer GfxBackend::CreateBuffer(BufferDesc desc, ResourceLifetime lifetime)
 {
-    BufferUtil::ValidateBufferDescription(description);
+    BufferUtil::ValidateBufferDesc(desc);
 
     if (lifetime == ResourceLifetime::Dynamic)
     {
@@ -326,16 +330,16 @@ Buffer GfxBackend::CreateBuffer(BufferDescription description, ResourceLifetime 
         VEX_NOT_YET_IMPLEMENTED();
     }
 
-    return Buffer{ .handle = bufferRegistry.AllocateElement(std::move(rhi.CreateBuffer(*allocator, description))),
-                   .description = std::move(description) };
+    return Buffer{ .handle = bufferRegistry.AllocateElement(std::move(rhi.CreateBuffer(*allocator, desc))),
+                   .desc = std::move(desc) };
 }
 
 ResourceMappedMemory GfxBackend::MapResource(const Buffer& buffer)
 {
     RHIBuffer& rhiBuffer = GetRHIBuffer(buffer.handle);
 
-    if (rhiBuffer.GetDescription().memoryLocality != ResourceMemoryLocality::CPUWrite &&
-        rhiBuffer.GetDescription().memoryLocality != ResourceMemoryLocality::CPURead)
+    if (rhiBuffer.GetDesc().memoryLocality != ResourceMemoryLocality::CPUWrite &&
+        rhiBuffer.GetDesc().memoryLocality != ResourceMemoryLocality::CPURead)
     {
         VEX_LOG(Fatal, "A non CPU-visible buffer cannot be mapped to.");
     }
@@ -347,8 +351,8 @@ ResourceMappedMemory GfxBackend::MapResource(const Texture& texture)
 {
     RHITexture& rhiTexture = GetRHITexture(texture.handle);
 
-    if (rhiTexture.GetDescription().memoryLocality != ResourceMemoryLocality::CPUWrite &&
-        rhiTexture.GetDescription().memoryLocality != ResourceMemoryLocality::CPURead)
+    if (rhiTexture.GetDesc().memoryLocality != ResourceMemoryLocality::CPUWrite &&
+        rhiTexture.GetDesc().memoryLocality != ResourceMemoryLocality::CPURead)
     {
         VEX_LOG(Fatal, "Texture needs to have CPUWrite or CPURead locality to be mapped to directly");
     }
@@ -368,7 +372,7 @@ void GfxBackend::DestroyBuffer(const Buffer& buffer)
 
 BindlessHandle GfxBackend::GetTextureBindlessHandle(const TextureBinding& bindlessResource)
 {
-    bindlessResource.Validate();
+    BindingUtil::ValidateTextureBinding(bindlessResource, bindlessResource.texture.desc.usage);
 
     auto& texture = GetRHITexture(bindlessResource.texture.handle);
     return texture.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
@@ -376,7 +380,7 @@ BindlessHandle GfxBackend::GetTextureBindlessHandle(const TextureBinding& bindle
 
 BindlessHandle GfxBackend::GetBufferBindlessHandle(const BufferBinding& bindlessResource)
 {
-    bindlessResource.Validate();
+    BindingUtil::ValidateBufferBinding(bindlessResource, bindlessResource.buffer.desc.usage);
 
     auto& buffer = GetRHIBuffer(bindlessResource.buffer.handle);
     return buffer.GetOrCreateBindlessView(bindlessResource.usage, bindlessResource.strideByteSize, *descriptorPool);
@@ -409,8 +413,7 @@ void GfxBackend::OnWindowResized(u32 newWidth, u32 newHeight)
     // Do not resize if any of the dimensions is 0, or if the resize gives us the same window size as we have
     // currently.
     if (newWidth == 0 || newHeight == 0 ||
-        (isSwapchainValid &&
-         (newWidth == description.platformWindow.width && newHeight == description.platformWindow.height)))
+        (isSwapchainValid && (newWidth == desc.platformWindow.width && newHeight == desc.platformWindow.height)))
     {
         return;
     }
@@ -434,14 +437,14 @@ void GfxBackend::OnWindowResized(u32 newWidth, u32 newHeight)
         renderExtension->OnResize(newWidth, newHeight);
     }
 
-    description.platformWindow.width = newWidth;
-    description.platformWindow.height = newHeight;
+    desc.platformWindow.width = newWidth;
+    desc.platformWindow.height = newHeight;
     isSwapchainValid = true;
 }
 
 Texture GfxBackend::GetCurrentPresentTexture()
 {
-    if (!description.useSwapChain)
+    if (!desc.useSwapChain)
     {
         VEX_LOG(Fatal, "Your backend was created without swapchain support. Backbuffers were not created.");
     }
@@ -474,7 +477,7 @@ void GfxBackend::WaitForTokenOnCPU(const SyncToken& syncToken)
 
 void GfxBackend::RecompileAllShaders()
 {
-    if (description.shaderCompilerSettings.enableShaderDebugging)
+    if (desc.shaderCompilerSettings.enableShaderDebugging)
     {
         psCache->GetShaderCompiler().MarkAllShadersDirty();
     }
@@ -486,7 +489,7 @@ void GfxBackend::RecompileAllShaders()
 
 void GfxBackend::SetShaderCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback)
 {
-    if (description.shaderCompilerSettings.enableShaderDebugging)
+    if (desc.shaderCompilerSettings.enableShaderDebugging)
     {
         psCache->GetShaderCompiler().SetCompilationErrorsCallback(callback);
     }
@@ -498,7 +501,13 @@ void GfxBackend::SetShaderCompilationErrorsCallback(std::function<ShaderCompileE
 
 void GfxBackend::SetSamplers(std::span<const TextureSampler> newSamplers)
 {
-    psCache->GetResourceLayout().SetSamplers(newSamplers);
+    // TODO(https://trello.com/c/T1DY4QOT): This is not the cleanest, we need a linear sampler for the mip generation
+    // shader, so we add it to the end of the users samplers. Instead we should probably have a way to declare a
+    // specific sampler per-pass? Or support bindless samplers? Unsure...
+    std::vector<TextureSampler> samplers = { newSamplers.begin(), newSamplers.end() };
+    samplers.push_back(TextureSampler::CreateSampler(FilterMode::Linear, AddressMode::Clamp));
+    builtInLinearSamplerSlot = samplers.size() - 1u;
+    psCache->GetResourceLayout().SetSamplers(samplers);
 }
 
 RenderExtension* GfxBackend::RegisterRenderExtension(UniqueHandle<RenderExtension>&& renderExtension)
@@ -523,7 +532,7 @@ void GfxBackend::UnregisterRenderExtension(NonNullPtr<RenderExtension> renderExt
 
 void GfxBackend::RecompileChangedShaders()
 {
-    if (description.shaderCompilerSettings.enableShaderDebugging)
+    if (desc.shaderCompilerSettings.enableShaderDebugging)
     {
         psCache->GetShaderCompiler().MarkAllStaleShadersDirty();
     }
@@ -550,13 +559,13 @@ RHIBuffer& GfxBackend::GetRHIBuffer(BufferHandle bufferHandle)
 
 void GfxBackend::CreatePresentTextures()
 {
-    presentTextures.resize(std::to_underlying(description.frameBuffering));
-    for (u8 presentTextureIndex = 0; presentTextureIndex < std::to_underlying(description.frameBuffering);
+    presentTextures.resize(std::to_underlying(desc.frameBuffering));
+    for (u8 presentTextureIndex = 0; presentTextureIndex < std::to_underlying(desc.frameBuffering);
          ++presentTextureIndex)
     {
-        TextureDescription presentTextureDesc = swapChain->GetBackBufferTextureDescription();
+        TextureDesc presentTextureDesc = swapChain->GetBackBufferTextureDescription();
         presentTextureDesc.name = std::format("PresentTexture_{}", presentTextureIndex);
-        presentTextureDesc.clearValue = description.presentTextureClearValue;
+        presentTextureDesc.clearValue = desc.presentTextureClearValue;
         presentTextures[presentTextureIndex] = CreateTexture(presentTextureDesc);
     }
 }

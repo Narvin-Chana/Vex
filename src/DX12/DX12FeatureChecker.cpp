@@ -4,6 +4,7 @@
 
 #include <Vex/Logger.h>
 
+#include <DX12/DX12Formats.h>
 #include <DX12/DX12Headers.h>
 #include <DX12/DXGIFactory.h>
 #include <DX12/HRChecker.h>
@@ -12,6 +13,7 @@ namespace vex::dx12
 {
 
 DX12FeatureChecker::DX12FeatureChecker(const ComPtr<ID3D12Device>& device)
+    : device{ device }
 {
     // Try to get device5 interface (needed for ray tracing)
     rayTracingSupported = false;
@@ -111,6 +113,15 @@ u32 DX12FeatureChecker::GetMaxLocalConstantsByteSize() const
 {
     // 64 DWORDS is the hard-coded DX12 limit for root signatures.
     return 64 * sizeof(DWORD);
+}
+
+bool DX12FeatureChecker::DoesFormatSupportLinearFiltering(TextureFormat format) const
+{
+    D3D12_FEATURE_DATA_FORMAT_SUPPORT formatSupport{ .Format = TextureFormatToDXGI(format) };
+    chk << device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &formatSupport, sizeof(formatSupport));
+
+    const bool supportsLinearFiltering = (formatSupport.Support1 & D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE) != 0;
+    return supportsLinearFiltering;
 }
 
 FeatureLevel DX12FeatureChecker::ConvertDX12FeatureLevelToFeatureLevel(D3D_FEATURE_LEVEL featureLevel)

@@ -19,6 +19,6 @@ enum class GraphicsAPI : u8
     Vulkan
 };
 
-UniqueHandle<GfxBackend> CreateGraphicsBackend(const BackendDescription& description);
+UniqueHandle<GfxBackend> CreateGraphicsBackend(const GraphicsCreateDesc& desc);
 
 } // namespace vex

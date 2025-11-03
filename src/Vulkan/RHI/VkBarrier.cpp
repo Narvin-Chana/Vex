@@ -49,6 +49,8 @@ namespace vex::vk
         return eAllGraphics;
     case AllCommands:
         return eAllCommands;
+    case Blit:
+        return eBlit;
     default:
         VEX_LOG(Fatal, "Unsupported RHIBarrierSync!");
         std::unreachable();

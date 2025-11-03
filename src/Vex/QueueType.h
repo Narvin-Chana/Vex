@@ -5,7 +5,7 @@
 namespace vex
 {
 
-namespace CommandQueueTypes
+namespace QueueTypes
 {
 enum Value : u8
 {
@@ -17,10 +17,10 @@ enum Value : u8
     // Graphics operations (includes Compute and Copy capabilities)
     Graphics = 2,
 };
-// Not using a Count enum value allows us to more easily iterate over the CommandQueueTypes with magic_enum.
+// Not using a Count enum value allows us to more easily iterate over the QueueTypes with magic_enum.
 static constexpr u8 Count = 3;
-} // namespace CommandQueueTypes
+} // namespace QueueTypes
 
-using CommandQueueType = CommandQueueTypes::Value;
+using QueueType = QueueTypes::Value;
 
 } // namespace vex

@@ -60,7 +60,7 @@ inline bool IsBindingUsageCompatibleWithBufferUsage(BufferUsage::Flags usages, B
     return true;
 }
 
-struct BufferDescription
+struct BufferDesc
 {
     std::string name;
     u64 byteSize = 0;
@@ -70,19 +70,19 @@ struct BufferDescription
     // Helpers to create a buffer description.
 
     // Creates a CPUWrite buffer useable as a Uniform (/constant) Buffer.
-    static BufferDescription CreateUniformBufferDesc(std::string name, u64 byteSize);
+    static BufferDesc CreateUniformBufferDesc(std::string name, u64 byteSize);
     // Creates a GPUOnly buffer useable as an Vertex Buffer.
-    static BufferDescription CreateVertexBufferDesc(std::string name, u64 byteSize, bool allowShaderRead = false);
+    static BufferDesc CreateVertexBufferDesc(std::string name, u64 byteSize, bool allowShaderRead = false);
     // Creates a GPUOnly buffer useable as an Index Buffer.
-    static BufferDescription CreateIndexBufferDesc(std::string name, u64 byteSize, bool allowShaderRead = false);
+    static BufferDesc CreateIndexBufferDesc(std::string name, u64 byteSize, bool allowShaderRead = false);
     // Creates a CPUWrite staging buffer useful for uploading data to GPUOnly resources.
-    static BufferDescription CreateStagingBufferDesc(std::string name,
-                                                     u64 byteSize,
-                                                     BufferUsage::Flags usageFlags = BufferUsage::None);
+    static BufferDesc CreateStagingBufferDesc(std::string name,
+                                              u64 byteSize,
+                                              BufferUsage::Flags usageFlags = BufferUsage::None);
     // Creates a CPURead readback buffer, used for performing data readback from the GPU to the CPU.
-    static BufferDescription CreateReadbackBufferDesc(std::string name,
-                                                      u64 byteSize,
-                                                      BufferUsage::Flags usageFlags = BufferUsage::None);
+    static BufferDesc CreateReadbackBufferDesc(std::string name,
+                                               u64 byteSize,
+                                               BufferUsage::Flags usageFlags = BufferUsage::None);
 };
 
 // Strongly defined type represents a buffer.
@@ -96,30 +96,41 @@ static constexpr BufferHandle GInvalidBufferHandle;
 struct Buffer final
 {
     BufferHandle handle;
-    BufferDescription description;
+    BufferDesc desc;
 };
 
-struct BufferSubresource
+static constexpr u64 GBufferWholeSize = ~static_cast<u64>(0);
+
+struct BufferRegion
 {
-    u64 offset;
-    u64 size;
+    u64 offset = 0;
+    u64 byteSize = GBufferWholeSize;
+
+    u64 GetByteSize(const BufferDesc& desc) const;
+
+    constexpr bool operator==(const BufferRegion&) const = default;
+
+    static BufferRegion FullBuffer();
 };
 
-struct BufferCopyDescription
+struct BufferCopyDesc
 {
     u64 srcOffset;
     u64 dstOffset;
-    u64 size;
+    u64 byteSize = GBufferWholeSize;
+
+    u64 GetByteSize(const BufferDesc& desc) const;
+
+    constexpr bool operator==(const BufferCopyDesc&) const = default;
 };
 
 namespace BufferUtil
 {
-void ValidateBufferDescription(const BufferDescription& desc);
-void ValidateBufferCopyDescription(const BufferDescription& srcDesc,
-                                   const BufferDescription& dstDesc,
-                                   const BufferCopyDescription& copyDesc);
-void ValidateBufferSubresource(const BufferDescription& desc, const BufferSubresource& subresource);
-void ValidateSimpleBufferCopy(const BufferDescription& srcDesc, const BufferDescription& dstDesc);
+
+void ValidateBufferDesc(const BufferDesc& desc);
+void ValidateBufferCopyDesc(const BufferDesc& srcDesc, const BufferDesc& dstDesc, const BufferCopyDesc& copyDesc);
+void ValidateBufferRegion(const BufferDesc& desc, const BufferRegion& region);
+void ValidateSimpleBufferCopy(const BufferDesc& srcDesc, const BufferDesc& dstDesc);
 
 } // namespace BufferUtil
 

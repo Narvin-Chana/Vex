@@ -14,14 +14,14 @@
 namespace vex
 {
 
-void RayTracingPassDescription::ValidateShaderTypes(const RayTracingPassDescription& description)
+void RayTracingPassDescription::ValidateShaderTypes(const RayTracingPassDescription& desc)
 {
-    if (description.rayGenerationShader.type != ShaderType::RayGenerationShader)
+    if (desc.rayGenerationShader.type != ShaderType::RayGenerationShader)
     {
-        VEX_INVALID_RT_SHADER_TYPE(RayGenerationShader, description.rayGenerationShader.type);
+        VEX_INVALID_RT_SHADER_TYPE(RayGenerationShader, desc.rayGenerationShader.type);
     }
 
-    for (const auto& rayMiss : description.rayMissShaders)
+    for (const auto& rayMiss : desc.rayMissShaders)
     {
         if (rayMiss.type != ShaderType::RayMissShader)
         {
@@ -29,7 +29,7 @@ void RayTracingPassDescription::ValidateShaderTypes(const RayTracingPassDescript
         }
     }
 
-    for (const auto& hitGroup : description.hitGroups)
+    for (const auto& hitGroup : desc.hitGroups)
     {
         if (hitGroup.rayClosestHitShader.type != ShaderType::RayClosestHitShader)
         {
@@ -47,7 +47,7 @@ void RayTracingPassDescription::ValidateShaderTypes(const RayTracingPassDescript
         }
     }
 
-    for (const auto& rayCallable : description.rayCallableShaders)
+    for (const auto& rayCallable : desc.rayCallableShaders)
     {
         if (rayCallable.type != ShaderType::RayCallableShader)
         {

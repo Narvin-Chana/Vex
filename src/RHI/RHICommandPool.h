@@ -19,17 +19,17 @@ class RHICommandPoolBase
 public:
     RHICommandPoolBase(RHI& rhi);
     // Available -> Recording
-    virtual NonNullPtr<RHICommandList> GetOrCreateCommandList(CommandQueueType queueType) = 0;
+    virtual NonNullPtr<RHICommandList> GetOrCreateCommandList(QueueType queueType) = 0;
     // Recording -> Submitted
     void OnCommandListsSubmitted(std::span<NonNullPtr<RHICommandList>> submits, std::span<SyncToken> syncTokens);
     // Submitted -> Available
     void ReclaimCommandLists();
 
 protected:
-    std::vector<UniqueHandle<RHICommandList>>& GetCommandLists(CommandQueueType queueType);
+    std::vector<UniqueHandle<RHICommandList>>& GetCommandLists(QueueType queueType);
 
     NonNullPtr<RHI> rhi;
-    std::array<std::vector<UniqueHandle<RHICommandList>>, CommandQueueTypes::Count> commandListsPerQueue;
+    std::array<std::vector<UniqueHandle<RHICommandList>>, QueueTypes::Count> commandListsPerQueue;
 };
 
 } // namespace vex

@@ -60,7 +60,7 @@ void ImGuiRenderExtension::OnPrePresent()
 
     // Render ImGui to the backbuffer.
     {
-        vex::CommandContext ctx = graphics.BeginScopedCommandContext(vex::CommandQueueType::Graphics);
+        vex::CommandContext ctx = graphics.BeginScopedCommandContext(vex::QueueType::Graphics);
 
         vex::TextureBinding backBufferBinding = { .texture = graphics.GetCurrentPresentTexture() };
         vex::TextureClearValue clearValue{ .flags = vex::TextureClear::ClearColor, .color = { 0, 0, 0, 0 } };

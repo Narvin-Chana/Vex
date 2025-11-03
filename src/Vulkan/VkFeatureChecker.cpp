@@ -201,7 +201,24 @@ std::string_view VkFeatureChecker::GetMaxSupportedSpirVVersion() const
     return "spirv_1_0";
 }
 
-bool VkFeatureChecker::DoesTextureFormatSupportLinearFiltering(TextureFormat format)
+std::string_view VkFeatureChecker::GetMaxSupportedVulkanVersion() const
+{
+    if (deviceProperties.apiVersion >= VK_API_VERSION_1_3)
+    {
+        return "vulkan1.3";
+    }
+    else if (deviceProperties.apiVersion >= VK_API_VERSION_1_2)
+    {
+        return "vulkan1.2";
+    }
+    else if (deviceProperties.apiVersion >= VK_API_VERSION_1_1)
+    {
+        return "vulkan1.1";
+    }
+    return "vulkan1.0";
+}
+
+bool VkFeatureChecker::DoesFormatSupportLinearFiltering(TextureFormat format) const
 {
     ::vk::FormatProperties formatProperties = physDevice.getFormatProperties(TextureFormatToVulkan(format));
     return !!(formatProperties.optimalTilingFeatures & ::vk::FormatFeatureFlagBits::eSampledImageFilterLinear);

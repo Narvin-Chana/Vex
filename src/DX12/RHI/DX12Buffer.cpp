@@ -11,7 +11,7 @@
 namespace vex::dx12
 {
 
-DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, const BufferDescription& desc)
+DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, const BufferDesc& desc)
     : RHIBufferBase(allocator, desc)
     , device(device)
 {

@@ -12,7 +12,7 @@
 
 namespace vex
 {
-struct BufferDescription;
+struct BufferDesc;
 struct BufferBinding;
 } // namespace vex
 
@@ -44,7 +44,7 @@ namespace vex::dx12
 class DX12Buffer final : public RHIBufferBase
 {
 public:
-    DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, const BufferDescription& desc);
+    DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, const BufferDesc& desc);
 
     virtual BindlessHandle GetOrCreateBindlessView(BufferBindingUsage usage,
                                                    std::optional<u32> strideByteSize,

@@ -5,7 +5,7 @@
 #include <utility>
 #include <vector>
 
-#include <Vex/CommandQueueType.h>
+#include <Vex/QueueType.h>
 #include <Vex/ResourceCopy.h>
 #include <Vex/Synchronization.h>
 #include <Vex/Types.h>
@@ -32,7 +32,7 @@ enum class RHICommandListState : u8
 class RHICommandListBase
 {
 public:
-    RHICommandListBase(CommandQueueType type)
+    RHICommandListBase(QueueType type)
         : type(type)
     {
     }
@@ -80,33 +80,29 @@ public:
     virtual void GenerateMips(RHITexture& texture) = 0;
 
     // Copies the whole texture data from src to dst. These textures should have the same size, mips, slice, type,
-    // etc...
+    // format, etc...
     virtual void Copy(RHITexture& src, RHITexture& dst);
     // Copies from src to dst the various copy descriptions.
-    virtual void Copy(RHITexture& src,
-                      RHITexture& dst,
-                      std::span<const TextureCopyDescription> textureCopyDescriptions) = 0;
+    virtual void Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDesc> textureCopyDescriptions) = 0;
     // Copies the whole contents of src to dst. Buffers need to have the same byte size.
     virtual void Copy(RHIBuffer& src, RHIBuffer& dst);
     // Copies the buffer from src to dst.
-    virtual void Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDescription& bufferCopyDescription) = 0;
-    // Copies the complete contents of the buffer to all regions of the dst texture.
+    virtual void Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDesc& bufferCopyDescription) = 0;
+    // Copies the complete contents of the buffer to the dst texture.
     // This assumes the texture regions are contiguously arranged in the buffer. The whole content of the texture must
     // be in the buffer.
     virtual void Copy(RHIBuffer& src, RHITexture& dst);
     // Copies the different regions of buffers to dst texture regions.
-    virtual void Copy(RHIBuffer& src,
-                      RHITexture& dst,
-                      std::span<const BufferTextureCopyDescription> copyDescriptions) = 0;
+    virtual void Copy(RHIBuffer& src, RHITexture& dst, std::span<const BufferTextureCopyDesc> copyDescs) = 0;
 
+    // Copies a texture into a buffer.
     virtual void Copy(RHITexture& src, RHIBuffer& dst);
-    virtual void Copy(RHITexture& src,
-                      RHIBuffer& dst,
-                      std::span<const BufferTextureCopyDescription> copyDescriptions) = 0;
+    // Copies a texture into a buffer using copyDescs.
+    virtual void Copy(RHITexture& src, RHIBuffer& dst, std::span<const BufferTextureCopyDesc> copyDescs) = 0;
 
     virtual RHIScopedGPUEvent CreateScopedMarker(const char* label, std::array<float, 3> labelColor) = 0;
 
-    CommandQueueType GetType() const
+    QueueType GetType() const
     {
         return type;
     }
@@ -135,7 +131,7 @@ public:
     }
 
 protected:
-    CommandQueueType type;
+    QueueType type;
 
     RHICommandListState state = RHICommandListState::Available;
     std::vector<SyncToken> syncTokens;
