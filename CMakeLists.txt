@@ -137,9 +137,8 @@ add_library(Vex STATIC
     "src/Vex/RHIImpl/RHIAllocator.h"
     # Vex API
     "src/Vex.h"
-    "src/Vex.cpp"
-    "src/Vex/GfxBackend.h" 
-    "src/Vex/GfxBackend.cpp" 
+    "src/Vex/Graphics.h" 
+    "src/Vex/Graphics.cpp" 
     "src/Vex/Formats.h" 
     "src/Vex/PlatformWindow.h" 
     "src/Vex/Types.h" 

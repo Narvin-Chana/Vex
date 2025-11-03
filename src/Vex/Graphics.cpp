@@ -1,4 +1,4 @@
-#include "GfxBackend.h"
+#include "Graphics.h"
 
 #include <utility>
 
@@ -21,7 +21,7 @@
 namespace vex
 {
 
-GfxBackend::GfxBackend(const GraphicsCreateDesc& desc)
+Graphics::Graphics(const GraphicsCreateDesc& desc)
     : desc(desc)
     , rhi(desc.platformWindow.windowHandle, desc.enableGPUDebugLayer, desc.enableGPUBasedValidation)
     , resourceCleanup(rhi)
@@ -100,12 +100,12 @@ GfxBackend::GfxBackend(const GraphicsCreateDesc& desc)
     SetSamplers({});
 }
 
-GfxBackend::~GfxBackend()
+Graphics::~Graphics()
 {
     if (!deferredSubmissionCommandLists.empty())
     {
         VEX_LOG(Warning,
-                "Destroying Vex GfxBackend in the middle of a frame, this is valid, although not recommended."
+                "Destroying Vex Graphics in the middle of a frame, this is valid, although not recommended."
                 "Make sure to not exit before Presenting if you use the Deferred submission policy as otherwise this "
                 "could result in uncompleted work.");
     }
@@ -122,7 +122,7 @@ GfxBackend::~GfxBackend()
     GPhysicalDevice = nullptr;
 }
 
-void GfxBackend::Present(bool isFullscreenMode)
+void Graphics::Present(bool isFullscreenMode)
 {
     if (!desc.useSwapChain)
     {
@@ -206,7 +206,7 @@ void GfxBackend::Present(bool isFullscreenMode)
     CleanupResources();
 }
 
-CommandContext GfxBackend::BeginScopedCommandContext(QueueType queueType,
+CommandContext Graphics::BeginScopedCommandContext(QueueType queueType,
                                                      SubmissionPolicy submissionPolicy,
                                                      std::span<SyncToken> dependencies)
 {
@@ -220,7 +220,7 @@ CommandContext GfxBackend::BeginScopedCommandContext(QueueType queueType,
     return CommandContext{ *this, commandPool->GetOrCreateCommandList(queueType), submissionPolicy, dependencies };
 }
 
-void GfxBackend::SubmitDeferredWork()
+void Graphics::SubmitDeferredWork()
 {
     std::vector dependencies(deferredSubmissionDependencies.begin(), deferredSubmissionDependencies.end());
     std::vector deferredSubmissionTokens = rhi.Submit(deferredSubmissionCommandLists, dependencies);
@@ -236,7 +236,7 @@ void GfxBackend::SubmitDeferredWork()
     deferredSubmissionResources.clear();
 }
 
-void GfxBackend::CleanupResources()
+void Graphics::CleanupResources()
 {
     // Flushes all resources that were queued up for deletion (using the max sync token that was used when the resource
     // was submitted for destruction).
@@ -248,7 +248,7 @@ void GfxBackend::CleanupResources()
     psCache->GetShaderCompiler().FlushCompilationErrors();
 }
 
-std::vector<SyncToken> GfxBackend::EndCommandContext(CommandContext& ctx)
+std::vector<SyncToken> Graphics::EndCommandContext(CommandContext& ctx)
 {
     // We want to close a command list asap, to allow for driver optimizations.
     ctx.cmdList->Close();
@@ -295,7 +295,7 @@ std::vector<SyncToken> GfxBackend::EndCommandContext(CommandContext& ctx)
     return syncTokens;
 }
 
-Texture GfxBackend::CreateTexture(TextureDesc desc, ResourceLifetime lifetime)
+Texture Graphics::CreateTexture(TextureDesc desc, ResourceLifetime lifetime)
 {
     TextureUtil::ValidateTextureDescription(desc);
 
@@ -317,7 +317,7 @@ Texture GfxBackend::CreateTexture(TextureDesc desc, ResourceLifetime lifetime)
                     .desc = std::move(desc) };
 }
 
-Buffer GfxBackend::CreateBuffer(BufferDesc desc, ResourceLifetime lifetime)
+Buffer Graphics::CreateBuffer(BufferDesc desc, ResourceLifetime lifetime)
 {
     BufferUtil::ValidateBufferDesc(desc);
 
@@ -334,7 +334,7 @@ Buffer GfxBackend::CreateBuffer(BufferDesc desc, ResourceLifetime lifetime)
                    .desc = std::move(desc) };
 }
 
-ResourceMappedMemory GfxBackend::MapResource(const Buffer& buffer)
+ResourceMappedMemory Graphics::MapResource(const Buffer& buffer)
 {
     RHIBuffer& rhiBuffer = GetRHIBuffer(buffer.handle);
 
@@ -347,7 +347,7 @@ ResourceMappedMemory GfxBackend::MapResource(const Buffer& buffer)
     return { rhiBuffer };
 }
 
-ResourceMappedMemory GfxBackend::MapResource(const Texture& texture)
+ResourceMappedMemory Graphics::MapResource(const Texture& texture)
 {
     RHITexture& rhiTexture = GetRHITexture(texture.handle);
 
@@ -360,17 +360,17 @@ ResourceMappedMemory GfxBackend::MapResource(const Texture& texture)
     return { rhiTexture };
 }
 
-void GfxBackend::DestroyTexture(const Texture& texture)
+void Graphics::DestroyTexture(const Texture& texture)
 {
     resourceCleanup.CleanupResource(textureRegistry.ExtractElement(texture.handle));
 }
 
-void GfxBackend::DestroyBuffer(const Buffer& buffer)
+void Graphics::DestroyBuffer(const Buffer& buffer)
 {
     resourceCleanup.CleanupResource(bufferRegistry.ExtractElement(buffer.handle));
 }
 
-BindlessHandle GfxBackend::GetTextureBindlessHandle(const TextureBinding& bindlessResource)
+BindlessHandle Graphics::GetTextureBindlessHandle(const TextureBinding& bindlessResource)
 {
     BindingUtil::ValidateTextureBinding(bindlessResource, bindlessResource.texture.desc.usage);
 
@@ -378,7 +378,7 @@ BindlessHandle GfxBackend::GetTextureBindlessHandle(const TextureBinding& bindle
     return texture.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
 }
 
-BindlessHandle GfxBackend::GetBufferBindlessHandle(const BufferBinding& bindlessResource)
+BindlessHandle Graphics::GetBufferBindlessHandle(const BufferBinding& bindlessResource)
 {
     BindingUtil::ValidateBufferBinding(bindlessResource, bindlessResource.buffer.desc.usage);
 
@@ -386,7 +386,7 @@ BindlessHandle GfxBackend::GetBufferBindlessHandle(const BufferBinding& bindless
     return buffer.GetOrCreateBindlessView(bindlessResource.usage, bindlessResource.strideByteSize, *descriptorPool);
 }
 
-void GfxBackend::FlushGPU()
+void Graphics::FlushGPU()
 {
     VEX_LOG(Info, "Forcing a GPU flush...");
 
@@ -399,7 +399,7 @@ void GfxBackend::FlushGPU()
     VEX_LOG(Info, "GPU flush done.");
 }
 
-void GfxBackend::SetVSync(bool useVSync)
+void Graphics::SetVSync(bool useVSync)
 {
     if (swapChain->NeedsFlushForVSyncToggle())
     {
@@ -408,7 +408,7 @@ void GfxBackend::SetVSync(bool useVSync)
     swapChain->SetVSync(useVSync);
 }
 
-void GfxBackend::OnWindowResized(u32 newWidth, u32 newHeight)
+void Graphics::OnWindowResized(u32 newWidth, u32 newHeight)
 {
     // Do not resize if any of the dimensions is 0, or if the resize gives us the same window size as we have
     // currently.
@@ -442,7 +442,7 @@ void GfxBackend::OnWindowResized(u32 newWidth, u32 newHeight)
     isSwapchainValid = true;
 }
 
-Texture GfxBackend::GetCurrentPresentTexture()
+Texture Graphics::GetCurrentPresentTexture()
 {
     if (!desc.useSwapChain)
     {
@@ -451,12 +451,12 @@ Texture GfxBackend::GetCurrentPresentTexture()
     return presentTextures[currentFrameIndex];
 }
 
-bool GfxBackend::IsTokenComplete(const SyncToken& token) const
+bool Graphics::IsTokenComplete(const SyncToken& token) const
 {
     return rhi.IsTokenComplete(token);
 }
 
-bool GfxBackend::AreTokensComplete(std::span<const SyncToken> tokens) const
+bool Graphics::AreTokensComplete(std::span<const SyncToken> tokens) const
 {
     for (const auto& token : tokens)
     {
@@ -468,14 +468,14 @@ bool GfxBackend::AreTokensComplete(std::span<const SyncToken> tokens) const
     return true;
 }
 
-void GfxBackend::WaitForTokenOnCPU(const SyncToken& syncToken)
+void Graphics::WaitForTokenOnCPU(const SyncToken& syncToken)
 {
     rhi.WaitForTokenOnCPU(syncToken);
 
     CleanupResources();
 }
 
-void GfxBackend::RecompileAllShaders()
+void Graphics::RecompileAllShaders()
 {
     if (desc.shaderCompilerSettings.enableShaderDebugging)
     {
@@ -487,7 +487,7 @@ void GfxBackend::RecompileAllShaders()
     }
 }
 
-void GfxBackend::SetShaderCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback)
+void Graphics::SetShaderCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback)
 {
     if (desc.shaderCompilerSettings.enableShaderDebugging)
     {
@@ -499,7 +499,7 @@ void GfxBackend::SetShaderCompilationErrorsCallback(std::function<ShaderCompileE
     }
 }
 
-void GfxBackend::SetSamplers(std::span<const TextureSampler> newSamplers)
+void Graphics::SetSamplers(std::span<const TextureSampler> newSamplers)
 {
     // TODO(https://trello.com/c/T1DY4QOT): This is not the cleanest, we need a linear sampler for the mip generation
     // shader, so we add it to the end of the users samplers. Instead we should probably have a way to declare a
@@ -510,7 +510,7 @@ void GfxBackend::SetSamplers(std::span<const TextureSampler> newSamplers)
     psCache->GetResourceLayout().SetSamplers(samplers);
 }
 
-RenderExtension* GfxBackend::RegisterRenderExtension(UniqueHandle<RenderExtension>&& renderExtension)
+RenderExtension* Graphics::RegisterRenderExtension(UniqueHandle<RenderExtension>&& renderExtension)
 {
     renderExtension->data = RenderExtensionData{ .rhi = &rhi, .descriptorPool = &*descriptorPool };
     renderExtension->Initialize();
@@ -518,7 +518,7 @@ RenderExtension* GfxBackend::RegisterRenderExtension(UniqueHandle<RenderExtensio
     return renderExtensions.back().get();
 }
 
-void GfxBackend::UnregisterRenderExtension(NonNullPtr<RenderExtension> renderExtension)
+void Graphics::UnregisterRenderExtension(NonNullPtr<RenderExtension> renderExtension)
 {
     // Included in <utility>, avoiding including heavy <algorithm>.
     auto el = std::ranges::find_if(renderExtensions,
@@ -530,7 +530,7 @@ void GfxBackend::UnregisterRenderExtension(NonNullPtr<RenderExtension> renderExt
     }
 }
 
-void GfxBackend::RecompileChangedShaders()
+void Graphics::RecompileChangedShaders()
 {
     if (desc.shaderCompilerSettings.enableShaderDebugging)
     {
@@ -542,22 +542,22 @@ void GfxBackend::RecompileChangedShaders()
     }
 }
 
-PipelineStateCache& GfxBackend::GetPipelineStateCache()
+PipelineStateCache& Graphics::GetPipelineStateCache()
 {
     return *psCache;
 }
 
-RHITexture& GfxBackend::GetRHITexture(TextureHandle textureHandle)
+RHITexture& Graphics::GetRHITexture(TextureHandle textureHandle)
 {
     return textureRegistry[textureHandle];
 }
 
-RHIBuffer& GfxBackend::GetRHIBuffer(BufferHandle bufferHandle)
+RHIBuffer& Graphics::GetRHIBuffer(BufferHandle bufferHandle)
 {
     return bufferRegistry[bufferHandle];
 }
 
-void GfxBackend::CreatePresentTextures()
+void Graphics::CreatePresentTextures()
 {
     presentTextures.resize(std::to_underlying(desc.frameBuffering));
     for (u8 presentTextureIndex = 0; presentTextureIndex < std::to_underlying(desc.frameBuffering);

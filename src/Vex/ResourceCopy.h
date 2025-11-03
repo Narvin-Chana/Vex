@@ -9,7 +9,7 @@ class TextureReadbackContext;
 }
 namespace vex
 {
-class GfxBackend;
+class Graphics;
 
 struct BufferTextureCopyDesc
 {

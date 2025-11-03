@@ -8,13 +8,13 @@ struct GLFWwindow;
 
 namespace vex
 {
-class GfxBackend;
+class Graphics;
 }
 
 class ImGuiRenderExtension : public vex::RenderExtension
 {
 public:
-    ImGuiRenderExtension(vex::GfxBackend& graphics,
+    ImGuiRenderExtension(vex::Graphics& graphics,
                          GLFWwindow* window,
                          vex::FrameBuffering buffering,
                          vex::TextureFormat swapchainFormat);
@@ -27,7 +27,7 @@ public:
     virtual void OnPrePresent() override;
 
 private:
-    vex::GfxBackend& graphics;
+    vex::Graphics& graphics;
     GLFWwindow* window;
     vex::FrameBuffering buffering;
     vex::TextureFormat swapchainFormat;

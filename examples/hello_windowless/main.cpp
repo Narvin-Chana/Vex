@@ -1,14 +1,14 @@
 #include <ExamplePaths.h>
 
 #include <Vex/CommandContext.h>
-#include <Vex/GfxBackend.h>
+#include <Vex/Graphics.h>
 
 int main()
 {
     const uint32_t width = 500;
     const uint32_t height = 500;
 
-    vex::GfxBackend backend{ vex::GraphicsCreateDesc{
+    vex::Graphics backend{ vex::GraphicsCreateDesc{
         .useSwapChain = false,
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING,

@@ -8,7 +8,7 @@
 #include <Vex/Containers/Utils.h>
 #include <Vex/Debug.h>
 #include <Vex/DrawHelpers.h>
-#include <Vex/GfxBackend.h>
+#include <Vex/Graphics.h>
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
@@ -135,7 +135,7 @@ static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDesc& dr
 TextureReadbackContext::TextureReadbackContext(const Buffer& buffer,
                                                std::span<const TextureRegion> textureRegions,
                                                const TextureDesc& desc,
-                                               GfxBackend& backend)
+                                               Graphics& backend)
     : buffer{ buffer }
     , textureRegions{ textureRegions.begin(), textureRegions.end() }
     , textureDesc{ desc }
@@ -162,7 +162,7 @@ BufferReadbackContext::~BufferReadbackContext()
     backend->DestroyBuffer(buffer);
 }
 
-BufferReadbackContext::BufferReadbackContext(const Buffer& buffer, GfxBackend& backend)
+BufferReadbackContext::BufferReadbackContext(const Buffer& buffer, Graphics& backend)
     : buffer{ buffer }
     , backend{ backend }
 {
@@ -190,7 +190,7 @@ u64 TextureReadbackContext::GetDataByteSize() const noexcept
     return TextureUtil::ComputePackedTextureDataByteSize(textureDesc, textureRegions);
 }
 
-CommandContext::CommandContext(NonNullPtr<GfxBackend> backend,
+CommandContext::CommandContext(NonNullPtr<Graphics> backend,
                                NonNullPtr<RHICommandList> cmdList,
                                SubmissionPolicy submissionPolicy,
                                std::span<SyncToken> dependencies)

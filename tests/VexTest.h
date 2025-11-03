@@ -11,7 +11,7 @@ static const auto VexRootPath =
 template <class ParamT>
 struct VexTestParam : testing::TestWithParam<ParamT>
 {
-    GfxBackend graphics;
+    Graphics graphics;
 
     VexTestParam()
         : graphics{ GraphicsCreateDesc{
@@ -26,7 +26,7 @@ struct VexTestParam : testing::TestWithParam<ParamT>
 
 struct VexTest : testing::Test
 {
-    GfxBackend graphics;
+    Graphics graphics;
 
     VexTest()
         : graphics{ GraphicsCreateDesc{

@@ -51,11 +51,11 @@ struct GraphicsCreateDesc
     ShaderCompilerSettings shaderCompilerSettings;
 };
 
-class GfxBackend
+class Graphics
 {
 public:
-    GfxBackend(const GraphicsCreateDesc& desc);
-    ~GfxBackend();
+    Graphics(const GraphicsCreateDesc& desc);
+    ~Graphics();
 
     // Presents the current presentTexture to the swapchain. Will stall if the GPU's next backbuffer is not yet ready
     // (depends on your FrameBuffering).

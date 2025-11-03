@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 
 #include <Vex/CommandContext.h>
-#include <Vex/GfxBackend.h>
+#include <Vex/Graphics.h>
 #include <Vex/Logger.h>
 #include <Vex/Types.h>
 
@@ -106,7 +106,7 @@ void ValidateGridRegions(const TextureDesc& desc, std::span<const TextureRegion>
     ForEachPixelInRegions(desc, regions, regionData, ValidateGrid(DefaultGridParams));
 }
 
-SyncToken UploadTestGridToTexture(GfxBackend& graphics, const Texture& texture, std::span<const TextureRegion> regions)
+SyncToken UploadTestGridToTexture(Graphics& graphics, const Texture& texture, std::span<const TextureRegion> regions)
 {
     std::vector<byte> fullImageData;
     fullImageData.resize(TextureUtil::ComputePackedTextureDataByteSize(texture.desc, regions));
@@ -120,7 +120,7 @@ SyncToken UploadTestGridToTexture(GfxBackend& graphics, const Texture& texture, 
     return ctx.Submit();
 }
 
-std::vector<byte> ReadbackTextureContent(GfxBackend& graphics,
+std::vector<byte> ReadbackTextureContent(Graphics& graphics,
                                          const Texture& texture,
                                          std::span<const TextureRegion> regions,
                                          SyncToken token)
