@@ -21,6 +21,8 @@ Features:
 
 Here is the current roadmap for Vex (subject to change at any point): https://trello.com/b/ey0HR3aB
 
+If you encounter any problems don't hesitate to open a GitHub issue, it will be our pleasure to help!
+
 ## Requirements
 
 C++23
