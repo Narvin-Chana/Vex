@@ -13,6 +13,16 @@ set(VEX_ROOT_DIR "${VEX_ROOT_DIR}" CACHE INTERNAL "Path to Vex's library root di
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+# Add the build examples only if we're directly building cmake from Vex (so not if Vex is setup as an actual dependency).
+# Examples are used to develop Vex, they should not be used or included in projects that use Vex.
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    option(VEX_BUILD_EXAMPLES "Build the example programs" ON)
+    option(VEX_BUILD_TESTS "Build Vex tests" ON)
+else()
+    option(VEX_BUILD_EXAMPLES "Build the example programs" OFF)
+    option(VEX_BUILD_TESTS "Build Vex tests" OFF)
+endif()
+
 # CMake Helpers
 include(VexHelpers)
 
@@ -21,6 +31,12 @@ include(GitHooks)
 
 # Contains all logic to fetch and include DXC
 include(VexDXC)
+
+if (VEX_BUILD_EXAMPLES OR VEX_BUILD_TESTS)
+    option(VEX_ENABLE_SLANG "Enables the possibility to use the Slang shader compiler backend." ON)
+else()
+    option(VEX_ENABLE_SLANG "Enables the possibility to use the Slang shader compiler backend." OFF)
+endif()
 
 # Contains all logic to fetch and include Slang
 include(VexSlang)
@@ -313,16 +329,6 @@ foreach(INDEX RANGE ${NUM_PAIRS})
         endif()
     endif()
 endforeach()
-
-# Add the build examples only if we're directly building cmake from Vex (so not if Vex is setup as an actual dependency).
-# Examples are used to develop Vex, they should not be used or included in projects that use Vex.
-if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
-    option(VEX_BUILD_EXAMPLES "Build the example programs" ON)
-    option(VEX_BUILD_TESTS "Build Vex tests" ON)
-else()
-    option(VEX_BUILD_EXAMPLES "Build the example programs" OFF)
-    option(VEX_BUILD_TESTS "Build Vex tests" OFF)
-endif()
 
 # Add the examples projects.
 if(VEX_BUILD_EXAMPLES)
