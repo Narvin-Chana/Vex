@@ -43,7 +43,7 @@ void WriteImage(const Image& img, const std::filesystem::path& path)
 
 int main()
 {
-    vex::GfxBackend backend{ vex::GraphicsCreateDesc{ .useSwapChain = false,
+    vex::Graphics backend{ vex::GraphicsCreateDesc{ .useSwapChain = false,
                                                       .enableGPUDebugLayer = !VEX_SHIPPING,
                                                       .enableGPUBasedValidation = !VEX_SHIPPING } };
 

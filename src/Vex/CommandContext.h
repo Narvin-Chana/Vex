@@ -21,7 +21,7 @@
 namespace vex
 {
 
-class GfxBackend;
+class Graphics;
 struct ConstantBinding;
 struct ResourceBinding;
 struct Texture;
@@ -39,10 +39,10 @@ public:
     [[nodiscard]] u64 GetDataByteSize() const noexcept;
 
 private:
-    BufferReadbackContext(const Buffer& buffer, GfxBackend& backend);
+    BufferReadbackContext(const Buffer& buffer, Graphics& backend);
 
     Buffer buffer;
-    NonNullPtr<GfxBackend> backend;
+    NonNullPtr<Graphics> backend;
     friend class CommandContext;
 };
 
@@ -66,7 +66,7 @@ private:
     TextureReadbackContext(const Buffer& buffer,
                            std::span<const TextureRegion> textureRegions,
                            const TextureDesc& textureDesc,
-                           GfxBackend& backend);
+                           Graphics& backend);
 
     // Buffer contains readback data from the GPU.
     // This data is aligned according to Vex internal alignment
@@ -74,14 +74,14 @@ private:
     std::vector<TextureRegion> textureRegions;
     TextureDesc textureDesc;
 
-    NonNullPtr<GfxBackend> backend;
+    NonNullPtr<Graphics> backend;
     friend class CommandContext;
 };
 
 class CommandContext
 {
 private:
-    CommandContext(NonNullPtr<GfxBackend> backend,
+    CommandContext(NonNullPtr<Graphics> backend,
                    NonNullPtr<RHICommandList> cmdList,
                    SubmissionPolicy submissionPolicy,
                    std::span<SyncToken> dependencies);
@@ -255,7 +255,7 @@ private:
     void SetVertexBuffers(u32 vertexBuffersFirstSlot, std::span<BufferBinding> vertexBuffers);
     void SetIndexBuffer(std::optional<BufferBinding> indexBuffer);
 
-    NonNullPtr<GfxBackend> backend;
+    NonNullPtr<Graphics> backend;
     NonNullPtr<RHICommandList> cmdList;
 
     SubmissionPolicy submissionPolicy;
@@ -276,7 +276,7 @@ private:
 
     bool hasSubmitted = false;
 
-    friend class GfxBackend;
+    friend class Graphics;
 };
 
 } // namespace vex

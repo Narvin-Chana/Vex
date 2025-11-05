@@ -11,7 +11,7 @@ HelloTriangleApplication::HelloTriangleApplication()
     vex::PlatformWindowHandle platformWindow{ .window = glfwGetX11Window(window), .display = glfwGetX11Display() };
 #endif
 
-    graphics = CreateGraphicsBackend(vex::GraphicsCreateDesc{
+    graphics = vex::MakeUnique<vex::Graphics>(vex::GraphicsCreateDesc{
         .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
         .swapChainFormat = vex::TextureFormat::RGBA8_UNORM,
         .frameBuffering = vex::FrameBuffering::Triple,

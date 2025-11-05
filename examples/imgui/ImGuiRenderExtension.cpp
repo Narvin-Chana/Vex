@@ -7,9 +7,9 @@
 #include <Vex/Bindings.h>
 #include <Vex/CommandContext.h>
 #include <Vex/Formats.h>
-#include <Vex/GfxBackend.h>
+#include <Vex/Graphics.h>
 
-ImGuiRenderExtension::ImGuiRenderExtension(vex::GfxBackend& graphics,
+ImGuiRenderExtension::ImGuiRenderExtension(vex::Graphics& graphics,
                                            GLFWwindow* window,
                                            vex::FrameBuffering buffering,
                                            vex::TextureFormat swapchainFormat)
