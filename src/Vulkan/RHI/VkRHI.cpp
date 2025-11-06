@@ -93,12 +93,10 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
         // Enable custom message callback.
         using Severity = ::vk::DebugUtilsMessageSeverityFlagBitsEXT;
         using MessageType = ::vk::DebugUtilsMessageTypeFlagBitsEXT;
-        debugCreateInfo = {
-            .pNext = enableGPUBasedValidation ? &validationFeatures : nullptr,
-            .messageSeverity = Severity::eVerbose | Severity::eWarning | Severity::eError,
-            .messageType = MessageType::eGeneral | MessageType::eValidation | MessageType::ePerformance,
-            .pfnUserCallback = debugCallback,
-        };
+        debugCreateInfo.pNext = enableGPUBasedValidation ? &validationFeatures : nullptr;
+        debugCreateInfo.messageSeverity = Severity::eVerbose | Severity::eWarning | Severity::eError;
+        debugCreateInfo.messageType = MessageType::eGeneral | MessageType::eValidation | MessageType::ePerformance;
+        debugCreateInfo.pfnUserCallback = debugCallback;
     }
 
     std::vector<const char*> requiredInstanceExtensions = GetRequiredInstanceExtensions(enableGPUDebugLayer);

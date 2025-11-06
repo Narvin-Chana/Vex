@@ -148,7 +148,7 @@ void BufferReadbackContext::ReadData(std::span<byte> outData)
     RHIBuffer& rhiBuffer = backend->GetRHIBuffer(buffer.handle);
 
     std::span<byte> bufferData = rhiBuffer.Map();
-    std::copy(bufferData.begin(), bufferData.end(), outData.begin());
+    std::copy(bufferData.begin(), bufferData.begin() + outData.size(), outData.begin());
     rhiBuffer.Unmap();
 }
 
