@@ -25,8 +25,9 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
 
     const CD3DX12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(
         size,
-        (desc.usage & BufferUsage::ReadWriteBuffer) ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
-                                                    : D3D12_RESOURCE_FLAG_NONE);
+        D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT |
+            ((desc.usage & BufferUsage::ReadWriteBuffer) ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
+                                                         : D3D12_RESOURCE_FLAG_NONE));
     CD3DX12_HEAP_PROPERTIES heapProps;
 
     if (desc.memoryLocality == ResourceMemoryLocality::CPURead)
