@@ -276,6 +276,8 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
         texDesc.Format = GetTypelessFormatForSRGBCompatibleDX12Format(texDesc.Format);
     }
 
+    texDesc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
+
 #if VEX_USE_CUSTOM_ALLOCATOR_TEXTURES
     allocation =
         allocator.AllocateResource(texture, texDesc, desc.memoryLocality, D3D12_RESOURCE_STATE_COMMON, clearValue);
