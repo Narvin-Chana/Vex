@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utility>
+
 #include <Vex/MaybeUninitialized.h>
 #include <Vex/NonNullPtr.h>
 #include <Vex/RHIImpl/RHIFence.h>

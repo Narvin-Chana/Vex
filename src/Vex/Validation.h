@@ -4,4 +4,4 @@
     if (!(condition))                                                                                                  \
     {                                                                                                                  \
         VEX_LOG(Fatal, fmt, ##__VA_ARGS__);                                                                            \
-    }\
+    }

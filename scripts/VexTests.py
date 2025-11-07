@@ -124,18 +124,16 @@ def run_tests(preset_name):
 
 def get_available_configs():
     """Determine which configurations to test based on platform"""
-    base_configs = [
-        "clang-vulkan"
-    ]
+    base_configs = []
     
     # Only add dx12 and msvc on Windows
     if platform.system() == "Windows":
-        base_configs.extend([ "clang-dx12" ])
+        base_configs.extend([ "clang-cl-vulkan", "clang-cl-dx12" ])
         if check_msvc_requirements():
             base_configs.extend([ "msvc-vulkan", "msvc-dx12" ])
-    # Linux GCC has not yet been used outside of CI, unsure if this will work. Keeping commented for now.
-    #else:
-    #    base_configs.extend([ "gcc-vulkan" ])
+    # Linux uses Clang and GCC
+    elif platform.system() == "Linux":
+        base_configs.extend([ "gcc-vulkan", "clang-vulkan" ])
 
     return base_configs
 

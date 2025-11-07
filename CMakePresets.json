@@ -23,6 +23,11 @@
       "hidden": true,
       "cacheVariables": {
         "VEX_GRAPHICS_BACKEND": "DX12"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
       }
     },
     {
@@ -37,14 +42,50 @@
       "hidden": true,
       "environment": {
         "VSCMD_ARG_TGT_ARCH": "x64"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "clang-cl-compiler",
+      "hidden": true,
+      "environment": {
+        "CC": "clang-cl",
+        "CXX": "clang-cl"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
       }
     },
     {
       "name": "clang-compiler",
       "hidden": true,
       "environment": {
-        "CC": "clang-cl",
-        "CXX": "clang-cl"
+        "CC": "clang",
+        "CXX": "clang++"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "gcc-compiler",
+      "hidden": true,
+      "environment": {
+        "CC": "gcc",
+        "CXX": "g++"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
       }
     },
     {
@@ -58,19 +99,24 @@
       "inherits": [ "base", "msvc-compiler", "vulkan-api" ]
     },
     {
-      "name": "clang-dx12",
-      "displayName": "Clang | DirectX 12",
-      "inherits": [ "base", "clang-compiler", "dx12-api" ],
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
-      }
+      "name": "clang-cl-dx12",
+      "displayName": "Clang-CL | DirectX 12",
+      "inherits": [ "base", "clang-cl-compiler", "dx12-api" ]
+    },
+    {
+      "name": "clang-cl-vulkan",
+      "displayName": "Clang-CL | Vulkan",
+      "inherits": [ "base", "clang-cl-compiler", "vulkan-api" ]
     },
     {
       "name": "clang-vulkan",
       "displayName": "Clang | Vulkan",
       "inherits": [ "base", "clang-compiler", "vulkan-api" ]
+    },
+    {
+      "name": "gcc-vulkan",
+      "displayName": "GCC | Vulkan",
+      "inherits": [ "base", "gcc-compiler", "vulkan-api" ]
     }
   ],
   "buildPresets": [
@@ -111,10 +157,40 @@
       "configuration": "Release"
     },
     {
-      "name": "clang-dx12-debug",
+      "name": "clang-cl-dx12-debug",
       "displayName": "Debug",
-      "configurePreset": "clang-dx12",
+      "configurePreset": "clang-cl-dx12",
       "configuration": "Debug"
+    },
+    {
+      "name": "clang-cl-vulkan-debug",
+      "displayName": "Debug",
+      "configurePreset": "clang-cl-vulkan",
+      "configuration": "Debug"
+    },
+    {
+      "name": "clang-cl-dx12-development",
+      "displayName": "Development",
+      "configurePreset": "clang-cl-dx12",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "clang-cl-vulkan-development",
+      "displayName": "Development",
+      "configurePreset": "clang-cl-vulkan",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "clang-cl-dx12-shipping",
+      "displayName": "Shipping",
+      "configurePreset": "clang-cl-dx12",
+      "configuration": "Release"
+    },
+    {
+      "name": "clang-cl-vulkan-shipping",
+      "displayName": "Shipping",
+      "configurePreset": "clang-cl-vulkan",
+      "configuration": "Release"
     },
     {
       "name": "clang-vulkan-debug",
@@ -123,27 +199,33 @@
       "configuration": "Debug"
     },
     {
-      "name": "clang-dx12-development",
-      "displayName": "Development",
-      "configurePreset": "clang-dx12",
-      "configuration": "RelWithDebInfo"
-    },
-    {
       "name": "clang-vulkan-development",
       "displayName": "Development",
       "configurePreset": "clang-vulkan",
       "configuration": "RelWithDebInfo"
     },
     {
-      "name": "clang-dx12-shipping",
-      "displayName": "Shipping",
-      "configurePreset": "clang-dx12",
-      "configuration": "Release"
-    },
-    {
       "name": "clang-vulkan-shipping",
       "displayName": "Shipping",
       "configurePreset": "clang-vulkan",
+      "configuration": "Release"
+    },
+    {
+      "name": "gcc-vulkan-debug",
+      "displayName": "Debug",
+      "configurePreset": "gcc-vulkan",
+      "configuration": "Debug"
+    },
+    {
+      "name": "gcc-vulkan-development",
+      "displayName": "Development",
+      "configurePreset": "gcc-vulkan",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "gcc-vulkan-shipping",
+      "displayName": "Shipping",
+      "configurePreset": "gcc-vulkan",
       "configuration": "Release"
     }
   ]
