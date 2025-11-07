@@ -135,18 +135,38 @@ TEST_F(MipGenerationTest, Texture2DNonPowOfTwo)
 TEST_F(MipGenerationTest, Texture2DWithSourceMipOffset)
 {
     u32 size = 8;
-    u16 numMips = ComputeMipCount({ size, size, 1 });
+    u16 numMips = ComputeMipCount({ size * 2, size * 2, 1 });
     Texture tex = graphics.CreateTexture(
         TextureDesc::CreateTexture2DDesc("Mip1",
                                          TextureFormat::RGBA32_FLOAT,
-                                         size,
-                                         size,
+                                         size * 2,
+                                         size * 2,
                                          numMips,
                                          TextureUsage::ShaderRead | TextureUsage::ShaderReadWrite));
 
     auto ctx = graphics.BeginScopedCommandContext(QueueType::Graphics, SubmissionPolicy::Immediate);
+
+    float rAvg = 0;
+    float bAvg = 0;
+
+    std::vector<float> data(size * size * 4);
+    for (u32 x = 0; x < size; ++x)
+    {
+        for (u32 y = 0; y < size; ++y)
+        {
+            u32 idx = (x * size + y) * 4;
+            data[idx + 0] = (x % 2 == 0) ? 1 : 0;
+            data[idx + 1] = 0;
+            data[idx + 2] = (y % 2 == 0) ? 1 : 0;
+            data[idx + 3] = 1;
+            // Compute averages for later on.
+            rAvg += data[x * size + y + 0] / (size * size);
+            bAvg += data[x * size + y + 2] / (size * size);
+        }
+    }
+
     // Upload to mip 1.
-    ctx.EnqueueDataUpload(tex, Generate2DCheckerboardRGB(size / 2, size / 2, 4), TextureRegion::SingleMip(1));
+    ctx.EnqueueDataUpload(tex, std::as_bytes(std::span(data)), TextureRegion::SingleMip(1));
 
     // Generate and fill in the remaining mips, using the mip 1 as a sourceMip.
     ctx.GenerateMips(tex, 1);
@@ -167,9 +187,9 @@ TEST_F(MipGenerationTest, Texture2DWithSourceMipOffset)
     float a = finalPixel[3];
 
     // A 50/50 red-blue checkerboard should average to purple (0.5, 0, 0.5)
-    EXPECT_NEAR(r, 0.5f, 0.01f) << "Final mip red channel should be 0.5";
+    EXPECT_NEAR(r, rAvg, 0.01f) << "Final mip red channel should be 0.5";
     EXPECT_NEAR(g, 0.0f, 0.01f) << "Final mip green channel should be 0.0";
-    EXPECT_NEAR(b, 0.5f, 0.01f) << "Final mip blue channel should be 0.5";
+    EXPECT_NEAR(b, bAvg, 0.01f) << "Final mip blue channel should be 0.5";
     EXPECT_NEAR(a, 1.0f, 0.01f) << "Final mip alpha channel should be 1.0";
 }
 
