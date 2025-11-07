@@ -25,9 +25,14 @@ If you encounter any problems don't hesitate to open a GitHub issue, it will be 
 
 ## Requirements
 
-C++23
+Any C++23 compatible compiler. We can affirm support for at least the following versions, any other versions are subject to risk.
+- MSVC 19.50.35717
+- Clang 20.1.8
+- GCC 14+
 
 CMake: 3.27+
+
+Git (for using CMake's FetchContent)
 
 DirectX: Windows 10/11 SDK, with feature level 12_1 and DirectX Raytracing (DXR) tier 1.1 for inline RayTracing and Bindless Resources.
 
