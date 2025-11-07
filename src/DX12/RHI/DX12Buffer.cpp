@@ -5,8 +5,11 @@
 #include <Vex/ByteUtils.h>
 #include <Vex/Debug.h>
 #include <Vex/Logger.h>
+#include <Vex/PhysicalDevice.h>
 #include <Vex/Platform/Platform.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
+
+#include <DX12/DX12FeatureChecker.h>
 
 namespace vex::dx12
 {
@@ -23,11 +26,15 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
         size = AlignUp<u64>(desc.byteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
     }
 
-    const CD3DX12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(
-        size,
-        D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT |
-            ((desc.usage & BufferUsage::ReadWriteBuffer) ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
-                                                         : D3D12_RESOURCE_FLAG_NONE));
+    CD3DX12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(size,
+                                                                     (desc.usage & BufferUsage::ReadWriteBuffer)
+                                                                         ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
+                                                                         : D3D12_RESOURCE_FLAG_NONE);
+    if (reinterpret_cast<DX12FeatureChecker*>(GPhysicalDevice->featureChecker.get())->SupportsTightAlignment())
+    {
+        bufferDesc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
+    }
+
     CD3DX12_HEAP_PROPERTIES heapProps;
 
     if (desc.memoryLocality == ResourceMemoryLocality::CPURead)

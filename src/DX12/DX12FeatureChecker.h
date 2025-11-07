@@ -19,6 +19,7 @@ public:
     virtual ShaderModel GetShaderModel() const override;
     virtual u32 GetMaxLocalConstantsByteSize() const override;
     virtual bool DoesFormatSupportLinearFiltering(TextureFormat format) const override;
+    bool SupportsTightAlignment() const;
 
     static FeatureLevel ConvertDX12FeatureLevelToFeatureLevel(D3D_FEATURE_LEVEL featureLevel);
     static D3D_FEATURE_LEVEL ConvertFeatureLevelToDX12FeatureLevel(FeatureLevel featureLevel);

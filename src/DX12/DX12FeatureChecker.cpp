@@ -36,12 +36,6 @@ DX12FeatureChecker::DX12FeatureChecker(const ComPtr<ID3D12Device>& device)
         VEX_LOG(Fatal, "DX12RHI incompatible: Vex DX12RHI uses Enhanced Barriers which are not supported by your GPU.");
     }
 
-    // Vex requires DX12's TightAlignment for tighter alignment.
-    if (featureSupport.TightAlignmentSupportTier() < D3D12_TIGHT_ALIGNMENT_TIER_NOT_SUPPORTED)
-    {
-        VEX_LOG(Fatal, "DX12RHI incompatible: Vex DX12RHI uses Tight Alignment which is not supported by your GPU.");
-    }
-
     // Vex requires SM6_6 for bindless (currently a hard requirement due to Vex not supporting "bindful" code).
     if (featureSupport.HighestShaderModel() < GMinimumShaderModel)
     {
@@ -106,6 +100,11 @@ bool DX12FeatureChecker::DoesFormatSupportLinearFiltering(TextureFormat format) 
 
     const bool supportsLinearFiltering = (formatSupport.Support1 & D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE) != 0;
     return supportsLinearFiltering;
+}
+
+bool DX12FeatureChecker::SupportsTightAlignment() const
+{
+    return featureSupport.TightAlignmentSupportTier() > D3D12_TIGHT_ALIGNMENT_TIER_NOT_SUPPORTED;
 }
 
 FeatureLevel DX12FeatureChecker::ConvertDX12FeatureLevelToFeatureLevel(D3D_FEATURE_LEVEL featureLevel)
