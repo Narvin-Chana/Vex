@@ -54,10 +54,6 @@ target_include_directories(imguiLib PUBLIC
      ${imgui_SOURCE_DIR}/backends
 )
 
-# Have to use FORCE, which is generally considered bad cmake practice. This is because our example are underneath Vex's CMakeLists.txt.
-# In typical examples, you would use 'add_subdirectory(external/path/to/Vex)', defining VEX_ENABLE_SLANG before adding Vex will work without FORCE.
-set(VEX_ENABLE_SLANG ON CACHE BOOL "Enable Slang support" FORCE)
-
 # Link ImGui with its dependencies
 target_link_libraries(imguiLib PUBLIC glfw Vex)
 
