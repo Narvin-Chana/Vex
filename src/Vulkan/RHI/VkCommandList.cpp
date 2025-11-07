@@ -611,16 +611,16 @@ void VkCommandList::TraceRays(const std::array<u32, 3>& widthHeightDepth,
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-void VkCommandList::GenerateMips(RHITexture& texture)
+void VkCommandList::GenerateMips(RHITexture& texture, u16 sourceMip)
 {
     bool isDepthStencilFormat = FormatIsDepthStencilCompatible(texture.GetDesc().format);
     ::vk::ImageAspectFlags aspectMask =
         isDepthStencilFormat ? ::vk::ImageAspectFlagBits::eDepth : ::vk::ImageAspectFlagBits::eColor;
 
-    // Transition all mips except the first to transferDst.
+    // Transition all mips before the sourceMip (inclusive) to transferDst.
     RHITextureBarrier barrier{ texture,
                                TextureSubresource{
-                                   .startMip = 1,
+                                   .startMip = 0, .mipCount = static_cast<u16>(sourceMip + 1),
                                },
                                RHIBarrierSync::Blit,
                                RHIBarrierAccess::CopyDest,
@@ -631,7 +631,7 @@ void VkCommandList::GenerateMips(RHITexture& texture)
     i32 mipHeight = texture.GetDesc().height;
     i32 mipDepth = texture.GetDesc().GetDepth();
 
-    for (u16 i = 1; i < texture.GetDesc().mips; ++i)
+    for (u16 i = sourceMip + 1; i < texture.GetDesc().mips; ++i)
     {
         // Transition the (i-1)th mip to transferSrc.
         barrier.subresource.startMip = i - 1;

@@ -58,7 +58,7 @@ public:
     virtual void TraceRays(const std::array<u32, 3>& widthHeightDepth,
                            const RHIRayTracingPipelineState& rayTracingPipelineState) override;
 
-    virtual void GenerateMips(RHITexture& texture) override;
+    virtual void GenerateMips(RHITexture& texture, u16 sourceMip) override;
 
     using RHICommandListBase::Copy;
     virtual void Copy(RHITexture& src,
