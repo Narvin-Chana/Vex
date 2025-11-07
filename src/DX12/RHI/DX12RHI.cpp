@@ -295,10 +295,12 @@ ComPtr<ID3D12CommandQueue>& DX12RHI::GetNativeQueue(QueueType queueType)
 
 DX12RHI::LiveObjectsReporter::~LiveObjectsReporter()
 {
+#if VEX_DX12RHI_REPORT_LIVE_OBJECTS
     // Output all live (potentially leaked) objects to the debug console
     ComPtr<IDXGIDebug1> dxgiDebug = nullptr;
     chk << DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug));
     dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
+#endif
 }
 
 } // namespace vex::dx12
