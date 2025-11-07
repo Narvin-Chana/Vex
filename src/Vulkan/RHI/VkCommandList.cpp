@@ -627,9 +627,9 @@ void VkCommandList::GenerateMips(RHITexture& texture, u16 sourceMip)
                                RHITextureLayout::CopyDest };
     Barrier({}, { &barrier, 1 });
 
-    i32 mipWidth = texture.GetDesc().width;
-    i32 mipHeight = texture.GetDesc().height;
-    i32 mipDepth = texture.GetDesc().GetDepth();
+    i32 mipWidth = std::max<i32>(1, texture.GetDesc().width >> sourceMip);
+    i32 mipHeight = std::max<i32>(1, texture.GetDesc().height >> sourceMip);
+    i32 mipDepth = std::max<i32>(1, texture.GetDesc().GetDepth() >> sourceMip);
 
     for (u16 i = sourceMip + 1; i < texture.GetDesc().mips; ++i)
     {

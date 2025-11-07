@@ -162,6 +162,22 @@ BufferReadbackContext::~BufferReadbackContext()
     backend->DestroyBuffer(buffer);
 }
 
+BufferReadbackContext::BufferReadbackContext(BufferReadbackContext&& other)
+    : buffer(std::exchange(other.buffer, {}))
+    , backend{ other.backend }
+{
+}
+
+BufferReadbackContext& BufferReadbackContext::operator=(BufferReadbackContext&& other)
+{
+    if (this != &other)
+    {
+        std::swap(buffer, other.buffer);
+        backend = other.backend;
+    }
+    return *this;
+}
+
 BufferReadbackContext::BufferReadbackContext(const Buffer& buffer, Graphics& backend)
     : buffer{ buffer }
     , backend{ backend }
@@ -174,6 +190,26 @@ TextureReadbackContext::~TextureReadbackContext()
     {
         backend->DestroyBuffer(buffer);
     }
+}
+
+TextureReadbackContext::TextureReadbackContext(TextureReadbackContext&& other)
+    : buffer(std::exchange(other.buffer, {}))
+    , textureRegions{ std::move(other.textureRegions) }
+    , textureDesc{ std::move(other.textureDesc) }
+    , backend{ other.backend }
+{
+}
+
+TextureReadbackContext& TextureReadbackContext::operator=(TextureReadbackContext&& other)
+{
+    if (this != &other)
+    {
+        std::swap(buffer, other.buffer);
+        std::swap(textureRegions, other.textureRegions);
+        std::swap(textureDesc, other.textureDesc);
+        backend = other.backend;
+    }
+    return *this;
 }
 
 void TextureReadbackContext::ReadData(std::span<byte> outData)

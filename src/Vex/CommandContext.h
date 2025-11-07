@@ -34,6 +34,8 @@ class BufferReadbackContext
 {
 public:
     ~BufferReadbackContext();
+    BufferReadbackContext(BufferReadbackContext&& other);
+    BufferReadbackContext& operator=(BufferReadbackContext&& other);
 
     void ReadData(std::span<byte> outData);
     [[nodiscard]] u64 GetDataByteSize() const noexcept;
@@ -50,6 +52,8 @@ class TextureReadbackContext
 {
 public:
     ~TextureReadbackContext();
+    TextureReadbackContext(TextureReadbackContext&& other);
+    TextureReadbackContext& operator=(TextureReadbackContext&& other);
 
     void ReadData(std::span<byte> outData);
     [[nodiscard]] u64 GetDataByteSize() const noexcept;
