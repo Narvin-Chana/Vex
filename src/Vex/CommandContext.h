@@ -34,6 +34,8 @@ class BufferReadbackContext
 {
 public:
     ~BufferReadbackContext();
+    BufferReadbackContext(BufferReadbackContext&& other);
+    BufferReadbackContext& operator=(BufferReadbackContext&& other);
 
     void ReadData(std::span<byte> outData);
     [[nodiscard]] u64 GetDataByteSize() const noexcept;
@@ -50,6 +52,8 @@ class TextureReadbackContext
 {
 public:
     ~TextureReadbackContext();
+    TextureReadbackContext(TextureReadbackContext&& other);
+    TextureReadbackContext& operator=(TextureReadbackContext&& other);
 
     void ReadData(std::span<byte> outData);
     [[nodiscard]] u64 GetDataByteSize() const noexcept;
@@ -132,8 +136,8 @@ public:
                    const std::optional<ConstantBinding>& constants,
                    std::array<u32, 3> widthHeightDepth);
 
-    // Fills in all mips with downsampled version of mip 0.
-    void GenerateMips(const Texture& texture);
+    // Fills in all lower resolution mips with downsampled version of the source mip.
+    void GenerateMips(const Texture& texture, u16 sourceMip = 0);
 
     // ---------------------------------------------------------------------------------------------------------------
     // Resource Copy - Will automatically transition the resources into the correct states.

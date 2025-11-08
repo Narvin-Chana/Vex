@@ -611,27 +611,27 @@ void VkCommandList::TraceRays(const std::array<u32, 3>& widthHeightDepth,
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-void VkCommandList::GenerateMips(RHITexture& texture)
+void VkCommandList::GenerateMips(RHITexture& texture, u16 sourceMip)
 {
     bool isDepthStencilFormat = FormatIsDepthStencilCompatible(texture.GetDesc().format);
     ::vk::ImageAspectFlags aspectMask =
         isDepthStencilFormat ? ::vk::ImageAspectFlagBits::eDepth : ::vk::ImageAspectFlagBits::eColor;
 
-    // Transition all mips except the first to transferDst.
+    // Transition all mips before the sourceMip (inclusive) to transferDst.
     RHITextureBarrier barrier{ texture,
                                TextureSubresource{
-                                   .startMip = 1,
+                                   .startMip = 0, .mipCount = static_cast<u16>(sourceMip + 1),
                                },
                                RHIBarrierSync::Blit,
                                RHIBarrierAccess::CopyDest,
                                RHITextureLayout::CopyDest };
     Barrier({}, { &barrier, 1 });
 
-    i32 mipWidth = texture.GetDesc().width;
-    i32 mipHeight = texture.GetDesc().height;
-    i32 mipDepth = texture.GetDesc().GetDepth();
+    i32 mipWidth = std::max<i32>(1, texture.GetDesc().width >> sourceMip);
+    i32 mipHeight = std::max<i32>(1, texture.GetDesc().height >> sourceMip);
+    i32 mipDepth = std::max<i32>(1, texture.GetDesc().GetDepth() >> sourceMip);
 
-    for (u16 i = 1; i < texture.GetDesc().mips; ++i)
+    for (u16 i = sourceMip + 1; i < texture.GetDesc().mips; ++i)
     {
         // Transition the (i-1)th mip to transferSrc.
         barrier.subresource.startMip = i - 1;

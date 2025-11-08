@@ -691,7 +691,7 @@ void DX12CommandList::TraceRays(const std::array<u32, 3>& widthHeightDepth,
     }
 }
 
-void DX12CommandList::GenerateMips(RHITexture& texture)
+void DX12CommandList::GenerateMips(RHITexture& texture, u16 sourceMip)
 {
     VEX_CHECK(false, "DX12 does not support built-in mip generation.");
 }

@@ -128,7 +128,7 @@ static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const DX12Te
             .MostDetailedMip = view.subresource.startMip,
             .MipLevels = view.subresource.mipCount,
             .First2DArrayFace = view.subresource.startSlice,
-            .NumCubes = view.subresource.sliceCount,
+            .NumCubes = view.subresource.sliceCount / GTextureCubeFaceCount,
             .ResourceMinLODClamp = 0,
         };
         break;
@@ -161,24 +161,14 @@ static D3D12_UNORDERED_ACCESS_VIEW_DESC CreateUnorderedAccessViewDesc(const DX12
         break;
     case TextureViewType::Texture2DArray:
     case TextureViewType::TextureCube:
-        // UAVs for TextureCube do not exist in D3D12, instead the user is expected to bind their texture cube as a
+    case TextureViewType::TextureCubeArray:
+        // UAVs for TextureCube and TextureCubeArray do not exist in D3D12, instead the user is expected to bind their texture cube as a
         // RWTexture2DArray.
         desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
         desc.Texture2DArray = {
             .MipSlice = view.subresource.startMip,
             .FirstArraySlice = view.subresource.startSlice,
             .ArraySize = view.subresource.sliceCount,
-            .PlaneSlice = 0,
-        };
-        break;
-    case TextureViewType::TextureCubeArray:
-        // For cube array, we can use texture2d array with 6x the array size
-        desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-        desc.Texture2DArray = {
-            .MipSlice = view.subresource.startMip,
-            // Each cube face has 6 faces
-            .FirstArraySlice = view.subresource.startSlice * 6,
-            .ArraySize = view.subresource.sliceCount * 6,
             .PlaneSlice = 0,
         };
         break;
@@ -311,7 +301,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
     if (nativeDesc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D)
     {
         // Array size of 6 and TEXTURE2D resource dimension means we suppose the texture is a cubemap.
-        if (nativeDesc.DepthOrArraySize == 6)
+        if (nativeDesc.DepthOrArraySize == GTextureCubeFaceCount)
         {
             desc.type = TextureType::TextureCube;
         }

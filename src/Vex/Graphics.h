@@ -40,7 +40,7 @@ struct GraphicsCreateDesc
 {
     PlatformWindow platformWindow;
     bool useSwapChain = true;
-    TextureFormat swapChainFormat;
+    TextureFormat swapChainFormat = TextureFormat::BGRA8_UNORM;
     // Clear value to use for present textures.
     TextureClearValue presentTextureClearValue = { .flags = TextureClear::ClearColor, .color = { 0, 0, 0, 0 } };
     bool useVSync = false;

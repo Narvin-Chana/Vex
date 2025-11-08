@@ -71,5 +71,5 @@ float4 PSMain(VSOutput input, uniform float time, uniform uint uvGuideTextureHan
     : SV_Target
 {
     let UVGuideTexture = GetBindlessResource<Texture2D<float4>>(uvGuideTextureHandle);
-    return float4(UVGuideTexture.Sample(PointSampler, input.uv).rgb, 1);
+    return float4(UVGuideTexture.Sample(LinearSampler, input.uv).rgb, 1);
 }

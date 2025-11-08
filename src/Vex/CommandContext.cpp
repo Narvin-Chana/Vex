@@ -162,6 +162,22 @@ BufferReadbackContext::~BufferReadbackContext()
     backend->DestroyBuffer(buffer);
 }
 
+BufferReadbackContext::BufferReadbackContext(BufferReadbackContext&& other)
+    : buffer(std::exchange(other.buffer, {}))
+    , backend{ other.backend }
+{
+}
+
+BufferReadbackContext& BufferReadbackContext::operator=(BufferReadbackContext&& other)
+{
+    if (this != &other)
+    {
+        std::swap(buffer, other.buffer);
+        backend = other.backend;
+    }
+    return *this;
+}
+
 BufferReadbackContext::BufferReadbackContext(const Buffer& buffer, Graphics& backend)
     : buffer{ buffer }
     , backend{ backend }
@@ -174,6 +190,26 @@ TextureReadbackContext::~TextureReadbackContext()
     {
         backend->DestroyBuffer(buffer);
     }
+}
+
+TextureReadbackContext::TextureReadbackContext(TextureReadbackContext&& other)
+    : buffer(std::exchange(other.buffer, {}))
+    , textureRegions{ std::move(other.textureRegions) }
+    , textureDesc{ std::move(other.textureDesc) }
+    , backend{ other.backend }
+{
+}
+
+TextureReadbackContext& TextureReadbackContext::operator=(TextureReadbackContext&& other)
+{
+    if (this != &other)
+    {
+        std::swap(buffer, other.buffer);
+        std::swap(textureRegions, other.textureRegions);
+        std::swap(textureDesc, other.textureDesc);
+        backend = other.backend;
+    }
+    return *this;
 }
 
 void TextureReadbackContext::ReadData(std::span<byte> outData)
@@ -370,10 +406,12 @@ void CommandContext::TraceRays(const RayTracingPassDescription& rayTracingPassDe
     cmdList->TraceRays(widthHeightDepth, *pipelineState);
 }
 
-void CommandContext::GenerateMips(const Texture& texture)
+void CommandContext::GenerateMips(const Texture& texture, u16 sourceMip)
 {
     VEX_CHECK(texture.desc.mips > 1,
               "The texture must have more than atleast 1 mip in order to have the other mips generated.");
+    VEX_CHECK(sourceMip < texture.desc.mips - 1,
+              "The sourceMip index must be smaller than the last mip in order to have the other mips generated.");
 
     const bool apiFormatSupportsLinearFiltering =
         GPhysicalDevice->featureChecker->DoesFormatSupportLinearFiltering(texture.desc.format);
@@ -389,7 +427,7 @@ void CommandContext::GenerateMips(const Texture& texture)
     if (GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::MipGeneration) &&
         cmdList->GetType() == QueueType::Graphics)
     {
-        cmdList->GenerateMips(backend->GetRHITexture(texture.handle));
+        cmdList->GenerateMips(backend->GetRHITexture(texture.handle), sourceMip);
         return;
     }
 
@@ -440,7 +478,7 @@ void CommandContext::GenerateMips(const Texture& texture)
     u32 depth = texture.desc.GetDepth();
     bool isLastIteration = false;
 
-    for (u16 mip = 1; mip < texture.desc.mips;)
+    for (u16 mip = sourceMip + 1; mip < texture.desc.mips;)
     {
         if (mip + 1 >= texture.desc.mips)
         {
