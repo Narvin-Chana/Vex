@@ -19,6 +19,7 @@ public:
     virtual ShaderModel GetShaderModel() const override;
     virtual u32 GetMaxLocalConstantsByteSize() const override;
     virtual bool DoesFormatSupportLinearFiltering(TextureFormat format) const override;
+    bool SupportsTightAlignment() const;
 
     static FeatureLevel ConvertDX12FeatureLevelToFeatureLevel(D3D_FEATURE_LEVEL featureLevel);
     static D3D_FEATURE_LEVEL ConvertFeatureLevelToDX12FeatureLevel(FeatureLevel featureLevel);
@@ -30,15 +31,6 @@ private:
     ComPtr<ID3D12Device> device;
 
     // Cached feature support data (to avoid requerying the device).
-    D3D12_FEATURE_DATA_D3D12_OPTIONS options;
-    D3D12_FEATURE_DATA_D3D12_OPTIONS1 options1;
-    D3D12_FEATURE_DATA_D3D12_OPTIONS7 options7;
-    D3D12_FEATURE_DATA_D3D12_OPTIONS12 options12;
-    D3D12_FEATURE_DATA_SHADER_MODEL shaderModel;
-    D3D12_FEATURE_DATA_FEATURE_LEVELS featureLevels;
-    bool rayTracingSupported = false;
-
-    static constexpr D3D12_RAYTRACING_TIER MinimumRayTracingTier = D3D12_RAYTRACING_TIER_1_0;
-    static constexpr D3D12_MESH_SHADER_TIER MinimumMeshShaderTier = D3D12_MESH_SHADER_TIER_1;
+    CD3DX12FeatureSupport featureSupport;
 };
 } // namespace vex::dx12

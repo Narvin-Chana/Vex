@@ -4,11 +4,13 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/Logger.h>
+#include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
 
 #include <RHI/RHIDescriptorPool.h>
 
+#include <DX12/DX12FeatureChecker.h>
 #include <DX12/DX12Formats.h>
 #include <DX12/HRChecker.h>
 
@@ -274,6 +276,11 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
     else if (FormatHasSRGBEquivalent(desc.format))
     {
         texDesc.Format = GetTypelessFormatForSRGBCompatibleDX12Format(texDesc.Format);
+    }
+
+    if (reinterpret_cast<DX12FeatureChecker*>(GPhysicalDevice->featureChecker.get())->SupportsTightAlignment())
+    {
+        texDesc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
     }
 
 #if VEX_USE_CUSTOM_ALLOCATOR_TEXTURES

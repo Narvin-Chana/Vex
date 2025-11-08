@@ -15,9 +15,13 @@ namespace vex
 struct PlatformWindowHandle;
 }
 
+// Enable to output live objects upon RHI deletion.
+#ifndef VEX_DX12RHI_REPORT_LIVE_OBJECTS
+#define VEX_DX12RHI_REPORT_LIVE_OBJECTS 0
+#endif
+
 namespace vex::dx12
 {
-
 class DX12RHI final : public RHIBase
 {
 public:
