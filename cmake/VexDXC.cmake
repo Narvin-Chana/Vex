@@ -20,6 +20,7 @@ FetchContent_MakeAvailable(dxc)
 if(WIN32)
     set(DXC_HEADERS_INCLUDE_NAME "inc")
     set(DXC_STATIC_LIB "${dxc_SOURCE_DIR}/lib/x64/dxcompiler.lib")
+    set(DXC_SHARED_LIB "${dxc_SOURCE_DIR}/bin/x64/dxcompiler.dll" CACHE INTERNAL "")
 elseif(UNIX)
     set(DXC_HEADERS_INCLUDE_NAME "include")
     set(DXC_SHARED_LIB "${dxc_SOURCE_DIR}/lib/libdxcompiler.so")
@@ -41,6 +42,15 @@ function(build_with_dxc target)
 endfunction()
 
 function(link_with_dxc target)
+    if(WIN32)
+        # Copies the dxcompiler dll to the user's working directory (avoids the program using another one in their path).
+        add_custom_command(TARGET ${target} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${DXC_SHARED_LIB}"
+            "$<TARGET_FILE_DIR:${target}>/dxcompiler.dll"
+            COMMENT "Copying DXC dll to output directory..."
+        )
+    endif()
     message(STATUS "Linked ${target} with DirectXCompiler, scanning for Vex shader files...")
     # Copies the Vex helper shader files to the target's working directory.
     file(GLOB VEX_SHADER_FILES
