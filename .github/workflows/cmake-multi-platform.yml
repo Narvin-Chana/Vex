@@ -18,7 +18,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         build_type: [Debug, Release]
-        c_compiler: [gcc, clang, cl, mingw]
+        c_compiler: [gcc, clang, cl, x86_64-w64-mingw32-gcc]
         graphics_api: [vulkan, directx12]
         include:
           - os: windows-latest
@@ -43,7 +43,7 @@ jobs:
           - os: ubuntu-latest
             c_compiler: cl
           - os: windows-latest
-            c_compiler: mingw
+            c_compiler: x86_64-w64-mingw32-gcc
           # Remove DirectX-only configurations from Linux (not supported)
           - os: ubuntu-latest
             graphics_api: directx12
@@ -115,11 +115,11 @@ jobs:
         clang++ --version
 
     - name : Install MinGW64
-      if : matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'mingw'
+      if : matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'x86_64-w64-mingw32-gcc'
       uses: egor-tensin/setup-mingw@v2
 
     - name: Setup MinGW64
-      if: matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'mingw'
+      if: matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'x86_64-w64-mingw32-gcc'
       run: |
         # Find MinGW GCC path
         MINGW_GCC=$(which x86_64-w64-mingw32-gcc)
