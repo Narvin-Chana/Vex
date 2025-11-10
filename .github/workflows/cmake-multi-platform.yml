@@ -139,7 +139,7 @@ jobs:
 
 
     - name: Install Vulkan SDK (Windows)
-      if: matrix.os == 'windows-latest' && (matrix.graphics_api == 'vulkan')
+      if: (matrix.os == 'windows-latest' || matrix.c_compiler == 'x86_64-w64-mingw32-gcc') && (matrix.graphics_api == 'vulkan')
       uses: humbletim/setup-vulkan-sdk@523828e49cd4afabce369c39c7ee6543a2b7a735
       with:
         vulkan-query-version: latest
@@ -147,7 +147,7 @@ jobs:
         vulkan-use-cache: true
 
     - name: Install Vulkan SDK and Wayland (Linux)
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-latest' && !(matrix.c_compiler == 'x86_64-w64-mingw32-gcc')
       run: |
         # Add the LunarG repository
         wget -qO - https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo apt-key add -
