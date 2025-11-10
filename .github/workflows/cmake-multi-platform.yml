@@ -136,7 +136,16 @@ jobs:
         # Verify versions
         x86_64-w64-mingw32-gcc --version
         x86_64-w64-mingw32-g++ --version
-
+        
+        # Set up MinGW-w64 environment variables
+        echo "MINGW_HOME=$(dirname $(dirname $MINGW_GCC))" >> $GITHUB_ENV
+        echo "PATH=$MINGW_HOME/bin:$PATH" >> $GITHUB_ENV
+        
+        # Set up include directories and library paths
+        echo "C_INCLUDE_PATH=$MINGW_HOME/x86_64-w64-mingw32/include" >> $GITHUB_ENV
+        echo "CPLUS_INCLUDE_PATH=$MINGW_HOME/x86_64-w64-mingw32/include" >> $GITHUB_ENV
+        echo "LIBRARY_PATH=$MINGW_HOME/x86_64-w64-mingw32/lib" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=$MINGW_HOME/x86_64-w64-mingw32/lib" >> $GITHUB_ENV
 
     - name: Install Vulkan SDK (Windows)
       if: (matrix.os == 'windows-latest' || matrix.c_compiler == 'x86_64-w64-mingw32-gcc') && (matrix.graphics_api == 'vulkan')
