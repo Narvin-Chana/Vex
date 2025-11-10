@@ -98,6 +98,13 @@ function(setup_dx12_backend TARGET)
     # DirectX Agility SDK headers
     add_header_only_dependency(${TARGET} DirectXAgilitySDK "${DX_AGILITY_SDK_SOURCE_DIR}" "include" "directx")
 
+    if (!WIN32 OR MSVC)
+        target_compile_definitions(${TARGET} PRIVATE DX_DIRECT_CALLS=1)
+    else()
+        target_compile_definitions(${TARGET} PRIVATE DX_DIRECT_CALLS=0)
+    endif()
+
+
     message(STATUS "DirectX 12 backend configured successfully")
 endfunction()
 

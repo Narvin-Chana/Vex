@@ -66,7 +66,7 @@ public:
         VEX_ASSERT(index < size, "Trying to access index outside of descriptor heap range.");
 
         D3D12_CPU_DESCRIPTOR_HANDLE d3d12_handle;
-#if defined(_MSC_VER) || !defined(_WIN32)
+#if DX_DIRECT_CALLS
         d3d12_handle = heap->GetCPUDescriptorHandleForHeapStart();
 #else
         heap->GetCPUDescriptorHandleForHeapStart(&d3d12_handle);
@@ -82,7 +82,7 @@ public:
         VEX_ASSERT(index < size, "Trying to access index outside of descriptor heap range.");
 
         D3D12_GPU_DESCRIPTOR_HANDLE gpu;
-#if defined(_MSC_VER) || !defined(_WIN32)
+#if DX_DIRECT_CALLS
         gpu = heap->GetGPUDescriptorHandleForHeapStart();
 #else
         heap->GetGPUDescriptorHandleForHeapStart(&gpu);

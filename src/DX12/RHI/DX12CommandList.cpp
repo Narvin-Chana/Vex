@@ -130,8 +130,12 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(const ComPtr<DX12D
     D3D12_TEXTURE_COPY_LOCATION bufferLoc = {};
     bufferLoc.pResource = buffer.GetRawBuffer();
     bufferLoc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-
+#if DX_DIRECT_CALLS
     D3D12_RESOURCE_DESC textureDesc = texture.GetRawTexture()->GetDesc();
+#else
+    D3D12_RESOURCE_DESC textureDesc;
+    texture.GetRawTexture()->GetDesc(&textureDesc);
+#endif
     if (textureDesc.Flags & D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT)
     {
         // Tight alignment means we have to force the alignment field to 0.
