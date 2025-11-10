@@ -24,7 +24,7 @@ Allocation DX12Allocator::AllocateResource(ComPtr<ID3D12Resource>& resource,
     // We cannot compute this ourselves as this depends on hardware/vendors.
     D3D12_RESOURCE_ALLOCATION_INFO allocInfo;
 
-#if DX_DIRECT_CALLS
+#if defined(_MSC_VER) || !defined(_WIN32)
     allocInfo = device->GetResourceAllocationInfo(0, 1, &resourceDesc);
 #else
     device->GetResourceAllocationInfo(&allocInfo,0, 1, &resourceDesc);

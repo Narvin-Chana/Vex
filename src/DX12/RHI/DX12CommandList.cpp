@@ -130,7 +130,7 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(const ComPtr<DX12D
     D3D12_TEXTURE_COPY_LOCATION bufferLoc = {};
     bufferLoc.pResource = buffer.GetRawBuffer();
     bufferLoc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-#if DX_DIRECT_CALLS
+#if defined(_MSC_VER) || !defined(_WIN32)
     D3D12_RESOURCE_DESC textureDesc = texture.GetRawTexture()->GetDesc();
 #else
     D3D12_RESOURCE_DESC textureDesc;

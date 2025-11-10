@@ -299,7 +299,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
 
     D3D12_RESOURCE_DESC nativeDesc;
 
-#if DX_DIRECT_CALLS
+#if defined(_MSC_VER) || !defined(_WIN32)
     nativeDesc = texture->GetDesc();
 #else
     texture->GetDesc(&nativeDesc);

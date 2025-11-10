@@ -30,7 +30,7 @@ std::string DXGIFactory::GetDeviceAdapterName(const ComPtr<ID3D12Device>& device
 
     // First, we need to get the LUID (Locally Unique Identifier) of the adapter
     LUID adapterLuid;
-#if DX_DIRECT_CALLS
+#if defined(_MSC_VER) || !defined(_WIN32)
      adapterLuid = device->GetAdapterLuid();
 #else
     device->GetAdapterLuid(&adapterLuid);
