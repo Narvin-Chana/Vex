@@ -22,7 +22,13 @@ Allocation DX12Allocator::AllocateResource(ComPtr<ID3D12Resource>& resource,
 {
     // Query device for the byte size and alignment of the resource.
     // We cannot compute this ourselves as this depends on hardware/vendors.
-    D3D12_RESOURCE_ALLOCATION_INFO allocInfo = device->GetResourceAllocationInfo(0, 1, &resourceDesc);
+    D3D12_RESOURCE_ALLOCATION_INFO allocInfo;
+
+#if defined(_MSC_VER) || !defined(_WIN32)
+    allocInfo = device->GetResourceAllocationInfo(0, 1, &resourceDesc);
+#else
+    device->GetResourceAllocationInfo(&allocInfo,0, 1, &resourceDescription);
+#endif
 
     // Allocates and handles finding an optimal place to allocate the memory.
     // No api calls will be made if a valid MemoryRange is already available, making this super fast!

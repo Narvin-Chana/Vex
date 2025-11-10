@@ -18,7 +18,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         build_type: [Debug, Release]
-        c_compiler: [gcc, clang, cl]
+        c_compiler: [gcc, clang, cl, mingw]
         graphics_api: [vulkan, directx12]
         include:
           - os: windows-latest
@@ -33,12 +33,17 @@ jobs:
           - os: ubuntu-latest
             c_compiler: clang
             cpp_compiler: clang++
+          - os: ubuntu-latest
+            c_compiler: x86_64-w64-mingw32-gcc
+            cpp_compiler: x86_64-w64-mingw32-g++
         exclude:
           # Remove unsupported compilers from windows/linux
           - os: windows-latest
             c_compiler: gcc
           - os: ubuntu-latest
             c_compiler: cl
+          - os: windows-latest
+            c_compiler: mingw
           # Remove DirectX-only configurations from Linux (not supported)
           - os: ubuntu-latest
             graphics_api: directx12
@@ -108,6 +113,30 @@ jobs:
         # Verify the version
         clang --version
         clang++ --version
+
+    - name : Install MinGW64
+      if : matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'mingw'
+      uses: egor-tensin/setup-mingw@v2
+
+    - name: Setup MinGW64
+      if: matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'mingw'
+      run: |
+        # Find MinGW GCC path
+        MINGW_GCC=$(which x86_64-w64-mingw32-gcc)
+        MINGW_GXX=$(which x86_64-w64-mingw32-g++)
+        
+        echo "MinGW GCC: $MINGW_GCC"
+        echo "MinGW G++: $MINGW_GXX"
+        
+        # Set environment variables for CMake to find MinGW
+        echo "CMAKE_C_COMPILER=$MINGW_GCC" >> $GITHUB_ENV
+        echo "CMAKE_CXX_COMPILER=$MINGW_GXX" >> $GITHUB_ENV
+        echo "CMAKE_SYSTEM_NAME=Windows" >> $GITHUB_ENV
+        
+        # Verify versions
+        x86_64-w64-mingw32-gcc --version
+        x86_64-w64-mingw32-g++ --version
+
 
     - name: Install Vulkan SDK (Windows)
       if: matrix.os == 'windows-latest' && (matrix.graphics_api == 'vulkan')

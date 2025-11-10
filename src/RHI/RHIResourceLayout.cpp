@@ -38,7 +38,7 @@ void RHIResourceLayoutBase::SetLayoutResources(const std::optional<ConstantBindi
         }
 
         localConstantsData.resize(constants->data.size_bytes());
-        std::memcpy(localConstantsData.data(), constants->data.data(), constants->data.size_bytes());
+        memcpy(localConstantsData.data(), constants->data.data(), constants->data.size_bytes());
     }
 }
 
