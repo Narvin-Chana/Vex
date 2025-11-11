@@ -451,7 +451,7 @@ void CommandContext::GenerateMips(const Texture& texture, u16 sourceMip)
 
     // We have to perform a manual mip generation if not supported by the graphics API.
     ShaderKey mipGenerationShaderKey{
-        .path = std::filesystem::current_path() / "MipGeneration.hlsl",
+        .path = "E:/Programming/Vex/shaders/MipGeneration.hlsl",
         .entryPoint = std::move(entryPoint),
         .type = ShaderType::ComputeShader,
         .defines = { ShaderDefine{ "TEXTURE_TYPE", std::string(GetFormatHLSLType(texture.desc.format)) },
