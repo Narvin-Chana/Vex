@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <iostream>
 #include <optional>
 #include <print>
 #include <string>
@@ -70,6 +71,7 @@ struct Logger
         if (destinationFlags & LogDestination::Console)
         {
             std::println("{}", timeStampedFormatMessage);
+            std::flush(std::cout);
         }
 
         if (destinationFlags & LogDestination::File)
