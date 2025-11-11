@@ -84,10 +84,6 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
         # Setup the runtime dependencies of Vex
         vex_setup_runtime(${EXAMPLE_NAME})
 
-        if(UNIX)
-            link_with_dxc(${EXAMPLE_NAME})
-        endif()
-
         # Link the example
         target_link_libraries(${EXAMPLE_NAME} PRIVATE ${EXAMPLES_COMMON_LIBS})
         target_include_directories(${EXAMPLE_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${EXAMPLE_DIR}" "${CMAKE_SOURCE_DIR}/src")

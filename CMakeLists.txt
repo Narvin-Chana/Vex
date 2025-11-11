@@ -252,19 +252,6 @@ elseif(VEX_ENABLE_VULKAN)
     setup_vulkan_backend(Vex)
 endif()
 
-function(vex_setup_runtime TARGET)
-    if(VEX_ENABLE_DX12)
-        vex_setup_d3d12_agility_runtime(${TARGET})
-        vex_setup_pix_events(${TARGET})
-    endif()
-
-    link_with_dxc(${TARGET})
-
-    if (VEX_ENABLE_SLANG)
-        link_with_slang(${TARGET})
-    endif()
-endfunction()
-
 # Static linking with DXC.
 build_with_dxc(Vex)
 
@@ -361,8 +348,15 @@ configure_package_config_file(
     INSTALL_DESTINATION lib/cmake/Vex
 )
 
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/VexHelpers.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/VexHelpers.cmake"
+    COPYONLY
+)
+
 install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/VexConfig.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/VexConfigVersion.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/VexHelpers.cmake"
     DESTINATION lib/cmake/Vex
 )

@@ -1,10 +1,32 @@
 @PACKAGE_INIT@
 
+include(CMakeFindDependencyMacro)
+
+# Propagate the backend configuration
+set(VEX_ENABLE_DX12 @VEX_ENABLE_DX12)
+set(VEX_ENABLE_VULKAN @VEX_ENABLE_VULKAN)
+set(VEX_ENABLE_SLANG @VEX_ENABLE_SLANG)
+
+# Store vex's root dir for shader/runtime file access
+set(VEX_ROOT_DIR "@PACKAGE_CMAKE_INSTALL_PREFIX@/include")
+
+find_dependency(magic_enum REQUIRED)
+if (VEX_ENABLE_VULKAN)
+	find_dependency(Vulkan REQUIRED)
+endif()
+
 include("${CMAKE_CURRENT_LIST_DIR}/VexTargets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/VexHelpers.cmake")
 
 check_required_components(Vex)
 
-# To use Vex in another project just clone it as a submodule and then either manually build the .lib and add it to your Visual Studio solution or add the following to your CMakeLists.txt:
-# find_package(Vex REQUIRED)
-# add_executable(YOUR_PROJECT YOUR_MAIN.cpp)
-# target_link_libraries(YOUR_PROJECT PRIVATE Vex::Vex)
+# To use Vex in another project using CMake's FetchContent:
+# FetchContent_Declare(
+#   Vex
+#   ...
+# )
+# FetchContent_MakeAvailable(Vex)
+# ...
+# # Later on once your target executable has been created:
+# target_link_libraries(YourTarget PRIVATE Vex::Vex)
+# vex_setup_runtime(YourTarget)

@@ -43,7 +43,22 @@ Unused APIs will not be linked and compiled (and thus will not incur any compile
 
 ## Getting Started (Build System)
 
-Vex provides the user with a CMakeLists.txt file to facilitate including it in your projet. Including Vex is as simple as obtaining Vex in a subfolder (be it via `git clone`, `git submodules`, `CMake_FetchContent` or other) and then calling `add_subdirectory(path/to/Vex)` in your CMakeLists.txt file.
+Vex provides the user with a CMakeLists.txt file to facilitate including it in your projet. Here's the recommended way of using it if your project also uses CMake:
+```
+include(FetchContent)
+# Fetch from either a local directory (using SOURCE_DIR "path/to/vex") or a remote git url (using GIT_REPOSITORY "url")
+FetchContent_Declare(
+  Vex
+  ...
+)
+FetchContent_MakeAvailable(Vex)
+
+# Later on once your target executable has been created:
+target_link_libraries(YourTarget PRIVATE Vex)
+vex_setup_runtime(YourTarget)
+```
+
+`vex_setup_runtime` must be called to correctly setup the runtime dependencies of Vex.
 
 Vex provides several configuration options that can be set when configuring the project with CMake:
 
@@ -76,10 +91,9 @@ cmake -DVEX_GRAPHICS_BACKEND=VULKAN -DVEX_ENABLE_SLANG=ON -B build
 }
 ```
 
-### In CMakeLists.txt (before `add_subdirectory(Vex)`)
+### In CMakeLists.txt:
 ```cmake
 set(VEX_ENABLE_SLANG ON CACHE BOOL "" FORCE)
-add_subdirectory(path/to/Vex)
 ```
 
 ### Examples:
