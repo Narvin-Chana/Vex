@@ -38,7 +38,7 @@ static ::vk::PresentModeKHR GetBestPresentMode(const VkSwapChainSupportDetails& 
 {
     // VSync means we should use eFifo which is available on most platforms.
     // Source: https://stackoverflow.com/questions/36896021/enabling-vsync-in-vulkan
-    if (useVSync)
+    if (!useVSync)
     {
         return ::vk::PresentModeKHR::eFifo;
     }
@@ -85,8 +85,20 @@ VkSwapChain::VkSwapChain(NonNullPtr<VkGPUContext> ctx, SwapChainDesc& desc, cons
 
     // Need to have at least the requested amount of swap chain images
     VEX_ASSERT(maxSupportedImageCount >= requestedImageCount);
-    std::ranges::generate_n(std::back_inserter(backbufferAcquisition), requestedImageCount, BinarySemaphoreCreator);
+
+    InitSwapchainResource(platformWindow.width, platformWindow.height);
+
+    auto BinarySemaphoreCreator = [&ctx]
+    {
+        ::vk::SemaphoreTypeCreateInfoKHR createInfo{ .semaphoreType = ::vk::SemaphoreType::eBinary };
+        auto semaphore = VEX_VK_CHECK <<= ctx->device.createSemaphoreUnique(::vk::SemaphoreCreateInfo{
+            .pNext = &createInfo,
+        });
+        return semaphore;
+    };
+    // Requires including the heavy <algorithm>
     std::ranges::generate_n(std::back_inserter(presentSemaphore), requestedImageCount, BinarySemaphoreCreator);
+    backbufferAcquisition.resize(requestedImageCount);
 }
 
 void VkSwapChain::RecreateSwapChain(u32 width, u32 height)
@@ -126,15 +138,14 @@ bool VkSwapChain::NeedsRecreation() const
 
 TextureDesc VkSwapChain::GetBackBufferTextureDescription() const
 {
-    return TextureDesc{
-        .name = "backbuffer",
-        .type = TextureType::Texture2D,
-        .format = VulkanToTextureFormat(surfaceFormat.format),
-        .width = width,
-        .height = height,
-        .depthOrSliceCount = 1,
-        .mips = 1,
-        .usage = TextureUsage::RenderTarget | TextureUsage::ShaderRead,
+    return TextureDesc{ .name = "backbuffer",
+                        .type = TextureType::Texture2D,
+                        .format = VulkanToTextureFormat(surfaceFormat.format),
+                        .width = width,
+                        .height = height,
+                        .depthOrSliceCount = 1,
+                        .mips = 1,
+                        .usage = TextureUsage::RenderTarget | TextureUsage::ShaderRead,
     };
 }
 
@@ -195,9 +206,16 @@ ColorSpace VkSwapChain::GetValidColorSpace(ColorSpace preferredColorSpace) const
 std::optional<RHITexture> VkSwapChain::AcquireBackBuffer(u8 frameIndex)
 {
     // Acquire the next backbuffer image.
+    ::vk::SemaphoreTypeCreateInfoKHR createInfo{ .semaphoreType = ::vk::SemaphoreType::eBinary };
+
+    ::vk::UniqueSemaphore acquireSemaphore = VEX_VK_CHECK <<=
+        ctx->device.createSemaphoreUnique(::vk::SemaphoreCreateInfo{
+            .pNext = &createInfo,
+        });
+
     auto res = ctx->device.acquireNextImageKHR(*swapchain,
                                                std::numeric_limits<u64>::max(),
-                                               *backbufferAcquisition[frameIndex],
+                                               *acquireSemaphore,
                                                VK_NULL_HANDLE,
                                                &currentBackbufferId);
     if (res == ::vk::Result::eErrorOutOfDateKHR || res == ::vk::Result::eSuboptimalKHR)
@@ -205,6 +223,8 @@ std::optional<RHITexture> VkSwapChain::AcquireBackBuffer(u8 frameIndex)
         swapchainIsInErrorState = true;
         return {};
     }
+
+    backbufferAcquisition[currentBackbufferId] = std::move(acquireSemaphore);
 
     VEX_VK_CHECK << res;
 
@@ -223,7 +243,7 @@ SyncToken VkSwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandLis
     // Before rendering the graphics queue, we must wait for acquireImage to be done.
     // This equates to waiting on the backbufferAcquisition binary semaphore of this backbuffer.
     ::vk::SemaphoreSubmitInfo acquireWaitInfo = {
-        .semaphore = *backbufferAcquisition[frameIndex],
+        .semaphore = *backbufferAcquisition[currentBackbufferId],
         .stageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput,
     };
 

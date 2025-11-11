@@ -67,7 +67,7 @@ private:
 
     bool swapchainIsInErrorState = false;
 
-    u32 currentBackbufferId;
+    u32 currentBackbufferId = 0;
     u32 width, height;
 
     friend class VkRHI;
