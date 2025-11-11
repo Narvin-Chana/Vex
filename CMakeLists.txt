@@ -6,6 +6,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if (NOT CMAKE_RUNTIME_OUTPUT_DIRECTORY)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>)
+endif()
+
+set(VEX_OUTPUT_SHADER_DIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} CACHE STRING "Destination for vex shaders")
+
 # Store the root directory of Vex
 set(VEX_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 # Make VEX_ROOT_DIR available to downstream projects that use this library
@@ -247,32 +253,20 @@ message(STATUS "Setting up Vex headers...")
 if(VEX_ENABLE_DX12)
     include(VexDX12)
     setup_dx12_backend(Vex)
+    vex_setup_d3d12_agility_runtime(Vex)
+    vex_setup_pix_events(Vex)
 elseif(VEX_ENABLE_VULKAN)
     include(VexVulkan)
     setup_vulkan_backend(Vex)
 endif()
 
-function(vex_setup_runtime TARGET)
-    if(VEX_ENABLE_DX12)
-        vex_setup_d3d12_agility_runtime(${TARGET})
-        vex_setup_pix_events(${TARGET})
-    endif()
-
-    link_with_dxc(${TARGET})
-
-    if (VEX_ENABLE_SLANG)
-        link_with_slang(${TARGET})
-    endif()
-endfunction()
-
 # Static linking with DXC.
-build_with_dxc(Vex)
+vex_setup_dxc(Vex)
 
-# Static linking with Slang.
-build_with_slang(Vex)
+vex_setup_slang(Vex)
 
 # Static linking to magic_enum
-add_header_only_dependency(Vex magic_enum "${magic_enum_SOURCE_DIR}" "include" "magic_enum")
+add_header_only_dependency(Vex magic_enum "${magic_enum_SOURCE_DIR}" "include" "")
 
 # =========================================
 # DEFINES

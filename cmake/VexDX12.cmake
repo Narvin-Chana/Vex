@@ -110,8 +110,8 @@ function(vex_setup_pix_events TARGET)
         add_custom_command(TARGET ${TARGET} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${PIX_EVENTS_DIR}/bin/x64/WinPixEventRuntime.dll"
-            "$<TARGET_FILE_DIR:${TARGET}>/WinPixEventRuntime.dll"
-            COMMENT "Copying PixEvents DLLs to output directory : $<TARGET_FILE_DIR:${TARGET}>..."
+            "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/WinPixEventRuntime.dll"
+            COMMENT "Copying PixEvents DLLs to output directory : ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}..."
         )
     endif()
 endfunction()
@@ -140,11 +140,11 @@ function(vex_setup_d3d12_agility_runtime TARGET)
         )
 
         add_custom_command(TARGET ${TARGET} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${TARGET}>/D3D12"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/D3D12"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${VEX_D3D12_AGILITY_SOURCE_SDK_DIR}/D3D12Core.dll"
                 "${VEX_D3D12_AGILITY_SOURCE_SDK_DIR}/d3d12SDKLayers.dll"
-                "$<TARGET_FILE_DIR:${TARGET}>/D3D12"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/D3D12"
             COMMENT "Copying Agility SDK's DLLs to output directory : $<TARGET_FILE_DIR:${TARGET}>/D3D12..."
         )
 

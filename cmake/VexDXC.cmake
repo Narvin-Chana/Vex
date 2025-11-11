@@ -26,10 +26,18 @@ elseif(UNIX)
     set(DXC_SHARED_LIB "${dxc_SOURCE_DIR}/lib/libdxcompiler.so")
 endif()
 
-function(build_with_dxc target)
+function(vex_setup_dxc target)
     if(WIN32)
         message(STATUS "Statically linked with DXC: ${DXC_STATIC_LIB}")
         target_link_libraries(${target} PRIVATE "${DXC_STATIC_LIB}")
+
+        # Copies the dxcompiler dll to the user's working directory (avoids the program using another one in their path).
+        add_custom_command(TARGET ${target} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${DXC_SHARED_LIB}"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/dxcompiler.dll"
+                COMMENT "Copying DXC dll to output directory..."
+        )
     elseif(UNIX)
         target_link_libraries(${target} PRIVATE "${DXC_SHARED_LIB}")
         set_target_properties(${target} PROPERTIES
@@ -39,32 +47,20 @@ function(build_with_dxc target)
     endif()
     message(STATUS "Installing DXC headers: ${dxc_SOURCE_DIR}/${DXC_HEADERS_INCLUDE_NAME}")
     add_header_only_dependency(${target} dxc "${dxc_SOURCE_DIR}" "${DXC_HEADERS_INCLUDE_NAME}" "dxc")
-endfunction()
 
-function(link_with_dxc target)
-    if(WIN32)
-        # Copies the dxcompiler dll to the user's working directory (avoids the program using another one in their path).
-        add_custom_command(TARGET ${target} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${DXC_SHARED_LIB}"
-            "$<TARGET_FILE_DIR:${target}>/dxcompiler.dll"
-            COMMENT "Copying DXC dll to output directory..."
-        )
-    endif()
-    message(STATUS "Linked ${target} with DirectXCompiler, scanning for Vex shader files...")
     # Copies the Vex helper shader files to the target's working directory.
     file(GLOB VEX_SHADER_FILES
-        "${VEX_ROOT_DIR}/shaders/*.hlsl"
-        "${VEX_ROOT_DIR}/shaders/*.hlsli"
+            "${VEX_ROOT_DIR}/shaders/*.hlsl"
+            "${VEX_ROOT_DIR}/shaders/*.hlsli"
     )
     foreach(SHADER_FILE ${VEX_SHADER_FILES})
-        message(STATUS "  - Found shader ${SHADER_FILE}") 
+        message(STATUS "  - Found shader ${SHADER_FILE}")
         get_filename_component(FILE_NAME ${SHADER_FILE} NAME)
         add_custom_command(TARGET ${target} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 ${SHADER_FILE}
-                "$<TARGET_FILE_DIR:${target}>/${FILE_NAME}"
-            COMMENT "Copying Vex shader ${FILE_NAME}"
+                "${VEX_OUTPUT_SHADER_DIR}/${FILE_NAME}"
+                COMMENT "Copying Vex shader ${FILE_NAME}"
         )
     endforeach()
 endfunction()

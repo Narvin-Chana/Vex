@@ -45,11 +45,16 @@ if (VEX_ENABLE_SLANG)
     endif()
 endif()
 
-function(build_with_slang target)
+function(vex_setup_slang target)
     if (VEX_ENABLE_SLANG)
         if(WIN32)
             message(STATUS "Statically linked with Slang: ${SLANG_STATIC_LIBS}")
             target_link_libraries(${target} PUBLIC "${SLANG_STATIC_LIBS}")
+
+            add_custom_command(TARGET ${target} POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    ${SLANG_SHARED_LIBS}
+                    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
         elseif(UNIX)
             target_link_libraries(${target} PRIVATE "${SLANG_SHARED_LIBS}")
             set_target_properties(${target} PROPERTIES
@@ -63,22 +68,12 @@ function(build_with_slang target)
             "src/Vex/Shaders/SlangImpl.h"
             "src/Vex/Shaders/SlangImpl.cpp"
         )
+        # Copies the Vex helper shader file to the target's working directory.
+        add_custom_command(TARGET ${target} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${VEX_ROOT_DIR}/shaders/Vex.slang"
+                "${VEX_OUTPUT_SHADER_DIR}/Vex.slang"
+        )
     endif()
     target_compile_definitions(Vex PUBLIC VEX_SLANG=$<BOOL:${VEX_ENABLE_SLANG}>)
-endfunction()
-
-function(link_with_slang target)
-    message(STATUS "Linked ${target} with Slang.")
-    if(WIN32)
-        add_custom_command(TARGET ${target} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${SLANG_SHARED_LIBS}
-        $<TARGET_FILE_DIR:${target}>)
-    endif()
-    # Copies the Vex helper shader file to the target's working directory.
-    add_custom_command(TARGET ${target} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${VEX_ROOT_DIR}/shaders/Vex.slang"
-            "$<TARGET_FILE_DIR:${target}>/Vex.slang"
-    )
 endfunction()
