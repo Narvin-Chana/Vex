@@ -1,7 +1,7 @@
-﻿#include "Dx12TimestampQueryPool.h"
+﻿#include "DX12TimestampQueryPool.h"
 
-#include "DX12/RHI/DX12CommandList.h"
-#include "DX12/RHI/DX12RHI.h"
+#include <DX12/RHI/DX12CommandList.h>
+#include <DX12/RHI/DX12RHI.h>
 
 namespace vex::dx12
 {
@@ -19,7 +19,6 @@ DX12TimestampQueryPool::DX12TimestampQueryPool(RHI& rhi, RHIAllocator& allocator
 {
     D3D12_QUERY_HEAP_DESC heapDesc{};
     heapDesc.Count = MaxInFlightQueriesCount * 2;
-    heapDesc.NodeMask = 0; // Revisit if we use mulitple-GPU setup
     heapDesc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
     chk << rhi.GetNativeDevice()->CreateQueryHeap(&heapDesc, IID_PPV_ARGS(heap.GetAddressOf()));
 }

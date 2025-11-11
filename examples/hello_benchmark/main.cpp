@@ -20,11 +20,12 @@ int main()
                          .usage = vex::BufferUsage::GenericBuffer | vex::BufferUsage::ReadWriteBuffer,
                          .memoryLocality = vex::ResourceMemoryLocality::GPUOnly });
 
-    // Begins a timestamp for
+    // Begins a timestamp for the global command context
     vex::QueryHandle globalQueryHandle = ctx.BeginTimestampQuery();
     vex::QueryHandle dispatchQueries[N]{};
     for (auto i = 0; i < N; ++i)
     {
+        // Begins a timestamp query for iteration i
         dispatchQueries[i] = ctx.BeginTimestampQuery();
 
         // Create the bindings and obtain the bindless handles we need for our compute passes.

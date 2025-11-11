@@ -2,8 +2,7 @@
 #include <expected>
 
 #include <Vex/RHIImpl/RHIBuffer.h>
-
-#include "Vex/Synchronization.h"
+#include <Vex/Synchronization.h>
 
 namespace vex
 {
@@ -12,7 +11,7 @@ enum class QueryStatus
 {
     // Result was not returned by GPU yet
     NotReady,
-    // Resolved query data was cleanup due to long lifetime
+    // Resolved query data was cleaned up due to long lifetime
     OutOfDate
 };
 

@@ -1,11 +1,12 @@
 ﻿#pragma once
-#include "DX12/DX12Headers.h"
-#include "RHI/RHITimestampQueryPool.h"
+#include <RHI/RHITimestampQueryPool.h>
+
+#include <DX12/DX12Headers.h>
 
 namespace vex::dx12
 {
 
-class DX12TimestampQueryPool : public RHITimestampQueryPoolBase
+class DX12TimestampQueryPool final : public RHITimestampQueryPoolBase
 {
     ComPtr<ID3D12QueryHeap> heap;
     NonNullPtr<RHI> rhi;

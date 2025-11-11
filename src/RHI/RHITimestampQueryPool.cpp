@@ -43,6 +43,7 @@ std::expected<Query, QueryStatus> RHITimestampQueryPoolBase::GetQueryData(QueryH
         return it->second;
     }
 
+    VEX_ASSERT(generation > 0);
     if (handle.GetGeneration() < generation - 1)
     {
         return std::unexpected{ QueryStatus::OutOfDate };

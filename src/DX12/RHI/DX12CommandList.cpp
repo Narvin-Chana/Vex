@@ -794,6 +794,7 @@ void DX12CommandList::EndTimestampQuery(QueryHandle handle)
 
 void DX12CommandList::ResolveTimestampQueries(u32 firstQuery, u32 queryCount)
 {
+    VEX_ASSERT()
     commandList->ResolveQueryData(queryPool->GetNativeQueryHeap(),
                                   D3D12_QUERY_TYPE_TIMESTAMP,
                                   firstQuery,
