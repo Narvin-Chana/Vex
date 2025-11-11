@@ -32,9 +32,7 @@ class VkSwapChain final : public RHISwapChainBase
 {
 
 public:
-    VkSwapChain(NonNullPtr<VkGPUContext> ctx,
-                const SwapChainDescription& desc,
-                const PlatformWindow& platformWindow);
+    VkSwapChain(NonNullPtr<VkGPUContext> ctx, const SwapChainDescription& desc, const PlatformWindow& platformWindow);
 
     virtual void Resize(u32 width, u32 height) override;
 
@@ -67,7 +65,7 @@ private:
     // Used to wait for all command lists to finish before presenting.
     std::vector<::vk::UniqueSemaphore> presentSemaphore;
 
-    u32 currentBackbufferId;
+    u32 currentBackbufferId = 0;
     u32 width, height;
 
     friend class VkRHI;
