@@ -251,7 +251,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
     {
         clearValue = D3D12_CLEAR_VALUE();
         clearValue->Format = texDesc.Format;
-        std::memcpy(clearValue->Color, desc.clearValue.color.data(), sizeof(float) * 4);
+        memcpy(clearValue->Color, desc.clearValue.color.data(), sizeof(float) * 4);
         clearValue->DepthStencil = { .Depth = desc.clearValue.depth, .Stencil = desc.clearValue.stencil };
     }
 
@@ -297,7 +297,14 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
     VEX_ASSERT(texture, "The texture passed in should be defined!");
     desc.name = std::move(name);
 
-    D3D12_RESOURCE_DESC nativeDesc = texture->GetDesc();
+    D3D12_RESOURCE_DESC nativeDesc;
+
+#if defined(_MSC_VER) || !defined(_WIN32)
+    nativeDesc = texture->GetDesc();
+#else
+    texture->GetDesc(&nativeDesc);
+#endif
+
     if (nativeDesc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D)
     {
         // Array size of 6 and TEXTURE2D resource dimension means we suppose the texture is a cubemap.

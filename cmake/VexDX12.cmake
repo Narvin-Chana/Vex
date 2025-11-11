@@ -10,9 +10,9 @@ function(setup_dx12_backend TARGET)
         )
 
         target_link_libraries(${TARGET} PRIVATE "${PIX_EVENTS_DIR}/bin/x64/WinPixEventRuntime.lib")
-        target_include_directories(${TARGET} PRIVATE "${PIX_EVENTS_DIR}/include/")
+        target_include_directories(${TARGET} PRIVATE "${PIX_EVENTS_DIR}/Include/")
 
-        message(STATUS "Setup PixEvents")
+        message(STATUS "Setup PixEvents at ${PIX_EVENTS_DIR}")
     endif()
 
     message(STATUS "Setting up DirectX 12 backend...")

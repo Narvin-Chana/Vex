@@ -199,7 +199,7 @@ std::expected<std::vector<byte>, std::string> DXCCompilerImpl::CompileShader(
     // Store shader bytecode blob inside the Shader.
     std::vector<byte> finalShaderBlob;
     finalShaderBlob.resize(shaderBytecode->GetBufferSize());
-    std::memcpy(finalShaderBlob.data(), shaderBytecode->GetBufferPointer(), finalShaderBlob.size() * sizeof(u8));
+    memcpy(finalShaderBlob.data(), shaderBytecode->GetBufferPointer(), finalShaderBlob.size() * sizeof(u8));
 
     return finalShaderBlob;
 }

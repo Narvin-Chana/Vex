@@ -1,6 +1,8 @@
 #include "SlangImpl.h"
 
 #include <algorithm>
+#include <cstring>
+#include <utility>
 
 #include <magic_enum/magic_enum.hpp>
 

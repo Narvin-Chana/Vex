@@ -1,5 +1,7 @@
 #include "DX12GraphicsPipeline.h"
 
+#include <algorithm>
+
 #include <DX12/DX12Formats.h>
 
 namespace vex::dx12

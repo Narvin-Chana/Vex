@@ -18,7 +18,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         build_type: [Debug, Release]
-        c_compiler: [gcc, clang, cl]
+        c_compiler: [gcc, clang, cl, x86_64-w64-mingw32-gcc]
         graphics_api: [vulkan, directx12]
         include:
           - os: windows-latest
@@ -33,12 +33,17 @@ jobs:
           - os: ubuntu-latest
             c_compiler: clang
             cpp_compiler: clang++
+          - os: ubuntu-latest
+            c_compiler: x86_64-w64-mingw32-gcc
+            cpp_compiler: x86_64-w64-mingw32-g++
         exclude:
           # Remove unsupported compilers from windows/linux
           - os: windows-latest
             c_compiler: gcc
           - os: ubuntu-latest
             c_compiler: cl
+          - os: windows-latest
+            c_compiler: x86_64-w64-mingw32-gcc
           # Remove DirectX-only configurations from Linux (not supported)
           - os: ubuntu-latest
             graphics_api: directx12
@@ -109,8 +114,41 @@ jobs:
         clang --version
         clang++ --version
 
+    - name : Install MinGW64
+      if : matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'x86_64-w64-mingw32-gcc'
+      uses: egor-tensin/setup-mingw@v2
+
+    - name: Setup MinGW64
+      if: matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'x86_64-w64-mingw32-gcc'
+      run: |
+        # Find MinGW GCC path
+        MINGW_GCC=$(which x86_64-w64-mingw32-gcc)
+        MINGW_GXX=$(which x86_64-w64-mingw32-g++)
+        
+        echo "MinGW GCC: $MINGW_GCC"
+        echo "MinGW G++: $MINGW_GXX"
+        
+        # Set environment variables for CMake to find MinGW
+        echo "CMAKE_C_COMPILER=$MINGW_GCC" >> $GITHUB_ENV
+        echo "CMAKE_CXX_COMPILER=$MINGW_GXX" >> $GITHUB_ENV
+        echo "CMAKE_SYSTEM_NAME=Windows" >> $GITHUB_ENV
+        
+        # Verify versions
+        x86_64-w64-mingw32-gcc --version
+        x86_64-w64-mingw32-g++ --version
+        
+        # Set up MinGW-w64 environment variables
+        echo "MINGW_HOME=$(dirname $(dirname $MINGW_GCC))" >> $GITHUB_ENV
+        echo "PATH=$MINGW_HOME/bin:$PATH" >> $GITHUB_ENV
+        
+        # Set up include directories and library paths
+        echo "C_INCLUDE_PATH=$MINGW_HOME/x86_64-w64-mingw32/include" >> $GITHUB_ENV
+        echo "CPLUS_INCLUDE_PATH=$MINGW_HOME/x86_64-w64-mingw32/include" >> $GITHUB_ENV
+        echo "LIBRARY_PATH=$MINGW_HOME/x86_64-w64-mingw32/lib" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=$MINGW_HOME/x86_64-w64-mingw32/lib" >> $GITHUB_ENV
+
     - name: Install Vulkan SDK (Windows)
-      if: matrix.os == 'windows-latest' && (matrix.graphics_api == 'vulkan')
+      if: (matrix.os == 'windows-latest' || matrix.c_compiler == 'x86_64-w64-mingw32-gcc') && (matrix.graphics_api == 'vulkan')
       uses: humbletim/setup-vulkan-sdk@523828e49cd4afabce369c39c7ee6543a2b7a735
       with:
         vulkan-query-version: latest
@@ -118,7 +156,7 @@ jobs:
         vulkan-use-cache: true
 
     - name: Install Vulkan SDK and Wayland (Linux)
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-latest' && !(matrix.c_compiler == 'x86_64-w64-mingw32-gcc')
       run: |
         # Add the LunarG repository
         wget -qO - https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo apt-key add -

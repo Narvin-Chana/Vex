@@ -117,10 +117,10 @@ void Logger::CommitTimestampedLogFile()
 std::string GetTimestampString()
 {
     // Clang and GCC's linux STLs do not yet implement a formatter for time_point...
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(_MSC_VER)
     auto const time = std::chrono::current_zone()->to_local(std::chrono::system_clock::now());
     return std::format("{:%Y-%m-%d %H:%M:%OS}", time);
-#elif defined(__linux__)
+#else
     time_t now = time(0);
     struct tm tstruct;
     char buf[80];
