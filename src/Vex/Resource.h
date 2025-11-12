@@ -66,7 +66,12 @@ public:
     template <class T>
     void ReadData(T& outData);
 
-    [[nodiscard]] std::span<byte> GetMappedRange() const
+    [[nodiscard]] std::span<byte> GetMappedRange()
+    {
+        return mappedData;
+    };
+
+    [[nodiscard]] std::span<const byte> GetMappedRange() const
     {
         return mappedData;
     };

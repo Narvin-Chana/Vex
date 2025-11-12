@@ -539,7 +539,7 @@ void Graphics::UnregisterRenderExtension(NonNullPtr<RenderExtension> renderExten
 
 std::expected<Query, QueryStatus> Graphics::GetTimestampValue(QueryHandle handle)
 {
-    queryPool->ResolveQueries();
+    VEX_CHECK(handle != vex::GInvalidQueryHandle, "Query handle must be valid when getting timestamp value");
     return queryPool->GetQueryData(handle);
 }
 

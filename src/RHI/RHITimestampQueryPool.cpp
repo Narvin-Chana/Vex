@@ -9,59 +9,58 @@ namespace vex
 
 QueryHandle RHITimestampQueryPoolBase::AllocateQuery(QueueType queueType)
 {
-    u32 nextHead = (head + 1) % MaxInFlightQueriesCount;
-    if (nextHead == tail)
+    if (inFlightQueries.ElementCount() == MaxInFlightQueriesCount)
     {
-        u32 processedQueries = ResolveQueries();
-        VEX_CHECK(processedQueries != 0,
+        ResolveQueries();
+        CleanupQueries();
+        VEX_CHECK(inFlightQueries.ElementCount() != MaxInFlightQueriesCount,
                   "Unable to make room for new timestamp query. Max in flight unresolved queries reached");
     }
 
-    QueryHandle handle = QueryHandle::CreateHandle(head, generation);
-    inFlightQueries[head].handle = handle;
-    inFlightQueries[head].queueType = queueType;
-    inFlightQueries[head].token = GInfiniteSyncTokens[queueType];
-
-    // advance head
-    u32 prevHead = head;
-    head = nextHead;
-
-    // advance generation
-    if (head < prevHead)
-    {
-        generation++;
-        CleanupOldQueries();
-    }
-
-    return handle;
+    return inFlightQueries.AllocateElement({ GInfiniteSyncTokens[queueType], false });
 }
 
 std::expected<Query, QueryStatus> RHITimestampQueryPoolBase::GetQueryData(QueryHandle handle)
 {
+    ResolveQueries();
+
     if (const auto it = resolvedQueries.find(handle); it != resolvedQueries.end())
     {
-        return it->second;
+        return it->second.query;
     }
 
-    if (generation > 0 && handle.GetGeneration() < generation - 1)
+    if (inFlightQueries.IsValid(handle))
     {
-        return std::unexpected{ QueryStatus::OutOfDate };
+        return std::unexpected{ QueryStatus::NotReady };
     }
 
-    return std::unexpected{ QueryStatus::NotReady };
+    return std::unexpected{ QueryStatus::OutOfDate };
 }
 
-void RHITimestampQueryPoolBase::CleanupOldQueries()
+void RHITimestampQueryPoolBase::CleanupQueries()
 {
-    std::vector<QueryHandle> handlesToCleanup;
-    for (const auto& [handle, _] : resolvedQueries)
+    generation++;
+
+    std::vector<QueryHandle> inFlightHandlesToFree;
+    for (auto it = inFlightQueries.begin(); it != inFlightQueries.end(); ++it)
     {
-        if (generation > 1)
+        if (it->isRegistered)
         {
-            if (handle.GetGeneration() < generation - 1)
-            {
-                handlesToCleanup.push_back(handle);
-            }
+            inFlightHandlesToFree.push_back(it.GetHandle());
+        }
+    }
+
+    for (const QueryHandle query : inFlightHandlesToFree)
+    {
+        inFlightQueries.FreeElement(query);
+    }
+
+    std::vector<QueryHandle> handlesToCleanup;
+    for (const auto& [handle, query] : resolvedQueries)
+    {
+        if (generation > 1 && query.generation < generation - 1)
+        {
+            handlesToCleanup.push_back(handle);
         }
     }
 
@@ -79,6 +78,7 @@ RHITimestampQueryPoolBase::RHITimestampQueryPoolBase(RHI& rhi, RHIAllocator& all
                                           .memoryLocality = ResourceMemoryLocality::CPURead }) }
     , rhi{ rhi }
 {
+    inFlightQueries.Resize(MaxInFlightQueriesCount);
 }
 
 void RHITimestampQueryPoolBase::FetchQueriesTimestamps(RHICommandList& cmdList, std::span<QueryHandle> handles)
@@ -89,8 +89,12 @@ void RHITimestampQueryPoolBase::FetchQueriesTimestamps(RHICommandList& cmdList, 
         u32 count;
     };
 
-    std::vector<QueryRange> ranges;
+    // Will make sure we are as compact as possible
+    std::sort(handles.begin(),
+              handles.end(),
+              [](const QueryHandle& a, const QueryHandle& b) { return a.GetIndex() < b.GetIndex(); });
 
+    std::vector<QueryRange> ranges;
     u32 lastIndex = handles.begin()->GetIndex();
     QueryRange& currentRange = ranges.emplace_back(lastIndex, 1);
     for (auto it = std::next(handles.begin()); it != handles.end(); ++it)
@@ -116,41 +120,33 @@ void RHITimestampQueryPoolBase::UpdateSyncTokens(SyncToken token, std::span<Quer
 {
     for (QueryHandle query : queries)
     {
-        inFlightQueries[query.GetIndex()].token = token;
+        inFlightQueries[query].token = token;
     }
 }
 
-u32 RHITimestampQueryPoolBase::ResolveQueries()
+void RHITimestampQueryPoolBase::ResolveQueries()
 {
-    ResourceMappedMemory mem{ timestampBuffer };
-    std::span mappedRange = { reinterpret_cast<u64*>(mem.GetMappedRange().data()), MaxInFlightTimestampCount };
+    const ResourceMappedMemory mem{ timestampBuffer };
+    std::span mappedRange = { reinterpret_cast<const u64*>(mem.GetMappedRange().data()), MaxInFlightTimestampCount };
 
-    u32 resolvedQueriesCount = 0;
-
-    bool stop = false;
-    while (!stop && tail != head)
+    for (auto it = inFlightQueries.begin(); it != inFlightQueries.end(); ++it)
     {
-        const InFlightQuery& inFlightQuery = inFlightQueries[tail];
-
-        if (rhi->IsTokenComplete(inFlightQuery.token))
+        QueryHandle handle = it.GetHandle();
+        if (!it->isRegistered && rhi->IsTokenComplete(it->token))
         {
-            const u64* data = &mappedRange[inFlightQuery.handle.GetIndex() * 2];
+            it->isRegistered = true;
+
+            const u64* data = &mappedRange[handle.GetIndex() * 2];
             const u64 deltaTimestamp = data[1] - data[0];
 
-            resolvedQueries.emplace(std::pair{
-                inFlightQuery.handle,
-                Query{ (deltaTimestamp / GetTimestampPeriod(inFlightQuery.queueType)) * 1000.0, deltaTimestamp } });
-
-            tail = (tail + 1) % MaxInFlightQueriesCount;
-            resolvedQueriesCount++;
-        }
-        else
-        {
-            stop = true;
+            VEX_ASSERT(!resolvedQueries.contains(handle));
+            resolvedQueries.emplace(
+                std::pair{ handle,
+                           RegisteredQuery{ Query{ (deltaTimestamp / GetTimestampPeriod(it->token.queueType)) * 1000.0,
+                                                   deltaTimestamp },
+                                            generation } });
         }
     }
-
-    return resolvedQueriesCount;
 }
 
 RHIBuffer& RHITimestampQueryPoolBase::GetTimestampBuffer()
