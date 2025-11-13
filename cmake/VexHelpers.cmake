@@ -69,3 +69,104 @@ function(download_and_decompress_archive ARCHIVE_URL ARCHIVE_DEST_DIR)
 
     file(REMOVE "${NUGET_DOWNLOAD_DIR}")
 endfunction()
+
+function(vex_setup_runtime TARGET)
+    if(NOT TARGET ${TARGET})
+        message(FATAL_ERROR "vex_setup_runtime: Target ${TARGET} does not exist")
+        return()
+    endif()
+    
+    get_target_property(TARGET_TYPE ${TARGET} TYPE)
+    if(NOT TARGET_TYPE STREQUAL "EXECUTABLE")
+        message(FATAL_ERROR "vex_setup_runtime: ${TARGET} is not an executable")
+        return()
+    endif()
+
+    message(STATUS "Setting up Vex runtime dependencies for ${TARGET}...")
+
+    # Get the list of runtime DLLs stored on Vex
+    get_target_property(VEX_DLLS Vex VEX_RUNTIME_DLLS)
+    if(VEX_DLLS)
+        foreach(DLL_PATH ${VEX_DLLS})
+            get_filename_component(DLL_NAME ${DLL_PATH} NAME)
+            message(STATUS "  - Found ${DLL_PATH}")
+            add_custom_command(TARGET ${TARGET} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${DLL_PATH}"
+                    "$<TARGET_FILE_DIR:${TARGET}>/${DLL_NAME}"
+                COMMENT "Copying Vex runtime dll \"${DLL_NAME}\" to ${TARGET}"
+            )
+        endforeach()
+    else()
+        message(FATAL_ERROR "No runtime DLLs found for Vex...")
+    endif()
+
+    # D3D12 Agility SDK DLLs need to be inserted into the D3D12/ subdirectory.
+    get_target_property(D3D12_AGILITY_DLLS Vex VEX_D3D12_AGILITY_DLLS)
+    if(D3D12_AGILITY_DLLS)
+        # Create D3D12 subdirectory
+        add_custom_command(TARGET ${TARGET} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory 
+                "$<TARGET_FILE_DIR:${TARGET}>/D3D12"
+        )
+        
+        # Copy each Agility SDK DLL to the D3D12/ subdirectory
+        foreach(DLL_PATH ${D3D12_AGILITY_DLLS})
+            get_filename_component(DLL_NAME ${DLL_PATH} NAME)
+            add_custom_command(TARGET ${TARGET} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${DLL_PATH}"
+                    "$<TARGET_FILE_DIR:${TARGET}>/D3D12/${DLL_NAME}"
+                COMMENT "Copying Agility SDK: ${DLL_NAME}"
+            )
+        endforeach()
+        
+        # Add the Agility SDK version define to the target
+        get_target_property(AGILITY_VERSION Vex DIRECTX_AGILITY_SDK_VERSION)
+        if(AGILITY_VERSION)
+            target_compile_definitions(${TARGET} PRIVATE 
+                DIRECTX_AGILITY_SDK_VERSION=${AGILITY_VERSION}
+                D3D12_AGILITY_SDK_ENABLED
+            )
+            
+            # Add the DX12AgilitySDK.cpp source if not already added
+            target_sources(${TARGET} PRIVATE
+                "${VEX_ROOT_DIR}/src/DX12/DX12AgilitySDK.cpp"
+            )
+        endif()
+    endif()
+
+    # Copy Vex shader files
+    if(DEFINED VEX_ROOT_DIR AND EXISTS "${VEX_ROOT_DIR}/shaders")
+        file(GLOB VEX_SHADER_FILES
+            "${VEX_ROOT_DIR}/shaders/*.hlsl"
+            "${VEX_ROOT_DIR}/shaders/*.hlsli"
+            "${VEX_ROOT_DIR}/shaders/*.slang"
+        )
+        
+        if(VEX_SHADER_FILES)
+            message(STATUS "Copying Vex shader files to ${TARGET}:")
+            foreach(SHADER_FILE ${VEX_SHADER_FILES})
+                message(STATUS "  - Found shader ${SHADER_FILE}") 
+                get_filename_component(FILE_NAME ${SHADER_FILE} NAME)
+                add_custom_command(TARGET ${TARGET} POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                        "${SHADER_FILE}"
+                        "$<TARGET_FILE_DIR:${TARGET}>/${FILE_NAME}"
+                    COMMENT "Copying Vex shader: ${FILE_NAME}"
+                )
+            endforeach()
+        endif()
+    endif()
+endfunction()
+
+function(vex_add_files_to_target_property target PROPERTY_NAME FILES_TO_ADD)
+    get_target_property(EXISTING_FILES ${target} ${PROPERTY_NAME})
+    if (NOT EXISTING_FILES)
+        set(EXISTING_FILES "")
+    endif()
+
+    list(APPEND EXISTING_FILES "${FILES_TO_ADD}")
+
+    set_target_properties(${target} PROPERTIES ${PROPERTY_NAME} "${EXISTING_FILES}")
+endfunction()

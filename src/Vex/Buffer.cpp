@@ -16,13 +16,13 @@ void ValidateBufferDesc(const BufferDesc& desc)
 
 void ValidateBufferCopyDesc(const BufferDesc& srcDesc, const BufferDesc& dstDesc, const BufferCopyDesc& copyDesc)
 {
-    VEX_CHECK(srcDesc.byteSize == dstDesc.byteSize,
-              "Error validating BufferCopyDesc for \"{}\" and \"{}\": Both buffers' byteSizes should be equal "
+    VEX_CHECK(srcDesc.byteSize >= copyDesc.byteSize,
+              "Error validating BufferCopyDesc for \"{}\" and \"{}\": The source buffer's byteSize should be at least larger than the copyDesc byteSize "
               "(currently {} bytes vs {} bytes)!",
               srcDesc.name,
               dstDesc.name,
               srcDesc.byteSize,
-              dstDesc.byteSize);
+              copyDesc.byteSize);
 
     ValidateBufferRegion(srcDesc, { copyDesc.srcOffset, copyDesc.byteSize });
     ValidateBufferRegion(dstDesc, { copyDesc.dstOffset, copyDesc.byteSize });
