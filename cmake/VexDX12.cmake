@@ -67,6 +67,8 @@ function(setup_dx12_backend TARGET)
         "src/DX12/RHI/DX12Allocator.cpp"
         "src/DX12/RHI/DX12ScopedGPUEvent.h"
         "src/DX12/RHI/DX12ScopedGPUEvent.cpp"
+        "src/DX12/RHI/Dx12TimestampQueryPool.cpp"
+        "src/DX12/RHI/Dx12TimestampQueryPool.h"
         # DX12 API
         "src/DX12/DX12DescriptorHeap.h"
         "src/DX12/DX12Headers.h"

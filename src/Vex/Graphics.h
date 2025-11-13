@@ -5,7 +5,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include <Vex/QueueType.h>
 #include <Vex/Containers/FreeList.h>
 #include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/Formats.h>
@@ -13,12 +12,14 @@
 #include <Vex/NonNullPtr.h>
 #include <Vex/PipelineStateCache.h>
 #include <Vex/PlatformWindow.h>
+#include <Vex/QueueType.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandPool.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITexture.h>
+#include <Vex/RHIImpl/RHITimestampQueryPool.h>
 #include <Vex/SubmissionPolicy.h>
 #include <Vex/Synchronization.h>
 #include <Vex/UniqueHandle.h>
@@ -128,6 +129,9 @@ public:
     // You can manually unregister a RenderExtension by passing in the pointer returned on creation.
     void UnregisterRenderExtension(NonNullPtr<RenderExtension> renderExtension);
 
+    // Returns Query or status if query is not yet ready
+    std::expected<Query, QueryStatus> GetTimestampValue(QueryHandle handle);
+
 private:
     void SubmitDeferredWork();
     void CleanupResources();
@@ -169,6 +173,8 @@ private:
     MaybeUninitialized<RHIAllocator> allocator;
 
     MaybeUninitialized<RHISwapChain> swapChain;
+
+    MaybeUninitialized<RHITimestampQueryPool> queryPool;
 
     // Converts from the Handle to the actual underlying RHI resource.
     FreeList<RHITexture, TextureHandle> textureRegistry;

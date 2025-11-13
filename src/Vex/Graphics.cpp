@@ -16,6 +16,7 @@
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
+#include <Vex/RHIImpl/RHITimestampQueryPool.h>
 #include <Vex/RenderExtension.h>
 
 namespace vex
@@ -95,6 +96,8 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
 
         CreatePresentTextures();
     }
+
+    queryPool = rhi.CreateTimestampQueryPool(*allocator);
 
     // TODO(https://trello.com/c/T1DY4QOT): See the comment inside SetSampler().
     SetSamplers({});
@@ -207,8 +210,8 @@ void Graphics::Present(bool isFullscreenMode)
 }
 
 CommandContext Graphics::BeginScopedCommandContext(QueueType queueType,
-                                                     SubmissionPolicy submissionPolicy,
-                                                     std::span<SyncToken> dependencies)
+                                                   SubmissionPolicy submissionPolicy,
+                                                   std::span<SyncToken> dependencies)
 {
     if (submissionPolicy == SubmissionPolicy::DeferToPresent && !desc.useSwapChain)
     {
@@ -217,7 +220,11 @@ CommandContext Graphics::BeginScopedCommandContext(QueueType queueType,
                 "SubmissionPolicy::Immediate instead!");
     }
 
-    return CommandContext{ *this, commandPool->GetOrCreateCommandList(queueType), submissionPolicy, dependencies };
+    return CommandContext{ *this,
+                           commandPool->GetOrCreateCommandList(queueType),
+                           *queryPool,
+                           submissionPolicy,
+                           dependencies };
 }
 
 void Graphics::SubmitDeferredWork()
@@ -528,6 +535,12 @@ void Graphics::UnregisterRenderExtension(NonNullPtr<RenderExtension> renderExten
     {
         renderExtensions.erase(el);
     }
+}
+
+std::expected<Query, QueryStatus> Graphics::GetTimestampValue(QueryHandle handle)
+{
+    VEX_CHECK(handle != vex::GInvalidQueryHandle, "Query handle must be valid when getting timestamp value");
+    return queryPool->GetQueryData(handle);
 }
 
 void Graphics::RecompileChangedShaders()

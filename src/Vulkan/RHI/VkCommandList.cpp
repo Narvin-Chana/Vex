@@ -17,6 +17,7 @@
 #include <Vulkan/RHI/VkResourceLayout.h>
 #include <Vulkan/RHI/VkScopedGPUEvent.h>
 #include <Vulkan/RHI/VkTexture.h>
+#include <Vulkan/RHI/VkTimestampQueryPool.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkFeatureChecker.h>
 #include <Vulkan/VkFormats.h>
@@ -155,11 +156,7 @@ void VkCommandList::Open()
 
 void VkCommandList::Close()
 {
-    if (!isOpen)
-    {
-        VEX_LOG(Fatal, "Attempting to close an already closed command list.");
-        return;
-    }
+    RHICommandListBase::Close();
 
     VEX_VK_CHECK << commandBuffer->end();
 
@@ -465,7 +462,8 @@ void VkCommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
         compactedVkTextureBarriers.push_back(current);
     }
 
-    VEX_CHECK(!vkBufferBarriers.empty() || !vkTextureBarriers.empty(), "TextureBarriers and BufferBarriers cannot both be empty...");
+    VEX_CHECK(!vkBufferBarriers.empty() || !vkTextureBarriers.empty(),
+              "TextureBarriers and BufferBarriers cannot both be empty...");
     ::vk::DependencyInfo info{ .bufferMemoryBarrierCount = static_cast<u32>(vkBufferBarriers.size()),
                                .pBufferMemoryBarriers = vkBufferBarriers.data(),
                                .imageMemoryBarrierCount = static_cast<u32>(vkTextureBarriers.size()),
@@ -679,6 +677,40 @@ void VkCommandList::GenerateMips(RHITexture& texture, u16 sourceMip)
     Barrier({}, { &barrier, 1 });
 }
 
+QueryHandle VkCommandList::BeginTimestampQuery()
+{
+    VEX_ASSERT(queryPool);
+
+    QueryHandle handle = queryPool->AllocateQuery(GetType());
+
+    commandBuffer->resetQueryPool(queryPool->GetNativeQueryPool(), handle.GetIndex() * 2, 2);
+    commandBuffer->writeTimestamp(::vk::PipelineStageFlagBits::eTopOfPipe,
+                                  queryPool->GetNativeQueryPool(),
+                                  handle.GetIndex() * 2);
+    queries.push_back(handle);
+    return handle;
+}
+
+void VkCommandList::EndTimestampQuery(QueryHandle handle)
+{
+    VEX_ASSERT(queryPool);
+    commandBuffer->writeTimestamp(::vk::PipelineStageFlagBits::eBottomOfPipe,
+                                  queryPool->GetNativeQueryPool(),
+                                  (handle.GetIndex() * 2) + 1);
+}
+
+void VkCommandList::ResolveTimestampQueries(u32 firstQuery, u32 queryCount)
+{
+    VEX_ASSERT(queryPool);
+    commandBuffer->copyQueryPoolResults(queryPool->GetNativeQueryPool(),
+                                        firstQuery,
+                                        queryCount,
+                                        queryPool->GetTimestampBuffer().GetNativeBuffer(),
+                                        firstQuery * sizeof(u64),
+                                        sizeof(u64),
+                                        ::vk::QueryResultFlagBits::e64 | ::vk::QueryResultFlagBits::eWait);
+}
+
 void VkCommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDesc> textureCopyDescriptions)
 {
     const auto& srcDesc = src.desc;
@@ -752,9 +784,7 @@ RHIScopedGPUEvent VkCommandList::CreateScopedMarker(const char* label, std::arra
     return { *commandBuffer, label, labelColor };
 }
 
-VkCommandList::VkCommandList(NonNullPtr<VkGPUContext> ctx,
-                             ::vk::UniqueCommandBuffer&& commandBuffer,
-                             QueueType type)
+VkCommandList::VkCommandList(NonNullPtr<VkGPUContext> ctx, ::vk::UniqueCommandBuffer&& commandBuffer, QueueType type)
     : RHICommandListBase{ type }
     , ctx{ ctx }
     , commandBuffer{ std::move(commandBuffer) }

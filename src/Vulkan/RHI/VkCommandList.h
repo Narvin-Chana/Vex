@@ -3,6 +3,7 @@
 #include <Vex/NonNullPtr.h>
 
 #include <RHI/RHICommandList.h>
+#include <RHI/RHITimestampQueryPool.h>
 
 #include <Vulkan/VkHeaders.h>
 
@@ -60,17 +61,15 @@ public:
 
     virtual void GenerateMips(RHITexture& texture, u16 sourceMip) override;
 
+    virtual QueryHandle BeginTimestampQuery() override;
+    virtual void EndTimestampQuery(QueryHandle handle) override;
+    virtual void ResolveTimestampQueries(u32 firstQuery, u32 queryCount);
+
     using RHICommandListBase::Copy;
-    virtual void Copy(RHITexture& src,
-                      RHITexture& dst,
-                      std::span<const TextureCopyDesc> textureCopyDesc) override;
+    virtual void Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDesc> textureCopyDesc) override;
     virtual void Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDesc& bufferCopyDesc) override;
-    virtual void Copy(RHIBuffer& src,
-                      RHITexture& dst,
-                      std::span<const BufferTextureCopyDesc> copyDesc) override;
-    virtual void Copy(RHITexture& src,
-                      RHIBuffer& dst,
-                      std::span<const BufferTextureCopyDesc> copyDesc) override;
+    virtual void Copy(RHIBuffer& src, RHITexture& dst, std::span<const BufferTextureCopyDesc> copyDesc) override;
+    virtual void Copy(RHITexture& src, RHIBuffer& dst, std::span<const BufferTextureCopyDesc> copyDesc) override;
 
     ::vk::CommandBuffer GetNativeCommandList()
     {

@@ -46,6 +46,7 @@ public:
     virtual RHIDescriptorPool CreateDescriptorPool() override;
 
     virtual RHIAllocator CreateAllocator() override;
+    virtual RHITimestampQueryPool CreateTimestampQueryPool(RHIAllocator& allocator) override;
 
     virtual void ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBackend,
                                                  ShaderEnvironment& shaderEnv) override;

@@ -54,7 +54,7 @@ public:
         return handle.GetGeneration() == generations[handle.GetIndex()];
     }
 
-    HandleT AllocateElement(T&& elem)
+    HandleT AllocateElement(T elem)
     {
         if (allocator.freeIndices.empty())
         {
@@ -86,6 +86,18 @@ public:
         allocator.Deallocate(idx);
         VEX_ASSERT(values[idx].has_value());
         return std::exchange(values[idx], std::nullopt);
+    }
+
+    u32 ElementCount() const noexcept
+    {
+        return allocator.size - allocator.freeIndices.size();
+    }
+
+    void Resize(u32 newSize)
+    {
+        allocator.Resize(newSize);
+        generations.resize(newSize);
+        values.resize(newSize);
     }
 
     // This iterator will skip over elements in values which have not been initialized.
@@ -169,13 +181,6 @@ public:
     }
 
 private:
-    void Resize(u32 size)
-    {
-        allocator.Resize(size);
-        generations.resize(size);
-        values.resize(size);
-    }
-
     std::vector<MaybeUninitialized<T>> values;
     std::vector<u8> generations;
     FreeListAllocator allocator;

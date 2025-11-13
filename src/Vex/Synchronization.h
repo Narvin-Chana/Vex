@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Vex/QueueType.h>
 #include <Vex/Hash.h>
+#include <Vex/QueueType.h>
 #include <Vex/Types.h>
 
 namespace vex
@@ -13,6 +13,12 @@ struct SyncToken
     u64 value = 0;
 
     constexpr bool operator==(const SyncToken& other) const = default;
+};
+
+static constexpr std::array GInfiniteSyncTokens{
+    SyncToken{ .queueType = QueueType::Copy, .value = std::numeric_limits<u64>::max() },
+    SyncToken{ .queueType = QueueType::Compute, .value = std::numeric_limits<u64>::max() },
+    SyncToken{ .queueType = QueueType::Graphics, .value = std::numeric_limits<u64>::max() },
 };
 
 } // namespace vex

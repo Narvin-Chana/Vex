@@ -65,6 +65,10 @@ public:
                       RHIBuffer& dst,
                       std::span<const BufferTextureCopyDesc> copyDescriptions) override;
 
+    virtual QueryHandle BeginTimestampQuery() override;
+    virtual void EndTimestampQuery(QueryHandle handle) override;
+    virtual void ResolveTimestampQueries(u32 firstQuery, u32 queryCount) override;
+
     ComPtr<ID3D12GraphicsCommandList10>& GetNativeCommandList()
     {
         return commandList;

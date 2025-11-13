@@ -19,6 +19,7 @@
 #include <DX12/RHI/DX12ResourceLayout.h>
 #include <DX12/RHI/DX12ScopedGPUEvent.h>
 #include <DX12/RHI/DX12Texture.h>
+#include <DX12/RHI/DX12TimestampQueryPool.h>
 
 namespace vex::dx12
 {
@@ -209,13 +210,10 @@ void DX12CommandList::Open()
 
 void DX12CommandList::Close()
 {
-    if (!isOpen)
-    {
-        VEX_LOG(Fatal, "Attempting to close an already closed command list.");
-        return;
-    }
+    RHICommandListBase::Close();
 
     chk << commandList->Close();
+
     isOpen = false;
 }
 
@@ -779,6 +777,29 @@ void DX12CommandList::Copy(RHITexture& src, RHIBuffer& dst, std::span<const Buff
                                        &locations.textureLoc,
                                        &locations.box);
     }
+}
+
+QueryHandle DX12CommandList::BeginTimestampQuery()
+{
+    QueryHandle handle = queryPool->AllocateQuery(GetType());
+    commandList->EndQuery(queryPool->GetNativeQueryHeap(), D3D12_QUERY_TYPE_TIMESTAMP, handle.GetIndex() * 2);
+    queries.push_back(handle);
+    return handle;
+}
+
+void DX12CommandList::EndTimestampQuery(QueryHandle handle)
+{
+    commandList->EndQuery(queryPool->GetNativeQueryHeap(), D3D12_QUERY_TYPE_TIMESTAMP, handle.GetIndex() * 2 + 1);
+}
+
+void DX12CommandList::ResolveTimestampQueries(u32 firstQuery, u32 queryCount)
+{
+    commandList->ResolveQueryData(queryPool->GetNativeQueryHeap(),
+                                  D3D12_QUERY_TYPE_TIMESTAMP,
+                                  firstQuery,
+                                  queryCount,
+                                  queryPool->GetTimestampBuffer().GetRawBuffer(),
+                                  firstQuery * sizeof(u64));
 }
 
 RHIScopedGPUEvent DX12CommandList::CreateScopedMarker(const char* label, std::array<float, 3> labelColor)

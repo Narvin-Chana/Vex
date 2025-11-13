@@ -14,6 +14,7 @@
 #include <RHI/RHIBuffer.h>
 #include <RHI/RHIFwd.h>
 #include <RHI/RHITexture.h>
+#include <RHI/RHITimestampQueryPool.h>
 
 namespace vex
 {
@@ -38,7 +39,7 @@ public:
     }
 
     virtual void Open() = 0;
-    virtual void Close() = 0;
+    virtual void Close();
 
     virtual void SetViewport(
         float x, float y, float width, float height, float minDepth = 0.0f, float maxDepth = 1.0f) = 0;
@@ -78,6 +79,10 @@ public:
                            const RHIRayTracingPipelineState& rayTracingPipelineState) = 0;
 
     virtual void GenerateMips(RHITexture& texture, u16 sourceMip) = 0;
+
+    virtual QueryHandle BeginTimestampQuery() = 0;
+    virtual void EndTimestampQuery(QueryHandle handle) = 0;
+    virtual void ResolveTimestampQueries(u32 firstQuery, u32 queryCount) = 0;
 
     // Copies the whole texture data from src to dst. These textures should have the same size, mips, slice, type,
     // format, etc...
@@ -120,14 +125,18 @@ public:
     {
         return syncTokens;
     }
-    void SetSyncTokens(std::span<SyncToken> tokens)
-    {
-        syncTokens = { tokens.begin(), tokens.end() };
-    }
+    void SetSyncTokens(std::span<SyncToken> tokens);
 
     bool IsOpen() const
     {
         return isOpen;
+    }
+
+    void UpdateTimestampQueryTokens(SyncToken token);
+
+    void SetTimestampQueryPool(NonNullPtr<RHITimestampQueryPool> inQueryPool)
+    {
+        queryPool = inQueryPool;
     }
 
 protected:
@@ -135,6 +144,10 @@ protected:
 
     RHICommandListState state = RHICommandListState::Available;
     std::vector<SyncToken> syncTokens;
+    SyncToken submissionToken;
+
+    RHITimestampQueryPool* queryPool = nullptr;
+    std::vector<QueryHandle> queries;
 
     bool isOpen = false;
 };

@@ -12,6 +12,7 @@
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITexture.h>
+#include <Vex/RHIImpl/RHITimestampQueryPool.h>
 #include <Vex/Shaders/ShaderCompilerSettings.h>
 #include <Vex/Shaders/ShaderEnvironment.h>
 #include <Vex/Synchronization.h>
@@ -193,6 +194,11 @@ RHIAllocator DX12RHI::CreateAllocator()
     return RHIAllocator(device);
 }
 
+RHITimestampQueryPool DX12RHI::CreateTimestampQueryPool(RHIAllocator& allocator)
+{
+    return RHITimestampQueryPool{ *this, allocator };
+}
+
 void DX12RHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBackend, ShaderEnvironment& shaderEnv)
 {
     if (compilerBackend == ShaderCompilerBackend::DXC)
@@ -267,7 +273,16 @@ std::vector<SyncToken> DX12RHI::Submit(std::span<NonNullPtr<RHICommandList>> com
         u64 signalValue = fence.nextSignalValue++;
         chk << GetNativeQueue(queueType)->Signal(fence.fence.Get(), signalValue);
 
-        syncTokens.push_back(SyncToken{ queueType, signalValue });
+        SyncToken submitToken{ queueType, signalValue };
+        syncTokens.push_back(submitToken);
+
+        for (auto& cmdList : commandLists)
+        {
+            if (cmdList->GetType() == i)
+            {
+                cmdList->UpdateTimestampQueryTokens(submitToken);
+            }
+        }
     }
 
     return syncTokens;
