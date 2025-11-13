@@ -91,9 +91,9 @@ cmake -DVEX_GRAPHICS_BACKEND=VULKAN -DVEX_ENABLE_SLANG=ON -B build
 }
 ```
 
-### In CMakeLists.txt:
+### In CMakeLists.txt (before calling `FetchContent_MakeAvailable(Vex)`):
 ```cmake
-set(VEX_ENABLE_SLANG ON CACHE BOOL "" FORCE)
+set(VEX_ENABLE_SLANG ON)
 ```
 
 ### Examples:
