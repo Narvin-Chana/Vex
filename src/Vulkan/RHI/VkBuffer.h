@@ -27,12 +27,9 @@ class VkBuffer final : public RHIBufferBase
 public:
     VkBuffer(NonNullPtr<VkGPUContext> ctx, VkAllocator& allocator, const BufferDesc& desc);
 
-    virtual BindlessHandle GetOrCreateBindlessView(BufferBindingUsage usage,
-                                                   std::optional<u32> strideByteSize,
-                                                   RHIDescriptorPool& descriptorPool) override;
-    virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
-    virtual void FreeAllocation(RHIAllocator& allocator) override;
-
+    void AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
+                                BindlessHandle handle,
+                                const BufferViewDesc& desc) override;
     ::vk::Buffer GetNativeBuffer();
 
     virtual std::span<byte> Map() override;
@@ -42,8 +39,6 @@ private:
     NonNullPtr<VkGPUContext> ctx;
 
     ::vk::UniqueBuffer buffer;
-
-    std::optional<BindlessHandle> bufferHandle;
 
 #if !VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
     ::vk::UniqueDeviceMemory memory;

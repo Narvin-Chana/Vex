@@ -10,6 +10,9 @@
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkGPUContext.h>
 
+#include "Vex/Bindings.h"
+#include "Vex/Validation.h"
+
 namespace vex::vk
 {
 static ::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDesc& desc)
@@ -82,40 +85,17 @@ VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, VkAllocator& allocator, const B
     SetDebugName(ctx->device, *buffer, desc.name.c_str());
 }
 
-BindlessHandle VkBuffer::GetOrCreateBindlessView(BufferBindingUsage usage,
-                                                 std::optional<u32> strideByteSize,
-                                                 RHIDescriptorPool& descriptorPool)
+void VkBuffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
+                                      BindlessHandle handle,
+                                      const BufferViewDesc& viewDesc)
 {
-    if (bufferHandle)
-    {
-        return *bufferHandle;
-    }
-
-    const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
-
-    descriptorPool.GetBindlessSet().UpdateDescriptor(
-        handle,
-        desc.usage == BufferUsage::UniformBuffer ? ::vk::DescriptorType::eUniformBuffer
-                                                 : ::vk::DescriptorType::eStorageBuffer,
-        ::vk::DescriptorBufferInfo{ .buffer = *buffer, .offset = 0, .range = desc.byteSize });
-
-    bufferHandle = handle;
-
-    return handle;
-}
-
-void VkBuffer::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
-{
-    if (bufferHandle && *bufferHandle != GInvalidBindlessHandle)
-    {
-        descriptorPool.FreeStaticDescriptor(*bufferHandle);
-    }
-    bufferHandle.reset();
-}
-
-void VkBuffer::FreeAllocation(RHIAllocator& allocator)
-{
-    allocator.FreeResource(allocation);
+    descriptorPool.GetBindlessSet().UpdateDescriptor(handle,
+                                                     desc.usage == BufferUsage::UniformBuffer
+                                                         ? ::vk::DescriptorType::eUniformBuffer
+                                                         : ::vk::DescriptorType::eStorageBuffer,
+                                                     ::vk::DescriptorBufferInfo{ .buffer = *buffer,
+                                                                                 .offset = viewDesc.offsetByteSize,
+                                                                                 .range = viewDesc.rangeByteSize });
 }
 
 ::vk::Buffer VkBuffer::GetNativeBuffer()

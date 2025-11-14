@@ -83,6 +83,8 @@ struct BufferDesc
     static BufferDesc CreateReadbackBufferDesc(std::string name,
                                                u64 byteSize,
                                                BufferUsage::Flags usageFlags = BufferUsage::None);
+    // Creates a GPUOnly buffer useable as a Structured Buffer.
+    static BufferDesc CreateStructuredBufferDesc(std::string name, u64 byteSize);
 };
 
 // Strongly defined type represents a buffer.
