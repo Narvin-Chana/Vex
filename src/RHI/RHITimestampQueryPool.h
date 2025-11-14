@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <expected>
 
+#include <Vex/Containers/FreeList.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/Synchronization.h>
 

@@ -21,6 +21,8 @@
 #include <DX12/RHI/DX12Texture.h>
 #include <DX12/RHI/DX12TimestampQueryPool.h>
 
+#include "DX12/RHI/DX12DescriptorPool.h"
+
 namespace vex::dx12
 {
 
