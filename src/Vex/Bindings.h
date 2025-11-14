@@ -56,10 +56,24 @@ struct BufferBinding
     Buffer buffer;
     // The usage to use in this binding. Needs to be part of the usages of the buffer description
     BufferBindingUsage usage = BufferBindingUsage::Invalid;
+
     // Optional: Stride of the buffer in bytes when using StructuredBuffer usage
     std::optional<u32> strideByteSize;
     // Optional: The offset to apply when binding the buffer (in bytes).
+    // There are some limitations when using ConstantBuffer usage
     std::optional<u64> offsetByteSize;
+    // Optional: The range in bytes starting from the offset to bind.
+    // If not specified the remaining range past the offset is bound
+    std::optional<u64> rangeByteSize;
+
+    static BufferBinding CreateStructuredBuffer(const Buffer& buffer,
+                                                u32 strideByteSize,
+                                                u32 firstElement = 0,
+                                                std::optional<u32> elementCount = {});
+
+    static BufferBinding CreateConstantBuffer(const Buffer& buffer,
+                                              u32 offsetByteSize = 0,
+                                              std::optional<u64> rangeByteSize = {});
 };
 
 struct TextureBinding
@@ -123,6 +137,6 @@ void ValidateBufferBinding(const BufferBinding& binding, BufferUsage::Flags vali
 void ValidateTextureBinding(const TextureBinding& binding, TextureUsage::Flags validTextureUsageFlags);
 void ValidateDrawResource(const DrawResourceBinding& binding);
 
-}
+} // namespace BindingUtil
 
 } // namespace vex

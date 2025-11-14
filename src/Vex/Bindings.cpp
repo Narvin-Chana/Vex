@@ -6,6 +6,8 @@
 
 #include <Vex/Logger.h>
 
+#include "Vex/Validation.h"
+
 namespace vex
 {
 
@@ -42,13 +44,32 @@ void ValidateBufferBinding(const BufferBinding& binding, BufferUsage::Flags vali
 
     if (usage == BufferBindingUsage::StructuredBuffer || usage == BufferBindingUsage::RWStructuredBuffer)
     {
-        if (!binding.strideByteSize.has_value())
-        {
-            VEX_LOG(Fatal,
-                    "Invalid binding for resource \"{}\": In order to use a binding as a structured buffer, you must "
-                    "pass in a valid stride.",
-                    buffer.desc.name);
-        }
+        VEX_CHECK(binding.strideByteSize.has_value(),
+                  "Invalid binding for resource \"{}\": In order to use a binding as a structured buffer, you must "
+                  "pass in a valid stride.",
+                  buffer.desc.name);
+
+        VEX_CHECK(*binding.strideByteSize > 0,
+                  "Invalid binding for resource \"{}\": Stride for structured buffers must not be 0.",
+                  buffer.desc.name);
+
+        u64 offsetByteSize = binding.offsetByteSize.value_or(0);
+        VEX_CHECK(offsetByteSize % *binding.strideByteSize == 0,
+                  "Invalid binding for resource \"{}\": Offset must be a multiple of the stride.",
+                  buffer.desc.name);
+
+        VEX_CHECK(
+            binding.rangeByteSize.value_or(binding.buffer.desc.byteSize - offsetByteSize) % *binding.strideByteSize ==
+                0,
+            "Invalid binding for resource \"{}\": Range must be a multiple of the stride.",
+            buffer.desc.name);
+    }
+
+    if (usage == BufferBindingUsage::ConstantBuffer)
+    {
+        // TODO: use per api limitations for that?
+        VEX_CHECK(binding.offsetByteSize.value_or(0) % 64 == 0,
+                  "Constant buffer offsets must be a multiple of 64 bytes")
     }
 }
 
@@ -125,4 +146,26 @@ void ValidateDrawResource(const DrawResourceBinding& binding)
 
 } // namespace BindingUtil
 
+BufferBinding BufferBinding::CreateStructuredBuffer(const Buffer& buffer,
+                                                    u32 strideByteSize,
+                                                    u32 firstElement,
+                                                    std::optional<u32> elementCount)
+{
+    return { .buffer = buffer,
+             .usage = BufferBindingUsage::StructuredBuffer,
+             .strideByteSize = strideByteSize,
+             .offsetByteSize = firstElement * strideByteSize,
+             .rangeByteSize =
+                 elementCount.value_or((buffer.desc.byteSize / strideByteSize) - firstElement) * strideByteSize };
+}
+
+BufferBinding BufferBinding::CreateConstantBuffer(const Buffer& buffer,
+                                                  u32 offsetByteSize,
+                                                  std::optional<u64> rangeByteSize)
+{
+    return { .buffer = buffer,
+             .usage = BufferBindingUsage::ConstantBuffer,
+             .offsetByteSize = offsetByteSize,
+             .rangeByteSize = rangeByteSize.value_or(buffer.desc.byteSize - offsetByteSize) };
+}
 } // namespace vex
