@@ -159,6 +159,39 @@ BufferBinding BufferBinding::CreateStructuredBuffer(const Buffer& buffer,
                  elementCount.value_or((buffer.desc.byteSize / strideByteSize) - firstElement) * strideByteSize };
 }
 
+BufferBinding BufferBinding::CreateRWStructuredBuffer(const Buffer& buffer,
+                                                      u32 strideByteSize,
+                                                      u32 firstElement,
+                                                      std::optional<u32> elementCount)
+{
+    return { .buffer = buffer,
+             .usage = BufferBindingUsage::RWStructuredBuffer,
+             .strideByteSize = strideByteSize,
+             .offsetByteSize = firstElement * strideByteSize,
+             .rangeByteSize =
+                 elementCount.value_or((buffer.desc.byteSize / strideByteSize) - firstElement) * strideByteSize };
+}
+
+BufferBinding BufferBinding::CreateRWByteAddressBuffer(const Buffer& buffer,
+                                                       u32 offsetByteSize,
+                                                       std::optional<u64> rangeByteSize)
+{
+    return { .buffer = buffer,
+             .usage = BufferBindingUsage::RWByteAddressBuffer,
+             .offsetByteSize = offsetByteSize,
+             .rangeByteSize = rangeByteSize.value_or(buffer.desc.byteSize - offsetByteSize) };
+}
+
+BufferBinding BufferBinding::CreateByteAddressBuffer(const Buffer& buffer,
+                                                     u32 offsetByteSize,
+                                                     std::optional<u64> rangeByteSize)
+{
+    return { .buffer = buffer,
+             .usage = BufferBindingUsage::ByteAddressBuffer,
+             .offsetByteSize = offsetByteSize,
+             .rangeByteSize = rangeByteSize.value_or(buffer.desc.byteSize - offsetByteSize) };
+}
+
 BufferBinding BufferBinding::CreateConstantBuffer(const Buffer& buffer,
                                                   u32 offsetByteSize,
                                                   std::optional<u64> rangeByteSize)

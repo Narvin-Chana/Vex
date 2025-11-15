@@ -71,6 +71,19 @@ struct BufferBinding
                                                 u32 firstElement = 0,
                                                 std::optional<u32> elementCount = {});
 
+    static BufferBinding CreateRWStructuredBuffer(const Buffer& buffer,
+                                                  u32 strideByteSize,
+                                                  u32 firstElement = 0,
+                                                  std::optional<u32> elementCount = {});
+
+    static BufferBinding CreateRWByteAddressBuffer(const Buffer& buffer,
+                                                   u32 offsetByteSize = 0,
+                                                   std::optional<u64> rangeByteSize = {});
+
+    static BufferBinding CreateByteAddressBuffer(const Buffer& buffer,
+                                                 u32 offsetByteSize = 0,
+                                                 std::optional<u64> rangeByteSize = {});
+
     static BufferBinding CreateConstantBuffer(const Buffer& buffer,
                                               u32 offsetByteSize = 0,
                                               std::optional<u64> rangeByteSize = {});
