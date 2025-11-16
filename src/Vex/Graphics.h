@@ -89,6 +89,7 @@ public:
 
     // Allows users to fetch the bindless handles for a texture binding
     [[nodiscard]] BindlessHandle GetTextureBindlessHandle(const TextureBinding& bindlessResource);
+
     // Allows users to fetch the bindless handles for a buffer binding
     [[nodiscard]] BindlessHandle GetBufferBindlessHandle(const BufferBinding& bindlessResource);
 
