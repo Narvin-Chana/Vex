@@ -66,24 +66,30 @@ struct BufferBinding
     // If not specified the remaining range past the offset is bound
     std::optional<u64> rangeByteSize;
 
+    // firstElement and elementCount represent strideByteSize multiples on the buffer
     static BufferBinding CreateStructuredBuffer(const Buffer& buffer,
                                                 u32 strideByteSize,
                                                 u32 firstElement = 0,
                                                 std::optional<u32> elementCount = {});
 
+    // firstElement and elementCount represent strideByteSize multiples on the buffer
     static BufferBinding CreateRWStructuredBuffer(const Buffer& buffer,
                                                   u32 strideByteSize,
                                                   u32 firstElement = 0,
                                                   std::optional<u32> elementCount = {});
 
-    static BufferBinding CreateRWByteAddressBuffer(const Buffer& buffer,
-                                                   u32 offsetByteSize = 0,
-                                                   std::optional<u64> rangeByteSize = {});
-
+    // First element and element count represent 16 byte elements on the ByteAddressBuffer
+    // example: FirstElement = 1, ElementCount = 10 represents a view on bytes [16, 176] in the buffer
+    // example: FirstElement = 0, ElementCount = 2 represents a view on bytes [0, 32] in the buffer
     static BufferBinding CreateByteAddressBuffer(const Buffer& buffer,
-                                                 u32 offsetByteSize = 0,
-                                                 std::optional<u64> rangeByteSize = {});
+                                                 u32 firstElement = 0,
+                                                 std::optional<u64> elementCount = {});
 
+    static BufferBinding CreateRWByteAddressBuffer(const Buffer& buffer,
+                                                   u32 firstElement = 0,
+                                                   std::optional<u64> elementCount = {});
+
+    // offsetByteSize must be a multiple of 128 bytes
     static BufferBinding CreateConstantBuffer(const Buffer& buffer,
                                               u32 offsetByteSize = 0,
                                               std::optional<u64> rangeByteSize = {});

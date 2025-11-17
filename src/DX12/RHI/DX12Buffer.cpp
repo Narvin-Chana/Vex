@@ -136,9 +136,8 @@ void DX12Buffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
     if (isCBV)
     {
         D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
-        cbvDesc.BufferLocation = buffer->GetGPUVirtualAddress();
-        cbvDesc.SizeInBytes = AlignUp<u64>(desc.byteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
-
+        cbvDesc.BufferLocation = buffer->GetGPUVirtualAddress() + viewDesc.offsetByteSize;
+        cbvDesc.SizeInBytes = AlignUp<u64>(viewDesc.rangeByteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
         device->CreateConstantBufferView(&cbvDesc, cpuHandle);
     }
     else if (isSRV)

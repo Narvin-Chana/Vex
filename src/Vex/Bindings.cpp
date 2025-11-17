@@ -5,11 +5,12 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include <Vex/Logger.h>
-
-#include "Vex/Validation.h"
+#include <Vex/Validation.h>
 
 namespace vex
 {
+static constexpr u32 ByteAddressBufferOffsetMultiple = 16;
+static constexpr u32 ConstantBufferBindingOffsetMultiple = 256;
 
 namespace BindingUtil
 {
@@ -67,9 +68,21 @@ void ValidateBufferBinding(const BufferBinding& binding, BufferUsage::Flags vali
 
     if (usage == BufferBindingUsage::ConstantBuffer)
     {
-        // TODO: use per api limitations for that?
-        VEX_CHECK(binding.offsetByteSize.value_or(0) % 64 == 0,
-                  "Constant buffer offsets must be a multiple of 64 bytes")
+        VEX_CHECK(binding.offsetByteSize.value_or(0) % ConstantBufferBindingOffsetMultiple == 0,
+                  "Constant buffer offsets must be a multiple of 256 bytes")
+    }
+
+    if (usage == BufferBindingUsage::ByteAddressBuffer || usage == BufferBindingUsage::RWByteAddressBuffer)
+    {
+        VEX_CHECK(binding.offsetByteSize.value_or(0) % ByteAddressBufferOffsetMultiple == 0,
+                  "ByteAddressBuffer offsets must be a multiple of {} bytes (elements are {} bytes wide)",
+                  ByteAddressBufferOffsetMultiple,
+                  ByteAddressBufferOffsetMultiple)
+
+        VEX_CHECK(binding.rangeByteSize.value_or(0) % ByteAddressBufferOffsetMultiple == 0,
+                  "ByteAddressBuffer range must be a multiple of {} bytes (elements are {} bytes wide)",
+                  ByteAddressBufferOffsetMultiple,
+                  ByteAddressBufferOffsetMultiple)
     }
 }
 
@@ -173,23 +186,27 @@ BufferBinding BufferBinding::CreateRWStructuredBuffer(const Buffer& buffer,
 }
 
 BufferBinding BufferBinding::CreateRWByteAddressBuffer(const Buffer& buffer,
-                                                       u32 offsetByteSize,
-                                                       std::optional<u64> rangeByteSize)
+                                                       u32 firstElement,
+                                                       std::optional<u64> elementCount)
 {
     return { .buffer = buffer,
              .usage = BufferBindingUsage::RWByteAddressBuffer,
-             .offsetByteSize = offsetByteSize,
-             .rangeByteSize = rangeByteSize.value_or(buffer.desc.byteSize - offsetByteSize) };
+             .offsetByteSize = firstElement * ByteAddressBufferOffsetMultiple,
+             .rangeByteSize =
+                 elementCount.value_or(buffer.desc.byteSize / ByteAddressBufferOffsetMultiple - firstElement) *
+                 ByteAddressBufferOffsetMultiple };
 }
 
 BufferBinding BufferBinding::CreateByteAddressBuffer(const Buffer& buffer,
-                                                     u32 offsetByteSize,
-                                                     std::optional<u64> rangeByteSize)
+                                                     u32 firstElement,
+                                                     std::optional<u64> elementCount)
 {
     return { .buffer = buffer,
              .usage = BufferBindingUsage::ByteAddressBuffer,
-             .offsetByteSize = offsetByteSize,
-             .rangeByteSize = rangeByteSize.value_or(buffer.desc.byteSize - offsetByteSize) };
+             .offsetByteSize = firstElement * ByteAddressBufferOffsetMultiple,
+             .rangeByteSize =
+                 elementCount.value_or(buffer.desc.byteSize / ByteAddressBufferOffsetMultiple - firstElement) *
+                 ByteAddressBufferOffsetMultiple };
 }
 
 BufferBinding BufferBinding::CreateConstantBuffer(const Buffer& buffer,
