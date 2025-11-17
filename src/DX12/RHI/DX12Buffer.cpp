@@ -150,8 +150,8 @@ void DX12Buffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
             srvDesc.Format = DXGI_FORMAT_UNKNOWN;
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            srvDesc.Buffer.FirstElement = viewDesc.offsetByteSize / viewDesc.strideByteSize;
-            srvDesc.Buffer.NumElements = viewDesc.rangeByteSize / viewDesc.strideByteSize;
+            srvDesc.Buffer.FirstElement = viewDesc.GetFirstElement();
+            srvDesc.Buffer.NumElements = viewDesc.GetElementCount();
             srvDesc.Buffer.StructureByteStride = viewDesc.strideByteSize;
             srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
             break;
@@ -159,8 +159,8 @@ void DX12Buffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
             srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            srvDesc.Buffer.FirstElement = viewDesc.offsetByteSize / 4;
-            srvDesc.Buffer.NumElements = viewDesc.rangeByteSize / 4; // R32 elements (4 bytes each)
+            srvDesc.Buffer.FirstElement = viewDesc.GetFirstElement();
+            srvDesc.Buffer.NumElements = viewDesc.GetElementCount();
             srvDesc.Buffer.StructureByteStride = 0;
             srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
             break;
@@ -179,8 +179,8 @@ void DX12Buffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
         case BufferBindingUsage::RWStructuredBuffer:
             uavDesc.Format = DXGI_FORMAT_UNKNOWN;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-            uavDesc.Buffer.FirstElement = viewDesc.offsetByteSize / viewDesc.strideByteSize;
-            uavDesc.Buffer.NumElements = viewDesc.rangeByteSize / viewDesc.strideByteSize;
+            uavDesc.Buffer.FirstElement = viewDesc.GetFirstElement();
+            uavDesc.Buffer.NumElements = viewDesc.GetElementCount();
             uavDesc.Buffer.StructureByteStride = viewDesc.strideByteSize;
             uavDesc.Buffer.CounterOffsetInBytes = 0;
             uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
@@ -188,8 +188,8 @@ void DX12Buffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
         case BufferBindingUsage::RWByteAddressBuffer:
             uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-            uavDesc.Buffer.FirstElement = viewDesc.offsetByteSize / 4;
-            uavDesc.Buffer.NumElements = viewDesc.rangeByteSize / 4; // R32 elements (4 bytes each)
+            uavDesc.Buffer.FirstElement = viewDesc.GetFirstElement();
+            uavDesc.Buffer.NumElements = viewDesc.GetElementCount();
             uavDesc.Buffer.StructureByteStride = 0;
             uavDesc.Buffer.CounterOffsetInBytes = 0;
             uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;

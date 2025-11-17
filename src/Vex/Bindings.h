@@ -59,11 +59,15 @@ struct BufferBinding
 
     // Optional: Stride of the buffer in bytes when using StructuredBuffer usage
     std::optional<u32> strideByteSize;
+
     // Optional: The offset to apply when binding the buffer (in bytes).
-    // There are some limitations when using ConstantBuffer usage
+    // When using ConstantBuffer usage the offset must be a multiple of 256 bytes
+    // When using (RW)ByteAddressBuffer usage the offset must be a multiple of 16 bytes
     std::optional<u64> offsetByteSize;
+
     // Optional: The range in bytes starting from the offset to bind.
     // If not specified the remaining range past the offset is bound
+    // When using (RW)ByteAddressBuffer usage the range must be a multiple of 16 bytes
     std::optional<u64> rangeByteSize;
 
     // firstElement and elementCount represent strideByteSize multiples on the buffer

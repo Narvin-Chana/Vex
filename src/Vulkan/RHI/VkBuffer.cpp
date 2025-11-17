@@ -2,6 +2,7 @@
 
 #include <magic_enum/magic_enum.hpp>
 
+#include <Vex/Bindings.h>
 #include <Vex/Buffer.h>
 
 #include <Vulkan/RHI/VkAllocator.h>
@@ -9,9 +10,6 @@
 #include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkGPUContext.h>
-
-#include "Vex/Bindings.h"
-#include "Vex/Validation.h"
 
 namespace vex::vk
 {

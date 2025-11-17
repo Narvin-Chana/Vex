@@ -10,18 +10,16 @@
 
 #include <RHI/RHIBindings.h>
 
-#include <DX12/DX12Formats.h>
 #include <DX12/DX12GraphicsPipeline.h>
 #include <DX12/HRChecker.h>
 #include <DX12/RHI/DX12Barrier.h>
 #include <DX12/RHI/DX12Buffer.h>
+#include <DX12/RHI/DX12DescriptorPool.h>
 #include <DX12/RHI/DX12PipelineState.h>
 #include <DX12/RHI/DX12ResourceLayout.h>
 #include <DX12/RHI/DX12ScopedGPUEvent.h>
 #include <DX12/RHI/DX12Texture.h>
 #include <DX12/RHI/DX12TimestampQueryPool.h>
-
-#include "DX12/RHI/DX12DescriptorPool.h"
 
 namespace vex::dx12
 {

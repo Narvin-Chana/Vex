@@ -69,18 +69,24 @@ void ValidateBufferBinding(const BufferBinding& binding, BufferUsage::Flags vali
     if (usage == BufferBindingUsage::ConstantBuffer)
     {
         VEX_CHECK(binding.offsetByteSize.value_or(0) % ConstantBufferBindingOffsetMultiple == 0,
-                  "Constant buffer offsets must be a multiple of 256 bytes")
+                  "Invalid binding for resource \"{}\": "
+                  "Constant buffer offsets must be a multiple of 256 bytes",
+                  buffer.desc.name)
     }
 
     if (usage == BufferBindingUsage::ByteAddressBuffer || usage == BufferBindingUsage::RWByteAddressBuffer)
     {
         VEX_CHECK(binding.offsetByteSize.value_or(0) % ByteAddressBufferOffsetMultiple == 0,
+                  "Invalid binding for resource \"{}\": "
                   "ByteAddressBuffer offsets must be a multiple of {} bytes (elements are {} bytes wide)",
+                  buffer.desc.name,
                   ByteAddressBufferOffsetMultiple,
                   ByteAddressBufferOffsetMultiple)
 
         VEX_CHECK(binding.rangeByteSize.value_or(0) % ByteAddressBufferOffsetMultiple == 0,
+                  "Invalid binding for resource \"{}\": "
                   "ByteAddressBuffer range must be a multiple of {} bytes (elements are {} bytes wide)",
+                  buffer.desc.name,
                   ByteAddressBufferOffsetMultiple,
                   ByteAddressBufferOffsetMultiple)
     }

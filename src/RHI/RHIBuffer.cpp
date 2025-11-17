@@ -1,8 +1,8 @@
 #include "RHIBuffer.h"
 
-#include "Vex/Bindings.h"
-#include "Vex/RHIImpl/RHIAllocator.h"
-#include "Vex/RHIImpl/RHIDescriptorPool.h"
+#include <Vex/Bindings.h>
+#include <Vex/RHIImpl/RHIAllocator.h>
+#include <Vex/RHIImpl/RHIDescriptorPool.h>
 
 namespace vex
 {
@@ -59,4 +59,38 @@ void RHIBufferBase::FreeAllocation(RHIAllocator& allocator)
 #endif
 }
 
+u64 BufferViewDesc::GetElementStride() const noexcept
+{
+    switch (usage)
+    {
+    case BufferBindingUsage::StructuredBuffer:
+    case BufferBindingUsage::RWStructuredBuffer:
+        return strideByteSize;
+    case BufferBindingUsage::ByteAddressBuffer:
+    case BufferBindingUsage::RWByteAddressBuffer:
+        return 4;
+    default:
+        break;
+    }
+    return 0;
+}
+
+u64 BufferViewDesc::GetFirstElement() const noexcept
+{
+    if (usage == BufferBindingUsage::ConstantBuffer)
+    {
+        return 0;
+    }
+
+    return offsetByteSize / GetElementStride();
+}
+u64 BufferViewDesc::GetElementCount() const noexcept
+{
+    if (usage == BufferBindingUsage::ConstantBuffer)
+    {
+        return 1;
+    }
+
+    return rangeByteSize / GetElementStride();
+}
 } // namespace vex

@@ -22,6 +22,10 @@ struct BufferViewDesc
     u64 rangeByteSize;
 
     bool operator==(const BufferViewDesc&) const = default;
+
+    u32 GetElementStride() const noexcept;
+    u64 GetFirstElement() const noexcept;
+    u64 GetElementCount() const noexcept;
 };
 } // namespace vex
 
