@@ -116,7 +116,8 @@ static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDesc& dr
 
     for (const RHITextureBinding& rhiBinding : rhiDrawRes.renderTargets)
     {
-        key.renderTargetState.colorFormats.emplace_back(rhiBinding.binding.texture.desc.format, rhiBinding.binding.isSRGB);
+        key.renderTargetState.colorFormats.emplace_back(rhiBinding.binding.texture.desc.format,
+                                                        rhiBinding.binding.isSRGB);
     }
 
     if (rhiDrawRes.depthStencil)
@@ -434,8 +435,9 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
               "Mip Generation requires a Compute or Graphics command list type.");
 
     // Built-in mip generation is leveraged if supported (and if we're using a graphics command queue).
+    // If we want to perform SRGB mip generation, we must do it manually.
     if (GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::MipGeneration) &&
-        cmdList->GetType() == QueueType::Graphics)
+        cmdList->GetType() == QueueType::Graphics && !textureBinding.isSRGB)
     {
         cmdList->GenerateMips(backend->GetRHITexture(texture.handle), textureBinding.subresource);
         return;
@@ -519,6 +521,8 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
             TextureBinding{
                 .texture = texture,
                 .usage = TextureBindingUsage::ShaderReadWrite,
+                // Cannot have SRGB ShaderReadWrite, we manually perform color space conversion in the shader.
+                .isSRGB = false,
                 .subresource = { .startMip = mip, .mipCount = 1 },
             },
         };
@@ -527,6 +531,7 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
             bindings.push_back(TextureBinding{
                 .texture = texture,
                 .usage = TextureBindingUsage::ShaderReadWrite,
+                .isSRGB = false,
                 .subresource = { .startMip = static_cast<u16>(mip + 1u), .mipCount = 1 },
             });
         }

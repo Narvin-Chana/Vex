@@ -40,6 +40,30 @@ static ::vk::ImageViewType TextureTypeToVulkan(TextureViewType type)
     std::unreachable();
 }
 
+static ::vk::ImageUsageFlags GetImageUsage(const TextureDesc& desc)
+{
+    ::vk::ImageUsageFlags usageFlags{};
+    if (desc.usage & TextureUsage::DepthStencil)
+    {
+        usageFlags |= ::vk::ImageUsageFlagBits::eDepthStencilAttachment;
+    }
+    if (desc.usage & TextureUsage::ShaderRead)
+    {
+        usageFlags |= ::vk::ImageUsageFlagBits::eSampled;
+    }
+    if (desc.usage & TextureUsage::ShaderReadWrite)
+    {
+        usageFlags |= ::vk::ImageUsageFlagBits::eStorage;
+    }
+    if (desc.usage & TextureUsage::RenderTarget)
+    {
+        usageFlags |= ::vk::ImageUsageFlagBits::eColorAttachment;
+    }
+    usageFlags |= ::vk::ImageUsageFlagBits::eTransferDst;
+    usageFlags |= ::vk::ImageUsageFlagBits::eTransferSrc;
+    return usageFlags;
+}
+
 namespace VkTextureUtil
 {
 
@@ -179,16 +203,29 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
         return it->second.handle;
     }
 
-    const ::vk::ImageViewCreateInfo viewCreate{ .image = GetResource(),
-                                                .viewType = TextureTypeToVulkan(view.viewType),
-                                                .format = TextureFormatToVulkan(view.format, binding.isSRGB),
-                                                .subresourceRange = {
-                                                    .aspectMask = VkTextureUtil::GetFormatAspectFlags(view.format),
-                                                    .baseMipLevel = view.subresource.startMip,
-                                                    .levelCount = view.subresource.mipCount,
-                                                    .baseArrayLayer = view.subresource.startSlice,
-                                                    .layerCount = view.subresource.sliceCount,
-                                                } };
+    ::vk::ImageViewUsageCreateInfo viewUsageInfo{};
+    ::vk::ImageUsageFlags viewUsage = GetImageUsage(desc);
+    // If creating an sRGB view, it can't have storage usage
+    if (binding.isSRGB)
+    {
+        viewUsage &= ~::vk::ImageUsageFlagBits::eStorage;
+    }
+    viewUsageInfo.usage = viewUsage;
+
+    const ::vk::ImageViewCreateInfo viewCreate{
+        .pNext = &viewUsageInfo, 
+        .image = GetResource(),
+        .viewType = TextureTypeToVulkan(view.viewType),
+        .format = view.format,
+        .subresourceRange = {
+            .aspectMask = VkTextureUtil::GetFormatAspectFlags(
+                VulkanToTextureFormat(view.format)),
+            .baseMipLevel = view.subresource.startMip,
+            .levelCount = view.subresource.mipCount,
+            .baseArrayLayer = view.subresource.startSlice,
+            .layerCount = view.subresource.sliceCount,
+        },
+    };
 
     ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx->device.createImageViewUnique(viewCreate);
     const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
@@ -224,18 +261,31 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
         return *it->second;
     }
 
-    const ::vk::ImageViewCreateInfo viewCreate{ .image = GetResource(),
-                                                .viewType = TextureTypeToVulkan(view.viewType),
-                                                .format = TextureFormatToVulkan(view.format, binding.isSRGB),
-                                                .subresourceRange = {
-                                                    .aspectMask = usage == TextureUsage::DepthStencil
-                                                                      ? VkTextureUtil::GetDepthAspectFlags(view.format)
-                                                                      : ::vk::ImageAspectFlagBits::eColor,
-                                                    .baseMipLevel = view.subresource.startMip,
-                                                    .levelCount = view.subresource.mipCount,
-                                                    .baseArrayLayer = view.subresource.startSlice,
-                                                    .layerCount = view.subresource.sliceCount,
-                                                } };
+    ::vk::ImageViewUsageCreateInfo viewUsageInfo{};
+    ::vk::ImageUsageFlags viewUsage = GetImageUsage(desc);
+    // If creating an sRGB view, it can't have storage usage.
+    if (binding.isSRGB)
+    {
+        viewUsage &= ~::vk::ImageUsageFlagBits::eStorage;
+    }
+    viewUsageInfo.usage = viewUsage;
+
+    const ::vk::ImageViewCreateInfo viewCreate{ 
+        .pNext = &viewUsageInfo, 
+        .image = GetResource(),
+        .viewType = TextureTypeToVulkan(view.viewType),
+        .format = view.format,
+        .subresourceRange = {
+            .aspectMask = usage == TextureUsage::DepthStencil
+                                ? VkTextureUtil::GetDepthAspectFlags(
+                                    VulkanToTextureFormat(view.format))
+                                : ::vk::ImageAspectFlagBits::eColor,
+            .baseMipLevel = view.subresource.startMip,
+            .levelCount = view.subresource.mipCount,
+            .baseArrayLayer = view.subresource.startSlice,
+            .layerCount = view.subresource.sliceCount,
+        }, 
+    };
 
     ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx->device.createImageViewUnique(viewCreate);
 
@@ -305,6 +355,7 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
     createInfo.initialLayout = ::vk::ImageLayout::eUndefined;
     createInfo.mipLevels = desc.mips;
     createInfo.samples = ::vk::SampleCountFlagBits::e1;
+    createInfo.flags = ::vk::ImageCreateFlagBits::eMutableFormat;
 
     switch (desc.type)
     {
@@ -326,24 +377,7 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
     default:;
     }
 
-    if (desc.usage & TextureUsage::DepthStencil)
-    {
-        createInfo.usage |= ::vk::ImageUsageFlagBits::eDepthStencilAttachment;
-    }
-    if (desc.usage & TextureUsage::ShaderRead)
-    {
-        createInfo.usage |= ::vk::ImageUsageFlagBits::eSampled;
-    }
-    if (desc.usage & TextureUsage::ShaderReadWrite)
-    {
-        createInfo.usage |= ::vk::ImageUsageFlagBits::eStorage;
-    }
-    if (desc.usage & TextureUsage::RenderTarget)
-    {
-        createInfo.usage |= ::vk::ImageUsageFlagBits::eColorAttachment;
-    }
-    createInfo.usage |= ::vk::ImageUsageFlagBits::eTransferDst;
-    createInfo.usage |= ::vk::ImageUsageFlagBits::eTransferSrc;
+    createInfo.usage = GetImageUsage(desc);
 
     ::vk::UniqueImage imageTmp = VEX_VK_CHECK <<= ctx->device.createImageUnique(createInfo);
 
@@ -373,7 +407,7 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
 VkTextureViewDesc::VkTextureViewDesc(const TextureBinding& binding)
 
     : viewType{ TextureUtil::GetTextureViewType(binding) }
-    , format{ binding.texture.desc.format }
+    , format{ TextureFormatToVulkan(binding.texture.desc.format, binding.isSRGB) }
     , usage{ static_cast<TextureUsage::Type>(binding.usage) }
     , subresource{ binding.subresource }
 {

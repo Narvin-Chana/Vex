@@ -174,9 +174,11 @@ u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, std::span<const 
 
     for (const TextureRegion& region : uploadRegions)
     {
-        VEX_CHECK(region.subresource.startSlice + region.subresource.GetSliceCount(desc) <= desc.GetSliceCount(),
+        const u32 sliceCount = region.subresource.GetSliceCount(desc);
+        
+        VEX_CHECK(region.subresource.startSlice + sliceCount <= desc.GetSliceCount(),
                   "Cannot upload to a slice index ({}) greater or equal to the the texture's slice count ({})!",
-                  region.subresource.startSlice + region.subresource.GetSliceCount(desc),
+                  region.subresource.startSlice + sliceCount,
                   desc.GetSliceCount());
 
         for (u16 mip = region.subresource.startMip;
@@ -190,7 +192,7 @@ u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, std::span<const 
             // The staging buffer should have a row pitch alignment of 256 and mip alignment of 512 due to API
             // constraints.
             u64 regionSize = AlignUp<u64>(width * pixelByteSize, RowPitchAlignment) * height * depth;
-            totalSize += AlignUp<u64>(regionSize, MipAlignment);
+            totalSize += AlignUp<u64>(regionSize, MipAlignment) * sliceCount;
         }
     }
 
@@ -205,9 +207,11 @@ u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, std::span<const Te
 
     for (const TextureRegion& region : uploadRegions)
     {
-        VEX_CHECK(region.subresource.startSlice + region.subresource.GetSliceCount(desc) <= desc.GetSliceCount(),
+        const u32 sliceCount = region.subresource.GetSliceCount(desc);
+        
+        VEX_CHECK(region.subresource.startSlice + sliceCount <= desc.GetSliceCount(),
                   "Cannot upload to a slice index ({}) greater or equal to the the texture's slice count ({})!",
-                  region.subresource.startSlice + region.subresource.GetSliceCount(desc),
+                  region.subresource.startSlice + sliceCount,
                   desc.GetSliceCount());
 
         for (u16 mip = region.subresource.startMip;
@@ -219,7 +223,7 @@ u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, std::span<const Te
             const u32 depth = region.extent.GetDepth(desc, mip);
 
             // Calculate tightly packed size for this region
-            totalSize += width * pixelByteSize * height * depth;
+            totalSize += width * pixelByteSize * height * depth * sliceCount;
         }
     }
 
