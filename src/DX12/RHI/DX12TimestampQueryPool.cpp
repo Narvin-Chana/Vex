@@ -1,5 +1,6 @@
 ﻿#include "DX12TimestampQueryPool.h"
 
+#include <DX12/HRChecker.h>
 #include <DX12/RHI/DX12CommandList.h>
 #include <DX12/RHI/DX12RHI.h>
 

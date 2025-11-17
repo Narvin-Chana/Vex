@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Vex/Buffer.h>
+#include <Vex/Hash.h>
 #include <Vex/MemoryAllocation.h>
 #include <Vex/NonNullPtr.h>
 #include <Vex/Resource.h>
@@ -8,6 +9,29 @@
 
 #include <RHI/RHIBarrier.h>
 #include <RHI/RHIFwd.h>
+
+namespace vex
+{
+struct BufferBinding;
+
+struct BufferViewDesc
+{
+    BufferBindingUsage usage;
+    u32 strideByteSize;
+    u64 offsetByteSize;
+    u64 rangeByteSize;
+
+    bool operator==(const BufferViewDesc&) const = default;
+
+    u32 GetElementStride() const noexcept;
+    u64 GetFirstElement() const noexcept;
+    u64 GetElementCount() const noexcept;
+};
+} // namespace vex
+
+VEX_MAKE_HASHABLE(vex::BufferViewDesc, VEX_HASH_COMBINE(seed, obj.usage); VEX_HASH_COMBINE(seed, obj.strideByteSize);
+                  VEX_HASH_COMBINE(seed, obj.offsetByteSize);
+                  VEX_HASH_COMBINE(seed, obj.rangeByteSize););
 
 namespace vex
 {
@@ -23,11 +47,9 @@ public:
     ~RHIBufferBase() = default;
 
     // Raw direct access to buffer memory
-    virtual BindlessHandle GetOrCreateBindlessView(BufferBindingUsage usage,
-                                                   std::optional<u32> strideByteSize,
-                                                   RHIDescriptorPool& descriptorPool) = 0;
-    virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
-    virtual void FreeAllocation(RHIAllocator& allocator) = 0;
+    virtual BindlessHandle GetOrCreateBindlessView(const BufferBinding& binding, RHIDescriptorPool& descriptorPool);
+    void FreeBindlessHandles(RHIDescriptorPool& descriptorPool);
+    void FreeAllocation(RHIAllocator& allocator);
 
     [[nodiscard]] const BufferDesc& GetDesc() const noexcept
     {
@@ -60,12 +82,20 @@ public:
 protected:
     explicit RHIBufferBase(RHIAllocator& allocator, const BufferDesc& desc);
 
+    virtual void AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
+                                        BindlessHandle handle,
+                                        const BufferViewDesc& desc) = 0;
+
+    BufferViewDesc GetViewDescFromBinding(const BufferBinding& binding);
+
     BufferDesc desc;
     RHIBarrierSync lastSync = RHIBarrierSync::None;
     RHIBarrierAccess lastAccess = RHIBarrierAccess::NoAccess;
 
     NonNullPtr<RHIAllocator> allocator;
     Allocation allocation;
+
+    std::unordered_map<BufferViewDesc, BindlessHandle> viewCache;
 };
 
 } // namespace vex

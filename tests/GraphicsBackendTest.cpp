@@ -9,7 +9,7 @@ namespace vex
 
 TEST(GraphicsTests, CreateGraphicsWithoutDebugLayers)
 {
-    Graphics{ BackendDescription{
+    Graphics{ GraphicsCreateDesc{
         .useSwapChain = false,
         .enableGPUDebugLayer = false,
         .enableGPUBasedValidation = false,
@@ -18,7 +18,7 @@ TEST(GraphicsTests, CreateGraphicsWithoutDebugLayers)
 
 TEST(GraphicsTests, CreateGraphicsDebugLayersAndGPUValidation)
 {
-    Graphics{ BackendDescription{
+    Graphics{ GraphicsCreateDesc{
         .useSwapChain = false,
         .enableGPUDebugLayer = true,
         .enableGPUBasedValidation = true,
@@ -27,7 +27,7 @@ TEST(GraphicsTests, CreateGraphicsDebugLayersAndGPUValidation)
 
 TEST(GraphicsTests, CreateGraphicsDebugLayerWithoutGPUValidation)
 {
-    Graphics{ BackendDescription{
+    Graphics{ GraphicsCreateDesc{
         .useSwapChain = false,
         .enableGPUDebugLayer = true,
         .enableGPUBasedValidation = false,

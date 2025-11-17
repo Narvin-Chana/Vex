@@ -10,6 +10,7 @@
 #include <Vex/RHIImpl/RHIAllocator.h>
 
 #include <DX12/DX12FeatureChecker.h>
+#include <DX12/RHI/DX12DescriptorPool.h>
 
 namespace vex::dx12
 {
@@ -117,10 +118,11 @@ D3D12_INDEX_BUFFER_VIEW DX12Buffer::GetIndexBufferView(const BufferBinding& bind
     };
 }
 
-BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
-                                                   std::optional<u32> strideByteSize,
-                                                   RHIDescriptorPool& descriptorPool)
+void DX12Buffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
+                                        BindlessHandle handle,
+                                        const BufferViewDesc& viewDesc)
 {
+    BufferBindingUsage usage = viewDesc.usage;
     bool isCBV = usage == BufferBindingUsage::ConstantBuffer;
     bool isSRV = usage == BufferBindingUsage::StructuredBuffer || usage == BufferBindingUsage::ByteAddressBuffer;
     bool isUAV = usage == BufferBindingUsage::RWStructuredBuffer || usage == BufferBindingUsage::RWByteAddressBuffer;
@@ -129,22 +131,13 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
                "The bindless view requested for buffer '{}' must be either of type SRV, CBV or UAV.",
                desc.name);
 
-    // Check cache first
-    BufferViewCacheKey cacheKey{ usage, strideByteSize };
-    if (auto it = viewCache.find(cacheKey); it != viewCache.end() && descriptorPool.IsValid(it->second))
-    {
-        return it->second;
-    }
-
-    BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
     auto cpuHandle = descriptorPool.GetCPUDescriptor(handle);
 
     if (isCBV)
     {
         D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
-        cbvDesc.BufferLocation = buffer->GetGPUVirtualAddress();
-        cbvDesc.SizeInBytes = AlignUp<u64>(desc.byteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
-
+        cbvDesc.BufferLocation = buffer->GetGPUVirtualAddress() + viewDesc.offsetByteSize;
+        cbvDesc.SizeInBytes = AlignUp<u64>(viewDesc.rangeByteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
         device->CreateConstantBufferView(&cbvDesc, cpuHandle);
     }
     else if (isSRV)
@@ -157,17 +150,17 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
             srvDesc.Format = DXGI_FORMAT_UNKNOWN;
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            srvDesc.Buffer.FirstElement = 0;
-            srvDesc.Buffer.NumElements = desc.byteSize / *strideByteSize;
-            srvDesc.Buffer.StructureByteStride = *strideByteSize;
+            srvDesc.Buffer.FirstElement = viewDesc.GetFirstElement();
+            srvDesc.Buffer.NumElements = viewDesc.GetElementCount();
+            srvDesc.Buffer.StructureByteStride = viewDesc.strideByteSize;
             srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
             break;
         case BufferBindingUsage::ByteAddressBuffer:
             srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            srvDesc.Buffer.FirstElement = 0;
-            srvDesc.Buffer.NumElements = desc.byteSize / 4; // R32 elements (4 bytes each)
+            srvDesc.Buffer.FirstElement = viewDesc.GetFirstElement();
+            srvDesc.Buffer.NumElements = viewDesc.GetElementCount();
             srvDesc.Buffer.StructureByteStride = 0;
             srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
             break;
@@ -186,17 +179,17 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
         case BufferBindingUsage::RWStructuredBuffer:
             uavDesc.Format = DXGI_FORMAT_UNKNOWN;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-            uavDesc.Buffer.FirstElement = 0;
-            uavDesc.Buffer.NumElements = desc.byteSize / *strideByteSize;
-            uavDesc.Buffer.StructureByteStride = *strideByteSize;
+            uavDesc.Buffer.FirstElement = viewDesc.GetFirstElement();
+            uavDesc.Buffer.NumElements = viewDesc.GetElementCount();
+            uavDesc.Buffer.StructureByteStride = viewDesc.strideByteSize;
             uavDesc.Buffer.CounterOffsetInBytes = 0;
             uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
             break;
         case BufferBindingUsage::RWByteAddressBuffer:
             uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-            uavDesc.Buffer.FirstElement = 0;
-            uavDesc.Buffer.NumElements = desc.byteSize / 4; // R32 elements (4 bytes each)
+            uavDesc.Buffer.FirstElement = viewDesc.GetFirstElement();
+            uavDesc.Buffer.NumElements = viewDesc.GetElementCount();
             uavDesc.Buffer.StructureByteStride = 0;
             uavDesc.Buffer.CounterOffsetInBytes = 0;
             uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
@@ -207,28 +200,6 @@ BindlessHandle DX12Buffer::GetOrCreateBindlessView(BufferBindingUsage usage,
 
         device->CreateUnorderedAccessView(buffer.Get(), nullptr, &uavDesc, cpuHandle);
     }
-
-    viewCache[cacheKey] = handle;
-    return handle;
-}
-
-void DX12Buffer::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
-{
-    for (const auto& [cacheKey, bindlessHandle] : viewCache)
-    {
-        if (bindlessHandle != GInvalidBindlessHandle)
-        {
-            descriptorPool.FreeStaticDescriptor(bindlessHandle);
-        }
-    }
-    viewCache.clear();
-}
-
-void DX12Buffer::FreeAllocation(RHIAllocator& allocator)
-{
-#if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
-    allocator.FreeResource(allocation);
-#endif
 }
 
 } // namespace vex::dx12

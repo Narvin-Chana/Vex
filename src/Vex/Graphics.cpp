@@ -393,7 +393,7 @@ BindlessHandle Graphics::GetBufferBindlessHandle(const BufferBinding& bindlessRe
     BindingUtil::ValidateBufferBinding(bindlessResource, bindlessResource.buffer.desc.usage);
 
     auto& buffer = GetRHIBuffer(bindlessResource.buffer.handle);
-    return buffer.GetOrCreateBindlessView(bindlessResource.usage, bindlessResource.strideByteSize, *descriptorPool);
+    return buffer.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
 }
 
 void Graphics::FlushGPU()

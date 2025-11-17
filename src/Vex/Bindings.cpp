@@ -5,9 +5,12 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include <Vex/Logger.h>
+#include <Vex/Validation.h>
 
 namespace vex
 {
+static constexpr u32 ByteAddressBufferOffsetMultiple = 16;
+static constexpr u32 ConstantBufferBindingOffsetMultiple = 256;
 
 namespace BindingUtil
 {
@@ -42,13 +45,50 @@ void ValidateBufferBinding(const BufferBinding& binding, BufferUsage::Flags vali
 
     if (usage == BufferBindingUsage::StructuredBuffer || usage == BufferBindingUsage::RWStructuredBuffer)
     {
-        if (!binding.strideByteSize.has_value())
-        {
-            VEX_LOG(Fatal,
-                    "Invalid binding for resource \"{}\": In order to use a binding as a structured buffer, you must "
-                    "pass in a valid stride.",
-                    buffer.desc.name);
-        }
+        VEX_CHECK(binding.strideByteSize.has_value(),
+                  "Invalid binding for resource \"{}\": In order to use a binding as a structured buffer, you must "
+                  "pass in a valid stride.",
+                  buffer.desc.name);
+
+        VEX_CHECK(*binding.strideByteSize > 0,
+                  "Invalid binding for resource \"{}\": Stride for structured buffers must not be 0.",
+                  buffer.desc.name);
+
+        u64 offsetByteSize = binding.offsetByteSize.value_or(0);
+        VEX_CHECK(offsetByteSize % *binding.strideByteSize == 0,
+                  "Invalid binding for resource \"{}\": Offset must be a multiple of the stride.",
+                  buffer.desc.name);
+
+        VEX_CHECK(
+            binding.rangeByteSize.value_or(binding.buffer.desc.byteSize - offsetByteSize) % *binding.strideByteSize ==
+                0,
+            "Invalid binding for resource \"{}\": Range must be a multiple of the stride.",
+            buffer.desc.name);
+    }
+
+    if (usage == BufferBindingUsage::ConstantBuffer)
+    {
+        VEX_CHECK(binding.offsetByteSize.value_or(0) % ConstantBufferBindingOffsetMultiple == 0,
+                  "Invalid binding for resource \"{}\": "
+                  "Constant buffer offsets must be a multiple of 256 bytes",
+                  buffer.desc.name)
+    }
+
+    if (usage == BufferBindingUsage::ByteAddressBuffer || usage == BufferBindingUsage::RWByteAddressBuffer)
+    {
+        VEX_CHECK(binding.offsetByteSize.value_or(0) % ByteAddressBufferOffsetMultiple == 0,
+                  "Invalid binding for resource \"{}\": "
+                  "ByteAddressBuffer offsets must be a multiple of {} bytes (elements are {} bytes wide)",
+                  buffer.desc.name,
+                  ByteAddressBufferOffsetMultiple,
+                  ByteAddressBufferOffsetMultiple)
+
+        VEX_CHECK(binding.rangeByteSize.value_or(0) % ByteAddressBufferOffsetMultiple == 0,
+                  "Invalid binding for resource \"{}\": "
+                  "ByteAddressBuffer range must be a multiple of {} bytes (elements are {} bytes wide)",
+                  buffer.desc.name,
+                  ByteAddressBufferOffsetMultiple,
+                  ByteAddressBufferOffsetMultiple)
     }
 }
 
@@ -125,4 +165,63 @@ void ValidateDrawResource(const DrawResourceBinding& binding)
 
 } // namespace BindingUtil
 
+BufferBinding BufferBinding::CreateStructuredBuffer(const Buffer& buffer,
+                                                    u32 strideByteSize,
+                                                    u32 firstElement,
+                                                    std::optional<u32> elementCount)
+{
+    return { .buffer = buffer,
+             .usage = BufferBindingUsage::StructuredBuffer,
+             .strideByteSize = strideByteSize,
+             .offsetByteSize = firstElement * strideByteSize,
+             .rangeByteSize =
+                 elementCount.value_or((buffer.desc.byteSize / strideByteSize) - firstElement) * strideByteSize };
+}
+
+BufferBinding BufferBinding::CreateRWStructuredBuffer(const Buffer& buffer,
+                                                      u32 strideByteSize,
+                                                      u32 firstElement,
+                                                      std::optional<u32> elementCount)
+{
+    return { .buffer = buffer,
+             .usage = BufferBindingUsage::RWStructuredBuffer,
+             .strideByteSize = strideByteSize,
+             .offsetByteSize = firstElement * strideByteSize,
+             .rangeByteSize =
+                 elementCount.value_or((buffer.desc.byteSize / strideByteSize) - firstElement) * strideByteSize };
+}
+
+BufferBinding BufferBinding::CreateRWByteAddressBuffer(const Buffer& buffer,
+                                                       u32 firstElement,
+                                                       std::optional<u64> elementCount)
+{
+    return { .buffer = buffer,
+             .usage = BufferBindingUsage::RWByteAddressBuffer,
+             .offsetByteSize = firstElement * ByteAddressBufferOffsetMultiple,
+             .rangeByteSize =
+                 elementCount.value_or(buffer.desc.byteSize / ByteAddressBufferOffsetMultiple - firstElement) *
+                 ByteAddressBufferOffsetMultiple };
+}
+
+BufferBinding BufferBinding::CreateByteAddressBuffer(const Buffer& buffer,
+                                                     u32 firstElement,
+                                                     std::optional<u64> elementCount)
+{
+    return { .buffer = buffer,
+             .usage = BufferBindingUsage::ByteAddressBuffer,
+             .offsetByteSize = firstElement * ByteAddressBufferOffsetMultiple,
+             .rangeByteSize =
+                 elementCount.value_or(buffer.desc.byteSize / ByteAddressBufferOffsetMultiple - firstElement) *
+                 ByteAddressBufferOffsetMultiple };
+}
+
+BufferBinding BufferBinding::CreateConstantBuffer(const Buffer& buffer,
+                                                  u32 offsetByteSize,
+                                                  std::optional<u64> rangeByteSize)
+{
+    return { .buffer = buffer,
+             .usage = BufferBindingUsage::ConstantBuffer,
+             .offsetByteSize = offsetByteSize,
+             .rangeByteSize = rangeByteSize.value_or(buffer.desc.byteSize - offsetByteSize) };
+}
 } // namespace vex

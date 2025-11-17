@@ -56,10 +56,47 @@ struct BufferBinding
     Buffer buffer;
     // The usage to use in this binding. Needs to be part of the usages of the buffer description
     BufferBindingUsage usage = BufferBindingUsage::Invalid;
+
     // Optional: Stride of the buffer in bytes when using StructuredBuffer usage
     std::optional<u32> strideByteSize;
+
     // Optional: The offset to apply when binding the buffer (in bytes).
+    // When using ConstantBuffer usage the offset must be a multiple of 256 bytes
+    // When using (RW)ByteAddressBuffer usage the offset must be a multiple of 16 bytes
     std::optional<u64> offsetByteSize;
+
+    // Optional: The range in bytes starting from the offset to bind.
+    // If not specified the remaining range past the offset is bound
+    // When using (RW)ByteAddressBuffer usage the range must be a multiple of 16 bytes
+    std::optional<u64> rangeByteSize;
+
+    // firstElement and elementCount represent strideByteSize multiples on the buffer
+    static BufferBinding CreateStructuredBuffer(const Buffer& buffer,
+                                                u32 strideByteSize,
+                                                u32 firstElement = 0,
+                                                std::optional<u32> elementCount = {});
+
+    // firstElement and elementCount represent strideByteSize multiples on the buffer
+    static BufferBinding CreateRWStructuredBuffer(const Buffer& buffer,
+                                                  u32 strideByteSize,
+                                                  u32 firstElement = 0,
+                                                  std::optional<u32> elementCount = {});
+
+    // First element and element count represent 16 byte elements on the ByteAddressBuffer
+    // example: FirstElement = 1, ElementCount = 10 represents a view on bytes [16, 176] in the buffer
+    // example: FirstElement = 0, ElementCount = 2 represents a view on bytes [0, 32] in the buffer
+    static BufferBinding CreateByteAddressBuffer(const Buffer& buffer,
+                                                 u32 firstElement = 0,
+                                                 std::optional<u64> elementCount = {});
+
+    static BufferBinding CreateRWByteAddressBuffer(const Buffer& buffer,
+                                                   u32 firstElement = 0,
+                                                   std::optional<u64> elementCount = {});
+
+    // offsetByteSize must be a multiple of 128 bytes
+    static BufferBinding CreateConstantBuffer(const Buffer& buffer,
+                                              u32 offsetByteSize = 0,
+                                              std::optional<u64> rangeByteSize = {});
 };
 
 struct TextureBinding
@@ -123,6 +160,6 @@ void ValidateBufferBinding(const BufferBinding& binding, BufferUsage::Flags vali
 void ValidateTextureBinding(const TextureBinding& binding, TextureUsage::Flags validTextureUsageFlags);
 void ValidateDrawResource(const DrawResourceBinding& binding);
 
-}
+} // namespace BindingUtil
 
 } // namespace vex
