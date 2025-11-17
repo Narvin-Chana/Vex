@@ -135,7 +135,6 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
 
     // Only activate setting debug names if the debug layer is active. Otherwise Vulkan will error out.
     GEnableDebugName = enableGPUDebugLayer;
-    GEnableGPUScopedEvents = enableGPUDebugLayer;
 
     if (windowHandle.window)
     {

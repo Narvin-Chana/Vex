@@ -101,6 +101,8 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
 
     // TODO(https://trello.com/c/T1DY4QOT): See the comment inside SetSampler().
     SetSamplers({});
+
+    GEnableGPUScopedEvents = desc.enableGPUDebugLayer;
 }
 
 Graphics::~Graphics()
@@ -123,6 +125,7 @@ Graphics::~Graphics()
 
     // Clear the global physical device.
     GPhysicalDevice = nullptr;
+    GEnableGPUScopedEvents = false;
 }
 
 void Graphics::Present(bool isFullscreenMode)
