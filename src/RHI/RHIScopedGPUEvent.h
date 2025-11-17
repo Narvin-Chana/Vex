@@ -6,6 +6,8 @@
 namespace vex
 {
 
+inline bool GEnableGPUScopedEvents = false;
+
 class RHIScopedGPUEventBase
 {
 protected:
