@@ -59,7 +59,7 @@ void RHIBufferBase::FreeAllocation(RHIAllocator& allocator)
 #endif
 }
 
-u64 BufferViewDesc::GetElementStride() const noexcept
+u32 BufferViewDesc::GetElementStride() const noexcept
 {
     switch (usage)
     {
