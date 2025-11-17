@@ -3,7 +3,7 @@ include(FetchContent)
 # Choose URLs based on platform
 if(WIN32)
     set(DXC_RELEASE_URL "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2505.1/dxc_2025_07_14.zip")
-elseif(UNIX)
+elseif(LINUX)
     set(DXC_RELEASE_URL "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2505.1/linux_dxc_2025_07_14.x86_64.tar.gz")
 else()
     message(FATAL_ERROR "Unsupported platform for DXC binaries")
@@ -21,7 +21,7 @@ if(WIN32)
     set(DXC_HEADERS_INCLUDE_NAME "inc")
     set(DXC_STATIC_LIB "${dxc_SOURCE_DIR}/lib/x64/dxcompiler.lib")
     set(DXC_RUNTIME_LIB "${dxc_SOURCE_DIR}/bin/x64/dxcompiler.dll")
-elseif(UNIX)
+elseif(LINUX)
     set(DXC_HEADERS_INCLUDE_NAME "include")
     set(DXC_STATIC_LIB "")
     set(DXC_RUNTIME_LIB "${dxc_SOURCE_DIR}/lib/libdxcompiler.so")
@@ -46,7 +46,7 @@ endif()
 function(build_with_dxc target)
     target_link_libraries(${target} PRIVATE dxc::dxc)
     
-    if(UNIX)
+    if(LINUX)
         # Set RPATH for Linux builds
         set_target_properties(${target} PROPERTIES
             INSTALL_RPATH "${dxc_SOURCE_DIR}/lib"
