@@ -206,7 +206,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
     case TextureType::TextureCube:
     case TextureType::Texture2D:
     {
-        texDesc = CD3DX12_RESOURCE_DESC::Tex2D(TextureFormatToDXGI(desc.format),
+        texDesc = CD3DX12_RESOURCE_DESC::Tex2D(TextureFormatToDXGI(desc.format, false),
                                                desc.width,
                                                desc.height,
                                                desc.GetSliceCount(),
@@ -214,7 +214,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
         break;
     }
     case TextureType::Texture3D:
-        texDesc = CD3DX12_RESOURCE_DESC::Tex3D(TextureFormatToDXGI(desc.format),
+        texDesc = CD3DX12_RESOURCE_DESC::Tex3D(TextureFormatToDXGI(desc.format, false),
                                                desc.width,
                                                desc.height,
                                                desc.depthOrSliceCount,
@@ -263,7 +263,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
     }
     // For SRGB handling in DX12, the texture should have a typeless format.
     // We then decide when creating the SRV/RTV if we want automatic SRGB conversions or not (via the SRV/RTV's format).
-    else if (FormatHasSRGBEquivalent(desc.format))
+    else if (FormatUtil::HasSRGBEquivalent(desc.format))
     {
         texDesc.Format = GetTypelessFormatForSRGBCompatibleDX12Format(texDesc.Format);
     }
@@ -492,7 +492,7 @@ DX12TextureView::DX12TextureView(const TextureBinding& binding)
     : usage{ binding.usage != TextureBindingUsage::None ? static_cast<TextureUsage::Type>(binding.usage)
                                                         : TextureUsage::None }
     , dimension{ TextureUtil::GetTextureViewType(binding) }
-    , format{ TextureFormatToDXGI(TextureUtil::GetTextureFormat(binding)) }
+    , format{ TextureFormatToDXGI(binding.texture.desc.format, binding.isSRGB) }
     , subresource{ binding.subresource }
 {
     if (binding.usage == TextureBindingUsage::ShaderRead)

@@ -53,7 +53,9 @@ void DX12GraphicsPipelineState::Compile(const Shader& vertexShader,
         .Flags = D3D12_PIPELINE_STATE_FLAG_NONE,
     };
     std::uninitialized_copy_n(rtvFormats.data(), 8, desc.RTVFormats);
-    desc.DSVFormat = TextureFormatToDXGI(key.renderTargetState.depthStencilFormat);
+    // SRGB formats for depth stencil makes no sense.
+    static constexpr bool AllowSRGBFormat = false;
+    desc.DSVFormat = TextureFormatToDXGI(key.renderTargetState.depthStencilFormat, AllowSRGBFormat);
 
     chk << device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&graphicsPSO));
 

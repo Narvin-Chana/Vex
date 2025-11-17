@@ -39,26 +39,9 @@ TextureViewType GetTextureViewType(const TextureBinding& binding)
     std::unreachable();
 }
 
-TextureFormat GetTextureFormat(const TextureBinding& binding)
-{
-    if (binding.flags & TextureBindingFlags::SRGB)
-    {
-        if (!IsFormatSRGB(binding.texture.desc.format) || !FormatHasSRGBEquivalent(binding.texture.desc.format))
-        {
-            VEX_LOG(Fatal,
-                    "Format {} cannot support SRGB loads. Please use an SRGB-compatible texture format.",
-                    binding.texture.desc.format);
-        }
-
-        return GetSRGBEquivalentFormat(binding.texture.desc.format);
-    }
-
-    return binding.texture.desc.format;
-}
-
 void ValidateTextureDescription(const TextureDesc& desc)
 {
-    bool isDepthStencilFormat = FormatIsDepthStencilCompatible(desc.format);
+    bool isDepthStencilFormat = FormatUtil::IsDepthStencilCompatible(desc.format);
     if (isDepthStencilFormat && !(desc.usage & TextureUsage::DepthStencil))
     {
         VEX_LOG(Fatal,
@@ -100,7 +83,7 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
         return 2;
     }
 
-    if (index >= std::to_underlying(RGBA8_UNORM) && index <= std::to_underlying(BGRA8_UNORM_SRGB))
+    if (index >= std::to_underlying(RGBA8_UNORM) && index <= std::to_underlying(BGRA8_UNORM))
     {
         return 4;
     }
@@ -160,12 +143,12 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
         return 4;
     }
 
-    if (index >= std::to_underlying(BC1_UNORM) && index <= std::to_underlying(BC1_UNORM_SRGB))
+    if (index >= std::to_underlying(BC1_UNORM) && index <= std::to_underlying(BC1_UNORM))
     {
         return 0.5f;
     }
 
-    if (index >= std::to_underlying(BC2_UNORM) && index <= std::to_underlying(BC3_UNORM_SRGB))
+    if (index >= std::to_underlying(BC2_UNORM) && index <= std::to_underlying(BC3_UNORM))
     {
         return 1;
     }
@@ -175,7 +158,7 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
         return 0.5f;
     }
 
-    if (index >= std::to_underlying(BC5_UNORM) && index <= std::to_underlying(BC7_UNORM_SRGB))
+    if (index >= std::to_underlying(BC5_UNORM) && index <= std::to_underlying(BC7_UNORM))
     {
         return 1;
     }
@@ -191,9 +174,11 @@ u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, std::span<const 
 
     for (const TextureRegion& region : uploadRegions)
     {
-        VEX_CHECK(region.subresource.startSlice + region.subresource.GetSliceCount(desc) <= desc.GetSliceCount(),
+        const u32 sliceCount = region.subresource.GetSliceCount(desc);
+        
+        VEX_CHECK(region.subresource.startSlice + sliceCount <= desc.GetSliceCount(),
                   "Cannot upload to a slice index ({}) greater or equal to the the texture's slice count ({})!",
-                  region.subresource.startSlice + region.subresource.GetSliceCount(desc),
+                  region.subresource.startSlice + sliceCount,
                   desc.GetSliceCount());
 
         for (u16 mip = region.subresource.startMip;
@@ -207,7 +192,7 @@ u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, std::span<const 
             // The staging buffer should have a row pitch alignment of 256 and mip alignment of 512 due to API
             // constraints.
             u64 regionSize = AlignUp<u64>(width * pixelByteSize, RowPitchAlignment) * height * depth;
-            totalSize += AlignUp<u64>(regionSize, MipAlignment);
+            totalSize += AlignUp<u64>(regionSize, MipAlignment) * sliceCount;
         }
     }
 
@@ -222,9 +207,11 @@ u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, std::span<const Te
 
     for (const TextureRegion& region : uploadRegions)
     {
-        VEX_CHECK(region.subresource.startSlice + region.subresource.GetSliceCount(desc) <= desc.GetSliceCount(),
+        const u32 sliceCount = region.subresource.GetSliceCount(desc);
+        
+        VEX_CHECK(region.subresource.startSlice + sliceCount <= desc.GetSliceCount(),
                   "Cannot upload to a slice index ({}) greater or equal to the the texture's slice count ({})!",
-                  region.subresource.startSlice + region.subresource.GetSliceCount(desc),
+                  region.subresource.startSlice + sliceCount,
                   desc.GetSliceCount());
 
         for (u16 mip = region.subresource.startMip;
@@ -236,7 +223,7 @@ u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, std::span<const Te
             const u32 depth = region.extent.GetDepth(desc, mip);
 
             // Calculate tightly packed size for this region
-            totalSize += width * pixelByteSize * height * depth;
+            totalSize += width * pixelByteSize * height * depth * sliceCount;
         }
     }
 

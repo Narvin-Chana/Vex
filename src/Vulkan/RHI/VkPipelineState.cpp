@@ -70,7 +70,7 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
         // Trello: https://trello.com/c/iAzWZsBM
         attributes[i] = ::vk::VertexInputAttributeDescription{ .location = i,
                                                                .binding = attribute.binding,
-                                                               .format = TextureFormatToVulkan(attribute.format),
+                                                               .format = TextureFormatToVulkan(attribute.format, false),
                                                                .offset = attribute.offset };
     }
 
@@ -157,16 +157,19 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
         .pDynamicStates = dynamicStates.data(),
     };
 
-    std::vector<::vk::Format> attachmentFormats(key.renderTargetState.colorFormats.size());
-    // Requires including the heavy <algorithm>
-    std::ranges::transform(key.renderTargetState.colorFormats, attachmentFormats.begin(), TextureFormatToVulkan);
+    std::vector<::vk::Format> attachmentFormats;
+    attachmentFormats.reserve(key.renderTargetState.colorFormats.size());
+    for (const auto& [format, isSRGB] : key.renderTargetState.colorFormats)
+    {
+        attachmentFormats.emplace_back(TextureFormatToVulkan(format, isSRGB));
+    }
 
     const ::vk::PipelineRenderingCreateInfoKHR pipelineRenderingCI{
         .colorAttachmentCount = static_cast<u32>(attachmentFormats.size()),
         .pColorAttachmentFormats = attachmentFormats.data(),
-        .depthAttachmentFormat = TextureFormatToVulkan(key.renderTargetState.depthStencilFormat),
-        .stencilAttachmentFormat = DoesFormatSupportStencil(key.renderTargetState.depthStencilFormat)
-                                       ? TextureFormatToVulkan(key.renderTargetState.depthStencilFormat)
+        .depthAttachmentFormat = TextureFormatToVulkan(key.renderTargetState.depthStencilFormat, false),
+        .stencilAttachmentFormat = FormatUtil::SupportsStencil(key.renderTargetState.depthStencilFormat)
+                                       ? TextureFormatToVulkan(key.renderTargetState.depthStencilFormat, false)
                                        : ::vk::Format::eUndefined
     };
 

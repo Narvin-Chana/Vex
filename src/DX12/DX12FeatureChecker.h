@@ -18,7 +18,7 @@ public:
     virtual ResourceBindingTier GetResourceBindingTier() const override;
     virtual ShaderModel GetShaderModel() const override;
     virtual u32 GetMaxLocalConstantsByteSize() const override;
-    virtual bool DoesFormatSupportLinearFiltering(TextureFormat format) const override;
+    virtual bool FormatSupportsLinearFiltering(TextureFormat format, bool isSRGB) const override;
     bool SupportsTightAlignment() const;
 
     static FeatureLevel ConvertDX12FeatureLevelToFeatureLevel(D3D_FEATURE_LEVEL featureLevel);

@@ -33,7 +33,7 @@ int main()
             vex::BufferBinding{
                 .buffer = resultBuffer,
                 .usage = vex::BufferBindingUsage::RWStructuredBuffer,
-                .strideByteSize = static_cast<vex::u32>(sizeof(float) * M),
+                .strideByteSize = static_cast<vex::u32>(sizeof(float)),
             },
         };
         std::vector<vex::BindlessHandle> passHandles = ctx.GetBindlessHandles(passBindings);

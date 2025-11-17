@@ -7,46 +7,7 @@
 namespace vex
 {
 
-// Returns SRGB equivalent format. If not found returns unknown
-TextureFormat GetSRGBEquivalentFormat(TextureFormat format)
-{
-    using enum TextureFormat;
-    switch (format)
-    {
-    case RGBA8_UNORM:
-        return RGBA8_UNORM_SRGB;
-    case BGRA8_UNORM:
-        return BGRA8_UNORM_SRGB;
-    case BC1_UNORM:
-        return BC1_UNORM_SRGB;
-    case BC2_UNORM:
-        return BC2_UNORM_SRGB;
-    case BC3_UNORM:
-        return BC3_UNORM_SRGB;
-    case BC7_UNORM:
-        return BC7_UNORM_SRGB;
-    default:
-        return UNKNOWN;
-    }
-}
-
-bool IsFormatSRGB(TextureFormat format)
-{
-    switch (format)
-    {
-    case TextureFormat::BC1_UNORM_SRGB:
-    case TextureFormat::BC2_UNORM_SRGB:
-    case TextureFormat::BC3_UNORM_SRGB:
-    case TextureFormat::BC7_UNORM_SRGB:
-    case TextureFormat::BGRA8_UNORM_SRGB:
-    case TextureFormat::RGBA8_UNORM_SRGB:
-        return true;
-    default:
-        return false;
-    }
-}
-
-bool FormatHasSRGBEquivalent(TextureFormat format)
+bool FormatUtil::HasSRGBEquivalent(TextureFormat format)
 {
     switch (format)
     {
@@ -62,7 +23,7 @@ bool FormatHasSRGBEquivalent(TextureFormat format)
     }
 }
 
-bool FormatIsDepthStencilCompatible(TextureFormat format)
+bool FormatUtil::IsDepthStencilCompatible(TextureFormat format)
 {
     switch (format)
     {
@@ -76,7 +37,7 @@ bool FormatIsDepthStencilCompatible(TextureFormat format)
     }
 }
 
-bool DoesFormatSupportStencil(TextureFormat format)
+bool FormatUtil::SupportsStencil(TextureFormat format)
 {
     switch (format)
     {
@@ -88,7 +49,7 @@ bool DoesFormatSupportStencil(TextureFormat format)
     }
 }
 
-std::string_view GetFormatHLSLType(TextureFormat format)
+std::string_view FormatUtil::GetHLSLType(TextureFormat format)
 {
     switch (format)
     {
@@ -112,10 +73,8 @@ std::string_view GetFormatHLSLType(TextureFormat format)
 
     // 8-bit quad channel
     case TextureFormat::RGBA8_UNORM:
-    case TextureFormat::RGBA8_UNORM_SRGB:
     case TextureFormat::RGBA8_SNORM:
     case TextureFormat::BGRA8_UNORM:
-    case TextureFormat::BGRA8_UNORM_SRGB:
         return "float4";
     case TextureFormat::RGBA8_UINT:
         return "uint4";
@@ -196,13 +155,9 @@ std::string_view GetFormatHLSLType(TextureFormat format)
 
     // BC compressed formats (all decompress to float4)
     case TextureFormat::BC1_UNORM:
-    case TextureFormat::BC1_UNORM_SRGB:
     case TextureFormat::BC2_UNORM:
-    case TextureFormat::BC2_UNORM_SRGB:
     case TextureFormat::BC3_UNORM:
-    case TextureFormat::BC3_UNORM_SRGB:
     case TextureFormat::BC7_UNORM:
-    case TextureFormat::BC7_UNORM_SRGB:
         return "float4";
 
     // BC4 is single channel
@@ -229,25 +184,25 @@ std::string_view GetFormatHLSLType(TextureFormat format)
     std::unreachable();
 }
 
-bool IsFormatBlockCompressed(TextureFormat format)
+bool FormatUtil::IsBlockCompressed(TextureFormat format)
 {
-    return format >= TextureFormat::BC1_UNORM && format <= TextureFormat::BC7_UNORM_SRGB;
+    return format >= TextureFormat::BC1_UNORM && format <= TextureFormat::BC7_UNORM;
 }
 
-bool DoesFormatSupportMipGeneration(TextureFormat format)
+bool FormatUtil::SupportsMipGeneration(TextureFormat format)
 {
     using enum TextureFormat;
 
     VEX_ASSERT(format != UNKNOWN, "Unknown is an invalid texture format!");
 
     // Depth-stencil textures are unsupported for mip generation.
-    if (FormatIsDepthStencilCompatible(format))
+    if (IsDepthStencilCompatible(format))
     {
         return false;
     }
 
     // Block-compressed formats cannot be directly written to.
-    if (IsFormatBlockCompressed(format))
+    if (IsBlockCompressed(format))
     {
         return false;
     }

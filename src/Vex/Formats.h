@@ -20,12 +20,10 @@ enum class TextureFormat : u8
     RG8_UINT,
     RG8_SINT,
     RGBA8_UNORM,
-    RGBA8_UNORM_SRGB,
     RGBA8_SNORM,
     RGBA8_UINT,
     RGBA8_SINT,
     BGRA8_UNORM,
-    BGRA8_UNORM_SRGB,
 
     // 16-bit formats
     R16_UINT,
@@ -65,11 +63,8 @@ enum class TextureFormat : u8
 
     // BC compressed formats
     BC1_UNORM,
-    BC1_UNORM_SRGB,
     BC2_UNORM,
-    BC2_UNORM_SRGB,
     BC3_UNORM,
-    BC3_UNORM_SRGB,
     BC4_UNORM,
     BC4_SNORM,
     BC5_UNORM,
@@ -77,27 +72,22 @@ enum class TextureFormat : u8
     BC6H_UF16,
     BC6H_SF16,
     BC7_UNORM,
-    BC7_UNORM_SRGB,
 
     // Error format
     UNKNOWN,
 };
 
-TextureFormat GetSRGBEquivalentFormat(TextureFormat format);
+namespace FormatUtil
+{
 
-bool IsFormatSRGB(TextureFormat format);
+bool HasSRGBEquivalent(TextureFormat format);
+bool IsDepthStencilCompatible(TextureFormat format);
+bool SupportsStencil(TextureFormat format);
+std::string_view GetHLSLType(TextureFormat format);
+bool IsBlockCompressed(TextureFormat format);
+bool SupportsMipGeneration(TextureFormat format);
 
-bool FormatHasSRGBEquivalent(TextureFormat format);
-
-bool FormatIsDepthStencilCompatible(TextureFormat format);
-
-bool DoesFormatSupportStencil(TextureFormat format);
-
-std::string_view GetFormatHLSLType(TextureFormat format);
-
-bool IsFormatBlockCompressed(TextureFormat format);
-
-bool DoesFormatSupportMipGeneration(TextureFormat format);
+}; // namespace FormatUtil
 
 } // namespace vex
 

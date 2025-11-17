@@ -42,7 +42,7 @@ T PackColor(T color)
 template<>
 float4 PackColor<float4>(float4 color)
 {
-#ifdef CONVERT_TO_SRGB
+#if CONVERT_TO_SRGB
     return float4(ApplySRGBCurve(color.rgb), color.a);
 #else
     return color;
@@ -53,7 +53,7 @@ float4 PackColor<float4>(float4 color)
 template<>
 float3 PackColor<float3>(float3 color)
 {
-#ifdef CONVERT_TO_SRGB
+#if CONVERT_TO_SRGB
     return ApplySRGBCurve(color);
 #else
     return color;
@@ -64,7 +64,7 @@ float3 PackColor<float3>(float3 color)
 template<>
 float2 PackColor<float2>(float2 color)
 {
-#ifdef CONVERT_TO_SRGB
+#if CONVERT_TO_SRGB
     return ApplySRGBCurve(float3(color, 0.0f)).xy;
 #else
     return color;
@@ -75,7 +75,7 @@ float2 PackColor<float2>(float2 color)
 template<>
 float PackColor<float>(float color)
 {
-#ifdef CONVERT_TO_SRGB
+#if CONVERT_TO_SRGB
     return ApplySRGBCurve(float3(color, 0.0f, 0.0f)).x;
 #else
     return color;

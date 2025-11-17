@@ -17,6 +17,8 @@ struct TextureDesc;
 struct SwapChainDescription
 {
     TextureFormat format;
+    // Determines if the swapchain should have an SRGB format.
+    bool isSRGB = false;
     FrameBuffering frameBuffering;
     bool useVSync = false;
 };

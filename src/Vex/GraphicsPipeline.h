@@ -266,7 +266,14 @@ struct ColorBlendState
 
 struct RenderTargetState
 {
-    std::vector<TextureFormat> colorFormats;
+    struct ColorFormat
+    {
+        TextureFormat format;
+        bool isSRGB = false;
+
+        bool operator==(const ColorFormat& other) const = default;
+    };
+    std::vector<ColorFormat> colorFormats;
     TextureFormat depthStencilFormat = TextureFormat::UNKNOWN;
 
     bool operator==(const RenderTargetState& other) const = default;
@@ -350,6 +357,11 @@ VEX_MAKE_HASHABLE(vex::ColorBlendState,
     VEX_HASH_COMBINE(seed, obj.logicOp);
     VEX_HASH_COMBINE_CONTAINER(seed, obj.attachments);
     VEX_HASH_COMBINE_CONTAINER(seed, obj.blendConstants);
+);
+
+VEX_MAKE_HASHABLE(vex::RenderTargetState::ColorFormat,
+    VEX_HASH_COMBINE(seed, obj.format);
+    VEX_HASH_COMBINE(seed, obj.isSRGB);
 );
 
 VEX_MAKE_HASHABLE(vex::RenderTargetState,

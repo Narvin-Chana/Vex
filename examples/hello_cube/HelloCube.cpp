@@ -122,8 +122,8 @@ HelloCubeApplication::HelloCubeApplication()
             std::as_bytes(std::span(fullImageData.begin(), fullImageData.begin() + width * height * channels)),
             vex::TextureRegion::SingleMip(0));
 
-        // Fill in all mips using the first one.
-        ctx.GenerateMips(uvGuideTexture);
+        // Fill in all mips using the first one, the underlying texture is encoded in SRGB so be sure to do an SRGB-aware downscale!
+        ctx.GenerateMips({ .texture = uvGuideTexture, .isSRGB = true });
 
         // The texture will now only be used as a read-only shader resource. Avoids having to place a barrier later on.
         // We use PixelShader sync since it will only be used there.

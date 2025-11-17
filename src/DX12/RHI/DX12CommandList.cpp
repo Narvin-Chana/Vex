@@ -689,7 +689,7 @@ void DX12CommandList::TraceRays(const std::array<u32, 3>& widthHeightDepth,
     }
 }
 
-void DX12CommandList::GenerateMips(RHITexture& texture, u16 sourceMip)
+void DX12CommandList::GenerateMips(RHITexture& texture, const TextureSubresource& subresource)
 {
     VEX_CHECK(false, "DX12 does not support built-in mip generation.");
 }
@@ -698,7 +698,8 @@ void DX12CommandList::Copy(RHITexture& src, RHITexture& dst)
 {
     VEX_ASSERT(src.GetDesc().width == dst.GetDesc().width && src.GetDesc().height == dst.GetDesc().height &&
                    src.GetDesc().depthOrSliceCount == dst.GetDesc().depthOrSliceCount &&
-                   src.GetDesc().mips == dst.GetDesc().mips && src.GetDesc().format == dst.GetDesc().format,
+                   src.GetDesc().mips == dst.GetDesc().mips &&
+                   src.GetDesc().format == dst.GetDesc().format,
                "The two textures must be compatible in order to Copy to be useable.");
     commandList->CopyResource(dst.GetRawTexture(), src.GetRawTexture());
 }

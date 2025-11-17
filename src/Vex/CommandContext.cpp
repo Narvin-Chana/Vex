@@ -116,7 +116,8 @@ static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDesc& dr
 
     for (const RHITextureBinding& rhiBinding : rhiDrawRes.renderTargets)
     {
-        key.renderTargetState.colorFormats.emplace_back(rhiBinding.binding.texture.desc.format);
+        key.renderTargetState.colorFormats.emplace_back(rhiBinding.binding.texture.desc.format,
+                                                        rhiBinding.binding.isSRGB);
     }
 
     if (rhiDrawRes.depthStencil)
@@ -408,16 +409,24 @@ void CommandContext::TraceRays(const RayTracingPassDescription& rayTracingPassDe
     cmdList->TraceRays(widthHeightDepth, *pipelineState);
 }
 
-void CommandContext::GenerateMips(const Texture& texture, u16 sourceMip)
+void CommandContext::GenerateMips(const TextureBinding& textureBinding)
 {
+    const Texture& texture = textureBinding.texture;
+
+    VEX_CHECK(textureBinding.subresource.startSlice == 0 && textureBinding.subresource.GetSliceCount(texture.desc),
+              "Mip Generation must take into account all slices.");
     VEX_CHECK(texture.desc.mips > 1,
               "The texture must have more than atleast 1 mip in order to have the other mips generated.");
-    VEX_CHECK(sourceMip < texture.desc.mips - 1,
-              "The sourceMip index must be smaller than the last mip in order to have the other mips generated.");
+    VEX_CHECK(textureBinding.subresource.GetMipCount(texture.desc) >= 1, "You must generate at least one mip.");
+    VEX_CHECK(textureBinding.subresource.startMip < texture.desc.mips,
+              "The startMip index must be smaller than the last mip in order to have the other mips generated.");
+
+    u16 sourceMip = textureBinding.subresource.startMip;
+    u16 lastDestMip = sourceMip + textureBinding.subresource.GetMipCount(texture.desc) - 1;
 
     const bool apiFormatSupportsLinearFiltering =
-        GPhysicalDevice->featureChecker->DoesFormatSupportLinearFiltering(texture.desc.format);
-    const bool textureFormatSupportsMipGeneration = DoesFormatSupportMipGeneration(texture.desc.format);
+        GPhysicalDevice->featureChecker->FormatSupportsLinearFiltering(texture.desc.format, textureBinding.isSRGB);
+    const bool textureFormatSupportsMipGeneration = FormatUtil::SupportsMipGeneration(texture.desc.format);
     VEX_CHECK(textureFormatSupportsMipGeneration && apiFormatSupportsLinearFiltering,
               "The texture's format must be a valid format for mip generation. Only uncompressed floating point / "
               "normalized color formats are supported.");
@@ -426,10 +435,11 @@ void CommandContext::GenerateMips(const Texture& texture, u16 sourceMip)
               "Mip Generation requires a Compute or Graphics command list type.");
 
     // Built-in mip generation is leveraged if supported (and if we're using a graphics command queue).
+    // If we want to perform SRGB mip generation, we must do it manually.
     if (GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::MipGeneration) &&
-        cmdList->GetType() == QueueType::Graphics)
+        cmdList->GetType() == QueueType::Graphics && !textureBinding.isSRGB)
     {
-        cmdList->GenerateMips(backend->GetRHITexture(texture.handle), sourceMip);
+        cmdList->GenerateMips(backend->GetRHITexture(texture.handle), textureBinding.subresource);
         return;
     }
 
@@ -454,16 +464,12 @@ void CommandContext::GenerateMips(const Texture& texture, u16 sourceMip)
         .path = std::filesystem::current_path() / "MipGeneration.hlsl",
         .entryPoint = std::move(entryPoint),
         .type = ShaderType::ComputeShader,
-        .defines = { ShaderDefine{ "TEXTURE_TYPE", std::string(GetFormatHLSLType(texture.desc.format)) },
+        .defines = { ShaderDefine{ "TEXTURE_TYPE", std::string(FormatUtil::GetHLSLType(texture.desc.format)) },
                      ShaderDefine{ "LINEAR_SAMPLER_SLOT", std::format("s{}", backend->builtInLinearSamplerSlot) },
+                     ShaderDefine{ "CONVERT_TO_SRGB", textureBinding.isSRGB ? "1" : "0" },
                      ShaderDefine{ "NON_POWER_OF_TWO" } }
     };
-    static constexpr u32 NonPowerOfTwoDefineIndex = 2;
-
-    if (IsFormatSRGB(texture.desc.format))
-    {
-        mipGenerationShaderKey.defines.emplace_back("CONVERT_TO_SRGB", "1");
-    }
+    static constexpr u32 NonPowerOfTwoDefineIndex = 3;
 
     struct Uniforms
     {
@@ -480,9 +486,9 @@ void CommandContext::GenerateMips(const Texture& texture, u16 sourceMip)
     u32 depth = texture.desc.GetDepth();
     bool isLastIteration = false;
 
-    for (u16 mip = sourceMip + 1; mip < texture.desc.mips;)
+    for (u16 mip = sourceMip + 1; mip <= lastDestMip;)
     {
-        if (mip + 1 >= texture.desc.mips)
+        if (mip >= lastDestMip)
         {
             isLastIteration = true;
         }
@@ -509,11 +515,14 @@ void CommandContext::GenerateMips(const Texture& texture, u16 sourceMip)
             TextureBinding{
                 .texture = texture,
                 .usage = TextureBindingUsage::ShaderRead,
+                .isSRGB = textureBinding.isSRGB,
                 .subresource = { .startMip = static_cast<u16>(mip - 1u), .mipCount = 1 },
             },
             TextureBinding{
                 .texture = texture,
                 .usage = TextureBindingUsage::ShaderReadWrite,
+                // Cannot have SRGB ShaderReadWrite, we manually perform color space conversion in the shader.
+                .isSRGB = false,
                 .subresource = { .startMip = mip, .mipCount = 1 },
             },
         };
@@ -522,6 +531,7 @@ void CommandContext::GenerateMips(const Texture& texture, u16 sourceMip)
             bindings.push_back(TextureBinding{
                 .texture = texture,
                 .usage = TextureBindingUsage::ShaderReadWrite,
+                .isSRGB = false,
                 .subresource = { .startMip = static_cast<u16>(mip + 1u), .mipCount = 1 },
             });
         }
@@ -559,8 +569,6 @@ void CommandContext::GenerateMips(const Texture& texture, u16 sourceMip)
     TextureBinding finalBinding{
         .texture = texture,
         .usage = TextureBindingUsage::ShaderRead,
-        .flags = IsFormatSRGB(texture.desc.format) ? TextureBindingFlags::SRGB : TextureBindingFlags::None,
-        .subresource = {},
     };
     TransitionBindings(std::span<const ResourceBinding>{ { finalBinding } });
 }
@@ -950,10 +958,10 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
                                                                 const DrawResourceBinding& drawBindings,
                                                                 std::optional<ConstantBinding> constants)
 {
-    VEX_CHECK(
-        !drawBindings.depthStencil || (drawBindings.depthStencil &&
-                                       FormatIsDepthStencilCompatible(drawBindings.depthStencil->texture.desc.format)),
-        "The provided depth stencil should have a depth stencil format");
+    VEX_CHECK(!drawBindings.depthStencil ||
+                  (drawBindings.depthStencil &&
+                   FormatUtil::IsDepthStencilCompatible(drawBindings.depthStencil->texture.desc.format)),
+              "The provided depth stencil should have a depth stencil format");
     VEX_CHECK(drawDesc.vertexShader.type == ShaderType::VertexShader,
               "Invalid type passed to Draw call for vertex shader: {}",
               drawDesc.vertexShader.type);

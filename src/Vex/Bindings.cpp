@@ -103,7 +103,8 @@ void ValidateTextureBinding(const TextureBinding& binding, TextureUsage::Flags v
                 texture.desc.name);
     }
 
-    if ((validTextureUsageFlags & TextureUsage::DepthStencil) && !FormatIsDepthStencilCompatible(texture.desc.format))
+    if ((validTextureUsageFlags & TextureUsage::DepthStencil) &&
+        !FormatUtil::IsDepthStencilCompatible(texture.desc.format))
     {
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": texture cannot be bound as depth stencil",
@@ -120,19 +121,27 @@ void ValidateTextureBinding(const TextureBinding& binding, TextureUsage::Flags v
 
     TextureUtil::ValidateSubresource(binding.subresource, texture.desc);
 
-    if (binding.flags & TextureBindingFlags::SRGB)
+    if (binding.isSRGB)
     {
-        if (!FormatHasSRGBEquivalent(texture.desc.format))
+        if (!FormatUtil::HasSRGBEquivalent(texture.desc.format))
         {
             VEX_LOG(Fatal,
-                    "Invalid binding for resource \"{}\": Texture's format ({}) does not allow for an SRGB "
-                    "binding.",
+                    "Invalid binding for resource \"{}\": Texture's format ({}) does not allow for an SRGB binding.",
                     texture.desc.name,
                     magic_enum::enum_name(texture.desc.format));
         }
+
+        if (binding.usage == TextureBindingUsage::ShaderReadWrite)
+        {
+            VEX_LOG(Fatal,
+                    "Invalid binding for resource \"{}\": ShaderReadWrite usage cannot be SRGB! This is an API "
+                    "limitation, use a non-SRGB binding and convert manually or write to the texture as a RenderTarget "
+                    "in order to have SRGB conversion handled automatically.",
+                    texture.desc.name);
+        }
     }
 
-    if (FormatIsDepthStencilCompatible(texture.desc.format) && !(texture.desc.usage & TextureUsage::DepthStencil))
+    if (FormatUtil::IsDepthStencilCompatible(texture.desc.format) && !(texture.desc.usage & TextureUsage::DepthStencil))
     {
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": Texture's format ({}) requires the depth stencil usage "

@@ -80,6 +80,13 @@ std::span<byte> DX12Buffer::Map()
 
 void DX12Buffer::Unmap()
 {
+    // CPURead mapped buffers have no real purpose in being "unmapped" as they are always available.
+    // TODO(https://trello.com/c/lsqpXupB): We have to eventually rework mapping to be done on creation instead of when needed, but until then we early return to avoid validation layer warnings.
+    if (desc.memoryLocality == ResourceMemoryLocality::CPURead)
+    {
+        return;
+    }
+
     D3D12_RANGE range{
         .Begin = 0,
         .End = desc.byteSize,

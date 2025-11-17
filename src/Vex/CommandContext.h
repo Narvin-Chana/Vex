@@ -138,7 +138,7 @@ public:
                    std::array<u32, 3> widthHeightDepth);
 
     // Fills in all lower resolution mips with downsampled version of the source mip.
-    void GenerateMips(const Texture& texture, u16 sourceMip = 0);
+    void GenerateMips(const TextureBinding& textureBinding);
 
     // ---------------------------------------------------------------------------------------------------------------
     // Resource Copy - Will automatically transition the resources into the correct states.
