@@ -10,7 +10,7 @@ endif()
 # Choose URLs based on platform
 if(WIN32)
     set(SLANG_RELEASE_URL "https://github.com/shader-slang/slang/releases/download/v2025.14.3/slang-2025.14.3-windows-x86_64.zip")
-elseif(UNIX)
+elseif(LINUX)
     set(SLANG_RELEASE_URL "https://github.com/shader-slang/slang/releases/download/v2025.14.3/slang-2025.14.3-linux-x86_64.tar.gz")
 else()
     message(FATAL_ERROR "Unsupported platform for Slang binaries")
@@ -39,7 +39,7 @@ if(WIN32)
         "${slang_SOURCE_DIR}/bin/slang-rt.dll"
         "${slang_SOURCE_DIR}/bin/slang.dll"
     )
-elseif(UNIX)
+elseif(LINUX)
     set(DXC_STATIC_LIB "")
     set(SLANG_RUNTIME_LIBS
         "${slang_SOURCE_DIR}/lib/libgfx.so"
@@ -61,7 +61,7 @@ if(NOT TARGET slang::slang)
         set_target_properties(slang::slang PROPERTIES
             INTERFACE_LINK_LIBRARIES "${SLANG_STATIC_LIBS}"
         )
-    elseif(UNIX)
+    elseif(LINUX)
         set_target_properties(slang::slang PROPERTIES
             INTERFACE_LINK_LIBRARIES "${SLANG_RUNTIME_LIBS}"
         )
@@ -71,7 +71,7 @@ endif()
 function(build_with_slang target)
     target_link_libraries(${target} PUBLIC slang::slang)
 
-    if(UNIX)
+    if(LINUX)
         set_target_properties(${target} PROPERTIES
             INSTALL_RPATH "${slang_SOURCE_DIR}/lib"
             BUILD_WITH_INSTALL_RPATH TRUE
