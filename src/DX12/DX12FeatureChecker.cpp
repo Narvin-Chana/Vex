@@ -104,8 +104,7 @@ bool DX12FeatureChecker::FormatSupportsLinearFiltering(TextureFormat format, boo
 
 bool DX12FeatureChecker::SupportsTightAlignment() const
 {
-    //return featureSupport.TightAlignmentSupportTier() > D3D12_TIGHT_ALIGNMENT_TIER_NOT_SUPPORTED;
-    return false;
+    return featureSupport.TightAlignmentSupportTier() > D3D12_TIGHT_ALIGNMENT_TIER_NOT_SUPPORTED;
 }
 
 FeatureLevel DX12FeatureChecker::ConvertDX12FeatureLevelToFeatureLevel(D3D_FEATURE_LEVEL featureLevel)
