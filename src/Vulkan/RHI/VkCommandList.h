@@ -63,7 +63,7 @@ public:
 
     virtual QueryHandle BeginTimestampQuery() override;
     virtual void EndTimestampQuery(QueryHandle handle) override;
-    virtual void ResolveTimestampQueries(u32 firstQuery, u32 queryCount);
+    virtual void ResolveTimestampQueries(u32 firstQuery, u32 queryCount) override;
 
     using RHICommandListBase::Copy;
     virtual void Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDesc> textureCopyDesc) override;
