@@ -89,6 +89,7 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
         swapChain.emplace(rhi.CreateSwapChain(
             {
                 .format = desc.swapChainFormat,
+                .isSRGB = desc.isSwapChainSRGB,
                 .frameBuffering = desc.frameBuffering,
                 .useVSync = desc.useVSync,
             },

@@ -181,7 +181,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
 
     const ::vk::ImageViewCreateInfo viewCreate{ .image = GetResource(),
                                                 .viewType = TextureTypeToVulkan(view.viewType),
-                                                .format = TextureFormatToVulkan(view.format),
+                                                .format = TextureFormatToVulkan(view.format, binding.isSRGB),
                                                 .subresourceRange = {
                                                     .aspectMask = VkTextureUtil::GetFormatAspectFlags(view.format),
                                                     .baseMipLevel = view.subresource.startMip,
@@ -226,7 +226,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
 
     const ::vk::ImageViewCreateInfo viewCreate{ .image = GetResource(),
                                                 .viewType = TextureTypeToVulkan(view.viewType),
-                                                .format = TextureFormatToVulkan(view.format),
+                                                .format = TextureFormatToVulkan(view.format, binding.isSRGB),
                                                 .subresourceRange = {
                                                     .aspectMask = usage == TextureUsage::DepthStencil
                                                                       ? VkTextureUtil::GetDepthAspectFlags(view.format)
@@ -298,7 +298,8 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
     }
 
     ::vk::ImageCreateInfo createInfo{};
-    createInfo.format = TextureFormatToVulkan(desc.format);
+    // Force the non-SRGB variant.
+    createInfo.format = TextureFormatToVulkan(desc.format, false);
     createInfo.sharingMode = ::vk::SharingMode::eExclusive;
     createInfo.tiling = ::vk::ImageTiling::eOptimal;
     createInfo.initialLayout = ::vk::ImageLayout::eUndefined;
@@ -372,7 +373,7 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
 VkTextureViewDesc::VkTextureViewDesc(const TextureBinding& binding)
 
     : viewType{ TextureUtil::GetTextureViewType(binding) }
-    , format{ TextureUtil::GetTextureFormat(binding) }
+    , format{ binding.texture.desc.format }
     , usage{ static_cast<TextureUsage::Type>(binding.usage) }
     , subresource{ binding.subresource }
 {

@@ -93,9 +93,9 @@ u32 DX12FeatureChecker::GetMaxLocalConstantsByteSize() const
     return 64 * sizeof(DWORD);
 }
 
-bool DX12FeatureChecker::DoesFormatSupportLinearFiltering(TextureFormat format) const
+bool DX12FeatureChecker::FormatSupportsLinearFiltering(TextureFormat format, bool isSRGB) const
 {
-    D3D12_FEATURE_DATA_FORMAT_SUPPORT formatSupport{ .Format = TextureFormatToDXGI(format) };
+    D3D12_FEATURE_DATA_FORMAT_SUPPORT formatSupport{ .Format = TextureFormatToDXGI(format, isSRGB) };
     chk << device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &formatSupport, sizeof(formatSupport));
 
     const bool supportsLinearFiltering = (formatSupport.Support1 & D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE) != 0;
@@ -104,7 +104,8 @@ bool DX12FeatureChecker::DoesFormatSupportLinearFiltering(TextureFormat format) 
 
 bool DX12FeatureChecker::SupportsTightAlignment() const
 {
-    return featureSupport.TightAlignmentSupportTier() > D3D12_TIGHT_ALIGNMENT_TIER_NOT_SUPPORTED;
+    //return featureSupport.TightAlignmentSupportTier() > D3D12_TIGHT_ALIGNMENT_TIER_NOT_SUPPORTED;
+    return false;
 }
 
 FeatureLevel DX12FeatureChecker::ConvertDX12FeatureLevelToFeatureLevel(D3D_FEATURE_LEVEL featureLevel)

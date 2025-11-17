@@ -99,7 +99,7 @@ static std::vector<::vk::BufferImageCopy> GetBufferImageCopyFromBufferToImageDes
     const RHITexture& texture, std::span<const BufferTextureCopyDesc> descriptions)
 {
     const ::vk::ImageAspectFlags dstAspectMask =
-        FormatIsDepthStencilCompatible(texture.GetDesc().format)
+        FormatUtil::IsDepthStencilCompatible(texture.GetDesc().format)
             ? ::vk::ImageAspectFlagBits::eDepth | ::vk::ImageAspectFlagBits::eStencil
             : ::vk::ImageAspectFlagBits::eColor;
 
@@ -511,9 +511,9 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
         .colorAttachmentCount = static_cast<uint32_t>(colorAttachmentsInfo.size()),
         .pColorAttachments = colorAttachmentsInfo.data(),
         .pDepthAttachment = depthInfo ? &*depthInfo : nullptr,
-        .pStencilAttachment = depthInfo && DoesFormatSupportStencil(resources.depthStencil->texture->GetDesc().format)
-                                  ? &*depthInfo
-                                  : nullptr,
+        .pStencilAttachment =
+            depthInfo && FormatUtil::SupportsStencil(resources.depthStencil->texture->GetDesc().format) ? &*depthInfo
+                                                                                                        : nullptr,
     };
 
     commandBuffer->beginRendering(info);
@@ -609,16 +609,21 @@ void VkCommandList::TraceRays(const std::array<u32, 3>& widthHeightDepth,
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-void VkCommandList::GenerateMips(RHITexture& texture, u16 sourceMip)
+void VkCommandList::GenerateMips(RHITexture& texture, const TextureSubresource& subresource)
 {
-    bool isDepthStencilFormat = FormatIsDepthStencilCompatible(texture.GetDesc().format);
+    bool isDepthStencilFormat = FormatUtil::IsDepthStencilCompatible(texture.GetDesc().format);
     ::vk::ImageAspectFlags aspectMask =
         isDepthStencilFormat ? ::vk::ImageAspectFlagBits::eDepth : ::vk::ImageAspectFlagBits::eColor;
+
+    u16 sourceMip = subresource.startMip;
 
     // Transition all mips before the sourceMip (inclusive) to transferDst.
     RHITextureBarrier barrier{ texture,
                                TextureSubresource{
-                                   .startMip = 0, .mipCount = static_cast<u16>(sourceMip + 1),
+                                   .startMip = 0,
+                                   .mipCount = static_cast<u16>(sourceMip + 1),
+                                   .startSlice = subresource.startSlice,
+                                   .sliceCount = subresource.sliceCount,
                                },
                                RHIBarrierSync::Blit,
                                RHIBarrierAccess::CopyDest,
@@ -629,7 +634,7 @@ void VkCommandList::GenerateMips(RHITexture& texture, u16 sourceMip)
     i32 mipHeight = std::max<i32>(1, texture.GetDesc().height >> sourceMip);
     i32 mipDepth = std::max<i32>(1, texture.GetDesc().GetDepth() >> sourceMip);
 
-    for (u16 i = sourceMip + 1; i < texture.GetDesc().mips; ++i)
+    for (u16 i = sourceMip + 1; i < subresource.startMip + subresource.GetMipCount(texture.desc); ++i)
     {
         // Transition the (i-1)th mip to transferSrc.
         barrier.subresource.startMip = i - 1;
@@ -642,15 +647,15 @@ void VkCommandList::GenerateMips(RHITexture& texture, u16 sourceMip)
         ::vk::ImageBlit blit{};
         blit.srcSubresource.aspectMask = aspectMask;
         blit.srcSubresource.mipLevel = i - 1;
-        blit.srcSubresource.baseArrayLayer = 0;
-        blit.srcSubresource.layerCount = texture.GetDesc().GetSliceCount();
+        blit.srcSubresource.baseArrayLayer = subresource.startSlice;
+        blit.srcSubresource.layerCount = subresource.GetSliceCount(texture.desc);
         blit.srcOffsets[0] = ::vk::Offset3D{ 0, 0, 0 };
         blit.srcOffsets[1] = ::vk::Offset3D{ mipWidth, mipHeight, mipDepth };
 
         blit.dstSubresource.aspectMask = aspectMask;
         blit.dstSubresource.mipLevel = i;
-        blit.dstSubresource.baseArrayLayer = 0;
-        blit.dstSubresource.layerCount = texture.GetDesc().GetSliceCount();
+        blit.dstSubresource.baseArrayLayer = subresource.startSlice;
+        blit.dstSubresource.layerCount = subresource.GetSliceCount(texture.desc);
         blit.dstOffsets[0] = ::vk::Offset3D{ 0, 0, 0 };
         blit.dstOffsets[1] = ::vk::Offset3D{ mipWidth > 1 ? mipWidth / 2 : 1,
                                              mipHeight > 1 ? mipHeight / 2 : 1,
@@ -669,7 +674,7 @@ void VkCommandList::GenerateMips(RHITexture& texture, u16 sourceMip)
     }
 
     // Transition the last mip to keep uniform states across the entire resource.
-    barrier.subresource.startMip = texture.GetDesc().mips - 1;
+    barrier.subresource.startMip = subresource.startMip + subresource.GetMipCount(texture.desc) - 1;
     barrier.subresource.mipCount = 1;
     barrier.dstSync = RHIBarrierSync::Copy;
     barrier.dstAccess = RHIBarrierAccess::CopySource;

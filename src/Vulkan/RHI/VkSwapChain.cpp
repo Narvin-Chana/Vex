@@ -87,7 +87,7 @@ VkSwapChain::VkSwapChain(NonNullPtr<VkGPUContext> ctx,
     VEX_ASSERT(IsSwapChainSupported(ctx->physDevice, ctx->surface));
 
     supportDetails = GetSwapChainSupportDetails(ctx->physDevice, ctx->surface);
-    surfaceFormat = GetBestSurfaceFormat(supportDetails, TextureFormatToVulkan(desc.format));
+    surfaceFormat = GetBestSurfaceFormat(supportDetails, TextureFormatToVulkan(desc.format, desc.isSRGB));
     presentMode = GetBestPresentMode(supportDetails, desc.useVSync);
 
     u32 maxSupportedImageCount =

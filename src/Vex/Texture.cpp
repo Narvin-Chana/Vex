@@ -39,26 +39,9 @@ TextureViewType GetTextureViewType(const TextureBinding& binding)
     std::unreachable();
 }
 
-TextureFormat GetTextureFormat(const TextureBinding& binding)
-{
-    if (binding.flags & TextureBindingFlags::SRGB)
-    {
-        if (!IsFormatSRGB(binding.texture.desc.format) || !FormatHasSRGBEquivalent(binding.texture.desc.format))
-        {
-            VEX_LOG(Fatal,
-                    "Format {} cannot support SRGB loads. Please use an SRGB-compatible texture format.",
-                    binding.texture.desc.format);
-        }
-
-        return GetSRGBEquivalentFormat(binding.texture.desc.format);
-    }
-
-    return binding.texture.desc.format;
-}
-
 void ValidateTextureDescription(const TextureDesc& desc)
 {
-    bool isDepthStencilFormat = FormatIsDepthStencilCompatible(desc.format);
+    bool isDepthStencilFormat = FormatUtil::IsDepthStencilCompatible(desc.format);
     if (isDepthStencilFormat && !(desc.usage & TextureUsage::DepthStencil))
     {
         VEX_LOG(Fatal,
@@ -100,7 +83,7 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
         return 2;
     }
 
-    if (index >= std::to_underlying(RGBA8_UNORM) && index <= std::to_underlying(BGRA8_UNORM_SRGB))
+    if (index >= std::to_underlying(RGBA8_UNORM) && index <= std::to_underlying(BGRA8_UNORM))
     {
         return 4;
     }
@@ -160,12 +143,12 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
         return 4;
     }
 
-    if (index >= std::to_underlying(BC1_UNORM) && index <= std::to_underlying(BC1_UNORM_SRGB))
+    if (index >= std::to_underlying(BC1_UNORM) && index <= std::to_underlying(BC1_UNORM))
     {
         return 0.5f;
     }
 
-    if (index >= std::to_underlying(BC2_UNORM) && index <= std::to_underlying(BC3_UNORM_SRGB))
+    if (index >= std::to_underlying(BC2_UNORM) && index <= std::to_underlying(BC3_UNORM))
     {
         return 1;
     }
@@ -175,7 +158,7 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
         return 0.5f;
     }
 
-    if (index >= std::to_underlying(BC5_UNORM) && index <= std::to_underlying(BC7_UNORM_SRGB))
+    if (index >= std::to_underlying(BC5_UNORM) && index <= std::to_underlying(BC7_UNORM))
     {
         return 1;
     }
