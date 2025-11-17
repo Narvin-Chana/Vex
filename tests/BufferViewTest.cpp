@@ -125,7 +125,7 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
                      1u,
                  });
 
-    key.path = VexRootPath / "tests/shaders/BufferView_BAB.cs.slang";
+    key.path = VexRootPath / "tests/shaders/BufferView.cs.slang";
 
     ctx.TransitionBindings(bindings);
 
@@ -145,38 +145,44 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
 
     readbackContext.ReadData(std::as_writable_bytes(std::span{ result }));
 
-    EXPECT_TRUE(result == GetParam().expectedResult);
+    std::array<float, 3> expectedResult{};
+    std::transform(GetParam().expectedResult.begin(),
+                   GetParam().expectedResult.end(),
+                   expectedResult.begin(),
+                   [](float f) { return f * 2; });
+
+    EXPECT_TRUE(result == expectedResult);
 }
 
 INSTANTIATE_TEST_SUITE_P(StructureBufferTests,
                          BufferBindingTest,
                          testing::Values(BufferBindingTestData{ .usage = BufferBindingUsage::StructuredBuffer,
                                                                 .expectedResult{
-                                                                    1.f * BufferBindingTest::ElementCount * 2,
-                                                                    2.f * BufferBindingTest::ElementCount * 2,
-                                                                    3.f * BufferBindingTest::ElementCount * 2,
+                                                                    1.f * BufferBindingTest::ElementCount,
+                                                                    2.f * BufferBindingTest::ElementCount,
+                                                                    3.f * BufferBindingTest::ElementCount,
                                                                 } },
                                          BufferBindingTestData{ .usage = BufferBindingUsage::StructuredBuffer,
                                                                 .firstElement{ 4 },
                                                                 .expectedResult{
-                                                                    1.f * (BufferBindingTest::ElementCount - 4) * 2,
-                                                                    2.f * (BufferBindingTest::ElementCount - 4) * 2,
-                                                                    3.f * (BufferBindingTest::ElementCount - 4) * 2,
+                                                                    1.f * (BufferBindingTest::ElementCount - 4),
+                                                                    2.f * (BufferBindingTest::ElementCount - 4),
+                                                                    3.f * (BufferBindingTest::ElementCount - 4),
                                                                 } },
                                          BufferBindingTestData{ .usage = BufferBindingUsage::StructuredBuffer,
                                                                 .firstElement{ 4 },
                                                                 .elementCount{ 10 },
                                                                 .expectedResult{
-                                                                    1.f * 10 * 2,
-                                                                    2.f * 10 * 2,
-                                                                    3.f * 10 * 2,
+                                                                    1.f * 10,
+                                                                    2.f * 10,
+                                                                    3.f * 10,
                                                                 } },
                                          BufferBindingTestData{ .usage = BufferBindingUsage::StructuredBuffer,
                                                                 .elementCount{ 100 },
                                                                 .expectedResult{
-                                                                    1.f * 100.f * 2,
-                                                                    2.f * 100.f * 2,
-                                                                    3.f * 100.f * 2,
+                                                                    1.f * 100.f,
+                                                                    2.f * 100.f,
+                                                                    3.f * 100.f,
                                                                 } }));
 
 INSTANTIATE_TEST_SUITE_P(
