@@ -1,14 +1,4 @@
-﻿#include <Vex.hlsli>
-
-struct UniformStruct
-{
-    uint testBufferHandle;
-    uint outputBufferHandle;
-
-    uint numElements;
-};
-
-VEX_UNIFORMS(UniformStruct, Uniforms);
+﻿import Vex;
 
 struct TestBufferData
 {
@@ -31,22 +21,26 @@ struct TestBufferData
     #endif
 #endif
 
-static BUFFER_TYPE TestInfoBuffer = GetBindlessResource(Uniforms.testBufferHandle);
-static RWStructuredBuffer<float3> OutputBuffer = GetBindlessResource(Uniforms.outputBufferHandle);
-
 [numthreads(1, 1, 1)]
-void CSMain()
+void CSMain(
+    uniform uint testBufferHandle,
+    uniform uint outputBufferHandle,
+    uniform uint numElements
+)
 {
+    static let TestInfoBuffer = GetBindlessResource<BUFFER_TYPE>(testBufferHandle);
+    static let OutputBuffer = GetBindlessResource<RWStructuredBuffer<float3>>(outputBufferHandle);
+
     float3 total = float3(0,0,0);
 #if CONSTANT_BUFFER
-    total = TestInfoBuffer.v;
+    total = (*TestInfoBuffer).v;
 #else
-    for (uint i = 0; i < Uniforms.numElements; ++i)
+    for (uint i = 0; i < numElements; ++i)
     {
         #if BYTE_ADDRESS_BUFFER
-        TestBufferData bufferData = TestInfoBuffer.Load<TestBufferData>(i * sizeof(TestBufferData));
+        let bufferData = TestInfoBuffer.Load<TestBufferData>(i * sizeof(TestBufferData));
         #else
-        TestBufferData bufferData = TestInfoBuffer.Load((int)i);
+        let bufferData = TestInfoBuffer.Load((int)i);
         #endif
         total += bufferData.v;
     }

@@ -94,7 +94,7 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
     {
         BindlessHandle inputBuffer;
         BindlessHandle outputBuffer;
-        uint32_t numElements;
+        uint32_t numElements{};
     };
 
     Uniform uniforms{ handles[0],
@@ -105,24 +105,37 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
 
     ctx.TransitionBindings(bindings);
 
-    ctx.Dispatch(
-        {
-            .path = VexRootPath / "tests/shaders/BufferView.cs.hlsl",
-            .entryPoint = "CSMain",
-            .type = ShaderType::ComputeShader,
-            .defines = {
-                { "CONSTANT_BUFFER", usage == BufferBindingUsage::ConstantBuffer ? "1" : "0" },
-                { "STRUCTURED_BUFFER", usage == BufferBindingUsage::StructuredBuffer || usage == BufferBindingUsage::RWStructuredBuffer ? "1" : "0" },
-                { "BYTE_ADDRESS_BUFFER", usage == BufferBindingUsage::ByteAddressBuffer || usage == BufferBindingUsage::RWByteAddressBuffer ? "1" : "0" },
-                { "READ_WRITE", usage == BufferBindingUsage::RWStructuredBuffer || usage == BufferBindingUsage::RWByteAddressBuffer ? "1" : "0" },
-            },
+    ShaderKey key = {
+        .path = VexRootPath / "tests/shaders/BufferView.cs.hlsl",
+        .entryPoint = "CSMain",
+        .type = ShaderType::ComputeShader,
+        .defines = {
+            { "CONSTANT_BUFFER", usage == BufferBindingUsage::ConstantBuffer ? "1" : "0" },
+            { "STRUCTURED_BUFFER", usage == BufferBindingUsage::StructuredBuffer || usage == BufferBindingUsage::RWStructuredBuffer ? "1" : "0" },
+            { "BYTE_ADDRESS_BUFFER", usage == BufferBindingUsage::ByteAddressBuffer || usage == BufferBindingUsage::RWByteAddressBuffer ? "1" : "0" },
+            { "READ_WRITE", usage == BufferBindingUsage::RWStructuredBuffer || usage == BufferBindingUsage::RWByteAddressBuffer ? "1" : "0" },
         },
-        ConstantBinding(std::span{ &uniforms, 1 }),
-        {
-            1u,
-            1u,
-            1u,
-        });
+    };
+
+    ctx.Dispatch(key,
+                 ConstantBinding(std::span{ &uniforms, 1 }),
+                 {
+                     1u,
+                     1u,
+                     1u,
+                 });
+
+    key.path = VexRootPath / "tests/shaders/BufferView_BAB.cs.slang";
+
+    ctx.TransitionBindings(bindings);
+
+    ctx.Dispatch(key,
+                 ConstantBinding(std::span{ &uniforms, 1 }),
+                 {
+                     1u,
+                     1u,
+                     1u,
+                 });
 
     auto readbackContext = ctx.EnqueueDataReadback(resultBuffer);
 
@@ -139,31 +152,31 @@ INSTANTIATE_TEST_SUITE_P(StructureBufferTests,
                          BufferBindingTest,
                          testing::Values(BufferBindingTestData{ .usage = BufferBindingUsage::StructuredBuffer,
                                                                 .expectedResult{
-                                                                    1.f * BufferBindingTest::ElementCount,
-                                                                    2.f * BufferBindingTest::ElementCount,
-                                                                    3.f * BufferBindingTest::ElementCount,
+                                                                    1.f * BufferBindingTest::ElementCount * 2,
+                                                                    2.f * BufferBindingTest::ElementCount * 2,
+                                                                    3.f * BufferBindingTest::ElementCount * 2,
                                                                 } },
                                          BufferBindingTestData{ .usage = BufferBindingUsage::StructuredBuffer,
                                                                 .firstElement{ 4 },
                                                                 .expectedResult{
-                                                                    1.f * (BufferBindingTest::ElementCount - 4),
-                                                                    2.f * (BufferBindingTest::ElementCount - 4),
-                                                                    3.f * (BufferBindingTest::ElementCount - 4),
+                                                                    1.f * (BufferBindingTest::ElementCount - 4) * 2,
+                                                                    2.f * (BufferBindingTest::ElementCount - 4) * 2,
+                                                                    3.f * (BufferBindingTest::ElementCount - 4) * 2,
                                                                 } },
                                          BufferBindingTestData{ .usage = BufferBindingUsage::StructuredBuffer,
                                                                 .firstElement{ 4 },
                                                                 .elementCount{ 10 },
                                                                 .expectedResult{
-                                                                    1.f * 10,
-                                                                    2.f * 10,
-                                                                    3.f * 10,
+                                                                    1.f * 10 * 2,
+                                                                    2.f * 10 * 2,
+                                                                    3.f * 10 * 2,
                                                                 } },
                                          BufferBindingTestData{ .usage = BufferBindingUsage::StructuredBuffer,
                                                                 .elementCount{ 100 },
                                                                 .expectedResult{
-                                                                    1.f * 100.f,
-                                                                    2.f * 100.f,
-                                                                    3.f * 100.f,
+                                                                    1.f * 100.f * 2,
+                                                                    2.f * 100.f * 2,
+                                                                    3.f * 100.f * 2,
                                                                 } }));
 
 INSTANTIATE_TEST_SUITE_P(
