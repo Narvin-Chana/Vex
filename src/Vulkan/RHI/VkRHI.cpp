@@ -3,6 +3,7 @@
 #include <set>
 
 #include <Vex/CommandContext.h>
+#include <Vex/FrameCaptureAdapter.h>
 #include <Vex/Logger.h>
 #include <Vex/PlatformWindow.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
@@ -400,6 +401,11 @@ void VkRHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBacken
     }
 
     shaderEnv.defines.emplace_back("VEX_VULKAN");
+}
+
+void* VkRHI::GetNativeDevicePtr()
+{
+    return &device.get();
 }
 
 void VkRHI::WaitForTokenOnCPU(const SyncToken& syncToken)

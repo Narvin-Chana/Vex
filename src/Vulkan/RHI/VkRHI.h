@@ -56,6 +56,8 @@ public:
     virtual void ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBackend,
                                                  ShaderEnvironment& shaderEnv) override;
 
+    virtual void* GetNativeDevicePtr() override;
+
     ::vk::Instance GetNativeInstance()
     {
         return *instance;

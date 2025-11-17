@@ -57,6 +57,16 @@ target_include_directories(imguiLib PUBLIC
 # Link ImGui with its dependencies
 target_link_libraries(imguiLib PUBLIC glfw Vex)
 
+message(STATUS "Fetching RenderDoc...")
+FetchContent_Declare(
+        render_doc
+        EXCLUDE_FROM_ALL TRUE
+        SOURCE_SUBDIR  "<invalid path>" # this forces FetchContent to pull but not configure the dependency
+        GIT_REPOSITORY git@github.com:baldurk/renderdoc.git
+        GIT_TAG        v1.41
+)
+FetchContent_MakeAvailable(render_doc)
+
 set(EXAMPLES_COMMON_LIBS Vex imguiLib glfw)
 # Find all example directories
 file(GLOB EXAMPLE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/*")
@@ -84,11 +94,14 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
         # Setup the runtime dependencies of Vex
         vex_setup_runtime(${EXAMPLE_NAME})
 
+        setup_pix_3(${EXAMPLE_NAME})
+
         # Link the example
         target_link_libraries(${EXAMPLE_NAME} PRIVATE ${EXAMPLES_COMMON_LIBS})
         target_include_directories(${EXAMPLE_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${EXAMPLE_DIR}" "${CMAKE_SOURCE_DIR}/src")
 
         add_header_only_dependency(${EXAMPLE_NAME} stb "${stb_SOURCE_DIR}" "" "stb")
+        add_header_only_dependency(${EXAMPLE_NAME} render_doc "${render_doc_SOURCE_DIR}" "renderdoc/api/app" "")
     endif()
   endif()
 endforeach()

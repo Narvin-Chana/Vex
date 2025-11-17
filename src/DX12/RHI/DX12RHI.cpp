@@ -303,6 +303,11 @@ ComPtr<DX12Device>& DX12RHI::GetNativeDevice()
     return device;
 }
 
+void* DX12RHI::GetNativeDevicePtr()
+{
+    return device.Get();
+}
+
 ComPtr<ID3D12CommandQueue>& DX12RHI::GetNativeQueue(QueueType queueType)
 {
     return queues[queueType];
