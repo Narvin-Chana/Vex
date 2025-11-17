@@ -34,16 +34,13 @@ void RenderDocApplication::Run()
         if (!hasCaptured)
         {
             RenderDocRenderExtension::StartCapture();
-        }
 
-        graphics->Present(windowMode == Fullscreen);
-
-        if (!hasCaptured)
-        {
             RenderDocRenderExtension::EndCapture();
             VEX_LOG(vex::Info, "Capture frame with RenderDoc");
             hasCaptured = true;
         }
+
+        graphics->Present(windowMode == Fullscreen);
     }
 }
 

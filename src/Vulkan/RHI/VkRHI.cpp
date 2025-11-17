@@ -3,7 +3,6 @@
 #include <set>
 
 #include <Vex/CommandContext.h>
-#include <Vex/FrameCaptureAdapter.h>
 #include <Vex/Logger.h>
 #include <Vex/PlatformWindow.h>
 #include <Vex/RHIImpl/RHIAllocator.h>

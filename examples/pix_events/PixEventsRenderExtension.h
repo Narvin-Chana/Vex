@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string_view>
+
 #include <Vex/RenderExtension.h>
 
 namespace vex
@@ -11,6 +13,6 @@ class PixEventsRenderExtension : public vex::RenderExtension
 {
 public:
     PixEventsRenderExtension();
-    static void StartCapture();
+    static void StartCapture(std::wstring_view captureName);
     static void EndCapture();
 };

@@ -1,18 +1,20 @@
 ﻿#include "VexPixEvents.h"
 
-#if defined(_WIN32)
-#define USE_PIX
+#include <string>
+
 #include <WinPixEventRuntime/pix3.h>
-#endif
+#include <Windows.h>
 
 void SetupPixEvents()
 {
     PIXLoadLatestWinPixGpuCapturerLibrary();
 }
 
-void StartPixEventsCapture()
+void StartPixEventsCapture(std::wstring_view captureName)
 {
-    PIXBeginCapture(PIX_CAPTURE_GPU, Params);
+    std::wstring captureNameStr{ captureName };
+    PIXCaptureParameters Params{ .GpuCaptureParameters = { .FileName = captureNameStr.c_str() } };
+    PIXBeginCapture(PIX_CAPTURE_GPU, &Params);
 }
 
 void EndPixEventsCapture()

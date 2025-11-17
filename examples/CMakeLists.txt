@@ -60,7 +60,6 @@ target_link_libraries(imguiLib PUBLIC glfw Vex)
 message(STATUS "Fetching RenderDoc...")
 FetchContent_Declare(
         render_doc
-        EXCLUDE_FROM_ALL TRUE
         SOURCE_SUBDIR  "<invalid path>" # this forces FetchContent to pull but not configure the dependency
         GIT_REPOSITORY git@github.com:baldurk/renderdoc.git
         GIT_TAG        v1.41
@@ -68,6 +67,10 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(render_doc)
 
 set(EXAMPLES_COMMON_LIBS Vex imguiLib glfw)
+
+include(VexDX12)
+set(DX12_ONLY_EXAMPLES "pix_events")
+
 # Find all example directories
 file(GLOB EXAMPLE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/*")
 
@@ -77,6 +80,10 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
 
     # Get the example name from the directory name
     get_filename_component(EXAMPLE_NAME ${EXAMPLE_DIR} NAME)
+
+    if (EXAMPLE_NAME IN_LIST DX12_ONLY_EXAMPLES AND NOT VEX_ENABLE_DX12)
+        continue()
+    endif()
     
     # Find the source files in the example dir
     file(GLOB EXAMPLE_SOURCES "${EXAMPLE_DIR}/*.cpp" "${EXAMPLE_DIR}/*.h")

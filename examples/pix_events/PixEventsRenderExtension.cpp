@@ -7,9 +7,9 @@ PixEventsRenderExtension::PixEventsRenderExtension()
     SetupPixEvents();
 }
 
-void PixEventsRenderExtension::StartCapture()
+void PixEventsRenderExtension::StartCapture(std::wstring_view captureName)
 {
-    StartPixEventsCapture();
+    StartPixEventsCapture(captureName);
 }
 
 void PixEventsRenderExtension::EndCapture()

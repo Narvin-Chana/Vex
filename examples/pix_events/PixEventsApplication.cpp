@@ -33,17 +33,14 @@ void PixEventsApplication::Run()
 
         if (!hasCaptured)
         {
-            PixEventsRenderExtension::StartCapture();
-        }
+            PixEventsRenderExtension::StartCapture(vex::StringToWString("ExampleCapture.wpix"));
 
-        graphics->Present(windowMode == Fullscreen);
-
-        if (!hasCaptured)
-        {
             PixEventsRenderExtension::EndCapture();
             VEX_LOG(vex::Info, "Capture frame with PIX");
             hasCaptured = true;
         }
+
+        graphics->Present(windowMode == Fullscreen);
     }
 }
 
