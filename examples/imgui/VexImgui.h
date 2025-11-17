@@ -21,7 +21,6 @@ struct ImGui_ImplVex_InitInfo
     vex::NonNullPtr<vex::RHIDescriptorPool> descriptorPool;
     vex::FrameBuffering buffering;
     vex::TextureFormat swapchainFormat;
-    bool isSwapChainSRGB = false;
     vex::TextureFormat depthStencilFormat = vex::TextureFormat::UNKNOWN;
 };
 
@@ -42,7 +41,7 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
     initInfo.PipelineCache = data.rhi->GetNativePSOCache();
 
     initInfo.UseDynamicRendering = true;
-    ::vk::Format colorAttachmentFormat = vex::vk::TextureFormatToVulkan(data.swapchainFormat, data.isSwapChainSRGB);
+    ::vk::Format colorAttachmentFormat = vex::vk::TextureFormatToVulkan(data.swapchainFormat, false);
     ::vk::Format depthStencilFormat = vex::vk::TextureFormatToVulkan(data.depthStencilFormat, false);
     initInfo.PipelineRenderingCreateInfo =
         ::vk::PipelineRenderingCreateInfo{ .colorAttachmentCount = 1,
@@ -62,7 +61,7 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
     initInfo.Device = data.rhi->GetNativeDevice().Get();
     initInfo.CommandQueue = data.rhi->GetNativeQueue(vex::QueueType::Graphics).Get();
     initInfo.NumFramesInFlight = std::to_underlying(data.buffering);
-    initInfo.RTVFormat = vex::dx12::TextureFormatToDXGI(data.swapchainFormat, data.isSwapChainSRGB);
+    initInfo.RTVFormat = vex::dx12::TextureFormatToDXGI(data.swapchainFormat, false);
     initInfo.DSVFormat = vex::dx12::TextureFormatToDXGI(data.depthStencilFormat, false);
 
     // Descriptors callbacks to register and unregister handles.

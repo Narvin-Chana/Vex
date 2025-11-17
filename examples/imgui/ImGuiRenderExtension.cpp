@@ -12,13 +12,11 @@
 ImGuiRenderExtension::ImGuiRenderExtension(vex::Graphics& graphics,
                                            GLFWwindow* window,
                                            vex::FrameBuffering buffering,
-                                           vex::TextureFormat swapchainFormat,
-                                           bool isSwapChainSRGB)
+                                           vex::TextureFormat swapchainFormat)
     : graphics(graphics)
     , window(window)
     , buffering(buffering)
     , swapchainFormat(swapchainFormat)
-    , isSwapChainSRGB(isSwapChainSRGB)
 {
 }
 
@@ -38,7 +36,6 @@ void ImGuiRenderExtension::Initialize()
         .descriptorPool = vex::NonNullPtr(data.descriptorPool),
         .buffering = buffering,
         .swapchainFormat = swapchainFormat,
-        .isSwapChainSRGB = isSwapChainSRGB,
     };
     ImGui_ImplVex_Init(initInfo);
 }

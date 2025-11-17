@@ -17,8 +17,7 @@ public:
     ImGuiRenderExtension(vex::Graphics& graphics,
                          GLFWwindow* window,
                          vex::FrameBuffering buffering,
-                         vex::TextureFormat swapchainFormat,
-                         bool isSwapChainSRGB = false);
+                         vex::TextureFormat swapchainFormat);
 
     virtual ~ImGuiRenderExtension() override;
 
@@ -32,5 +31,4 @@ private:
     GLFWwindow* window;
     vex::FrameBuffering buffering;
     vex::TextureFormat swapchainFormat;
-    bool isSwapChainSRGB;
 };
