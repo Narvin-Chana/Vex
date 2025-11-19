@@ -61,7 +61,7 @@ message(STATUS "Fetching RenderDoc...")
 FetchContent_Declare(
         render_doc
         SOURCE_SUBDIR  "<invalid path>" # this forces FetchContent to pull but not configure the dependency
-        GIT_REPOSITORY git@github.com:baldurk/renderdoc.git
+        GIT_REPOSITORY https://github.com/baldurk/renderdoc.git
         GIT_TAG        v1.41
 )
 FetchContent_MakeAvailable(render_doc)
