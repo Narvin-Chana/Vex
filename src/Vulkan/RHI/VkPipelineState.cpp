@@ -7,6 +7,7 @@
 #include <Vulkan/RHI/VkResourceLayout.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkFormats.h>
+#include <Vulkan/VkDebug.h>
 // These are necessary for ResourceCleanup
 #include <Vulkan/RHI/VkBuffer.h>
 #include <Vulkan/RHI/VkTexture.h>
@@ -198,6 +199,12 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
                                                          .basePipelineIndex = -1 };
 
     graphicsPipeline = VEX_VK_CHECK <<= device.createGraphicsPipelineUnique(PSOCache, graphicsPipelineCI);
+
+    vertexShaderVersion = vertexShader.version;
+    pixelShaderVersion = pixelShader.version;
+    rootSignatureVersion = resourceLayout.version;
+
+    SetDebugName(device, *graphicsPipeline, std::format("{}", key).c_str());
 }
 
 void VkGraphicsPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
@@ -239,6 +246,11 @@ void VkComputePipelineState::Compile(const Shader& computeShader, RHIResourceLay
     };
 
     computePipeline = VEX_VK_CHECK <<= device.createComputePipelineUnique(PSOCache, computePipelineCreateInfo);
+
+    computeShaderVersion = computeShader.version;
+    rootSignatureVersion = resourceLayout.version;
+
+    SetDebugName(device, *computePipeline, std::format("{}", key).c_str());
 }
 
 void VkComputePipelineState::Cleanup(ResourceCleanup& resourceCleanup)
