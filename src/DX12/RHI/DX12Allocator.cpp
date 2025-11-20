@@ -29,8 +29,9 @@ Allocation DX12Allocator::AllocateResource(ComPtr<ID3D12Resource>& resource,
     Allocation allocation = Allocate(allocInfo.SizeInBytes, allocInfo.Alignment, std::to_underlying(heapType));
 
 #define VEX_DX12_ALLOCATOR_DEBUG_OVERLAPS 0
+#define VEX_DX12_ALLOCATOR_DEBUG_ALLOCATIONS 0
+#if (VEX_DX12_ALLOCATOR_DEBUG_ALLOCATIONS || VEX_DX12_ALLOCATOR_DEBUG_OVERLAPS)
     // Logs every allocation & detect overlaps (requires disabling the Freeing of resources).
-#if VEX_DX12_ALLOCATOR_DEBUG_OVERLAPS
     VEX_LOG(Info,
             "ALLOC: Size={}, Align={}, Offset=0x{:x}, Page={}, HeapType={}\n",
             allocInfo.SizeInBytes,
@@ -38,7 +39,9 @@ Allocation DX12Allocator::AllocateResource(ComPtr<ID3D12Resource>& resource,
             allocation.memoryRange.offset,
             allocation.pageHandle.GetIndex(),
             magic_enum::enum_name(heapType));
+#endif
 
+#if VEX_DX12_ALLOCATOR_DEBUG_OVERLAPS
     // Check for overlaps
     static std::array<std::vector<std::vector<std::pair<u64, u64>>>, 3>
         allocatedRanges; // offset, size pairs per page per heap
@@ -52,7 +55,7 @@ Allocation DX12Allocator::AllocateResource(ComPtr<ID3D12Resource>& resource,
         u64 existingEnd = existingStart + existingSize;
         if (!(newEnd <= existingStart || newStart >= existingEnd))
         {
-            VEX_LOG(Info,
+            VEX_LOG(Fatal,
                     "OVERLAP DETECTED! New[0x{:x}-0x{:x}] vs Existing[0x{:x}-0x{:x}]\n",
                     newStart,
                     newEnd,

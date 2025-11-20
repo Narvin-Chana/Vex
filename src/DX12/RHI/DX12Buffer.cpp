@@ -81,7 +81,8 @@ std::span<byte> DX12Buffer::Map()
 void DX12Buffer::Unmap()
 {
     // CPURead mapped buffers have no real purpose in being "unmapped" as they are always available.
-    // TODO(https://trello.com/c/lsqpXupB): We have to eventually rework mapping to be done on creation instead of when needed, but until then we early return to avoid validation layer warnings.
+    // TODO(https://trello.com/c/lsqpXupB): We have to eventually rework mapping to be done on creation instead of when
+    // needed, but until then we early return to avoid validation layer warnings.
     if (desc.memoryLocality == ResourceMemoryLocality::CPURead)
     {
         return;
@@ -143,7 +144,8 @@ void DX12Buffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
     if (isCBV)
     {
         D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
-        cbvDesc.BufferLocation = buffer->GetGPUVirtualAddress() + viewDesc.offsetByteSize;
+        cbvDesc.BufferLocation = buffer->GetGPUVirtualAddress() +
+                                 AlignUp<u64>(viewDesc.offsetByteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
         cbvDesc.SizeInBytes = AlignUp<u64>(viewDesc.rangeByteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
         device->CreateConstantBufferView(&cbvDesc, cpuHandle);
     }
