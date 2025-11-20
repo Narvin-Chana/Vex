@@ -84,12 +84,16 @@ static ::vk::ImageMemoryBarrier2 MergeBarriers(const ::vk::ImageMemoryBarrier2& 
     if (a.subresourceRange.baseArrayLayer == b.subresourceRange.baseArrayLayer &&
         a.subresourceRange.layerCount == b.subresourceRange.layerCount)
     {
+        merged.subresourceRange.baseMipLevel =
+            std::min(a.subresourceRange.baseMipLevel, b.subresourceRange.baseMipLevel);
         merged.subresourceRange.levelCount = a.subresourceRange.levelCount + b.subresourceRange.levelCount;
     }
     // Merge adjacent array layers (same mip range)
     else if (a.subresourceRange.baseMipLevel == b.subresourceRange.baseMipLevel &&
              a.subresourceRange.levelCount == b.subresourceRange.levelCount)
     {
+        merged.subresourceRange.baseArrayLayer =
+            std::min(a.subresourceRange.baseArrayLayer, b.subresourceRange.baseArrayLayer);
         merged.subresourceRange.layerCount = a.subresourceRange.layerCount + b.subresourceRange.layerCount;
     }
     return merged;
@@ -466,8 +470,8 @@ void VkCommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
               "TextureBarriers and BufferBarriers cannot both be empty...");
     ::vk::DependencyInfo info{ .bufferMemoryBarrierCount = static_cast<u32>(vkBufferBarriers.size()),
                                .pBufferMemoryBarriers = vkBufferBarriers.data(),
-                               .imageMemoryBarrierCount = static_cast<u32>(vkTextureBarriers.size()),
-                               .pImageMemoryBarriers = vkTextureBarriers.data() };
+                               .imageMemoryBarrierCount = static_cast<u32>(compactedVkTextureBarriers.size()),
+                               .pImageMemoryBarriers = compactedVkTextureBarriers.data() };
     commandBuffer->pipelineBarrier2(info);
 }
 
