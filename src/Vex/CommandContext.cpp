@@ -759,7 +759,7 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const byt
          });
 
     // Schedule a cleanup of the staging buffer.
-    temporaryResources.emplace_back(std::move(rhiStagingBuffer));
+    temporaryResources.emplace_back(stagingBuffer);
 }
 
 void CommandContext::EnqueueDataUpload(const Texture& texture,
@@ -801,7 +801,7 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
     }
 
     // Schedule a cleanup of the staging buffer.
-    temporaryResources.emplace_back(std::move(rhiStagingBuffer));
+    temporaryResources.emplace_back(stagingBuffer);
 }
 
 void CommandContext::EnqueueDataUpload(const Texture& texture,

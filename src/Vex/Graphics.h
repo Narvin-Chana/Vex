@@ -43,7 +43,6 @@ struct GraphicsCreateDesc
     PlatformWindow platformWindow;
     bool useSwapChain = true;
     TextureFormat swapChainFormat = TextureFormat::BGRA8_UNORM;
-    bool isSwapChainSRGB = false;
     // Clear value to use for present textures.
     TextureClearValue presentTextureClearValue = { .flags = TextureClear::ClearColor, .color = { 0, 0, 0, 0 } };
     bool useVSync = false;
@@ -189,7 +188,7 @@ private:
     // We submit our command lists in batch at the end of frame, to reduce driver overhead.
     std::vector<NonNullPtr<RHICommandList>> deferredSubmissionCommandLists;
     std::unordered_set<SyncToken> deferredSubmissionDependencies;
-    std::vector<ResourceCleanup::CleanupVariant> deferredSubmissionResources;
+    std::vector<vex::Buffer> deferredSubmissionResources;
 
     std::vector<UniqueHandle<RenderExtension>> renderExtensions;
 
