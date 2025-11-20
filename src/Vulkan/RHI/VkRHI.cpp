@@ -247,15 +247,22 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
         featuresMutableDescriptors.pNext = &featuresAccelerationStructure.value();
     }
 
+    // Allows for the use of SV_Barycentrics in shaders.
+    ::vk::PhysicalDeviceFragmentShaderBarycentricFeaturesKHR featuresFragmentShaderBarycentric;
+    featuresFragmentShaderBarycentric.pNext = &featuresMutableDescriptors;
+    featuresFragmentShaderBarycentric.fragmentShaderBarycentric = true;
+
     // Allows for null descriptors
     ::vk::PhysicalDeviceRobustness2FeaturesEXT featuresRobustness;
+    featuresRobustness.pNext = &featuresFragmentShaderBarycentric;
     featuresRobustness.nullDescriptor = true;
-    featuresRobustness.pNext = &featuresMutableDescriptors;
 
     ::vk::PhysicalDeviceVulkan13Features features13;
-    features13.synchronization2 = true;
     features13.pNext = &featuresRobustness;
+    features13.synchronization2 = true;
     features13.dynamicRendering = true;
+    // Allows for the use of "discard" in shaders.
+    features13.shaderDemoteToHelperInvocation = true;
 
     ::vk::PhysicalDeviceVulkan12Features features12;
     features12.pNext = &features13;
@@ -275,6 +282,10 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     features12.scalarBlockLayout = true;
 
     auto physDeviceFeatures = physDevice.getFeatures();
+    // Geometry shader being enabled forces SV_PrimitiveID to also be enabled!
+    // Without this, the semantic doesn't work in pixel shaders.
+    physDeviceFeatures.geometryShader = true;
+
     ::vk::DeviceCreateInfo deviceCreateInfo{ .pNext = &features12,
                                              .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
                                              .pQueueCreateInfos = queueCreateInfos.data(),
@@ -397,6 +408,7 @@ void VkRHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBacken
             StringToWString(std::string(reinterpret_cast<VkFeatureChecker&>(*GPhysicalDevice->featureChecker)
                                             .GetMaxSupportedVulkanVersion()))));
         shaderEnv.args.emplace_back(L"-fvk-use-dx-layout");
+        shaderEnv.args.emplace_back(L"-fvk-support-nonzero-base-instance");
     }
 
     shaderEnv.defines.emplace_back("VEX_VULKAN");
