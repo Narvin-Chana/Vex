@@ -53,7 +53,7 @@ void StartCapture()
         GRDoc_api->StartFrameCapture(nullptr, nullptr);
 }
 
-void EndCapture(void* devicePtr)
+void EndCapture()
 {
     if (GRDoc_api)
         GRDoc_api->EndFrameCapture(nullptr, nullptr);
