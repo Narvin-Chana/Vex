@@ -1,7 +1,7 @@
 #include "RenderDocApplication.h"
 
 #include <GLFWIncludes.h>
-#include <RenderDocRenderExtension.h>
+#include <VexRenderDoc.h>
 
 RenderDocApplication::RenderDocApplication()
     : ExampleApplication("RenderDocApplication")
@@ -11,16 +11,15 @@ RenderDocApplication::RenderDocApplication()
 #elif defined(__linux__)
     vex::PlatformWindowHandle platformWindow{ .window = glfwGetX11Window(window), .display = glfwGetX11Display() };
 #endif
-    auto rdocExtension = vex::MakeUnique<RenderDocRenderExtension>(platformWindow);
-
     graphics = vex::MakeUnique<vex::Graphics>(vex::GraphicsCreateDesc{
         .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
         .swapChainFormat = SwapchainFormat,
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
 
-    graphics->RegisterRenderExtension(std::move(rdocExtension));
     SetupShaderErrorHandling();
+
+    SetupRenderDoc();
 }
 
 void RenderDocApplication::Run()
@@ -33,9 +32,9 @@ void RenderDocApplication::Run()
 
         if (!hasCaptured)
         {
-            RenderDocRenderExtension::StartCapture();
+            StartRenderDocCapture();
 
-            RenderDocRenderExtension::EndCapture();
+            EndRenderDocCapture();
             VEX_LOG(vex::Info, "Capture frame with RenderDoc");
             hasCaptured = true;
         }

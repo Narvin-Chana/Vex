@@ -11,7 +11,6 @@
 #include <Vex/Logger.h>
 
 static RENDERDOC_API_1_1_2* GRDoc_api = nullptr;
-static RENDERDOC_WindowHandle GWindowHandle = nullptr;
 
 static void LoadRenderDocAPI()
 {
@@ -38,23 +37,22 @@ static void LoadRenderDocAPI()
 #endif
 }
 
-void SetupRenderDoc(void* windowPtr)
+void SetupRenderDoc()
 {
     if (!GRDoc_api)
     {
-        GWindowHandle = windowPtr;
         LoadRenderDocAPI();
     }
 }
 
-void StartRenderDocCapture(void* devicePtr)
+void StartRenderDocCapture()
 {
     if (GRDoc_api)
-        GRDoc_api->StartFrameCapture(devicePtr, GWindowHandle);
+        GRDoc_api->StartFrameCapture(nullptr, nullptr);
 }
 
 void EndRenderDocCapture(void* devicePtr)
 {
     if (GRDoc_api)
-        GRDoc_api->EndFrameCapture(devicePtr, GWindowHandle);
+        GRDoc_api->EndFrameCapture(nullptr, nullptr);
 }

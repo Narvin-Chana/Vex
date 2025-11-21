@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-void SetupRenderDoc(void* windowHandle);
+void SetupRenderDoc();
 
-void StartRenderDocCapture(void* devicePtr);
-void EndRenderDocCapture(void* devicePtr);
+void StartRenderDocCapture();
+void EndRenderDocCapture();
