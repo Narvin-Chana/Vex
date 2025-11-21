@@ -31,10 +31,12 @@ void ImGuiRenderExtension::Initialize()
 
     ImGui_ImplGlfw_InitForOther(window, true);
 
-    ImGui_ImplVex_InitInfo initInfo{ .rhi = vex::NonNullPtr(data.rhi),
-                                     .descriptorPool = vex::NonNullPtr(data.descriptorPool),
-                                     .buffering = buffering,
-                                     .swapchainFormat = swapchainFormat };
+    ImGui_ImplVex_InitInfo initInfo{
+        .rhi = vex::NonNullPtr(data.rhi),
+        .descriptorPool = vex::NonNullPtr(data.descriptorPool),
+        .buffering = buffering,
+        .swapchainFormat = swapchainFormat,
+    };
     ImGui_ImplVex_Init(initInfo);
 }
 

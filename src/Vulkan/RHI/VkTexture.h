@@ -27,7 +27,7 @@ struct VkTextureViewDesc
     VkTextureViewDesc(const TextureBinding& binding);
 
     TextureViewType viewType = TextureViewType::Texture2D;
-    TextureFormat format = TextureFormat::UNKNOWN;
+    ::vk::Format format;
     TextureUsage::Type usage = TextureUsage::None;
 
     TextureSubresource subresource;

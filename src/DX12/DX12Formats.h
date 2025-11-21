@@ -8,7 +8,7 @@ namespace vex::dx12
 {
 
 // Convert from TextureFormat to DXGI_FORMAT
-constexpr inline DXGI_FORMAT TextureFormatToDXGI(TextureFormat format)
+constexpr inline DXGI_FORMAT TextureFormatToDXGI(TextureFormat format, bool isSRGB)
 {
     switch (format)
     {
@@ -30,9 +30,7 @@ constexpr inline DXGI_FORMAT TextureFormatToDXGI(TextureFormat format)
     case TextureFormat::RG8_SINT:
         return DXGI_FORMAT_R8G8_SINT;
     case TextureFormat::RGBA8_UNORM:
-        return DXGI_FORMAT_R8G8B8A8_UNORM;
-    case TextureFormat::RGBA8_UNORM_SRGB:
-        return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+        return !isSRGB ? DXGI_FORMAT_R8G8B8A8_UNORM : DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
     case TextureFormat::RGBA8_SNORM:
         return DXGI_FORMAT_R8G8B8A8_SNORM;
     case TextureFormat::RGBA8_UINT:
@@ -40,9 +38,7 @@ constexpr inline DXGI_FORMAT TextureFormatToDXGI(TextureFormat format)
     case TextureFormat::RGBA8_SINT:
         return DXGI_FORMAT_R8G8B8A8_SINT;
     case TextureFormat::BGRA8_UNORM:
-        return DXGI_FORMAT_B8G8R8A8_UNORM;
-    case TextureFormat::BGRA8_UNORM_SRGB:
-        return DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+        return !isSRGB ? DXGI_FORMAT_B8G8R8A8_UNORM : DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
 
     // 16-bit formats
     case TextureFormat::R16_UINT:
@@ -110,17 +106,11 @@ constexpr inline DXGI_FORMAT TextureFormatToDXGI(TextureFormat format)
 
     // BC compressed formats
     case TextureFormat::BC1_UNORM:
-        return DXGI_FORMAT_BC1_UNORM;
-    case TextureFormat::BC1_UNORM_SRGB:
-        return DXGI_FORMAT_BC1_UNORM_SRGB;
+        return !isSRGB ? DXGI_FORMAT_BC1_UNORM : DXGI_FORMAT_BC1_UNORM_SRGB;
     case TextureFormat::BC2_UNORM:
-        return DXGI_FORMAT_BC2_UNORM;
-    case TextureFormat::BC2_UNORM_SRGB:
-        return DXGI_FORMAT_BC2_UNORM_SRGB;
+        return !isSRGB ? DXGI_FORMAT_BC2_UNORM : DXGI_FORMAT_BC2_UNORM_SRGB;
     case TextureFormat::BC3_UNORM:
-        return DXGI_FORMAT_BC3_UNORM;
-    case TextureFormat::BC3_UNORM_SRGB:
-        return DXGI_FORMAT_BC3_UNORM_SRGB;
+        return !isSRGB ? DXGI_FORMAT_BC3_UNORM : DXGI_FORMAT_BC3_UNORM_SRGB;
     case TextureFormat::BC4_UNORM:
         return DXGI_FORMAT_BC4_UNORM;
     case TextureFormat::BC4_SNORM:
@@ -134,9 +124,7 @@ constexpr inline DXGI_FORMAT TextureFormatToDXGI(TextureFormat format)
     case TextureFormat::BC6H_SF16:
         return DXGI_FORMAT_BC6H_SF16;
     case TextureFormat::BC7_UNORM:
-        return DXGI_FORMAT_BC7_UNORM;
-    case TextureFormat::BC7_UNORM_SRGB:
-        return DXGI_FORMAT_BC7_UNORM_SRGB;
+        return !isSRGB ? DXGI_FORMAT_BC7_UNORM : DXGI_FORMAT_BC7_UNORM_SRGB;
 
     default:
         return DXGI_FORMAT_UNKNOWN;
@@ -166,9 +154,8 @@ constexpr inline TextureFormat DXGIToTextureFormat(DXGI_FORMAT format)
     case DXGI_FORMAT_R8G8_SINT:
         return TextureFormat::RG8_SINT;
     case DXGI_FORMAT_R8G8B8A8_UNORM:
-        return TextureFormat::RGBA8_UNORM;
     case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
-        return TextureFormat::RGBA8_UNORM_SRGB;
+        return TextureFormat::RGBA8_UNORM;
     case DXGI_FORMAT_R8G8B8A8_SNORM:
         return TextureFormat::RGBA8_SNORM;
     case DXGI_FORMAT_R8G8B8A8_UINT:
@@ -176,9 +163,8 @@ constexpr inline TextureFormat DXGIToTextureFormat(DXGI_FORMAT format)
     case DXGI_FORMAT_R8G8B8A8_SINT:
         return TextureFormat::RGBA8_SINT;
     case DXGI_FORMAT_B8G8R8A8_UNORM:
-        return TextureFormat::BGRA8_UNORM;
     case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
-        return TextureFormat::BGRA8_UNORM_SRGB;
+        return TextureFormat::BGRA8_UNORM;
 
     // 16-bit formats
     case DXGI_FORMAT_R16_UINT:
@@ -246,17 +232,14 @@ constexpr inline TextureFormat DXGIToTextureFormat(DXGI_FORMAT format)
 
     // BC compressed formats
     case DXGI_FORMAT_BC1_UNORM:
-        return TextureFormat::BC1_UNORM;
     case DXGI_FORMAT_BC1_UNORM_SRGB:
-        return TextureFormat::BC1_UNORM_SRGB;
+        return TextureFormat::BC1_UNORM;
     case DXGI_FORMAT_BC2_UNORM:
-        return TextureFormat::BC2_UNORM;
     case DXGI_FORMAT_BC2_UNORM_SRGB:
-        return TextureFormat::BC2_UNORM_SRGB;
+        return TextureFormat::BC2_UNORM;
     case DXGI_FORMAT_BC3_UNORM:
-        return TextureFormat::BC3_UNORM;
     case DXGI_FORMAT_BC3_UNORM_SRGB:
-        return TextureFormat::BC3_UNORM_SRGB;
+        return TextureFormat::BC3_UNORM;
     case DXGI_FORMAT_BC4_UNORM:
         return TextureFormat::BC4_UNORM;
     case DXGI_FORMAT_BC4_SNORM:
@@ -270,9 +253,8 @@ constexpr inline TextureFormat DXGIToTextureFormat(DXGI_FORMAT format)
     case DXGI_FORMAT_BC6H_SF16:
         return TextureFormat::BC6H_SF16;
     case DXGI_FORMAT_BC7_UNORM:
-        return TextureFormat::BC7_UNORM;
     case DXGI_FORMAT_BC7_UNORM_SRGB:
-        return TextureFormat::BC7_UNORM_SRGB;
+        return TextureFormat::BC7_UNORM;
 
     default:
         return TextureFormat::UNKNOWN;

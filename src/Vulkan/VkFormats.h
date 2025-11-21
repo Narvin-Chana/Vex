@@ -23,11 +23,10 @@ constexpr inline bool IsSpecialFormat(VkFormat format)
     default:
         return false;
     }
-    std::unreachable();
 }
 
 // Convert from TextureFormat to VkFormat
-constexpr ::vk::Format TextureFormatToVulkan(TextureFormat format)
+constexpr ::vk::Format TextureFormatToVulkan(TextureFormat format, bool isSRGB)
 {
     using enum ::vk::Format;
     switch (format)
@@ -50,9 +49,7 @@ constexpr ::vk::Format TextureFormatToVulkan(TextureFormat format)
     case TextureFormat::RG8_SINT:
         return eR8G8Sint;
     case TextureFormat::RGBA8_UNORM:
-        return eR8G8B8A8Unorm;
-    case TextureFormat::RGBA8_UNORM_SRGB:
-        return eR8G8B8A8Srgb;
+        return !isSRGB ? eR8G8B8A8Unorm : eR8G8B8A8Srgb;
     case TextureFormat::RGBA8_SNORM:
         return eR8G8B8A8Snorm;
     case TextureFormat::RGBA8_UINT:
@@ -60,9 +57,7 @@ constexpr ::vk::Format TextureFormatToVulkan(TextureFormat format)
     case TextureFormat::RGBA8_SINT:
         return eR8G8B8A8Sint;
     case TextureFormat::BGRA8_UNORM:
-        return eB8G8R8A8Unorm;
-    case TextureFormat::BGRA8_UNORM_SRGB:
-        return eB8G8R8A8Srgb;
+        return !isSRGB ? eB8G8R8A8Unorm : eB8G8R8A8Srgb;
 
     // 16-bit formats
     case TextureFormat::R16_UINT:
@@ -130,17 +125,11 @@ constexpr ::vk::Format TextureFormatToVulkan(TextureFormat format)
 
     // BC compressed formats
     case TextureFormat::BC1_UNORM:
-        return eBc1RgbaUnormBlock;
-    case TextureFormat::BC1_UNORM_SRGB:
-        return eBc1RgbaSrgbBlock;
+        return !isSRGB ? eBc1RgbaUnormBlock : eBc1RgbaSrgbBlock;
     case TextureFormat::BC2_UNORM:
-        return eBc2UnormBlock;
-    case TextureFormat::BC2_UNORM_SRGB:
-        return eBc2SrgbBlock;
+        return !isSRGB ? eBc2UnormBlock : eBc2SrgbBlock;
     case TextureFormat::BC3_UNORM:
-        return eBc3UnormBlock;
-    case TextureFormat::BC3_UNORM_SRGB:
-        return eBc3SrgbBlock;
+        return !isSRGB ? eBc3UnormBlock : eBc3SrgbBlock;
     case TextureFormat::BC4_UNORM:
         return eBc4UnormBlock;
     case TextureFormat::BC4_SNORM:
@@ -154,9 +143,7 @@ constexpr ::vk::Format TextureFormatToVulkan(TextureFormat format)
     case TextureFormat::BC6H_SF16:
         return eBc6HSfloatBlock;
     case TextureFormat::BC7_UNORM:
-        return eBc7UnormBlock;
-    case TextureFormat::BC7_UNORM_SRGB:
-        return eBc7SrgbBlock;
+        return !isSRGB ? eBc7UnormBlock : eBc7SrgbBlock;
 
     default:
         return eUndefined;
@@ -186,9 +173,8 @@ constexpr inline TextureFormat VulkanToTextureFormat(::vk::Format format)
     case VK_FORMAT_R8G8_SINT:
         return TextureFormat::RG8_SINT;
     case VK_FORMAT_R8G8B8A8_UNORM:
-        return TextureFormat::RGBA8_UNORM;
     case VK_FORMAT_R8G8B8A8_SRGB:
-        return TextureFormat::RGBA8_UNORM_SRGB;
+        return TextureFormat::RGBA8_UNORM;
     case VK_FORMAT_R8G8B8A8_SNORM:
         return TextureFormat::RGBA8_SNORM;
     case VK_FORMAT_R8G8B8A8_UINT:
@@ -196,9 +182,8 @@ constexpr inline TextureFormat VulkanToTextureFormat(::vk::Format format)
     case VK_FORMAT_R8G8B8A8_SINT:
         return TextureFormat::RGBA8_SINT;
     case VK_FORMAT_B8G8R8A8_UNORM:
-        return TextureFormat::BGRA8_UNORM;
     case VK_FORMAT_B8G8R8A8_SRGB:
-        return TextureFormat::BGRA8_UNORM_SRGB;
+        return TextureFormat::BGRA8_UNORM;
 
     // 16-bit formats
     case VK_FORMAT_R16_UINT:
@@ -266,17 +251,14 @@ constexpr inline TextureFormat VulkanToTextureFormat(::vk::Format format)
 
     // BC compressed formats
     case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:
-        return TextureFormat::BC1_UNORM;
     case VK_FORMAT_BC1_RGBA_SRGB_BLOCK:
-        return TextureFormat::BC1_UNORM_SRGB;
+        return TextureFormat::BC1_UNORM;
     case VK_FORMAT_BC2_UNORM_BLOCK:
-        return TextureFormat::BC2_UNORM;
     case VK_FORMAT_BC2_SRGB_BLOCK:
-        return TextureFormat::BC2_UNORM_SRGB;
+        return TextureFormat::BC2_UNORM;
     case VK_FORMAT_BC3_UNORM_BLOCK:
-        return TextureFormat::BC3_UNORM;
     case VK_FORMAT_BC3_SRGB_BLOCK:
-        return TextureFormat::BC3_UNORM_SRGB;
+        return TextureFormat::BC3_UNORM;
     case VK_FORMAT_BC4_UNORM_BLOCK:
         return TextureFormat::BC4_UNORM;
     case VK_FORMAT_BC4_SNORM_BLOCK:
@@ -290,9 +272,8 @@ constexpr inline TextureFormat VulkanToTextureFormat(::vk::Format format)
     case VK_FORMAT_BC6H_SFLOAT_BLOCK:
         return TextureFormat::BC6H_SF16;
     case VK_FORMAT_BC7_UNORM_BLOCK:
-        return TextureFormat::BC7_UNORM;
     case VK_FORMAT_BC7_SRGB_BLOCK:
-        return TextureFormat::BC7_UNORM_SRGB;
+        return TextureFormat::BC7_UNORM;
 
     default:
         return TextureFormat::UNKNOWN;

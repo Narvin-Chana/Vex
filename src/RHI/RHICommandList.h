@@ -78,7 +78,7 @@ public:
     virtual void TraceRays(const std::array<u32, 3>& widthHeightDepth,
                            const RHIRayTracingPipelineState& rayTracingPipelineState) = 0;
 
-    virtual void GenerateMips(RHITexture& texture, u16 sourceMip) = 0;
+    virtual void GenerateMips(RHITexture& texture, const TextureSubresource& subresource) = 0;
 
     virtual QueryHandle BeginTimestampQuery() = 0;
     virtual void EndTimestampQuery(QueryHandle handle) = 0;

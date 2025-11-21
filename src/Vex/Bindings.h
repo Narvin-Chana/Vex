@@ -40,16 +40,6 @@ struct ConstantBinding
     std::span<const byte> data;
 };
 
-// clang-format off
-
-// Flags for a texture binding.
-BEGIN_VEX_ENUM_FLAGS(TextureBindingFlags, u8)
-    None,
-    SRGB = 1,
-END_VEX_ENUM_FLAGS();
-
-// clang-format on
-
 struct BufferBinding
 {
     // The buffer to bind
@@ -105,8 +95,8 @@ struct TextureBinding
     Texture texture;
     // The usage of the texture.
     TextureBindingUsage usage = TextureBindingUsage::None;
-    // Special flags for the texture binding.
-    TextureBindingFlags::Flags flags = TextureBindingFlags::None;
+    // Determines if the texture should be sampled as an SRGB format (will NOT work with ShaderReadWrite usage).
+    bool isSRGB = false;
     // Subresource of the texture, defaults to all mips and all slices (so the entirety of the resource).
     TextureSubresource subresource;
 };

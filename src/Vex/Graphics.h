@@ -188,7 +188,7 @@ private:
     // We submit our command lists in batch at the end of frame, to reduce driver overhead.
     std::vector<NonNullPtr<RHICommandList>> deferredSubmissionCommandLists;
     std::unordered_set<SyncToken> deferredSubmissionDependencies;
-    std::vector<ResourceCleanup::CleanupVariant> deferredSubmissionResources;
+    std::vector<vex::Buffer> deferredSubmissionResources;
 
     std::vector<UniqueHandle<RenderExtension>> renderExtensions;
 

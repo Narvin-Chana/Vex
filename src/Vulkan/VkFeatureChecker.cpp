@@ -218,9 +218,9 @@ std::string_view VkFeatureChecker::GetMaxSupportedVulkanVersion() const
     return "vulkan1.0";
 }
 
-bool VkFeatureChecker::DoesFormatSupportLinearFiltering(TextureFormat format) const
+bool VkFeatureChecker::FormatSupportsLinearFiltering(TextureFormat format, bool isSRGB) const
 {
-    ::vk::FormatProperties formatProperties = physDevice.getFormatProperties(TextureFormatToVulkan(format));
+    ::vk::FormatProperties formatProperties = physDevice.getFormatProperties(TextureFormatToVulkan(format, isSRGB));
     return !!(formatProperties.optimalTilingFeatures & ::vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
 }
 

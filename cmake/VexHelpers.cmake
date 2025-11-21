@@ -160,13 +160,13 @@ function(vex_setup_runtime TARGET)
     endif()
 endfunction()
 
-function(vex_add_files_to_target_property target PROPERTY_NAME FILES_TO_ADD)
+function(vex_add_files_to_target_property target PROPERTY_NAME)
     get_target_property(EXISTING_FILES ${target} ${PROPERTY_NAME})
     if (NOT EXISTING_FILES)
         set(EXISTING_FILES "")
     endif()
 
-    list(APPEND EXISTING_FILES "${FILES_TO_ADD}")
+    list(APPEND EXISTING_FILES ${ARGN})
 
     set_target_properties(${target} PROPERTIES ${PROPERTY_NAME} "${EXISTING_FILES}")
 endfunction()

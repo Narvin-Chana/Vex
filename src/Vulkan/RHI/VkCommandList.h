@@ -59,7 +59,7 @@ public:
     virtual void TraceRays(const std::array<u32, 3>& widthHeightDepth,
                            const RHIRayTracingPipelineState& rayTracingPipelineState) override;
 
-    virtual void GenerateMips(RHITexture& texture, u16 sourceMip) override;
+    virtual void GenerateMips(RHITexture& texture, const TextureSubresource& subresource) override;
 
     virtual QueryHandle BeginTimestampQuery() override;
     virtual void EndTimestampQuery(QueryHandle handle) override;

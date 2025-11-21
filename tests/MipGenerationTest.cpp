@@ -106,7 +106,7 @@ TEST_F(MipGenerationTest, Texture2DPowOfTwo)
     ctx.EnqueueDataUpload(tex, Generate2DCheckerboardRGBA32(size, size), TextureRegion::SingleMip(0));
 
     // Generate and fill in the remaining mips.
-    ctx.GenerateMips(tex);
+    ctx.GenerateMips(TextureBinding{ .texture = tex, .isSRGB = false });
 
     // Readback the last mip (1x1).
     TextureReadbackContext readback = ctx.EnqueueDataReadback(tex, TextureRegion::SingleMip(numMips - 1));
@@ -148,7 +148,7 @@ TEST_F(MipGenerationTest, Texture2DNonPowOfTwo)
     ctx.EnqueueDataUpload(tex, Generate2DCheckerboardRGBA32(size, size), TextureRegion::SingleMip(0));
 
     // Generate and fill in the remaining mips.
-    ctx.GenerateMips(tex);
+    ctx.GenerateMips(TextureBinding{ .texture = tex, .isSRGB = false });
 
     // Readback the last mip (1x1).
     TextureReadbackContext readback = ctx.EnqueueDataReadback(tex, TextureRegion::SingleMip(numMips - 1));
@@ -188,7 +188,7 @@ TEST_F(MipGenerationTest, Texture2DNonSquare)
     auto ctx = graphics.BeginScopedCommandContext(QueueType::Graphics, SubmissionPolicy::Immediate);
     ctx.EnqueueDataUpload(tex, Generate2DCheckerboardRGBA32(width, height), TextureRegion::SingleMip(0));
 
-    ctx.GenerateMips(tex);
+    ctx.GenerateMips(TextureBinding{ .texture = tex, .isSRGB = false });
 
     // Readback the last mip (1x1).
     TextureReadbackContext readback = ctx.EnqueueDataReadback(tex, TextureRegion::SingleMip(numMips - 1));
@@ -247,7 +247,7 @@ TEST_F(MipGenerationTest, Texture2DWithSourceMipOffset)
     ctx.EnqueueDataUpload(tex, std::as_bytes(std::span(data)), TextureRegion::SingleMip(1));
 
     // Generate and fill in the remaining mips, using the mip 1 as a sourceMip.
-    ctx.GenerateMips(tex, 1);
+    ctx.GenerateMips(TextureBinding{ .texture = tex, .isSRGB = false, .subresource = { .startMip = 1 } });
 
     // Readback the last mip (1x1).
     TextureReadbackContext readback = ctx.EnqueueDataReadback(tex, TextureRegion::SingleMip(numMips - 1));
@@ -297,7 +297,7 @@ TEST_F(MipGenerationTest, Texture2DSingleColor)
     auto ctx = graphics.BeginScopedCommandContext(QueueType::Graphics, SubmissionPolicy::Immediate);
     ctx.EnqueueDataUpload(tex, greenData, TextureRegion::SingleMip(0));
 
-    ctx.GenerateMips(tex);
+    ctx.GenerateMips(TextureBinding{ .texture = tex, .isSRGB = false });
 
     // Readback the last mip (1x1).
     TextureReadbackContext readback = ctx.EnqueueDataReadback(tex, TextureRegion::SingleMip(numMips - 1));
@@ -337,7 +337,7 @@ TEST_F(MipGenerationTest, Texture2DIntermediateMipCheck)
     auto ctx = graphics.BeginScopedCommandContext(QueueType::Graphics, SubmissionPolicy::Immediate);
     ctx.EnqueueDataUpload(tex, Generate2DCheckerboardRGBA32(size, size, 8), TextureRegion::SingleMip(0));
 
-    ctx.GenerateMips(tex);
+    ctx.GenerateMips(TextureBinding{ .texture = tex, .isSRGB = false });
 
     // Readback multiple mip levels to verify the chain
     std::vector<TextureReadbackContext> readbacks;
@@ -390,7 +390,7 @@ TEST_F(MipGenerationTest, Texture2DExtremeAspectRatio)
     auto ctx = graphics.BeginScopedCommandContext(QueueType::Graphics, SubmissionPolicy::Immediate);
     ctx.EnqueueDataUpload(tex, Generate2DCheckerboardRGBA32(width, height, 2), TextureRegion::SingleMip(0));
 
-    ctx.GenerateMips(tex);
+    ctx.GenerateMips(TextureBinding{ .texture = tex, .isSRGB = false });
 
     // Readback the last mip (1x1).
     TextureReadbackContext readback = ctx.EnqueueDataReadback(tex, TextureRegion::SingleMip(numMips - 1));
@@ -418,7 +418,7 @@ TEST_F(MipGenerationTest, Texture2DSRGB)
     u16 numMips = ComputeMipCount({ size, size, 1 });
     Texture tex = graphics.CreateTexture(
         TextureDesc::CreateTexture2DDesc("SRGB_Mip0",
-                                         TextureFormat::RGBA8_UNORM_SRGB,
+                                         TextureFormat::RGBA8_UNORM,
                                          size,
                                          size,
                                          numMips,
@@ -428,7 +428,7 @@ TEST_F(MipGenerationTest, Texture2DSRGB)
     ctx.EnqueueDataUpload(tex, Generate2DCheckerboardRGBA8(size, size), TextureRegion::SingleMip(0));
 
     // Generate and fill in the remaining mips.
-    ctx.GenerateMips(tex);
+    ctx.GenerateMips(TextureBinding{ .texture = tex, .isSRGB = true });
 
     // Readback the last mip (1x1).
     TextureReadbackContext readback = ctx.EnqueueDataReadback(tex, TextureRegion::SingleMip(numMips - 1));
@@ -461,7 +461,7 @@ TEST_F(MipGenerationTest, Texture2DSRGBNonPowOfTwo)
     u16 numMips = ComputeMipCount({ size, size, 1 });
     Texture tex = graphics.CreateTexture(
         TextureDesc::CreateTexture2DDesc("SRGB_NonPow2",
-                                         TextureFormat::RGBA8_UNORM_SRGB,
+                                         TextureFormat::RGBA8_UNORM,
                                          size,
                                          size,
                                          numMips,
@@ -470,7 +470,7 @@ TEST_F(MipGenerationTest, Texture2DSRGBNonPowOfTwo)
     auto ctx = graphics.BeginScopedCommandContext(QueueType::Graphics, SubmissionPolicy::Immediate);
     ctx.EnqueueDataUpload(tex, Generate2DCheckerboardRGBA8(size, size), TextureRegion::SingleMip(0));
 
-    ctx.GenerateMips(tex);
+    ctx.GenerateMips(TextureBinding{ .texture = tex, .isSRGB = true });
 
     TextureReadbackContext readback = ctx.EnqueueDataReadback(tex, TextureRegion::SingleMip(numMips - 1));
 
@@ -501,7 +501,7 @@ TEST_F(MipGenerationTest, Texture2DSRGBSingleColor)
     u16 numMips = ComputeMipCount({ size, size, 1 });
     Texture tex = graphics.CreateTexture(
         TextureDesc::CreateTexture2DDesc("SRGB_SingleColor",
-                                         TextureFormat::RGBA8_UNORM_SRGB,
+                                         TextureFormat::RGBA8_UNORM,
                                          size,
                                          size,
                                          numMips,
@@ -520,7 +520,7 @@ TEST_F(MipGenerationTest, Texture2DSRGBSingleColor)
     auto ctx = graphics.BeginScopedCommandContext(QueueType::Graphics, SubmissionPolicy::Immediate);
     ctx.EnqueueDataUpload(tex, greenData, TextureRegion::SingleMip(0));
 
-    ctx.GenerateMips(tex);
+    ctx.GenerateMips(TextureBinding{ .texture = tex, .isSRGB = true });
 
     TextureReadbackContext readback = ctx.EnqueueDataReadback(tex, TextureRegion::SingleMip(numMips - 1));
 
@@ -566,7 +566,7 @@ TEST_F(MipGenerationTest, Texture2DArray)
         ctx.EnqueueDataUpload(tex, Generate2DCheckerboardRGBA32(size, size), region);
     }
 
-    ctx.GenerateMips(tex);
+    ctx.GenerateMips(TextureBinding{ .texture = tex, .isSRGB = false });
 
     // Readback the last mip (1x1) from each slice
     std::vector<TextureReadbackContext> readbacks;
@@ -621,7 +621,7 @@ TEST_F(MipGenerationTest, TextureCube)
         ctx.EnqueueDataUpload(tex, Generate2DCheckerboardRGBA32(faceSize, faceSize), region);
     }
 
-    ctx.GenerateMips(tex);
+    ctx.GenerateMips(TextureBinding{ .texture = tex, .isSRGB = false });
 
     // Readback the last mip (1x1) from each face
     std::vector<TextureReadbackContext> readbacks;
@@ -679,7 +679,7 @@ TEST_F(MipGenerationTest, TextureCubeArray)
         ctx.EnqueueDataUpload(tex, Generate2DCheckerboardRGBA32(faceSize, faceSize), region);
     }
 
-    ctx.GenerateMips(tex);
+    ctx.GenerateMips(TextureBinding{ .texture = tex, .isSRGB = false });
 
     // Readback the last mip (1x1) from each slice
     std::vector<TextureReadbackContext> readbacks;

@@ -23,7 +23,7 @@ public:
     virtual ResourceBindingTier GetResourceBindingTier() const override;
     virtual ShaderModel GetShaderModel() const override;
     virtual u32 GetMaxLocalConstantsByteSize() const override;
-    bool DoesFormatSupportLinearFiltering(TextureFormat format) const override;
+    bool FormatSupportsLinearFiltering(TextureFormat format, bool isSRGB) const override;
 
     std::string_view GetMaxSupportedSpirVVersion() const;
     std::string_view GetMaxSupportedVulkanVersion() const;

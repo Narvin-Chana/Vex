@@ -28,7 +28,9 @@ DX12SwapChain::DX12SwapChain(ComPtr<DX12Device>& device,
                format == DXGI_FORMAT_R8G8B8A8_UNORM || format == DXGI_FORMAT_R10G10B10A2_UNORM;
     };
 
-    DXGI_FORMAT nativeFormat = TextureFormatToDXGI(desc.format);
+    // DX12's preference for swapchains is to use the non-srgb format, and then use SRGB format when creating views.
+    static constexpr bool AllowSRGBSwapChainFormat = false;
+    DXGI_FORMAT nativeFormat = TextureFormatToDXGI(desc.format, AllowSRGBSwapChainFormat);
     if (!ValidateFlipModelSupportedFormats(nativeFormat))
     {
         VEX_LOG(Fatal, "Invalid swapchain format for the _FLIP_ swap mode.");

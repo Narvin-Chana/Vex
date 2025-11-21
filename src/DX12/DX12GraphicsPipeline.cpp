@@ -194,7 +194,9 @@ std::vector<D3D12_INPUT_ELEMENT_DESC> GetDX12InputElementDescFromVertexInputAsse
         D3D12_INPUT_ELEMENT_DESC elementDesc = {};
         elementDesc.SemanticName = attr.semanticName.c_str();
         elementDesc.SemanticIndex = attr.semanticIndex;
-        elementDesc.Format = TextureFormatToDXGI(attr.format);
+        // SRGB vertex format makes no sense. Force to false (which gives us non-SRGB formats).
+        static constexpr bool UseSRGBForVertexPixelFormat = false;
+        elementDesc.Format = TextureFormatToDXGI(attr.format, UseSRGBForVertexPixelFormat);
         elementDesc.InputSlot = attr.binding;
         elementDesc.AlignedByteOffset = attr.offset;
 
@@ -263,7 +265,7 @@ std::array<DXGI_FORMAT, 8> GetRTVFormatsFromRenderTargetState(const RenderTarget
 
     for (u32 i = 0; i < std::min<u32>(static_cast<u32>(renderTargetState.colorFormats.size()), 8); ++i)
     {
-        result[i] = TextureFormatToDXGI(renderTargetState.colorFormats[i]);
+        result[i] = TextureFormatToDXGI(renderTargetState.colorFormats[i].format, renderTargetState.colorFormats[i].isSRGB);
     }
 
     // Fill remaining slots with UNKNOWN

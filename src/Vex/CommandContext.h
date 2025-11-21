@@ -138,7 +138,7 @@ public:
                    std::array<u32, 3> widthHeightDepth);
 
     // Fills in all lower resolution mips with downsampled version of the source mip.
-    void GenerateMips(const Texture& texture, u16 sourceMip = 0);
+    void GenerateMips(const TextureBinding& textureBinding);
 
     // ---------------------------------------------------------------------------------------------------------------
     // Resource Copy - Will automatically transition the resources into the correct states.
@@ -273,7 +273,7 @@ private:
 
     // Temporary resources (eg: staging resources) that will be marked for destruction once this command list is
     // submitted.
-    std::vector<ResourceCleanup::CleanupVariant> temporaryResources;
+    std::vector<vex::Buffer> temporaryResources;
 
     // Used to avoid resetting the same state multiple times which can be costly on certain hardware.
     // In general draws and dispatches are recommended to be grouped by PSO, so this caching can be very efficient
