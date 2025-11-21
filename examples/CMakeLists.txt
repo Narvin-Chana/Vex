@@ -69,8 +69,8 @@ FetchContent_MakeAvailable(render_doc)
 set(EXAMPLES_COMMON_LIBS Vex imguiLib glfw)
 
 include(VexDX12)
-set(DX12_ONLY_EXAMPLES "pix_events")
 set(WINDOWS_ONLY_EXAMPLES "pix_events")
+set(DX12_ONLY_EXAMPLES "pix_events")
 
 # Find all example directories
 file(GLOB EXAMPLE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/*")
@@ -82,11 +82,11 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
     # Get the example name from the directory name
     get_filename_component(EXAMPLE_NAME ${EXAMPLE_DIR} NAME)
 
-    if (EXAMPLE_NAME IN_LIST DX12_ONLY_EXAMPLES AND NOT VEX_ENABLE_DX12)
+    if (EXAMPLE_NAME IN_LIST WINDOWS_ONLY_EXAMPLES AND LINUX)
         continue()
     endif()
 
-    if (EXAMPLE_NAME IN_LIST WINDOWS_ONLY_EXAMPLES AND LINUX)
+    if (EXAMPLE_NAME IN_LIST DX12_ONLY_EXAMPLES AND NOT VEX_ENABLE_DX12)
         continue()
     endif()
     
@@ -106,7 +106,9 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
         # Setup the runtime dependencies of Vex
         vex_setup_runtime(${EXAMPLE_NAME})
 
-        setup_pix_3(${EXAMPLE_NAME})
+        if(EXAMPLE_NAME STREQUAL "pix_events")
+            setup_pix_3(${EXAMPLE_NAME})
+        endif()
 
         # Link the example
         target_link_libraries(${EXAMPLE_NAME} PRIVATE ${EXAMPLES_COMMON_LIBS})
