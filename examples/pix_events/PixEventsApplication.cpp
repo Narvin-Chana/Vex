@@ -1,7 +1,7 @@
 #include "PixEventsApplication.h"
 
 #include <GLFWIncludes.h>
-#include <PixEventsRenderExtension.h>
+#include <VexPixEvents.h>
 
 PixEventsApplication::PixEventsApplication()
     : ExampleApplication("PixEventsApplication")
@@ -11,16 +11,14 @@ PixEventsApplication::PixEventsApplication()
 #elif defined(__linux__)
     vex::PlatformWindowHandle platformWindow{ .window = glfwGetX11Window(window), .display = glfwGetX11Display() };
 #endif
-    auto rdocExtension = vex::MakeUnique<PixEventsRenderExtension>();
-
     graphics = vex::MakeUnique<vex::Graphics>(vex::GraphicsCreateDesc{
         .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
         .swapChainFormat = SwapchainFormat,
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
-
-    graphics->RegisterRenderExtension(std::move(rdocExtension));
     SetupShaderErrorHandling();
+
+    SetupPixEvents();
 }
 
 void PixEventsApplication::Run()
@@ -33,9 +31,9 @@ void PixEventsApplication::Run()
 
         if (!hasCaptured)
         {
-            PixEventsRenderExtension::StartCapture(vex::StringToWString("ExampleCapture.wpix"));
+            StartPixEventsCapture(vex::StringToWString("ExampleCapture.wpix"));
 
-            PixEventsRenderExtension::EndCapture();
+            EndPixEventsCapture();
             VEX_LOG(vex::Info, "Capture frame with PIX");
             hasCaptured = true;
         }
