@@ -1,6 +1,9 @@
 ﻿#pragma once
 #include <string_view>
 
-void SetupPixEvents();
-void StartPixEventsCapture(std::wstring_view captureName);
-void EndPixEventsCapture();
+namespace PIX
+{
+void Setup();
+void StartCapture(std::wstring_view captureName);
+void EndCapture();
+} // namespace PIX

@@ -1,6 +1,8 @@
 ﻿#pragma once
 
-void SetupRenderDoc();
-
-void StartRenderDocCapture();
-void EndRenderDocCapture();
+namespace RenderDoc
+{
+void Setup();
+void StartCapture();
+void EndCapture();
+} // namespace RenderDoc

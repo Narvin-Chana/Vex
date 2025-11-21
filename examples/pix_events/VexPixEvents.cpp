@@ -7,19 +7,22 @@
 #include <WinPixEventRuntime/pix3.h>
 // clang-format on
 
-void SetupPixEvents()
+namespace PIX
+{
+void Setup()
 {
     PIXLoadLatestWinPixGpuCapturerLibrary();
 }
 
-void StartPixEventsCapture(std::wstring_view captureName)
+void StartCapture(std::wstring_view captureName)
 {
     std::wstring captureNameStr{ captureName };
     PIXCaptureParameters Params{ .GpuCaptureParameters = { .FileName = captureNameStr.c_str() } };
     PIXBeginCapture(PIX_CAPTURE_GPU, &Params);
 }
 
-void EndPixEventsCapture()
+void EndCapture()
 {
     PIXEndCapture(false);
 }
+} // namespace PIX

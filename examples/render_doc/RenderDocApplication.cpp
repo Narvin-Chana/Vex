@@ -19,7 +19,7 @@ RenderDocApplication::RenderDocApplication()
 
     SetupShaderErrorHandling();
 
-    SetupRenderDoc();
+    RenderDoc::Setup();
 }
 
 void RenderDocApplication::Run()
@@ -32,9 +32,9 @@ void RenderDocApplication::Run()
 
         if (!hasCaptured)
         {
-            StartRenderDocCapture();
+            RenderDoc::StartCapture();
 
-            EndRenderDocCapture();
+            RenderDoc::EndCapture();
             VEX_LOG(vex::Info, "Capture frame with RenderDoc");
             hasCaptured = true;
         }

@@ -18,7 +18,7 @@ PixEventsApplication::PixEventsApplication()
         .enableGPUBasedValidation = !VEX_SHIPPING });
     SetupShaderErrorHandling();
 
-    SetupPixEvents();
+    PIX::Setup();
 }
 
 void PixEventsApplication::Run()
@@ -31,9 +31,9 @@ void PixEventsApplication::Run()
 
         if (!hasCaptured)
         {
-            StartPixEventsCapture(vex::StringToWString("ExampleCapture.wpix"));
+            PIX::StartCapture(vex::StringToWString("ExampleCapture.wpix"));
 
-            EndPixEventsCapture();
+            PIX::EndCapture();
             VEX_LOG(vex::Info, "Capture frame with PIX");
             hasCaptured = true;
         }

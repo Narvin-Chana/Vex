@@ -10,6 +10,8 @@
 
 #include <Vex/Logger.h>
 
+namespace RenderDoc
+{
 static RENDERDOC_API_1_1_2* GRDoc_api = nullptr;
 
 static void LoadRenderDocAPI()
@@ -37,7 +39,7 @@ static void LoadRenderDocAPI()
 #endif
 }
 
-void SetupRenderDoc()
+void Setup()
 {
     if (!GRDoc_api)
     {
@@ -45,14 +47,15 @@ void SetupRenderDoc()
     }
 }
 
-void StartRenderDocCapture()
+void StartCapture()
 {
     if (GRDoc_api)
         GRDoc_api->StartFrameCapture(nullptr, nullptr);
 }
 
-void EndRenderDocCapture(void* devicePtr)
+void EndCapture(void* devicePtr)
 {
     if (GRDoc_api)
         GRDoc_api->EndFrameCapture(nullptr, nullptr);
 }
+} // namespace RenderDoc
