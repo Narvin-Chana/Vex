@@ -84,12 +84,18 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
 
     allocator = rhi.CreateAllocator();
 
+    queryPool = rhi.CreateTimestampQueryPool(*allocator);
+
+    // TODO(https://trello.com/c/T1DY4QOT): See the comment inside SetSampler().
+    SetSamplers({});
+
+    GEnableGPUScopedEvents = desc.enableGPUDebugLayer;
+
     if (desc.useSwapChain)
     {
         swapChain.emplace(rhi.CreateSwapChain(
             {
                 .format = desc.swapChainFormat,
-                .isSRGB = desc.isSwapChainSRGB,
                 .frameBuffering = desc.frameBuffering,
                 .useVSync = desc.useVSync,
             },
@@ -97,13 +103,6 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
 
         CreatePresentTextures();
     }
-
-    queryPool = rhi.CreateTimestampQueryPool(*allocator);
-
-    // TODO(https://trello.com/c/T1DY4QOT): See the comment inside SetSampler().
-    SetSamplers({});
-
-    GEnableGPUScopedEvents = desc.enableGPUDebugLayer;
 }
 
 Graphics::~Graphics()
@@ -168,18 +167,6 @@ void Graphics::Present(bool isFullscreenMode)
         NonNullPtr<RHICommandList> cmdList = commandPool->GetOrCreateCommandList(QueueType::Graphics);
         cmdList->Open();
 
-        // If the present texture has not been used yet, its data is in a invalid state.
-        // Clear it with its clear color to ensure garbage is not shown.
-        bool presentTextureHasBeenUsed = presentTexture.GetLastAccess() != RHIBarrierAccess::NoAccess;
-        if (!presentTextureHasBeenUsed)
-        {
-            RHITextureBarrier barrier = presentTexture.GetClearTextureBarrier();
-            cmdList->Barrier({}, { &barrier, 1 });
-            cmdList->ClearTexture(RHITextureBinding(TextureBinding(GetCurrentPresentTexture()), presentTexture),
-                                  TextureUsage::RenderTarget,
-                                  presentTexture.GetDesc().clearValue);
-        }
-
         std::array barriers = {
             RHITextureBarrier{
                 presentTexture,
@@ -237,9 +224,9 @@ void Graphics::SubmitDeferredWork()
     std::vector deferredSubmissionTokens = rhi.Submit(deferredSubmissionCommandLists, dependencies);
     commandPool->OnCommandListsSubmitted(deferredSubmissionCommandLists, deferredSubmissionTokens);
 
-    for (auto& res : deferredSubmissionResources)
+    for (Buffer& tempBuffer : deferredSubmissionResources)
     {
-        resourceCleanup.CleanupResource(std::move(res));
+        DestroyBuffer(tempBuffer);
     }
 
     deferredSubmissionCommandLists.clear();
@@ -274,9 +261,9 @@ std::vector<SyncToken> Graphics::EndCommandContext(CommandContext& ctx)
         syncTokens = rhi.Submit({ &ctx.cmdList, 1 }, ctx.dependencies);
 
         // Enqueue the command context's temporary resources for destruction.
-        for (auto& res : ctx.temporaryResources)
+        for (Buffer& tempBuffer : ctx.temporaryResources)
         {
-            resourceCleanup.CleanupResource(std::move(res));
+            DestroyBuffer(tempBuffer);
         }
 
         commandPool->OnCommandListsSubmitted({ &ctx.cmdList, 1 }, syncTokens);
@@ -287,15 +274,15 @@ std::vector<SyncToken> Graphics::EndCommandContext(CommandContext& ctx)
     }
     else if (desc.useSwapChain && (ctx.submissionPolicy == SubmissionPolicy::DeferToPresent))
     {
-        // The submitting of a commandList when we have a swapchain should be batched as much as possible for further
+        // The submission of a commandList when we have a swapchain should be batched as much as possible for further
         // driver optimizations (allowed to append them together during execution or reorder if no dependencies
         // exist).
         deferredSubmissionCommandLists.push_back(ctx.cmdList);
         deferredSubmissionDependencies.insert(ctx.dependencies.begin(), ctx.dependencies.end());
         deferredSubmissionResources.reserve(ctx.temporaryResources.size() + deferredSubmissionResources.size());
-        for (auto& tempResource : ctx.temporaryResources)
+        for (Buffer& tempBuffer : ctx.temporaryResources)
         {
-            deferredSubmissionResources.push_back(std::move(tempResource));
+            deferredSubmissionResources.push_back(tempBuffer);
         }
     }
     else
@@ -576,6 +563,8 @@ RHIBuffer& Graphics::GetRHIBuffer(BufferHandle bufferHandle)
 
 void Graphics::CreatePresentTextures()
 {
+    auto ctx = BeginScopedCommandContext(vex::QueueType::Graphics, vex::SubmissionPolicy::Immediate);
+
     presentTextures.resize(std::to_underlying(desc.frameBuffering));
     for (u8 presentTextureIndex = 0; presentTextureIndex < std::to_underlying(desc.frameBuffering);
          ++presentTextureIndex)
@@ -583,7 +572,13 @@ void Graphics::CreatePresentTextures()
         TextureDesc presentTextureDesc = swapChain->GetBackBufferTextureDescription();
         presentTextureDesc.name = std::format("PresentTexture_{}", presentTextureIndex);
         presentTextureDesc.clearValue = desc.presentTextureClearValue;
+        // Allow for present texture to be used for all usage types.
+        presentTextureDesc.usage =
+            TextureUsage::ShaderRead | TextureUsage::ShaderReadWrite | TextureUsage::RenderTarget;
         presentTextures[presentTextureIndex] = CreateTexture(presentTextureDesc);
+
+        // Force the present textures to start zeroed out.
+        ctx.ClearTexture({ .texture = presentTextures[presentTextureIndex] });
     }
 }
 

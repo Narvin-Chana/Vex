@@ -273,7 +273,7 @@ private:
 
     // Temporary resources (eg: staging resources) that will be marked for destruction once this command list is
     // submitted.
-    std::vector<ResourceCleanup::CleanupVariant> temporaryResources;
+    std::vector<vex::Buffer> temporaryResources;
 
     // Used to avoid resetting the same state multiple times which can be costly on certain hardware.
     // In general draws and dispatches are recommended to be grouped by PSO, so this caching can be very efficient
