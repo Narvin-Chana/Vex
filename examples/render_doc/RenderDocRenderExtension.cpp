@@ -1,18 +1,18 @@
 #include "RenderDocRenderExtension.h"
 
-#include <GLFWIncludes.h>
 #include <VexRenderDoc.h>
 
-#include <Vex/Bindings.h>
-#include <Vex/CommandContext.h>
-#include <Vex/Formats.h>
 #include <Vex/Graphics.h>
 
 static void* GDevicePtr;
 
 RenderDocRenderExtension::RenderDocRenderExtension(const vex::PlatformWindowHandle& handle)
 {
+#if defined(_WIN32)
     SetupRenderDoc(handle.window);
+#elif defined(__linux__)
+    SetupRenderDoc(handle.display);
+#endif
 }
 
 void RenderDocRenderExtension::Initialize()

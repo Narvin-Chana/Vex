@@ -13,6 +13,10 @@
 #include <Vex/EnumFlags.h>
 #include <Vex/Types.h>
 
+#ifdef None
+#undef None
+#endif
+
 namespace vex
 {
 

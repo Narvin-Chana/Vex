@@ -2,7 +2,7 @@
 
 #if defined(_WIN32)
 #include <Windows.h>
-#elif
+#elif defined(__linux__)
 #include <dlfcn.h>
 #endif
 
@@ -29,7 +29,7 @@ static void LoadRenderDocAPI()
     if (void* mod = dlopen("librenderdoc.so", RTLD_NOW | RTLD_NOLOAD))
     {
         pRENDERDOC_GetAPI RENDERDOC_GetAPI = (pRENDERDOC_GetAPI)dlsym(mod, "RENDERDOC_GetAPI");
-        int ret = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_1_2, (void**)&rdoc_api);
+        int ret = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_1_2, (void**)&GRDoc_api);
         if (ret == 1)
         {
             VEX_LOG(vex::Warning, "Unable to get RenderDoc API");
