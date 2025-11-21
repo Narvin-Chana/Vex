@@ -2,8 +2,10 @@
 
 #include <string>
 
-#include <WinPixEventRuntime/pix3.h>
+// clang-format off
 #include <Windows.h>
+#include <WinPixEventRuntime/pix3.h>
+// clang-format on
 
 void SetupPixEvents()
 {
