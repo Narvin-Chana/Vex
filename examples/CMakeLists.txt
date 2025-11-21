@@ -70,6 +70,7 @@ set(EXAMPLES_COMMON_LIBS Vex imguiLib glfw)
 
 include(VexDX12)
 set(DX12_ONLY_EXAMPLES "pix_events")
+set(WINDOWS_ONLY_EXAMPLES "pix_events")
 
 # Find all example directories
 file(GLOB EXAMPLE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/*")
@@ -82,6 +83,10 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
     get_filename_component(EXAMPLE_NAME ${EXAMPLE_DIR} NAME)
 
     if (EXAMPLE_NAME IN_LIST DX12_ONLY_EXAMPLES AND NOT VEX_ENABLE_DX12)
+        continue()
+    endif()
+
+    if (EXAMPLE_NAME IN_LIST WINDOWS_ONLY_EXAMPLES AND LINUX)
         continue()
     endif()
     
