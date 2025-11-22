@@ -1,7 +1,6 @@
 #include <Vex.hlsli>
 
 #ifndef TEXTURE_TYPE
-// Fallback to float4
 #define TEXTURE_TYPE float4
 #endif
 
@@ -9,36 +8,49 @@
 #define NON_POWER_OF_TWO 0
 #endif
 
+#define TEXTURE_DIMENSION_2D 0
+#define TEXTURE_DIMENSION_2DARRAY 1
+#define TEXTURE_DIMENSION_CUBE 2
+#define TEXTURE_DIMENSION_CUBEARRAY 3
+#define TEXTURE_DIMENSION_3D 4
+
+#ifndef TEXTURE_DIMENSION
+#define TEXTURE_DIMENSION TEXTURE_DIMENSION_2D
+#endif
+
 #ifndef LINEAR_SAMPLER_SLOT
 #define LINEAR_SAMPLER_SLOT s0
 #endif
+
 SamplerState LinearSampler : register(LINEAR_SAMPLER_SLOT);
 
 struct Uniforms
 {
-    float3 texelSize; // 1.0f / (mip0 texture size)
+    float3 texelSize; // 1.0f / (source mip dimensions)
     uint sourceMipHandle;
     uint sourceMipLevel;
-    uint numMips; // Number of dest mips, so 1 or 2.
+    uint numMips; // Number of dest mips: 1 or 2
     uint destinationMipHandle0;
     uint destinationMipHandle1;
 };
 
 VEX_UNIFORMS(Uniforms, MipUniforms);
 
+// ============================================================================
+// SRGB Conversion
+// ============================================================================
+
 float3 ApplySRGBCurve(float3 x)
 {
     return select(x < 0.0031308f, 12.92f * x, 1.055f * pow(abs(x), 1.0f / 2.4f) - 0.055f);
 }
 
-// All non-float types go through here.
 template<typename T>
 T PackColor(T color)
 {
     return color;
 }
 
-// Specialization for float4 (RGBA)
 template<>
 float4 PackColor<float4>(float4 color)
 {
@@ -49,7 +61,6 @@ float4 PackColor<float4>(float4 color)
 #endif
 }
 
-// Specialization for float3 (RGB)
 template<>
 float3 PackColor<float3>(float3 color)
 {
@@ -60,7 +71,6 @@ float3 PackColor<float3>(float3 color)
 #endif
 }
 
-// Specialization for float2 (RG)
 template<>
 float2 PackColor<float2>(float2 color)
 {
@@ -71,7 +81,6 @@ float2 PackColor<float2>(float2 color)
 #endif
 }
 
-// Specialization for float (R only)
 template<>
 float PackColor<float>(float color)
 {
@@ -82,24 +91,10 @@ float PackColor<float>(float color)
 #endif
 }
 
-TEXTURE_TYPE SampleTexture2D(Texture2D<TEXTURE_TYPE> texture, float2 uv, uint mip)
-{
-    return texture.SampleLevel(LinearSampler, uv, mip);
-}
-
-TEXTURE_TYPE SampleTexture2DArray(Texture2DArray<TEXTURE_TYPE> texture, float3 uvSlice, uint mip)
-{
-    return texture.SampleLevel(LinearSampler, uvSlice, mip);
-}
-
-// TextureCube requires a direction, we compute UVs. So conversion must be done.
 float3 CubeFaceUVToDirection(uint face, float2 uv)
 {
-    // Convert UV from [0,1] to [-1,1]
     float2 coords = uv * 2.0f - 1.0f;
     
-    // Face mapping (HLSL convention):
-    // 0: +X, 1: -X, 2: +Y, 3: -Y, 4: +Z, 5: -Z
     switch (face)
     {
         case 0:
@@ -119,246 +114,193 @@ float3 CubeFaceUVToDirection(uint face, float2 uv)
     }
 }
 
-TEXTURE_TYPE SampleTextureCube(TextureCube<TEXTURE_TYPE> texture, float2 uv, uint cubeFace, uint mip)
+TEXTURE_TYPE SampleAt(uint3 coord, float2 uv)
 {
-    float3 dir = CubeFaceUVToDirection(cubeFace, uv);
-    return texture.SampleLevel(LinearSampler, dir, mip);
-}
-
-TEXTURE_TYPE SampleTextureCubeArray(TextureCubeArray<TEXTURE_TYPE> texture, float2 uv, uint cubeFace, uint slice, uint mip)
-{
-    float3 dir = CubeFaceUVToDirection(cubeFace, uv);
-    return texture.SampleLevel(LinearSampler, float4(dir, slice), mip);
-}
-
-TEXTURE_TYPE DownsampleQuad(TEXTURE_TYPE sample)
-{
-    TEXTURE_TYPE sampleRight = QuadReadAcrossX(sample);
-    TEXTURE_TYPE sampleDown = QuadReadAcrossY(sample);
-    TEXTURE_TYPE sampleDiag = QuadReadAcrossDiagonal(sample);
+#if TEXTURE_DIMENSION == 0 // Texture2D
+    Texture2D<TEXTURE_TYPE> tex = GetBindlessResource(MipUniforms.sourceMipHandle);
+    return tex.SampleLevel(LinearSampler, uv, MipUniforms.sourceMipLevel);
     
-    return 0.25f * (sample + sampleRight + sampleDown + sampleDiag);
-}
-
-[numthreads(8, 8, 1)]
-void MipGenerationTexture2D(uint3 dtid : SV_DispatchThreadID, uint3 gtid : SV_GroupThreadID)
-{
-    Texture2D<TEXTURE_TYPE> sourceMip = GetBindlessResource(MipUniforms.sourceMipHandle);
+#elif TEXTURE_DIMENSION == 1 // Texture2DArray
+    Texture2DArray<TEXTURE_TYPE> tex = GetBindlessResource(MipUniforms.sourceMipHandle);
+    return tex.SampleLevel(LinearSampler, float3(uv, coord.z), MipUniforms.sourceMipLevel);
     
-#if NON_POWER_OF_TWO == 0
-    float2 uv = MipUniforms.texelSize.xy * (dtid.xy + 0.5f.xx);
-    TEXTURE_TYPE sample = SampleTexture2D(sourceMip, uv, MipUniforms.sourceMipLevel);
-#elif NON_POWER_OF_TWO == 1
-    // > 2:1 ratio in x dimension.
-    float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.25f, 0.5f));
-    float2 offset = MipUniforms.texelSize.xy * float2(0.5f, 0);
-    TEXTURE_TYPE sample = 0.5f * 
-    (
-        SampleTexture2D(sourceMip, uv, MipUniforms.sourceMipLevel) +
-        SampleTexture2D(sourceMip, uv + offset, MipUniforms.sourceMipLevel)
-    );
-#elif NON_POWER_OF_TWO == 2
-    // > 2:1 ratio in y dimension.
-    float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.5f, 0.25f));
-    float2 offset = MipUniforms.texelSize.xy * float2(0, 0.5f);
-    TEXTURE_TYPE sample = 0.5f * 
-    (
-        SampleTexture2D(sourceMip, uv, MipUniforms.sourceMipLevel) +
-        SampleTexture2D(sourceMip, uv + offset, MipUniforms.sourceMipLevel)
-    );
-#elif NON_POWER_OF_TWO == 3
-    // > 2:1 ratio in both dimensions.
-    float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.25f, 0.25f));
-    float2 offset = MipUniforms.texelSize.xy * 0.5f;
-    TEXTURE_TYPE sample = SampleTexture2D(sourceMip, uv, MipUniforms.sourceMipLevel);
-    sample += SampleTexture2D(sourceMip, uv + float2(offset.x, 0), MipUniforms.sourceMipLevel);
-    sample += SampleTexture2D(sourceMip, uv + float2(0, offset.y), MipUniforms.sourceMipLevel);
-    sample += SampleTexture2D(sourceMip, uv + float2(offset.x, offset.y), MipUniforms.sourceMipLevel);
-    sample *= 0.25f;
-#endif
-    
-    RWTexture2D<TEXTURE_TYPE> destinationMip0 = GetBindlessResource(MipUniforms.destinationMipHandle0);
-    destinationMip0[dtid.xy] = PackColor<TEXTURE_TYPE>(sample);
-
-    if (MipUniforms.numMips == 1)
-    {
-        return;
-    }
-
-    // This has to be called in every wave, otherwise the result of QuadReadAcross is undefined.
-    TEXTURE_TYPE dstSample = DownsampleQuad(sample);
-    
-    // Only have 1 pixel out of 4 write to the second mip.
-    const bool shouldWriteMip1 = ((gtid.x & 1) == 0) && ((gtid.y & 1) == 0);
-    if (shouldWriteMip1)
-    {
-        RWTexture2D<TEXTURE_TYPE> destinationMip1 = GetBindlessResource(MipUniforms.destinationMipHandle1);
-        destinationMip1[dtid.xy >> 1] = PackColor<TEXTURE_TYPE>(dstSample);
-    }
-}
-
-[numthreads(8, 8, 1)]
-void MipGenerationTexture2DArray(uint3 dtid : SV_DispatchThreadID, uint3 gtid : SV_GroupThreadID)
-{
-    Texture2DArray<TEXTURE_TYPE> sourceMip = GetBindlessResource(MipUniforms.sourceMipHandle);
-    
-#if NON_POWER_OF_TWO == 0
-    float2 uv = MipUniforms.texelSize.xy * (dtid.xy + 0.5f.xx);
-    TEXTURE_TYPE sample = SampleTexture2DArray(sourceMip, float3(uv, dtid.z), MipUniforms.sourceMipLevel);
-#elif NON_POWER_OF_TWO == 1
-    float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.25f, 0.5f));
-    float2 offset = MipUniforms.texelSize.xy * float2(0.5f, 0);
-    TEXTURE_TYPE sample = 0.5f * 
-    (
-        SampleTexture2DArray(sourceMip, float3(uv, dtid.z), MipUniforms.sourceMipLevel) +
-        SampleTexture2DArray(sourceMip, float3(uv + offset, dtid.z), MipUniforms.sourceMipLevel)
-    );
-#elif NON_POWER_OF_TWO == 2
-    float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.5f, 0.25f));
-    float2 offset = MipUniforms.texelSize.xy * float2(0, 0.5f);
-    TEXTURE_TYPE sample = 0.5f * 
-    (
-        SampleTexture2DArray(sourceMip, float3(uv, dtid.z), MipUniforms.sourceMipLevel) +
-        SampleTexture2DArray(sourceMip, float3(uv + offset, dtid.z), MipUniforms.sourceMipLevel)
-    );
-#elif NON_POWER_OF_TWO == 3
-    float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.25f, 0.25f));
-    float2 offset = MipUniforms.texelSize.xy * 0.5f;
-    TEXTURE_TYPE sample = SampleTexture2DArray(sourceMip, float3(uv, dtid.z), MipUniforms.sourceMipLevel);
-    sample += SampleTexture2DArray(sourceMip, float3(uv + float2(offset.x, 0), dtid.z), MipUniforms.sourceMipLevel);
-    sample += SampleTexture2DArray(sourceMip, float3(uv + float2(0, offset.y), dtid.z), MipUniforms.sourceMipLevel);
-    sample += SampleTexture2DArray(sourceMip, float3(uv + float2(offset.x, offset.y), dtid.z), MipUniforms.sourceMipLevel);
-    sample *= 0.25f;
-#endif
-    
-    RWTexture2DArray<TEXTURE_TYPE> destinationMip0 = GetBindlessResource(MipUniforms.destinationMipHandle0);
-    destinationMip0[dtid.xyz] = PackColor<TEXTURE_TYPE>(sample);
-    
-    if (MipUniforms.numMips == 1)
-    {
-        return;
-    }
-    
-    TEXTURE_TYPE dstSample = DownsampleQuad(sample);
-    
-    const bool shouldWriteMip1 = ((gtid.x & 1) == 0) && ((gtid.y & 1) == 0);
-    if (shouldWriteMip1)
-    {
-        RWTexture2DArray<TEXTURE_TYPE> destinationMip1 = GetBindlessResource(MipUniforms.destinationMipHandle1);
-        destinationMip1[uint3(dtid.xy >> 1, dtid.z)] = PackColor<TEXTURE_TYPE>(dstSample);
-    }
-}
-
-[numthreads(8, 8, 1)]
-void MipGenerationTextureCube(uint3 dtid : SV_DispatchThreadID, uint3 gtid : SV_GroupThreadID)
-{
-    TextureCube<TEXTURE_TYPE> sourceMip = GetBindlessResource(MipUniforms.sourceMipHandle);
-    
-    // Extract face index from dtid.z
-    uint faceIndex = dtid.z % 6;
-    
-#if NON_POWER_OF_TWO == 0
-    float2 uv = MipUniforms.texelSize.xy * (dtid.xy + 0.5f.xx);
-    TEXTURE_TYPE sample = SampleTextureCube(sourceMip, uv, faceIndex, MipUniforms.sourceMipLevel);
-#elif NON_POWER_OF_TWO == 1
-    float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.25f, 0.5f));
-    float2 offset = MipUniforms.texelSize.xy * float2(0.5f, 0);
-    TEXTURE_TYPE sample = 0.5f * 
-    (
-        SampleTextureCube(sourceMip, uv, faceIndex, MipUniforms.sourceMipLevel) +
-        SampleTextureCube(sourceMip, uv + offset, faceIndex, MipUniforms.sourceMipLevel)
-    );
-#elif NON_POWER_OF_TWO == 2
-    float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.5f, 0.25f));
-    float2 offset = MipUniforms.texelSize.xy * float2(0, 0.5f);
-    TEXTURE_TYPE sample = 0.5f * 
-    (
-        SampleTextureCube(sourceMip, uv, faceIndex, MipUniforms.sourceMipLevel) +
-        SampleTextureCube(sourceMip, uv + offset, faceIndex, MipUniforms.sourceMipLevel)
-    );
-#elif NON_POWER_OF_TWO == 3
-    float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.25f, 0.25f));
-    float2 offset = MipUniforms.texelSize.xy * 0.5f;
-    TEXTURE_TYPE sample = SampleTextureCube(sourceMip, uv, faceIndex, MipUniforms.sourceMipLevel);
-    sample += SampleTextureCube(sourceMip, uv + float2(offset.x, 0), faceIndex, MipUniforms.sourceMipLevel);
-    sample += SampleTextureCube(sourceMip, uv + float2(0, offset.y), faceIndex, MipUniforms.sourceMipLevel);
-    sample += SampleTextureCube(sourceMip, uv + float2(offset.x, offset.y), faceIndex, MipUniforms.sourceMipLevel);
-    sample *= 0.25f;
-#endif
-    
-    RWTexture2DArray<TEXTURE_TYPE> destinationMip0 = GetBindlessResource(MipUniforms.destinationMipHandle0);
-    destinationMip0[dtid.xyz] = PackColor<TEXTURE_TYPE>(sample);
-    
-    if (MipUniforms.numMips == 1)
-    {
-        return;
-    }
-    
-    TEXTURE_TYPE dstSample = DownsampleQuad(sample);
-    
-    const bool shouldWriteMip1 = ((gtid.x & 1) == 0) && ((gtid.y & 1) == 0);
-    if (shouldWriteMip1)
-    {
-        RWTexture2DArray<TEXTURE_TYPE> destinationMip1 = GetBindlessResource(MipUniforms.destinationMipHandle1);
-        destinationMip1[uint3(dtid.xy >> 1, dtid.z)] = PackColor<TEXTURE_TYPE>(dstSample);
-    }
-}
-
-[numthreads(8, 8, 1)]
-void MipGenerationTextureCubeArray(uint3 dtid : SV_DispatchThreadID, uint3 gtid : SV_GroupThreadID)
-{
-    TextureCubeArray<TEXTURE_TYPE> sourceMip = GetBindlessResource(MipUniforms.sourceMipHandle);
-    
-    // Extract face index and cube array index from dtid.z
-    uint faceIndex = dtid.z % 6;
-    uint cubeArrayIndex = dtid.z / 6;
-    
-#if NON_POWER_OF_TWO == 0
-    float2 uv = MipUniforms.texelSize.xy * (dtid.xy + 0.5f.xx);
+#elif TEXTURE_DIMENSION == 2 // TextureCube
+    TextureCube<TEXTURE_TYPE> tex = GetBindlessResource(MipUniforms.sourceMipHandle);
+    uint faceIndex = coord.z % 6;
     float3 dir = CubeFaceUVToDirection(faceIndex, uv);
-    TEXTURE_TYPE sample = SampleTextureCubeArray(sourceMip, uv, faceIndex, cubeArrayIndex, MipUniforms.sourceMipLevel);
-#elif NON_POWER_OF_TWO == 1
-    float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.25f, 0.5f));
-    float2 offset = MipUniforms.texelSize.xy * float2(0.5f, 0);
-    TEXTURE_TYPE sample = 0.5f * 
-    (
-        SampleTextureCubeArray(sourceMip, uv, faceIndex, cubeArrayIndex, MipUniforms.sourceMipLevel) +
-        SampleTextureCubeArray(sourceMip, uv + offset, faceIndex, cubeArrayIndex, MipUniforms.sourceMipLevel)
-    );
-#elif NON_POWER_OF_TWO == 2
-    float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.5f, 0.25f));
-    float2 offset = MipUniforms.texelSize.xy * float2(0, 0.5f);
-    float3 dir0 = CubeFaceUVToDirection(faceIndex, uv);
-    float3 dir1 = CubeFaceUVToDirection(faceIndex, uv + offset);
-    TEXTURE_TYPE sample = 0.5f * 
-    (
-        SampleTextureCubeArray(sourceMip, uv, faceIndex, cubeArrayIndex, MipUniforms.sourceMipLevel) +
-        SampleTextureCubeArray(sourceMip, uv + offset, faceIndex, cubeArrayIndex, MipUniforms.sourceMipLevel)
-    );
-#elif NON_POWER_OF_TWO == 3
-    float2 uv = MipUniforms.texelSize.xy * (dtid.xy + float2(0.25f, 0.25f));
-    float2 offset = MipUniforms.texelSize.xy * 0.5f;
-    TEXTURE_TYPE sample = SampleTextureCubeArray(sourceMip, uv, faceIndex, cubeArrayIndex, MipUniforms.sourceMipLevel);
-    sample += SampleTextureCubeArray(sourceMip, uv + float2(offset.x, 0), faceIndex, cubeArrayIndex, MipUniforms.sourceMipLevel);
-    sample += SampleTextureCubeArray(sourceMip, uv + float2(0, offset.y), faceIndex, cubeArrayIndex, MipUniforms.sourceMipLevel);
-    sample += SampleTextureCubeArray(sourceMip, uv + float2(offset.x, offset.y), faceIndex, cubeArrayIndex, MipUniforms.sourceMipLevel);
-    sample *= 0.25f;
+    return tex.SampleLevel(LinearSampler, dir, MipUniforms.sourceMipLevel);
+    
+#elif TEXTURE_DIMENSION == 3 // TextureCubeArray
+    TextureCubeArray<TEXTURE_TYPE> tex = GetBindlessResource(MipUniforms.sourceMipHandle);
+    uint faceIndex = coord.z % 6;
+    uint cubeIndex = coord.z / 6;
+    float3 dir = CubeFaceUVToDirection(faceIndex, uv);
+    return tex.SampleLevel(LinearSampler, float4(dir, cubeIndex), MipUniforms.sourceMipLevel);
+    
+#elif TEXTURE_DIMENSION == 4 // Texture3D
+    Texture3D<TEXTURE_TYPE> tex = GetBindlessResource(MipUniforms.sourceMipHandle);
+    float3 uvw = float3(uv, MipUniforms.texelSize.z * (coord.z + 0.5f));
+    return tex.SampleLevel(LinearSampler, uvw, MipUniforms.sourceMipLevel);
 #endif
+}
+
+TEXTURE_TYPE SampleWithNPOT(uint3 coord)
+{
+#if TEXTURE_DIMENSION == TEXTURE_DIMENSION_3D // Texture3D needs special handling
+    #if NON_POWER_OF_TWO == 0
+        // Power-of-two in all dimensions
+        float3 uvw = MipUniforms.texelSize.xyz * (coord.xyz + 0.5f);
+        return SampleAt(coord, uvw.xy); // SampleAt needs to handle uvw for 3D
+    #elif NON_POWER_OF_TWO == 1
+        // > 2:1 ratio in X only
+        float3 uvw = MipUniforms.texelSize.xyz * (coord.xyz + float3(0.25f, 0.5f, 0.5f));
+        float3 offsetX = MipUniforms.texelSize.xyz * float3(0.5f, 0.0f, 0.0f);
+        return 0.5f * (SampleAt(coord, uvw.xy) + SampleAt(coord, (uvw + offsetX).xy));
+    #elif NON_POWER_OF_TWO == 2
+        // > 2:1 ratio in Y only
+        float3 uvw = MipUniforms.texelSize.xyz * (coord.xyz + float3(0.5f, 0.25f, 0.5f));
+        float3 offsetY = MipUniforms.texelSize.xyz * float3(0.0f, 0.5f, 0.0f);
+        return 0.5f * (SampleAt(coord, uvw.xy) + SampleAt(coord, (uvw + offsetY).xy));
+    #elif NON_POWER_OF_TWO == 3
+        // > 2:1 ratio in X and Y
+        float3 uvw = MipUniforms.texelSize.xyz * (coord.xyz + float3(0.25f, 0.25f, 0.5f));
+        float3 offset = MipUniforms.texelSize.xyz * float3(0.5f, 0.5f, 0.0f);
+        TEXTURE_TYPE sample = SampleAt(coord, uvw.xy);
+        sample += SampleAt(coord, (uvw + float3(offset.x, 0.0f, 0.0f)).xy);
+        sample += SampleAt(coord, (uvw + float3(0.0f, offset.y, 0.0f)).xy);
+        sample += SampleAt(coord, (uvw + float3(offset.x, offset.y, 0.0f)).xy);
+        return sample * 0.25f;
+    #elif NON_POWER_OF_TWO == 4
+        // > 2:1 ratio in Z only
+        float3 uvw = MipUniforms.texelSize.xyz * (coord.xyz + float3(0.5f, 0.5f, 0.25f));
+        float3 offsetZ = MipUniforms.texelSize.xyz * float3(0.0f, 0.0f, 0.5f);
+        return 0.5f * (SampleAt(coord, uvw.xy) + SampleAt(coord, (uvw + offsetZ).xy));
+    #elif NON_POWER_OF_TWO == 5
+        // > 2:1 ratio in X and Z
+        float3 uvw = MipUniforms.texelSize.xyz * (coord.xyz + float3(0.25f, 0.5f, 0.25f));
+        float3 offset = MipUniforms.texelSize.xyz * float3(0.5f, 0.0f, 0.5f);
+        TEXTURE_TYPE sample = SampleAt(coord, uvw.xy);
+        sample += SampleAt(coord, (uvw + float3(offset.x, 0.0f, 0.0f)).xy);
+        sample += SampleAt(coord, (uvw + float3(0.0f, 0.0f, offset.z)).xy);
+        sample += SampleAt(coord, (uvw + float3(offset.x, 0.0f, offset.z)).xy);
+        return sample * 0.25f;
+    #elif NON_POWER_OF_TWO == 6
+        // > 2:1 ratio in Y and Z
+        float3 uvw = MipUniforms.texelSize.xyz * (coord.xyz + float3(0.5f, 0.25f, 0.25f));
+        float3 offset = MipUniforms.texelSize.xyz * float3(0.0f, 0.5f, 0.5f);
+        TEXTURE_TYPE sample = SampleAt(coord, uvw.xy);
+        sample += SampleAt(coord, (uvw + float3(0.0f, offset.y, 0.0f)).xy);
+        sample += SampleAt(coord, (uvw + float3(0.0f, 0.0f, offset.z)).xy);
+        sample += SampleAt(coord, (uvw + float3(0.0f, offset.y, offset.z)).xy);
+        return sample * 0.25f;
+    #elif NON_POWER_OF_TWO == 7
+        // > 2:1 ratio in all dimensions (X, Y, Z)
+        float3 uvw = MipUniforms.texelSize.xyz * (coord.xyz + 0.25f);
+        float3 offset = MipUniforms.texelSize.xyz * 0.5f;
+        TEXTURE_TYPE sample = SampleAt(coord, uvw.xy);
+        sample += SampleAt(coord, (uvw + float3(offset.x, 0.0f, 0.0f)).xy);
+        sample += SampleAt(coord, (uvw + float3(0.0f, offset.y, 0.0f)).xy);
+        sample += SampleAt(coord, (uvw + float3(offset.x, offset.y, 0.0f)).xy);
+        sample += SampleAt(coord, (uvw + float3(0.0f, 0.0f, offset.z)).xy);
+        sample += SampleAt(coord, (uvw + float3(offset.x, 0.0f, offset.z)).xy);
+        sample += SampleAt(coord, (uvw + float3(0.0f, offset.y, offset.z)).xy);
+        sample += SampleAt(coord, (uvw + float3(offset.x, offset.y, offset.z)).xy);
+        return sample * 0.125f;
+    #endif
     
-    RWTexture2DArray<TEXTURE_TYPE> destinationMip0 = GetBindlessResource(MipUniforms.destinationMipHandle0);
-    destinationMip0[dtid.xyz] = PackColor<TEXTURE_TYPE>(sample);
+#else // 2D, 2DArray, Cube, CubeArray
+    #if NON_POWER_OF_TWO == 0
+        float2 uv = MipUniforms.texelSize.xy * (coord.xy + 0.5f);
+        return SampleAt(coord, uv);
+    #elif NON_POWER_OF_TWO == 1
+        float2 uv = MipUniforms.texelSize.xy * (coord.xy + float2(0.25f, 0.5f));
+        float2 offset = MipUniforms.texelSize.xy * float2(0.5f, 0.0f);
+        return 0.5f * (SampleAt(coord, uv) + SampleAt(coord, uv + offset));
+    #elif NON_POWER_OF_TWO == 2
+        float2 uv = MipUniforms.texelSize.xy * (coord.xy + float2(0.5f, 0.25f));
+        float2 offset = MipUniforms.texelSize.xy * float2(0.0f, 0.5f);
+        return 0.5f * (SampleAt(coord, uv) + SampleAt(coord, uv + offset));
+    #elif NON_POWER_OF_TWO == 3
+        float2 uv = MipUniforms.texelSize.xy * (coord.xy + 0.25f);
+        float2 offset = MipUniforms.texelSize.xy * 0.5f;
+        TEXTURE_TYPE sample = SampleAt(coord, uv);
+        sample += SampleAt(coord, uv + float2(offset.x, 0.0f));
+        sample += SampleAt(coord, uv + float2(0.0f, offset.y));
+        sample += SampleAt(coord, uv + offset);
+        return sample * 0.25f;
+    #endif
+#endif
+}
+
+void WriteMip0(uint3 coord, TEXTURE_TYPE color)
+{
+#if TEXTURE_DIMENSION == 0 // Texture2D
+    RWTexture2D<TEXTURE_TYPE> dst = GetBindlessResource(MipUniforms.destinationMipHandle0);
+    dst[coord.xy] = color;
+#else // All array/cube/3D types use Texture2DArray or RWTexture3D
+#if TEXTURE_DIMENSION == 4 // Texture3D
+    RWTexture3D<TEXTURE_TYPE> dst = GetBindlessResource(MipUniforms.destinationMipHandle0);
+    dst[coord.xyz] = color;
+#else
+    RWTexture2DArray<TEXTURE_TYPE> dst = GetBindlessResource(MipUniforms.destinationMipHandle0);
+    dst[coord.xyz] = color;
+#endif
+#endif
+}
+
+void WriteMip1(uint3 coord, TEXTURE_TYPE color)
+{
+#if TEXTURE_DIMENSION == 0 // Texture2D
+    RWTexture2D<TEXTURE_TYPE> dst = GetBindlessResource(MipUniforms.destinationMipHandle1);
+    dst[coord.xy >> 1] = color;
+#else
+#if TEXTURE_DIMENSION == 4 // Texture3D
+    RWTexture3D<TEXTURE_TYPE> dst = GetBindlessResource(MipUniforms.destinationMipHandle1);
+    dst[coord.xyz >> 1] = color;
+#else
+    RWTexture2DArray<TEXTURE_TYPE> dst = GetBindlessResource(MipUniforms.destinationMipHandle1);
+    dst[uint3(coord.xy >> 1, coord.z)] = color;
+#endif
+#endif
+}
+
+#if TEXTURE_DIMENSION == TEXTURE_DIMENSION_3D
+    #define THREADGROUP_SIZE_X 4
+    #define THREADGROUP_SIZE_Y 4
+    #define THREADGROUP_SIZE_Z 4
+#else
+    #define THREADGROUP_SIZE_X 8
+    #define THREADGROUP_SIZE_Y 8
+    #define THREADGROUP_SIZE_Z 1
+#endif
+
+[numthreads(THREADGROUP_SIZE_X, THREADGROUP_SIZE_Y, THREADGROUP_SIZE_Z)]
+void MipGenerationCS(uint3 dtid : SV_DispatchThreadID, uint3 gtid : SV_GroupThreadID)
+{
+    // Sample and downsample first mip
+    TEXTURE_TYPE sampleCenter = SampleWithNPOT(dtid);
     
+    // Write first output mip
+    WriteMip0(dtid, PackColor<TEXTURE_TYPE>(sampleCenter));
+    
+    // Early exit if we're only generating one mip
     if (MipUniforms.numMips == 1)
     {
         return;
     }
     
-    TEXTURE_TYPE dstSample = DownsampleQuad(sample);
+    // Generate second mip using wave intrinsics
     
-    const bool shouldWriteMip1 = ((gtid.x & 1) == 0) && ((gtid.y & 1) == 0);
+    // ddx() is temporary, it forces the SPV_KHR_compute_shader_derivatives extension to be emitted by DXC, allowing for threads to be grouped in 2x2 quads.
+    TEXTURE_TYPE sampleRight = ddx(sampleCenter) * 0.00001f + QuadReadAcrossX(sampleCenter);
+    TEXTURE_TYPE sampleDown = QuadReadAcrossY(sampleCenter);
+    TEXTURE_TYPE sampleDiag = QuadReadAcrossDiagonal(sampleCenter);
+    TEXTURE_TYPE dstSample = TEXTURE_TYPE(0.25f * (sampleCenter + sampleRight + sampleDown + sampleDiag));
+    
+    // Only one thread per 2x2 quad writes to second mip
+    bool shouldWriteMip1 = ((gtid.x & 1) == 0) && ((gtid.y & 1) == 0);
     if (shouldWriteMip1)
     {
-        RWTexture2DArray<TEXTURE_TYPE> destinationMip1 = GetBindlessResource(MipUniforms.destinationMipHandle1);
-        destinationMip1[uint3(dtid.xy >> 1, dtid.z)] = PackColor<TEXTURE_TYPE>(dstSample);
+        WriteMip1(dtid, PackColor<TEXTURE_TYPE>(dstSample));
     }
 }

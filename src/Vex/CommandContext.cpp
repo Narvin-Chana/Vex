@@ -443,33 +443,54 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         return;
     }
 
-    VEX_CHECK(texture.desc.type != TextureType::Texture3D,
-              "Texture3D mip generation is unsupported in Vex. You should create a custom pass instead.");
+    static constexpr std::string_view MipGenerationEntryPoint = "MipGenerationCS";
 
-    std::string entryPoint;
-    switch (texture.desc.type)
+    auto GetTextureDimensionDefine = [desc = &texture.desc](TextureType type) -> std::string
     {
-    case TextureType::Texture2D:
-        entryPoint = texture.desc.GetSliceCount() > 1 ? "MipGenerationTexture2DArray" : "MipGenerationTexture2D";
-        break;
-    case TextureType::TextureCube:
-        entryPoint = texture.desc.GetSliceCount() > 1 ? "MipGenerationTextureCubeArray" : "MipGenerationTextureCube";
-        break;
-    default:
-        break;
-    }
+        switch (type)
+        {
+        case TextureType::Texture2D:
+            return (desc->GetSliceCount() > 1) ? "1" : "0"; // 2DArray or 2D
+        case TextureType::TextureCube:
+            return (desc->GetSliceCount() > 6) ? "3" : "2"; // CubeArray or Cube
+        case TextureType::Texture3D:
+            return "4";
+        default:
+            return "0";
+        }
+    };
 
     // We have to perform a manual mip generation if not supported by the graphics API.
     ShaderKey mipGenerationShaderKey{
         .path = std::filesystem::current_path() / "MipGeneration.hlsl",
-        .entryPoint = std::move(entryPoint),
+        .entryPoint = std::string(MipGenerationEntryPoint),
         .type = ShaderType::ComputeShader,
         .defines = { ShaderDefine{ "TEXTURE_TYPE", std::string(FormatUtil::GetHLSLType(texture.desc.format)) },
+                     ShaderDefine{ "TEXTURE_DIMENSION", GetTextureDimensionDefine(texture.desc.type) },
                      ShaderDefine{ "LINEAR_SAMPLER_SLOT", std::format("s{}", backend->builtInLinearSamplerSlot) },
                      ShaderDefine{ "CONVERT_TO_SRGB", textureBinding.isSRGB ? "1" : "0" },
                      ShaderDefine{ "NON_POWER_OF_TWO" } }
     };
-    static constexpr u32 NonPowerOfTwoDefineIndex = 3;
+    const u32 nonPowerOfTwoDefineIndex = mipGenerationShaderKey.defines.size() - 1;
+
+    static auto ComputeNPOTFlag = [](u32 srcWidth, u32 srcHeight, u32 srcDepth, bool is3D) -> u32
+    {
+        if (!is3D)
+        {
+            // 2D logic
+            bool xRatio = (srcWidth / std::max(1u, srcWidth >> 1)) > 2;
+            bool yRatio = (srcHeight / std::max(1u, srcHeight >> 1)) > 2;
+            return (xRatio ? 1 : 0) | (yRatio ? 2 : 0);
+        }
+        else
+        {
+            // 3D logic
+            bool xRatio = (srcWidth / std::max(1u, srcWidth >> 1)) > 2;
+            bool yRatio = (srcHeight / std::max(1u, srcHeight >> 1)) > 2;
+            bool zRatio = (srcDepth / std::max(1u, srcDepth >> 1)) > 2;
+            return (xRatio ? 1 : 0) | (yRatio ? 2 : 0) | (zRatio ? 4 : 0);
+        }
+    };
 
     struct Uniforms
     {
@@ -493,23 +514,8 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
             isLastIteration = true;
         }
 
-        enum PowerOfTwoMode : u32
-        {
-            XOdd = 1,
-            YOdd = 2,
-        };
-        std::underlying_type_t<PowerOfTwoMode> powerOfTwoMode = 0;
-        if ((width > 1) && (width & 1))
-        {
-            // X is odd
-            powerOfTwoMode |= XOdd;
-        }
-        if ((height > 1) && (height & 1))
-        {
-            // Y is odd
-            powerOfTwoMode |= YOdd;
-        }
-        mipGenerationShaderKey.defines[NonPowerOfTwoDefineIndex].value = std::to_string(powerOfTwoMode);
+        mipGenerationShaderKey.defines[nonPowerOfTwoDefineIndex].value =
+            std::to_string(ComputeNPOTFlag(width, height, depth, texture.desc.type == TextureType::Texture3D));
 
         std::vector<ResourceBinding> bindings{
             TextureBinding{
@@ -555,7 +561,9 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         // For 2DArray: z = number of slices
         // For Cube: z = 6 * faces
         // For CubeArray: z = 6 * faces * numCubes
-        std::array<u32, 3> dispatchGroupCount{ (width + 7u) / 8u, (height + 7u) / 8u, texture.desc.GetSliceCount() };
+        // For 3D: z = depth
+        u32 dispatchZ = texture.desc.type == TextureType::Texture3D ? depth : texture.desc.GetSliceCount();
+        std::array<u32, 3> dispatchGroupCount{ (width + 7u) / 8u, (height + 7u) / 8u, dispatchZ };
         Dispatch(mipGenerationShaderKey, ConstantBinding(uniforms), dispatchGroupCount);
 
         width = std::max(1u, width >> (1 + !isLastIteration));
