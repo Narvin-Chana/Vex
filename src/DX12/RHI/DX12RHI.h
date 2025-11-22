@@ -63,7 +63,6 @@ public:
     virtual void FlushGPU() override;
 
     ComPtr<DX12Device>& GetNativeDevice();
-    virtual void* GetNativeDevicePtr() override;
     ComPtr<ID3D12CommandQueue>& GetNativeQueue(QueueType queueType);
 
 private:

@@ -110,12 +110,15 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
             setup_pix_3(${EXAMPLE_NAME})
         endif()
 
+        if(EXAMPLE_NAME STREQUAL "render_doc")
+            add_header_only_dependency(${EXAMPLE_NAME} render_doc "${render_doc_SOURCE_DIR}" "renderdoc/api/app" "")
+        endif()
+
         # Link the example
         target_link_libraries(${EXAMPLE_NAME} PRIVATE ${EXAMPLES_COMMON_LIBS})
         target_include_directories(${EXAMPLE_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${EXAMPLE_DIR}" "${CMAKE_SOURCE_DIR}/src")
 
         add_header_only_dependency(${EXAMPLE_NAME} stb "${stb_SOURCE_DIR}" "" "stb")
-        add_header_only_dependency(${EXAMPLE_NAME} render_doc "${render_doc_SOURCE_DIR}" "renderdoc/api/app" "")
     endif()
   endif()
 endforeach()

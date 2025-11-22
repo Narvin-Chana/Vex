@@ -13,7 +13,6 @@
 namespace vex
 {
 
-struct FrameCaptureAdapterInterface;
 struct BufferDesc;
 struct TextureDesc;
 struct PhysicalDevice;
@@ -61,8 +60,6 @@ struct RHIBase
 
     virtual std::vector<SyncToken> Submit(std::span<NonNullPtr<RHICommandList>> commandLists,
                                           std::span<SyncToken> dependencies) = 0;
-
-    virtual void* GetNativeDevicePtr() = 0;
 
     virtual void FlushGPU() = 0;
 };

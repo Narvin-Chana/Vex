@@ -3,6 +3,7 @@
 #include <string>
 
 // clang-format off
+// pix3.h needs Windows.h to work properly
 #include <Windows.h>
 #include <WinPixEventRuntime/pix3.h>
 // clang-format on

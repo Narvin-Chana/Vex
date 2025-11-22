@@ -414,11 +414,6 @@ void VkRHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBacken
     shaderEnv.defines.emplace_back("VEX_VULKAN");
 }
 
-void* VkRHI::GetNativeDevicePtr()
-{
-    return &device.get();
-}
-
 void VkRHI::WaitForTokenOnCPU(const SyncToken& syncToken)
 {
     auto& fence = (*fences)[syncToken.queueType];
