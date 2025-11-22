@@ -57,7 +57,21 @@ target_include_directories(imguiLib PUBLIC
 # Link ImGui with its dependencies
 target_link_libraries(imguiLib PUBLIC glfw Vex)
 
+message(STATUS "Fetching RenderDoc...")
+FetchContent_Declare(
+        render_doc
+        SOURCE_SUBDIR  "<invalid path>" # this forces FetchContent to pull but not configure the dependency
+        GIT_REPOSITORY https://github.com/baldurk/renderdoc.git
+        GIT_TAG        v1.41
+)
+FetchContent_MakeAvailable(render_doc)
+
 set(EXAMPLES_COMMON_LIBS Vex imguiLib glfw)
+
+include(VexDX12)
+set(WINDOWS_ONLY_EXAMPLES "pix_events")
+set(DX12_ONLY_EXAMPLES "pix_events")
+
 # Find all example directories
 file(GLOB EXAMPLE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/*")
 
@@ -67,6 +81,14 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
 
     # Get the example name from the directory name
     get_filename_component(EXAMPLE_NAME ${EXAMPLE_DIR} NAME)
+
+    if (EXAMPLE_NAME IN_LIST WINDOWS_ONLY_EXAMPLES AND LINUX)
+        continue()
+    endif()
+
+    if (EXAMPLE_NAME IN_LIST DX12_ONLY_EXAMPLES AND NOT VEX_ENABLE_DX12)
+        continue()
+    endif()
     
     # Find the source files in the example dir
     file(GLOB EXAMPLE_SOURCES "${EXAMPLE_DIR}/*.cpp" "${EXAMPLE_DIR}/*.h")
@@ -83,6 +105,14 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
 
         # Setup the runtime dependencies of Vex
         vex_setup_runtime(${EXAMPLE_NAME})
+
+        if(EXAMPLE_NAME STREQUAL "pix_events")
+            setup_pix_3(${EXAMPLE_NAME})
+        endif()
+
+        if(EXAMPLE_NAME STREQUAL "render_doc")
+            add_header_only_dependency(${EXAMPLE_NAME} render_doc "${render_doc_SOURCE_DIR}" "renderdoc/api/app" "")
+        endif()
 
         # Link the example
         target_link_libraries(${EXAMPLE_NAME} PRIVATE ${EXAMPLES_COMMON_LIBS})

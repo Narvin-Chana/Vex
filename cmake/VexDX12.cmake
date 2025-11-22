@@ -1,9 +1,7 @@
 # VexDX12.cmake - DX12 backend configuration
 include(VexHelpers)
 
-function(setup_dx12_backend TARGET)
-    message(STATUS "Setting up DirectX 12 backend...")
-
+function(setup_pix_3 TARGET)
     # =========================================
     # PIX Events Runtime
     # =========================================
@@ -11,8 +9,8 @@ function(setup_dx12_backend TARGET)
     set(PIX_EVENTS_DIR "${FETCHCONTENT_BASE_DIR}/PixEvents")
     if (NOT EXISTS "${PIX_EVENTS_DIR}/bin")
         download_and_decompress_archive(
-            "https://www.nuget.org/api/v2/package/WinPixEventRuntime/1.0.240308001"
-            "${PIX_EVENTS_DIR}"
+                "https://www.nuget.org/api/v2/package/WinPixEventRuntime/1.0.240308001"
+                "${PIX_EVENTS_DIR}"
         )
     endif()
 
@@ -24,13 +22,19 @@ function(setup_dx12_backend TARGET)
     if(NOT TARGET WinPixEventRuntime::WinPixEventRuntime)
         add_library(WinPixEventRuntime::WinPixEventRuntime SHARED IMPORTED GLOBAL)
         set_target_properties(WinPixEventRuntime::WinPixEventRuntime PROPERTIES
-            INTERFACE_INCLUDE_DIRECTORIES "${PIX_INCLUDE_DIR}"
-            IMPORTED_IMPLIB "${PIX_STATIC_LIB}"
-            IMPORTED_LOCATION "${PIX_RUNTIME_DLL}"
+                INTERFACE_INCLUDE_DIRECTORIES "${PIX_INCLUDE_DIR}"
+                IMPORTED_IMPLIB "${PIX_STATIC_LIB}"
+                IMPORTED_LOCATION "${PIX_RUNTIME_DLL}"
         )
     endif()
 
     target_link_libraries(${TARGET} PRIVATE WinPixEventRuntime::WinPixEventRuntime)
+endfunction()
+
+function(setup_dx12_backend TARGET)
+    message(STATUS "Setting up DirectX 12 backend...")
+
+    setup_pix_3(${TARGET})
     
     # =========================================
     # DirectX 12 Agility SDK
