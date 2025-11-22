@@ -252,9 +252,15 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     featuresFragmentShaderBarycentric.pNext = &featuresMutableDescriptors;
     featuresFragmentShaderBarycentric.fragmentShaderBarycentric = true;
 
+    // Allows for using derivatives in compute shaders.
+    ::vk::PhysicalDeviceComputeShaderDerivativesFeaturesKHR featuresComputeShaderDerivatives;
+    featuresComputeShaderDerivatives.pNext = &featuresFragmentShaderBarycentric;
+    featuresComputeShaderDerivatives.computeDerivativeGroupQuads = true;
+    featuresComputeShaderDerivatives.computeDerivativeGroupLinear = false;
+
     // Allows for null descriptors
     ::vk::PhysicalDeviceRobustness2FeaturesEXT featuresRobustness;
-    featuresRobustness.pNext = &featuresFragmentShaderBarycentric;
+    featuresRobustness.pNext = &featuresComputeShaderDerivatives;
     featuresRobustness.nullDescriptor = true;
 
     ::vk::PhysicalDeviceVulkan13Features features13;
@@ -407,8 +413,11 @@ void VkRHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBacken
             L"-fspv-target-env={}",
             StringToWString(std::string(reinterpret_cast<VkFeatureChecker&>(*GPhysicalDevice->featureChecker)
                                             .GetMaxSupportedVulkanVersion()))));
+
+        // Flags to keep Vk similar to DX12 hlsl conventions.
         shaderEnv.args.emplace_back(L"-fvk-use-dx-layout");
         shaderEnv.args.emplace_back(L"-fvk-support-nonzero-base-instance");
+        shaderEnv.args.emplace_back(L"-fvk-support-nonzero-base-vertex");
     }
 
     shaderEnv.defines.emplace_back("VEX_VULKAN");
