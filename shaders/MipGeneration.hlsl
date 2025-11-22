@@ -290,8 +290,8 @@ void MipGenerationCS(uint3 dtid : SV_DispatchThreadID, uint3 gtid : SV_GroupThre
     }
     
     // Generate second mip using wave intrinsics
-    
     // ddx() is temporary, it forces the SPV_KHR_compute_shader_derivatives extension to be emitted by DXC, allowing for threads to be grouped in 2x2 quads.
+    // An issue was opened on the DXC repo: https://github.com/microsoft/DirectXShaderCompiler/issues/7943
     TEXTURE_TYPE sampleRight = ddx(sampleCenter) * 0.00001f + QuadReadAcrossX(sampleCenter);
     TEXTURE_TYPE sampleDown = QuadReadAcrossY(sampleCenter);
     TEXTURE_TYPE sampleDiag = QuadReadAcrossDiagonal(sampleCenter);
