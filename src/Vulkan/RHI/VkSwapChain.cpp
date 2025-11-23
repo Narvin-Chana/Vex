@@ -34,12 +34,14 @@ static bool IsSwapChainSupported(::vk::PhysicalDevice device, ::vk::SurfaceKHR s
     return GetSwapChainSupportDetails(device, surface).IsValid();
 }
 
-// Looks for mailbox which allows to always take the most recent image. Falls back to FIFO. If VSync is off, we instead
-// take immediate mode.
 static ::vk::PresentModeKHR GetBestPresentMode(const VkSwapChainSupportDetails& details, bool useVSync)
 {
+    // VSync means we should use eFifo which is available on most platforms.
+    // Source: https://stackoverflow.com/questions/36896021/enabling-vsync-in-vulkan
     if (useVSync)
-        return ::vk::PresentModeKHR::eImmediate;
+    {
+        return ::vk::PresentModeKHR::eFifo;
+    }
 
     auto it = std::ranges::find(details.presentModes, ::vk::PresentModeKHR::eMailbox);
     return it != details.presentModes.end() ? *it : ::vk::PresentModeKHR::eFifo;
@@ -338,7 +340,7 @@ void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
     }
 
     VEX_LOG(Fatal, "Format \"{}\" not supported", ::vk::to_string(requestedFormat));
-    return {};
+    std::unreachable();
 }
 
 } // namespace vex::vk////////////
