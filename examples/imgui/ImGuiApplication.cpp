@@ -13,7 +13,7 @@ ImGuiApplication::ImGuiApplication()
 #endif
     graphics = vex::MakeUnique<vex::Graphics>(vex::GraphicsCreateDesc{
         .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
-        .swapChainFormat = SwapchainFormat,
+        .useSwapChain = true,
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
 

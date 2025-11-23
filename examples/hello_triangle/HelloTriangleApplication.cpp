@@ -13,8 +13,7 @@ HelloTriangleApplication::HelloTriangleApplication()
 
     graphics = vex::MakeUnique<vex::Graphics>(vex::GraphicsCreateDesc{
         .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
-        .swapChainFormat = vex::TextureFormat::RGBA8_UNORM,
-        .frameBuffering = vex::FrameBuffering::Triple,
+        .useSwapChain = true,
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
 
