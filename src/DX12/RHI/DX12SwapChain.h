@@ -1,9 +1,10 @@
 #pragma once
 
 #include <Vex/QueueType.h>
-#include <RHI/RHIFwd.h>
 #include <Vex/UniqueHandle.h>
+#include <Vex/PlatformWindow.h>
 
+#include <RHI/RHIFwd.h>
 #include <RHI/RHISwapChain.h>
 
 #include <DX12/DX12Headers.h>
@@ -20,17 +21,20 @@ class DX12SwapChain final : public RHISwapChainBase
 {
 public:
     DX12SwapChain(ComPtr<DX12Device>& device,
-                  SwapChainDescription desc,
+                  SwapChainDesc& desc,
                   const ComPtr<ID3D12CommandQueue>& graphicsCommandQueue,
                   const PlatformWindow& platformWindow);
     ~DX12SwapChain();
 
-    virtual void Resize(u32 width, u32 height) override;
+    virtual void RecreateSwapChain(u32 width, u32 height) override;
 
     virtual TextureDesc GetBackBufferTextureDescription() const override;
 
-    virtual void SetVSync(bool enableVSync) override;
-    virtual bool NeedsFlushForVSyncToggle() override;
+    virtual bool NeedsRecreation() const override;
+
+    virtual bool IsHDREnabled() const override;
+    virtual bool IsColorSpaceStillSupported() const override;
+    virtual ColorSpace GetValidColorSpace(ColorSpace preferredColorSpace) const override;
 
     virtual std::optional<RHITexture> AcquireBackBuffer(u8 frameIndex) override;
     virtual SyncToken Present(u8 frameIndex,
@@ -39,12 +43,22 @@ public:
                               bool isFullscreen) override;
 
 private:
+    DXGI_FORMAT GetDXGIFormat() const;
+    DXGI_OUTPUT_DESC1 GetBestOutputDesc() const;
+
+    void ApplyColorSpace() const;
+
     static u8 GetBackBufferCount(FrameBuffering frameBuffering);
 
     ComPtr<DX12Device> device;
-    SwapChainDescription desc;
+    NonNullPtr<SwapChainDesc> desc;
     ComPtr<ID3D12CommandQueue> graphicsCommandQueue;
     ComPtr<IDXGISwapChain4> swapChain;
+
+    PlatformWindowHandle windowHandle;
+
+    ColorSpace currentColorSpace = ColorSpace::sRGB;
+    TextureFormat format = TextureFormat::BGRA8_UNORM;
 };
 
 } // namespace vex::dx12

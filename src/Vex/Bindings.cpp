@@ -128,7 +128,7 @@ void ValidateTextureBinding(const TextureBinding& binding, TextureUsage::Flags v
             VEX_LOG(Fatal,
                     "Invalid binding for resource \"{}\": Texture's format ({}) does not allow for an SRGB binding.",
                     texture.desc.name,
-                    magic_enum::enum_name(texture.desc.format));
+                    texture.desc.format);
         }
 
         if (binding.usage == TextureBindingUsage::ShaderReadWrite)
@@ -147,7 +147,7 @@ void ValidateTextureBinding(const TextureBinding& binding, TextureUsage::Flags v
                 "Invalid binding for resource \"{}\": Texture's format ({}) requires the depth stencil usage "
                 "upon creation.",
                 texture.desc.name,
-                magic_enum::enum_name(texture.desc.format));
+                texture.desc.format);
     }
 
     if (!TextureUtil::IsBindingUsageCompatibleWithUsage(texture.desc.usage, binding.usage))

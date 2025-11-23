@@ -7,6 +7,7 @@
 #include <Vex/Buffer.h>
 #include <Vex/Concepts.h>
 #include <Vex/EnumFlags.h>
+#include <Vex/Formattable.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
 

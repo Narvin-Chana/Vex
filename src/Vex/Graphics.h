@@ -41,15 +41,19 @@ class RenderExtension;
 struct GraphicsCreateDesc
 {
     PlatformWindow platformWindow;
+
+    // Enables or disables using a swapchain. If this is disabled, all calls to "Present" are invalid.
     bool useSwapChain = true;
-    TextureFormat swapChainFormat = TextureFormat::BGRA8_UNORM;
+    SwapChainDesc swapChainDesc;
+
     // Clear value to use for present textures.
     TextureClearValue presentTextureClearValue = { .flags = TextureClear::ClearColor, .color = { 0, 0, 0, 0 } };
-    bool useVSync = false;
-    // Determines the minimum number of backbuffers the application will leverage at once.
-    FrameBuffering frameBuffering = FrameBuffering::Triple;
+
+    // Enables the GPU debug layer.
     bool enableGPUDebugLayer = !VEX_SHIPPING;
-    bool enableGPUBasedValidation = !VEX_SHIPPING;
+    // Enables GPU-based validation. Can be very costly in terms of performance.
+    bool enableGPUBasedValidation = VEX_DEBUG;
+
     ShaderCompilerSettings shaderCompilerSettings;
 };
 
@@ -59,8 +63,15 @@ public:
     Graphics(const GraphicsCreateDesc& desc);
     ~Graphics();
 
+    Graphics(const Graphics&) = delete;
+    Graphics& operator=(const Graphics&) = delete;
+
+    Graphics(Graphics&&) = default;
+    Graphics& operator=(Graphics&&) = default;
+
     // Presents the current presentTexture to the swapchain. Will stall if the GPU's next backbuffer is not yet ready
-    // (depends on your FrameBuffering).
+    // (depends on your FrameBuffering). If you use an HDR swapchain, this will apply HDR conversions, if necessary,
+    // before copying the present texture to the swapChain.
     void Present(bool isFullscreenMode);
 
     // Begin a scoped CommandContext in which GPU commands can be submitted. The command context will automatically
@@ -103,8 +114,11 @@ public:
     // Flushes all currently submitted GPU commands.
     void FlushGPU();
 
-    // Enables or disables vsync when presenting.
+    // Enables or disables vertical sync when presenting. Could lead to having to recreate the swapchain.
     void SetVSync(bool useVSync);
+
+    // Determines if the swapchain is allowed to use an HDR format. Could lead to having to recreate the swapchain.
+    void SetUseHDRIfSupported(bool newValue);
 
     // Called when the underlying window resizes, allows the swapchain to be resized.
     void OnWindowResized(u32 newWidth, u32 newHeight);
@@ -145,7 +159,7 @@ private:
     RHITexture& GetRHITexture(TextureHandle textureHandle);
     RHIBuffer& GetRHIBuffer(BufferHandle bufferHandle);
 
-    void CreatePresentTextures();
+    void RecreatePresentTextures();
 
     // Index of the current frame, possible values depends on buffering:
     //  {0} if single buffering
@@ -192,7 +206,6 @@ private:
 
     std::vector<UniqueHandle<RenderExtension>> renderExtensions;
 
-    bool isSwapchainValid = true;
     u32 builtInLinearSamplerSlot = ~0;
 
     static constexpr u32 DefaultRegistrySize = 1024;

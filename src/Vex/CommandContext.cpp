@@ -349,7 +349,7 @@ void CommandContext::Dispatch(const ShaderKey& shader,
 {
     if (shader.type != ShaderType::ComputeShader)
     {
-        VEX_LOG(Fatal, "Invalid shader type passed to Dispatch call: {}", magic_enum::enum_name(shader.type));
+        VEX_LOG(Fatal, "Invalid shader type passed to Dispatch call: {}", shader.type);
     }
 
     using namespace CommandContext_Internal;

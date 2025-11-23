@@ -7,9 +7,7 @@
 #define VEX_STRINGIFY(val) #val
 
 #define VEX_INVALID_RT_SHADER_TYPE(name, value)                                                                        \
-    VEX_LOG(Fatal,                                                                                                     \
-            "Invalid type passed to TraceRays call for " VEX_STRINGIFY(name) " : {}",                                  \
-            magic_enum::enum_name(value))
+    VEX_LOG(Fatal, "Invalid type passed to TraceRays call for " VEX_STRINGIFY(name) " : {}", value)
 
 namespace vex
 {

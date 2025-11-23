@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <utility>
 
+#include <Vex/Formattable.h>
 #include <Vex/PlatformWindow.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHICommandList.h>
@@ -33,22 +34,6 @@ static bool IsSwapChainSupported(::vk::PhysicalDevice device, ::vk::SurfaceKHR s
     return GetSwapChainSupportDetails(device, surface).IsValid();
 }
 
-static ::vk::SurfaceFormatKHR GetBestSurfaceFormat(const VkSwapChainSupportDetails& details,
-                                                   ::vk::Format requestedFormat)
-{
-    for (const ::vk::SurfaceFormatKHR& availableFormat : details.formats)
-    {
-        if (availableFormat.format == requestedFormat &&
-            availableFormat.colorSpace == ::vk::ColorSpaceKHR::eSrgbNonlinear)
-        {
-            return availableFormat;
-        }
-    }
-
-    VEX_LOG(Fatal, "Format \"{}\" not supported", ::vk::to_string(requestedFormat));
-    return {};
-}
-
 // Looks for mailbox which allows to always take the most recent image. Falls back to FIFO. If VSync is off, we instead
 // take immediate mode.
 static ::vk::PresentModeKHR GetBestPresentMode(const VkSwapChainSupportDetails& details, bool useVSync)
@@ -56,7 +41,6 @@ static ::vk::PresentModeKHR GetBestPresentMode(const VkSwapChainSupportDetails& 
     if (useVSync)
         return ::vk::PresentModeKHR::eImmediate;
 
-    // Included in <utility>, which is more light-weight versus <algorithm>/<ranges>.
     auto it = std::ranges::find(details.presentModes, ::vk::PresentModeKHR::eMailbox);
     return it != details.presentModes.end() ? *it : ::vk::PresentModeKHR::eFifo;
 }
@@ -78,68 +62,148 @@ static ::vk::Extent2D GetBestSwapExtent(const VkSwapChainSupportDetails& details
     return actualExtent;
 }
 
-VkSwapChain::VkSwapChain(NonNullPtr<VkGPUContext> ctx,
-                         const SwapChainDescription& desc,
-                         const PlatformWindow& platformWindow)
+VkSwapChain::VkSwapChain(NonNullPtr<VkGPUContext> ctx, SwapChainDesc& desc, const PlatformWindow& platformWindow)
     : ctx{ ctx }
     , desc{ desc }
 {
     VEX_ASSERT(IsSwapChainSupported(ctx->physDevice, ctx->surface));
+    RecreateSwapChain(platformWindow.width, platformWindow.height);
 
-    supportDetails = GetSwapChainSupportDetails(ctx->physDevice, ctx->surface);
-    surfaceFormat = GetBestSurfaceFormat(supportDetails, TextureFormatToVulkan(desc.format, false));
-    presentMode = GetBestPresentMode(supportDetails, desc.useVSync);
-
-    u32 maxSupportedImageCount =
-        std::max(supportDetails.capabilities.minImageCount + 1, supportDetails.capabilities.maxImageCount);
-    u8 requestedImageCount = std::to_underlying(desc.frameBuffering);
-
-    // Need to have at least the requested amount of swap chain images
-    VEX_ASSERT(maxSupportedImageCount >= requestedImageCount);
-
-    InitSwapchainResource(platformWindow.width, platformWindow.height);
-
-    auto BinarySemaphoreCreator = [&ctx]
+    auto BinarySemaphoreCreator = [ctx = ctx]
     {
         ::vk::SemaphoreTypeCreateInfoKHR createInfo{ .semaphoreType = ::vk::SemaphoreType::eBinary };
         return VEX_VK_CHECK <<= ctx->device.createSemaphoreUnique(::vk::SemaphoreCreateInfo{
                    .pNext = &createInfo,
                });
     };
-    // Requires including the heavy <algorithm>
+
+    const u32 maxSupportedImageCount =
+        std::max(supportDetails.capabilities.minImageCount + 1, supportDetails.capabilities.maxImageCount);
+    const u8 requestedImageCount = std::to_underlying(desc.frameBuffering);
+
+    // Need to have at least the requested amount of swap chain images
+    VEX_ASSERT(maxSupportedImageCount >= requestedImageCount);
     std::ranges::generate_n(std::back_inserter(backbufferAcquisition), requestedImageCount, BinarySemaphoreCreator);
     std::ranges::generate_n(std::back_inserter(presentSemaphore), requestedImageCount, BinarySemaphoreCreator);
 }
 
-void VkSwapChain::Resize(u32 width, u32 height)
+void VkSwapChain::RecreateSwapChain(u32 width, u32 height)
 {
-    swapchain.reset();
     supportDetails = GetSwapChainSupportDetails(ctx->physDevice, ctx->surface);
+    currentColorSpace = GetValidColorSpace(desc->preferredColorSpace);
+    surfaceFormat = GetBestSurfaceFormat(supportDetails);
+
+    presentMode = GetBestPresentMode(supportDetails, desc->useVSync);
+
+    if (!desc->useHDRIfSupported || currentColorSpace == desc->preferredColorSpace)
+    {
+        VEX_LOG(Info, "SwapChain uses the format ({}) with color space {}.", surfaceFormat.format, currentColorSpace);
+    }
+    else
+    {
+        VEX_LOG(Warning,
+                "The user-preferred swapchain color space ({}) is not supported by your current display. Falling back "
+                "to format {} "
+                "with color space {} instead.",
+                desc->preferredColorSpace,
+                surfaceFormat.format,
+                currentColorSpace);
+    }
+
     InitSwapchainResource(width, height);
+}
+
+bool VkSwapChain::NeedsRecreation() const
+{
+    const ::vk::PresentModeKHR newPresentMode = GetBestPresentMode(supportDetails, desc->useVSync);
+    const bool needsRecreationDueToVSync = newPresentMode != presentMode;
+
+    return backbufferIsOutOfDate || needsRecreationDueToVSync || !IsColorSpaceStillSupported() ||
+           (!desc->useHDRIfSupported && IsHDREnabled());
 }
 
 TextureDesc VkSwapChain::GetBackBufferTextureDescription() const
 {
-    return TextureDesc{ .name = "backbuffer",
-                               .type = TextureType::Texture2D,
-                               .format = VulkanToTextureFormat(surfaceFormat.format),
-                               .width = width,
-                               .height = height,
-                               .depthOrSliceCount = 1,
-                               .mips = 1,
-                               .usage = TextureUsage::RenderTarget | TextureUsage::ShaderRead };
+    return TextureDesc{
+        .name = "backbuffer",
+        .type = TextureType::Texture2D,
+        .format = VulkanToTextureFormat(surfaceFormat.format),
+        .width = width,
+        .height = height,
+        .depthOrSliceCount = 1,
+        .mips = 1,
+        .usage = TextureUsage::RenderTarget | TextureUsage::ShaderRead,
+    };
 }
 
-void VkSwapChain::SetVSync(bool enableVSync)
+bool VkSwapChain::IsHDREnabled() const
 {
-    presentMode = GetBestPresentMode(supportDetails, enableVSync);
-    desc.useVSync = enableVSync;
-    InitSwapchainResource(width, height);
+    return (surfaceFormat.colorSpace != ::vk::ColorSpaceKHR::eSrgbNonlinear);
 }
 
-bool VkSwapChain::NeedsFlushForVSyncToggle()
+bool VkSwapChain::IsColorSpaceStillSupported() const
 {
-    return true;
+    // Determine what the best color space would be given current conditions
+    ColorSpace bestColorSpace = GetValidColorSpace(desc->preferredColorSpace);
+
+    // If the best color space differs from what we're currently using, we need to recreate
+    return bestColorSpace == currentColorSpace;
+}
+
+ColorSpace VkSwapChain::GetValidColorSpace(ColorSpace preferredColorSpace) const
+{
+    if (!desc->useHDRIfSupported)
+    {
+        return ColorSpace::sRGB;
+    }
+
+    // Query current surface formats to see what's actually supported
+    auto surfaceFormats = VEX_VK_CHECK <<= ctx->physDevice.getSurfaceFormatsKHR(ctx->surface);
+    
+    // Helper to check if a specific color space is supported
+    auto IsColorSpaceSupported = [&surfaceFormats](::vk::ColorSpaceKHR colorSpace) -> bool
+    {
+        return std::ranges::any_of(surfaceFormats,
+                                   [colorSpace](const ::vk::SurfaceFormatKHR& format)
+                                   { return format.colorSpace == colorSpace; });
+    };
+
+    // Try to find the preferred color space
+    ::vk::ColorSpaceKHR preferredVkColorSpace;
+    switch (preferredColorSpace)
+    {
+    case ColorSpace::sRGB:
+        preferredVkColorSpace = ::vk::ColorSpaceKHR::eSrgbNonlinear;
+        break;
+    case ColorSpace::scRGB:
+        preferredVkColorSpace = ::vk::ColorSpaceKHR::eExtendedSrgbNonlinearEXT;
+        break;
+    case ColorSpace::HDR10:
+        preferredVkColorSpace = ::vk::ColorSpaceKHR::eHdr10St2084EXT;
+        break;
+    default:
+        preferredVkColorSpace = ::vk::ColorSpaceKHR::eSrgbNonlinear;
+        break;
+    }
+
+    if (IsColorSpaceSupported(preferredVkColorSpace))
+    {
+        return preferredColorSpace;
+    }
+
+    // Fallback: try other HDR formats in order of preference
+    if (IsColorSpaceSupported(::vk::ColorSpaceKHR::eHdr10St2084EXT))
+    {
+        return ColorSpace::HDR10;
+    }
+
+    if (IsColorSpaceSupported(::vk::ColorSpaceKHR::eExtendedSrgbNonlinearEXT))
+    {
+        return ColorSpace::scRGB;
+    }
+
+    // Final fallback to sRGB
+    return ColorSpace::sRGB;
 }
 
 std::optional<RHITexture> VkSwapChain::AcquireBackBuffer(u8 frameIndex)
@@ -152,6 +216,7 @@ std::optional<RHITexture> VkSwapChain::AcquireBackBuffer(u8 frameIndex)
                                                &currentBackbufferId);
     if (res == ::vk::Result::eErrorOutOfDateKHR)
     {
+        backbufferIsOutOfDate = true;
         return {};
     }
 
@@ -211,23 +276,24 @@ void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
     height = inHeight;
     ::vk::Extent2D extent = GetBestSwapExtent(supportDetails, width, height);
 
-    ::vk::SwapchainCreateInfoKHR swapChainCreateInfo{ .surface = ctx->surface,
-                                                      .minImageCount = std::to_underlying(desc.frameBuffering),
-                                                      .imageFormat = surfaceFormat.format,
-                                                      .imageColorSpace = surfaceFormat.colorSpace,
-                                                      .imageExtent = extent,
-                                                      .imageArrayLayers = 1,
-                                                      .imageUsage = ::vk::ImageUsageFlagBits::eColorAttachment |
-                                                                    ::vk::ImageUsageFlagBits::eTransferDst |
-                                                                    ::vk::ImageUsageFlagBits::eTransferSrc,
-                                                      .imageSharingMode = ::vk::SharingMode::eExclusive,
-                                                      .queueFamilyIndexCount = 0,
-                                                      .pQueueFamilyIndices = nullptr,
-                                                      .preTransform = supportDetails.capabilities.currentTransform,
-                                                      .compositeAlpha = ::vk::CompositeAlphaFlagBitsKHR::eOpaque,
-                                                      .presentMode = presentMode,
-                                                      .clipped = ::vk::True,
-                                                      .oldSwapchain = {} };
+    ::vk::SwapchainCreateInfoKHR swapChainCreateInfo{
+        .surface = ctx->surface,
+        .minImageCount = std::to_underlying(desc->frameBuffering),
+        .imageFormat = surfaceFormat.format,
+        .imageColorSpace = surfaceFormat.colorSpace,
+        .imageExtent = extent,
+        .imageArrayLayers = 1,
+        .imageUsage = ::vk::ImageUsageFlagBits::eColorAttachment | ::vk::ImageUsageFlagBits::eTransferDst |
+                      ::vk::ImageUsageFlagBits::eTransferSrc,
+        .imageSharingMode = ::vk::SharingMode::eExclusive,
+        .queueFamilyIndexCount = 0,
+        .pQueueFamilyIndices = nullptr,
+        .preTransform = supportDetails.capabilities.currentTransform,
+        .compositeAlpha = ::vk::CompositeAlphaFlagBitsKHR::eOpaque,
+        .presentMode = presentMode,
+        .clipped = ::vk::True,
+        .oldSwapchain = swapchain ? *swapchain : nullptr,
+    };
 
     swapchain = VEX_VK_CHECK <<= ctx->device.createSwapchainKHRUnique(swapChainCreateInfo);
 
@@ -236,6 +302,43 @@ void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
     {
         VEX_LOG(Warning, "Swapchain returned more images than requested for. This might cause instabilities");
     }
+
+    // We're no longer out of date.
+    backbufferIsOutOfDate = false;
 }
 
-} // namespace vex::vk
+::vk::SurfaceFormatKHR VkSwapChain::GetBestSurfaceFormat(const VkSwapChainSupportDetails& details)
+{
+    ::vk::Format requestedFormat =
+        TextureFormatToVulkan(ColorSpaceToSwapChainFormat(currentColorSpace, desc->useHDRIfSupported), false);
+
+    ::vk::ColorSpaceKHR requestedColorSpace;
+    switch (currentColorSpace)
+    {
+    case ColorSpace::scRGB:
+        // Not 100% sure about if this is the one that maps to what we want (especially with the Linear/NonLinear
+        // aspect).
+        requestedColorSpace = ::vk::ColorSpaceKHR::eExtendedSrgbNonlinearEXT;
+        break;
+    case ColorSpace::HDR10:
+        requestedColorSpace = ::vk::ColorSpaceKHR::eHdr10St2084EXT;
+        break;
+    case ColorSpace::sRGB:
+    default:
+        requestedColorSpace = ::vk::ColorSpaceKHR::eSrgbNonlinear;
+        break;
+    }
+
+    for (const ::vk::SurfaceFormatKHR& availableFormat : details.formats)
+    {
+        if (availableFormat.format == requestedFormat && availableFormat.colorSpace == requestedColorSpace)
+        {
+            return availableFormat;
+        }
+    }
+
+    VEX_LOG(Fatal, "Format \"{}\" not supported", ::vk::to_string(requestedFormat));
+    return {};
+}
+
+} // namespace vex::vk////////////

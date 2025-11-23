@@ -81,8 +81,8 @@ std::vector<UniqueHandle<PhysicalDevice>> DX12RHI::EnumeratePhysicalDevices()
             device.As(&minVersionDevice);
             if (minVersionDevice)
             {
-                physicalDevices.push_back(MakeUnique<DX12PhysicalDevice>(std::move(adapter), minVersionDevice));
-                adapter = nullptr;
+                physicalDevices.push_back(MakeUnique<DX12PhysicalDevice>(adapter, minVersionDevice));
+                //adapter = nullptr;
             }
         }
 
@@ -141,7 +141,7 @@ void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
     fences = DX12RHI_Internal::CreateFences(device);
 }
 
-RHISwapChain DX12RHI::CreateSwapChain(const SwapChainDescription& desc, const PlatformWindow& platformWindow)
+RHISwapChain DX12RHI::CreateSwapChain(SwapChainDesc& desc, const PlatformWindow& platformWindow)
 {
     return DX12SwapChain(device, desc, GetNativeQueue(QueueType::Graphics), platformWindow);
 }
