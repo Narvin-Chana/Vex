@@ -26,10 +26,6 @@ HelloCubeApplication::HelloCubeApplication()
     graphics = vex::MakeUnique<vex::Graphics>(vex::GraphicsCreateDesc{
         .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
         .useSwapChain = true,
-        .swapChainDesc = vex::SwapChainDesc{
-            .useHDRIfSupported = true,
-            .preferredColorSpace = vex::ColorSpace::HDR10,
-        },
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
     SetupShaderErrorHandling();
