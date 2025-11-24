@@ -1,9 +1,11 @@
-#include <HDR.h>
+#include "HDR.h"
 
-#include <Vex/Formattable.h>
+#include <GLFWIncludes.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+
+#include <Vex/Formattable.h>
 
 float* hdrData;
 vex::i32 hdrWidth, hdrHeight, hdrChannels;
