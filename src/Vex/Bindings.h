@@ -18,24 +18,35 @@ namespace vex
 
 struct ConstantBinding
 {
-    explicit ConstantBinding(const void* data, std::span<const byte>::size_type size)
+    constexpr ConstantBinding() = default;
+
+    // Construct from raw ptr and size.
+    constexpr explicit ConstantBinding(const void* data, std::span<const byte>::size_type size)
         : data{ reinterpret_cast<const byte*>(data), size }
     {
     }
 
+    // Construct from span.
     template <typename T>
     explicit ConstantBinding(std::span<T> data)
         : data(std::as_bytes(data))
     {
     }
 
-    // Avoids this constructor taking in a container, and thus polluting constant data with the container's data (eg: a
+    // Construct constant binding from any non-container T.
+    // This constructor's concepts are here to avoid taking in a container, and thus polluting constant data with the container's data (eg: a
     // vector's size/capacity).
     template <typename T>
         requires(sizeof(T) <= MaxTheoreticalLocalConstantsByteSize and not IsContainer<T>)
     explicit ConstantBinding(const T& data)
         : ConstantBinding(static_cast<const void*>(&data), sizeof(T))
     {
+    
+    }
+
+    constexpr bool IsValid() const
+    {
+        return !data.empty();
     }
 
     std::span<const byte> data;

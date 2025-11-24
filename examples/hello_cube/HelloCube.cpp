@@ -97,14 +97,18 @@ HelloCubeApplication::HelloCubeApplication()
         // Use the loaded image for mip index 0.
         const std::filesystem::path uvImagePath = ExamplesDir / "uv-guide.png";
         vex::i32 width, height, channels;
-        void* imageData = stbi_load(uvImagePath.string().c_str(), &width, &height, &channels, 4);
-        VEX_ASSERT(imageData != nullptr);
+        vex::u8* imageData = stbi_load(uvImagePath.string().c_str(), &width, &height, &channels, 4);
+        if (!imageData)
+        {
+            const char* error = stbi_failure_reason();
+            VEX_LOG(vex::Fatal, "Failed to load uv-guide.png: {}", error);
+        }
 
         // Vex requires that the upload data for textures be tightly packed together! This shouldn't be an issue as most
         // file formats tightly pack data to avoid wasting space with padding.
         std::vector<vex::u8> fullImageData;
         fullImageData.reserve(width * height * channels);
-        std::copy_n(static_cast<vex::u8*>(imageData), width * height * channels, std::back_inserter(fullImageData));
+        std::copy_n(imageData, width * height * channels, std::back_inserter(fullImageData));
 
         uvGuideTexture =
             graphics->CreateTexture({ .name = "UV Guide",
@@ -312,4 +316,10 @@ void HelloCubeApplication::OnResize(GLFWwindow* window, uint32_t width, uint32_t
                 .depth = 0,
             },
     });
+}
+
+int main()
+{
+    HelloCubeApplication application;
+    application.Run();
 }

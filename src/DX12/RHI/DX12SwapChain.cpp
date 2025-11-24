@@ -73,7 +73,7 @@ bool DX12SwapChain::NeedsRecreation() const
     return
         // Recreate the swapchain if the current swapchain's color space no longer matches the color space of the
         // output.
-        !IsColorSpaceStillSupported() ||
+        !IsColorSpaceStillSupported(*desc) ||
         // Or if we're outputting as HDR, but the swapchain desc no longer allows this.
         (!desc->useHDRIfSupported && IsHDREnabled());
 }
@@ -85,14 +85,13 @@ void DX12SwapChain::RecreateSwapChain(u32 width, u32 height)
 
     if (!desc->useHDRIfSupported || currentColorSpace == desc->preferredColorSpace)
     {
-        VEX_LOG(Info, "SwapChain uses the format ({}) with color space {}.", format, currentColorSpace);
+        VEX_LOG(Info, "SwapChain now uses the format ({}) with color space {}.", format, currentColorSpace);
     }
     else
     {
         VEX_LOG(Warning,
                 "The user-preferred swapchain color space ({}) is not supported by your current display. Falling back "
-                "to format {} "
-                "with color space {} instead.",
+                "to format {} with color space {} instead.",
                 desc->preferredColorSpace,
                 format,
                 currentColorSpace);
@@ -130,56 +129,6 @@ void DX12SwapChain::RecreateSwapChain(u32 width, u32 height)
     ApplyColorSpace();
 }
 
-bool DX12SwapChain::IsHDREnabled() const
-{
-    return currentColorSpace != ColorSpace::sRGB;
-}
-
-bool DX12SwapChain::IsColorSpaceStillSupported() const
-{
-    // Compare the output's actual color space to what we're currently using.
-    bool matches = false;
-    DXGI_OUTPUT_DESC1 outputDesc = GetBestOutputDesc();
-
-    ColorSpace outputColorSpace = DX12SwapChain_Private::DXGIToColorSpace(outputDesc.ColorSpace);
-
-    // Check if the display's HDR mode matches what we need
-    bool outputSupportsHDR = (outputColorSpace != ColorSpace::sRGB);
-    bool currentIsHDR = (currentColorSpace != ColorSpace::sRGB);
-    bool preferredIsHDR = (desc->preferredColorSpace != ColorSpace::sRGB);
-
-    // If HDR capability changed (HDR<->SDR), we must recreate
-    if (outputSupportsHDR != currentIsHDR && preferredIsHDR)
-    {
-        VEX_LOG(Info,
-                "Display HDR state changed (output supports HDR: {}, current uses HDR: {})",
-                outputSupportsHDR,
-                currentIsHDR);
-        return false;
-    }
-
-    // If both are HDR, check if the output's specific format matches user preference
-    // and differs from what we're using
-    if (outputSupportsHDR)
-    {
-
-        // If user prefers a specific HDR format and output now matches it,
-        // but we're using something different, recreate
-        if (preferredIsHDR && outputColorSpace == desc->preferredColorSpace &&
-            currentColorSpace != desc->preferredColorSpace)
-        {
-            VEX_LOG(Info,
-                    "Output now supports preferred HDR format {} (currently using {})",
-                    desc->preferredColorSpace,
-                    currentColorSpace);
-            return false;
-        }
-    }
-
-    // Still compatible
-    return true;
-}
-
 ColorSpace DX12SwapChain::GetValidColorSpace(ColorSpace preferredColorSpace) const
 {
     if (!desc->useHDRIfSupported)
@@ -191,11 +140,13 @@ ColorSpace DX12SwapChain::GetValidColorSpace(ColorSpace preferredColorSpace) con
     const DXGI_OUTPUT_DESC1 outputDesc = GetBestOutputDesc();
     const ColorSpace recommendedColorSpace = DX12SwapChain_Private::DXGIToColorSpace(outputDesc.ColorSpace);
     const bool isHDRColorSpace = recommendedColorSpace != ColorSpace::sRGB;
-    // HDR color space being available means we can use any user-preferred color space.
+    // HDR color spaces being available means we can use any user-preferred color space.
     if (isHDRColorSpace)
     {
         return preferredColorSpace;
     }
+
+    // Final fallback to sRGB
     return ColorSpace::sRGB;
 }
 
@@ -260,14 +211,13 @@ DXGI_OUTPUT_DESC1 DX12SwapChain::GetBestOutputDesc() const
     }
 
     DX12PhysicalDevice& physDevice = static_cast<DX12PhysicalDevice&>(*GPhysicalDevice);
-
-    // Get a fresh adapter from the current factory, not the cached one.
-    ComPtr<IDXGIAdapter1> adapter;
     ComPtr<IDXGIAdapter4> adapter4;
 
-    // Re-enumerate to get the current adapter
-    for (UINT adapterIndex = 0; DXGIFactory::dxgiFactory->EnumAdapters1(adapterIndex, &adapter) != DXGI_ERROR_NOT_FOUND;
-         ++adapterIndex)
+    ComPtr<IDXGIAdapter1> adapter;
+    // Get a fresh adapter from the current factory (since it could have been changed).
+    for (UINT adapterIndex = 0;
+            DXGIFactory::dxgiFactory->EnumAdapters1(adapterIndex, &adapter) != DXGI_ERROR_NOT_FOUND;
+            ++adapterIndex)
     {
         DXGI_ADAPTER_DESC1 desc;
         adapter->GetDesc1(&desc);
@@ -285,12 +235,12 @@ DXGI_OUTPUT_DESC1 DX12SwapChain::GetBestOutputDesc() const
         }
     }
 
-    // If we didn't find it via enumeration, fall back to the cached adapter (shouldn't happen).
+    // If we didn't find it via enumeration, fall back to the cached adapter.
     if (!adapter4)
     {
         adapter4 = physDevice.adapter;
     }
-    // Otherwise, update the adapter.
+    // Otherwise, update the adapter physical device's adapter with its new version.
     else
     {
         static_cast<DX12PhysicalDevice&>(*GPhysicalDevice).adapter = adapter4;

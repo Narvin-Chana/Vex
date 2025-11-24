@@ -157,3 +157,9 @@ void HelloTriangleGraphicsApplication::OnResize(GLFWwindow* window, uint32_t wid
                                   .mips = 1,
                                   .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
 }
+
+int main()
+{
+    HelloTriangleGraphicsApplication application;
+    application.Run();
+}

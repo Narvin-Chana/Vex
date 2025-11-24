@@ -106,3 +106,9 @@ void HelloRayTracing::OnResize(GLFWwindow* window, uint32_t newWidth, uint32_t n
         .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite,
     });
 }
+
+int main()
+{
+    HelloRayTracing application;
+    application.Run();
+}

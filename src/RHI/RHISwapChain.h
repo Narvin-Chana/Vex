@@ -84,12 +84,33 @@ public:
 
     virtual TextureDesc GetBackBufferTextureDescription() const = 0;
 
-    virtual bool IsHDREnabled() const = 0;
-    virtual bool IsColorSpaceStillSupported() const = 0;
     virtual ColorSpace GetValidColorSpace(ColorSpace preferredColorSpace) const = 0;
 
     virtual std::optional<RHITexture> AcquireBackBuffer(u8 frameIndex) = 0;
     virtual SyncToken Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandList> commandList, bool isFullscreen) = 0;
+
+    bool IsHDREnabled() const
+    {
+        return currentColorSpace != ColorSpace::sRGB;
+    }
+
+    bool IsColorSpaceStillSupported(SwapChainDesc& desc) const
+    {
+        // Determine what the best color space would be given current conditions
+        ColorSpace bestColorSpace = GetValidColorSpace(desc.preferredColorSpace);
+
+        // If the best color space differs from what we're currently using, we need to recreate
+        return bestColorSpace == currentColorSpace;
+    }
+
+    ColorSpace GetCurrentColorSpace() const
+    {
+        return currentColorSpace;
+    }
+
+protected:
+    ColorSpace currentColorSpace = ColorSpace::sRGB;
+    TextureFormat format = TextureFormat::BGRA8_UNORM;
 };
 
 } // namespace vex

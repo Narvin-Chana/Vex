@@ -41,3 +41,9 @@ void ImGuiApplication::OnResize(GLFWwindow* window, uint32_t width, uint32_t hei
 
     ExampleApplication::OnResize(window, width, height);
 }
+
+int main()
+{
+    ImGuiApplication application;
+    application.Run();
+}

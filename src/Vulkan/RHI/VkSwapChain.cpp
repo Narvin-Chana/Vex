@@ -120,7 +120,7 @@ bool VkSwapChain::NeedsRecreation() const
     const ::vk::PresentModeKHR newPresentMode = GetBestPresentMode(supportDetails, desc->useVSync);
     const bool needsRecreationDueToVSync = newPresentMode != presentMode;
 
-    return backbufferIsOutOfDate || needsRecreationDueToVSync || !IsColorSpaceStillSupported() ||
+    return backbufferIsOutOfDate || needsRecreationDueToVSync || !IsColorSpaceStillSupported(*desc) ||
            (!desc->useHDRIfSupported && IsHDREnabled());
 }
 
@@ -136,20 +136,6 @@ TextureDesc VkSwapChain::GetBackBufferTextureDescription() const
         .mips = 1,
         .usage = TextureUsage::RenderTarget | TextureUsage::ShaderRead,
     };
-}
-
-bool VkSwapChain::IsHDREnabled() const
-{
-    return (surfaceFormat.colorSpace != ::vk::ColorSpaceKHR::eSrgbNonlinear);
-}
-
-bool VkSwapChain::IsColorSpaceStillSupported() const
-{
-    // Determine what the best color space would be given current conditions
-    ColorSpace bestColorSpace = GetValidColorSpace(desc->preferredColorSpace);
-
-    // If the best color space differs from what we're currently using, we need to recreate
-    return bestColorSpace == currentColorSpace;
 }
 
 ColorSpace VkSwapChain::GetValidColorSpace(ColorSpace preferredColorSpace) const
@@ -174,15 +160,13 @@ ColorSpace VkSwapChain::GetValidColorSpace(ColorSpace preferredColorSpace) const
     ::vk::ColorSpaceKHR preferredVkColorSpace;
     switch (preferredColorSpace)
     {
-    case ColorSpace::sRGB:
-        preferredVkColorSpace = ::vk::ColorSpaceKHR::eSrgbNonlinear;
-        break;
-    case ColorSpace::scRGB:
-        preferredVkColorSpace = ::vk::ColorSpaceKHR::eExtendedSrgbNonlinearEXT;
-        break;
     case ColorSpace::HDR10:
         preferredVkColorSpace = ::vk::ColorSpaceKHR::eHdr10St2084EXT;
         break;
+    case ColorSpace::scRGB:
+        preferredVkColorSpace = ::vk::ColorSpaceKHR::eExtendedSrgbLinearEXT;
+        break;
+    case ColorSpace::sRGB:
     default:
         preferredVkColorSpace = ::vk::ColorSpaceKHR::eSrgbNonlinear;
         break;
@@ -199,7 +183,7 @@ ColorSpace VkSwapChain::GetValidColorSpace(ColorSpace preferredColorSpace) const
         return ColorSpace::HDR10;
     }
 
-    if (IsColorSpaceSupported(::vk::ColorSpaceKHR::eExtendedSrgbNonlinearEXT))
+    if (IsColorSpaceSupported(::vk::ColorSpaceKHR::eExtendedSrgbLinearEXT))
     {
         return ColorSpace::scRGB;
     }
@@ -317,13 +301,13 @@ void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
     ::vk::ColorSpaceKHR requestedColorSpace;
     switch (currentColorSpace)
     {
+    case ColorSpace::HDR10:
+        requestedColorSpace = ::vk::ColorSpaceKHR::eHdr10St2084EXT;
+        break;
     case ColorSpace::scRGB:
         // Not 100% sure about if this is the one that maps to what we want (especially with the Linear/NonLinear
         // aspect).
-        requestedColorSpace = ::vk::ColorSpaceKHR::eExtendedSrgbNonlinearEXT;
-        break;
-    case ColorSpace::HDR10:
-        requestedColorSpace = ::vk::ColorSpaceKHR::eHdr10St2084EXT;
+        requestedColorSpace = ::vk::ColorSpaceKHR::eExtendedSrgbLinearEXT;
         break;
     case ColorSpace::sRGB:
     default:

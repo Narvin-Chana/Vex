@@ -20,3 +20,9 @@ Here's a brief explanation of each color space:
 Each color space has its own color primaries/white points allowing for conversion from one space to another by passing coordinates through a RGB/XYZ matrix.
 Vex only exposes what D3D12 and Vulkan's swapchains provide in terms of color space handling, it's the user's responsibility to correctly handle color spaces in shaders (eg: applying `ST2084` to images before presenting in the case of `HDR10`).
 
+## Content
+
+The example shows `memorial.hdr` drawn twice on the screen, a widely used photo of a cathedral, typically used to demonstrate various forms of color grading / tonemapping.
+The left image is the raw image without any treatment in the shader, the right image is the post-treatment version.
+
+Pressing the spacebar will change the preferred swapchain format, allowing you to see how the image looks on your monitor when the data is adapted to various color spaces.

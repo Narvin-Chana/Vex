@@ -32,8 +32,6 @@ public:
 
     virtual bool NeedsRecreation() const override;
 
-    virtual bool IsHDREnabled() const override;
-    virtual bool IsColorSpaceStillSupported() const override;
     virtual ColorSpace GetValidColorSpace(ColorSpace preferredColorSpace) const override;
 
     virtual std::optional<RHITexture> AcquireBackBuffer(u8 frameIndex) override;
@@ -56,9 +54,6 @@ private:
     ComPtr<IDXGISwapChain4> swapChain;
 
     PlatformWindowHandle windowHandle;
-
-    ColorSpace currentColorSpace = ColorSpace::sRGB;
-    TextureFormat format = TextureFormat::BGRA8_UNORM;
 };
 
 } // namespace vex::dx12

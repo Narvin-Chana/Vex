@@ -181,7 +181,9 @@ void Graphics::Present(bool isFullscreenMode)
     // If our swapchain is stale, we must recreate it.
     if (swapChain->NeedsRecreation())
     {
-        VEX_LOG(Info, "Swapchain was stale, recreating it...");
+        VEX_LOG(Warning,
+                "Swapchain is stale meaning it must be recreated. This can occur when changes occur with the "
+                "output display, or changes to settings relating to HDR/Color Spaces.");
         FlushGPU();
         swapChain->RecreateSwapChain(desc.platformWindow.width, desc.platformWindow.height);
         // We can now update our present textures to match the swapchain's potentially new format.
@@ -388,14 +390,39 @@ void Graphics::FlushGPU()
     CleanupResources();
 }
 
-void Graphics::SetVSync(bool useVSync)
+void Graphics::SetUseVSync(bool useVSync)
 {
     desc.swapChainDesc.useVSync = useVSync;
+}
+
+bool Graphics::GetUseVSync() const
+{
+    return desc.swapChainDesc.useVSync;
 }
 
 void Graphics::SetUseHDRIfSupported(bool newValue)
 {
     desc.swapChainDesc.useHDRIfSupported = newValue;
+}
+
+bool Graphics::GetUseHDRIfSupported() const
+{
+    return desc.swapChainDesc.useHDRIfSupported;
+}
+
+void Graphics::SetPreferredHDRColorSpace(vex::ColorSpace newValue)
+{
+    desc.swapChainDesc.preferredColorSpace = newValue;
+}
+
+ColorSpace Graphics::GetPreferredHDRColorSpace() const
+{
+    return desc.swapChainDesc.preferredColorSpace;
+}
+
+ColorSpace Graphics::GetCurrentHDRColorSpace() const
+{
+    return swapChain->GetCurrentColorSpace();
 }
 
 void Graphics::OnWindowResized(u32 newWidth, u32 newHeight)

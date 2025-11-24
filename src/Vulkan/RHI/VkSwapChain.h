@@ -41,8 +41,6 @@ public:
 
     virtual TextureDesc GetBackBufferTextureDescription() const override;
     
-    virtual bool IsHDREnabled() const override;
-    virtual bool IsColorSpaceStillSupported() const override;
     virtual ColorSpace GetValidColorSpace(ColorSpace preferredColorSpace) const override;
 
     virtual std::optional<RHITexture> AcquireBackBuffer(u8 frameIndex) override;
@@ -69,7 +67,6 @@ private:
     // Used to wait for all command lists to finish before presenting.
     std::vector<::vk::UniqueSemaphore> presentSemaphore;
 
-    ColorSpace currentColorSpace = ColorSpace::sRGB;
     bool backbufferIsOutOfDate = false;
 
     u32 currentBackbufferId;
