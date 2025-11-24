@@ -14,6 +14,7 @@ ImGuiApplication::ImGuiApplication()
     graphics = vex::MakeUnique<vex::Graphics>(vex::GraphicsCreateDesc{
         .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
         .useSwapChain = true,
+        .swapChainDesc = { .frameBuffering = FrameBuffering },
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
 
