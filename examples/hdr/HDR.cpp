@@ -1,4 +1,3 @@
-#include <GLFWIncludes.h>
 #include <HDR.h>
 
 #include <Vex/Formattable.h>

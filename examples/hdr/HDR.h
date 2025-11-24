@@ -1,8 +1,8 @@
 #pragma once
 
-#include <ExampleApplication.h>
+#include <GLFWIncludes.h>
 
-class GLFWwindow;
+#include <ExampleApplication.h>
 
 class HDRApplication : public ExampleApplication
 {
