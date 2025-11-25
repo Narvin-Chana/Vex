@@ -3,8 +3,11 @@
 #include <algorithm>
 #include <string_view>
 
+#include <d3d12shader.h>
+
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
+#include <Vex/Shaders/Reflection.h>
 #include <Vex/Shaders/Shader.h>
 #include <Vex/Shaders/ShaderCompilerSettings.h>
 #include <Vex/Shaders/ShaderEnvironment.h>
@@ -85,7 +88,7 @@ DXCCompilerImpl::DXCCompilerImpl(std::vector<std::filesystem::path> includeDirec
 
 DXCCompilerImpl::~DXCCompilerImpl() = default;
 
-std::expected<std::vector<byte>, std::string> DXCCompilerImpl::CompileShader(
+std::expected<ShaderCompilationResult, std::string> DXCCompilerImpl::CompileShader(
     const Shader& shader, ShaderEnvironment& shaderEnv, const ShaderCompilerSettings& compilerSettings) const
 {
     using namespace DXCImpl_Internal;
@@ -201,7 +204,15 @@ std::expected<std::vector<byte>, std::string> DXCCompilerImpl::CompileShader(
     finalShaderBlob.resize(shaderBytecode->GetBufferSize());
     std::memcpy(finalShaderBlob.data(), shaderBytecode->GetBufferPointer(), finalShaderBlob.size() * sizeof(u8));
 
-    return finalShaderBlob;
+    ShaderReflection reflection{};
+#if VEX_VULKAN
+    reflection = GetSpirvReflection(finalShaderBlob);
+#endif
+#if VEX_DX12
+    reflection = GetDxcReflection(shaderCompilationResults);
+#endif
+
+    return ShaderCompilationResult{ finalShaderBlob, reflection };
 }
 
 void DXCCompilerImpl::FillInIncludeDirectories(std::vector<LPCWSTR>& args, std::vector<std::wstring>& wStrings) const

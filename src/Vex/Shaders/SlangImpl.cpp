@@ -7,6 +7,7 @@
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/Platform/Platform.h>
+#include <Vex/Shaders/Reflection.h>
 #include <Vex/Shaders/Shader.h>
 #include <Vex/Shaders/ShaderCompilerSettings.h>
 #include <Vex/Shaders/ShaderEnvironment.h>
@@ -28,7 +29,7 @@ SlangCompilerImpl::SlangCompilerImpl(std::vector<std::filesystem::path> incDirs)
 
 SlangCompilerImpl::~SlangCompilerImpl() = default;
 
-std::expected<std::vector<byte>, std::string> SlangCompilerImpl::CompileShader(
+std::expected<ShaderCompilationResult, std::string> SlangCompilerImpl::CompileShader(
     const Shader& shader, ShaderEnvironment& shaderEnv, const ShaderCompilerSettings& compilerSettings) const
 {
     if (shader.key.path.extension() != ".slang")
@@ -96,7 +97,7 @@ std::expected<std::vector<byte>, std::string> SlangCompilerImpl::CompileShader(
     finalShaderBlob.resize(blobSize);
     std::memcpy(finalShaderBlob.data(), bytecodeBlob->getBufferPointer(), blobSize);
 
-    return finalShaderBlob;
+    return ShaderCompilationResult{ finalShaderBlob, GetSlangReflection(program) };
 }
 
 void SlangCompilerImpl::FillInIncludeDirectories(std::vector<std::string>& includeDirStrings,
@@ -143,6 +144,8 @@ Slang::ComPtr<slang::ISession> SlangCompilerImpl::CreateSession(const Shader& sh
         compilerOptions.emplace_back(slang::CompilerOptionName::DebugInformation,
                                      slang::CompilerOptionValue{ .intValue0 = SLANG_DEBUG_INFO_LEVEL_MAXIMAL });
     }
+
+    compilerOptions.emplace_back(slang::CompilerOptionName::Optimization, slang::CompilerOptionValue{ .intValue0 = 0 });
 
     if (compilerSettings.enableHLSL202xFeatures)
     {

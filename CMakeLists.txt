@@ -1,5 +1,5 @@
 ﻿cmake_minimum_required(VERSION 3.27)
-project(Vex VERSION 0.0.1 LANGUAGES CXX)
+project(Vex VERSION 0.0.1 LANGUAGES CXX C)
 include(CMakePackageConfigHelpers)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -210,6 +210,7 @@ add_library(Vex STATIC
     "src/Vex/ByteUtils.h"
     "src/Vex/Shaders/DXCImpl.h"
     "src/Vex/Shaders/DXCImpl.cpp"
+    "src/Vex/Shaders/Reflection.cpp"
     "src/Vex/Shaders/ShaderEnvironment.h"
     "src/Vex/Shaders/CompilerBase.h"
     "src/Vex/SubmissionPolicy.h"

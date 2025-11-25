@@ -1,5 +1,7 @@
 # VexVulkan.cmake - Vulkan backend configuration
 
+
+
 function(setup_vulkan_backend TARGET)
     message(STATUS "Setting up Vulkan backend...")
 
@@ -11,6 +13,19 @@ function(setup_vulkan_backend TARGET)
         GIT_TAG        v1.4.323
     )
     FetchContent_MakeAvailable(VulkanHpp)
+
+    # Fetch SPIRV-Reflect dependency
+    message(STATUS "Fetching SPIRV-Reflect...")
+    FetchContent_Declare(
+            spirv_reflect
+            EXCLUDE_FROM_ALL TRUE
+            GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Reflect.git
+            GIT_TAG        vulkan-sdk-1.4.321.0
+    )
+    FetchContent_MakeAvailable(spirv_reflect)
+
+    add_library(vex-spirv-reflect OBJECT
+        ${spirv_reflect_SOURCE_DIR}/spirv_reflect.c)
 
     # Vulkan source files
     set(VEX_VULKAN_SOURCES
@@ -66,10 +81,17 @@ function(setup_vulkan_backend TARGET)
     target_sources(${TARGET} PRIVATE ${VEX_VULKAN_SOURCES})
 
     # Link Vulkan libraries
-    target_link_libraries(${TARGET} PUBLIC Vulkan::Vulkan)
+    target_link_libraries(${TARGET} PUBLIC Vulkan::Vulkan vex-spirv-reflect)
 
     # Make Vulkan-Hpp headers available
     add_header_only_dependency(${TARGET} vulkanhpp "${vulkanhpp_SOURCE_DIR}" "vulkan" "vulkan")
+
+    target_include_directories(${TARGET} PUBLIC
+        $<BUILD_INTERFACE:${spirv_reflect_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:>
+    )
+
+    set_property(GLOBAL APPEND PROPERTY HEADER_DEPS_TO_INSTALL vex-spirv-reflect)
 
     message(STATUS "Vulkan backend configured successfully")
 endfunction()

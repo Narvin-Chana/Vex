@@ -57,7 +57,7 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader)
 
     ShaderCompilerBackend shaderCompilerToUse = ShaderCompilerBackend::Auto;
 
-    std::expected<std::vector<byte>, std::string> res = std::unexpected("Invalid shader compiler backend.");
+    std::expected<ShaderCompilationResult, std::string> res = std::unexpected("Invalid shader compiler backend.");
     // Identify which shader compiler to use.
     switch (shader.key.compiler)
     {
@@ -101,19 +101,24 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader)
         return std::unexpected(res.error());
     }
 
-    std::vector<byte>& shaderBytecode = res.value();
-
     // Outputs raw bytecode if we ever need to figure out a difficult shader issue (for spirv can use spirv-dis
     // to read raw .spv file, similar tools like RenderDoc work for dxil).
-#define VEX_OUTPUT_BYTECODE 0
+#define VEX_OUTPUT_BYTECODE 1
 #if VEX_OUTPUT_BYTECODE
-    std::filesystem::path outputPath = std::filesystem::current_path() / "VexOutput_SHADER_BYTECODE" / shader.key.path.filename();
+    std::vector<byte>& shaderBytecode = res->compiledCode;
+
+    std::filesystem::path outputPath =
+        std::filesystem::current_path() / "VexOutput_SHADER_BYTECODE" / shader.key.path.filename();
 #if VEX_VULKAN
     outputPath.replace_extension(".spv"); // or ".spirv"
 #elif VEX_DX12
     outputPath.replace_extension(".dxil");
 #endif
 
+    if (!std::filesystem::exists(outputPath.parent_path()))
+    {
+        std::filesystem::create_directories(outputPath.parent_path());
+    }
     std::ofstream file(outputPath, std::ios::binary);
     if (file.is_open())
     {
@@ -128,7 +133,7 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader)
 #endif // VEX_OUTPUT_BYTECODE
 
     // Store shader bytecode blob inside the Shader.
-    shader.blob = std::move(shaderBytecode);
+    shader.res = std::move(*res);
 
     shader.version++;
     shader.isDirty = false;

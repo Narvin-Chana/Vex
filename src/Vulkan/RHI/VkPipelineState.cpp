@@ -5,9 +5,9 @@
 #include <Vex/Containers/ResourceCleanup.h>
 
 #include <Vulkan/RHI/VkResourceLayout.h>
+#include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkFormats.h>
-#include <Vulkan/VkDebug.h>
 // These are necessary for ResourceCleanup
 #include <Vulkan/RHI/VkBuffer.h>
 #include <Vulkan/RHI/VkTexture.h>
@@ -69,6 +69,7 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
         const VertexInputLayout::VertexAttribute& attribute = key.vertexInputLayout.attributes[i];
         // TODO: Find out the right location according to semanticName + semanticIndex from shader reflection
         // Trello: https://trello.com/c/iAzWZsBM
+
         attributes[i] = ::vk::VertexInputAttributeDescription{ .location = i,
                                                                .binding = attribute.binding,
                                                                .format = TextureFormatToVulkan(attribute.format, false),

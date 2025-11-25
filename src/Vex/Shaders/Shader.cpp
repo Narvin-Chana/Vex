@@ -12,17 +12,21 @@ Shader::~Shader() = default;
 
 std::span<const byte> Shader::GetBlob() const
 {
-    return blob;
+    return res.compiledCode;
 }
 
 bool Shader::IsValid() const
 {
-    return !blob.empty();
+    return !res.compiledCode.empty();
 }
 
 bool Shader::NeedsRecompile() const
 {
     return isDirty && !isErrored;
+}
+const ShaderReflection& Shader::GetReflection() const
+{
+    return res.reflection;
 }
 
 void Shader::MarkDirty()
