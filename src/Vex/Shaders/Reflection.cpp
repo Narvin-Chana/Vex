@@ -255,85 +255,113 @@ ShaderReflection GetDxcReflection(dx12::ComPtr<IDxcResult> compilationResult)
 }
 #endif
 
-TextureFormat SlangFormatToVex(SlangImageFormat format)
+TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
 {
-    switch (format)
+    auto kind = type->getKind();
+
+    if (kind == slang::TypeReflection::Kind::Vector)
     {
-    case SLANG_IMAGE_FORMAT_rgba32f:
-        return TextureFormat::RGBA32_FLOAT;
-    case SLANG_IMAGE_FORMAT_rgba16f:
-        return TextureFormat::RGBA16_FLOAT;
-    case SLANG_IMAGE_FORMAT_rg32f:
-        return TextureFormat::RG32_FLOAT;
-    case SLANG_IMAGE_FORMAT_rg16f:
-        return TextureFormat::RG16_FLOAT;
-    case SLANG_IMAGE_FORMAT_r11f_g11f_b10f:
-        return TextureFormat::RG11B10_FLOAT;
-    case SLANG_IMAGE_FORMAT_r32f:
-        return TextureFormat::R32_FLOAT;
-    case SLANG_IMAGE_FORMAT_r16f:
-        return TextureFormat::R16_FLOAT;
-    case SLANG_IMAGE_FORMAT_rgba8_snorm:
-        return TextureFormat::RGBA8_SNORM;
-    case SLANG_IMAGE_FORMAT_rg8_snorm:
-        return TextureFormat::RG8_SNORM;
-    case SLANG_IMAGE_FORMAT_r8_snorm:
-        return TextureFormat::R8_SNORM;
-    case SLANG_IMAGE_FORMAT_rgba32i:
-        return TextureFormat::RGBA32_SINT;
-    case SLANG_IMAGE_FORMAT_rgba16i:
-        return TextureFormat::RGBA16_SINT;
-    case SLANG_IMAGE_FORMAT_rgba8i:
-        return TextureFormat::RGBA8_SINT;
-    case SLANG_IMAGE_FORMAT_rg32i:
-        return TextureFormat::RG32_SINT;
-    case SLANG_IMAGE_FORMAT_rg16i:
-        return TextureFormat::RG16_SINT;
-    case SLANG_IMAGE_FORMAT_rg8i:
-        return TextureFormat::RG8_SINT;
-    case SLANG_IMAGE_FORMAT_r32i:
-        return TextureFormat::R32_SINT;
-    case SLANG_IMAGE_FORMAT_r16i:
-        return TextureFormat::R16_SINT;
-    case SLANG_IMAGE_FORMAT_r8i:
-        return TextureFormat::R8_SINT;
-    case SLANG_IMAGE_FORMAT_rgba32ui:
-        return TextureFormat::RGBA32_UINT;
-    case SLANG_IMAGE_FORMAT_rgba16ui:
-        return TextureFormat::RGBA16_UINT;
-    case SLANG_IMAGE_FORMAT_rgb10_a2ui:
-        return TextureFormat::RGB10A2_UINT;
-    case SLANG_IMAGE_FORMAT_rgba8ui:
-        return TextureFormat::RGBA8_UINT;
-    case SLANG_IMAGE_FORMAT_rg32ui:
-        return TextureFormat::RG32_UINT;
-    case SLANG_IMAGE_FORMAT_rg16ui:
-        return TextureFormat::RG16_UINT;
-    case SLANG_IMAGE_FORMAT_rg8ui:
-        return TextureFormat::RG8_UINT;
-    case SLANG_IMAGE_FORMAT_r32ui:
-        return TextureFormat::R32_UINT;
-    case SLANG_IMAGE_FORMAT_r16ui:
-        return TextureFormat::R16_UINT;
-    case SLANG_IMAGE_FORMAT_r8ui:
-        return TextureFormat::R8_UINT;
-    case SLANG_IMAGE_FORMAT_bgra8:
-        return TextureFormat::BGRA8_UNORM;
-    case SLANG_IMAGE_FORMAT_r16_snorm:
-    case SLANG_IMAGE_FORMAT_rg16_snorm:
-    case SLANG_IMAGE_FORMAT_rgba16_snorm:
-    case SLANG_IMAGE_FORMAT_r64ui:
-    case SLANG_IMAGE_FORMAT_r64i:
-    case SLANG_IMAGE_FORMAT_rgba16:
-    case SLANG_IMAGE_FORMAT_rgb10_a2:
-    case SLANG_IMAGE_FORMAT_rgba8:
-    case SLANG_IMAGE_FORMAT_rg16:
-    case SLANG_IMAGE_FORMAT_rg8:
-    case SLANG_IMAGE_FORMAT_r16:
-    case SLANG_IMAGE_FORMAT_r8:
-    default:
-        return TextureFormat::UNKNOWN;
+        unsigned count = type->getElementCount();
+        switch (type->getScalarType())
+        {
+        case slang::TypeReflection::ScalarType::Float32:
+            switch (count)
+            {
+            case 2:
+                return TextureFormat::RG32_FLOAT;
+            case 3:
+                return TextureFormat::RGB32_FLOAT;
+            case 4:
+                return TextureFormat::RGBA32_FLOAT;
+            }
+        case slang::TypeReflection::ScalarType::Float16:
+            switch (count)
+            {
+            case 2:
+                return TextureFormat::RG16_FLOAT;
+            case 4:
+                return TextureFormat::RGBA16_FLOAT;
+            }
+        case slang::TypeReflection::ScalarType::Int32:
+            switch (count)
+            {
+            case 2:
+                return TextureFormat::RG32_SINT;
+            case 3:
+                return TextureFormat::RGB32_SINT;
+            case 4:
+                return TextureFormat::RGBA32_SINT;
+            }
+        case slang::TypeReflection::ScalarType::Int16:
+            switch (count)
+            {
+            case 2:
+                return TextureFormat::RG16_SINT;
+            case 4:
+                return TextureFormat::RGBA16_SINT;
+            }
+        case slang::TypeReflection::ScalarType::Int8:
+            switch (count)
+            {
+            case 2:
+                return TextureFormat::RG8_SINT;
+            case 4:
+                return TextureFormat::RGBA8_SINT;
+            }
+        case slang::TypeReflection::ScalarType::UInt32:
+            switch (count)
+            {
+            case 2:
+                return TextureFormat::RG32_UINT;
+            case 3:
+                return TextureFormat::RGB32_UINT;
+            case 4:
+                return TextureFormat::RGBA32_UINT;
+            }
+        case slang::TypeReflection::ScalarType::UInt16:
+            switch (count)
+            {
+            case 2:
+                return TextureFormat::RG16_UINT;
+            case 4:
+                return TextureFormat::RGBA16_UINT;
+            }
+        case slang::TypeReflection::ScalarType::UInt8:
+            switch (count)
+            {
+            case 2:
+                return TextureFormat::RG8_UINT;
+            case 4:
+                return TextureFormat::RGBA8_UINT;
+            }
+        }
     }
+    else if (kind == slang::TypeReflection::Kind::Scalar)
+    {
+        switch (type->getScalarType())
+        {
+        case slang::TypeReflection::ScalarType::Float32:
+            return TextureFormat::R32_FLOAT;
+        case slang::TypeReflection::ScalarType::Float16:
+            return TextureFormat::R16_FLOAT;
+
+        case slang::TypeReflection::ScalarType::Int32:
+            return TextureFormat::R32_SINT;
+        case slang::TypeReflection::ScalarType::Int16:
+            return TextureFormat::R16_SINT;
+        case slang::TypeReflection::ScalarType::Int8:
+            return TextureFormat::R8_SINT;
+
+        case slang::TypeReflection::ScalarType::UInt32:
+            return TextureFormat::R32_UINT;
+        case slang::TypeReflection::ScalarType::UInt16:
+            return TextureFormat::R16_UINT;
+        case slang::TypeReflection::ScalarType::UInt8:
+            return TextureFormat::R8_UINT;
+        }
+    }
+
+    return TextureFormat::UNKNOWN;
 }
 
 ShaderReflection GetSlangReflection(slang::IComponentType* program)
@@ -358,14 +386,14 @@ ShaderReflection GetSlangReflection(slang::IComponentType* program)
                     slang::VariableLayoutReflection* field = paramLayout->getFieldByIndex(j);
                     reflectionData.inputs.emplace_back(field->getSemanticName(),
                                                        field->getSemanticIndex(),
-                                                       SlangFormatToVex(field->getImageFormat()));
+                                                       SlangTypeToFormat(field->getType()));
                 }
             }
             else
             {
                 reflectionData.inputs.emplace_back(param->getSemanticName(),
                                                    param->getSemanticIndex(),
-                                                   SlangFormatToVex(param->getImageFormat()));
+                                                   SlangTypeToFormat(param->getType()));
             }
         }
     }

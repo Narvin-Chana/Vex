@@ -10,7 +10,7 @@
 struct VSInput
 {
     float3 position : POSITION;
-    float2 uv : TEXCOORD1;
+    float2 uv : TEXCOORD;
 };
 
 [shader("vertex")]
