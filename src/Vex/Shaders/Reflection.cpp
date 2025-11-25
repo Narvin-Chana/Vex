@@ -385,14 +385,14 @@ ShaderReflection GetSlangReflection(slang::IComponentType* program)
                 {
                     slang::VariableLayoutReflection* field = paramLayout->getFieldByIndex(j);
                     reflectionData.inputs.emplace_back(field->getSemanticName(),
-                                                       field->getSemanticIndex(),
+                                                       static_cast<u32>(field->getSemanticIndex()),
                                                        SlangTypeToFormat(field->getType()));
                 }
             }
             else
             {
                 reflectionData.inputs.emplace_back(param->getSemanticName(),
-                                                   param->getSemanticIndex(),
+                                                   static_cast<u32>(param->getSemanticIndex()),
                                                    SlangTypeToFormat(param->getType()));
             }
         }
