@@ -342,14 +342,32 @@ ShaderReflection GetSlangReflection(slang::IComponentType* program)
     slang::EntryPointReflection* entryPoint = reflection->getEntryPointByIndex(0);
 
     ShaderReflection reflectionData;
-    u32 paramCount = entryPoint->getParameterCount();
-    for (u32 i = 0; i < paramCount; ++i)
+
+    for (u32 i = 0; i < entryPoint->getParameterCount(); ++i)
     {
         slang::VariableLayoutReflection* param = entryPoint->getParameterByIndex(i);
-        const char* semanticName = param->getSemanticName();
-        const u32 index = param->getSemanticIndex();
-        TextureFormat format = SlangFormatToVex(param->getImageFormat());
-        reflectionData.inputs.emplace_back(semanticName, index, format);
+
+        if (param->getCategory() == slang::VaryingInput)
+        {
+            // If semantic name is null we need to look into the struct for the vertex input semantics
+            if (param->getSemanticName() == nullptr)
+            {
+                slang::TypeLayoutReflection* paramLayout = param->getTypeLayout();
+                for (u32 j = 0; j < paramLayout->getFieldCount(); j++)
+                {
+                    slang::VariableLayoutReflection* field = paramLayout->getFieldByIndex(j);
+                    reflectionData.inputs.emplace_back(field->getSemanticName(),
+                                                       field->getSemanticIndex(),
+                                                       SlangFormatToVex(field->getImageFormat()));
+                }
+            }
+            else
+            {
+                reflectionData.inputs.emplace_back(param->getSemanticName(),
+                                                   param->getSemanticIndex(),
+                                                   SlangFormatToVex(param->getImageFormat()));
+            }
+        }
     }
 
     return reflectionData;

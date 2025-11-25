@@ -97,7 +97,7 @@ std::expected<ShaderCompilationResult, std::string> SlangCompilerImpl::CompileSh
     finalShaderBlob.resize(blobSize);
     std::memcpy(finalShaderBlob.data(), bytecodeBlob->getBufferPointer(), blobSize);
 
-    return ShaderCompilationResult{ finalShaderBlob, GetSlangReflection(program) };
+    return ShaderCompilationResult{ finalShaderBlob, GetSlangReflection(linkedProgram) };
 }
 
 void SlangCompilerImpl::FillInIncludeDirectories(std::vector<std::string>& includeDirStrings,

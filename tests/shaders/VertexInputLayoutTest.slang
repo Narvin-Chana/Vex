@@ -10,11 +10,11 @@
 struct VSInput
 {
     float3 position : POSITION;
-    float2 uv : TEXCOORD;
+    float2 uv : TEXCOORD1;
 };
 
 [shader("vertex")]
-VSOutput VSMain(VSInput input)
+VSOutput VSMain(VSInput input, uniform uint test)
 {
     VSOutput vs;
     vs.position = float4(input.position, input.uv.x);
