@@ -210,7 +210,7 @@ add_library(Vex STATIC
     "src/Vex/ByteUtils.h"
     "src/Vex/Shaders/DXCImpl.h"
     "src/Vex/Shaders/DXCImpl.cpp"
-    "src/Vex/Shaders/Reflection.cpp"
+    "src/Vex/Shaders/DXCImplReflection.cpp"
     "src/Vex/Shaders/ShaderEnvironment.h"
     "src/Vex/Shaders/CompilerBase.h"
     "src/Vex/SubmissionPolicy.h"

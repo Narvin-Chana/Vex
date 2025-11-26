@@ -7,7 +7,6 @@
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/Platform/Platform.h>
-#include <Vex/Shaders/Reflection.h>
 #include <Vex/Shaders/Shader.h>
 #include <Vex/Shaders/ShaderCompilerSettings.h>
 #include <Vex/Shaders/ShaderEnvironment.h>
@@ -18,6 +17,152 @@
 
 namespace vex
 {
+
+TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
+{
+    auto kind = type->getKind();
+
+    if (kind == slang::TypeReflection::Kind::Vector)
+    {
+        unsigned count = type->getElementCount();
+        switch (type->getScalarType())
+        {
+        case slang::TypeReflection::ScalarType::Float32:
+            switch (count)
+            {
+            case 2:
+                return TextureFormat::RG32_FLOAT;
+            case 3:
+                return TextureFormat::RGB32_FLOAT;
+            case 4:
+                return TextureFormat::RGBA32_FLOAT;
+            }
+        case slang::TypeReflection::ScalarType::Float16:
+            switch (count)
+            {
+            case 2:
+                return TextureFormat::RG16_FLOAT;
+            case 4:
+                return TextureFormat::RGBA16_FLOAT;
+            }
+        case slang::TypeReflection::ScalarType::Int32:
+            switch (count)
+            {
+            case 2:
+                return TextureFormat::RG32_SINT;
+            case 3:
+                return TextureFormat::RGB32_SINT;
+            case 4:
+                return TextureFormat::RGBA32_SINT;
+            }
+        case slang::TypeReflection::ScalarType::Int16:
+            switch (count)
+            {
+            case 2:
+                return TextureFormat::RG16_SINT;
+            case 4:
+                return TextureFormat::RGBA16_SINT;
+            }
+        case slang::TypeReflection::ScalarType::Int8:
+            switch (count)
+            {
+            case 2:
+                return TextureFormat::RG8_SINT;
+            case 4:
+                return TextureFormat::RGBA8_SINT;
+            }
+        case slang::TypeReflection::ScalarType::UInt32:
+            switch (count)
+            {
+            case 2:
+                return TextureFormat::RG32_UINT;
+            case 3:
+                return TextureFormat::RGB32_UINT;
+            case 4:
+                return TextureFormat::RGBA32_UINT;
+            }
+        case slang::TypeReflection::ScalarType::UInt16:
+            switch (count)
+            {
+            case 2:
+                return TextureFormat::RG16_UINT;
+            case 4:
+                return TextureFormat::RGBA16_UINT;
+            }
+        case slang::TypeReflection::ScalarType::UInt8:
+            switch (count)
+            {
+            case 2:
+                return TextureFormat::RG8_UINT;
+            case 4:
+                return TextureFormat::RGBA8_UINT;
+            }
+        }
+    }
+    else if (kind == slang::TypeReflection::Kind::Scalar)
+    {
+        switch (type->getScalarType())
+        {
+        case slang::TypeReflection::ScalarType::Float32:
+            return TextureFormat::R32_FLOAT;
+        case slang::TypeReflection::ScalarType::Float16:
+            return TextureFormat::R16_FLOAT;
+
+        case slang::TypeReflection::ScalarType::Int32:
+            return TextureFormat::R32_SINT;
+        case slang::TypeReflection::ScalarType::Int16:
+            return TextureFormat::R16_SINT;
+        case slang::TypeReflection::ScalarType::Int8:
+            return TextureFormat::R8_SINT;
+
+        case slang::TypeReflection::ScalarType::UInt32:
+            return TextureFormat::R32_UINT;
+        case slang::TypeReflection::ScalarType::UInt16:
+            return TextureFormat::R16_UINT;
+        case slang::TypeReflection::ScalarType::UInt8:
+            return TextureFormat::R8_UINT;
+        }
+    }
+
+    return TextureFormat::UNKNOWN;
+}
+
+ShaderReflection GetSlangReflection(slang::IComponentType* program)
+{
+    slang::ProgramLayout* reflection = program->getLayout();
+    slang::EntryPointReflection* entryPoint = reflection->getEntryPointByIndex(0);
+
+    ShaderReflection reflectionData;
+
+    for (u32 i = 0; i < entryPoint->getParameterCount(); ++i)
+    {
+        slang::VariableLayoutReflection* param = entryPoint->getParameterByIndex(i);
+
+        if (param->getCategory() == slang::VaryingInput)
+        {
+            // If semantic name is null we need to look into the struct for the vertex input semantics
+            if (param->getSemanticName() == nullptr)
+            {
+                slang::TypeLayoutReflection* paramLayout = param->getTypeLayout();
+                for (u32 j = 0; j < paramLayout->getFieldCount(); j++)
+                {
+                    slang::VariableLayoutReflection* field = paramLayout->getFieldByIndex(j);
+                    reflectionData.inputs.emplace_back(field->getSemanticName(),
+                                                       static_cast<u32>(field->getSemanticIndex()),
+                                                       SlangTypeToFormat(field->getType()));
+                }
+            }
+            else
+            {
+                reflectionData.inputs.emplace_back(param->getSemanticName(),
+                                                   static_cast<u32>(param->getSemanticIndex()),
+                                                   SlangTypeToFormat(param->getType()));
+            }
+        }
+    }
+
+    return reflectionData;
+}
 
 SlangCompilerImpl::SlangCompilerImpl(std::vector<std::filesystem::path> incDirs)
     : CompilerBase(std::move(incDirs))
