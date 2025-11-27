@@ -3,8 +3,6 @@
 #include <algorithm>
 #include <string_view>
 
-#include <d3d12shader.h>
-
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/Shaders/DXCImplReflection.h>
