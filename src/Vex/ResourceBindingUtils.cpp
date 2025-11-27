@@ -63,7 +63,7 @@ RHITextureBarrier ResourceBindingUtils::CreateBarrierFromRHIBinding(RHIBarrierSy
     return RHITextureBarrier{ texture, rhiTextureBinding.binding.subresource, dstSync, dstAccess, dstLayout };
 }
 
-void ResourceBindingUtils::CollectRHIResources(Graphics& backend,
+void ResourceBindingUtils::CollectRHIResources(Graphics& graphics,
                                                std::span<const ResourceBinding> resources,
                                                std::vector<RHITextureBinding>& textureBindings,
                                                std::vector<RHIBufferBinding>& bufferBindings)
@@ -72,19 +72,19 @@ void ResourceBindingUtils::CollectRHIResources(Graphics& backend,
     {
         std::visit(Visitor{ [&](const BufferBinding& bufferBinding)
                             {
-                                RHIBuffer& buffer = backend.GetRHIBuffer(bufferBinding.buffer.handle);
+                                RHIBuffer& buffer = graphics.GetRHIBuffer(bufferBinding.buffer.handle);
                                 bufferBindings.emplace_back(bufferBinding, NonNullPtr(buffer));
                             },
                             [&](const TextureBinding& texBinding)
                             {
-                                RHITexture& texture = backend.GetRHITexture(texBinding.texture.handle);
+                                RHITexture& texture = graphics.GetRHITexture(texBinding.texture.handle);
                                 textureBindings.emplace_back(texBinding, NonNullPtr(texture));
                             } },
                    binding.binding);
     }
 }
 
-RHIDrawResources ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(Graphics& backend,
+RHIDrawResources ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(Graphics& graphics,
                                                                           std::span<const TextureBinding> renderTargets,
                                                                           std::optional<TextureBinding> depthStencil,
                                                                           std::vector<RHITextureBarrier>& barriers)
@@ -97,7 +97,7 @@ RHIDrawResources ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(Graphi
 
     for (const auto& renderTarget : renderTargets)
     {
-        auto& texture = backend.GetRHITexture(renderTarget.texture.handle);
+        auto& texture = graphics.GetRHITexture(renderTarget.texture.handle);
         barriers.push_back(RHITextureBarrier{
             texture,
             renderTarget.subresource,
@@ -110,7 +110,7 @@ RHIDrawResources ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(Graphi
     }
     if (depthStencil.has_value())
     {
-        auto& texture = backend.GetRHITexture(depthStencil->texture.handle);
+        auto& texture = graphics.GetRHITexture(depthStencil->texture.handle);
 
         // TODO: This deduces depth and/or stencil from the texture's format, ideally we'd pass this info along in
         // the binding somehow.

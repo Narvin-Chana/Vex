@@ -48,6 +48,7 @@ HDRApplication::HDRApplication()
             std::span<const vex::byte>{ reinterpret_cast<vex::byte*>(hdrData),
                                         hdrWidth * hdrHeight * FloatRGBANumChannels * sizeof(float) });
 
+        // Now keep the texture in a shader read state.
         ctx.Barrier(hdrTexture,
                     vex::RHIBarrierSync::AllCommands,
                     vex::RHIBarrierAccess::ShaderRead,
@@ -97,7 +98,7 @@ void HDRApplication::Run()
             struct PassConstants
             {
                 vex::BindlessHandle hdrTextureHandle;
-            } data{ .hdrTextureHandle = ctx.GetBindlessHandle(vex::ResourceBinding{ shaderRead }) };
+            } data{ .hdrTextureHandle = graphics->GetBindlessHandle(shaderRead) };
 
             ctx.Draw(drawDesc, { .renderTargets = { &renderTarget, 1 } }, vex::ConstantBinding{ data }, 3);
 

@@ -88,7 +88,7 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
         binding,
         BufferBinding::CreateRWStructuredBuffer(resultBuffer, DataSize),
     };
-    std::vector<BindlessHandle> handles = ctx.GetBindlessHandles(bindings);
+    std::vector<BindlessHandle> handles = graphics.GetBindlessHandles(bindings);
 
     struct Uniform
     {
@@ -103,7 +103,7 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
                           ? 1
                           : GetParam().elementCount.value_or(ElementCount - testData.firstElement.value_or(0)) };
 
-    ctx.TransitionBindings(bindings);
+    ctx.BarrierBindings(bindings);
 
     ShaderKey key = {
         .path = VexRootPath / "tests/shaders/BufferView.cs.hlsl",
@@ -127,7 +127,7 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
 
     key.path = VexRootPath / "tests/shaders/BufferView.cs.slang";
 
-    ctx.TransitionBindings(bindings);
+    ctx.BarrierBindings(bindings);
 
     ctx.Dispatch(key,
                  ConstantBinding(std::span{ &uniforms, 1 }),

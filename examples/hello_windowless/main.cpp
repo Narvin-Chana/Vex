@@ -8,7 +8,7 @@ int main()
     const uint32_t width = 500;
     const uint32_t height = 500;
 
-    vex::Graphics backend{ vex::GraphicsCreateDesc{
+    vex::Graphics graphics{ vex::GraphicsCreateDesc{
         .useSwapChain = false,
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING,
@@ -16,7 +16,7 @@ int main()
 
     {
         vex::CommandContext ctx =
-            backend.BeginScopedCommandContext(vex::QueueType::Compute, vex::SubmissionPolicy::Immediate);
+            graphics.BeginScopedCommandContext(vex::QueueType::Compute, vex::SubmissionPolicy::Immediate);
 
         ctx.Dispatch(
             vex::ShaderKey{

@@ -6,6 +6,9 @@
 RenderDocApplication::RenderDocApplication()
     : ExampleApplication("RenderDocApplication")
 {
+    // Graphics debuggers have to be initialized before graphics device creation.
+    RenderDoc::Setup();
+
 #if defined(_WIN32)
     vex::PlatformWindowHandle platformWindow = { .window = glfwGetWin32Window(window) };
 #elif defined(__linux__)
@@ -17,8 +20,6 @@ RenderDocApplication::RenderDocApplication()
         .enableGPUBasedValidation = !VEX_SHIPPING });
 
     SetupShaderErrorHandling();
-
-    RenderDoc::Setup();
 }
 
 void RenderDocApplication::Run()
@@ -50,4 +51,10 @@ void RenderDocApplication::OnResize(GLFWwindow* window, uint32_t width, uint32_t
     }
 
     ExampleApplication::OnResize(window, width, height);
+}
+
+int main()
+{
+    RenderDocApplication application;
+    application.Run();
 }

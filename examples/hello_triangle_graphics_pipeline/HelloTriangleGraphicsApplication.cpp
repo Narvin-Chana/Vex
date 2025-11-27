@@ -52,9 +52,17 @@ void HelloTriangleGraphicsApplication::Run()
             // Scoped command context will submit commands automatically upon destruction.
             auto ctx = graphics->BeginScopedCommandContext(vex::QueueType::Graphics);
 
-            VEX_GPU_SCOPED_EVENT_COL(ctx, "Triangles", 1, 0, 1)
+            VEX_GPU_SCOPED_EVENT_COL(ctx, "Triangles", 1, 0, 1);
 
+            // Upload the constant data to our color buffer.
             ctx.EnqueueDataUpload(colorBuffer, std::as_bytes(std::span(color)));
+            vex::BufferBinding colorBufferBinding{
+                .buffer = colorBuffer,
+                .usage = vex::BufferBindingUsage::ConstantBuffer,
+                .strideByteSize = static_cast<vex::u32>(sizeof(float) * 4),
+            };
+            // Add a barrier since we'll want to read our color buffer in the shader passes.
+            ctx.BarrierBinding(colorBufferBinding);
 
             ctx.SetScissor(0, 0, width, height);
 
@@ -66,7 +74,7 @@ void HelloTriangleGraphicsApplication::Run()
                 },
                 clearValue);
 
-            // Setup our draw call's description...
+            // Setup our draw call's description.
             vex::DrawDesc hlslDrawDesc{
                 .vertexShader = { .path = ExamplesDir / "hello_triangle_graphics_pipeline" /
                                           "HelloTriangleGraphicsShader.hlsl",
@@ -89,12 +97,6 @@ void HelloTriangleGraphicsApplication::Run()
                                  .type = vex::ShaderType::PixelShader, },
             };
 #endif
-            // ...and resources.
-            vex::BufferBinding colorBufferBinding{
-                .buffer = colorBuffer,
-                .usage = vex::BufferBindingUsage::ConstantBuffer,
-                .strideByteSize = static_cast<vex::u32>(sizeof(float) * 4),
-            };
 
             // Setup our rendering pass.
             std::array renderTargets = { vex::TextureBinding{
@@ -112,11 +114,9 @@ void HelloTriangleGraphicsApplication::Run()
             };
 
             LocalConstants lc{
-                .colorBufferHandle = ctx.GetBindlessHandle(colorBufferBinding),
+                .colorBufferHandle = graphics->GetBindlessHandle(colorBufferBinding),
                 .time = time,
             };
-
-            ctx.TransitionBindings({ { colorBufferBinding } });
 
             ctx.SetViewport(0, 0, width / 2.0f, height);
             ctx.Draw(hlslDrawDesc, { .renderTargets = renderTargets }, vex::ConstantBinding(lc), 3);

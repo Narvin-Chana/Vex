@@ -19,19 +19,12 @@ HelloTriangleApplication::HelloTriangleApplication()
 
     SetupShaderErrorHandling();
 
+    vex::TextureFormat presentTextureFormat = graphics->GetCurrentPresentTexture().desc.format;
+
     workingTexture =
         graphics->CreateTexture({ .name = "Working Texture",
                                   .type = vex::TextureType::Texture2D,
-                                  .format = vex::TextureFormat::RGBA8_UNORM,
-                                  .width = DefaultWidth,
-                                  .height = DefaultHeight,
-                                  .depthOrSliceCount = 1,
-                                  .mips = 1,
-                                  .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
-    finalOutputTexture =
-        graphics->CreateTexture({ .name = "Final Output Texture",
-                                  .type = vex::TextureType::Texture2D,
-                                  .format = vex::TextureFormat::RGBA8_UNORM,
+                                  .format = presentTextureFormat,
                                   .width = DefaultWidth,
                                   .height = DefaultHeight,
                                   .depthOrSliceCount = 1,
@@ -82,11 +75,11 @@ void HelloTriangleApplication::Run()
                     .usage = vex::TextureBindingUsage::ShaderReadWrite,
                 },
             };
-            std::vector<vex::BindlessHandle> pass1Handles = ctx.GetBindlessHandles(pass1Bindings);
+            std::vector<vex::BindlessHandle> pass1Handles = graphics->GetBindlessHandles(pass1Bindings);
 
             std::array<vex::ResourceBinding, 3> pass2Bindings{
                 vex::TextureBinding{
-                    .texture = finalOutputTexture,
+                    .texture = graphics->GetCurrentPresentTexture(),
                     .usage = vex::TextureBindingUsage::ShaderReadWrite,
                 },
                 vex::BufferBinding{
@@ -99,13 +92,13 @@ void HelloTriangleApplication::Run()
                     .usage = vex::TextureBindingUsage::ShaderRead,
                 },
             };
-            std::vector<vex::BindlessHandle> pass2Handles = ctx.GetBindlessHandles(pass2Bindings);
+            std::vector<vex::BindlessHandle> pass2Handles = graphics->GetBindlessHandles(pass2Bindings);
 
             ctx.EnqueueDataUpload(colorBuffer, std::as_bytes(std::span(color)));
 
             // Draw the first pass, first with an HLSL shader, then with a Slang shader (if available).
             {
-                ctx.TransitionBindings(pass1Bindings);
+                ctx.BarrierBindings(pass1Bindings);
 
                 {
                     VEX_GPU_SCOPED_EVENT_COL(ctx, "HLSL Triangle", 1, 0, 1)
@@ -144,7 +137,7 @@ void HelloTriangleApplication::Run()
 
             // Draw the second pass, first with an HLSL shader, then with a Slang shader (if available).
             {
-                ctx.TransitionBindings(pass2Bindings);
+                ctx.BarrierBindings(pass2Bindings);
 
                 ctx.Dispatch(
                     {
@@ -174,8 +167,6 @@ void HelloTriangleApplication::Run()
                     });
 #endif
             }
-
-            ctx.Copy(finalOutputTexture, graphics->GetCurrentPresentTexture());
         }
 
         graphics->Present(windowMode == Fullscreen);
@@ -190,23 +181,13 @@ void HelloTriangleApplication::OnResize(GLFWwindow* window, uint32_t newWidth, u
     }
 
     graphics->DestroyTexture(workingTexture);
-    graphics->DestroyTexture(finalOutputTexture);
 
     ExampleApplication::OnResize(window, newWidth, newHeight);
 
-    finalOutputTexture =
-        graphics->CreateTexture({ .name = "Final Output Texture",
-                                  .type = vex::TextureType::Texture2D,
-                                  .format = vex::TextureFormat::RGBA8_UNORM,
-                                  .width = newWidth,
-                                  .height = newHeight,
-                                  .depthOrSliceCount = 1,
-                                  .mips = 1,
-                                  .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
     workingTexture =
         graphics->CreateTexture({ .name = "Working Texture",
                                   .type = vex::TextureType::Texture2D,
-                                  .format = vex::TextureFormat::RGBA8_UNORM,
+                                  .format = graphics->GetCurrentPresentTexture().desc.format,
                                   .width = newWidth,
                                   .height = newHeight,
                                   .depthOrSliceCount = 1,

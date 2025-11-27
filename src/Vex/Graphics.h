@@ -35,7 +35,9 @@ class CommandContext;
 struct PhysicalDevice;
 struct Texture;
 struct TextureSampler;
+struct TextureBinding;
 struct BufferBinding;
+struct ResourceBinding;
 class RenderExtension;
 
 struct GraphicsCreateDesc
@@ -100,18 +102,24 @@ public:
     // Once destroyed, the handle passed in is invalid and should no longer be used.
     void DestroyBuffer(const Buffer& buffer);
 
-    // Allows users to fetch the bindless handles for a texture binding
-    [[nodiscard]] BindlessHandle GetTextureBindlessHandle(const TextureBinding& bindlessResource);
+    // Allows users to fetch the bindless handles for a texture binding. This bindless handle remains valid as long as the resource itself is alive.
+    [[nodiscard]] BindlessHandle GetBindlessHandle(const TextureBinding& bindlessResource);
 
-    // Allows users to fetch the bindless handles for a buffer binding
-    [[nodiscard]] BindlessHandle GetBufferBindlessHandle(const BufferBinding& bindlessResource);
+    // Allows users to fetch the bindless handles for a buffer binding. This bindless handle remains valid as long as the resource itself is alive.
+    [[nodiscard]] BindlessHandle GetBindlessHandle(const BufferBinding& bindlessResource);
+
+    // Allows users to fetch the bindless handles for multiple resource bindings. These bindless handles remain valid as long as the resources themselves are alive.
+    [[nodiscard]] std::vector<BindlessHandle> GetBindlessHandles(std::span<const ResourceBinding> bindlessResources);
 
     // Has the passed-in sync token been executed on the GPU yet?
     [[nodiscard]] bool IsTokenComplete(const SyncToken& token) const;
+
     // Have the passed-in sync tokens been executed on the GPU yet?
     [[nodiscard]] bool AreTokensComplete(std::span<const SyncToken> tokens) const;
+
     // Waits for the passed in token to be done.
     void WaitForTokenOnCPU(const SyncToken& syncToken);
+
     // Flushes all currently submitted GPU commands.
     void FlushGPU();
 
