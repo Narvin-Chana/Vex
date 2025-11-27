@@ -82,7 +82,6 @@ std::vector<UniqueHandle<PhysicalDevice>> DX12RHI::EnumeratePhysicalDevices()
             if (minVersionDevice)
             {
                 physicalDevices.push_back(MakeUnique<DX12PhysicalDevice>(adapter, minVersionDevice));
-                //adapter = nullptr;
             }
         }
 

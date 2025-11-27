@@ -327,4 +327,4 @@ void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
     std::unreachable();
 }
 
-} // namespace vex::vk////////////
+} // namespace vex::vk
