@@ -13,7 +13,7 @@ HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
 
     graphics = vex::MakeUnique<vex::Graphics>(vex::GraphicsCreateDesc{
         .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
-        .swapChainFormat = vex::TextureFormat::RGBA8_UNORM,
+        .useSwapChain = true,
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
     SetupShaderErrorHandling();
@@ -156,4 +156,10 @@ void HelloTriangleGraphicsApplication::OnResize(GLFWwindow* window, uint32_t wid
                                   .depthOrSliceCount = 1,
                                   .mips = 1,
                                   .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
+}
+
+int main()
+{
+    HelloTriangleGraphicsApplication application;
+    application.Run();
 }

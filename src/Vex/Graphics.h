@@ -41,15 +41,19 @@ class RenderExtension;
 struct GraphicsCreateDesc
 {
     PlatformWindow platformWindow;
+
+    // Enables or disables using a swapchain. If this is disabled, all calls to "Present" are invalid.
     bool useSwapChain = true;
-    TextureFormat swapChainFormat = TextureFormat::BGRA8_UNORM;
+    SwapChainDesc swapChainDesc;
+
     // Clear value to use for present textures.
     TextureClearValue presentTextureClearValue = { .flags = TextureClear::ClearColor, .color = { 0, 0, 0, 0 } };
-    bool useVSync = false;
-    // Determines the minimum number of backbuffers the application will leverage at once.
-    FrameBuffering frameBuffering = FrameBuffering::Triple;
+
+    // Enables the GPU debug layer.
     bool enableGPUDebugLayer = !VEX_SHIPPING;
-    bool enableGPUBasedValidation = !VEX_SHIPPING;
+    // Enables GPU-based validation. Can be very costly in terms of performance.
+    bool enableGPUBasedValidation = VEX_DEBUG;
+
     ShaderCompilerSettings shaderCompilerSettings;
 };
 
@@ -59,14 +63,22 @@ public:
     Graphics(const GraphicsCreateDesc& desc);
     ~Graphics();
 
+    Graphics(const Graphics&) = delete;
+    Graphics& operator=(const Graphics&) = delete;
+
+    Graphics(Graphics&&) = default;
+    Graphics& operator=(Graphics&&) = default;
+
     // Presents the current presentTexture to the swapchain. Will stall if the GPU's next backbuffer is not yet ready
-    // (depends on your FrameBuffering).
+    // (depends on your FrameBuffering). If you use an HDR swapchain, this will apply HDR conversions, if necessary,
+    // before copying the present texture to the swapChain.
     void Present(bool isFullscreenMode);
 
     // Begin a scoped CommandContext in which GPU commands can be submitted. The command context will automatically
     // submit its commands upon destruction if you use immediate submission policy. The Deferred submission policy will
     // instead submit all command queues batched together at swapchain present time.
-    CommandContext BeginScopedCommandContext(QueueType queueType,
+    [[nodiscard]] CommandContext BeginScopedCommandContext(
+        QueueType queueType,
                                              SubmissionPolicy submissionPolicy = SubmissionPolicy::DeferToPresent,
                                              std::span<SyncToken> dependencies = {});
 
@@ -103,8 +115,23 @@ public:
     // Flushes all currently submitted GPU commands.
     void FlushGPU();
 
-    // Enables or disables vsync when presenting.
-    void SetVSync(bool useVSync);
+    // Enables or disables vertical sync when presenting. Could lead to having to recreate the swapchain after the next
+    // present.
+    void SetUseVSync(bool useVSync);
+    [[nodiscard]] bool GetUseVSync() const;
+
+    // Determines if the swapchain is allowed to use an HDR format. Could lead to having to recreate the swapchain after
+    // the next present.
+    void SetUseHDRIfSupported(bool newValue);
+    [[nodiscard]] bool GetUseHDRIfSupported() const;
+
+    // Changes the preferred color space, although if unavailable Vex will fallback to other color spaces. Could lead to
+    // having to recreate the swapchain after the next present.
+    void SetPreferredHDRColorSpace(ColorSpace newValue);
+    [[nodiscard]] ColorSpace GetPreferredHDRColorSpace() const;
+
+    // Returns the currently used HDR color-space.
+    [[nodiscard]] ColorSpace GetCurrentHDRColorSpace() const;
 
     // Called when the underlying window resizes, allows the swapchain to be resized.
     void OnWindowResized(u32 newWidth, u32 newHeight);
@@ -132,7 +159,7 @@ public:
     void UnregisterRenderExtension(NonNullPtr<RenderExtension> renderExtension);
 
     // Returns Query or status if query is not yet ready
-    std::expected<Query, QueryStatus> GetTimestampValue(QueryHandle handle);
+    [[nodiscard]] std::expected<Query, QueryStatus> GetTimestampValue(QueryHandle handle);
 
 private:
     void SubmitDeferredWork();
@@ -145,7 +172,7 @@ private:
     RHITexture& GetRHITexture(TextureHandle textureHandle);
     RHIBuffer& GetRHIBuffer(BufferHandle bufferHandle);
 
-    void CreatePresentTextures();
+    void RecreatePresentTextures();
 
     // Index of the current frame, possible values depends on buffering:
     //  {0} if single buffering
@@ -192,7 +219,6 @@ private:
 
     std::vector<UniqueHandle<RenderExtension>> renderExtensions;
 
-    bool isSwapchainValid = true;
     u32 builtInLinearSamplerSlot = ~0;
 
     static constexpr u32 DefaultRegistrySize = 1024;

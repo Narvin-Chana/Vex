@@ -3,6 +3,7 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include <Vex/Logger.h>
+#include <Vex/Formattable.h>
 
 #include <DX12/DX12Formats.h>
 #include <DX12/DX12Headers.h>
@@ -67,7 +68,7 @@ bool DX12FeatureChecker::IsFeatureSupported(Feature feature) const
         // DX12 has no built-in way to generate mip-maps.
         return false;
     default:
-        VEX_LOG(Fatal, "Unable to determine feature support for {}", magic_enum::enum_name(feature));
+        VEX_LOG(Fatal, "Unable to determine feature support for {}", feature);
         return false;
     }
 }
@@ -136,7 +137,7 @@ D3D_FEATURE_LEVEL DX12FeatureChecker::ConvertFeatureLevelToDX12FeatureLevel(Feat
     case FeatureLevel::Level_12_2:
         return D3D_FEATURE_LEVEL_12_2;
     default:
-        VEX_LOG(Fatal, "Unsupported feature level: {}.", magic_enum::enum_name(featureLevel));
+        VEX_LOG(Fatal, "Unsupported feature level: {}.", featureLevel);
     }
     std::unreachable();
 }

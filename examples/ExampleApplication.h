@@ -12,7 +12,7 @@ struct GLFWwindow;
 class ExampleApplication
 {
 public:
-    ExampleApplication(std::string_view windowName);
+    ExampleApplication(std::string_view windowName, int defaultWidth = 0, int defaultHeight = 0, bool allowResize = true);
     virtual ~ExampleApplication();
     virtual void HandleKeyInput(int key, int scancode, int action, int mods);
 

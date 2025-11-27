@@ -22,7 +22,7 @@ class RHIResourceLayoutBase
 public:
     RHIResourceLayoutBase();
     ~RHIResourceLayoutBase();
-    void SetLayoutResources(const std::optional<ConstantBinding>& constants);
+    void SetLayoutResources(ConstantBinding constants);
 
     void SetSamplers(std::span<const TextureSampler> newSamplers);
     std::span<const TextureSampler> GetStaticSamplers() const;
