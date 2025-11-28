@@ -40,7 +40,7 @@ TEST_F(SynchronizationTest, CrossQueueDependecy)
     {
         auto computeCtx = graphics.BeginScopedCommandContext(QueueType::Compute, SubmissionPolicy::Immediate);
         tokens = computeCtx.Submit();
-        VEX_LOG(Info, "Submitted compute work, token: {}/{}", magic_enum::enum_name(tokens.queueType), tokens.value);
+        VEX_LOG(Info, "Submitted compute work, token: {}/{}", tokens.queueType, tokens.value);
     }
 
     // Submit work on graphics queue that depends on compute
@@ -50,7 +50,7 @@ TEST_F(SynchronizationTest, CrossQueueDependecy)
         graphicsTokens = graphicsCtx.Submit();
         VEX_LOG(Info,
                 "Submitted graphics work dependent on compute, token: {}/{}",
-                magic_enum::enum_name(graphicsTokens.queueType),
+                graphicsTokens.queueType,
                 graphicsTokens.value);
     }
 
@@ -62,7 +62,7 @@ TEST_F(SynchronizationTest, CrossQueueDependecy)
         auto copyTokens = copyCtx.Submit();
         VEX_LOG(Info,
                 "Submitted copy work dependent on graphics, token: {}/{}",
-                magic_enum::enum_name(copyTokens.queueType),
+                copyTokens.queueType,
                 copyTokens.value);
     }
 }
@@ -131,7 +131,7 @@ TEST_F(SynchronizationTest, HeavyResouceCreationAndUsage)
 
         allTokens.push_back(ctx.Submit());
 
-        VEX_LOG(Verbose, "Iteration {}: Submitted to {} queue", iteration, magic_enum::enum_name(queueType));
+        VEX_LOG(Verbose, "Iteration {}: Submitted to {} queue", iteration, queueType);
     }
 
     // Wait for some random tokens to complete
@@ -140,7 +140,7 @@ TEST_F(SynchronizationTest, HeavyResouceCreationAndUsage)
         int tokenIdx = std::uniform_int_distribution<>(0, allTokens.size() - static_cast<std::size_t>(1))(gen);
         VEX_LOG(Info,
                 "Waiting for token {}/{}",
-                magic_enum::enum_name(allTokens[tokenIdx].queueType),
+                allTokens[tokenIdx].queueType,
                 allTokens[tokenIdx].value);
         graphics.WaitForTokenOnCPU(allTokens[tokenIdx]);
         VEX_LOG(Info, "Token completed!");

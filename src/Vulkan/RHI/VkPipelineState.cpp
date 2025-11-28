@@ -51,7 +51,6 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
                                                             .pName = key.pixelShader.entryPoint.c_str() } };
 
     std::vector<::vk::VertexInputBindingDescription> bindings{ key.vertexInputLayout.bindings.size() };
-    // Requires including the heavy <algorithm>
     std::ranges::transform(key.vertexInputLayout.bindings,
                            bindings.begin(),
                            [](const VertexInputLayout::VertexBinding& binding)
@@ -120,7 +119,6 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
     };
 
     std::vector<::vk::PipelineColorBlendAttachmentState> colorAttachments(key.colorBlendState.attachments.size());
-    // Requires including the heavy <algorithm>
     std::ranges::transform(
         key.colorBlendState.attachments,
         colorAttachments.begin(),

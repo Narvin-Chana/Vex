@@ -7,7 +7,7 @@
 namespace vex::dx12
 {
 
-DX12PhysicalDevice::DX12PhysicalDevice(ComPtr<IDXGIAdapter4>&& adapter, const ComPtr<ID3D12Device>& device)
+DX12PhysicalDevice::DX12PhysicalDevice(ComPtr<IDXGIAdapter4> adapter, const ComPtr<ID3D12Device>& device)
     : adapter(std::move(adapter))
 {
     DXGI_ADAPTER_DESC3 desc;

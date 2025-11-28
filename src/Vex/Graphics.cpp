@@ -28,8 +28,6 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
     , resourceCleanup(rhi)
     , textureRegistry(DefaultRegistrySize)
     , bufferRegistry(DefaultRegistrySize)
-    , presentTextures(std::to_underlying(desc.frameBuffering))
-    , presentTokens(std::to_underlying(desc.frameBuffering))
 {
     VEX_LOG(Info, "Creating Vex Graphics Backend with API Support:\n\tDX12: {} Vulkan: {}", VEX_DX12, VEX_VULKAN);
 
@@ -93,15 +91,9 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
 
     if (desc.useSwapChain)
     {
-        swapChain.emplace(rhi.CreateSwapChain(
-            {
-                .format = desc.swapChainFormat,
-                .frameBuffering = desc.frameBuffering,
-                .useVSync = desc.useVSync,
-            },
-            desc.platformWindow));
+        swapChain.emplace(rhi.CreateSwapChain(this->desc.swapChainDesc, desc.platformWindow));
 
-        CreatePresentTextures();
+        RecreatePresentTextures();
     }
 }
 
@@ -140,24 +132,13 @@ void Graphics::Present(bool isFullscreenMode)
         renderExtension->OnPrePresent();
     }
 
-    // Make sure the (n - FRAME_BUFFERING == n) present has finished before presenting anew.
+    // Make sure the ((n - FRAME_BUFFERING) % FRAME_BUFFERING) present has finished before presenting anew.
     rhi.WaitForTokenOnCPU(presentTokens[currentFrameIndex]);
-
-    if (!isSwapchainValid)
-    {
-        // Always submit deferred work even though we cant present
-        SubmitDeferredWork();
-        CleanupResources();
-        return;
-    }
-
-    std::optional<RHITexture> backBuffer = swapChain->AcquireBackBuffer(currentFrameIndex);
-    isSwapchainValid = backBuffer.has_value();
 
     // Before presenting we have to handle all the queued for submission command lists (and their dependencies).
     SubmitDeferredWork();
 
-    if (backBuffer)
+    if (std::optional<RHITexture> backBuffer = swapChain->AcquireBackBuffer(currentFrameIndex))
     {
         // Open a new command list that will be used to copy the presentTexture to the backbuffer, and presenting.
         RHITexture& presentTexture = GetRHITexture(GetCurrentPresentTexture().handle);
@@ -195,9 +176,23 @@ void Graphics::Present(bool isFullscreenMode)
         commandPool->OnCommandListsSubmitted({ &cmdList, 1 }, { &presentTokens[currentFrameIndex], 1 });
     }
 
-    currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(desc.frameBuffering);
+    currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(desc.swapChainDesc.frameBuffering);
 
-    CleanupResources();
+    // If our swapchain is stale, we must recreate it.
+    if (swapChain->NeedsRecreation())
+    {
+        VEX_LOG(Warning,
+                "Swapchain is stale meaning it must be recreated. This can occur when changes occur with the "
+                "output display, or changes to settings relating to HDR/Color Spaces.");
+        FlushGPU();
+        swapChain->RecreateSwapChain(desc.platformWindow.width, desc.platformWindow.height);
+        // We can now update our present textures to match the swapchain's potentially new format.
+        RecreatePresentTextures();
+    }
+    else
+    {
+        CleanupResources();
+    }
 }
 
 CommandContext Graphics::BeginScopedCommandContext(QueueType queueType,
@@ -393,17 +388,41 @@ void Graphics::FlushGPU()
     rhi.FlushGPU();
 
     CleanupResources();
-
-    VEX_LOG(Info, "GPU flush done.");
 }
 
-void Graphics::SetVSync(bool useVSync)
+void Graphics::SetUseVSync(bool useVSync)
 {
-    if (swapChain->NeedsFlushForVSyncToggle())
-    {
-        FlushGPU();
-    }
-    swapChain->SetVSync(useVSync);
+    desc.swapChainDesc.useVSync = useVSync;
+}
+
+bool Graphics::GetUseVSync() const
+{
+    return desc.swapChainDesc.useVSync;
+}
+
+void Graphics::SetUseHDRIfSupported(bool newValue)
+{
+    desc.swapChainDesc.useHDRIfSupported = newValue;
+}
+
+bool Graphics::GetUseHDRIfSupported() const
+{
+    return desc.swapChainDesc.useHDRIfSupported;
+}
+
+void Graphics::SetPreferredHDRColorSpace(vex::ColorSpace newValue)
+{
+    desc.swapChainDesc.preferredColorSpace = newValue;
+}
+
+ColorSpace Graphics::GetPreferredHDRColorSpace() const
+{
+    return desc.swapChainDesc.preferredColorSpace;
+}
+
+ColorSpace Graphics::GetCurrentHDRColorSpace() const
+{
+    return swapChain->GetCurrentColorSpace();
 }
 
 void Graphics::OnWindowResized(u32 newWidth, u32 newHeight)
@@ -411,24 +430,19 @@ void Graphics::OnWindowResized(u32 newWidth, u32 newHeight)
     // Do not resize if any of the dimensions is 0, or if the resize gives us the same window size as we have
     // currently.
     if (newWidth == 0 || newHeight == 0 ||
-        (isSwapchainValid && (newWidth == desc.platformWindow.width && newHeight == desc.platformWindow.height)))
+        (newWidth == desc.platformWindow.width && newHeight == desc.platformWindow.height))
     {
         return;
     }
 
-    // Destroy present textures
-    for (auto& presentTex : presentTextures)
-    {
-        DestroyTexture(presentTex);
-    }
-    presentTextures.clear();
-
     FlushGPU();
 
-    // Resize swapchain.
-    swapChain->Resize(newWidth, newHeight);
+    // Take advantage of the resize to cleanup no longer needed resources.
+    CleanupResources();
 
-    CreatePresentTextures();
+    // Recreate our swapchain.
+    swapChain->RecreateSwapChain(newWidth, newHeight);
+    RecreatePresentTextures();
 
     for (auto& renderExtension : renderExtensions)
     {
@@ -437,7 +451,6 @@ void Graphics::OnWindowResized(u32 newWidth, u32 newHeight)
 
     desc.platformWindow.width = newWidth;
     desc.platformWindow.height = newHeight;
-    isSwapchainValid = true;
 }
 
 Texture Graphics::GetCurrentPresentTexture()
@@ -518,7 +531,6 @@ RenderExtension* Graphics::RegisterRenderExtension(UniqueHandle<RenderExtension>
 
 void Graphics::UnregisterRenderExtension(NonNullPtr<RenderExtension> renderExtension)
 {
-    // Included in <utility>, avoiding including heavy <algorithm>.
     auto el = std::ranges::find_if(renderExtensions,
                                    [renderExtension](const UniqueHandle<RenderExtension>& ext)
                                    { return ext.get() == renderExtension; });
@@ -561,12 +573,33 @@ RHIBuffer& Graphics::GetRHIBuffer(BufferHandle bufferHandle)
     return bufferRegistry[bufferHandle];
 }
 
-void Graphics::CreatePresentTextures()
+void Graphics::RecreatePresentTextures()
 {
+    if (!presentTextures.empty())
+    {
+        // Check if its even necessary to recreate the present textures.
+        const auto& presentDesc = presentTextures[0].desc;
+        const auto& swapChainDesc = swapChain->GetBackBufferTextureDescription();
+        if (presentDesc.format == swapChainDesc.format && presentDesc.width == swapChainDesc.width &&
+            presentDesc.height == swapChainDesc.height)
+        {
+            return;
+        }
+    }
+
     auto ctx = BeginScopedCommandContext(vex::QueueType::Graphics, vex::SubmissionPolicy::Immediate);
 
-    presentTextures.resize(std::to_underlying(desc.frameBuffering));
-    for (u8 presentTextureIndex = 0; presentTextureIndex < std::to_underlying(desc.frameBuffering);
+    // Clear current present textures.
+    for (const Texture& tex : presentTextures)
+    {
+        DestroyTexture(tex);
+    }
+
+    // Create new present textures.
+    presentTextures.resize(std::to_underlying(desc.swapChainDesc.frameBuffering));
+    presentTokens.clear();
+    presentTokens.resize(std::to_underlying(desc.swapChainDesc.frameBuffering));
+    for (u8 presentTextureIndex = 0; presentTextureIndex < std::to_underlying(desc.swapChainDesc.frameBuffering);
          ++presentTextureIndex)
     {
         TextureDesc presentTextureDesc = swapChain->GetBackBufferTextureDescription();

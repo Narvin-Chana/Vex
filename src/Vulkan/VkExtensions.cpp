@@ -25,6 +25,9 @@ std::vector<const char*> GetRequiredInstanceExtensions(bool enableGPUDebugLayer)
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     }
 
+    // Required for HDR handling
+    extensions.push_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+
     // Platform-specific surface extensions
 #if defined(_WIN32)
     extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);

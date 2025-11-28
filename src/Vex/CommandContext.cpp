@@ -295,7 +295,7 @@ void CommandContext::ClearTexture(const TextureBinding& binding,
 
 void CommandContext::Draw(const DrawDesc& drawDesc,
                           const DrawResourceBinding& drawBindings,
-                          std::optional<ConstantBinding> constants,
+                          ConstantBinding constants,
                           u32 vertexCount,
                           u32 instanceCount,
                           u32 vertexOffset,
@@ -324,7 +324,7 @@ void CommandContext::Draw(const DrawDesc& drawDesc,
 
 void CommandContext::DrawIndexed(const DrawDesc& drawDesc,
                                  const DrawResourceBinding& drawBindings,
-                                 std::optional<ConstantBinding> constants,
+                                 ConstantBinding constants,
                                  u32 indexCount,
                                  u32 instanceCount,
                                  u32 indexOffset,
@@ -344,12 +344,12 @@ void CommandContext::DrawIndexed(const DrawDesc& drawDesc,
 }
 
 void CommandContext::Dispatch(const ShaderKey& shader,
-                              const std::optional<ConstantBinding>& constants,
+                              ConstantBinding constants,
                               std::array<u32, 3> groupCount)
 {
     if (shader.type != ShaderType::ComputeShader)
     {
-        VEX_LOG(Fatal, "Invalid shader type passed to Dispatch call: {}", magic_enum::enum_name(shader.type));
+        VEX_LOG(Fatal, "Invalid shader type passed to Dispatch call: {}", shader.type);
     }
 
     using namespace CommandContext_Internal;
@@ -383,7 +383,7 @@ void CommandContext::Dispatch(const ShaderKey& shader,
 }
 
 void CommandContext::TraceRays(const RayTracingPassDescription& rayTracingPassDescription,
-                               const std::optional<ConstantBinding>& constants,
+                               ConstantBinding constants,
                                std::array<u32, 3> widthHeightDepth)
 {
     RayTracingPassDescription::ValidateShaderTypes(rayTracingPassDescription);
@@ -964,7 +964,7 @@ ScopedGPUEvent CommandContext::CreateScopedGPUEvent(const char* markerLabel, std
 
 std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& drawDesc,
                                                                 const DrawResourceBinding& drawBindings,
-                                                                std::optional<ConstantBinding> constants)
+                                                                ConstantBinding constants)
 {
     VEX_CHECK(!drawBindings.depthStencil ||
                   (drawBindings.depthStencil &&

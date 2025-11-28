@@ -13,7 +13,8 @@ ImGuiApplication::ImGuiApplication()
 #endif
     graphics = vex::MakeUnique<vex::Graphics>(vex::GraphicsCreateDesc{
         .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
-        .swapChainFormat = SwapchainFormat,
+        .useSwapChain = true,
+        .swapChainDesc = { .frameBuffering = FrameBuffering },
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
 
@@ -40,4 +41,10 @@ void ImGuiApplication::OnResize(GLFWwindow* window, uint32_t width, uint32_t hei
     }
 
     ExampleApplication::OnResize(window, width, height);
+}
+
+int main()
+{
+    ImGuiApplication application;
+    application.Run();
 }

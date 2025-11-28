@@ -34,7 +34,7 @@ public:
     virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() override;
     virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) override;
 
-    virtual RHISwapChain CreateSwapChain(const SwapChainDescription& desc,
+    virtual RHISwapChain CreateSwapChain(SwapChainDesc& desc,
                                          const PlatformWindow& platformWindow) override;
 
     virtual RHICommandPool CreateCommandPool() override;

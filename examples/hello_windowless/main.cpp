@@ -24,7 +24,7 @@ int main()
                 .entryPoint = "CSMain",
                 .type = vex::ShaderType::ComputeShader,
             },
-            std::nullopt,
+            {},
             std::array{
                 (width + 7u) / 8u,
                 (height + 7u) / 8u,

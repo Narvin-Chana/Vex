@@ -111,7 +111,7 @@ public:
     // Performs a draw call.
     void Draw(const DrawDesc& drawDesc,
               const DrawResourceBinding& drawBindings,
-              std::optional<ConstantBinding> constants,
+              ConstantBinding constants,
               u32 vertexCount,
               u32 instanceCount = 1,
               u32 vertexOffset = 0,
@@ -120,7 +120,7 @@ public:
     // Performs an indexed draw call.
     void DrawIndexed(const DrawDesc& drawDesc,
                      const DrawResourceBinding& drawBindings,
-                     std::optional<ConstantBinding> constants,
+                     ConstantBinding constants,
                      u32 indexCount,
                      u32 instanceCount = 1,
                      u32 indexOffset = 0,
@@ -129,12 +129,12 @@ public:
 
     // Dispatches a compute shader.
     void Dispatch(const ShaderKey& shader,
-                  const std::optional<ConstantBinding>& constants,
+                  ConstantBinding constants,
                   std::array<u32, 3> groupCount);
 
     // Dispatches a ray tracing pass.
     void TraceRays(const RayTracingPassDescription& rayTracingPassDescription,
-                   const std::optional<ConstantBinding>& constants,
+                   ConstantBinding constants,
                    std::array<u32, 3> widthHeightDepth);
 
     // Fills in all lower resolution mips with downsampled version of the source mip.
@@ -259,7 +259,7 @@ public:
 private:
     std::optional<RHIDrawResources> PrepareDrawCall(const DrawDesc& drawDesc,
                                                     const DrawResourceBinding& drawBindings,
-                                                    std::optional<ConstantBinding> constants);
+                                                    ConstantBinding constants);
     void SetVertexBuffers(u32 vertexBuffersFirstSlot, std::span<BufferBinding> vertexBuffers);
     void SetIndexBuffer(std::optional<BufferBinding> indexBuffer);
 

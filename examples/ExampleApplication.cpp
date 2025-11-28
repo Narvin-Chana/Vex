@@ -4,7 +4,10 @@
 
 #include <GLFWIncludes.h>
 
-ExampleApplication::ExampleApplication(std::string_view windowName)
+ExampleApplication::ExampleApplication(std::string_view windowName,
+                                       int defaultWidth,
+                                       int defaultHeight,
+                                       bool allowResize)
 {
 #if defined(__linux__)
     glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
@@ -16,12 +19,12 @@ ExampleApplication::ExampleApplication(std::string_view windowName)
     }
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+    glfwWindowHint(GLFW_RESIZABLE, allowResize ? GLFW_TRUE : GLFW_FALSE);
 
-    window = glfwCreateWindow(DefaultWidth, DefaultHeight, std::string(windowName).c_str(), nullptr, nullptr);
+    width = defaultWidth ? defaultWidth : DefaultWidth;
+    height = defaultHeight ? defaultHeight : DefaultHeight;
 
-    width = DefaultWidth;
-    height = DefaultHeight;
+    window = glfwCreateWindow(width, height, std::string(windowName).c_str(), nullptr, nullptr);
 
     windowedInfo = { .width = DefaultWidth, .height = DefaultHeight };
     glfwGetWindowPos(window, &windowedInfo.x, &windowedInfo.y);
@@ -61,7 +64,8 @@ ExampleApplication::~ExampleApplication()
 
 void ExampleApplication::HandleKeyInput(int key, int scancode, int action, int mods)
 {
-    if (action == GLFW_PRESS && key == GLFW_KEY_R && graphics)
+    // CTRL+SHIFT+PERIOD to recompile shaders.
+    if (action == GLFW_PRESS && key == GLFW_KEY_PERIOD && graphics && (mods & GLFW_MOD_CONTROL))
     {
         graphics->RecompileChangedShaders();
     }

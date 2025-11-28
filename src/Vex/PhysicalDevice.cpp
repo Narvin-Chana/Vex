@@ -5,6 +5,7 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include <Vex/Logger.h>
+#include <Vex/Formattable.h>
 
 namespace vex
 {
@@ -24,9 +25,9 @@ void PhysicalDevice::DumpPhysicalDeviceInfo()
         "\t\tBindlessResources: {}",
         deviceName,
         dedicatedVideoMemoryMB,
-        magic_enum::enum_name(featureChecker->GetFeatureLevel()),
-        magic_enum::enum_name(featureChecker->GetResourceBindingTier()),
-        magic_enum::enum_name(featureChecker->GetShaderModel()),
+        featureChecker->GetFeatureLevel(),
+        featureChecker->GetResourceBindingTier(),
+        featureChecker->GetShaderModel(),
         featureChecker->IsFeatureSupported(Feature::MeshShader),
         featureChecker->IsFeatureSupported(Feature::RayTracing),
         featureChecker->IsFeatureSupported(Feature::BindlessResources));

@@ -13,8 +13,7 @@ HelloRayTracing::HelloRayTracing()
 
     graphics = vex::MakeUnique<vex::Graphics>(vex::GraphicsCreateDesc{
         .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
-        .swapChainFormat = vex::TextureFormat::RGBA8_UNORM,
-        .frameBuffering = vex::FrameBuffering::Triple,
+        .useSwapChain = true,
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
 
@@ -106,4 +105,10 @@ void HelloRayTracing::OnResize(GLFWwindow* window, uint32_t newWidth, uint32_t n
         .mips = 1,
         .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite,
     });
+}
+
+int main()
+{
+    HelloRayTracing application;
+    application.Run();
 }

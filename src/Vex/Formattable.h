@@ -71,15 +71,10 @@ struct std::formatter<std::wstring>
 
 template <class E>
     requires std::is_enum_v<E>
-struct std::formatter<E>
+struct std::formatter<E> : std::formatter<std::string_view>
 {
-    constexpr auto parse(std::format_parse_context& ctx)
+    constexpr auto format(E obj, std::format_context& ctx) const
     {
-        return ctx.begin();
-    }
-
-    auto format(E obj, std::format_context& ctx) const
-    {
-        return std::format_to(ctx.out(), "{}", magic_enum::enum_name(obj));
+        return std::formatter<std::string_view>::format(magic_enum::enum_name(obj), ctx);
     }
 };

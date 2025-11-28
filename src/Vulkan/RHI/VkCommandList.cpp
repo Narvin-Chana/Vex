@@ -486,7 +486,6 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
 
     std::vector<::vk::RenderingAttachmentInfo> colorAttachmentsInfo(resources.renderTargets.size());
 
-    // Requires including the heavy <algorithm>
     std::ranges::transform(
         resources.renderTargets,
         colorAttachmentsInfo.begin(),

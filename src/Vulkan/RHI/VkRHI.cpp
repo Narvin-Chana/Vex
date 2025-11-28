@@ -346,7 +346,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     GetGPUContext();
 }
 
-RHISwapChain VkRHI::CreateSwapChain(const SwapChainDescription& desc, const PlatformWindow& platformWindow)
+RHISwapChain VkRHI::CreateSwapChain(SwapChainDesc& desc, const PlatformWindow& platformWindow)
 {
     return { GetGPUContext(), desc, platformWindow };
 }

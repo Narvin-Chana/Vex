@@ -20,7 +20,7 @@ struct GraphicsPipelineStateKey;
 struct ComputePipelineStateKey;
 struct RayTracingPassDescription;
 using RayTracingPipelineStateKey = RayTracingPassDescription;
-struct SwapChainDescription;
+struct SwapChainDesc;
 struct PlatformWindow;
 enum class ShaderCompilerBackend : u8;
 struct ShaderEnvironment;
@@ -31,7 +31,7 @@ struct RHIBase
     virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() = 0;
     virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) = 0;
 
-    virtual RHISwapChain CreateSwapChain(const SwapChainDescription& desc, const PlatformWindow& platformWindow) = 0;
+    virtual RHISwapChain CreateSwapChain(SwapChainDesc& desc, const PlatformWindow& platformWindow) = 0;
 
     virtual RHICommandPool CreateCommandPool() = 0;
 
