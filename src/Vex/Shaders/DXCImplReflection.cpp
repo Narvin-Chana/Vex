@@ -2,8 +2,6 @@
 
 #include <bitset>
 
-#include <slang.h>
-
 #include <Vex/Debug.h>
 
 #if VEX_DX12
@@ -254,6 +252,5 @@ ShaderReflection GetDxcReflection(dx12::ComPtr<IDxcResult> compilationResult)
     return reflectionData;
 }
 #endif
-
 
 } // namespace vex

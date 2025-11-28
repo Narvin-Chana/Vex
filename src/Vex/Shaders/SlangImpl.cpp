@@ -290,8 +290,6 @@ Slang::ComPtr<slang::ISession> SlangCompilerImpl::CreateSession(const Shader& sh
                                      slang::CompilerOptionValue{ .intValue0 = SLANG_DEBUG_INFO_LEVEL_MAXIMAL });
     }
 
-    compilerOptions.emplace_back(slang::CompilerOptionName::Optimization, slang::CompilerOptionValue{ .intValue0 = 0 });
-
     if (compilerSettings.enableHLSL202xFeatures)
     {
         // Ignored, Slang already natively includes most HLSL 202x features.

@@ -86,7 +86,6 @@ bool SupportsStencil(TextureFormat format);
 std::string_view GetHLSLType(TextureFormat format);
 bool IsBlockCompressed(TextureFormat format);
 bool SupportsMipGeneration(TextureFormat format);
-u32 GetTextureComponentCount(TextureFormat format);
 
 }; // namespace FormatUtil
 

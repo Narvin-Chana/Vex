@@ -12,11 +12,6 @@ struct IDxcResult;
 #include <Vex/Types.h>
 #endif
 
-namespace slang
-{
-struct IComponentType;
-}
-
 namespace vex
 {
 #if VEX_VULKAN
@@ -26,7 +21,5 @@ ShaderReflection GetSpirvReflection(std::span<const byte> spvCode);
 #if VEX_DX12
 ShaderReflection GetDxcReflection(dx12::ComPtr<IDxcResult>);
 #endif
-
-ShaderReflection GetSlangReflection(slang::IComponentType* program);
 
 } // namespace vex
