@@ -403,25 +403,6 @@ RHITimestampQueryPool VkRHI::CreateTimestampQueryPool(RHIAllocator& allocator)
 
 void VkRHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBackend, ShaderEnvironment& shaderEnv)
 {
-    if (compilerBackend == ShaderCompilerBackend::DXC)
-    {
-        shaderEnv.args.emplace_back(L"-spirv");
-        shaderEnv.args.emplace_back(L"-fvk-bind-resource-heap");
-        shaderEnv.args.emplace_back(L"0");
-        shaderEnv.args.emplace_back(L"1");
-        shaderEnv.args.emplace_back(std::format(
-            L"-fspv-target-env={}",
-            StringToWString(std::string(reinterpret_cast<VkFeatureChecker&>(*GPhysicalDevice->featureChecker)
-                                            .GetMaxSupportedVulkanVersion()))));
-
-        // Flags to keep Vk similar to DX12 hlsl conventions.
-        shaderEnv.args.emplace_back(L"-fvk-use-dx-layout");
-        shaderEnv.args.emplace_back(L"-fvk-support-nonzero-base-instance");
-        shaderEnv.args.emplace_back(L"-fvk-support-nonzero-base-vertex");
-        shaderEnv.args.emplace_back(L"-fspv-reflect");
-    }
-
-    shaderEnv.defines.emplace_back("VEX_VULKAN");
 }
 
 void VkRHI::WaitForTokenOnCPU(const SyncToken& syncToken)
