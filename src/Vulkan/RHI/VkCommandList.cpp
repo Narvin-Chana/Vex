@@ -269,32 +269,6 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
         .layerCount = binding.binding.subresource.GetSliceCount(binding.texture->GetDesc()),
     };
 
-    // const TextureDesc& desc = binding.texture->GetDesc();
-    // if (desc.usage & TextureUsage::RenderTarget && clearValue.flags & TextureClear::ClearColor)
-    // {
-    //     ::vk::ClearAttachment clearAttachment{
-    //         .aspectMask = static_cast<::vk::ImageAspectFlagBits>(clearValue.flags),
-    //         .colorAttachment = 0, // TODO: replace with correct attachment index?
-    //         .clearValue{
-    //             .color = ::vk::ClearColorValue{
-    //                 .float32 = clearValue.color
-    //             }
-    //         }
-    //     };
-    //
-    //     ::vk::ClearRect clearRect{
-    //         .rect = ::vk::Rect2D{
-    //             .offset = ::vk::Offset2D{ 0, 0 },
-    //             .extent = ::vk::Extent2D{ desc.width, desc.height }
-    //         },
-    //         .baseArrayLayer = clearBinding.startSlice,
-    //         .layerCount = layerCount,
-    //     };
-    //
-    //     commandBuffer->clearAttachments(1, &clearAttachment, 1, &clearRect);
-    // }
-    // else
-
     if (usage == TextureUsage::DepthStencil &&
         clearValue.flags & (TextureClear::ClearDepth | TextureClear::ClearStencil))
     {

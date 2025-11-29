@@ -35,6 +35,8 @@ D3D12_BARRIER_SYNC RHIBarrierSyncToDX12(RHIBarrierSync barrierSync)
         return D3D12_BARRIER_SYNC_DEPTH_STENCIL;
     case ComputeShader:
         return D3D12_BARRIER_SYNC_COMPUTE_SHADING;
+    case Clear:
+        return D3D12_BARRIER_SYNC_ALL;
     case Copy:
     case Blit:
         return D3D12_BARRIER_SYNC_COPY;

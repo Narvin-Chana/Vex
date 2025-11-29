@@ -296,12 +296,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
 
 RHITextureBarrier VkTexture::GetClearTextureBarrier()
 {
-    // TMPO AllCommands, need to figure out clearing in a clean way.
-    return RHITextureBarrier(*this,
-                             {},
-                             RHIBarrierSync::AllCommands,
-                             RHIBarrierAccess::CopyDest,
-                             RHITextureLayout::CopyDest);
+    return RHITextureBarrier(*this, {}, RHIBarrierSync::Clear, RHIBarrierAccess::CopyDest, RHITextureLayout::CopyDest);
 }
 
 void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)

@@ -55,7 +55,7 @@ public:
     TextureReadbackContext(TextureReadbackContext&& other);
     TextureReadbackContext& operator=(TextureReadbackContext&& other);
 
-    void ReadData(std::span<byte> outData);
+    void ReadData(std::span<byte> outData) const;
     [[nodiscard]] u64 GetDataByteSize() const noexcept;
     [[nodiscard]] TextureDesc GetSourceTextureDescription() const noexcept
     {
@@ -128,9 +128,7 @@ public:
                      u32 instanceOffset = 0);
 
     // Dispatches a compute shader.
-    void Dispatch(const ShaderKey& shader,
-                  ConstantBinding constants,
-                  std::array<u32, 3> groupCount);
+    void Dispatch(const ShaderKey& shader, ConstantBinding constants, std::array<u32, 3> groupCount);
 
     // Dispatches a ray tracing pass.
     void TraceRays(const RayTracingPassDescription& rayTracingPassDescription,

@@ -213,7 +213,7 @@ TextureReadbackContext& TextureReadbackContext::operator=(TextureReadbackContext
     return *this;
 }
 
-void TextureReadbackContext::ReadData(std::span<byte> outData)
+void TextureReadbackContext::ReadData(std::span<byte> outData) const
 {
     RHIBuffer& rhiBuffer = backend->GetRHIBuffer(buffer.handle);
 
@@ -343,9 +343,7 @@ void CommandContext::DrawIndexed(const DrawDesc& drawDesc,
     cmdList->EndRendering();
 }
 
-void CommandContext::Dispatch(const ShaderKey& shader,
-                              ConstantBinding constants,
-                              std::array<u32, 3> groupCount)
+void CommandContext::Dispatch(const ShaderKey& shader, ConstantBinding constants, std::array<u32, 3> groupCount)
 {
     if (shader.type != ShaderType::ComputeShader)
     {
