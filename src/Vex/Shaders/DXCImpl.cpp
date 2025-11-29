@@ -123,11 +123,12 @@ std::expected<ShaderCompilationResult, std::string> DXCCompilerImpl::CompileShad
 #if VEX_VULKAN
     std::string_view vulkanVersion =
         reinterpret_cast<vk::VkFeatureChecker&>(*GPhysicalDevice->featureChecker).GetMaxSupportedVulkanVersion();
+    std::wstring vulkanVersionFlag = std::format(L"-fspv-target-env={}", StringToWString(std::string(vulkanVersion)));
     args.emplace_back(L"-spirv");
     args.emplace_back(L"-fvk-bind-resource-heap");
     args.emplace_back(L"0");
     args.emplace_back(L"1");
-    args.emplace_back(std::format(L"-fspv-target-env={}", StringToWString(std::string(vulkanVersion))).c_str());
+    args.emplace_back(vulkanVersionFlag.c_str());
 
     // Flags to keep Vk similar to DX12 hlsl conventions.
     args.emplace_back(L"-fvk-use-dx-layout");
