@@ -418,6 +418,7 @@ void VkRHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBacken
         shaderEnv.args.emplace_back(L"-fvk-use-dx-layout");
         shaderEnv.args.emplace_back(L"-fvk-support-nonzero-base-instance");
         shaderEnv.args.emplace_back(L"-fvk-support-nonzero-base-vertex");
+        shaderEnv.args.emplace_back(L"-fspv-reflect");
     }
 
     shaderEnv.defines.emplace_back("VEX_VULKAN");

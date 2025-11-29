@@ -5,6 +5,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include <Vex/Shaders/ShaderCompiler.h>
 #include <Vex/Shaders/ShaderKey.h>
 #include <Vex/Types.h>
 
@@ -20,6 +21,7 @@ public:
     std::span<const byte> GetBlob() const;
     bool IsValid() const;
     bool NeedsRecompile() const;
+    const ShaderReflection& GetReflection() const;
 
     void MarkDirty();
 
@@ -30,7 +32,7 @@ private:
     bool isDirty = true;
     // Errored shaders are set in stasis while awaiting a confirmation of whether to launch a recompilation.
     bool isErrored = false;
-    std::vector<byte> blob;
+    ShaderCompilationResult res;
 
     friend struct ShaderCompiler;
     friend struct SlangCompilerImpl;

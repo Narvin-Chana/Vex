@@ -15,6 +15,7 @@ add_executable(vex_tests
     "MipGenerationTest.cpp"
     "BufferViewTest.cpp"
     "GraphicsBackendTest.cpp"
+	"ReflectionTest.cpp"
 )
 
 target_link_libraries(vex_tests 

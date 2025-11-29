@@ -29,6 +29,9 @@ function(setup_pix_3 TARGET)
     endif()
 
     target_link_libraries(${TARGET} PRIVATE WinPixEventRuntime::WinPixEventRuntime)
+
+    # Register PIX runtime DLL
+    vex_add_files_to_target_property(${TARGET} "VEX_RUNTIME_DLLS" "${PIX_RUNTIME_DLL}")
 endfunction()
 
 function(setup_dx12_backend TARGET)
@@ -137,9 +140,6 @@ function(setup_dx12_backend TARGET)
         DIRECTX_AGILITY_SDK_VERSION=${DX_AGILITY_VERSION}
         D3D12_AGILITY_SDK_ENABLED
     )
-
-    # Register PIX runtime DLL
-    vex_add_files_to_target_property(${TARGET} "VEX_RUNTIME_DLLS" "${PIX_RUNTIME_DLL}")
     
     # Register D3D12 Agility SDK DLLs (these need special D3D12/ subdirectory)
     vex_add_files_to_target_property(${TARGET} "VEX_D3D12_AGILITY_DLLS" ${DX_AGILITY_RUNTIME_DLLS})
