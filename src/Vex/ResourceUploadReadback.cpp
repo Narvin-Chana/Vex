@@ -1,6 +1,6 @@
 ﻿#include "ResourceUploadReadback.h"
 
-#include <Vex/Texture.h>
+#include <Vex/ResourceCopy.h>
 
 namespace vex
 {
