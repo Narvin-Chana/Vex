@@ -17,7 +17,7 @@ struct SlangCompilerImpl : public CompilerBase
     SlangCompilerImpl(std::vector<std::filesystem::path> incDirs);
     virtual ~SlangCompilerImpl() override;
 
-    virtual std::expected<std::vector<byte>, std::string> CompileShader(
+    virtual std::expected<ShaderCompilationResult, std::string> CompileShader(
         const Shader& shader,
         ShaderEnvironment& shaderEnv,
         const ShaderCompilerSettings& compilerSettings) const override;
