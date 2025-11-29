@@ -1,5 +1,7 @@
 ﻿#include "ResourceUploadReadback.h"
 
+#include <Vex/Texture.h>
+
 namespace vex
 {
 
