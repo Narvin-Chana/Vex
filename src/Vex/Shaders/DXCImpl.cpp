@@ -11,6 +11,10 @@
 #include <Vex/Shaders/ShaderEnvironment.h>
 #include <Vex/Shaders/ShaderKey.h>
 
+#if VEX_VULKAN
+#include <Vulkan/VkFeatureChecker.h>
+#endif
+
 namespace vex
 {
 
@@ -117,14 +121,13 @@ std::expected<ShaderCompilationResult, std::string> DXCCompilerImpl::CompileShad
     }
 
 #if VEX_VULKAN
+    std::string_view vulkanVersion =
+        reinterpret_cast<vk::VkFeatureChecker&>(*GPhysicalDevice->featureChecker).GetMaxSupportedVulkanVersion();
     args.emplace_back(L"-spirv");
     args.emplace_back(L"-fvk-bind-resource-heap");
     args.emplace_back(L"0");
     args.emplace_back(L"1");
-    args.emplace_back(std::format(
-        L"-fspv-target-env={}",
-        StringToWString(std::string(
-            reinterpret_cast<VkFeatureChecker&>(*GPhysicalDevice->featureChecker).GetMaxSupportedVulkanVersion()))));
+    args.emplace_back(std::format(L"-fspv-target-env={}", StringToWString(std::string(vulkanVersion))).c_str());
 
     // Flags to keep Vk similar to DX12 hlsl conventions.
     args.emplace_back(L"-fvk-use-dx-layout");

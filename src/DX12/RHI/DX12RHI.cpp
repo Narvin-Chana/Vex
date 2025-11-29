@@ -198,10 +198,6 @@ RHITimestampQueryPool DX12RHI::CreateTimestampQueryPool(RHIAllocator& allocator)
     return RHITimestampQueryPool{ *this, allocator };
 }
 
-void DX12RHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBackend, ShaderEnvironment& shaderEnv)
-{
-}
-
 void DX12RHI::WaitForTokenOnCPU(const SyncToken& syncToken)
 {
     auto& fence = (*fences)[syncToken.queueType];

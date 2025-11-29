@@ -401,10 +401,6 @@ RHITimestampQueryPool VkRHI::CreateTimestampQueryPool(RHIAllocator& allocator)
     return { GetGPUContext(), *this, allocator };
 }
 
-void VkRHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBackend, ShaderEnvironment& shaderEnv)
-{
-}
-
 void VkRHI::WaitForTokenOnCPU(const SyncToken& syncToken)
 {
     auto& fence = (*fences)[syncToken.queueType];
