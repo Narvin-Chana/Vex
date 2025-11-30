@@ -508,11 +508,7 @@ void CommandContext::Copy(const Texture& source, const Texture& destination)
                                             RHIBarrierSync::Copy,
                                             RHIBarrierAccess::CopyDest,
                                             RHITextureLayout::CopyDest } };
-#ifdef __cpp_lib_containers_ranges
-    pendingTextureBarriers.append_range(std::move(barriers));
-#else
-    pendingTextureBarriers.insert(pendingTextureBarriers.end(), barriers.cbegin(), barriers.cend());
-#endif
+    EnqueueBarriers(barriers);
     FlushBarriers();
     cmdList->Copy(sourceRHI, destinationRHI);
 }
@@ -545,12 +541,7 @@ void CommandContext::Copy(const Texture& source,
                                             RHIBarrierSync::Copy,
                                             RHIBarrierAccess::CopyDest,
                                             RHITextureLayout::CopyDest } };
-#ifdef __cpp_lib_containers_ranges
-    pendingTextureBarriers.append_range(std::move(barriers));
-#else
-    pendingTextureBarriers.insert(pendingTextureBarriers.end(), barriers.cbegin(), barriers.cend());
-#endif
-
+    EnqueueBarriers(barriers);
     FlushBarriers();
     cmdList->Copy(sourceRHI, destinationRHI, regionMappings);
 }
@@ -565,12 +556,7 @@ void CommandContext::Copy(const Buffer& source, const Buffer& destination)
     RHIBuffer& destinationRHI = graphics->GetRHIBuffer(destination.handle);
     std::array barriers{ RHIBufferBarrier{ sourceRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource },
                          RHIBufferBarrier{ destinationRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest } };
-#ifdef __cpp_lib_containers_ranges
-    pendingBufferBarriers.append_range(std::move(barriers));
-#else
-    pendingBufferBarriers.insert(pendingBufferBarriers.end(), barriers.cbegin(), barriers.cend());
-#endif
-
+    EnqueueBarriers(barriers);
     FlushBarriers();
     cmdList->Copy(sourceRHI, destinationRHI);
 }
@@ -585,11 +571,7 @@ void CommandContext::Copy(const Buffer& source, const Buffer& destination, const
     RHIBuffer& destinationRHI = graphics->GetRHIBuffer(destination.handle);
     std::array barriers{ RHIBufferBarrier{ sourceRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource },
                          RHIBufferBarrier{ destinationRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest } };
-#ifdef __cpp_lib_containers_ranges
-    pendingBufferBarriers.append_range(std::move(barriers));
-#else
-    pendingBufferBarriers.insert(pendingBufferBarriers.end(), barriers.cbegin(), barriers.cend());
-#endif
+    EnqueueBarriers(barriers);
     FlushBarriers();
     cmdList->Copy(sourceRHI, destinationRHI, bufferCopyDesc);
 }
@@ -815,15 +797,8 @@ void CommandContext::BarrierBindings(std::span<const ResourceBinding> resourceBi
     const RHIBarrierSync dstSync =
         cmdList->GetType() == QueueTypes::Compute ? RHIBarrierSync::ComputeShader : RHIBarrierSync::AllGraphics;
 
-    auto bufferBarriers = CommandContext_Internal::CreateBarriersFromBindings(dstSync, rhiBufferBindings);
-    auto textureBarriers = CommandContext_Internal::CreateBarriersFromBindings(dstSync, rhiTextureBindings);
-#ifdef __cpp_lib_containers_ranges
-    pendingBufferBarriers.append_range(std::move(bufferBarriers));
-    pendingTextureBarriers.append_range(std::move(textureBarriers));
-#else
-    pendingBufferBarriers.insert(pendingBufferBarriers.end(), bufferBarriers.cbegin(), bufferBarriers.cend());
-    pendingTextureBarriers.insert(pendingTextureBarriers.end(), textureBarriers.cbegin(), textureBarriers.cend());
-#endif
+    EnqueueBarriers(CommandContext_Internal::CreateBarriersFromBindings(dstSync, rhiBufferBindings));
+    EnqueueBarriers(CommandContext_Internal::CreateBarriersFromBindings(dstSync, rhiTextureBindings));
 }
 
 void CommandContext::Barrier(const Texture& texture,
@@ -944,14 +919,7 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
     }
 
     // Transition and bind Vertex Buffer(s)
-    auto vertexBufferBarriers = SetVertexBuffers(drawBindings.vertexBuffersFirstSlot, drawBindings.vertexBuffers);
-#ifdef __cpp_lib_containers_ranges
-    pendingBufferBarriers.append_range(std::move(vertexBufferBarriers));
-#else
-    pendingBufferBarriers.insert(pendingBufferBarriers.end(),
-                                 vertexBufferBarriers.cbegin(),
-                                 vertexBufferBarriers.cend());
-#endif
+    EnqueueBarriers(SetVertexBuffers(drawBindings.vertexBuffersFirstSlot, drawBindings.vertexBuffers));
 
     // Transition and bind Index Buffer.
     if (auto indexBarrier = SetIndexBuffer(drawBindings.indexBuffer))
@@ -1003,6 +971,24 @@ std::optional<RHIBufferBarrier> CommandContext::SetIndexBuffer(std::optional<Buf
     cmdList->SetIndexBuffer(binding);
 
     return RHIBufferBarrier{ buffer, RHIBarrierSync::VertexInput, RHIBarrierAccess::VertexInputRead };
+}
+
+void CommandContext::EnqueueBarriers(std::span<const RHITextureBarrier> barriers)
+{
+#ifdef __cpp_lib_containers_ranges
+    pendingTextureBarriers.append_range(barriers);
+#else
+    pendingTextureBarriers.insert(pendingTextureBarriers.end(), barriers.cbegin(), barriers.cend());
+#endif
+}
+
+void CommandContext::EnqueueBarriers(std::span<const RHIBufferBarrier> barriers)
+{
+#ifdef __cpp_lib_containers_ranges
+    pendingBufferBarriers.append_range(barriers);
+#else
+    pendingBufferBarriers.insert(pendingBufferBarriers.end(), barriers.cbegin(), barriers.cend());
+#endif
 }
 
 void CommandContext::FlushBarriers()

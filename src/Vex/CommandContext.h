@@ -226,6 +226,9 @@ private:
                                                                  std::span<BufferBinding> vertexBuffers);
     [[nodiscard]] std::optional<RHIBufferBarrier> SetIndexBuffer(std::optional<BufferBinding> indexBuffer);
 
+    void EnqueueBarriers(std::span<const RHITextureBarrier> barriers);
+    void EnqueueBarriers(std::span<const RHIBufferBarrier> barriers);
+
     NonNullPtr<Graphics> graphics;
     NonNullPtr<RHICommandList> cmdList;
 
