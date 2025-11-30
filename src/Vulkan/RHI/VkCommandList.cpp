@@ -755,6 +755,7 @@ void VkCommandList::Copy(RHITexture& src, RHIBuffer& dst, std::span<const Buffer
     if (FormatUtil::SupportsStencil(src.GetDesc().format))
     {
         // Run compute to copy the image to the buffer
+        // See: https://trello.com/c/vEaa2SUe
         VEX_NOT_YET_IMPLEMENTED();
     }
     else
