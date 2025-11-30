@@ -5,6 +5,7 @@
 
 #include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/NonNullPtr.h>
+#include <Vex/ResourceReadbackContext.h>
 #include <Vex/ScopedGPUEvent.h>
 #include <Vex/Shaders/ShaderKey.h>
 #include <Vex/SubmissionPolicy.h>
@@ -29,58 +30,6 @@ struct Buffer;
 struct TextureClearValue;
 struct DrawDesc;
 struct RayTracingPassDescription;
-
-class BufferReadbackContext
-{
-public:
-    ~BufferReadbackContext();
-    BufferReadbackContext(BufferReadbackContext&& other);
-    BufferReadbackContext& operator=(BufferReadbackContext&& other);
-
-    void ReadData(std::span<byte> outData);
-    [[nodiscard]] u64 GetDataByteSize() const noexcept;
-
-private:
-    BufferReadbackContext(const Buffer& buffer, Graphics& backend);
-
-    Buffer buffer;
-    NonNullPtr<Graphics> backend;
-    friend class CommandContext;
-};
-
-class TextureReadbackContext
-{
-public:
-    ~TextureReadbackContext();
-    TextureReadbackContext(TextureReadbackContext&& other);
-    TextureReadbackContext& operator=(TextureReadbackContext&& other);
-
-    void ReadData(std::span<byte> outData);
-    [[nodiscard]] u64 GetDataByteSize() const noexcept;
-    [[nodiscard]] TextureDesc GetSourceTextureDescription() const noexcept
-    {
-        return textureDesc;
-    };
-    [[nodiscard]] std::vector<TextureRegion> GetReadbackRegions() const noexcept
-    {
-        return textureRegions;
-    }
-
-private:
-    TextureReadbackContext(const Buffer& buffer,
-                           std::span<const TextureRegion> textureRegions,
-                           const TextureDesc& textureDesc,
-                           Graphics& backend);
-
-    // Buffer contains readback data from the GPU.
-    // This data is aligned according to Vex internal alignment
-    Buffer buffer;
-    std::vector<TextureRegion> textureRegions;
-    TextureDesc textureDesc;
-
-    NonNullPtr<Graphics> backend;
-    friend class CommandContext;
-};
 
 class CommandContext
 {
@@ -128,9 +77,7 @@ public:
                      u32 instanceOffset = 0);
 
     // Dispatches a compute shader.
-    void Dispatch(const ShaderKey& shader,
-                  ConstantBinding constants,
-                  std::array<u32, 3> groupCount);
+    void Dispatch(const ShaderKey& shader, ConstantBinding constants, std::array<u32, 3> groupCount);
 
     // Dispatches a ray tracing pass.
     void TraceRays(const RayTracingPassDescription& rayTracingPassDescription,
