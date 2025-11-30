@@ -5,7 +5,7 @@
 
 #include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/NonNullPtr.h>
-#include <Vex/ResourceUploadReadback.h>
+#include <Vex/ResourceReadbackContext.h>
 #include <Vex/ScopedGPUEvent.h>
 #include <Vex/Shaders/ShaderKey.h>
 #include <Vex/SubmissionPolicy.h>
