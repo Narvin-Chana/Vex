@@ -62,7 +62,7 @@ static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureReg
                         .startMip = mip,
                         .mipCount = 1,
                         .startSlice = region.subresource.startSlice,
-                        .sliceCount = region.subresource.GetSliceCount(desc), 
+                        .sliceCount = region.subresource.GetSliceCount(desc),
                     },
                     .offset = region.offset,
                     .extent = region.extent,

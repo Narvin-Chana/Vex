@@ -105,36 +105,6 @@ namespace VkTextureUtil
 
 } // namespace VkTextureUtil
 
-//
-// ::vk::Sampler GetOrCreateAnisotropicSamplers(NonNullPtr<VkGPUContext> ctx)
-// {
-//     static ::vk::UniqueSampler sampler = [&]()
-//     {
-//         auto properties = ctx.physDevice.getProperties();
-//
-//         ::vk::SamplerCreateInfo samplerCreate{
-//             .magFilter = ::vk::Filter::eLinear,
-//             .minFilter = ::vk::Filter::eLinear,
-//             .mipmapMode = ::vk::SamplerMipmapMode::eLinear,
-//             .addressModeU = ::vk::SamplerAddressMode::eRepeat,
-//             .addressModeV = ::vk::SamplerAddressMode::eRepeat,
-//             .addressModeW = ::vk::SamplerAddressMode::eRepeat,
-//             .mipLodBias = 0,
-//             .anisotropyEnable = ::vk::True,
-//             .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
-//             .compareEnable = ::vk::False,
-//             .compareOp = ::vk::CompareOp::eAlways,
-//             .minLod = 0,
-//             .maxLod = 0,
-//             .borderColor = ::vk::BorderColor::eIntOpaqueBlack,
-//             .unnormalizedCoordinates = ::vk::False,
-//         };
-//
-//         return VEX_VK_CHECK <<= ctx.device.createSamplerUnique(samplerCreate);
-//     }();
-//     return *sampler;
-// }
-
 VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDesc&& inDescription, ::vk::Image backbufferImage)
     : ctx(ctx)
     , isBackBuffer(true)
