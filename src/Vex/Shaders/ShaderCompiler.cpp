@@ -42,12 +42,8 @@ ShaderEnvironment ShaderCompiler::CreateShaderEnvironment(ShaderCompilerBackend 
     env.defines.emplace_back("VEX_SHIPPING", std::to_string(VEX_SHIPPING));
     env.defines.emplace_back("VEX_RAYTRACING",
                              GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing) ? "1" : "0");
-#if VEX_VULKAN
-    env.defines.emplace_back("VEX_VULKAN");
-#endif
-#if VEX_DX12
-    env.defines.emplace_back("VEX_DX12");
-#endif
+    env.defines.emplace_back("VEX_VULKAN", std::to_string(VEX_VULKAN));
+    env.defines.emplace_back("VEX_DX12", std::to_string(VEX_DX12));
     return env;
 }
 

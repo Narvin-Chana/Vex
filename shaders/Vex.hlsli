@@ -1,8 +1,10 @@
 #pragma once
 
-#if defined(VEX_VULKAN)
+#if VEX_VULKAN
 #define VEX_UNIFORMS(type, name) [[vk::push_constant]] type name;
-#elif defined(VEX_DX12)
+#endif
+
+#if VEX_DX12
 #define VEX_UNIFORMS(type, name) ConstantBuffer<type> name : register(b0);
 #endif
 
