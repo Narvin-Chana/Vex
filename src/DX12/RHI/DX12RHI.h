@@ -31,8 +31,7 @@ public:
     virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() override;
     virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) override;
 
-    virtual RHISwapChain CreateSwapChain(SwapChainDesc& desc,
-                                         const PlatformWindow& platformWindow) override;
+    virtual RHISwapChain CreateSwapChain(SwapChainDesc& desc, const PlatformWindow& platformWindow) override;
 
     virtual RHICommandPool CreateCommandPool() override;
     virtual RHIGraphicsPipelineState CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key) override;
@@ -47,9 +46,6 @@ public:
 
     virtual RHIAllocator CreateAllocator() override;
     virtual RHITimestampQueryPool CreateTimestampQueryPool(RHIAllocator& allocator) override;
-
-    virtual void ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBackend,
-                                                 ShaderEnvironment& shaderEnv) override;
 
     virtual void WaitForTokenOnCPU(const SyncToken& syncToken) override;
     virtual bool IsTokenComplete(const SyncToken& syncToken) const override;

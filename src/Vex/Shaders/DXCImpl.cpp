@@ -11,6 +11,10 @@
 #include <Vex/Shaders/ShaderEnvironment.h>
 #include <Vex/Shaders/ShaderKey.h>
 
+#if VEX_VULKAN
+#include <Vulkan/VkFeatureChecker.h>
+#endif
+
 namespace vex
 {
 
@@ -105,11 +109,6 @@ std::expected<ShaderCompilationResult, std::string> DXCCompilerImpl::CompileShad
     shaderSource.Encoding = DXC_CP_ACP; // Assume BOM says UTF8 or UTF16 or this is ANSI text.
 
     std::vector<LPCWSTR> args;
-    args.reserve(shaderEnv.args.size());
-    std::ranges::transform(shaderEnv.args,
-                           std::back_inserter(args),
-                           [](const std::wstring& arg) { return arg.c_str(); });
-
     if (compilerSettings.enableShaderDebugging)
     {
         args.insert(args.end(),
@@ -120,6 +119,27 @@ std::expected<ShaderCompilationResult, std::string> DXCCompilerImpl::CompileShad
                         L"-Qembed_debug",
                     });
     }
+
+#if VEX_VULKAN
+    std::string_view vulkanVersion =
+        reinterpret_cast<vk::VkFeatureChecker&>(*GPhysicalDevice->featureChecker).GetMaxSupportedVulkanVersion();
+    std::wstring vulkanVersionFlag = std::format(L"-fspv-target-env={}", StringToWString(std::string(vulkanVersion)));
+    args.emplace_back(L"-spirv");
+    args.emplace_back(L"-fvk-bind-resource-heap");
+    args.emplace_back(L"0");
+    args.emplace_back(L"1");
+    args.emplace_back(vulkanVersionFlag.c_str());
+
+    // Flags to keep Vk similar to DX12 hlsl conventions.
+    args.emplace_back(L"-fvk-use-dx-layout");
+    args.emplace_back(L"-fvk-support-nonzero-base-instance");
+    args.emplace_back(L"-fvk-support-nonzero-base-vertex");
+    args.emplace_back(L"-fspv-reflect");
+#endif
+
+#if VEX_DX12
+    args.emplace_back(L"-Qstrip_reflect");
+#endif
 
     if (compilerSettings.enableHLSL202xFeatures)
     {
