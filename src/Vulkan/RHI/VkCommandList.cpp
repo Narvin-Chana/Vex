@@ -100,13 +100,10 @@ static ::vk::ImageMemoryBarrier2 MergeBarriers(const ::vk::ImageMemoryBarrier2& 
 }
 
 static std::vector<::vk::BufferImageCopy> GetBufferImageCopyFromBufferToImageDescriptions(
-    const RHITexture& texture, std::span<const BufferTextureCopyDesc> descriptions)
+    const RHITexture& texture,
+    std::span<const BufferTextureCopyDesc> descriptions,
+    ::vk::ImageAspectFlags dstAspectMask)
 {
-    const ::vk::ImageAspectFlags dstAspectMask =
-        FormatUtil::IsDepthStencilCompatible(texture.GetDesc().format)
-            ? ::vk::ImageAspectFlagBits::eDepth | ::vk::ImageAspectFlagBits::eStencil
-            : ::vk::ImageAspectFlagBits::eColor;
-
     float pixelByteSize = TextureUtil::GetPixelByteSizeFromFormat(texture.GetDesc().format);
 
     std::vector<::vk::BufferImageCopy> regions;
@@ -742,7 +739,13 @@ void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDesc& b
 
 void VkCommandList::Copy(RHIBuffer& src, RHITexture& dst, std::span<const BufferTextureCopyDesc> copyDescriptions)
 {
-    auto regions = CommandList_Internal::GetBufferImageCopyFromBufferToImageDescriptions(dst, copyDescriptions);
+    const ::vk::ImageAspectFlags dstAspectMask =
+        FormatUtil::IsDepthStencilCompatible(dst.GetDesc().format)
+            ? ::vk::ImageAspectFlagBits::eDepth | ::vk::ImageAspectFlagBits::eStencil
+            : ::vk::ImageAspectFlagBits::eColor;
+
+    auto regions =
+        CommandList_Internal::GetBufferImageCopyFromBufferToImageDescriptions(dst, copyDescriptions, dstAspectMask);
 
     commandBuffer->copyBufferToImage(src.GetNativeBuffer(),
                                      dst.GetResource(),
@@ -753,14 +756,28 @@ void VkCommandList::Copy(RHIBuffer& src, RHITexture& dst, std::span<const Buffer
 
 void VkCommandList::Copy(RHITexture& src, RHIBuffer& dst, std::span<const BufferTextureCopyDesc> copyDescriptions)
 {
-    auto regions = CommandList_Internal::GetBufferImageCopyFromBufferToImageDescriptions(src, copyDescriptions);
+    if (FormatUtil::SupportsStencil(src.GetDesc().format))
+    {
+        // Create R32_UINT texture
+        // Copy depth stencil texture to temp texture
+        // Copy that texture to CPU
+    }
+    else
+    {
+        const ::vk::ImageAspectFlags dstAspectMask = FormatUtil::IsDepthStencilCompatible(src.GetDesc().format)
+                                                         ? ::vk::ImageAspectFlagBits::eDepth
+                                                         : ::vk::ImageAspectFlagBits::eColor;
+        auto regions =
+            CommandList_Internal::GetBufferImageCopyFromBufferToImageDescriptions(src, copyDescriptions, dstAspectMask);
 
-    commandBuffer->copyImageToBuffer(src.GetResource(),
-                                     RHITextureLayoutToVulkan(src.GetLastLayout()),
-                                     dst.GetNativeBuffer(),
-                                     static_cast<u32>(regions.size()),
-                                     regions.data());
+        commandBuffer->copyImageToBuffer(src.GetResource(),
+                                         RHITextureLayoutToVulkan(src.GetLastLayout()),
+                                         dst.GetNativeBuffer(),
+                                         static_cast<u32>(regions.size()),
+                                         regions.data());
+    }
 }
+
 RHIScopedGPUEvent VkCommandList::CreateScopedMarker(const char* label, std::array<float, 3> labelColor)
 {
     return { *commandBuffer, label, labelColor };
