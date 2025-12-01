@@ -16,7 +16,7 @@ add_executable(vex_tests
     "BufferViewTest.cpp"
     "GraphicsBackendTest.cpp"
 	"ReflectionTest.cpp"
-        ClearTests.cpp
+    "ClearTests.cpp"
 )
 
 target_link_libraries(vex_tests 
