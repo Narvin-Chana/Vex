@@ -110,31 +110,31 @@ TEST_F(ClearTest, ClearDepthOnlyExpicit)
     EXPECT_TRUE(ValidateTextureValue(depthReadback, reinterpret_cast<u32&>(value)));
 }
 
-TEST_F(ClearTest, ClearDepthStencilImplicit)
-{
-    auto texture = graphics.CreateTexture(
-        TextureDesc::CreateTexture2DDesc("TestDepthStencil",
-                                         TextureFormat::D24_UNORM_S8_UINT,
-                                         10,
-                                         10,
-                                         1,
-                                         TextureUsage::DepthStencil,
-                                         TextureClearValue{
-                                             .flags = TextureClear::ClearStencil | TextureClear::ClearDepth,
-                                             .depth = 1.0f,
-                                             .stencil = 0xEE,
-                                         }));
-
-    auto depthReadback = ExecuteAndReadback(graphics,
-                                            texture,
-                                            [](CommandContext& ctx, const Texture& texture)
-                                            { ctx.ClearTexture({ .texture = texture }); });
-
-    EXPECT_TRUE(ValidateTextureValue(depthReadback, 0x00FFFFFF, 0x00FFFFFF));
-    EXPECT_TRUE(ValidateTextureValue(depthReadback, 0xEE000000, 0xFF000000));
-}
-
 // TODO: Uncomment those tests when https://trello.com/c/vEaa2SUe is done
+//
+// TEST_F(ClearTest, ClearDepthStencilImplicit)
+// {
+//     auto texture = graphics.CreateTexture(
+//         TextureDesc::CreateTexture2DDesc("TestDepthStencil",
+//                                          TextureFormat::D24_UNORM_S8_UINT,
+//                                          10,
+//                                          10,
+//                                          1,
+//                                          TextureUsage::DepthStencil,
+//                                          TextureClearValue{
+//                                              .flags = TextureClear::ClearStencil | TextureClear::ClearDepth,
+//                                              .depth = 1.0f,
+//                                              .stencil = 0xEE,
+//                                          }));
+//
+//     auto depthReadback = ExecuteAndReadback(graphics,
+//                                             texture,
+//                                             [](CommandContext& ctx, const Texture& texture)
+//                                             { ctx.ClearTexture({ .texture = texture }); });
+//
+//     EXPECT_TRUE(ValidateTextureValue(depthReadback, 0x00FFFFFF, 0x00FFFFFF));
+//     EXPECT_TRUE(ValidateTextureValue(depthReadback, 0xEE000000, 0xFF000000));
+// }
 //
 // TEST_F(ClearTest, ClearDepthStencilExplicit)
 // {

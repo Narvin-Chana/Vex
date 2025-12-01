@@ -33,7 +33,6 @@ enum class RHIBarrierSync : u8
     // Supported only in Vulkan, is mapped to Copy in DX12.
     Blit,
     // Supported only in Vulkan, is mapped to All in DX12
-    // TODO: Validation DX12 equivalent
     Clear,
 };
 

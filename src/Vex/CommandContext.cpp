@@ -726,7 +726,17 @@ void CommandContext::Copy(const Texture& source,
     RHIBufferBarrier destinationBarrier{ destinationRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest };
     cmdList->Barrier({ &destinationBarrier, 1 }, { &sourceBarrier, 1 });
 
-    cmdList->Copy(sourceRHI, destinationRHI, bufferToTextureCopyDescriptions);
+    if (FormatUtil::SupportsStencil(source.desc.format) &&
+        !GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::DepthStencilReadback))
+    {
+        // Run compute to copy the image to the buffer
+        // See: https://trello.com/c/vEaa2SUe
+        VEX_NOT_YET_IMPLEMENTED();
+    }
+    else
+    {
+        cmdList->Copy(sourceRHI, destinationRHI, bufferToTextureCopyDescriptions);
+    }
 }
 
 void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const byte> data, const BufferRegion& region)

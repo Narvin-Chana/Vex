@@ -103,9 +103,6 @@ static std::vector<::vk::BufferImageCopy> GetBufferImageCopyFromBufferToImageDes
     const RHITexture& texture, std::span<const BufferTextureCopyDesc> descriptions)
 {
     ::vk::ImageAspectFlags aspectFlag = VkTextureUtil::GetFormatAspectFlags(texture.GetDesc().format);
-    // We dont want stencil and depth
-    aspectFlag &= ~::vk::ImageAspectFlagBits::eStencil;
-
     float pixelByteSize = TextureUtil::GetPixelByteSizeFromFormat(texture.GetDesc().format);
 
     std::vector<::vk::BufferImageCopy> regions;
@@ -752,22 +749,17 @@ void VkCommandList::Copy(RHIBuffer& src, RHITexture& dst, std::span<const Buffer
 
 void VkCommandList::Copy(RHITexture& src, RHIBuffer& dst, std::span<const BufferTextureCopyDesc> copyDescriptions)
 {
-    if (FormatUtil::SupportsStencil(src.GetDesc().format))
-    {
-        // Run compute to copy the image to the buffer
-        // See: https://trello.com/c/vEaa2SUe
-        VEX_NOT_YET_IMPLEMENTED();
-    }
-    else
-    {
-        auto regions = CommandList_Internal::GetBufferImageCopyFromBufferToImageDescriptions(src, copyDescriptions);
+    VEX_CHECK(!FormatUtil::SupportsStencil(src.GetDesc().format),
+              "DepthStencil image copy to buffer is not supported directly. The only supported aspects are either "
+              "Color or Depth.");
 
-        commandBuffer->copyImageToBuffer(src.GetResource(),
-                                         RHITextureLayoutToVulkan(src.GetLastLayout()),
-                                         dst.GetNativeBuffer(),
-                                         static_cast<u32>(regions.size()),
-                                         regions.data());
-    }
+    auto regions = CommandList_Internal::GetBufferImageCopyFromBufferToImageDescriptions(src, copyDescriptions);
+
+    commandBuffer->copyImageToBuffer(src.GetResource(),
+                                     RHITextureLayoutToVulkan(src.GetLastLayout()),
+                                     dst.GetNativeBuffer(),
+                                     static_cast<u32>(regions.size()),
+                                     regions.data());
 }
 
 RHIScopedGPUEvent VkCommandList::CreateScopedMarker(const char* label, std::array<float, 3> labelColor)
