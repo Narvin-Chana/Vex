@@ -120,7 +120,7 @@ bool VkSwapChain::NeedsRecreation() const
     const ::vk::PresentModeKHR newPresentMode = GetBestPresentMode(supportDetails, desc->useVSync);
     const bool needsRecreationDueToVSync = newPresentMode != presentMode;
 
-    return backbufferIsOutOfDate || needsRecreationDueToVSync || !IsColorSpaceStillSupported(*desc) ||
+    return swapchainIsInErrorState || needsRecreationDueToVSync || !IsColorSpaceStillSupported(*desc) ||
            (!desc->useHDRIfSupported && IsHDREnabled());
 }
 
@@ -147,7 +147,7 @@ ColorSpace VkSwapChain::GetValidColorSpace(ColorSpace preferredColorSpace) const
 
     // Query current surface formats to see what's actually supported
     auto surfaceFormats = VEX_VK_CHECK <<= ctx->physDevice.getSurfaceFormatsKHR(ctx->surface);
-    
+
     // Helper to check if a specific color space is supported
     auto IsColorSpaceSupported = [&surfaceFormats](::vk::ColorSpaceKHR colorSpace) -> bool
     {
@@ -200,9 +200,9 @@ std::optional<RHITexture> VkSwapChain::AcquireBackBuffer(u8 frameIndex)
                                                *backbufferAcquisition[frameIndex],
                                                VK_NULL_HANDLE,
                                                &currentBackbufferId);
-    if (res == ::vk::Result::eErrorOutOfDateKHR)
+    if (res == ::vk::Result::eErrorOutOfDateKHR || res == ::vk::Result::eSuboptimalKHR)
     {
-        backbufferIsOutOfDate = true;
+        swapchainIsInErrorState = true;
         return {};
     }
 
@@ -248,7 +248,11 @@ SyncToken VkSwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandLis
     };
 
     auto res = ctx->graphicsPresentQueue.queue.presentKHR(presentInfo);
-    if (res != ::vk::Result::eErrorOutOfDateKHR)
+    if (res == ::vk::Result::eErrorOutOfDateKHR || res == ::vk::Result::eSuboptimalKHR)
+    {
+        swapchainIsInErrorState = true;
+    }
+    else
     {
         VEX_VK_CHECK << res;
     }
@@ -290,7 +294,7 @@ void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
     }
 
     // We're no longer out of date.
-    backbufferIsOutOfDate = false;
+    swapchainIsInErrorState = false;
 }
 
 ::vk::SurfaceFormatKHR VkSwapChain::GetBestSurfaceFormat(const VkSwapChainSupportDetails& details)
