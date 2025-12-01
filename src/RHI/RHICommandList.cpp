@@ -22,6 +22,7 @@ void RHICommandListBase::Close()
         queryPool->FetchQueriesTimestamps(reinterpret_cast<RHICommandList&>(*this), queries);
     }
 }
+
 void RHICommandListBase::BufferBarrier(RHIBuffer& buffer, RHIBarrierSync sync, RHIBarrierAccess access)
 {
     RHIBufferBarrier barrier{ buffer, sync, access };

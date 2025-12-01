@@ -34,7 +34,7 @@ struct RayTracingPassDescription;
 class CommandContext
 {
 private:
-    CommandContext(NonNullPtr<Graphics> backend,
+    CommandContext(NonNullPtr<Graphics> graphics,
                    NonNullPtr<RHICommandList> cmdList,
                    NonNullPtr<RHITimestampQueryPool> queryPool,
                    SubmissionPolicy submissionPolicy,
@@ -155,39 +155,44 @@ public:
     // Will automatically use a staging buffer if necessary.
     TextureReadbackContext EnqueueDataReadback(const Texture& srcTexture,
                                                std::span<const TextureRegion> textureRegions);
+    // Enqueues for the entirety of a texture to be readback from the GPU to the specified output.
+    // Will automatically use a staging buffer if necessary.
     TextureReadbackContext EnqueueDataReadback(const Texture& srcTexture,
                                                const TextureRegion& textureRegion = TextureRegion::AllMips());
 
     // ---------------------------------------------------------------------------------------------------------------
+    // Barrier Operations
+    // ---------------------------------------------------------------------------------------------------------------
+    // Vex's barrier philosophy is that they should only be applied when you have Write-After-Write (WAW) or
+    // Read-After-Write (RAW) situations. If you read from a resource multiple times, then you should avoid applying
+    // superfluous barriers to it.
 
-    BindlessHandle GetBindlessHandle(const ResourceBinding& resourceBinding);
-    std::vector<BindlessHandle> GetBindlessHandles(std::span<const ResourceBinding> resourceBindings);
+    // Will apply a barrier to the passed in texture binding.
+    void BarrierBinding(const TextureBinding& textureBinding);
 
-    void TransitionBindings(std::span<const ResourceBinding> resourceBindings);
-
-    // Allows you to transition the passed in texture to the correct state. Usually this is done automatically by Vex
-    // before any draws or dispatches for the resources you pass in.
-    // However, in the case you are leveraging bindless resources, you are responsible for ensuring any used resources
-    // are in the correct state. This contains redundancy checks so feel free to call it even if the resource is
-    // potentially already in the desired state for correctness.
+    // Will apply a barrier to the passed in buffer binding.
+    void BarrierBinding(const BufferBinding& bufferBinding);
+    
+    // Will apply a barrier to the passed in bindings.
+    void BarrierBindings(std::span<const ResourceBinding> resourceBindings);
+    
+    // Will apply a barrier to the passed in texture.
     void Barrier(const Texture& texture,
                  RHIBarrierSync newSync,
                  RHIBarrierAccess newAccess,
                  RHITextureLayout newLayout);
-
-    // Allows you to transition the passed in buffer to the correct state. Usually this is done automatically by Vex
-    // before any draws or dispatches for the resources you pass in.
-    // However, in the case you are leveraging bindless resources, you are responsible for ensuring any used resources
-    // are in the correct state. This contains redundancy checks so feel free to call it even if the resource is
-    // potentially already in the desired state for correctness.
+    
+    // Will apply a barrier to the passed in buffer.
     void Barrier(const Buffer& buffer, RHIBarrierSync newSync, RHIBarrierAccess newAccess);
 
-    // Allows you to manually submit the command context, receiving SyncTokens that allow you to later perform a CPU
-    // wait for the work to be done.
+    // ---------------------------------------------------------------------------------------------------------------
+
+    // Allows you to manually submit the command context, receiving SyncTokens which can be used to perform a CPU wait
+    // for the work to be done.
     SyncToken Submit();
 
-    // Useful for calling native API draws when wanting to render to a specific Render Target.
-    // Allows the passed in lambda to be executed in a draw scope.
+    // Useful for calling native API draws when wanting to render to a specific Render Target. Allows the passed in
+    // lambda to be executed in a draw scope.
     void ExecuteInDrawContext(std::span<const TextureBinding> renderTargets,
                               std::optional<const TextureBinding> depthStencil,
                               const std::function<void()>& callback);
@@ -195,22 +200,36 @@ public:
     QueryHandle BeginTimestampQuery();
     void EndTimestampQuery(QueryHandle handle);
 
-    // Returns the RHI command list associated with this context (you should avoid using this unless you know
-    // what you are doing).
-    RHICommandList& GetRHICommandList();
-
     // Returns an object which will scope a set of commands to label them for a external debug tool such as RenderDoc or
     // Pix
     ScopedGPUEvent CreateScopedGPUEvent(const char* markerLabel, std::array<float, 3> color = { 1, 1, 1 });
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // Advanced Operations, should be used with care!
+    // ---------------------------------------------------------------------------------------------------------------
+
+    // Returns the RHI command list associated with this context allowing for access to the native
+    // CommandList/CommandContext (you should avoid using this unless you know what you are doing).
+    RHICommandList& GetRHICommandList();
+
+    // Flushes all pending barriers. Vex automatically batches barrier submissions just before GPU operations (eg:
+    // Draw/Dispatch). This means that you shouldn't call this function in most situations. This remains exposed for
+    // when you have custom RHI code which can create GPU operations.
+    void FlushBarriers();
 
 private:
     std::optional<RHIDrawResources> PrepareDrawCall(const DrawDesc& drawDesc,
                                                     const DrawResourceBinding& drawBindings,
                                                     ConstantBinding constants);
-    void SetVertexBuffers(u32 vertexBuffersFirstSlot, std::span<BufferBinding> vertexBuffers);
-    void SetIndexBuffer(std::optional<BufferBinding> indexBuffer);
 
-    NonNullPtr<Graphics> backend;
+    [[nodiscard]] std::vector<RHIBufferBarrier> SetVertexBuffers(u32 vertexBuffersFirstSlot,
+                                                                 std::span<BufferBinding> vertexBuffers);
+    [[nodiscard]] std::optional<RHIBufferBarrier> SetIndexBuffer(std::optional<BufferBinding> indexBuffer);
+
+    void EnqueueBarriers(std::span<const RHITextureBarrier> barriers);
+    void EnqueueBarriers(std::span<const RHIBufferBarrier> barriers);
+
+    NonNullPtr<Graphics> graphics;
     NonNullPtr<RHICommandList> cmdList;
 
     SubmissionPolicy submissionPolicy;
@@ -228,6 +247,9 @@ private:
     std::optional<GraphicsPipelineStateKey> cachedGraphicsPSOKey;
     std::optional<ComputePipelineStateKey> cachedComputePSOKey;
     std::optional<InputAssembly> cachedInputAssembly;
+
+    std::vector<RHIBufferBarrier> pendingBufferBarriers;
+    std::vector<RHITextureBarrier> pendingTextureBarriers;
 
     bool hasSubmitted = false;
 

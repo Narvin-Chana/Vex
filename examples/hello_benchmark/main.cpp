@@ -23,22 +23,22 @@ int main()
     // Begins a timestamp for the global command context
     vex::QueryHandle globalQueryHandle = ctx.BeginTimestampQuery();
     vex::QueryHandle dispatchQueries[N]{};
+
+    // Create the binding for our output resource and obtain the bindless handle we need for our compute passes.
+    vex::BufferBinding resultBufferBinding{
+        .buffer = resultBuffer,
+        .usage = vex::BufferBindingUsage::RWStructuredBuffer,
+        .strideByteSize = static_cast<vex::u32>(sizeof(float)),
+    };
+    vex::BindlessHandle passHandle = graphics.GetBindlessHandle(resultBufferBinding);
+    
+    // Apply a barrier to allow for the resource to be written-to.
+    ctx.BarrierBinding(resultBufferBinding);
+
     for (auto i = 0; i < N; ++i)
     {
         // Begins a timestamp query for iteration i
         dispatchQueries[i] = ctx.BeginTimestampQuery();
-
-        // Create the bindings and obtain the bindless handles we need for our compute passes.
-        vex::ResourceBinding passBindings[]{
-            vex::BufferBinding{
-                .buffer = resultBuffer,
-                .usage = vex::BufferBindingUsage::RWStructuredBuffer,
-                .strideByteSize = static_cast<vex::u32>(sizeof(float)),
-            },
-        };
-        std::vector<vex::BindlessHandle> passHandles = ctx.GetBindlessHandles(passBindings);
-
-        ctx.TransitionBindings(passBindings);
 
         ctx.Dispatch(
             vex::ShaderKey{
@@ -46,8 +46,11 @@ int main()
                 .entryPoint = "CSMain",
                 .type = vex::ShaderType::ComputeShader,
             },
-            vex::ConstantBinding{ std::span{ passHandles } },
+            vex::ConstantBinding{ passHandle },
             std::array{ M / 8, 1u, 1u });
+
+        // Apply a barrier to flush the write we just performed.
+        ctx.BarrierBinding(resultBufferBinding);
 
         ctx.EndTimestampQuery(dispatchQueries[i]);
     }

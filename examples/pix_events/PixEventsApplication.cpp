@@ -6,6 +6,9 @@
 PixEventsApplication::PixEventsApplication()
     : ExampleApplication("PixEventsApplication")
 {
+    // Graphics debuggers have to be initialized before graphics device creation.
+    PIX::Setup();
+
 #if defined(_WIN32)
     vex::PlatformWindowHandle platformWindow = { .window = glfwGetWin32Window(window) };
 #elif defined(__linux__)
@@ -16,8 +19,6 @@ PixEventsApplication::PixEventsApplication()
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
     SetupShaderErrorHandling();
-
-    PIX::Setup();
 }
 
 void PixEventsApplication::Run()
@@ -49,4 +50,10 @@ void PixEventsApplication::OnResize(GLFWwindow* window, uint32_t width, uint32_t
     }
 
     ExampleApplication::OnResize(window, width, height);
+}
+
+int main()
+{
+    PixEventsApplication application;
+    application.Run();
 }

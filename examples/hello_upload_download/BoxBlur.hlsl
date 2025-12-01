@@ -8,7 +8,7 @@ struct UniformStruct
 
 VEX_UNIFORMS(UniformStruct, Uniforms);
 
-static const RWTexture2D<float4> InputTexture = GetBindlessResource(Uniforms.inputTextureHandle);
+static const Texture2D<float4> InputTexture = GetBindlessResource(Uniforms.inputTextureHandle);
 static const RWTexture2D<float4> OutputTexture = GetBindlessResource(Uniforms.outputTextureHandle);
 static const int blurSize = 3;
 

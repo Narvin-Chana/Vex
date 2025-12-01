@@ -44,10 +44,14 @@ void HelloRayTracing::Run()
                 .usage = vex::TextureBindingUsage::ShaderReadWrite,
             };
 
-            ctx.TransitionBindings({ { outputTextureBinding } });
-            vex::BindlessHandle handle = ctx.GetBindlessHandle(outputTextureBinding);
+            // Make sure our resource is ready for writing.
+            ctx.BarrierBinding(outputTextureBinding);
+
+            vex::BindlessHandle handle = graphics->GetBindlessHandle(outputTextureBinding);
 
             // Two ray invocations, one for the HLSL shader, and one for the Slang shader.
+            // The HLSL shader will write to the left side and the Slang shader to the right side.
+            // Since we know the writes will not overlap, we don't have to add a barrier between the two.
             ctx.TraceRays(
                 { 
                     .rayGenerationShader = 
