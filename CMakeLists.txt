@@ -218,6 +218,8 @@ add_library(Vex STATIC
     "src/Vex/ResourceCopy.h"
     "src/Vex/ResourceCopy.cpp"
     "src/Vex/Concepts.h"
+    "src/Vex/ResourceReadbackContext.cpp"
+    "src/Vex/ResourceReadbackContext.h"
 )
 
 if(WIN32)

@@ -7,6 +7,7 @@
 #include <Vex.h>
 #include <Vex/ByteUtils.h>
 #include <Vex/CommandContext.h>
+#include <Vex/Containers/Utils.h>
 #include <Vex/FeatureChecker.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
@@ -363,7 +364,7 @@ void Graphics::DestroyBuffer(const Buffer& buffer)
     resourceCleanup.CleanupResource(bufferRegistry.ExtractElement(buffer.handle));
 }
 
-BindlessHandle Graphics::GetTextureBindlessHandle(const TextureBinding& bindlessResource)
+BindlessHandle Graphics::GetBindlessHandle(const TextureBinding& bindlessResource)
 {
     BindingUtil::ValidateTextureBinding(bindlessResource, bindlessResource.texture.desc.usage);
 
@@ -371,12 +372,27 @@ BindlessHandle Graphics::GetTextureBindlessHandle(const TextureBinding& bindless
     return texture.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
 }
 
-BindlessHandle Graphics::GetBufferBindlessHandle(const BufferBinding& bindlessResource)
+BindlessHandle Graphics::GetBindlessHandle(const BufferBinding& bindlessResource)
 {
     BindingUtil::ValidateBufferBinding(bindlessResource, bindlessResource.buffer.desc.usage);
 
     auto& buffer = GetRHIBuffer(bindlessResource.buffer.handle);
     return buffer.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
+}
+
+std::vector<BindlessHandle> Graphics::GetBindlessHandles(std::span<const ResourceBinding> bindlessResources)
+{
+    std::vector<BindlessHandle> handles;
+    handles.reserve(bindlessResources.size());
+    for (const auto& binding : bindlessResources)
+    {
+        std::visit(Visitor{ [&handles, this](const BufferBinding& bufferBinding)
+                            { handles.emplace_back(GetBindlessHandle(bufferBinding)); },
+                            [&handles, this](const TextureBinding& texBinding)
+                            { handles.emplace_back(GetBindlessHandle(texBinding)); } },
+                   binding.binding);
+    }
+    return handles;
 }
 
 void Graphics::FlushGPU()

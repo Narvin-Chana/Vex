@@ -198,16 +198,6 @@ RHITimestampQueryPool DX12RHI::CreateTimestampQueryPool(RHIAllocator& allocator)
     return RHITimestampQueryPool{ *this, allocator };
 }
 
-void DX12RHI::ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBackend, ShaderEnvironment& shaderEnv)
-{
-    if (compilerBackend == ShaderCompilerBackend::DXC)
-    {
-        shaderEnv.args.emplace_back(L"-Qstrip_reflect");
-    }
-
-    shaderEnv.defines.emplace_back("VEX_DX12");
-}
-
 void DX12RHI::WaitForTokenOnCPU(const SyncToken& syncToken)
 {
     auto& fence = (*fences)[syncToken.queueType];

@@ -442,9 +442,9 @@ TEST_P(ScalarBlockLayoutTests, ComputeMisaligneData)
             .strideByteSize = static_cast<u32>(3 * sizeof(float)),
         },
     };
-    std::vector<BindlessHandle> handles = ctx.GetBindlessHandles(bindings);
+    std::vector<BindlessHandle> handles = graphics.GetBindlessHandles(bindings);
 
-    ctx.TransitionBindings(bindings);
+    ctx.BarrierBindings(bindings);
 
     ctx.Dispatch(
         {

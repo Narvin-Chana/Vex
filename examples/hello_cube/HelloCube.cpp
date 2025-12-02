@@ -126,13 +126,14 @@ HelloCubeApplication::HelloCubeApplication()
             std::as_bytes(std::span(fullImageData.begin(), fullImageData.begin() + width * height * channels)),
             vex::TextureRegion::SingleMip(0));
 
-        // Fill in all mips using the first one, the underlying texture is encoded in SRGB so be sure to do an SRGB-aware downscale!
+        // Fill in all mips using the first one, the underlying texture is encoded in SRGB so be sure to do an
+        // SRGB-aware downscale!
         ctx.GenerateMips({ .texture = uvGuideTexture, .isSRGB = true });
 
-        // The texture will now only be used as a read-only shader resource. Avoids having to place a barrier later on.
-        // We use PixelShader sync since it will only be used there.
+        // The texture will now only be used as a read-only shader resource. In Vex we recommend only applying barriers
+        // in Write-After-Write and Read-After-Write situations as to reduce the total amount of barriers.
         ctx.Barrier(uvGuideTexture,
-                    vex::RHIBarrierSync::PixelShader,
+                    vex::RHIBarrierSync::AllCommands,
                     vex::RHIBarrierAccess::ShaderRead,
                     vex::RHITextureLayout::ShaderResource);
 
@@ -248,9 +249,7 @@ void HelloCubeApplication::Run()
                 .texture = graphics->GetCurrentPresentTexture(),
             } };
 
-            // Usually you'd have to transition the uvGuideTexture (since we're using it bindless-ly), but since we
-            // already transitioned it to RHITextureState::ShaderResource after the texture upload we don't have to!
-            vex::BindlessHandle uvGuideHandle = ctx.GetBindlessHandle(
+            vex::BindlessHandle uvGuideHandle = graphics->GetBindlessHandle(
                 vex::TextureBinding{ .texture = uvGuideTexture, .usage = vex::TextureBindingUsage::ShaderRead });
 
             struct UniformData

@@ -49,9 +49,6 @@ struct RHIBase
 
     virtual RHITimestampQueryPool CreateTimestampQueryPool(RHIAllocator& allocator) = 0;
 
-    virtual void ModifyShaderCompilerEnvironment(ShaderCompilerBackend compilerBackend,
-                                                 ShaderEnvironment& shaderEnv) = 0;
-
     virtual void WaitForTokenOnCPU(const SyncToken& syncToken) = 0;
     virtual bool IsTokenComplete(const SyncToken& syncToken) const = 0;
     virtual void WaitForTokenOnGPU(QueueType waitingQueue, const SyncToken& waitFor) = 0;
