@@ -65,7 +65,7 @@ bool VkFeatureChecker::IsFeatureSupported(Feature feature) const
         // Vk can use vkCmdBlitImage to generate mips.
         return true;
     case Feature::DepthStencilReadback:
-        // Not supported on fulkan
+        // Not supported on vulkan
     default:
         return false;
     }
