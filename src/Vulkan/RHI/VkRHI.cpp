@@ -97,7 +97,8 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
         debugCreateInfo.pNext = enableGPUBasedValidation ? &validationFeatures : nullptr;
         debugCreateInfo.messageSeverity = Severity::eVerbose | Severity::eWarning | Severity::eError;
         debugCreateInfo.messageType = MessageType::eGeneral | MessageType::eValidation | MessageType::ePerformance;
-        debugCreateInfo.pfnUserCallback = debugCallback;
+        debugCreateInfo.pfnUserCallback =
+            reinterpret_cast<::vk::PFN_DebugUtilsMessengerCallbackEXT>(debugCallback);
     }
 
     std::vector<const char*> requiredInstanceExtensions = GetRequiredInstanceExtensions(enableGPUDebugLayer);

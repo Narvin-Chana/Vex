@@ -40,6 +40,10 @@
     {
       "name": "msvc-compiler",
       "hidden": true,
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl"
+      },
       "environment": {
         "VSCMD_ARG_TGT_ARCH": "x64"
       },
@@ -52,6 +56,10 @@
     {
       "name": "clang-cl-compiler",
       "hidden": true,
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang-cl",
+        "CMAKE_CXX_COMPILER": "clang-cl"
+      },
       "environment": {
         "CC": "clang-cl",
         "CXX": "clang-cl"
@@ -65,6 +73,10 @@
     {
       "name": "clang-compiler",
       "hidden": true,
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      },
       "environment": {
         "CC": "clang",
         "CXX": "clang++"
@@ -78,6 +90,10 @@
     {
       "name": "gcc-compiler",
       "hidden": true,
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++"
+      },
       "environment": {
         "CC": "gcc",
         "CXX": "g++"

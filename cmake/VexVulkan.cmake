@@ -1,7 +1,5 @@
 # VexVulkan.cmake - Vulkan backend configuration
 
-
-
 function(setup_vulkan_backend TARGET)
     message(STATUS "Setting up Vulkan backend...")
 
