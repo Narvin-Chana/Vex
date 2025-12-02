@@ -12,8 +12,8 @@ struct DX12PhysicalDevice : public PhysicalDevice
     DX12PhysicalDevice(ComPtr<IDXGIAdapter4> adapter, const ComPtr<ID3D12Device>& device);
     ~DX12PhysicalDevice() = default;
 
-    DX12PhysicalDevice(const DX12PhysicalDevice&) = default;
-    DX12PhysicalDevice& operator=(const DX12PhysicalDevice&) = default;
+    DX12PhysicalDevice(const DX12PhysicalDevice&) = delete;
+    DX12PhysicalDevice& operator=(const DX12PhysicalDevice&) = delete;
 
     DX12PhysicalDevice(DX12PhysicalDevice&&) = default;
     DX12PhysicalDevice& operator=(DX12PhysicalDevice&&) = default;
