@@ -630,7 +630,7 @@ void CommandContext::Copy(const Texture& source,
         TextureCopyUtil::ValidateBufferTextureCopyDesc(destination.desc, source.desc, copyDesc);
     }
 
-    RHI7Texture& sourceRHI = graphics->GetRHITexture(source.handle);
+    RHITexture& sourceRHI = graphics->GetRHITexture(source.handle);
     RHIBuffer& destinationRHI = graphics->GetRHIBuffer(destination.handle);
     pendingTextureBarriers.push_back(RHITextureBarrier{ sourceRHI,
                                                         {},
