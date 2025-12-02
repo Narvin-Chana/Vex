@@ -133,7 +133,7 @@ static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDesc& dr
 
 } // namespace CommandContext_Internal
 
-`CommandContext::CommandContext(NonNullPtr<Graphics> graphics,
+CommandContext::CommandContext(NonNullPtr<Graphics> graphics,
                                NonNullPtr<RHICommandList> cmdList,
                                NonNullPtr<RHITimestampQueryPool> queryPool,
                                SubmissionPolicy submissionPolicy,
