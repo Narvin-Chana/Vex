@@ -19,17 +19,21 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         build_type: [Debug, Release]
         c_compiler: [gcc, clang, cl]
+        cpp_library: [default, libc++]
         graphics_api: [vulkan, directx12]
         include:
           - os: windows-latest
             c_compiler: cl
             cpp_compiler: cl
+            cpp_library: default
           - os: windows-latest
             c_compiler: clang
             cpp_compiler: clang++
+            cpp_library: default
           - os: ubuntu-latest
             c_compiler: gcc
             cpp_compiler: g++
+            cpp_library: default
           - os: ubuntu-latest
             c_compiler: clang
             cpp_compiler: clang++
@@ -97,7 +101,7 @@ jobs:
         sudo apt-get update
         
         # Install Clang 19 and associated libraries
-        sudo apt-get install -y clang-19
+        sudo apt-get install -y clang-19 libc++-19-dev
         
         # Set Clang 19 as the default
         sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-19 100
@@ -108,6 +112,8 @@ jobs:
         # Verify the version
         clang --version
         clang++ --version
+
+        export CMAKE_CXX_FLAGS=
 
     - name: Install Vulkan SDK (Windows)
       if: matrix.os == 'windows-latest' && (matrix.graphics_api == 'vulkan')
@@ -166,6 +172,7 @@ jobs:
         choco install ninja
 
     - name: Configure CMake
+      if: matrix.cpp_library == 'default'
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -G Ninja
@@ -179,6 +186,21 @@ jobs:
         ${{ matrix.graphics_api == 'vulkan' && '-DVEX_GRAPHICS_BACKEND=VULKAN' || '' }}
         -S ${{ github.workspace }}
 
+    - name: Configure CMake
+      if: matrix.cpp_library == 'libc++'
+      run: >
+        cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        -G Ninja
+        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -DVEX_BUILD_EXAMPLES=ON
+        -DVEX_BUILD_TESTS=ON
+        -DVEX_ENABLE_SLANG=ON
+        -DCMAKE_CXX_FLAGS='libc++'
+        ${{ matrix.graphics_api == 'directx12' && '-DVEX_GRAPHICS_BACKEND=DX12' || '' }}
+        ${{ matrix.graphics_api == 'vulkan' && '-DVEX_GRAPHICS_BACKEND=VULKAN' || '' }}
+        -S ${{ github.workspace }}
 
     - name: Build
       # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
