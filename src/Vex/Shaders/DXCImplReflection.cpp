@@ -3,6 +3,7 @@
 #include <bitset>
 
 #include <Vex/Platform/Debug.h>
+#include <Vex/Shaders/ShaderCompiler.h>
 
 #if VEX_DX12
 #include <d3d12shader.h>
@@ -11,6 +12,7 @@
 
 #include <DX12/DX12Formats.h>
 #include <DX12/DX12Headers.h>
+#include <DX12/HRChecker.h>
 #endif
 
 #if VEX_VULKAN
@@ -95,26 +97,30 @@ ShaderReflection GetSpirvReflection(Span<const byte> spvCode)
     VEX_ASSERT(result == SPV_REFLECT_RESULT_SUCCESS);
 
     // Enumerate and extract shader's input variables
-    uint32_t var_count = 0;
-    result = spvReflectEnumerateInputVariables(&module, &var_count, NULL);
+    u32 varCount = 0;
+    result = spvReflectEnumerateInputVariables(&module, &varCount, nullptr);
     VEX_ASSERT(result == SPV_REFLECT_RESULT_SUCCESS);
 
-    std::vector<SpvReflectInterfaceVariable*> inputVariables{ var_count };
-    result = spvReflectEnumerateInputVariables(&module, &var_count, inputVariables.data());
+    std::vector<SpvReflectInterfaceVariable*> inputVariables{ varCount };
+    result = spvReflectEnumerateInputVariables(&module, &varCount, inputVariables.data());
     VEX_ASSERT(result == SPV_REFLECT_RESULT_SUCCESS);
 
     ShaderReflection reflectionData;
     for (u32 i = 0; i < inputVariables.size(); ++i)
     {
         SpvReflectInterfaceVariable* input = inputVariables[i];
+        if (!input->semantic || ShaderUtil::IsBuiltInSemantic(input->semantic))
+            continue;
 
-        std::string semanticName = input->semantic ? input->semantic : "";
+        std::string semanticName = input->semantic;
+        i32 semanticIndex = -1;
+
         // Trim left most numeric chars
-        auto j = semanticName.size() - 1;
+        auto j = semanticName.empty() ? 0 : semanticName.size() - 1;
         while (j > 0 && isdigit(semanticName[j]))
             --j;
 
-        int semanticIndex = 0;
+        semanticIndex = 0;
         if (j < semanticName.size() - 1)
         {
             semanticIndex = std::stoi(semanticName.substr(j + 1));
@@ -123,10 +129,6 @@ ShaderReflection GetSpirvReflection(Span<const byte> spvCode)
         reflectionData.inputs.emplace_back(semanticName, semanticIndex, SpirvReflectFormatToVex(input->format));
     }
 
-    // Output variables, descriptor bindings, descriptor sets, and push constants
-    // can be enumerated and extracted using a similar mechanism.
-
-    // Destroy the reflection data when no longer required.
     spvReflectDestroyShaderModule(&module);
 
     return reflectionData;
@@ -214,11 +216,7 @@ TextureFormat CreateFormatFromMaskAndType(std::bitset<8> mask, D3D_REGISTER_COMP
 ShaderReflection GetDxcReflection(dx12::ComPtr<IDxcResult> compilationResult)
 {
     ComPtr<IDxcBlob> reflectionBlob{};
-    HRESULT res = compilationResult->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(&reflectionBlob), nullptr);
-    if (FAILED(res))
-    {
-        VEX_ASSERT(false);
-    }
+    dx12::chk << compilationResult->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(&reflectionBlob), nullptr);
 
     const DxcBuffer reflectionBuffer{
         .Ptr = reflectionBlob->GetBufferPointer(),
@@ -227,26 +225,29 @@ ShaderReflection GetDxcReflection(dx12::ComPtr<IDxcResult> compilationResult)
     };
 
     ComPtr<IDxcUtils> utils;
-    DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils));
+    dx12::chk << DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils));
 
     ComPtr<ID3D12ShaderReflection> shaderReflection{};
-    utils->CreateReflection(&reflectionBuffer, IID_PPV_ARGS(&shaderReflection));
+    dx12::chk << utils->CreateReflection(&reflectionBuffer, IID_PPV_ARGS(&shaderReflection));
 
     D3D12_SHADER_DESC shaderDesc{};
-    shaderReflection->GetDesc(&shaderDesc);
+    dx12::chk << shaderReflection->GetDesc(&shaderDesc);
 
     ShaderReflection reflectionData;
     for (u32 i = 0; i < shaderDesc.InputParameters; ++i)
     {
         D3D12_SIGNATURE_PARAMETER_DESC signatureParameterDesc{};
-        shaderReflection->GetInputParameterDesc(i, &signatureParameterDesc);
+        dx12::chk << shaderReflection->GetInputParameterDesc(i, &signatureParameterDesc);
 
         std::bitset<8> typeBits(signatureParameterDesc.Mask);
-        reflectionData.inputs.push_back({
-            .semanticName = signatureParameterDesc.SemanticName,
-            .semanticIndex = signatureParameterDesc.SemanticIndex,
-            .format = CreateFormatFromMaskAndType(typeBits, signatureParameterDesc.ComponentType),
-        });
+        if (!ShaderUtil::IsBuiltInSemantic(signatureParameterDesc.SemanticName))
+        {
+            reflectionData.inputs.push_back({
+                .semanticName = signatureParameterDesc.SemanticName,
+                .semanticIndex = signatureParameterDesc.SemanticIndex,
+                .format = CreateFormatFromMaskAndType(typeBits, signatureParameterDesc.ComponentType),
+            });
+        }
     }
 
     return reflectionData;

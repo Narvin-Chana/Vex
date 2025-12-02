@@ -23,9 +23,13 @@ struct ShaderReflection
         std::string semanticName;
         u32 semanticIndex;
         TextureFormat format;
+
+        constexpr bool operator==(const Input& other) const = default;
     };
     std::vector<Input> inputs;
     // Add other reflection data here
+
+    constexpr bool operator==(const ShaderReflection& other) const = default;
 };
 
 struct ShaderCompilationResult

@@ -6,7 +6,6 @@
 
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
-#include <Vex/Platform/Platform.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/Shaders/CompilerBase.h>
 #include <Vex/Shaders/Shader.h>
@@ -17,6 +16,10 @@ namespace vex
 
 namespace ShaderUtil
 {
+bool IsBuiltInSemantic(std::string_view name)
+{
+    return name.substr(0, 3) == "SV_";
+}
 bool CanReflectShaderType(ShaderType type)
 {
     switch (type)
@@ -30,8 +33,6 @@ bool CanReflectShaderType(ShaderType type)
     return false;
 }
 } // namespace ShaderUtil
-
-ShaderCompiler::ShaderCompiler() = default;
 
 ShaderCompiler::ShaderCompiler(const ShaderCompilerSettings& compilerSettings)
     : compilerSettings(compilerSettings)

@@ -9,6 +9,8 @@
 #include <Vex/Shaders/ShaderCompilerSettings.h>
 #include <Vex/Shaders/ShaderKey.h>
 
+#include <RHI/RHIFwd.h>
+
 #if VEX_SLANG
 #include <Vex/Shaders/SlangImpl.h>
 #endif
@@ -18,8 +20,9 @@ namespace vex
 
 namespace ShaderUtil
 {
+bool IsBuiltInSemantic(std::string_view name);
 bool CanReflectShaderType(ShaderType type);
-}
+} // namespace ShaderUtil
 
 class Shader;
 struct ShaderEnvironment;
@@ -28,8 +31,7 @@ using ShaderCompileErrorsCallback = bool(const std::vector<std::pair<ShaderKey, 
 
 struct ShaderCompiler
 {
-    ShaderCompiler();
-    ShaderCompiler(const ShaderCompilerSettings& compilerSettings);
+    ShaderCompiler(const ShaderCompilerSettings& compilerSettings = {});
     ~ShaderCompiler();
 
     ShaderCompiler(const ShaderCompiler&) = delete;
