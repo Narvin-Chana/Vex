@@ -85,7 +85,7 @@ TextureReadbackContext& TextureReadbackContext::operator=(TextureReadbackContext
     return *this;
 }
 
-void TextureReadbackContext::ReadData(std::span<byte> outData)
+void TextureReadbackContext::ReadData(std::span<byte> outData) const
 {
     RHIBuffer& rhiBuffer = backend->GetRHIBuffer(buffer.handle);
 
