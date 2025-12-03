@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 
 #include <Vex.h>
-#include <Vex/ByteUtils.h>
+#include <Vex/Utility/ByteUtils.h>
 
 namespace vex
 {

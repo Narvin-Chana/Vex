@@ -207,7 +207,9 @@ add_library(Vex STATIC
     "src/Vex/NonNullPtr.h"
     "src/Vex/RayTracing.h"
     "src/Vex/RayTracing.cpp"
-    "src/Vex/ByteUtils.h"
+    "src/Vex/Utility/ByteUtils.h"
+    "src/Vex/Utility/WString.h"
+    "src/Vex/Utility/Visitor.h"
     "src/Vex/Shaders/DXCImpl.h"
     "src/Vex/Shaders/DXCImpl.cpp"
     "src/Vex/Shaders/DXCImplReflection.cpp"
@@ -220,18 +222,18 @@ add_library(Vex STATIC
     "src/Vex/Concepts.h"
     "src/Vex/ResourceReadbackContext.cpp"
     "src/Vex/ResourceReadbackContext.h"
+    "src/Vex/BuiltInShaders/MipGeneration.h"
 )
 
 if(WIN32)
     target_sources(Vex PRIVATE
-        "src/Vex/Platform/Windows/WString.h"
         "src/Vex/Platform/Windows/HResult.h"
     )
 endif()
 
 if(LINUX)
     target_sources(Vex PRIVATE
-        "src/Vex/Platform/Linux/WString.h"
+    # Nothing for now...
     )
 endif()
 
@@ -285,7 +287,8 @@ target_compile_definitions(Vex PUBLIC VEX_DX12=$<BOOL:${VEX_ENABLE_DX12}> VEX_VU
 
 if(WIN32)
     # Avoid windows polluting the code with macros.
-    target_compile_definitions(Vex PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN)
+    # Allow for typically "unsafe" C functions.
+    target_compile_definitions(Vex PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS)
 endif()
 
 # =========================================
