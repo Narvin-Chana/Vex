@@ -134,8 +134,6 @@ public:
     BufferReadbackContext EnqueueDataReadback(const Buffer& srcBuffer,
                                               const BufferRegion& region = BufferRegion::FullBuffer());
 
-    // TODO(https://trello.com/c/TqsL7d1w): Add a way to readback a region of a buffer.
-
     // ---------------------------------------------------------------------------------------------------------------
     // Texture Data Operations
     // ---------------------------------------------------------------------------------------------------------------
