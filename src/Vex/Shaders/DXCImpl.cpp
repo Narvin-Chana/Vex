@@ -47,12 +47,12 @@ static std::wstring GetTargetFromShaderType(ShaderType type)
         highestSupportedShaderModel[0] = L'c';
         break;
     // Raytracing shaders use "lib_*" target profile
-    case ShaderType::RayGenerationShader:
-    case ShaderType::RayMissShader:
-    case ShaderType::RayClosestHitShader:
-    case ShaderType::RayAnyHitShader:
-    case ShaderType::RayIntersectionShader:
-    case ShaderType::RayCallableShader:
+    case RayGenerationShader:
+    case RayMissShader:
+    case RayClosestHitShader:
+    case RayAnyHitShader:
+    case RayIntersectionShader:
+    case RayCallableShader:
         return L"lib" + highestSupportedShaderModel.substr(2);
     default:
         VEX_LOG(Fatal, "Unsupported shader type for the Vex ShaderCompiler.");
@@ -95,18 +95,42 @@ std::expected<ShaderCompilationResult, std::string> DXCCompilerImpl::CompileShad
 {
     using namespace DXCImpl_Internal;
 
+    DxcBuffer shaderSource = {};
     ComPtr<IDxcBlobEncoding> shaderBlob;
-    std::wstring shaderPath = StringToWString(shader.key.path.string());
-    if (HRESULT hr = utils->LoadFile(shaderPath.c_str(), nullptr, &shaderBlob); FAILED(hr))
+
+    const bool useFilepath = !shader.key.path.empty();
+
+    if (useFilepath && !shader.key.sourceCode.empty())
     {
-        return std::unexpected(
-            std::format("Failed to load shader from filesystem at path: {}.", shader.key.path.string()));
+        VEX_LOG(Warning,
+                "Shader {} has both a shader filepath and shader source string. Using the filepath for compilation...",
+                shader.key);
     }
 
-    DxcBuffer shaderSource = {};
+    if (useFilepath)
+    {
+        std::wstring shaderPath = StringToWString(shader.key.path.string());
+        if (HRESULT hr = utils->LoadFile(shaderPath.c_str(), nullptr, &shaderBlob); FAILED(hr))
+        {
+            return std::unexpected(
+                std::format("Failed to load shader from filesystem at path: {}.", shader.key.path.string()));
+        }
+    }
+    else
+    {
+        if (HRESULT hr =
+                utils->CreateBlob(shader.key.sourceCode.c_str(), shader.key.sourceCode.size(), DXC_CP_ACP, &shaderBlob);
+            FAILED(hr))
+        {
+            return std::unexpected(
+                std::format("Failed to create shader blob from source string: {}.", shader.key.sourceCode));
+        }
+    }
+
     shaderSource.Ptr = shaderBlob->GetBufferPointer();
     shaderSource.Size = shaderBlob->GetBufferSize();
-    shaderSource.Encoding = DXC_CP_ACP; // Assume BOM says UTF8 or UTF16 or this is ANSI text.
+    // Assume BOM says UTF8 or UTF16 or this is ANSI text.
+    shaderSource.Encoding = DXC_CP_ACP;
 
     std::vector<LPCWSTR> args;
     if (compilerSettings.enableShaderDebugging)

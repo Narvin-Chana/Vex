@@ -18,7 +18,10 @@
 namespace vex
 {
 
-TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
+namespace SlangImpl_Internal
+{
+
+static TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
 {
     auto kind = type->getKind();
 
@@ -127,7 +130,7 @@ TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
     return TextureFormat::UNKNOWN;
 }
 
-ShaderReflection GetSlangReflection(slang::IComponentType* program)
+static ShaderReflection GetSlangReflection(slang::IComponentType* program)
 {
     slang::ProgramLayout* reflection = program->getLayout();
     slang::EntryPointReflection* entryPoint = reflection->getEntryPointByIndex(0);
@@ -164,6 +167,8 @@ ShaderReflection GetSlangReflection(slang::IComponentType* program)
     return reflectionData;
 }
 
+} // namespace SlangImpl_Internal
+
 SlangCompilerImpl::SlangCompilerImpl(std::vector<std::filesystem::path> incDirs)
     : CompilerBase(std::move(incDirs))
 {
@@ -177,7 +182,15 @@ SlangCompilerImpl::~SlangCompilerImpl() = default;
 std::expected<ShaderCompilationResult, std::string> SlangCompilerImpl::CompileShader(
     const Shader& shader, ShaderEnvironment& shaderEnv, const ShaderCompilerSettings& compilerSettings) const
 {
-    if (shader.key.path.extension() != ".slang")
+    const bool useFilepath = !shader.key.path.empty();
+    if (useFilepath && !shader.key.sourceCode.empty())
+    {
+        VEX_LOG(Warning,
+                "Shader {} has both a shader filepath and shader source string. Using the filepath for compilation...",
+                shader.key);
+    }
+
+    if (useFilepath && shader.key.path.extension() != ".slang")
     {
         VEX_LOG(Fatal,
                 "Slang shaders must use a .slang file format, your extension: {}!",
@@ -188,8 +201,24 @@ std::expected<ShaderCompilationResult, std::string> SlangCompilerImpl::CompileSh
 
     Slang::ComPtr<ISlangBlob> diagnostics;
 
-    // loadModule compiles the shader with the passed-in name (searches in the IFileSystem).
-    slang::IModule* module = session->loadModule(shader.key.path.string().c_str(), diagnostics.writeRef());
+    slang::IModule* module = nullptr;
+    if (useFilepath)
+    {
+        // loadModule compiles the shader with the passed-in name (searches in the IFileSystem).
+        module = session->loadModule(shader.key.path.string().c_str(), diagnostics.writeRef());
+    }
+    else
+    {
+        // Used for identifying the shader inside the session.
+        // Should be unique per compilation session, which is why we give it a slightly convoluted name.
+        constexpr const char* moduleName = "VEX_InlineShaderModule";
+        module = session->loadModuleFromSourceString(
+            moduleName,
+            nullptr,
+            shader.key.sourceCode.c_str(),
+            diagnostics.writeRef());
+    }
+
     if (!module || diagnostics)
     {
         return std::unexpected(
@@ -242,7 +271,7 @@ std::expected<ShaderCompilationResult, std::string> SlangCompilerImpl::CompileSh
     finalShaderBlob.resize(blobSize);
     std::memcpy(finalShaderBlob.data(), bytecodeBlob->getBufferPointer(), blobSize);
 
-    return ShaderCompilationResult{ finalShaderBlob, GetSlangReflection(linkedProgram) };
+    return ShaderCompilationResult{ finalShaderBlob, SlangImpl_Internal::GetSlangReflection(linkedProgram) };
 }
 
 void SlangCompilerImpl::FillInIncludeDirectories(std::vector<std::string>& includeDirStrings,
