@@ -9,7 +9,7 @@
 namespace vex
 {
 
-std::string WStringToString(const std::wstring& wstr)
+inline std::string WStringToString(const std::wstring& wstr)
 {
     if (wstr.empty())
         return "";
@@ -21,7 +21,7 @@ std::string WStringToString(const std::wstring& wstr)
     return std::string(buffer.data());
 }
 
-std::wstring StringToWString(const std::string& str)
+inline std::wstring StringToWString(const std::string& str)
 {
     if (str.empty())
         return L"";
