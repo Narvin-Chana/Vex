@@ -286,7 +286,8 @@ target_compile_definitions(Vex PUBLIC VEX_DX12=$<BOOL:${VEX_ENABLE_DX12}> VEX_VU
 
 if(WIN32)
     # Avoid windows polluting the code with macros.
-    target_compile_definitions(Vex PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN)
+    # Allow for typically "unsafe" C functions.
+    target_compile_definitions(Vex PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS)
 endif()
 
 # =========================================

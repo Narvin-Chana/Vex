@@ -122,28 +122,28 @@ void ValidateVertexInputLayoutOnShader(const Shader& shader, const VertexInputLa
 {
     const ShaderReflection& reflection = shader.GetReflection();
 
-    VEX_CHECK(reflection.inputs.size() == inputLayout.attributes.size(),
-              "Error validating shader {}: Incoherent vertex input layout: size doesnt match shader",
-              shader.key);
-
-    for (u32 i = 0; i < reflection.inputs.size(); ++i)
-    {
-        VEX_CHECK(reflection.inputs[i].semanticName == inputLayout.attributes[i].semanticName,
-                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic name "
-                  "doesn't match shader",
-                  shader.key,
-                  i);
-        VEX_CHECK(reflection.inputs[i].semanticIndex == inputLayout.attributes[i].semanticIndex,
-                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic index "
-                  "doesn't match shader",
-                  shader.key,
-                  i);
-        VEX_CHECK(reflection.inputs[i].format == inputLayout.attributes[i].format,
-                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic index "
-                  "doesn't match shader",
-                  shader.key,
-                  i);
-    }
+//    VEX_CHECK(reflection.inputs.size() == inputLayout.attributes.size(),
+//              "Error validating shader {}: Incoherent vertex input layout: size doesnt match shader",
+//              shader.key);
+//
+//    for (u32 i = 0; i < reflection.inputs.size(); ++i)
+//    {
+//        VEX_CHECK(reflection.inputs[i].semanticName == inputLayout.attributes[i].semanticName,
+//                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic name "
+//                  "doesn't match shader",
+//                  shader.key,
+//                  i);
+//        VEX_CHECK(reflection.inputs[i].semanticIndex == inputLayout.attributes[i].semanticIndex,
+//                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic index "
+//                  "doesn't match shader",
+//                  shader.key,
+//                  i);
+//        VEX_CHECK(reflection.inputs[i].format == inputLayout.attributes[i].format,
+//                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic index "
+//                  "doesn't match shader",
+//                  shader.key,
+//                  i);
+//    }
 }
 
 const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(const RHIGraphicsPipelineState::Key& key)

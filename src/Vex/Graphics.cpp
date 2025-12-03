@@ -19,6 +19,7 @@
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
 #include <Vex/RenderExtension.h>
+#include <Vex/Utility/Visitor.h>
 
 namespace vex
 {
