@@ -106,7 +106,7 @@ PipelineStateCache::PipelineStateCache(RHI* rhi,
                                        const ShaderCompilerSettings& compilerSettings)
     : rhi(rhi)
     , resourceCleanup(resourceCleanup)
-    , shaderCompiler(rhi, compilerSettings)
+    , shaderCompiler(compilerSettings)
     , resourceLayout(rhi->CreateResourceLayout(descriptorPool))
 {
 }
@@ -120,25 +120,27 @@ RHIResourceLayout& PipelineStateCache::GetResourceLayout()
 
 void ValidateVertexInputLayoutOnShader(const Shader& shader, const VertexInputLayout& inputLayout)
 {
-    const ShaderReflection& reflection = shader.GetReflection();
+    const ShaderReflection* reflection = shader.GetReflection();
+    if (!reflection)
+        return;
 
-    VEX_CHECK(reflection.inputs.size() == inputLayout.attributes.size(),
+    VEX_CHECK(reflection->inputs.size() == inputLayout.attributes.size(),
               "Error validating shader {}: Incoherent vertex input layout: size doesnt match shader",
               shader.key);
 
-    for (u32 i = 0; i < reflection.inputs.size(); ++i)
+    for (u32 i = 0; i < reflection->inputs.size(); ++i)
     {
-        VEX_CHECK(reflection.inputs[i].semanticName == inputLayout.attributes[i].semanticName,
+        VEX_CHECK(reflection->inputs[i].semanticName == inputLayout.attributes[i].semanticName,
                   "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic name "
                   "doesn't match shader",
                   shader.key,
                   i);
-        VEX_CHECK(reflection.inputs[i].semanticIndex == inputLayout.attributes[i].semanticIndex,
+        VEX_CHECK(reflection->inputs[i].semanticIndex == inputLayout.attributes[i].semanticIndex,
                   "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic index "
                   "doesn't match shader",
                   shader.key,
                   i);
-        VEX_CHECK(reflection.inputs[i].format == inputLayout.attributes[i].format,
+        VEX_CHECK(reflection->inputs[i].format == inputLayout.attributes[i].format,
                   "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic index "
                   "doesn't match shader",
                   shader.key,

@@ -3,7 +3,7 @@
 #include <cmath>
 #include <cstring>
 
-#include <Vex/ByteUtils.h>
+#include <Vex/Utility/ByteUtils.h>
 #include <Vex/Validation.h>
 
 namespace vex

@@ -22,7 +22,7 @@ HelloRayTracing::HelloRayTracing()
     workingTexture =
         graphics->CreateTexture({ .name = "Working Texture",
                                   .type = vex::TextureType::Texture2D,
-                                  .format = vex::TextureFormat::RGBA8_UNORM,
+                                  .format = vex::TextureFormat::BGRA8_UNORM,
                                   .width = DefaultWidth,
                                   .height = DefaultHeight,
                                   .depthOrSliceCount = 1,
@@ -102,7 +102,7 @@ void HelloRayTracing::OnResize(GLFWwindow* window, uint32_t newWidth, uint32_t n
     workingTexture = graphics->CreateTexture({
         .name = "Working Texture",
         .type = vex::TextureType::Texture2D,
-        .format = vex::TextureFormat::RGBA8_UNORM,
+        .format = vex::TextureFormat::BGRA8_UNORM,
         .width = newWidth,
         .height = newHeight,
         .depthOrSliceCount = 1,

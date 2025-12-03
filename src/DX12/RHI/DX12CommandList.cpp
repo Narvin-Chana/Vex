@@ -3,7 +3,7 @@
 #include <optional>
 
 #include <Vex/Bindings.h>
-#include <Vex/ByteUtils.h>
+#include <Vex/Utility/ByteUtils.h>
 #include <Vex/Logger.h>
 #include <Vex/Texture.h>
 #include <Vex/Validation.h>

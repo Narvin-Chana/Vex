@@ -31,7 +31,7 @@ struct ShaderReflection
 struct ShaderCompilationResult
 {
     std::vector<byte> compiledCode;
-    ShaderReflection reflection;
+    std::optional<ShaderReflection> reflection;
 };
 
 struct CompilerBase

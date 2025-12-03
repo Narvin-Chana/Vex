@@ -4,7 +4,7 @@
 
 #include <Vex/Debug.h>
 #include <Vex/Logger.h>
-#include <Vex/Platform/Platform.h>
+#include <Vex/Utility/WString.h>
 #include <Vex/RHIImpl/RHI.h>
 
 #include <DX12/HRChecker.h>

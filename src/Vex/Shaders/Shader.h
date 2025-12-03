@@ -21,7 +21,7 @@ public:
     std::span<const byte> GetBlob() const;
     bool IsValid() const;
     bool NeedsRecompile() const;
-    const ShaderReflection& GetReflection() const;
+    const ShaderReflection* GetReflection() const;
 
     void MarkDirty();
 

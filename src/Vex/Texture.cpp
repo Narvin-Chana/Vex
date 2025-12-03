@@ -3,7 +3,7 @@
 #include <cmath>
 
 #include <Vex/Bindings.h>
-#include <Vex/ByteUtils.h>
+#include <Vex/Utility/ByteUtils.h>
 #include <Vex/Formattable.h>
 #include <Vex/Logger.h>
 #include <Vex/Validation.h>

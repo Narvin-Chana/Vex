@@ -7,6 +7,7 @@
 #include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
+#include <Vex/Utility/WString.h>
 
 #include <RHI/RHIDescriptorPool.h>
 
@@ -162,8 +163,8 @@ static D3D12_UNORDERED_ACCESS_VIEW_DESC CreateUnorderedAccessViewDesc(const DX12
     case TextureViewType::Texture2DArray:
     case TextureViewType::TextureCube:
     case TextureViewType::TextureCubeArray:
-        // UAVs for TextureCube and TextureCubeArray do not exist in D3D12, instead the user is expected to bind their texture cube as a
-        // RWTexture2DArray.
+        // UAVs for TextureCube and TextureCubeArray do not exist in D3D12, instead the user is expected to bind their
+        // texture cube as a RWTexture2DArray.
         desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
         desc.Texture2DArray = {
             .MipSlice = view.subresource.startMip,
