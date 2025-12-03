@@ -106,7 +106,7 @@ PipelineStateCache::PipelineStateCache(RHI* rhi,
                                        const ShaderCompilerSettings& compilerSettings)
     : rhi(rhi)
     , resourceCleanup(resourceCleanup)
-    , shaderCompiler(rhi, compilerSettings)
+    , shaderCompiler(compilerSettings)
     , resourceLayout(rhi->CreateResourceLayout(descriptorPool))
 {
 }

@@ -8,9 +8,6 @@
 #include <Vex/Shaders/DXCImpl.h>
 #include <Vex/Shaders/ShaderCompilerSettings.h>
 #include <Vex/Shaders/ShaderKey.h>
-#include <Vex/UniqueHandle.h>
-
-#include <RHI/RHIFwd.h>
 
 #if VEX_SLANG
 #include <Vex/Shaders/SlangImpl.h>
@@ -32,7 +29,7 @@ using ShaderCompileErrorsCallback = bool(const std::vector<std::pair<ShaderKey, 
 struct ShaderCompiler
 {
     ShaderCompiler();
-    ShaderCompiler(RHI* rhi, const ShaderCompilerSettings& compilerSettings);
+    ShaderCompiler(const ShaderCompilerSettings& compilerSettings);
     ~ShaderCompiler();
 
     ShaderCompiler(const ShaderCompiler&) = delete;
@@ -59,7 +56,6 @@ private:
     std::pair<bool, std::size_t> IsShaderStale(const Shader& shader) const;
     ShaderEnvironment CreateShaderEnvironment(ShaderCompilerBackend compiler);
 
-    RHI* rhi;
     ShaderCompilerSettings compilerSettings;
     DXCCompilerImpl dxcCompilerImpl;
 #if VEX_SLANG

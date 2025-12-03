@@ -33,9 +33,8 @@ bool CanReflectShaderType(ShaderType type)
 
 ShaderCompiler::ShaderCompiler() = default;
 
-ShaderCompiler::ShaderCompiler(RHI* rhi, const ShaderCompilerSettings& compilerSettings)
-    : rhi(rhi)
-    , compilerSettings(compilerSettings)
+ShaderCompiler::ShaderCompiler(const ShaderCompilerSettings& compilerSettings)
+    : compilerSettings(compilerSettings)
     , dxcCompilerImpl(compilerSettings.shaderIncludeDirectories)
 #if VEX_SLANG
     , slangCompilerImpl(compilerSettings.shaderIncludeDirectories)
