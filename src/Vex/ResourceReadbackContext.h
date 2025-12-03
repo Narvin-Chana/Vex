@@ -31,7 +31,7 @@ public:
     TextureReadbackContext(TextureReadbackContext&& other);
     TextureReadbackContext& operator=(TextureReadbackContext&& other);
 
-    void ReadData(std::span<byte> outData);
+    void ReadData(std::span<byte> outData) const;
     [[nodiscard]] u64 GetDataByteSize() const noexcept;
     [[nodiscard]] TextureDesc GetSourceTextureDescription() const noexcept
     {

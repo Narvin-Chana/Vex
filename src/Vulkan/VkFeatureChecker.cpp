@@ -64,6 +64,8 @@ bool VkFeatureChecker::IsFeatureSupported(Feature feature) const
     case Feature::MipGeneration:
         // Vk can use vkCmdBlitImage to generate mips.
         return true;
+    case Feature::DepthStencilReadback:
+        // Not supported on vulkan
     default:
         return false;
     }

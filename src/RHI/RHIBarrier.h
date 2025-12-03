@@ -32,6 +32,8 @@ enum class RHIBarrierSync : u8
     AllCommands,
     // Supported only in Vulkan, is mapped to Copy in DX12.
     Blit,
+    // Supported only in Vulkan, is mapped to All in DX12
+    Clear,
 };
 
 // Maps to VkAccessFlags and D3D12_BARRIER_ACCESS
