@@ -2,12 +2,12 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/Buffer.h>
-#include <Vex/ByteUtils.h>
 #include <Vex/Debug.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/Platform/Platform.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
+#include <Vex/Utility/ByteUtils.h>
 
 #include <DX12/DX12FeatureChecker.h>
 #include <DX12/RHI/DX12DescriptorPool.h>

@@ -1,6 +1,6 @@
 #include "DX12PipelineState.h"
 
-#include <Vex/ByteUtils.h>
+#include <Vex/Utility/ByteUtils.h>
 #include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>

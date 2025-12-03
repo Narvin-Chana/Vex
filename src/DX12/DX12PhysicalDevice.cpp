@@ -1,6 +1,6 @@
 #include "DX12PhysicalDevice.h"
 
-#include <Vex/Platform/Windows/WString.h>
+#include <Vex/Utility/WString.h>
 
 #include <DX12/DX12FeatureChecker.h>
 

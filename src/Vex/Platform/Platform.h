@@ -1,7 +1,7 @@
 #pragma once
 
 #if defined(_WIN32)
-#include <Vex/Platform/Windows/WString.h>
+#include <Vex/Platform/Windows/HResult.h>
 #elif defined(__linux__)
-#include <Vex/Platform/Linux/WString.h>
+// Nothing for now...
 #endif

@@ -4,7 +4,7 @@
 #include <cmath>
 
 #include <Vex/Bindings.h>
-#include <Vex/ByteUtils.h>
+#include <Vex/Utility/ByteUtils.h>
 #include <Vex/DrawHelpers.h>
 #include <Vex/PhysicalDevice.h>
 

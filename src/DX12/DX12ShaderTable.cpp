@@ -1,6 +1,6 @@
 #include "DX12ShaderTable.h"
 
-#include <Vex/ByteUtils.h>
+#include <Vex/Utility/ByteUtils.h>
 #include <Vex/Debug.h>
 
 namespace vex::dx12

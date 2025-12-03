@@ -7,6 +7,7 @@
 #include <Vex/Debug.h>
 #include <Vex/Platform/Platform.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/WString.h>
 
 #include <DX12/DX12Headers.h>
 #include <DX12/HRChecker.h>
