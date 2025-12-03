@@ -175,7 +175,7 @@ u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, std::span<const 
     for (const TextureRegion& region : uploadRegions)
     {
         const u32 sliceCount = region.subresource.GetSliceCount(desc);
-        
+
         VEX_CHECK(region.subresource.startSlice + sliceCount <= desc.GetSliceCount(),
                   "Cannot upload to a slice index ({}) greater or equal to the the texture's slice count ({})!",
                   region.subresource.startSlice + sliceCount,
@@ -208,7 +208,7 @@ u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, std::span<const Te
     for (const TextureRegion& region : uploadRegions)
     {
         const u32 sliceCount = region.subresource.GetSliceCount(desc);
-        
+
         VEX_CHECK(region.subresource.startSlice + sliceCount <= desc.GetSliceCount(),
                   "Cannot upload to a slice index ({}) greater or equal to the the texture's slice count ({})!",
                   region.subresource.startSlice + sliceCount,
@@ -288,7 +288,7 @@ void ValidateSubresource(const TextureSubresource& subresource, const TextureDes
     }
 }
 
-void ValidateRegion(const TextureRegion& region, const TextureDesc& desc)
+void ValidateRegion(const TextureDesc& desc, const TextureRegion& region)
 {
     ValidateSubresource(region.subresource, desc);
 
@@ -343,8 +343,8 @@ void ValidateRegion(const TextureRegion& region, const TextureDesc& desc)
 
 void ValidateCopyDesc(const TextureDesc& srcDesc, const TextureDesc& dstDesc, const TextureCopyDesc& copyDesc)
 {
-    ValidateRegion(copyDesc.srcRegion, srcDesc);
-    ValidateRegion(copyDesc.dstRegion, dstDesc);
+    ValidateRegion(srcDesc, copyDesc.srcRegion);
+    ValidateRegion(dstDesc, copyDesc.dstRegion);
     VEX_CHECK(copyDesc.srcRegion.extent == copyDesc.dstRegion.extent,
               "A texture copy's src and dst extents should match!");
 }

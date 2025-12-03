@@ -16,7 +16,7 @@ void ValidateBufferTextureCopyDesc(const BufferDesc& srcDesc,
                                    const BufferTextureCopyDesc& copyDesc)
 {
     BufferUtil::ValidateBufferRegion(srcDesc, copyDesc.bufferRegion);
-    TextureUtil::ValidateRegion(copyDesc.textureRegion, dstDesc);
+    TextureUtil::ValidateRegion(dstDesc, copyDesc.textureRegion);
 }
 
 void ReadTextureDataAligned(const TextureDesc& desc,

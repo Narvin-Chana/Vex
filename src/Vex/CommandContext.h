@@ -131,7 +131,8 @@ public:
 
     // Enqueues a readback operation on the GPU and returns the buffer in which the data can be read.
     // Will automatically create a staging buffer with the appropriate size
-    BufferReadbackContext EnqueueDataReadback(const Buffer& srcBuffer);
+    BufferReadbackContext EnqueueDataReadback(const Buffer& srcBuffer,
+                                              const BufferRegion& region = BufferRegion::FullBuffer());
 
     // TODO(https://trello.com/c/TqsL7d1w): Add a way to readback a region of a buffer.
 
@@ -172,16 +173,16 @@ public:
 
     // Will apply a barrier to the passed in buffer binding.
     void BarrierBinding(const BufferBinding& bufferBinding);
-    
+
     // Will apply a barrier to the passed in bindings.
     void BarrierBindings(std::span<const ResourceBinding> resourceBindings);
-    
+
     // Will apply a barrier to the passed in texture.
     void Barrier(const Texture& texture,
                  RHIBarrierSync newSync,
                  RHIBarrierAccess newAccess,
                  RHITextureLayout newLayout);
-    
+
     // Will apply a barrier to the passed in buffer.
     void Barrier(const Buffer& buffer, RHIBarrierSync newSync, RHIBarrierAccess newAccess);
 

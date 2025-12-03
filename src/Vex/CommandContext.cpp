@@ -370,13 +370,11 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
 
     // We have to perform manual mip generation if not supported by the graphics API.
     ShaderKey shaderKey = MipGenerationShaderKey;
-    shaderKey.defines = {
-        ShaderDefine{ "TEXTURE_TYPE", std::string(FormatUtil::GetHLSLType(texture.desc.format)) },
-        ShaderDefine{ "TEXTURE_DIMENSION", GetTextureDimensionDefine(texture.desc.type) },
-        ShaderDefine{ "LINEAR_SAMPLER_SLOT", std::format("s{}", graphics->builtInLinearSamplerSlot) },
-        ShaderDefine{ "CONVERT_TO_SRGB", textureBinding.isSRGB ? "1" : "0" },
-        ShaderDefine{ "NON_POWER_OF_TWO" }
-    };
+    shaderKey.defines = { ShaderDefine{ "TEXTURE_TYPE", std::string(FormatUtil::GetHLSLType(texture.desc.format)) },
+                          ShaderDefine{ "TEXTURE_DIMENSION", GetTextureDimensionDefine(texture.desc.type) },
+                          ShaderDefine{ "LINEAR_SAMPLER_SLOT", std::format("s{}", graphics->builtInLinearSamplerSlot) },
+                          ShaderDefine{ "CONVERT_TO_SRGB", textureBinding.isSRGB ? "1" : "0" },
+                          ShaderDefine{ "NON_POWER_OF_TWO" } };
     const u32 nonPowerOfTwoDefineIndex = shaderKey.defines.size() - 1;
 
     static auto ComputeNPOTFlag = [](u32 srcWidth, u32 srcHeight, u32 srcDepth, bool is3D) -> u32
@@ -676,7 +674,7 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const byt
         BufferDesc::CreateStagingBufferDesc(buffer.desc.name + "_staging", region.GetByteSize(buffer.desc)));
 
     RHIBuffer& rhiStagingBuffer = graphics->GetRHIBuffer(stagingBuffer.handle);
-    ResourceMappedMemory(rhiStagingBuffer).WriteData(data);
+    ResourceMappedMemory(rhiStagingBuffer).WriteData({ data.begin(), data.begin() + region.GetByteSize(buffer.desc) });
 
     Copy(stagingBuffer,
          buffer,
@@ -694,6 +692,11 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
                                        std::span<const byte> packedData,
                                        std::span<const TextureRegion> textureRegions)
 {
+    for (const auto& region : textureRegions)
+    {
+        TextureUtil::ValidateRegion(texture.desc, region);
+    }
+
     // Validate that the upload regions match the raw data passed in.
     u64 packedDataByteSize = TextureUtil::ComputePackedTextureDataByteSize(texture.desc, textureRegions);
     VEX_CHECK(packedData.size_bytes() == packedDataByteSize,
@@ -742,6 +745,11 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
 TextureReadbackContext CommandContext::EnqueueDataReadback(const Texture& srcTexture,
                                                            std::span<const TextureRegion> textureRegions)
 {
+    for (const auto& region : textureRegions)
+    {
+        TextureUtil::ValidateRegion(srcTexture.desc, region);
+    }
+
     // Create packed readback buffer.
     u64 stagingBufferByteSize = TextureUtil::ComputeAlignedUploadBufferByteSize(srcTexture.desc, textureRegions);
     const BufferDesc readbackBufferDesc =
@@ -769,14 +777,23 @@ TextureReadbackContext CommandContext::EnqueueDataReadback(const Texture& srcTex
     return EnqueueDataReadback(srcTexture, { &textureRegion, 1 });
 }
 
-BufferReadbackContext CommandContext::EnqueueDataReadback(const Buffer& srcBuffer)
+BufferReadbackContext CommandContext::EnqueueDataReadback(const Buffer& srcBuffer, const BufferRegion& region)
 {
+    BufferUtil::ValidateBufferRegion(srcBuffer.desc, region);
+
     // Create packed readback buffer.
     const BufferDesc readbackBufferDesc =
-        BufferDesc::CreateReadbackBufferDesc(srcBuffer.desc.name + "_readback", srcBuffer.desc.byteSize);
+        BufferDesc::CreateReadbackBufferDesc(srcBuffer.desc.name + "_readback", region.GetByteSize(srcBuffer.desc));
     Buffer stagingBuffer = graphics->CreateBuffer(readbackBufferDesc, ResourceLifetime::Static);
 
-    Copy(srcBuffer, stagingBuffer);
+    if (srcBuffer.desc.byteSize == GBufferWholeSize)
+    {
+        Copy(srcBuffer, stagingBuffer);
+    }
+    else
+    {
+        Copy(srcBuffer, stagingBuffer, BufferCopyDesc{ region.offset, 0, region.GetByteSize(srcBuffer.desc) });
+    }
 
     return { stagingBuffer, *graphics };
 }
