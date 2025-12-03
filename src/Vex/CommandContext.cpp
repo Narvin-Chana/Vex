@@ -62,7 +62,7 @@ static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureReg
                         .startMip = mip,
                         .mipCount = 1,
                         .startSlice = region.subresource.startSlice,
-                        .sliceCount = region.subresource.GetSliceCount(desc), 
+                        .sliceCount = region.subresource.GetSliceCount(desc),
                     },
                     .offset = region.offset,
                     .extent = region.extent,
@@ -640,7 +640,18 @@ void CommandContext::Copy(const Texture& source,
     pendingBufferBarriers.push_back(
         RHIBufferBarrier{ destinationRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest });
     FlushBarriers();
-    cmdList->Copy(sourceRHI, destinationRHI, bufferToTextureCopyDescriptions);
+
+    if (FormatUtil::SupportsStencil(source.desc.format) &&
+        !GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::DepthStencilReadback))
+    {
+        // Run compute to copy the image to the buffer
+        // See: https://trello.com/c/vEaa2SUe
+        VEX_NOT_YET_IMPLEMENTED();
+    }
+    else
+    {
+        cmdList->Copy(sourceRHI, destinationRHI, bufferToTextureCopyDescriptions);
+    }
 }
 
 void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const byte> data, const BufferRegion& region)

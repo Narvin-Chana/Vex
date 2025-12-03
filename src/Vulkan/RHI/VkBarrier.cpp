@@ -51,6 +51,8 @@ namespace vex::vk
         return eAllCommands;
     case Blit:
         return eBlit;
+    case Clear:
+        return eClear;
     default:
         VEX_LOG(Fatal, "Unsupported RHIBarrierSync!");
         std::unreachable();

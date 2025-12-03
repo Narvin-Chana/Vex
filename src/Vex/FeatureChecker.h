@@ -12,7 +12,8 @@ enum class Feature : u8
     RayTracing,
     BindlessResources,
     MipGeneration,
-    // TODO: add other features to this list.
+    DepthStencilReadback
+    // Additional features go here...
 };
 
 // TODO(https://trello.com/c/KnVRsH9P): add more specific ray tracing support flags
