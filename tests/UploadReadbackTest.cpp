@@ -386,6 +386,8 @@ TEST_P(MiscTextureTests, FullUpload3DTexture3Mips)
     graphics.DestroyTexture(texture);
 }
 
+INSTANTIATE_TEST_SUITE_P(PerQueueType, MiscTextureTests, QueueTypeValue);
+
 struct BufferUploadReadbackTestParams
 {
     BufferRegion uploadRegion = BufferRegion::FullBuffer();
@@ -421,7 +423,7 @@ TEST_P(BufferUploadReadbackTests, BufferUploadAndFullReadback)
 
     float readback[N];
     auto readbackFloatCount = params.readbackRegion.byteSize / sizeof(float);
-    auto readbackFloatOffset = params.readbackRegion.offset / sizeof(float);
+    auto readbackFloatOffset = (params.readbackRegion.offset - params.uploadRegion.offset) / sizeof(float);
     readbackContext.ReadData(std::as_writable_bytes(std::span{ readback, readbackFloatCount }));
 
     for (int i = 0; i < readbackFloatCount; ++i)
@@ -454,8 +456,6 @@ INSTANTIATE_PER_QUEUE_TEST_SUITE_P(
         BufferUploadReadbackTestParams{
             .uploadRegion = { .offset = sizeof(float) * 23, .byteSize = sizeof(float) * 50 },
             .readbackRegion = { .offset = sizeof(float) * 32, .byteSize = sizeof(float) * 10 } }));
-
-INSTANTIATE_TEST_SUITE_P(PerQueueType, MiscTextureTests, QueueTypeValue);
 
 struct ScalarBlockLayoutTests : public VexTestParam<ShaderCompilerBackend>
 {
