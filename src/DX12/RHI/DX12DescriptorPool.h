@@ -30,7 +30,7 @@ private:
 
     DX12DescriptorHeap<DX12HeapType::CBV_SRV_UAV, HeapFlags::SHADER_VISIBLE> gpuHeap;
 
-    // Used to store a null descriptor, useful for avoiding invalid texture usage (and avoiding gpu hangs) if a shader
+    // Used to store a single null descriptor, useful for avoiding invalid texture usage (and avoiding gpu hangs) if a shader
     // ever tries to access an invalid resource.
     DX12DescriptorHeap<DX12HeapType::CBV_SRV_UAV, HeapFlags::NONE> nullHeap;
 

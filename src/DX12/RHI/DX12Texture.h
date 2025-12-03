@@ -87,8 +87,8 @@ private:
 
     std::unordered_map<DX12TextureView, CacheEntry> viewCache;
 
-    static constexpr u32 MaxViewCountPerRTVHeap = 8;
-    static constexpr u32 MaxViewCountPerDSVHeap = 4;
+    static constexpr u32 InitialViewCountPerRTVHeap = 2;
+    static constexpr u32 InitialViewCountPerDSVHeap = 1;
 
     // CPU-only visible heaps are "free" to create.
     // Aka they are just CPU memory, requiring no GPU calls.
