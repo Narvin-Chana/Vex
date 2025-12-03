@@ -5,9 +5,9 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include <Vex.h>
-#include <Vex/ByteUtils.h>
+#include <Vex/Utility/ByteUtils.h>
 #include <Vex/CommandContext.h>
-#include <Vex/Containers/Utils.h>
+#include <Vex/Utility/WString.h>
 #include <Vex/FeatureChecker.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>

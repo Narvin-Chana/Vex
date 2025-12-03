@@ -207,7 +207,9 @@ add_library(Vex STATIC
     "src/Vex/NonNullPtr.h"
     "src/Vex/RayTracing.h"
     "src/Vex/RayTracing.cpp"
-    "src/Vex/ByteUtils.h"
+    "src/Vex/Utility/ByteUtils.h"
+    "src/Vex/Utility/WString.h"
+    "src/Vex/Utility/Visitor.h"
     "src/Vex/Shaders/DXCImpl.h"
     "src/Vex/Shaders/DXCImpl.cpp"
     "src/Vex/Shaders/DXCImplReflection.cpp"
@@ -224,14 +226,13 @@ add_library(Vex STATIC
 
 if(WIN32)
     target_sources(Vex PRIVATE
-        "src/Vex/Platform/Windows/WString.h"
         "src/Vex/Platform/Windows/HResult.h"
     )
 endif()
 
 if(LINUX)
     target_sources(Vex PRIVATE
-        "src/Vex/Platform/Linux/WString.h"
+    # Nothing for now...
     )
 endif()
 

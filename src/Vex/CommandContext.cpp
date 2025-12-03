@@ -4,8 +4,6 @@
 #include <cmath>
 #include <variant>
 
-#include <Vex/ByteUtils.h>
-#include <Vex/Containers/Utils.h>
 #include <Vex/Debug.h>
 #include <Vex/DrawHelpers.h>
 #include <Vex/Graphics.h>
@@ -20,6 +18,8 @@
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/RayTracing.h>
 #include <Vex/ResourceBindingUtils.h>
+#include <Vex/Utility/ByteUtils.h>
+#include <Vex/Utility/Visitor.h>
 #include <Vex/Validation.h>
 
 #include <RHI/RHIBarrier.h>

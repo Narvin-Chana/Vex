@@ -1,6 +1,6 @@
 ﻿#include "ResourceBindingUtils.h"
 
-#include <Vex/Containers/Utils.h>
+#include <Vex/Utility/WString.h>
 #include <Vex/Graphics.h>
 
 #include <RHI/RHIBuffer.h>
