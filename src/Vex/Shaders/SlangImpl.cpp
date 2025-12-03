@@ -39,6 +39,7 @@ static TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
                 return TextureFormat::RGB32_FLOAT;
             case 4:
                 return TextureFormat::RGBA32_FLOAT;
+            default:;
             }
         case slang::TypeReflection::ScalarType::Float16:
             switch (count)
@@ -47,6 +48,7 @@ static TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
                 return TextureFormat::RG16_FLOAT;
             case 4:
                 return TextureFormat::RGBA16_FLOAT;
+            default:;
             }
         case slang::TypeReflection::ScalarType::Int32:
             switch (count)
@@ -57,6 +59,7 @@ static TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
                 return TextureFormat::RGB32_SINT;
             case 4:
                 return TextureFormat::RGBA32_SINT;
+            default:;
             }
         case slang::TypeReflection::ScalarType::Int16:
             switch (count)
@@ -65,6 +68,7 @@ static TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
                 return TextureFormat::RG16_SINT;
             case 4:
                 return TextureFormat::RGBA16_SINT;
+            default:;
             }
         case slang::TypeReflection::ScalarType::Int8:
             switch (count)
@@ -73,6 +77,7 @@ static TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
                 return TextureFormat::RG8_SINT;
             case 4:
                 return TextureFormat::RGBA8_SINT;
+            default:;
             }
         case slang::TypeReflection::ScalarType::UInt32:
             switch (count)
@@ -83,6 +88,7 @@ static TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
                 return TextureFormat::RGB32_UINT;
             case 4:
                 return TextureFormat::RGBA32_UINT;
+            default:;
             }
         case slang::TypeReflection::ScalarType::UInt16:
             switch (count)
@@ -91,6 +97,7 @@ static TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
                 return TextureFormat::RG16_UINT;
             case 4:
                 return TextureFormat::RGBA16_UINT;
+            default:;
             }
         case slang::TypeReflection::ScalarType::UInt8:
             switch (count)
@@ -99,7 +106,9 @@ static TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
                 return TextureFormat::RG8_UINT;
             case 4:
                 return TextureFormat::RGBA8_UINT;
+            default:;
             }
+        default:;
         }
     }
     else if (kind == slang::TypeReflection::Kind::Scalar)
@@ -124,6 +133,7 @@ static TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
             return TextureFormat::R16_UINT;
         case slang::TypeReflection::ScalarType::UInt8:
             return TextureFormat::R8_UINT;
+        default:;
         }
     }
 
@@ -172,8 +182,6 @@ static ShaderReflection GetSlangReflection(slang::IComponentType* program)
 SlangCompilerImpl::SlangCompilerImpl(std::vector<std::filesystem::path> incDirs)
     : CompilerBase(std::move(incDirs))
 {
-    FeatureChecker* featureChecker = GPhysicalDevice->featureChecker.get();
-
     slang::createGlobalSession(globalSession.writeRef());
 }
 
@@ -240,8 +248,6 @@ std::expected<ShaderCompilationResult, std::string> SlangCompilerImpl::CompileSh
         return std::unexpected("Unable to create composite component type.");
     }
 
-    // TODO: this is where reflection would be done (using program)
-
     Slang::ComPtr<slang::IComponentType> linkedProgram;
     diagnostics = nullptr;
     if (SLANG_FAILED(program->link(linkedProgram.writeRef(), diagnostics.writeRef())) || diagnostics)
@@ -271,7 +277,12 @@ std::expected<ShaderCompilationResult, std::string> SlangCompilerImpl::CompileSh
     finalShaderBlob.resize(blobSize);
     std::memcpy(finalShaderBlob.data(), bytecodeBlob->getBufferPointer(), blobSize);
 
-    return ShaderCompilationResult{ finalShaderBlob, SlangImpl_Internal::GetSlangReflection(linkedProgram) };
+    std::optional<ShaderReflection> reflection;
+    if (ShaderUtil::CanReflectShaderType(shader.key.type))
+    {
+        reflection = SlangImpl_Internal::GetSlangReflection(linkedProgram);
+    }
+    return ShaderCompilationResult{ finalShaderBlob, reflection };
 }
 
 void SlangCompilerImpl::FillInIncludeDirectories(std::vector<std::string>& includeDirStrings,

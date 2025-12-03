@@ -24,9 +24,10 @@ bool Shader::NeedsRecompile() const
 {
     return isDirty && !isErrored;
 }
-const ShaderReflection& Shader::GetReflection() const
+
+const ShaderReflection* Shader::GetReflection() const
 {
-    return res.reflection;
+    return res.reflection ? &*res.reflection : nullptr;
 }
 
 void Shader::MarkDirty()

@@ -246,13 +246,16 @@ std::expected<ShaderCompilationResult, std::string> DXCCompilerImpl::CompileShad
     finalShaderBlob.resize(shaderBytecode->GetBufferSize());
     std::memcpy(finalShaderBlob.data(), shaderBytecode->GetBufferPointer(), finalShaderBlob.size() * sizeof(u8));
 
-    ShaderReflection reflection{};
+    std::optional<ShaderReflection> reflection{};
+    if (ShaderUtil::CanReflectShaderType(shader.key.type))
+    {
 #if VEX_VULKAN
-    reflection = GetSpirvReflection(finalShaderBlob);
+        reflection = GetSpirvReflection(finalShaderBlob);
 #endif
 #if VEX_DX12
-    reflection = GetDxcReflection(shaderCompilationResults);
+        reflection = GetDxcReflection(shaderCompilationResults);
 #endif
+    }
 
     return ShaderCompilationResult{ finalShaderBlob, reflection };
 }
