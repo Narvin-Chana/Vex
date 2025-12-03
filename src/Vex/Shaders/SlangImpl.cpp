@@ -221,7 +221,7 @@ std::expected<ShaderCompilationResult, std::string> SlangCompilerImpl::CompileSh
 
     Slang::ComPtr<slang::IComponentType> linkedProgram;
     diagnostics = nullptr;
-    if (SLANG_FAILED(program->link(linkedProgram.writeRef(), diagnostics.writeRef())))
+    if (SLANG_FAILED(program->link(linkedProgram.writeRef(), diagnostics.writeRef())) || diagnostics)
     {
         return std::unexpected(
             std::format("Link error: {}", static_cast<const char*>(diagnostics->getBufferPointer())));
