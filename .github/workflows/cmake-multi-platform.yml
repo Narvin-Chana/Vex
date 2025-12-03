@@ -113,8 +113,6 @@ jobs:
         clang --version
         clang++ --version
 
-        export CMAKE_CXX_FLAGS=
-
     - name: Install Vulkan SDK (Windows)
       if: matrix.os == 'windows-latest' && (matrix.graphics_api == 'vulkan')
       uses: humbletim/setup-vulkan-sdk@523828e49cd4afabce369c39c7ee6543a2b7a735
