@@ -222,6 +222,7 @@ add_library(Vex STATIC
     "src/Vex/Concepts.h"
     "src/Vex/ResourceReadbackContext.cpp"
     "src/Vex/ResourceReadbackContext.h"
+    "src/Vex/BuiltInShaders/MipGeneration.h"
 )
 
 if(WIN32)

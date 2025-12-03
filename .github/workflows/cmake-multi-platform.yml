@@ -33,6 +33,10 @@ jobs:
           - os: ubuntu-latest
             c_compiler: clang
             cpp_compiler: clang++
+          - os: ubuntu-latest
+            c_compiler: clang
+            cpp_compiler: clang++
+            cpp_library: libc++
         exclude:
           # Remove unsupported compilers from windows/linux
           - os: windows-latest
@@ -97,7 +101,7 @@ jobs:
         sudo apt-get update
         
         # Install Clang 19 and associated libraries
-        sudo apt-get install -y clang-19
+        sudo apt-get install -y clang-19 libc++-19-dev
         
         # Set Clang 19 as the default
         sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-19 100
@@ -166,6 +170,7 @@ jobs:
         choco install ninja
 
     - name: Configure CMake
+      if: matrix.cpp_library != 'libc++'
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -G Ninja
@@ -179,6 +184,21 @@ jobs:
         ${{ matrix.graphics_api == 'vulkan' && '-DVEX_GRAPHICS_BACKEND=VULKAN' || '' }}
         -S ${{ github.workspace }}
 
+    - name: Configure CMake
+      if: matrix.cpp_library == 'libc++'
+      run: >
+        cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        -G Ninja
+        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -DVEX_BUILD_EXAMPLES=ON
+        -DVEX_BUILD_TESTS=ON
+        -DVEX_ENABLE_SLANG=ON
+        -DCMAKE_CXX_FLAGS='-stdlib=libc++'
+        ${{ matrix.graphics_api == 'directx12' && '-DVEX_GRAPHICS_BACKEND=DX12' || '' }}
+        ${{ matrix.graphics_api == 'vulkan' && '-DVEX_GRAPHICS_BACKEND=VULKAN' || '' }}
+        -S ${{ github.workspace }}
 
     - name: Build
       # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).

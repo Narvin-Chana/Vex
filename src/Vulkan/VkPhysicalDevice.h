@@ -10,6 +10,14 @@ namespace vex::vk
 struct VkPhysicalDevice : public PhysicalDevice
 {
     VkPhysicalDevice(const ::vk::PhysicalDevice& dev);
+    ~VkPhysicalDevice() = default;
+
+    VkPhysicalDevice(const VkPhysicalDevice&) = delete;
+    VkPhysicalDevice& operator=(const VkPhysicalDevice&) = delete;
+
+    VkPhysicalDevice(VkPhysicalDevice&&) = default;
+    VkPhysicalDevice& operator=(VkPhysicalDevice&&) = default;
+
     static double GetDeviceVRAMSize(const ::vk::PhysicalDevice& physicalDevice);
 
     ::vk::PhysicalDevice physicalDevice;

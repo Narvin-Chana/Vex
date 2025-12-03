@@ -1,3 +1,17 @@
+#pragma once
+
+#include <string_view>
+
+#include <Vex/Shaders/ShaderKey.h>
+
+namespace vex
+{
+
+static constexpr std::string_view MipGenerationEntryPoint = "MipGenerationCS";
+
+// Candidate for #embed in C++26
+static constexpr std::string_view MipGenerationSource = R"SHADER(
+
 #include <Vex.hlsli>
 
 #ifndef TEXTURE_TYPE
@@ -304,3 +318,14 @@ void MipGenerationCS(uint3 dtid : SV_DispatchThreadID, uint3 gtid : SV_GroupThre
         WriteMip1(dtid, PackColor<TEXTURE_TYPE>(dstSample));
     }
 }
+
+)SHADER";
+
+static const ShaderKey MipGenerationShaderKey{
+    .sourceCode = std::string(MipGenerationSource),
+    .entryPoint = std::string(MipGenerationEntryPoint),
+    .type = ShaderType::ComputeShader,
+    .compiler = ShaderCompilerBackend::DXC,
+};
+
+} // namespace vex

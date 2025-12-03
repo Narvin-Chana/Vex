@@ -16,7 +16,7 @@
 namespace vex::dx12
 {
 
-namespace DX12SwapChain_Private
+namespace DX12SwapChain_Internal
 {
 
 static ColorSpace DXGIToColorSpace(DXGI_COLOR_SPACE_TYPE dxgiColorSpace)
@@ -47,7 +47,7 @@ static DXGI_COLOR_SPACE_TYPE ColorSpaceToDXGI(ColorSpace colorSpace)
     }
 }
 
-} // namespace DX12SwapChain_Private
+} // namespace DX12SwapChain_Internal
 
 DX12SwapChain::DX12SwapChain(ComPtr<DX12Device>& device,
                              SwapChainDesc& desc,
@@ -138,7 +138,7 @@ ColorSpace DX12SwapChain::GetValidColorSpace(ColorSpace preferredColorSpace) con
 
     // If the preferred is not supported, instead fallback to the output's recommended color space.
     const DXGI_OUTPUT_DESC1 outputDesc = GetBestOutputDesc();
-    const ColorSpace recommendedColorSpace = DX12SwapChain_Private::DXGIToColorSpace(outputDesc.ColorSpace);
+    const ColorSpace recommendedColorSpace = DX12SwapChain_Internal::DXGIToColorSpace(outputDesc.ColorSpace);
     const bool isHDRColorSpace = recommendedColorSpace != ColorSpace::sRGB;
     // HDR color spaces being available means we can use any user-preferred color space.
     if (isHDRColorSpace)
@@ -297,7 +297,7 @@ DXGI_OUTPUT_DESC1 DX12SwapChain::GetBestOutputDesc() const
 
 void DX12SwapChain::ApplyColorSpace() const
 {
-    DXGI_COLOR_SPACE_TYPE dxgiColorSpace = DX12SwapChain_Private::ColorSpaceToDXGI(currentColorSpace);
+    DXGI_COLOR_SPACE_TYPE dxgiColorSpace = DX12SwapChain_Internal::ColorSpaceToDXGI(currentColorSpace);
     chk << swapChain->SetColorSpace1(dxgiColorSpace);
 }
 

@@ -4,6 +4,7 @@
 #include <cmath>
 #include <variant>
 
+#include <Vex/BuiltInShaders/MipGeneration.h>
 #include <Vex/Debug.h>
 #include <Vex/DrawHelpers.h>
 #include <Vex/Graphics.h>
@@ -352,8 +353,6 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         return;
     }
 
-    static constexpr std::string_view MipGenerationEntryPoint = "MipGenerationCS";
-
     auto GetTextureDimensionDefine = [desc = &texture.desc](TextureType type) -> std::string
     {
         switch (type)
@@ -369,18 +368,16 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         }
     };
 
-    // We have to perform a manual mip generation if not supported by the graphics API.
-    ShaderKey mipGenerationShaderKey{
-        .path = std::filesystem::current_path() / "MipGeneration.hlsl",
-        .entryPoint = std::string(MipGenerationEntryPoint),
-        .type = ShaderType::ComputeShader,
-        .defines = { ShaderDefine{ "TEXTURE_TYPE", std::string(FormatUtil::GetHLSLType(texture.desc.format)) },
-                     ShaderDefine{ "TEXTURE_DIMENSION", GetTextureDimensionDefine(texture.desc.type) },
-                     ShaderDefine{ "LINEAR_SAMPLER_SLOT", std::format("s{}", graphics->builtInLinearSamplerSlot) },
-                     ShaderDefine{ "CONVERT_TO_SRGB", textureBinding.isSRGB ? "1" : "0" },
-                     ShaderDefine{ "NON_POWER_OF_TWO" } }
+    // We have to perform manual mip generation if not supported by the graphics API.
+    ShaderKey shaderKey = MipGenerationShaderKey;
+    shaderKey.defines = {
+        ShaderDefine{ "TEXTURE_TYPE", std::string(FormatUtil::GetHLSLType(texture.desc.format)) },
+        ShaderDefine{ "TEXTURE_DIMENSION", GetTextureDimensionDefine(texture.desc.type) },
+        ShaderDefine{ "LINEAR_SAMPLER_SLOT", std::format("s{}", graphics->builtInLinearSamplerSlot) },
+        ShaderDefine{ "CONVERT_TO_SRGB", textureBinding.isSRGB ? "1" : "0" },
+        ShaderDefine{ "NON_POWER_OF_TWO" }
     };
-    const u32 nonPowerOfTwoDefineIndex = mipGenerationShaderKey.defines.size() - 1;
+    const u32 nonPowerOfTwoDefineIndex = shaderKey.defines.size() - 1;
 
     static auto ComputeNPOTFlag = [](u32 srcWidth, u32 srcHeight, u32 srcDepth, bool is3D) -> u32
     {
@@ -423,7 +420,7 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
             isLastIteration = true;
         }
 
-        mipGenerationShaderKey.defines[nonPowerOfTwoDefineIndex].value =
+        shaderKey.defines[nonPowerOfTwoDefineIndex].value =
             std::to_string(ComputeNPOTFlag(width, height, depth, texture.desc.type == TextureType::Texture3D));
 
         std::vector<ResourceBinding> bindings{
@@ -473,7 +470,7 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         // For 3D: z = depth
         u32 dispatchZ = texture.desc.type == TextureType::Texture3D ? depth : texture.desc.GetSliceCount();
         std::array<u32, 3> dispatchGroupCount{ (width + 7u) / 8u, (height + 7u) / 8u, dispatchZ };
-        Dispatch(mipGenerationShaderKey, ConstantBinding(uniforms), dispatchGroupCount);
+        Dispatch(shaderKey, ConstantBinding(uniforms), dispatchGroupCount);
 
         width = std::max(1u, width >> (1 + !isLastIteration));
         height = std::max(1u, height >> (1 + !isLastIteration));
