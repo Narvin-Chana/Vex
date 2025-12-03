@@ -11,10 +11,25 @@
 #include <Vex/Shaders/CompilerBase.h>
 #include <Vex/Shaders/Shader.h>
 #include <Vex/Shaders/ShaderEnvironment.h>
-#include <Vex/TextureSampler.h>
 
 namespace vex
 {
+
+namespace ShaderUtil
+{
+bool CanReflectShaderType(ShaderType type)
+{
+    switch (type)
+    {
+    case ShaderType::ComputeShader:
+    case ShaderType::PixelShader:
+    case ShaderType::VertexShader:
+        return true;
+    default:;
+    }
+    return false;
+}
+} // namespace ShaderUtil
 
 ShaderCompiler::ShaderCompiler() = default;
 

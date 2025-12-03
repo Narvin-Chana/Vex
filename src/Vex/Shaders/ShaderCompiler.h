@@ -5,11 +5,12 @@
 #include <vector>
 
 #include <Vex/NonNullPtr.h>
-#include <RHI/RHIFwd.h>
 #include <Vex/Shaders/DXCImpl.h>
 #include <Vex/Shaders/ShaderCompilerSettings.h>
 #include <Vex/Shaders/ShaderKey.h>
 #include <Vex/UniqueHandle.h>
+
+#include <RHI/RHIFwd.h>
 
 #if VEX_SLANG
 #include <Vex/Shaders/SlangImpl.h>
@@ -17,6 +18,11 @@
 
 namespace vex
 {
+
+namespace ShaderUtil
+{
+bool CanReflectShaderType(ShaderType type);
+}
 
 class Shader;
 struct ShaderEnvironment;
