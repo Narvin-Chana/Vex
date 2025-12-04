@@ -7,32 +7,35 @@
 
 namespace vex
 {
-template <class Derived>
+
+template <class Derived, class ValueT, std::size_t IndexBitSize, std::size_t GenerationBitSize = sizeof(ValueT) * 8 - IndexBitSize>
+    requires(((sizeof(ValueT) * 8) - IndexBitSize == GenerationBitSize) and std::is_integral_v<ValueT>)
 struct Handle
 {
-    // First 24 bits indicate handle index (max of 16'777'215), following 8 bits indicate the generation (max of
-    // 255).
-    u32 value = ~0U;
+    using ValueType = ValueT;
 
-    constexpr static Derived CreateHandle(u32 index, u8 generation)
+    ValueType value = MaxValue;
+
+    constexpr static Derived CreateHandle(ValueType index, ValueType generation)
     {
         Derived handle;
         handle.SetHandle(index, generation);
         return handle;
     }
-    constexpr void SetHandle(u32 index, u8 generation)
+    constexpr void SetHandle(ValueType index, ValueType generation)
     {
         value = 0;
-        value |= (index & 0x00FFFFFF);
-        value |= static_cast<u32>(generation) << 24;
+        value |= index & (MaxValue >> GenerationBitSize);
+        value |= generation << IndexBitSize;
     }
-    constexpr u32 GetIndex() const
+    constexpr ValueType GetIndex() const
     {
-        return value & 0x00FFFFFF;
+        return value & (MaxValue >> GenerationBitSize);
     }
-    constexpr u8 GetGeneration() const
+    constexpr ValueType GetGeneration() const
+        requires(GenerationBitSize > 0)
     {
-        return value >> 24;
+        return value >> IndexBitSize;
     }
     constexpr bool operator==(Handle other) const
     {
@@ -40,14 +43,37 @@ struct Handle
     }
     constexpr bool IsValid() const
     {
-        return value != ~0;
+        return value != MaxValue;
     }
+
+private:
+    static constexpr ValueType MaxValue = std::numeric_limits<ValueType>::max();
 };
+
+// 32 bit handle
+template <class Derived>
+using Handle32 = Handle<Derived, u32, 24, 8>;
+
+// 64 bit handle
+template <class Derived>
+using Handle64 = Handle<Derived, u64, 32, 32>;
 
 } // namespace vex
 
 template <class T>
-    requires std::derived_from<T, vex::Handle<T>>
+    requires std::derived_from<T, vex::Handle32<T>>
+struct std::hash<T>
+{
+    size_t operator()(const T& obj) const
+    {
+        size_t seed = 0;
+        VEX_HASH_COMBINE(seed, obj.value);
+        return seed;
+    }
+};
+
+template <class T>
+    requires std::derived_from<T, vex::Handle64<T>>
 struct std::hash<T>
 {
     size_t operator()(const T& obj) const

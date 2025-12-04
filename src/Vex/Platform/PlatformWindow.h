@@ -37,15 +37,15 @@ struct PlatformWindowHandle
     };
 #endif
 
-    std::variant<
+    // Monostate should remain the first type.
+    std::variant<std::monostate,
 #if defined(_WIN32)
-        WindowsHandle,
+                 WindowsHandle
 #elif defined(__linux__)
-        X11Handle,
-        WaylandHandle,
+                 X11Handle,
+                 WaylandHandle
 #endif
-        std::monostate>
-        handle;
+    > handle;
 };
 
 struct PlatformWindow

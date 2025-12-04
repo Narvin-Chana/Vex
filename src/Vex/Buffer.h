@@ -89,7 +89,7 @@ struct BufferDesc
 
 // Strongly defined type represents a buffer.
 // We use a struct (instead of a typedef/using) to enforce compile-time correctness of handles.
-struct BufferHandle : public Handle<BufferHandle>
+struct BufferHandle : public Handle64<BufferHandle>
 {
 };
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -10,17 +12,68 @@
 namespace vex
 {
 
-// Simple index allocator
+// Simple free-list index allocator
+template <class IndexT = u32>
+    requires std::is_integral_v<IndexT>
 struct FreeListAllocator
 {
-    FreeListAllocator(u32 size = 0);
-    u32 Allocate();
-    void Deallocate(u32 index);
-    void Resize(u32 newSize);
+    FreeListAllocator(IndexT size = 0)
+        : size{ size }
+    {
+        freeIndices.reserve(size);
+        for (IndexT i = 0; i < size; ++i)
+        {
+            freeIndices.push_back(size - 1 - i);
+        }
+    }
 
-    u32 size;
-    std::vector<u32> freeIndices;
+    IndexT Allocate()
+    {
+        if (freeIndices.empty())
+        {
+            Resize(std::max<IndexT>(size * 2, 1));
+        }
+
+        IndexT idx = freeIndices.back();
+        freeIndices.pop_back();
+        return idx;
+    }
+    void Deallocate(IndexT index)
+    {
+        freeIndices.push_back(index);
+        std::sort(freeIndices.begin(), freeIndices.end(), std::greater{});
+    }
+    void Resize(IndexT newSize)
+    {
+        if (newSize == size)
+        {
+            return;
+        }
+
+        IndexT numNewIndices = newSize - size;
+        freeIndices.reserve(freeIndices.size() + numNewIndices);
+
+        // Add new indices
+        for (IndexT i = size; i < newSize; ++i)
+        {
+            freeIndices.push_back(i);
+        }
+
+        // Re-sort to maintain largest-to-smallest order.
+        std::sort(freeIndices.begin(), freeIndices.end(), std::greater{});
+
+        size = newSize;
+    }
+
+    IndexT size;
+    std::vector<IndexT> freeIndices;
 };
+
+// 32 bit free-list allocator.
+using FreeListAllocator32 = FreeListAllocator<u32>;
+
+// 64 bit free-list allocator.
+using FreeListAllocator64 = FreeListAllocator<u64>;
 
 // Free list implementation allowing for allocating and deallocating elements. Handles also store generations, to avoid
 // cases of use-after-free.
@@ -28,7 +81,9 @@ template <class T, class HandleT>
 class FreeList
 {
 public:
-    FreeList(u32 size = 0)
+    using IndexT = HandleT::ValueType;
+
+    FreeList(IndexT size = 0)
         : values(size)
         , generations(size)
         , allocator(size)
@@ -58,10 +113,10 @@ public:
     {
         if (allocator.freeIndices.empty())
         {
-            Resize(std::max<u32>(static_cast<u32>(values.size()) * 2, 1));
+            Resize(std::max<IndexT>(static_cast<IndexT>(values.size()) * 2, 1));
         }
 
-        u32 idx = allocator.Allocate();
+        IndexT idx = allocator.Allocate();
         VEX_ASSERT(!values[idx].has_value());
         values[idx].emplace(std::move(elem));
 
@@ -71,7 +126,7 @@ public:
     // Removes an element and destroys it.
     void FreeElement(HandleT handle)
     {
-        auto idx = handle.GetIndex();
+        IndexT idx = handle.GetIndex();
         VEX_ASSERT(values[idx].has_value());
         values[idx].reset();
         generations[idx]++;
@@ -81,19 +136,19 @@ public:
     // Extracts an element, removing it from the freelist without destroying it.
     MaybeUninitialized<T> ExtractElement(HandleT handle)
     {
-        auto idx = handle.GetIndex();
+        IndexT idx = handle.GetIndex();
         generations[idx]++;
         allocator.Deallocate(idx);
         VEX_ASSERT(values[idx].has_value());
         return std::exchange(values[idx], std::nullopt);
     }
 
-    u32 ElementCount() const
+    IndexT ElementCount() const
     {
         return allocator.size - allocator.freeIndices.size();
     }
 
-    void Resize(u32 newSize)
+    void Resize(IndexT newSize)
     {
         allocator.Resize(newSize);
         generations.resize(newSize);
@@ -156,7 +211,7 @@ public:
         }
 
         ListType* list;
-        u32 index;
+        IndexT index;
     };
 
     using iterator = Iterator<false>;
@@ -169,7 +224,7 @@ public:
     }
     iterator end()
     {
-        return iterator(this, static_cast<u32>(values.size()));
+        return iterator(this, static_cast<IndexT>(values.size()));
     }
     const_iterator begin() const
     {
@@ -177,13 +232,13 @@ public:
     }
     const_iterator end() const
     {
-        return const_iterator(this, static_cast<u32>(values.size()));
+        return const_iterator(this, static_cast<IndexT>(values.size()));
     }
 
 private:
     std::vector<MaybeUninitialized<T>> values;
-    std::vector<u8> generations;
-    FreeListAllocator allocator;
+    std::vector<IndexT> generations;
+    FreeListAllocator<IndexT> allocator;
 };
 
 } // namespace vex
