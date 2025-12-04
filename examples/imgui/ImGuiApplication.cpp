@@ -6,13 +6,8 @@
 ImGuiApplication::ImGuiApplication()
     : ExampleApplication("ImGuiApplication")
 {
-#if defined(_WIN32)
-    vex::PlatformWindowHandle platformWindow = { .window = glfwGetWin32Window(window) };
-#elif defined(__linux__)
-    vex::PlatformWindowHandle platformWindow{ .window = glfwGetX11Window(window), .display = glfwGetX11Display() };
-#endif
     graphics = vex::MakeUnique<vex::Graphics>(vex::GraphicsCreateDesc{
-        .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
+        .platformWindow = { .windowHandle = GetPlatformWindowHandle(), .width = DefaultWidth, .height = DefaultHeight },
         .useSwapChain = true,
         .swapChainDesc = { .frameBuffering = FrameBuffering },
         .enableGPUDebugLayer = !VEX_SHIPPING,
