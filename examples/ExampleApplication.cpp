@@ -9,10 +9,6 @@ ExampleApplication::ExampleApplication(std::string_view windowName,
                                        int defaultHeight,
                                        bool allowResize)
 {
-#if defined(__linux__)
-    glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
-#endif
-
     if (!glfwInit())
     {
         VEX_LOG(vex::Fatal, "Unable to initialize GLFW.");
@@ -58,6 +54,7 @@ ExampleApplication::~ExampleApplication()
 {
     glfwSetWindowSizeCallback(window, nullptr);
 
+    graphics.reset();
     glfwDestroyWindow(window);
     glfwTerminate();
 }
@@ -146,4 +143,24 @@ void ExampleApplication::SetupShaderErrorHandling()
             return false;
         });
 #endif
+}
+
+vex::PlatformWindowHandle ExampleApplication::GetPlatformWindowHandle() const
+{
+#if defined(_WIN32)
+    vex::PlatformWindowHandle platformWindow = { .window = glfwGetWin32Window(window) };
+#elif defined(__linux__)
+
+    vex::PlatformWindowHandle platformWindow;
+    if (auto x11Window =  glfwGetX11Window(window))
+    {
+        platformWindow = { vex::PlatformWindowHandle::X11Handle{.window = x11Window, .display = glfwGetX11Display()} };
+    }
+    else if (auto waylandWindow = glfwGetWaylandWindow(window))
+    {
+        platformWindow = { vex::PlatformWindowHandle::WaylandHandle{.window = waylandWindow, .display = glfwGetWaylandDisplay()} };
+    }
+#endif
+
+    return platformWindow;
 }

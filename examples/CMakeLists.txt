@@ -13,7 +13,10 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/glfw/glfw.git
     GIT_TAG 3.4
 )
+set(GLFW_BUILD_WAYLAND ON)
+set(GLFW_BUILD_X11 ON)
 FetchContent_MakeAvailable(glfw)
+target_compile_definitions(glfw PUBLIC GLFW_EXPOSE_NATIVE_WAYLAND)
 
 # STB Image
 message(STATUS "Fetching stb...")
