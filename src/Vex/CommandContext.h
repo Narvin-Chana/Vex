@@ -52,7 +52,7 @@ public:
     // Clears a texture, by default will use the texture's ClearColor.
     void ClearTexture(const TextureBinding& binding,
                       std::optional<TextureClearValue> textureClearValue = std::nullopt,
-                      std::optional<std::array<float, 4>> clearRect = std::nullopt);
+                      std::span<TextureClearRect> clearRects = {});
 
     // Performs a draw call.
     void Draw(const DrawDesc& drawDesc,
@@ -180,7 +180,6 @@ public:
 
     // Will apply a barrier to the passed in bindings.
     void BarrierBindings(Span<const ResourceBinding> resourceBindings);
-
     // Will apply a barrier to the passed in texture.
     void Barrier(const Texture& texture,
                  RHIBarrierSync newSync,

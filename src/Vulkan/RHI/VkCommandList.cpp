@@ -4,9 +4,9 @@
 #include <cmath>
 
 #include <Vex/Bindings.h>
-#include <Vex/Utility/ByteUtils.h>
 #include <Vex/DrawHelpers.h>
 #include <Vex/PhysicalDevice.h>
+#include <Vex/Utility/ByteUtils.h>
 
 #include <RHI/RHIBindings.h>
 
@@ -247,7 +247,8 @@ void VkCommandList::SetInputAssembly(InputAssembly inputAssembly)
 
 void VkCommandList::ClearTexture(const RHITextureBinding& binding,
                                  TextureUsage::Type usage,
-                                 const TextureClearValue& clearValue)
+                                 const TextureClearValue& clearValue,
+                                 std::span<TextureClearRect> clearRects)
 {
     const ::vk::ImageSubresourceRange ranges{
         .aspectMask = static_cast<::vk::ImageAspectFlagBits>(clearValue.flags),
@@ -257,27 +258,58 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
         .layerCount = binding.binding.subresource.GetSliceCount(binding.texture->GetDesc()),
     };
 
-    if (usage == TextureUsage::DepthStencil &&
-        clearValue.flags & (TextureClear::ClearDepth | TextureClear::ClearStencil))
+    if (clearRects.empty())
     {
-        ::vk::ClearDepthStencilValue clearVal{
-            .depth = clearValue.depth,
-            .stencil = clearValue.stencil,
-        };
-        commandBuffer->clearDepthStencilImage(binding.texture->GetResource(),
-                                              RHITextureLayoutToVulkan(binding.texture->GetLastLayout()),
-                                              &clearVal,
-                                              1,
-                                              &ranges);
+        if (usage == TextureUsage::DepthStencil &&
+            clearValue.flags & (TextureClear::ClearDepth | TextureClear::ClearStencil))
+        {
+            ::vk::ClearDepthStencilValue clearVal{
+                .depth = clearValue.depth,
+                .stencil = clearValue.stencil,
+            };
+            commandBuffer->clearDepthStencilImage(binding.texture->GetResource(),
+                                                  RHITextureLayoutToVulkan(binding.texture->GetLastLayout()),
+                                                  &clearVal,
+                                                  1,
+                                                  &ranges);
+        }
+        else
+        {
+            ::vk::ClearColorValue clearVal{ .float32 = clearValue.color };
+            commandBuffer->clearColorImage(binding.texture->GetResource(),
+                                           RHITextureLayoutToVulkan(binding.texture->GetLastLayout()),
+                                           &clearVal,
+                                           1,
+                                           &ranges);
+        }
     }
     else
     {
-        ::vk::ClearColorValue clearVal{ .float32 = clearValue.color };
-        commandBuffer->clearColorImage(binding.texture->GetResource(),
-                                       RHITextureLayoutToVulkan(binding.texture->GetLastLayout()),
-                                       &clearVal,
-                                       1,
-                                       &ranges);
+        RHIDrawResources resources;
+
+        std::vector<::vk::ClearRect> rects;
+        for (auto rect : clearRects)
+        {
+            rects.push_back({ .baseArrayLayer = ranges.baseArrayLayer,
+                              .layerCount = ranges.layerCount,
+                              .rect = ::vk::Rect2D{ .offset = { rect.offsetX, rect.offsetY },
+                                                    .extent = { rect.GetExtentX(binding.texture->GetDesc()),
+                                                                rect.GetExtentY(binding.texture->GetDesc()) } } });
+        }
+
+        ::vk::ClearAttachment clearAttachment;
+        // TODO: fill clear attachment
+        if (usage == TextureUsage::DepthStencil &&
+            clearValue.flags & (TextureClear::ClearDepth | TextureClear::ClearStencil))
+        {
+            resources.depthStencil = binding;
+        }
+        else
+        {
+            resources.renderTargets.push_back(binding);
+        }
+
+        commandBuffer->clearAttachments(1, &clearAttachment, rects.size(), rects.data());
     }
 }
 

@@ -6,6 +6,7 @@
 #include <Vex/Utility/Formattable.h>
 #include <Vex/Logger.h>
 #include <Vex/Utility/ByteUtils.h>
+#include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Validation.h>
 
 namespace vex
@@ -479,6 +480,16 @@ TextureDesc TextureDesc::CreateTexture3DDesc(std::string name,
         .memoryLocality = memoryLocality,
     };
     return desc;
+}
+
+u32 TextureClearRect::GetExtentX(const TextureDesc& desc) const
+{
+    return extentX == GTextureClearRectMax ? desc.width : extentX;
+}
+
+u32 TextureClearRect::GetExtentY(const TextureDesc& desc) const
+{
+    return extentY == GTextureClearRectMax ? desc.height : extentY;
 }
 
 u16 TextureSubresource::GetMipCount(const TextureDesc& desc) const

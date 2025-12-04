@@ -173,19 +173,13 @@ void CommandContext::SetScissor(i32 x, i32 y, u32 width, u32 height)
 
 void CommandContext::ClearTexture(const TextureBinding& binding,
                                   std::optional<TextureClearValue> textureClearValue,
-                                  std::optional<std::array<float, 4>> clearRect)
+                                  std::span<TextureClearRect> clearRects)
 {
     if (!(binding.texture.desc.usage & (TextureUsage::RenderTarget | TextureUsage::DepthStencil)))
     {
         VEX_LOG(Fatal,
                 "ClearUsage not supported on this texture, it must be either usable as a render target or as a depth "
                 "stencil!");
-    }
-
-    if (clearRect.has_value())
-    {
-        // Clear Rect not yet supported.
-        VEX_NOT_YET_IMPLEMENTED();
     }
 
     RHITexture& texture = graphics->GetRHITexture(binding.texture.handle);
