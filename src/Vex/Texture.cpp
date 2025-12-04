@@ -3,9 +3,9 @@
 #include <cmath>
 
 #include <Vex/Bindings.h>
-#include <Vex/Utility/ByteUtils.h>
 #include <Vex/Formattable.h>
 #include <Vex/Logger.h>
+#include <Vex/Utility/ByteUtils.h>
 #include <Vex/Validation.h>
 
 namespace vex
@@ -245,7 +245,7 @@ bool IsBindingUsageCompatibleWithUsage(TextureUsage::Flags usages, TextureBindin
     return true;
 }
 
-void ValidateSubresource(const TextureSubresource& subresource, const TextureDesc& desc)
+void ValidateSubresource(const TextureDesc& desc, const TextureSubresource& subresource)
 {
     VEX_CHECK(subresource.startMip < desc.mips,
               "Invalid subresource for resource \"{}\": The subresource's startMip ({}) cannot be larger than the "
@@ -290,7 +290,7 @@ void ValidateSubresource(const TextureSubresource& subresource, const TextureDes
 
 void ValidateRegion(const TextureDesc& desc, const TextureRegion& region)
 {
-    ValidateSubresource(region.subresource, desc);
+    ValidateSubresource(desc, region.subresource);
 
     // If any of the extents is not set to GTextureExtentMax, we validate that the underlying subresource only has 1
     // mip! (this requires a span of regions, since the extent is only valid for one mip).

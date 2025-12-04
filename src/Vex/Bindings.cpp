@@ -119,7 +119,7 @@ void ValidateTextureBinding(const TextureBinding& binding, TextureUsage::Flags v
                 texture.desc.name);
     }
 
-    TextureUtil::ValidateSubresource(binding.subresource, texture.desc);
+    TextureUtil::ValidateSubresource(texture.desc, binding.subresource);
 
     if (binding.isSRGB)
     {
