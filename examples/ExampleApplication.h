@@ -23,6 +23,8 @@ protected:
     void ToggleFullscreen();
     void SetupShaderErrorHandling();
 
+    vex::PlatformWindowHandle GetPlatformWindowHandle() const;
+
     enum WindowMode
     {
         Windowed,

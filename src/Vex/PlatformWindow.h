@@ -5,9 +5,11 @@
 #elif defined(__linux__)
 #include <X11/X.h>
 #include <X11/Xlib.h>
+#include <wayland-client.h>
 #undef None
 #endif
 
+#include <variant>
 #include <Vex/Types.h>
 
 namespace vex
@@ -16,11 +18,32 @@ namespace vex
 struct PlatformWindowHandle
 {
 #if defined(_WIN32)
-    HWND window;
+    struct WindowsHandle
+    {
+        HWND window;
+    };
 #elif defined(__linux__)
-    Window window;
-    Display* display;
+    struct X11Handle
+    {
+        Window window;
+        Display* display;
+    };
+
+    struct WaylandHandle
+    {
+        wl_surface* window;
+        wl_display* display;
+    };
 #endif
+
+    std::variant<
+#if defined(_WIN32)
+        WindowsHandle,
+#elif defined(__linux__)
+        X11Handle,
+        WaylandHandle,
+#endif
+        std::monostate> handle;
 };
 
 struct PlatformWindow
