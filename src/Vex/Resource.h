@@ -89,14 +89,14 @@ template <class T>
 void ResourceMappedMemory::WriteData(const T& inData)
 {
     const byte* dataPtr = reinterpret_cast<const byte*>(&inData);
-    WriteData(Span{ dataPtr, sizeof(T) });
+    WriteData({ dataPtr, sizeof(T) });
 }
 
 template <class T>
 void ResourceMappedMemory::ReadData(T& outData)
 {
     byte* dataPtr = reinterpret_cast<byte*>(&outData);
-    ReadData(Span{ dataPtr, sizeof(T) });
+    ReadData({ dataPtr, sizeof(T) });
 }
 
 } // namespace vex

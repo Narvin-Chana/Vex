@@ -9,7 +9,7 @@ template <class T, std::size_t Extent = std::dynamic_extent>
 struct Span : public std::span<T, Extent>
 {
     using Base = std::span<T, Extent>;
-    using Base::span; // Inherit base constructors
+    using Base::Base; // Inherit base constructors
     using V = std::remove_cv_t<T>;
 
     // Allow construction from std::span.
