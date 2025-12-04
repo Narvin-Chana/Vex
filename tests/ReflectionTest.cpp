@@ -5,11 +5,11 @@
 namespace vex
 {
 
-struct ReflectionTest : VexTestParam<ShaderCompilerBackend>
+struct ReflectionTestFull : VexPerShaderCompilerTest
 {
 };
 
-TEST_P(ReflectionTest, VertexInputLayoutTest)
+TEST_P(ReflectionTestFull, CompleteGraphicsPSOTest)
 {
     auto ctx = graphics.BeginScopedCommandContext(QueueType::Graphics, SubmissionPolicy::Immediate);
 
@@ -73,14 +73,12 @@ TEST_P(ReflectionTest, VertexInputLayoutTest)
         .depthCompareOp = CompareOp::GreaterEqual,
     };
 
-    std::string shaderExtension = GetParam() == ShaderCompilerBackend::DXC ? "hlsl" : "slang";
-
     // Setup our draw call's description...
     DrawDesc hlslDrawDesc{
-        .vertexShader = { .path = std::format("{}/tests/shaders/VertexInputLayoutTest.{}", VexRootPath.string(), shaderExtension),
+        .vertexShader = { .path = std::format("{}/tests/shaders/VertexInputLayoutTest.{}", VexRootPath.string(), GetShaderExtension(GetShaderCompilerBackend())),
                           .entryPoint = "VSMain",
                           .type = ShaderType::VertexShader, },
-        .pixelShader = { .path = std::format("{}/tests/shaders/VertexInputLayoutTest.{}", VexRootPath.string(), shaderExtension),
+        .pixelShader = { .path = std::format("{}/tests/shaders/VertexInputLayoutTest.{}", VexRootPath.string(), GetShaderExtension(GetShaderCompilerBackend())),
                          .entryPoint = "PSMain",
                          .type = ShaderType::PixelShader, },
         .vertexInputLayout = vertexLayout,
@@ -111,8 +109,176 @@ TEST_P(ReflectionTest, VertexInputLayoutTest)
                     1);
 }
 
-INSTANTIATE_TEST_SUITE_P(PerShaderCompiler,
-                         ReflectionTest,
-                         testing::Values(ShaderCompilerBackend::DXC, ShaderCompilerBackend::Slang));
+INSTANTIATE_TEST_SUITE_P(PerShaderCompilerBackend, ReflectionTestFull, ShaderCompilerBackendValues);
+
+struct VertexShaderReflectionTestParam
+{
+    std::string_view entryPoint;
+    VertexInputLayout inputLayoutToValidate;
+};
+struct VertexShaderReflectionTest : VexPerShaderCompilerTestParam<VertexShaderReflectionTestParam>
+{
+};
+
+void ValidateShaderReflection(const Shader& shader, const VertexInputLayout& inputLayout)
+{
+    const ShaderReflection* reflection = shader.GetReflection();
+    if (!reflection)
+        return;
+
+    ASSERT_TRUE(reflection->inputs.size() == inputLayout.attributes.size());
+    for (u32 i = 0; i < reflection->inputs.size(); ++i)
+    {
+        ASSERT_TRUE(reflection->inputs[i].semanticName == inputLayout.attributes[i].semanticName);
+        ASSERT_TRUE(reflection->inputs[i].semanticIndex == inputLayout.attributes[i].semanticIndex);
+        ASSERT_TRUE(reflection->inputs[i].format == inputLayout.attributes[i].format);
+    }
+}
+
+TEST_P(VertexShaderReflectionTest, VertexShaderReflection)
+{
+    ShaderCompiler compiler{};
+
+    VertexShaderReflectionTestParam param = GetParam();
+
+    ShaderKey shaderKey{
+        .path = std::format("{}/tests/shaders/reflection/Semantics.{}",
+                            VexRootPath.string(),
+                            GetShaderExtension(GetShaderCompilerBackend())),
+        .entryPoint = std::string(param.entryPoint),
+        .type = ShaderType::VertexShader,
+    };
+
+    Shader shader{ shaderKey };
+    auto res = compiler.CompileShader(shader);
+    VEX_ASSERT(res.has_value());
+
+    ValidateShaderReflection(shader, param.inputLayoutToValidate);
+}
+
+INSTANTIATE_PER_SHADER_COMPILER_TEST_SUITE_P(PerShaderCompiler, VertexShaderReflectionTest,
+                        testing::Values(
+                            VertexShaderReflectionTestParam{
+                                .entryPoint = "ReflectionVertex1",
+                                .inputLayoutToValidate = {
+                                    .attributes = { {
+                                                        .semanticName = "POSITION",
+                                                        .semanticIndex = 0,
+                                                        .format = TextureFormat::RGB32_FLOAT,
+                                                    },
+                                                    {
+                                                        .semanticName = "TEXCOORD",
+                                                        .semanticIndex = 0,
+                                                        .format = TextureFormat::RG32_FLOAT,
+                                                    } },
+                                }
+                            },
+                            VertexShaderReflectionTestParam{
+                                .entryPoint = "ReflectionVertex2",
+                                .inputLayoutToValidate = {
+                                    .attributes = { {
+                                                        .semanticName = "POSITION",
+                                                        .semanticIndex = 0,
+                                                        .format = TextureFormat::RGB32_FLOAT,
+                                                    },
+                                                    {
+                                                        .semanticName = "TEXCOORD",
+                                                        .semanticIndex = 0,
+                                                        .format = TextureFormat::RG32_FLOAT,
+                                                    } },
+                                }
+                            },
+                            VertexShaderReflectionTestParam{
+                                .entryPoint = "ReflectionVertex3",
+                                .inputLayoutToValidate = {
+                                    .attributes = { {
+                                                        .semanticName = "POSITION",
+                                                        .semanticIndex = 0,
+                                                        .format = TextureFormat::RGB32_FLOAT,
+                                                    },
+                                                    {
+                                                        .semanticName = "POSITION",
+                                                        .semanticIndex = 1,
+                                                        .format = TextureFormat::RGB32_FLOAT,
+                                                    },
+                                                    {
+                                                        .semanticName = "TEXCOORD",
+                                                        .semanticIndex = 1,
+                                                        .format = TextureFormat::RG32_FLOAT,
+                                                    } },
+                                }
+                            }
+                        ));
+
+struct ComputeShaderReflectionTestParam
+{
+    std::string_view entryPoint;
+    ShaderReflection expectedReflection;
+};
+struct ComputeShaderReflectionTest : VexPerShaderCompilerTestParam<ComputeShaderReflectionTestParam>
+{
+};
+
+TEST_P(ComputeShaderReflectionTest, ComputShaderReflection)
+{
+    ShaderCompiler compiler{};
+
+    ComputeShaderReflectionTestParam param = GetParam();
+
+    ShaderKey shaderKey{
+        .path = std::format("{}/tests/shaders/reflection/Semantics.{}",
+                            VexRootPath.string(),
+                            GetShaderExtension(GetShaderCompilerBackend())),
+        .entryPoint = std::string(param.entryPoint),
+        .type = ShaderType::ComputeShader,
+    };
+
+    Shader shader{ shaderKey };
+    auto res = compiler.CompileShader(shader);
+    VEX_ASSERT(res.has_value());
+
+    ASSERT_TRUE(shader.GetReflection() && (*shader.GetReflection() == param.expectedReflection));
+}
+
+INSTANTIATE_PER_SHADER_COMPILER_TEST_SUITE_P(
+    PerShaderCompiler,
+    ComputeShaderReflectionTest,
+    testing::Values(ComputeShaderReflectionTestParam{ "ReflectionCompute1", {} },
+                    ComputeShaderReflectionTestParam{ "ReflectionCompute2", {} },
+                    ComputeShaderReflectionTestParam{ "ReflectionCompute3", {} }));
+
+struct PixelShaderReflectionTestParam
+{
+    std::string_view entryPoint;
+    ShaderReflection expectedReflection;
+};
+struct PixelShaderReflectionTest : VexPerShaderCompilerTestParam<PixelShaderReflectionTestParam>
+{
+};
+
+TEST_P(PixelShaderReflectionTest, PixelShaderReflection)
+{
+    ShaderCompiler compiler{};
+
+    PixelShaderReflectionTestParam param = GetParam();
+
+    ShaderKey shaderKey{
+        .path = std::format("{}/tests/shaders/reflection/Semantics.{}",
+                            VexRootPath.string(),
+                            GetShaderExtension(GetShaderCompilerBackend())),
+        .entryPoint = std::string(param.entryPoint),
+        .type = ShaderType::PixelShader,
+    };
+
+    Shader shader{ shaderKey };
+    auto res = compiler.CompileShader(shader);
+    VEX_ASSERT(res.has_value());
+
+    ASSERT_TRUE(shader.GetReflection() && (*shader.GetReflection() == param.expectedReflection));
+}
+
+INSTANTIATE_PER_SHADER_COMPILER_TEST_SUITE_P(PerShaderCompiler,
+                                             PixelShaderReflectionTest,
+                                             testing::Values(PixelShaderReflectionTestParam{ "ReflectionPixel1", {} }));
 
 } // namespace vex

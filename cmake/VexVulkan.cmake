@@ -1,7 +1,5 @@
 # VexVulkan.cmake - Vulkan backend configuration
 
-
-
 function(setup_vulkan_backend TARGET)
     message(STATUS "Setting up Vulkan backend...")
 
@@ -18,7 +16,7 @@ function(setup_vulkan_backend TARGET)
     message(STATUS "Fetching SPIRV-Reflect...")
     FetchContent_Declare(
             spirv_reflect
-            EXCLUDE_FROM_ALL TRUE
+            SOURCE_SUBDIR  "<invalid path>" # this forces FetchContent to pull but not configure the dependency
             GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Reflect.git
             GIT_TAG        vulkan-sdk-1.4.321.0
     )

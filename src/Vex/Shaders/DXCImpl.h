@@ -38,8 +38,7 @@ struct ShaderDefine;
 
 struct DXCCompilerImpl : public CompilerBase
 {
-    DXCCompilerImpl() = default;
-    DXCCompilerImpl(std::vector<std::filesystem::path> includeDirectories);
+    DXCCompilerImpl(std::vector<std::filesystem::path> includeDirectories = {});
     virtual ~DXCCompilerImpl() override;
 
     virtual std::expected<ShaderCompilationResult, std::string> CompileShader(

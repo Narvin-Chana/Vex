@@ -41,6 +41,47 @@ struct VexTest : testing::Test
     }
 };
 
+const auto ShaderCompilerBackendValues = testing::Values(ShaderCompilerBackend::DXC, ShaderCompilerBackend::Slang);
+
+inline std::string_view GetShaderExtension(ShaderCompilerBackend backend)
+{
+    switch (backend)
+    {
+    case ShaderCompilerBackend::DXC:
+        return "hlsl";
+    case ShaderCompilerBackend::Slang:
+        return "slang";
+    default:
+        VEX_ASSERT(false);
+    }
+    std::unreachable();
+}
+
+struct VexPerShaderCompilerTest : VexTestParam<ShaderCompilerBackend>
+{
+    static ShaderCompilerBackend GetShaderCompilerBackend()
+    {
+        return GetParam();
+    }
+};
+
+template <class T>
+struct VexPerShaderCompilerTestParam : VexTestParam<std::tuple<ShaderCompilerBackend, T>>
+{
+    ShaderCompilerBackend GetShaderCompilerBackend()
+    {
+        return std::get<0>(VexTestParam<std::tuple<ShaderCompilerBackend, T>>::GetParam());
+    }
+
+    T GetParam()
+    {
+        return std::get<1>(VexTestParam<std::tuple<ShaderCompilerBackend, T>>::GetParam());
+    }
+};
+
+#define INSTANTIATE_PER_SHADER_COMPILER_TEST_SUITE_P(name, type, values)                                               \
+    INSTANTIATE_TEST_SUITE_P(name, type, testing::Combine(ShaderCompilerBackendValues, values));
+
 struct VexPerQueueTest : VexTestParam<QueueType>
 {
 };

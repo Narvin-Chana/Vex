@@ -147,10 +147,17 @@ static ShaderReflection GetSlangReflection(slang::IComponentType* program)
 
     ShaderReflection reflectionData;
 
+    auto TryAddShaderInput = [&reflectionData](const ShaderReflection::Input& input)
+    {
+        if (!ShaderUtil::IsBuiltInSemantic(input.semanticName))
+        {
+            reflectionData.inputs.push_back(input);
+        }
+    };
+
     for (u32 i = 0; i < entryPoint->getParameterCount(); ++i)
     {
         slang::VariableLayoutReflection* param = entryPoint->getParameterByIndex(i);
-
         if (param->getCategory() == slang::VaryingInput)
         {
             // If semantic name is null we need to look into the struct for the vertex input semantics
@@ -160,16 +167,16 @@ static ShaderReflection GetSlangReflection(slang::IComponentType* program)
                 for (u32 j = 0; j < paramLayout->getFieldCount(); j++)
                 {
                     slang::VariableLayoutReflection* field = paramLayout->getFieldByIndex(j);
-                    reflectionData.inputs.emplace_back(field->getSemanticName(),
-                                                       static_cast<u32>(field->getSemanticIndex()),
-                                                       SlangTypeToFormat(field->getType()));
+                    TryAddShaderInput({ field->getSemanticName(),
+                                        static_cast<u32>(field->getSemanticIndex()),
+                                        SlangTypeToFormat(field->getType()) });
                 }
             }
             else
             {
-                reflectionData.inputs.emplace_back(param->getSemanticName(),
-                                                   static_cast<u32>(param->getSemanticIndex()),
-                                                   SlangTypeToFormat(param->getType()));
+                TryAddShaderInput({ param->getSemanticName(),
+                                    static_cast<u32>(param->getSemanticIndex()),
+                                    SlangTypeToFormat(param->getType()) });
             }
         }
     }
@@ -220,11 +227,10 @@ std::expected<ShaderCompilationResult, std::string> SlangCompilerImpl::CompileSh
         // Used for identifying the shader inside the session.
         // Should be unique per compilation session, which is why we give it a slightly convoluted name.
         constexpr const char* moduleName = "VEX_InlineShaderModule";
-        module = session->loadModuleFromSourceString(
-            moduleName,
-            nullptr,
-            shader.key.sourceCode.c_str(),
-            diagnostics.writeRef());
+        module = session->loadModuleFromSourceString(moduleName,
+                                                     nullptr,
+                                                     shader.key.sourceCode.c_str(),
+                                                     diagnostics.writeRef());
     }
 
     if (!module || diagnostics)
