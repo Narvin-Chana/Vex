@@ -20,7 +20,7 @@ if (LINUX)
 endif()
 FetchContent_MakeAvailable(glfw)
 if (LINUX)
-target_compile_definitions(glfw PUBLIC GLFW_EXPOSE_NATIVE_WAYLAND)
+    target_compile_definitions(glfw PUBLIC GLFW_EXPOSE_NATIVE_WAYLAND)
 endif()
 
 # STB Image
