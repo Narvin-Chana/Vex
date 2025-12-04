@@ -5,7 +5,7 @@
 #include <vulkan/vulkan_core.h>
 
 #include <Vex/Logger.h>
-#include <Vex/PlatformWindow.h>
+#include <Vex/Platform/PlatformWindow.h>
 
 #include <Vulkan/VkHeaders.h>
 

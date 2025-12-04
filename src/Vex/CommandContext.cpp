@@ -5,7 +5,7 @@
 #include <variant>
 
 #include <Vex/BuiltInShaders/MipGeneration.h>
-#include <Vex/Debug.h>
+#include <Vex/Platform/Debug.h>
 #include <Vex/DrawHelpers.h>
 #include <Vex/Graphics.h>
 #include <Vex/GraphicsPipeline.h>
@@ -21,7 +21,7 @@
 #include <Vex/ResourceBindingUtils.h>
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Visitor.h>
-#include <Vex/Validation.h>
+#include <Vex/Utility/Validation.h>
 
 #include <RHI/RHIBarrier.h>
 #include <RHI/RHIBindings.h>
@@ -33,7 +33,7 @@ namespace CommandContext_Internal
 {
 
 static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureRegions(
-    const TextureDesc& desc, std::span<const TextureRegion> regions)
+    const TextureDesc& desc, Span<const TextureRegion> regions)
 {
     // Otherwise we have to translate the TextureRegions to their equivalent BufferTextureCopyDescs.
     std::vector<BufferTextureCopyDesc> copyDescs;
@@ -138,7 +138,7 @@ CommandContext::CommandContext(NonNullPtr<Graphics> graphics,
                                NonNullPtr<RHICommandList> cmdList,
                                NonNullPtr<RHITimestampQueryPool> queryPool,
                                SubmissionPolicy submissionPolicy,
-                               std::span<SyncToken> dependencies)
+                               Span<const SyncToken> dependencies)
     : graphics(graphics)
     , cmdList(cmdList)
     , submissionPolicy(submissionPolicy)
@@ -482,7 +482,7 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         .texture = texture,
         .usage = TextureBindingUsage::ShaderRead,
     };
-    BarrierBindings(std::span<const ResourceBinding>{ { finalBinding } });
+    BarrierBindings({ finalBinding });
 }
 
 void CommandContext::Copy(const Texture& source, const Texture& destination)
@@ -515,7 +515,7 @@ void CommandContext::Copy(const Texture& source, const Texture& destination, con
 
 void CommandContext::Copy(const Texture& source,
                           const Texture& destination,
-                          std::span<const TextureCopyDesc> regionMappings)
+                          Span<const TextureCopyDesc> regionMappings)
 {
     VEX_CHECK(source.handle != destination.handle, "Cannot copy a texture to itself!");
 
@@ -592,7 +592,7 @@ void CommandContext::Copy(const Buffer& source, const Texture& destination, cons
 
 void CommandContext::Copy(const Buffer& source,
                           const Texture& destination,
-                          std::span<const BufferTextureCopyDesc> copyDescs)
+                          Span<const BufferTextureCopyDesc> copyDescs)
 {
     for (auto& copyDesc : copyDescs)
     {
@@ -618,7 +618,7 @@ void CommandContext::Copy(const Texture& source, const Buffer& destination)
 
 void CommandContext::Copy(const Texture& source,
                           const Buffer& destination,
-                          std::span<const BufferTextureCopyDesc> bufferToTextureCopyDescriptions)
+                          Span<const BufferTextureCopyDesc> bufferToTextureCopyDescriptions)
 {
     for (auto& copyDesc : bufferToTextureCopyDescriptions)
     {
@@ -649,7 +649,7 @@ void CommandContext::Copy(const Texture& source,
     }
 }
 
-void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const byte> data, const BufferRegion& region)
+void CommandContext::EnqueueDataUpload(const Buffer& buffer, Span<const byte> data, const BufferRegion& region)
 {
     if (region == BufferRegion::FullBuffer())
     {
@@ -689,8 +689,8 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const byt
 }
 
 void CommandContext::EnqueueDataUpload(const Texture& texture,
-                                       std::span<const byte> packedData,
-                                       std::span<const TextureRegion> textureRegions)
+                                       Span<const byte> packedData,
+                                       Span<const TextureRegion> textureRegions)
 {
     for (const auto& region : textureRegions)
     {
@@ -716,7 +716,7 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
 
     // The staging buffer has to respect the alignment that which Vex uses for uploads.
     // We suppose however that user data is tightly packed.
-    std::span<byte> stagingBufferData = rhiStagingBuffer.Map();
+    Span<byte> stagingBufferData = rhiStagingBuffer.Map();
     TextureCopyUtil::WriteTextureDataAligned(texture.desc, textureRegions, packedData, stagingBufferData);
     rhiStagingBuffer.Unmap();
 
@@ -736,14 +736,14 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
 }
 
 void CommandContext::EnqueueDataUpload(const Texture& texture,
-                                       std::span<const byte> packedData,
+                                       Span<const byte> packedData,
                                        const TextureRegion& textureRegion)
 {
     EnqueueDataUpload(texture, packedData, { &textureRegion, 1 });
 }
 
 TextureReadbackContext CommandContext::EnqueueDataReadback(const Texture& srcTexture,
-                                                           std::span<const TextureRegion> textureRegions)
+                                                           Span<const TextureRegion> textureRegions)
 {
     for (const auto& region : textureRegions)
     {
@@ -810,7 +810,7 @@ void CommandContext::BarrierBinding(const BufferBinding& bufferBinding)
     BarrierBindings({ &rb, 1 });
 }
 
-void CommandContext::BarrierBindings(std::span<const ResourceBinding> resourceBindings)
+void CommandContext::BarrierBindings(Span<const ResourceBinding> resourceBindings)
 {
     // Collect all underlying RHI textures.
     std::vector<RHITextureBinding> rhiTextureBindings;
@@ -860,7 +860,7 @@ SyncToken CommandContext::Submit()
     return tokens[0];
 }
 
-void CommandContext::ExecuteInDrawContext(std::span<const TextureBinding> renderTargets,
+void CommandContext::ExecuteInDrawContext(Span<const TextureBinding> renderTargets,
                                           std::optional<const TextureBinding> depthStencil,
                                           const std::function<void()>& callback)
 {
@@ -958,7 +958,7 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
 }
 
 std::vector<RHIBufferBarrier> CommandContext::SetVertexBuffers(u32 vertexBuffersFirstSlot,
-                                                               std::span<BufferBinding> vertexBuffers)
+                                                               Span<const BufferBinding> vertexBuffers)
 {
     if (vertexBuffers.empty())
     {
@@ -998,7 +998,7 @@ std::optional<RHIBufferBarrier> CommandContext::SetIndexBuffer(std::optional<Buf
     return RHIBufferBarrier{ buffer, RHIBarrierSync::VertexInput, RHIBarrierAccess::VertexInputRead };
 }
 
-void CommandContext::EnqueueBarriers(std::span<const RHITextureBarrier> barriers)
+void CommandContext::EnqueueBarriers(Span<const RHITextureBarrier> barriers)
 {
 #ifdef __cpp_lib_containers_ranges
     pendingTextureBarriers.append_range(barriers);
@@ -1007,7 +1007,7 @@ void CommandContext::EnqueueBarriers(std::span<const RHITextureBarrier> barriers
 #endif
 }
 
-void CommandContext::EnqueueBarriers(std::span<const RHIBufferBarrier> barriers)
+void CommandContext::EnqueueBarriers(Span<const RHIBufferBarrier> barriers)
 {
 #ifdef __cpp_lib_containers_ranges
     pendingBufferBarriers.append_range(barriers);

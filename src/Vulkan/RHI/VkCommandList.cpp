@@ -100,7 +100,7 @@ static ::vk::ImageMemoryBarrier2 MergeBarriers(const ::vk::ImageMemoryBarrier2& 
 }
 
 static std::vector<::vk::BufferImageCopy> GetBufferImageCopyFromBufferToImageDescriptions(
-    const RHITexture& texture, std::span<const BufferTextureCopyDesc> descriptions)
+    const RHITexture& texture, Span<const BufferTextureCopyDesc> descriptions)
 {
     ::vk::ImageAspectFlags aspectFlag = VkTextureUtil::GetFormatAspectFlags(texture.GetDesc().format);
     float pixelByteSize = TextureUtil::GetPixelByteSizeFromFormat(texture.GetDesc().format);
@@ -204,7 +204,7 @@ void VkCommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTracin
 
 void VkCommandList::SetLayout(RHIResourceLayout& layout)
 {
-    std::span<const byte> localConstantsData = layout.GetLocalConstantsData();
+    Span<const byte> localConstantsData = layout.GetLocalConstantsData();
     if (localConstantsData.empty())
     {
         return;
@@ -289,8 +289,8 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
     }
 }
 
-void VkCommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
-                            std::span<const RHITextureBarrier> textureBarriers)
+void VkCommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers,
+                            Span<const RHITextureBarrier> textureBarriers)
 {
     std::vector<::vk::BufferMemoryBarrier2> vkBufferBarriers;
     vkBufferBarriers.reserve(bufferBarriers.size());
@@ -534,7 +534,7 @@ void VkCommandList::DrawIndexed(
     commandBuffer->drawIndexed(indexCount, instanceCount, indexOffset, vertexOffset, instanceOffset);
 }
 
-void VkCommandList::SetVertexBuffers(u32 startSlot, std::span<RHIBufferBinding> vertexBuffers)
+void VkCommandList::SetVertexBuffers(u32 startSlot, Span<const RHIBufferBinding> vertexBuffers)
 {
     std::vector<::vk::Buffer> vkBuffers;
     vkBuffers.reserve(vertexBuffers.size());
@@ -689,7 +689,7 @@ void VkCommandList::ResolveTimestampQueries(u32 firstQuery, u32 queryCount)
                                         ::vk::QueryResultFlagBits::e64 | ::vk::QueryResultFlagBits::eWait);
 }
 
-void VkCommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDesc> textureCopyDescriptions)
+void VkCommandList::Copy(RHITexture& src, RHITexture& dst, Span<const TextureCopyDesc> textureCopyDescriptions)
 {
     const auto& srcDesc = src.desc;
     const auto& dstDesc = dst.desc;
@@ -736,7 +736,7 @@ void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDesc& b
     commandBuffer->copyBuffer(src.GetNativeBuffer(), dst.GetNativeBuffer(), 1, &copy);
 }
 
-void VkCommandList::Copy(RHIBuffer& src, RHITexture& dst, std::span<const BufferTextureCopyDesc> copyDescriptions)
+void VkCommandList::Copy(RHIBuffer& src, RHITexture& dst, Span<const BufferTextureCopyDesc> copyDescriptions)
 {
     auto regions = CommandList_Internal::GetBufferImageCopyFromBufferToImageDescriptions(dst, copyDescriptions);
 
@@ -747,7 +747,7 @@ void VkCommandList::Copy(RHIBuffer& src, RHITexture& dst, std::span<const Buffer
                                      regions.data());
 }
 
-void VkCommandList::Copy(RHITexture& src, RHIBuffer& dst, std::span<const BufferTextureCopyDesc> copyDescriptions)
+void VkCommandList::Copy(RHITexture& src, RHIBuffer& dst, Span<const BufferTextureCopyDesc> copyDescriptions)
 {
     VEX_CHECK(!FormatUtil::SupportsStencil(src.GetDesc().format),
               "DepthStencil image copy to buffer is not supported directly. The only supported aspects are either "

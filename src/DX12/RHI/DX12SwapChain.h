@@ -1,8 +1,8 @@
 #pragma once
 
 #include <Vex/QueueType.h>
-#include <Vex/UniqueHandle.h>
-#include <Vex/PlatformWindow.h>
+#include <Vex/Utility/UniqueHandle.h>
+#include <Vex/Platform/PlatformWindow.h>
 
 #include <RHI/RHIFwd.h>
 #include <RHI/RHISwapChain.h>

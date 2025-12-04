@@ -11,8 +11,8 @@ RHICommandPoolBase::RHICommandPoolBase(RHI& rhi)
 {
 }
 
-void RHICommandPoolBase::OnCommandListsSubmitted(std::span<NonNullPtr<RHICommandList>> submits,
-                                                 std::span<SyncToken> syncTokens)
+void RHICommandPoolBase::OnCommandListsSubmitted(Span<const NonNullPtr<RHICommandList>> submits,
+                                                 Span<const SyncToken> syncTokens)
 {
     // Save the state of the newly submitted command lists
     for (u32 i = 0; i < submits.size(); ++i)

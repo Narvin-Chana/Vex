@@ -4,7 +4,7 @@
 #include <cstring>
 
 #include <Vex/Utility/ByteUtils.h>
-#include <Vex/Validation.h>
+#include <Vex/Utility/Validation.h>
 
 namespace vex
 {
@@ -20,9 +20,9 @@ void ValidateBufferTextureCopyDesc(const BufferDesc& srcDesc,
 }
 
 void ReadTextureDataAligned(const TextureDesc& desc,
-                            std::span<const TextureRegion> textureRegions,
-                            std::span<const byte> alignedTextureData,
-                            std::span<byte> packedOutputData)
+                            Span<const TextureRegion> textureRegions,
+                            Span<const byte> alignedTextureData,
+                            Span<byte> packedOutputData)
 
 {
     const u32 bytesPerPixel = TextureUtil::GetPixelByteSizeFromFormat(desc.format);
@@ -71,9 +71,9 @@ void ReadTextureDataAligned(const TextureDesc& desc,
 }
 
 void WriteTextureDataAligned(const TextureDesc& desc,
-                             std::span<const TextureRegion> textureRegions,
-                             std::span<const byte> packedData,
-                             std::span<byte> alignedOutData)
+                             Span<const TextureRegion> textureRegions,
+                             Span<const byte> packedData,
+                             Span<byte> alignedOutData)
 {
     const u32 bytesPerPixel = TextureUtil::GetPixelByteSizeFromFormat(desc.format);
     const byte* srcData = packedData.data();

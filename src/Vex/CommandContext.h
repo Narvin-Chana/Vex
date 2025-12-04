@@ -1,10 +1,10 @@
 #pragma once
 
 #include <optional>
-#include <span>
 
 #include <Vex/Containers/ResourceCleanup.h>
-#include <Vex/NonNullPtr.h>
+#include <Vex/Containers/Span.h>
+#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/ResourceReadbackContext.h>
 #include <Vex/ScopedGPUEvent.h>
 #include <Vex/Shaders/ShaderKey.h>
@@ -38,7 +38,7 @@ private:
                    NonNullPtr<RHICommandList> cmdList,
                    NonNullPtr<RHITimestampQueryPool> queryPool,
                    SubmissionPolicy submissionPolicy,
-                   std::span<SyncToken> dependencies);
+                   Span<const SyncToken> dependencies);
 
 public:
     ~CommandContext();
@@ -98,7 +98,7 @@ public:
     // Copies multiple regions of the source texture to the destination texture.
     void Copy(const Texture& source,
               const Texture& destination,
-              std::span<const TextureCopyDesc> textureCopyDescriptions);
+              Span<const TextureCopyDesc> textureCopyDescriptions);
     // Copies the entirety of the source buffer to the destination buffer.
     void Copy(const Buffer& source, const Buffer& destination);
     // Copies the specified region from the source buffer to the destination buffer.
@@ -110,14 +110,14 @@ public:
     // Copies the contents of the buffer to multiple specified regions in the texture.
     void Copy(const Buffer& source,
               const Texture& destination,
-              std::span<const BufferTextureCopyDesc> bufferToTextureCopyDescs);
+              Span<const BufferTextureCopyDesc> bufferToTextureCopyDescs);
     // Copies the contents of the texture to the destination buffer.
     void Copy(const Texture& source, const Buffer& destination);
     // Copies the contents of the texture to the destination buffer as specified by the regions defined in the copy
     // descriptions.
     void Copy(const Texture& source,
               const Buffer& destination,
-              std::span<const BufferTextureCopyDesc> bufferToTextureCopyDescs);
+              Span<const BufferTextureCopyDesc> bufferToTextureCopyDescs);
 
     // ---------------------------------------------------------------------------------------------------------------
     // Buffer Data Operations
@@ -126,7 +126,7 @@ public:
     // Enqueues data to be uploaded to a specific region inside the destination buffer, using a staging buffer when
     // necessary.
     void EnqueueDataUpload(const Buffer& buffer,
-                           std::span<const byte> data,
+                           Span<const byte> data,
                            const BufferRegion& region = BufferRegion::FullBuffer());
 
     // Enqueues a readback operation on the GPU and returns the buffer in which the data can be read.
@@ -143,17 +143,17 @@ public:
     // The uploadRegions should match the layout of the tightly packed 'data' parameter.
     // If the uploadRegions are empty, we suppose that you intend to upload to the entirety of the texture.
     void EnqueueDataUpload(const Texture& texture,
-                           std::span<const byte> packedData,
-                           std::span<const TextureRegion> textureRegions);
+                           Span<const byte> packedData,
+                           Span<const TextureRegion> textureRegions);
     // Enqueues data to be uploaded to a texture, using a staging buffer when necessary.
     void EnqueueDataUpload(const Texture& texture,
-                           std::span<const byte> packedData,
+                           Span<const byte> packedData,
                            const TextureRegion& textureRegion = TextureRegion::AllMips());
 
     // Enqueues for the entirety of a texture to be readback from the GPU to the specified output.
     // Will automatically use a staging buffer if necessary.
     TextureReadbackContext EnqueueDataReadback(const Texture& srcTexture,
-                                               std::span<const TextureRegion> textureRegions);
+                                               Span<const TextureRegion> textureRegions);
     // Enqueues for the entirety of a texture to be readback from the GPU to the specified output.
     // Will automatically use a staging buffer if necessary.
     TextureReadbackContext EnqueueDataReadback(const Texture& srcTexture,
@@ -173,7 +173,7 @@ public:
     void BarrierBinding(const BufferBinding& bufferBinding);
 
     // Will apply a barrier to the passed in bindings.
-    void BarrierBindings(std::span<const ResourceBinding> resourceBindings);
+    void BarrierBindings(Span<const ResourceBinding> resourceBindings);
 
     // Will apply a barrier to the passed in texture.
     void Barrier(const Texture& texture,
@@ -192,7 +192,7 @@ public:
 
     // Useful for calling native API draws when wanting to render to a specific Render Target. Allows the passed in
     // lambda to be executed in a draw scope.
-    void ExecuteInDrawContext(std::span<const TextureBinding> renderTargets,
+    void ExecuteInDrawContext(Span<const TextureBinding> renderTargets,
                               std::optional<const TextureBinding> depthStencil,
                               const std::function<void()>& callback);
 
@@ -222,11 +222,11 @@ private:
                                                     ConstantBinding constants);
 
     [[nodiscard]] std::vector<RHIBufferBarrier> SetVertexBuffers(u32 vertexBuffersFirstSlot,
-                                                                 std::span<BufferBinding> vertexBuffers);
+                                                                 Span<const BufferBinding> vertexBuffers);
     [[nodiscard]] std::optional<RHIBufferBarrier> SetIndexBuffer(std::optional<BufferBinding> indexBuffer);
 
-    void EnqueueBarriers(std::span<const RHITextureBarrier> barriers);
-    void EnqueueBarriers(std::span<const RHIBufferBarrier> barriers);
+    void EnqueueBarriers(Span<const RHITextureBarrier> barriers);
+    void EnqueueBarriers(Span<const RHIBufferBarrier> barriers);
 
     NonNullPtr<Graphics> graphics;
     NonNullPtr<RHICommandList> cmdList;

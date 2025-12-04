@@ -478,7 +478,7 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(const DX12Textu
     }
 }
 
-std::span<byte> DX12Texture::Map()
+Span<byte> DX12Texture::Map()
 {
     VEX_NOT_YET_IMPLEMENTED();
     return {};

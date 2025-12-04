@@ -1,12 +1,11 @@
 #include "DX12SwapChain.h"
 
-#include <Vex/Formattable.h>
 #include <Vex/Logger.h>
-#include <Vex/PlatformWindow.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/Synchronization.h>
+#include <Vex/Utility/Formattable.h>
 
 #include <DX12/DX12Formats.h>
 #include <DX12/DX12PhysicalDevice.h>

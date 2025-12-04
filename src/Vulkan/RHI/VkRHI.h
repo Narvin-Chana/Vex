@@ -2,8 +2,8 @@
 
 #include <utility>
 
-#include <Vex/MaybeUninitialized.h>
-#include <Vex/NonNullPtr.h>
+#include <Vex/Utility/MaybeUninitialized.h>
+#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/RHIImpl/RHIFence.h>
 
 #include <RHI/RHI.h>
@@ -78,8 +78,8 @@ public:
     virtual void WaitForTokenOnGPU(QueueType waitingQueue, const SyncToken& waitFor) override;
     virtual std::array<SyncToken, QueueTypes::Count> GetMostRecentSyncTokenPerQueue() const override;
 
-    virtual std::vector<SyncToken> Submit(std::span<NonNullPtr<RHICommandList>> commandLists,
-                                          std::span<SyncToken> dependencies) override;
+    virtual std::vector<SyncToken> Submit(Span<const NonNullPtr<RHICommandList>> commandLists,
+                                          Span<const SyncToken> dependencies) override;
     virtual void FlushGPU() override;
 
 private:
@@ -88,8 +88,8 @@ private:
 
     void AddDependencyWait(std::vector<::vk::SemaphoreSubmitInfo>& waitSemaphores, SyncToken syncToken);
     SyncToken SubmitToQueue(QueueType queueType,
-                            std::span<::vk::CommandBufferSubmitInfo> commandBuffers,
-                            std::span<::vk::SemaphoreSubmitInfo> waitSemaphores,
+                            Span<const ::vk::CommandBufferSubmitInfo> commandBuffers,
+                            Span<const ::vk::SemaphoreSubmitInfo> waitSemaphores,
                             std::vector<::vk::SemaphoreSubmitInfo> signalSemaphores = {});
 
     // TODO: Can't use maybe uninitialized since VkGPUContext has deleted move constructor (which in effect removes

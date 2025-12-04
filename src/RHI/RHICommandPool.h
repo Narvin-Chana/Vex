@@ -1,13 +1,13 @@
 #pragma once
 
 #include <array>
-#include <span>
+#include <Vex/Containers/Span.h>
 #include <utility>
 #include <vector>
 
-#include <Vex/NonNullPtr.h>
+#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/Synchronization.h>
-#include <Vex/UniqueHandle.h>
+#include <Vex/Utility/UniqueHandle.h>
 
 #include <RHI/RHIFwd.h>
 
@@ -21,7 +21,7 @@ public:
     // Available -> Recording
     virtual NonNullPtr<RHICommandList> GetOrCreateCommandList(QueueType queueType) = 0;
     // Recording -> Submitted
-    void OnCommandListsSubmitted(std::span<NonNullPtr<RHICommandList>> submits, std::span<SyncToken> syncTokens);
+    void OnCommandListsSubmitted(Span<const NonNullPtr<RHICommandList>> submits, Span<const SyncToken> syncTokens);
     // Submitted -> Available
     void ReclaimCommandLists();
 

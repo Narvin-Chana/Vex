@@ -70,7 +70,7 @@ D3D12_FILTER GetDX12FilterFromFilterMode(FilterMode minFilter,
     return static_cast<D3D12_FILTER>(filterValue);
 }
 
-std::vector<D3D12_STATIC_SAMPLER_DESC> GetDX12StaticSamplersFromTextureSamplers(std::span<TextureSampler> samplers)
+std::vector<D3D12_STATIC_SAMPLER_DESC> GetDX12StaticSamplersFromTextureSamplers(Span<const TextureSampler> samplers)
 {
     std::vector<D3D12_STATIC_SAMPLER_DESC> dxSamplers;
     dxSamplers.reserve(samplers.size());

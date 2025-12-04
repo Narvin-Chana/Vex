@@ -2,8 +2,8 @@
 
 #include <type_traits>
 
-#include <Vex/Hash.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/Hash.h>
 
 namespace vex
 {

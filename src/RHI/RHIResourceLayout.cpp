@@ -42,18 +42,18 @@ void RHIResourceLayoutBase::SetLayoutResources(ConstantBinding constants)
     }
 }
 
-void RHIResourceLayoutBase::SetSamplers(std::span<const TextureSampler> newSamplers)
+void RHIResourceLayoutBase::SetSamplers(Span<const TextureSampler> newSamplers)
 {
     samplers = { newSamplers.begin(), newSamplers.end() };
     isDirty = true;
 }
 
-std::span<const TextureSampler> RHIResourceLayoutBase::GetStaticSamplers() const
+Span<const TextureSampler> RHIResourceLayoutBase::GetStaticSamplers() const
 {
     return samplers;
 }
 
-std::span<const byte> RHIResourceLayoutBase::GetLocalConstantsData() const
+Span<const byte> RHIResourceLayoutBase::GetLocalConstantsData() const
 {
     return localConstantsData;
 }

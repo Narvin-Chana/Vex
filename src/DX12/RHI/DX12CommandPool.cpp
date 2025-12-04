@@ -2,7 +2,7 @@
 
 #include <magic_enum/magic_enum.hpp>
 
-#include <Vex/Debug.h>
+#include <Vex/Platform/Debug.h>
 #include <Vex/Logger.h>
 #include <Vex/Utility/WString.h>
 #include <Vex/RHIImpl/RHI.h>

@@ -4,7 +4,7 @@
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
-#include <Vex/Validation.h>
+#include <Vex/Utility/Validation.h>
 
 namespace vex
 {
@@ -72,7 +72,7 @@ void RHICommandListBase::Copy(RHITexture& src, RHIBuffer& dst)
 
     Copy(src, dst, bufferToTextureCopies);
 }
-void RHICommandListBase::SetSyncTokens(std::span<SyncToken> tokens)
+void RHICommandListBase::SetSyncTokens(Span<const SyncToken> tokens)
 {
     syncTokens = { tokens.begin(), tokens.end() };
 }

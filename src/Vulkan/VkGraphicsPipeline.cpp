@@ -2,7 +2,7 @@
 
 #include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/Logger.h>
-#include <Vex/UniqueHandle.h>
+#include <Vex/Utility/UniqueHandle.h>
 
 #include <Vulkan/RHI/VkBuffer.h>
 #include <Vulkan/RHI/VkPipelineState.h>

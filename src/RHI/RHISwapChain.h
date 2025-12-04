@@ -5,9 +5,9 @@
 
 #include <Vex/Formats.h>
 #include <Vex/FrameResource.h>
-#include <Vex/NonNullPtr.h>
+#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/Types.h>
-#include <Vex/UniqueHandle.h>
+#include <Vex/Utility/UniqueHandle.h>
 
 #include <RHI/RHIFwd.h>
 

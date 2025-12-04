@@ -7,8 +7,7 @@
 
 #include <ExamplePaths.h>
 
-static const std::filesystem::path WorkingDir =
-    ExamplesDir / "hello_upload_download";
+static const std::filesystem::path WorkingDir = ExamplesDir / "hello_upload_download";
 
 struct Image
 {
@@ -44,26 +43,26 @@ void WriteImage(const Image& img, const std::filesystem::path& path)
 int main()
 {
     vex::Graphics graphics{ vex::GraphicsCreateDesc{ .useSwapChain = false,
-                                                      .enableGPUDebugLayer = !VEX_SHIPPING,
-                                                      .enableGPUBasedValidation = !VEX_SHIPPING } };
+                                                     .enableGPUDebugLayer = !VEX_SHIPPING,
+                                                     .enableGPUBasedValidation = !VEX_SHIPPING } };
 
     Image srcImg = ReadImage(WorkingDir / "Input.jpg");
     vex::Texture srcTexture = graphics.CreateTexture({ .name = "Input Image",
-                                                      .type = vex::TextureType::Texture2D,
-                                                      .format = vex::TextureFormat::RGBA8_UNORM,
-                                                      .width = srcImg.width,
-                                                      .height = srcImg.height,
-                                                      .depthOrSliceCount = 1,
-                                                      .mips = 1,
-                                                      .usage = vex::TextureUsage::ShaderReadWrite });
+                                                       .type = vex::TextureType::Texture2D,
+                                                       .format = vex::TextureFormat::RGBA8_UNORM,
+                                                       .width = srcImg.width,
+                                                       .height = srcImg.height,
+                                                       .depthOrSliceCount = 1,
+                                                       .mips = 1,
+                                                       .usage = vex::TextureUsage::ShaderRead });
     vex::Texture dstTexture = graphics.CreateTexture({ .name = "Output Image",
-                                                      .type = vex::TextureType::Texture2D,
-                                                      .format = vex::TextureFormat::RGBA8_UNORM,
-                                                      .width = srcImg.width,
-                                                      .height = srcImg.height,
-                                                      .depthOrSliceCount = 1,
-                                                      .mips = 2,
-                                                      .usage = vex::TextureUsage::ShaderReadWrite });
+                                                       .type = vex::TextureType::Texture2D,
+                                                       .format = vex::TextureFormat::RGBA8_UNORM,
+                                                       .width = srcImg.width,
+                                                       .height = srcImg.height,
+                                                       .depthOrSliceCount = 1,
+                                                       .mips = 2,
+                                                       .usage = vex::TextureUsage::ShaderReadWrite });
 
     vex::CommandContext ctx =
         graphics.BeginScopedCommandContext(vex::QueueType::Compute, vex::SubmissionPolicy::Immediate);

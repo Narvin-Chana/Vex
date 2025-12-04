@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include <span>
+#include <Vex/Containers/Span.h>
 
 #include <Vex/Shaders/CompilerBase.h>
 
@@ -15,7 +15,7 @@ struct IDxcResult;
 namespace vex
 {
 #if VEX_VULKAN
-ShaderReflection GetSpirvReflection(std::span<const byte> spvCode);
+ShaderReflection GetSpirvReflection(Span<const byte> spvCode);
 #endif
 
 #if VEX_DX12

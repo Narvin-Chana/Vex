@@ -1,7 +1,7 @@
 #pragma once
 
 #include <concepts>
-#include <span>
+#include <Vex/Containers/Span.h>
 
 #include <Vex/Types.h>
 

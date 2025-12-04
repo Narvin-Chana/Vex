@@ -2,7 +2,7 @@
 
 #include <bitset>
 
-#include <Vex/Debug.h>
+#include <Vex/Platform/Debug.h>
 
 #if VEX_DX12
 #include <d3d12shader.h>
@@ -87,7 +87,7 @@ TextureFormat SpirvReflectFormatToVex(SpvReflectFormat format)
     }
 }
 
-ShaderReflection GetSpirvReflection(std::span<const byte> spvCode)
+ShaderReflection GetSpirvReflection(Span<const byte> spvCode)
 {
     // Generate reflection data for a shader
     SpvReflectShaderModule module;

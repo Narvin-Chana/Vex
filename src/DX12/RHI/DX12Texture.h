@@ -3,7 +3,7 @@
 #include <unordered_map>
 
 #include <Vex/Containers/FreeList.h>
-#include <Vex/Hash.h>
+#include <Vex/Utility/Hash.h>
 #include <Vex/Resource.h>
 
 #include <RHI/RHIAllocator.h>
@@ -71,7 +71,7 @@ public:
 
     CD3DX12_CPU_DESCRIPTOR_HANDLE GetOrCreateRTVDSVView(const DX12TextureView& view);
 
-    virtual std::span<byte> Map() override;
+    virtual Span<byte> Map() override;
     virtual void Unmap() override;
 
 private:

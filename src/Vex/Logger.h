@@ -9,9 +9,9 @@
 #include <string>
 #include <string_view>
 
-#include <Vex/Debug.h>
-#include <Vex/EnumFlags.h>
+#include <Vex/Platform/Debug.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/EnumFlags.h>
 
 namespace vex
 {

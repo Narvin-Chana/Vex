@@ -1,8 +1,8 @@
 ﻿#include "VkDescriptorSet.h"
 
-#include <Vex/Formattable.h>
+#include <Vex/Utility/Formattable.h>
 #include <Vex/PhysicalDevice.h>
-#include <Vex/Validation.h>
+#include <Vex/Utility/Validation.h>
 
 #include <RHI/RHIDescriptorPool.h>
 
@@ -41,7 +41,7 @@ static void ValidateBufferDescriptor(::vk::DescriptorType type){
 
 VkDescriptorSet::VkDescriptorSet(NonNullPtr<VkGPUContext> ctx,
                                  const ::vk::DescriptorPool& descriptorPool,
-                                 std::span<::vk::DescriptorType> descriptorTypes)
+                                 Span<::vk::DescriptorType> descriptorTypes)
     : descriptorTypes{ descriptorTypes.begin(), descriptorTypes.end() }
     , ctx{ ctx }
 {
@@ -98,7 +98,7 @@ void VkDescriptorSet::UpdateDescriptor(u32 index, ::vk::DescriptorImageInfo crea
     ctx->device.updateDescriptorSets(1, &writeSet, 0, nullptr);
 }
 
-void VkDescriptorSet::UpdateDescriptors(u32 startIndex, std::span<::vk::DescriptorImageInfo> createInfos)
+void VkDescriptorSet::UpdateDescriptors(u32 startIndex, Span<const ::vk::DescriptorImageInfo> createInfos)
 {
     ::vk::DescriptorType type = descriptorTypes[startIndex];
     ValidateImageDescriptorType(type);
@@ -136,7 +136,7 @@ void VkDescriptorSet::UpdateDescriptor(u32 index, ::vk::DescriptorBufferInfo cre
     ctx->device.updateDescriptorSets(1, &writeSet, 0, nullptr);
 }
 
-void VkDescriptorSet::UpdateDescriptors(u32 startIndex, std::span<::vk::DescriptorBufferInfo> createInfos)
+void VkDescriptorSet::UpdateDescriptors(u32 startIndex, Span<const ::vk::DescriptorBufferInfo> createInfos)
 {
     ::vk::DescriptorType type = descriptorTypes[startIndex];
 

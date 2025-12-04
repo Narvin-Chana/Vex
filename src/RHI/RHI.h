@@ -1,12 +1,12 @@
 #pragma once
 
-#include <span>
+#include <Vex/Containers/Span.h>
 #include <vector>
 
-#include <Vex/NonNullPtr.h>
+#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/QueueType.h>
 #include <Vex/Types.h>
-#include <Vex/UniqueHandle.h>
+#include <Vex/Utility/UniqueHandle.h>
 
 #include <RHI/RHIFwd.h>
 
@@ -55,8 +55,8 @@ struct RHIBase
 
     virtual std::array<SyncToken, QueueTypes::Count> GetMostRecentSyncTokenPerQueue() const = 0;
 
-    virtual std::vector<SyncToken> Submit(std::span<NonNullPtr<RHICommandList>> commandLists,
-                                          std::span<SyncToken> dependencies) = 0;
+    virtual std::vector<SyncToken> Submit(Span<const NonNullPtr<RHICommandList>> commandLists,
+                                          Span<const SyncToken> dependencies) = 0;
 
     virtual void FlushGPU() = 0;
 };

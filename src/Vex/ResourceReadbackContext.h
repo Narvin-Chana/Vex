@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include <span>
+#include <Vex/Containers/Span.h>
 
 #include <Vex/Graphics.h>
 #include <Vex/Types.h>
@@ -13,7 +13,7 @@ public:
     BufferReadbackContext(BufferReadbackContext&& other);
     BufferReadbackContext& operator=(BufferReadbackContext&& other);
 
-    void ReadData(std::span<vex::byte> outData);
+    void ReadData(Span<vex::byte> outData);
     [[nodiscard]] u64 GetDataByteSize() const noexcept;
 
 private:
@@ -31,7 +31,7 @@ public:
     TextureReadbackContext(TextureReadbackContext&& other);
     TextureReadbackContext& operator=(TextureReadbackContext&& other);
 
-    void ReadData(std::span<byte> outData) const;
+    void ReadData(Span<byte> outData) const;
     [[nodiscard]] u64 GetDataByteSize() const noexcept;
     [[nodiscard]] TextureDesc GetSourceTextureDescription() const noexcept
     {
@@ -44,7 +44,7 @@ public:
 
 private:
     TextureReadbackContext(const Buffer& buffer,
-                           std::span<const TextureRegion> textureRegions,
+                           Span<const TextureRegion> textureRegions,
                            const TextureDesc& textureDesc,
                            Graphics& backend);
 

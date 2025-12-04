@@ -2,7 +2,7 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/Buffer.h>
-#include <Vex/Debug.h>
+#include <Vex/Platform/Debug.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/Platform/Platform.h>
@@ -67,9 +67,9 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
 #endif
 }
 
-std::span<byte> DX12Buffer::Map()
+Span<byte> DX12Buffer::Map()
 {
-    void* ptr;
+    void* ptr = nullptr;
     D3D12_RANGE range{
         .Begin = 0,
         .End = desc.byteSize,

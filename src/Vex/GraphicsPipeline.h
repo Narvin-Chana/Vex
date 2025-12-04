@@ -4,9 +4,9 @@
 #include <string>
 #include <vector>
 
-#include <Vex/EnumFlags.h>
+#include <Vex/Utility/EnumFlags.h>
 #include <Vex/Formats.h>
-#include <Vex/Hash.h>
+#include <Vex/Utility/Hash.h>
 #include <Vex/Types.h>
 
 namespace vex

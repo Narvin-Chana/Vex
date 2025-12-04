@@ -3,7 +3,7 @@
 #include <optional>
 #include <vector>
 
-#include <Vex/Handle.h>
+#include <Vex/Utility/Handle.h>
 #include <Vex/Types.h>
 
 #if defined(_WIN32)

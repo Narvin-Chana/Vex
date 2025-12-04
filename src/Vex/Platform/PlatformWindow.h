@@ -1,5 +1,7 @@
 #pragma once
 
+#include <variant>
+
 #if defined(_WIN32)
 #include <wtypes.h>
 #elif defined(__linux__)
@@ -9,7 +11,6 @@
 #undef None
 #endif
 
-#include <variant>
 #include <Vex/Types.h>
 
 namespace vex
@@ -43,7 +44,8 @@ struct PlatformWindowHandle
         X11Handle,
         WaylandHandle,
 #endif
-        std::monostate> handle;
+        std::monostate>
+        handle;
 };
 
 struct PlatformWindow

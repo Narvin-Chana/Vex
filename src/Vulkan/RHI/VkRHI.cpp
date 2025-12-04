@@ -5,7 +5,7 @@
 
 #include <Vex/CommandContext.h>
 #include <Vex/Logger.h>
-#include <Vex/PlatformWindow.h>
+#include <Vex/Platform/PlatformWindow.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
@@ -459,8 +459,8 @@ void VkRHI::AddDependencyWait(std::vector<::vk::SemaphoreSubmitInfo>& waitSemaph
 }
 
 SyncToken VkRHI::SubmitToQueue(QueueType queueType,
-                               std::span<::vk::CommandBufferSubmitInfo> commandBuffers,
-                               std::span<::vk::SemaphoreSubmitInfo> waitSemaphores,
+                               Span<const ::vk::CommandBufferSubmitInfo> commandBuffers,
+                               Span<const ::vk::SemaphoreSubmitInfo> waitSemaphores,
                                std::vector<::vk::SemaphoreSubmitInfo> signalSemaphores)
 {
     auto& fence = (*fences)[queueType];
@@ -486,8 +486,8 @@ SyncToken VkRHI::SubmitToQueue(QueueType queueType,
     return SyncToken{ queueType, signalValue };
 }
 
-std::vector<SyncToken> VkRHI::Submit(std::span<NonNullPtr<RHICommandList>> commandLists,
-                                     std::span<SyncToken> dependencies)
+std::vector<SyncToken> VkRHI::Submit(Span<const NonNullPtr<RHICommandList>> commandLists,
+                                     Span<const SyncToken> dependencies)
 {
     // Group by queue type
     std::array<std::vector<::vk::CommandBufferSubmitInfo>, QueueTypes::Count> commandListsPerQueue;
