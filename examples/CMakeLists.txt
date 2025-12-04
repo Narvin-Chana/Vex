@@ -19,7 +19,6 @@ if (LINUX)
     set(GLFW_BUILD_X11 ON)
 endif()
 FetchContent_MakeAvailable(glfw)
-target_compile_definitions(glfw PUBLIC GLFW_EXPOSE_NATIVE_WAYLAND)
 
 # STB Image
 message(STATUS "Fetching stb...")

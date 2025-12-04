@@ -115,7 +115,11 @@ void DX12SwapChain::RecreateSwapChain(u32 width, u32 height)
             .AlphaMode = DXGI_ALPHA_MODE_IGNORE,
             .Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING,
         };
-        swapChain = DXGIFactory::CreateSwapChain(nativeSwapChainDesc, graphicsCommandQueue, windowHandle.window);
+
+        swapChain =
+            DXGIFactory::CreateSwapChain(nativeSwapChainDesc,
+                                         graphicsCommandQueue,
+                                         std::get<PlatformWindowHandle::WindowsHandle>(windowHandle.handle).window);
     }
     else
     {
@@ -215,9 +219,8 @@ DXGI_OUTPUT_DESC1 DX12SwapChain::GetBestOutputDesc() const
 
     ComPtr<IDXGIAdapter1> adapter;
     // Get a fresh adapter from the current factory (since it could have been changed).
-    for (UINT adapterIndex = 0;
-            DXGIFactory::dxgiFactory->EnumAdapters1(adapterIndex, &adapter) != DXGI_ERROR_NOT_FOUND;
-            ++adapterIndex)
+    for (UINT adapterIndex = 0; DXGIFactory::dxgiFactory->EnumAdapters1(adapterIndex, &adapter) != DXGI_ERROR_NOT_FOUND;
+         ++adapterIndex)
     {
         DXGI_ADAPTER_DESC1 desc;
         adapter->GetDesc1(&desc);
@@ -253,10 +256,7 @@ DXGI_OUTPUT_DESC1 DX12SwapChain::GetBestOutputDesc() const
     };
 
     RECT windowBounds;
-    std::visit(
-    Visitor{ [](const PlatformWindowHandle::WindowsHandle&) { GetWindowRect(windowHandle.handle, &windowBounds); },
-             [](auto&&) {} },
-    windowHandle.handle);
+    GetWindowRect(std::get<PlatformWindowHandle::WindowsHandle>(windowHandle.handle).window, &windowBounds);
 
     // Get the retangle bounds of the app window
     i32 ax1 = windowBounds.left;

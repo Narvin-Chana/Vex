@@ -148,17 +148,20 @@ void ExampleApplication::SetupShaderErrorHandling()
 vex::PlatformWindowHandle ExampleApplication::GetPlatformWindowHandle() const
 {
 #if defined(_WIN32)
-    vex::PlatformWindowHandle platformWindow = { .window = glfwGetWin32Window(window) };
+    vex::PlatformWindowHandle platformWindow = { vex::PlatformWindowHandle::WindowsHandle{
+        .window = glfwGetWin32Window(window) } };
 #elif defined(__linux__)
 
     vex::PlatformWindowHandle platformWindow;
-    if (auto x11Window =  glfwGetX11Window(window))
+    if (auto x11Window = glfwGetX11Window(window))
     {
-        platformWindow = { vex::PlatformWindowHandle::X11Handle{.window = x11Window, .display = glfwGetX11Display()} };
+        platformWindow = { vex::PlatformWindowHandle::X11Handle{ .window = x11Window,
+                                                                 .display = glfwGetX11Display() } };
     }
     else if (auto waylandWindow = glfwGetWaylandWindow(window))
     {
-        platformWindow = { vex::PlatformWindowHandle::WaylandHandle{.window = waylandWindow, .display = glfwGetWaylandDisplay()} };
+        platformWindow = { vex::PlatformWindowHandle::WaylandHandle{ .window = waylandWindow,
+                                                                     .display = glfwGetWaylandDisplay() } };
     }
 #endif
 
