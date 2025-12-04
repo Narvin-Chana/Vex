@@ -51,7 +51,8 @@ void HelloTriangleApplication::Run()
             float invOscillatedColor = 1 - oscillatedColor;
             float color[] = { invOscillatedColor, oscillatedColor, invOscillatedColor, 1.0 };
 
-            auto ctx = graphics->BeginScopedCommandContext(vex::QueueType::Graphics);
+            // Command context is used to record commands to be executed by the GPU.
+            vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
 
             // Create the bindings and obtain the bindless handles we need for our compute passes.
             std::array<vex::ResourceBinding, 3> pass1Bindings{
@@ -161,6 +162,8 @@ void HelloTriangleApplication::Run()
                     });
 #endif
             }
+
+            graphics->Submit(ctx);
         }
 
         graphics->Present(windowMode == Fullscreen);

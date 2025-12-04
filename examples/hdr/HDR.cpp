@@ -31,21 +31,19 @@ HDRApplication::HDRApplication()
                                                                                vex::TextureUsage::ShaderRead));
 
     // Upload the HDR image to the GPU.
-    {
-        vex::CommandContext ctx =
-            graphics->BeginScopedCommandContext(vex::QueueType::Graphics, vex::SubmissionPolicy::Immediate);
+    vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
 
-        ctx.EnqueueDataUpload(
-            hdrTexture,
-            std::span<const vex::byte>{ reinterpret_cast<vex::byte*>(hdrData),
-                                        hdrWidth * hdrHeight * FloatRGBANumChannels * sizeof(float) });
+    ctx.EnqueueDataUpload(hdrTexture,
+                          std::span<const vex::byte>{ reinterpret_cast<vex::byte*>(hdrData),
+                                                      hdrWidth * hdrHeight * FloatRGBANumChannels * sizeof(float) });
 
-        // Now keep the texture in a shader read state.
-        ctx.Barrier(hdrTexture,
-                    vex::RHIBarrierSync::AllCommands,
-                    vex::RHIBarrierAccess::ShaderRead,
-                    vex::RHITextureLayout::ShaderResource);
-    }
+    // Now keep the texture in a shader read state.
+    ctx.Barrier(hdrTexture,
+                vex::RHIBarrierSync::AllCommands,
+                vex::RHIBarrierAccess::ShaderRead,
+                vex::RHITextureLayout::ShaderResource);
+
+    graphics->Submit(ctx);
 
     std::array samplers{
         vex::TextureSampler::CreateSampler(vex::FilterMode::Linear, vex::AddressMode::Clamp),
@@ -63,7 +61,7 @@ void HDRApplication::Run()
             vex::u32 texWidth = hdrTexture.desc.width * 0.75f;
             vex::u32 texHeight = hdrTexture.desc.height * 0.75f;
 
-            vex::CommandContext ctx = graphics->BeginScopedCommandContext(vex::QueueType::Graphics);
+            vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
 
             vex::TextureBinding renderTarget = { .texture = graphics->GetCurrentPresentTexture(), .isSRGB = false };
             ctx.ClearTexture(renderTarget);
@@ -117,6 +115,8 @@ void HDRApplication::Run()
             ctx.SetViewport(texWidth, texHeight, texWidth, texHeight);
             ctx.Draw(drawDesc, { .renderTargets = { &renderTarget, 1 } }, vex::ConstantBinding{ data }, 3);
 #endif
+
+            graphics->Submit(ctx);
         }
 
         graphics->Present(windowMode == Fullscreen);

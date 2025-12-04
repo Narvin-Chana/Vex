@@ -12,7 +12,7 @@ int main()
     } };
 
     vex::CommandContext ctx =
-        graphics.BeginScopedCommandContext(vex::QueueType::Compute, vex::SubmissionPolicy::Immediate);
+        graphics.CreateCommandContext(vex::QueueType::Compute);
 
     vex::Buffer resultBuffer = graphics.CreateBuffer(
         vex::BufferDesc{ .name = "Result Buffer",
@@ -56,7 +56,7 @@ int main()
     }
     ctx.EndTimestampQuery(globalQueryHandle);
 
-    vex::SyncToken token = ctx.Submit();
+    vex::SyncToken token = graphics.Submit(ctx);
 
     graphics.WaitForTokenOnCPU(token);
 

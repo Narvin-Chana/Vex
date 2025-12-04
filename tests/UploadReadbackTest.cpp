@@ -113,11 +113,11 @@ SyncToken UploadTestGridToTexture(Graphics& graphics, const Texture& texture, st
 
     ForEachPixelInRegions(texture.desc, regions, fullImageData, GenerateGrid(DefaultGridParams));
 
-    CommandContext ctx = graphics.BeginScopedCommandContext(QueueType::Graphics, SubmissionPolicy::Immediate);
+    CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
     ctx.EnqueueDataUpload(texture, std::as_bytes(std::span{ fullImageData }), regions);
 
-    return ctx.Submit();
+    return graphics.Submit(ctx);
 }
 
 std::vector<byte> ReadbackTextureContent(Graphics& graphics,
@@ -125,11 +125,10 @@ std::vector<byte> ReadbackTextureContent(Graphics& graphics,
                                          std::span<const TextureRegion> regions,
                                          SyncToken token)
 {
-    CommandContext ctx =
-        graphics.BeginScopedCommandContext(QueueType::Graphics, SubmissionPolicy::Immediate, std::span{ &token, 1 });
+    CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
     TextureReadbackContext readbackCtx = ctx.EnqueueDataReadback(texture, regions);
-    graphics.WaitForTokenOnCPU(ctx.Submit());
+    graphics.WaitForTokenOnCPU(graphics.Submit(ctx, std::span{ &token, 1 }));
 
     std::vector<byte> fullImageData(readbackCtx.GetDataByteSize());
     readbackCtx.ReadData(fullImageData);
@@ -296,7 +295,7 @@ struct MiscTextureTests : public VexTestParam<QueueType>
 
 TEST_P(MiscTextureTests, FullUploadCubemap2Mips)
 {
-    auto ctx = graphics.BeginScopedCommandContext(GetParam(), SubmissionPolicy::Immediate);
+    CommandContext ctx = graphics.CreateCommandContext(GetParam());
 
     TextureDesc cubemapDesc = TextureDesc::CreateTextureCubeDesc("Cubemap", TextureFormat::RGBA8_UNORM, 16, 2);
 
@@ -311,14 +310,14 @@ TEST_P(MiscTextureTests, FullUploadCubemap2Mips)
 
     ctx.EnqueueDataUpload(cubemapTexture, std::as_bytes(std::span(fullImageData)), regions);
 
-    ctx.Submit();
+    graphics.Submit(ctx);
 
     graphics.DestroyTexture(cubemapTexture);
 }
 
 TEST_P(MiscTextureTests, FullUpload2DTexture2Slices3Mips)
 {
-    auto ctx = graphics.BeginScopedCommandContext(GetParam(), SubmissionPolicy::Immediate);
+    CommandContext ctx = graphics.CreateCommandContext(GetParam());
 
     TextureDesc cubemapDesc =
         TextureDesc::CreateTexture2DArrayDesc("2dTextureArray", TextureFormat::RGBA8_UNORM, 16, 12, 2, 3);
@@ -334,14 +333,14 @@ TEST_P(MiscTextureTests, FullUpload2DTexture2Slices3Mips)
 
     ctx.EnqueueDataUpload(texture, std::as_bytes(std::span(fullImageData)), regions);
 
-    ctx.Submit();
+    graphics.Submit(ctx);
 
     graphics.DestroyTexture(texture);
 }
 
 TEST_P(MiscTextureTests, FullUploadTextureCube3Slices2Mips)
 {
-    auto ctx = graphics.BeginScopedCommandContext(GetParam(), SubmissionPolicy::Immediate);
+    CommandContext ctx = graphics.CreateCommandContext(GetParam());
 
     TextureDesc cubemapDesc =
         TextureDesc::CreateTextureCubeArrayDesc("CubemapArray", TextureFormat::RGBA8_UNORM, 16, 3, 2);
@@ -357,14 +356,14 @@ TEST_P(MiscTextureTests, FullUploadTextureCube3Slices2Mips)
 
     ctx.EnqueueDataUpload(cubemapTexture, std::as_bytes(std::span(fullImageData)), regions);
 
-    ctx.Submit();
+    graphics.Submit(ctx);
 
     graphics.DestroyTexture(cubemapTexture);
 }
 
 TEST_P(MiscTextureTests, FullUpload3DTexture3Mips)
 {
-    auto ctx = graphics.BeginScopedCommandContext(GetParam(), SubmissionPolicy::Immediate);
+    CommandContext ctx = graphics.CreateCommandContext(GetParam());
 
     // Cursed non-even sizes.
     TextureDesc cubemapDesc =
@@ -381,7 +380,7 @@ TEST_P(MiscTextureTests, FullUpload3DTexture3Mips)
 
     ctx.EnqueueDataUpload(texture, std::as_bytes(std::span(fullImageData)), regions);
 
-    ctx.Submit();
+    graphics.Submit(ctx);
 
     graphics.DestroyTexture(texture);
 }
@@ -400,7 +399,7 @@ struct BufferUploadReadbackTests : public VexPerQueueTestWithParam<BufferUploadR
 
 TEST_P(BufferUploadReadbackTests, BufferUploadAndFullReadback)
 {
-    auto ctx = graphics.BeginScopedCommandContext(GetQueueType(), SubmissionPolicy::Immediate);
+    CommandContext ctx = graphics.CreateCommandContext(GetQueueType());
 
     BufferUploadReadbackTestParams params = GetParam();
 
@@ -419,7 +418,7 @@ TEST_P(BufferUploadReadbackTests, BufferUploadAndFullReadback)
 
     auto readbackContext = ctx.EnqueueDataReadback(uploadBuffer, params.readbackRegion);
 
-    graphics.WaitForTokenOnCPU(ctx.Submit());
+    graphics.WaitForTokenOnCPU(graphics.Submit(ctx));
 
     float readback[N];
     auto readbackFloatCount = params.readbackRegion.byteSize / sizeof(float);
@@ -469,7 +468,7 @@ struct ScalarBlockLayoutTests : public VexTestParam<ShaderCompilerBackend>
 
 TEST_P(ScalarBlockLayoutTests, ComputeMisaligneData)
 {
-    auto ctx = graphics.BeginScopedCommandContext(QueueType::Compute, SubmissionPolicy::Immediate);
+    CommandContext ctx = graphics.CreateCommandContext(QueueType::Compute);
 
     std::array<WeirdlyPackedData, 13> data;
     for (int i = 0; i < 13; ++i)
@@ -521,9 +520,9 @@ TEST_P(ScalarBlockLayoutTests, ComputeMisaligneData)
             1u,
         });
 
-    auto readbackContext = ctx.EnqueueDataReadback(resultBuffer);
+    BufferReadbackContext readbackContext = ctx.EnqueueDataReadback(resultBuffer);
 
-    graphics.WaitForTokenOnCPU(ctx.Submit());
+    graphics.WaitForTokenOnCPU(graphics.Submit(ctx));
 
     float result[3]{};
     readbackContext.ReadData(std::as_writable_bytes(std::span{ result }));

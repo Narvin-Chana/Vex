@@ -14,21 +14,20 @@ int main()
         .enableGPUBasedValidation = !VEX_SHIPPING,
     } };
 
-    {
-        vex::CommandContext ctx =
-            graphics.BeginScopedCommandContext(vex::QueueType::Compute, vex::SubmissionPolicy::Immediate);
+    vex::CommandContext ctx = graphics.CreateCommandContext(vex::QueueType::Compute);
 
-        ctx.Dispatch(
-            vex::ShaderKey{
-                .path = ExamplesDir / "hello_windowless/Dummy.hlsl",
-                .entryPoint = "CSMain",
-                .type = vex::ShaderType::ComputeShader,
-            },
-            {},
-            std::array{
-                (width + 7u) / 8u,
-                (height + 7u) / 8u,
-                1u,
-            });
-    }
+    ctx.Dispatch(
+        vex::ShaderKey{
+            .path = ExamplesDir / "hello_windowless/Dummy.hlsl",
+            .entryPoint = "CSMain",
+            .type = vex::ShaderType::ComputeShader,
+        },
+        {},
+        std::array{
+            (width + 7u) / 8u,
+            (height + 7u) / 8u,
+            1u,
+        });
+
+    graphics.Submit(ctx);
 }

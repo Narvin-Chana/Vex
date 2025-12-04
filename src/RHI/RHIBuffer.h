@@ -23,9 +23,9 @@ struct BufferViewDesc
 
     bool operator==(const BufferViewDesc&) const = default;
 
-    u32 GetElementStride() const noexcept;
-    u64 GetFirstElement() const noexcept;
-    u64 GetElementCount() const noexcept;
+    u32 GetElementStride() const;
+    u64 GetFirstElement() const;
+    u64 GetElementCount() const;
 };
 } // namespace vex
 
@@ -51,12 +51,12 @@ public:
     void FreeBindlessHandles(RHIDescriptorPool& descriptorPool);
     void FreeAllocation(RHIAllocator& allocator);
 
-    [[nodiscard]] const BufferDesc& GetDesc() const noexcept
+    [[nodiscard]] const BufferDesc& GetDesc() const
     {
         return desc;
     };
 
-    [[nodiscard]] const Allocation& GetAllocation() const noexcept
+    [[nodiscard]] const Allocation& GetAllocation() const
     {
         return allocation;
     }

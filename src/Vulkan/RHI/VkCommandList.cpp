@@ -140,18 +140,12 @@ static std::vector<::vk::BufferImageCopy> GetBufferImageCopyFromBufferToImageDes
 
 void VkCommandList::Open()
 {
-    if (isOpen)
-    {
-        VEX_LOG(Fatal, "Attempting to open an already open command list.");
-        return;
-    }
-
     VEX_VK_CHECK << commandBuffer->reset();
 
     constexpr ::vk::CommandBufferBeginInfo beginInfo{};
     VEX_VK_CHECK << commandBuffer->begin(beginInfo);
 
-    isOpen = true;
+    RHICommandListBase::Open();
 }
 
 void VkCommandList::Close()
@@ -159,8 +153,6 @@ void VkCommandList::Close()
     RHICommandListBase::Close();
 
     VEX_VK_CHECK << commandBuffer->end();
-
-    isOpen = false;
 }
 
 void VkCommandList::SetViewport(float x, float y, float width, float height, float minDepth, float maxDepth)
@@ -764,7 +756,7 @@ void VkCommandList::Copy(RHITexture& src, RHIBuffer& dst, Span<const BufferTextu
 
 RHIScopedGPUEvent VkCommandList::CreateScopedMarker(const char* label, std::array<float, 3> labelColor)
 {
-    return { *commandBuffer, label, labelColor };
+    return { *this, label, labelColor };
 }
 
 VkCommandList::VkCommandList(NonNullPtr<VkGPUContext> ctx, ::vk::UniqueCommandBuffer&& commandBuffer, QueueType type)

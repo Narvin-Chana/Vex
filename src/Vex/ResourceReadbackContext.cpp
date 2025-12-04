@@ -25,7 +25,7 @@ void BufferReadbackContext::ReadData(Span<byte> outData)
     rhiBuffer.Unmap();
 }
 
-u64 BufferReadbackContext::GetDataByteSize() const noexcept
+u64 BufferReadbackContext::GetDataByteSize() const
 {
     return buffer.desc.byteSize;
 }
@@ -94,7 +94,7 @@ void TextureReadbackContext::ReadData(Span<byte> outData) const
     rhiBuffer.Unmap();
 }
 
-u64 TextureReadbackContext::GetDataByteSize() const noexcept
+u64 TextureReadbackContext::GetDataByteSize() const
 {
     return TextureUtil::ComputePackedTextureDataByteSize(textureDesc, textureRegions);
 }

@@ -14,7 +14,7 @@ public:
     BufferReadbackContext& operator=(BufferReadbackContext&& other);
 
     void ReadData(Span<vex::byte> outData);
-    [[nodiscard]] u64 GetDataByteSize() const noexcept;
+    [[nodiscard]] u64 GetDataByteSize() const;
 
 private:
     BufferReadbackContext(const Buffer& buffer, vex::Graphics& backend);
@@ -32,12 +32,12 @@ public:
     TextureReadbackContext& operator=(TextureReadbackContext&& other);
 
     void ReadData(Span<byte> outData) const;
-    [[nodiscard]] u64 GetDataByteSize() const noexcept;
-    [[nodiscard]] TextureDesc GetSourceTextureDescription() const noexcept
+    [[nodiscard]] u64 GetDataByteSize() const;
+    [[nodiscard]] TextureDesc GetSourceTextureDescription() const
     {
         return textureDesc;
     };
-    [[nodiscard]] std::vector<TextureRegion> GetReadbackRegions() const noexcept
+    [[nodiscard]] std::vector<TextureRegion> GetReadbackRegions() const
     {
         return textureRegions;
     }

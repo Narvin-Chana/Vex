@@ -50,7 +50,7 @@ HelloCubeApplication::HelloCubeApplication()
     {
         // Immediate submission means the commands are instantly submitted upon destruction.
         vex::CommandContext ctx =
-            graphics->BeginScopedCommandContext(vex::QueueType::Graphics, vex::SubmissionPolicy::Immediate);
+            graphics->CreateCommandContext(vex::QueueType::Graphics);
 
         // clang-format off
 
@@ -132,6 +132,8 @@ HelloCubeApplication::HelloCubeApplication()
                     vex::RHIBarrierAccess::ShaderRead,
                     vex::RHITextureLayout::ShaderResource);
 
+        graphics->Submit(ctx);
+
         stbi_image_free(imageData);
     }
 
@@ -153,7 +155,7 @@ void HelloCubeApplication::Run()
             const double currentTime = glfwGetTime();
 
             // Scoped command context will submit commands automatically upon destruction.
-            auto ctx = graphics->BeginScopedCommandContext(vex::QueueType::Graphics);
+            vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
 
             ctx.SetScissor(0, 0, width, height);
             ctx.SetViewport(0, 0, width, height);
@@ -280,6 +282,8 @@ void HelloCubeApplication::Run()
                                 IndexCount);
             }
 #endif
+
+            graphics->Submit(ctx);
         }
 
         graphics->Present(windowMode == Fullscreen);

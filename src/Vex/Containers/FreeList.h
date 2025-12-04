@@ -88,7 +88,7 @@ public:
         return std::exchange(values[idx], std::nullopt);
     }
 
-    u32 ElementCount() const noexcept
+    u32 ElementCount() const
     {
         return allocator.size - allocator.freeIndices.size();
     }

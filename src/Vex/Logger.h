@@ -120,6 +120,9 @@ inline Logger GLogger;
 
 // Doing logging like this instead of with a function allows for DebugBreak to break in the actual code, avoiding us
 // having to move up once in the call stack to get to the the actual code causing the error.
+
+// Logs a potentially formatted string with one of the following log levels: Info, Warning, Error, Fatal.
+// This follows std::format()'s formatting.
 #define VEX_LOG(level, message, ...)                                                                                   \
     if ((level) >= vex::Logger::GetLogLevelFilter())                                                                   \
     {                                                                                                                  \

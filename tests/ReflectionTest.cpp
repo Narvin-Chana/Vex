@@ -11,7 +11,7 @@ struct ReflectionTestFull : VexPerShaderCompilerTest
 
 TEST_P(ReflectionTestFull, CompleteGraphicsPSOTest)
 {
-    auto ctx = graphics.BeginScopedCommandContext(QueueType::Graphics, SubmissionPolicy::Immediate);
+    CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
     struct Vertex
     {
@@ -107,6 +107,8 @@ TEST_P(ReflectionTestFull, CompleteGraphicsPSOTest)
                     },
                     {},
                     1);
+
+    graphics.Submit(ctx);
 }
 
 INSTANTIATE_TEST_SUITE_P(PerShaderCompilerBackend, ReflectionTestFull, ShaderCompilerBackendValues);

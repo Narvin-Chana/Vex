@@ -142,6 +142,8 @@ add_library(Vex STATIC
     "src/RHI/RHIFence.h"
     "src/RHI/RHITimestampQueryPool.cpp"
     "src/RHI/RHITimestampQueryPool.h"
+    "src/RHI/RHIScopedGPUEvent.h"
+    "src/RHI/RHIScopedGPUEvent.cpp"
     "src/Vex/RHIImpl/RHIFence.h"
     "src/Vex/RHIImpl/RHICommandList.h"
     "src/Vex/RHIImpl/RHICommandPool.h"
@@ -223,7 +225,6 @@ add_library(Vex STATIC
     "src/Vex/ResourceBindingUtils.cpp"
     "src/Vex/RayTracing.h"
     "src/Vex/RayTracing.cpp"
-    "src/Vex/SubmissionPolicy.h"
     "src/Vex/Synchronization.h"
     "src/Vex/ResourceCopy.h"
     "src/Vex/ResourceCopy.cpp"
@@ -296,6 +297,8 @@ if(WIN32)
     # Allow for typically "unsafe" C functions.
     target_compile_definitions(Vex PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS)
 endif()
+
+target_compile_definitions(Vex PUBLIC VEX_TESTS=$<BOOL:${VEX_BUILD_TESTS}>)
 
 # =========================================
 # INSTALLATION

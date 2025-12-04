@@ -197,15 +197,10 @@ DX12CommandList::DX12CommandList(const ComPtr<DX12Device>& device, QueueType typ
 
 void DX12CommandList::Open()
 {
-    if (isOpen)
-    {
-        VEX_LOG(Fatal, "Attempting to open an already open command list.");
-        return;
-    }
-
     chk << commandAllocator->Reset();
     chk << commandList->Reset(commandAllocator.Get(), nullptr);
-    isOpen = true;
+
+    RHICommandListBase::Open();
 }
 
 void DX12CommandList::Close()
@@ -213,8 +208,6 @@ void DX12CommandList::Close()
     RHICommandListBase::Close();
 
     chk << commandList->Close();
-
-    isOpen = false;
 }
 
 void DX12CommandList::SetViewport(float x, float y, float width, float height, float minDepth, float maxDepth)
@@ -805,7 +798,7 @@ void DX12CommandList::ResolveTimestampQueries(u32 firstQuery, u32 queryCount)
 
 RHIScopedGPUEvent DX12CommandList::CreateScopedMarker(const char* label, std::array<float, 3> labelColor)
 {
-    return { commandList, label, labelColor };
+    return { *this, label, labelColor };
 }
 
 } // namespace vex::dx12
