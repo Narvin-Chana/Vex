@@ -2,7 +2,7 @@
 
 #include <string_view>
 
-#include <Vex/Hash.h>
+#include <Vex/Utility/Hash.h>
 #include <Vex/Types.h>
 
 namespace vex

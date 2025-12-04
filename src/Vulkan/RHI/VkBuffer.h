@@ -1,8 +1,6 @@
 ﻿#pragma once
 
-#include <span>
-
-#include <Vex/NonNullPtr.h>
+#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/Types.h>
 
 #include <RHI/RHIAllocator.h>
@@ -32,7 +30,7 @@ public:
                                 const BufferViewDesc& desc) override;
     ::vk::Buffer GetNativeBuffer();
 
-    virtual std::span<byte> Map() override;
+    virtual Span<byte> Map() override;
     virtual void Unmap() override;
 
 private:

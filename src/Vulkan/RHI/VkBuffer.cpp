@@ -101,7 +101,7 @@ void VkBuffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
     return *buffer;
 }
 
-std::span<byte> VkBuffer::Map()
+Span<byte> VkBuffer::Map()
 {
     return allocator->MapAllocation(allocation);
 }

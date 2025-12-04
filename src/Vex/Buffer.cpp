@@ -1,6 +1,6 @@
 ﻿#include "Buffer.h"
 
-#include <Vex/Validation.h>
+#include <Vex/Utility/Validation.h>
 
 namespace vex
 {

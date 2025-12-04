@@ -3,10 +3,10 @@
 #include <cmath>
 
 #include <Vex/Bindings.h>
-#include <Vex/Formattable.h>
+#include <Vex/Utility/Formattable.h>
 #include <Vex/Logger.h>
 #include <Vex/Utility/ByteUtils.h>
-#include <Vex/Validation.h>
+#include <Vex/Utility/Validation.h>
 
 namespace vex
 {
@@ -167,7 +167,7 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
     return 0;
 }
 
-u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, std::span<const TextureRegion> uploadRegions)
+u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions)
 {
     const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
     float totalSize = 0;
@@ -199,7 +199,7 @@ u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, std::span<const 
     return static_cast<u64>(std::ceil(totalSize));
 }
 
-u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, std::span<const TextureRegion> uploadRegions)
+u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions)
 {
     // Pixel byte size could be less than 1 (BlockCompressed formats).
     const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);

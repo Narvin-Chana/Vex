@@ -6,7 +6,7 @@
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Logger.h>
 #include <Vex/Texture.h>
-#include <Vex/Validation.h>
+#include <Vex/Utility/Validation.h>
 
 #include <RHI/RHIBindings.h>
 
@@ -272,7 +272,7 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
         break;
     }
 
-    std::span<const byte> localConstantsData = layout.GetLocalConstantsData();
+    Span<const byte> localConstantsData = layout.GetLocalConstantsData();
     if (localConstantsData.empty())
     {
         return;
@@ -372,8 +372,8 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
     }
 }
 
-void DX12CommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
-                              std::span<const RHITextureBarrier> textureBarriers)
+void DX12CommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers,
+                              Span<const RHITextureBarrier> textureBarriers)
 {
     std::vector<D3D12_BUFFER_BARRIER> dx12BufferBarriers;
     dx12BufferBarriers.reserve(bufferBarriers.size());
@@ -624,7 +624,7 @@ void DX12CommandList::DrawIndexed(
     commandList->DrawIndexedInstanced(indexCount, instanceCount, indexOffset, vertexOffset, instanceOffset);
 }
 
-void DX12CommandList::SetVertexBuffers(u32 startSlot, std::span<RHIBufferBinding> vertexBuffers)
+void DX12CommandList::SetVertexBuffers(u32 startSlot, Span<const RHIBufferBinding> vertexBuffers)
 {
     if (type != QueueType::Graphics)
     {
@@ -704,7 +704,7 @@ void DX12CommandList::Copy(RHITexture& src, RHITexture& dst)
     commandList->CopyResource(dst.GetRawTexture(), src.GetRawTexture());
 }
 
-void DX12CommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDesc> textureCopyDescs)
+void DX12CommandList::Copy(RHITexture& src, RHITexture& dst, Span<const TextureCopyDesc> textureCopyDescs)
 {
     ID3D12Resource* srcTexture = src.GetRawTexture();
     ID3D12Resource* dstTexture = dst.GetRawTexture();
@@ -752,7 +752,7 @@ void DX12CommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDesc&
                                   bufferCopyDescription.GetByteSize(src.GetDesc()));
 }
 
-void DX12CommandList::Copy(RHIBuffer& src, RHITexture& dst, std::span<const BufferTextureCopyDesc> copyDescriptions)
+void DX12CommandList::Copy(RHIBuffer& src, RHITexture& dst, Span<const BufferTextureCopyDesc> copyDescriptions)
 {
     for (const BufferTextureCopyDesc& copyDesc : copyDescriptions)
     {
@@ -766,7 +766,7 @@ void DX12CommandList::Copy(RHIBuffer& src, RHITexture& dst, std::span<const Buff
     }
 }
 
-void DX12CommandList::Copy(RHITexture& src, RHIBuffer& dst, std::span<const BufferTextureCopyDesc> copyDescriptions)
+void DX12CommandList::Copy(RHITexture& src, RHIBuffer& dst, Span<const BufferTextureCopyDesc> copyDescriptions)
 {
     for (const BufferTextureCopyDesc& copyDesc : copyDescriptions)
     {

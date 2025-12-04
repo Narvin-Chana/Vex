@@ -5,7 +5,7 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include <Vex/Logger.h>
-#include <Vex/Validation.h>
+#include <Vex/Utility/Validation.h>
 
 namespace vex
 {

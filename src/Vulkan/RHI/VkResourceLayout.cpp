@@ -1,6 +1,6 @@
 #include "VkResourceLayout.h"
 
-#include <Vex/Debug.h>
+#include <Vex/Platform/Debug.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 

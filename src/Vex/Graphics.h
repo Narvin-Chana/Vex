@@ -7,11 +7,11 @@
 
 #include <Vex/Containers/FreeList.h>
 #include <Vex/Containers/ResourceCleanup.h>
+#include <Vex/Containers/Span.h>
 #include <Vex/Formats.h>
 #include <Vex/FrameResource.h>
-#include <Vex/NonNullPtr.h>
 #include <Vex/PipelineStateCache.h>
-#include <Vex/PlatformWindow.h>
+#include <Vex/Platform/PlatformWindow.h>
 #include <Vex/QueueType.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
@@ -23,7 +23,9 @@
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
 #include <Vex/SubmissionPolicy.h>
 #include <Vex/Synchronization.h>
-#include <Vex/UniqueHandle.h>
+#include <Vex/Utility/MaybeUninitialized.h>
+#include <Vex/Utility/NonNullPtr.h>
+#include <Vex/Utility/UniqueHandle.h>
 
 #include <RHI/RHIFwd.h>
 
@@ -43,7 +45,6 @@ class RenderExtension;
 struct GraphicsCreateDesc
 {
     PlatformWindow platformWindow;
-
     // Enables or disables using a swapchain. If this is disabled, all calls to "Present" are invalid.
     bool useSwapChain = true;
     SwapChainDesc swapChainDesc;
@@ -81,8 +82,8 @@ public:
     // instead submit all command queues batched together at swapchain present time.
     [[nodiscard]] CommandContext BeginScopedCommandContext(
         QueueType queueType,
-                                             SubmissionPolicy submissionPolicy = SubmissionPolicy::DeferToPresent,
-                                             std::span<SyncToken> dependencies = {});
+        SubmissionPolicy submissionPolicy = SubmissionPolicy::DeferToPresent,
+        Span<const SyncToken> dependencies = {});
 
     // Creates a new texture with the specified description.
     [[nodiscard]] Texture CreateTexture(TextureDesc desc, ResourceLifetime lifetime = ResourceLifetime::Static);
@@ -102,20 +103,23 @@ public:
     // Once destroyed, the handle passed in is invalid and should no longer be used.
     void DestroyBuffer(const Buffer& buffer);
 
-    // Allows users to fetch the bindless handles for a texture binding. This bindless handle remains valid as long as the resource itself is alive.
+    // Allows users to fetch the bindless handles for a texture binding. This bindless handle remains valid as long as
+    // the resource itself is alive.
     [[nodiscard]] BindlessHandle GetBindlessHandle(const TextureBinding& bindlessResource);
 
-    // Allows users to fetch the bindless handles for a buffer binding. This bindless handle remains valid as long as the resource itself is alive.
+    // Allows users to fetch the bindless handles for a buffer binding. This bindless handle remains valid as long as
+    // the resource itself is alive.
     [[nodiscard]] BindlessHandle GetBindlessHandle(const BufferBinding& bindlessResource);
 
-    // Allows users to fetch the bindless handles for multiple resource bindings. These bindless handles remain valid as long as the resources themselves are alive.
-    [[nodiscard]] std::vector<BindlessHandle> GetBindlessHandles(std::span<const ResourceBinding> bindlessResources);
+    // Allows users to fetch the bindless handles for multiple resource bindings. These bindless handles remain valid as
+    // long as the resources themselves are alive.
+    [[nodiscard]] std::vector<BindlessHandle> GetBindlessHandles(Span<const ResourceBinding> bindlessResources);
 
     // Has the passed-in sync token been executed on the GPU yet?
     [[nodiscard]] bool IsTokenComplete(const SyncToken& token) const;
 
     // Have the passed-in sync tokens been executed on the GPU yet?
-    [[nodiscard]] bool AreTokensComplete(std::span<const SyncToken> tokens) const;
+    [[nodiscard]] bool AreTokensComplete(Span<const SyncToken> tokens) const;
 
     // Waits for the passed in token to be done.
     void WaitForTokenOnCPU(const SyncToken& syncToken);
@@ -159,7 +163,7 @@ public:
     void RecompileAllShaders();
     void SetShaderCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback);
 
-    void SetSamplers(std::span<const TextureSampler> newSamplers);
+    void SetSamplers(Span<const TextureSampler> newSamplers);
 
     // Register a custom RenderExtension, it will be automatically unregistered when the graphics backend is destroyed.
     RenderExtension* RegisterRenderExtension(UniqueHandle<RenderExtension>&& renderExtension);

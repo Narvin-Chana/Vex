@@ -1,7 +1,7 @@
 #include "DX12RHI.h"
 
 #include <Vex/Logger.h>
-#include <Vex/PlatformWindow.h>
+#include <Vex/Platform/PlatformWindow.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
@@ -232,8 +232,8 @@ std::array<SyncToken, QueueTypes::Count> DX12RHI::GetMostRecentSyncTokenPerQueue
     return highestSyncTokens;
 }
 
-std::vector<SyncToken> DX12RHI::Submit(std::span<NonNullPtr<RHICommandList>> commandLists,
-                                       std::span<SyncToken> dependencies)
+std::vector<SyncToken> DX12RHI::Submit(Span<const NonNullPtr<RHICommandList>> commandLists,
+                                       Span<const SyncToken> dependencies)
 {
     // Submit command lists
     std::array<std::vector<ID3D12CommandList*>, QueueTypes::Count> rawCommandListsPerQueue;

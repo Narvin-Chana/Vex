@@ -2,11 +2,11 @@
 
 #include <string>
 
-#include <Vex/EnumFlags.h>
-#include <Vex/Handle.h>
 #include <Vex/Logger.h>
 #include <Vex/Resource.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/EnumFlags.h>
+#include <Vex/Utility/Handle.h>
 
 namespace vex
 {

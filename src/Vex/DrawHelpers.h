@@ -1,7 +1,7 @@
 #pragma once
 
 #include <optional>
-#include <span>
+#include <Vex/Containers/Span.h>
 
 #include <Vex/Bindings.h>
 #include <Vex/GraphicsPipeline.h>

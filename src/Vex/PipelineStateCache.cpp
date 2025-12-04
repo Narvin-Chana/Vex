@@ -3,7 +3,7 @@
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/Shaders/Shader.h>
-#include <Vex/Validation.h>
+#include <Vex/Utility/Validation.h>
 
 namespace vex
 {
@@ -56,7 +56,7 @@ static bool IsShaderCollectionStale(const RayTracingShaderCollection& shaderColl
         static auto CheckHitGroupOptionalVersion = [](const std::optional<const NonNullPtr<Shader>>& shader,
                                                       const std::optional<u32>& psVersion) -> bool
         {
-            if (shader.has_value() && !psVersion.has_value())
+            if (!shader.has_value() && !psVersion.has_value())
             {
                 return true;
             }
@@ -98,27 +98,7 @@ static bool IsShaderCollectionStale(const RayTracingShaderCollection& shaderColl
     return false;
 }
 
-} // namespace PipelineStateCache_Internal
-
-PipelineStateCache::PipelineStateCache(RHI* rhi,
-                                       RHIDescriptorPool& descriptorPool,
-                                       ResourceCleanup* resourceCleanup,
-                                       const ShaderCompilerSettings& compilerSettings)
-    : rhi(rhi)
-    , resourceCleanup(resourceCleanup)
-    , shaderCompiler(compilerSettings)
-    , resourceLayout(rhi->CreateResourceLayout(descriptorPool))
-{
-}
-
-PipelineStateCache::~PipelineStateCache() = default;
-
-RHIResourceLayout& PipelineStateCache::GetResourceLayout()
-{
-    return *resourceLayout;
-}
-
-void ValidateVertexInputLayoutOnShader(const Shader& shader, const VertexInputLayout& inputLayout)
+static void ValidateVertexInputLayoutOnShader(const Shader& shader, const VertexInputLayout& inputLayout)
 {
     const ShaderReflection* reflection = shader.GetReflection();
     if (!reflection)
@@ -148,6 +128,26 @@ void ValidateVertexInputLayoutOnShader(const Shader& shader, const VertexInputLa
     }
 }
 
+} // namespace PipelineStateCache_Internal
+
+PipelineStateCache::PipelineStateCache(RHI* rhi,
+                                       RHIDescriptorPool& descriptorPool,
+                                       ResourceCleanup* resourceCleanup,
+                                       const ShaderCompilerSettings& compilerSettings)
+    : rhi(rhi)
+    , resourceCleanup(resourceCleanup)
+    , shaderCompiler(compilerSettings)
+    , resourceLayout(rhi->CreateResourceLayout(descriptorPool))
+{
+}
+
+PipelineStateCache::~PipelineStateCache() = default;
+
+RHIResourceLayout& PipelineStateCache::GetResourceLayout()
+{
+    return *resourceLayout;
+}
+
 const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(const RHIGraphicsPipelineState::Key& key)
 {
     const auto it = graphicsPSCache.find(key);
@@ -157,7 +157,7 @@ const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(con
             : graphicsPSCache.insert({ key, rhi->CreateGraphicsPipelineState(key) }).first->second;
 
     const NonNullPtr<Shader> vertexShader = shaderCompiler.GetShader(ps.key.vertexShader);
-    ValidateVertexInputLayoutOnShader(*vertexShader, key.vertexInputLayout);
+    PipelineStateCache_Internal::ValidateVertexInputLayoutOnShader(*vertexShader, key.vertexInputLayout);
 
     const NonNullPtr<Shader> pixelShader = shaderCompiler.GetShader(ps.key.pixelShader);
     if (!vertexShader->IsValid() || !pixelShader->IsValid())

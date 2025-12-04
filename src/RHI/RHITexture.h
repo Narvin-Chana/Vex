@@ -2,13 +2,12 @@
 
 #include <vector>
 
-#include <Vex/QueueType.h>
-#include <Vex/Logger.h>
 #include <Vex/MemoryAllocation.h>
+#include <Vex/QueueType.h>
 #include <Vex/Resource.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
-#include <Vex/Validation.h>
+#include <Vex/Utility/Validation.h>
 
 #include <RHI/RHIBarrier.h>
 #include <RHI/RHIFwd.h>

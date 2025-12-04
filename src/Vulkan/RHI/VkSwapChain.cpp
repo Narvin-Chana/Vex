@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <utility>
 
-#include <Vex/Formattable.h>
-#include <Vex/PlatformWindow.h>
+#include <Vex/Utility/Formattable.h>
+#include <Vex/Platform/PlatformWindow.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHIFence.h>

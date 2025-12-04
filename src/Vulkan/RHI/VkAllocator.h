@@ -1,6 +1,7 @@
 #pragma once
 
-#include <Vex/NonNullPtr.h>
+#include <Vex/Containers/Span.h>
+#include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIAllocator.h>
 
@@ -29,7 +30,7 @@ public:
     VkAllocator(NonNullPtr<VkGPUContext> ctx);
     ~VkAllocator();
 
-    std::span<byte> MapAllocation(const Allocation& alloc);
+    Span<byte> MapAllocation(const Allocation& alloc);
     void UnmapAllocation(const Allocation& alloc);
 
     std::pair<::vk::DeviceMemory, Allocation> AllocateResource(ResourceMemoryLocality type,

@@ -1,12 +1,12 @@
 #pragma once
 
-#include <span>
 #include <vector>
 
-#include <Vex/MaybeUninitialized.h>
+#include <Vex/Containers/Span.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/TextureSampler.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/MaybeUninitialized.h>
 
 #include <RHI/RHIFwd.h>
 
@@ -24,10 +24,10 @@ public:
     ~RHIResourceLayoutBase();
     void SetLayoutResources(ConstantBinding constants);
 
-    void SetSamplers(std::span<const TextureSampler> newSamplers);
-    std::span<const TextureSampler> GetStaticSamplers() const;
+    void SetSamplers(Span<const TextureSampler> newSamplers);
+    Span<const TextureSampler> GetStaticSamplers() const;
 
-    std::span<const byte> GetLocalConstantsData() const;
+    Span<const byte> GetLocalConstantsData() const;
 
     u32 version = 0;
 

@@ -7,8 +7,8 @@
 
 #include <magic_enum/magic_enum.hpp>
 
-#include <Vex/Formattable.h>
-#include <Vex/Hash.h>
+#include <Vex/Utility/Formattable.h>
+#include <Vex/Utility/Hash.h>
 #include <Vex/Types.h>
 
 namespace vex

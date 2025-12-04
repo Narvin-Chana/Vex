@@ -3,7 +3,7 @@
 #include <vector>
 
 #include <Vex/Containers/FreeList.h>
-#include <Vex/Handle.h>
+#include <Vex/Utility/Handle.h>
 #include <Vex/MemoryAllocation.h>
 #include <Vex/Types.h>
 

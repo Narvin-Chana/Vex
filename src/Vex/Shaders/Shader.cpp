@@ -10,7 +10,7 @@ Shader::Shader(const ShaderKey& key)
 
 Shader::~Shader() = default;
 
-std::span<const byte> Shader::GetBlob() const
+Span<const byte> Shader::GetBlob() const
 {
     return res.compiledCode;
 }

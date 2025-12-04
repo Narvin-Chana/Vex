@@ -1,7 +1,7 @@
 #pragma once
 
 #include <filesystem>
-#include <span>
+#include <Vex/Containers/Span.h>
 #include <unordered_set>
 #include <vector>
 
@@ -18,7 +18,7 @@ public:
     Shader(const ShaderKey& key);
     ~Shader();
 
-    std::span<const byte> GetBlob() const;
+    Span<const byte> GetBlob() const;
     bool IsValid() const;
     bool NeedsRecompile() const;
     const ShaderReflection* GetReflection() const;

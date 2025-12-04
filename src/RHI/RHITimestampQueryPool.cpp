@@ -2,7 +2,7 @@
 
 #include <Vex/Graphics.h>
 #include <Vex/RHIImpl/RHICommandList.h>
-#include <Vex/Validation.h>
+#include <Vex/Utility/Validation.h>
 
 namespace vex
 {
@@ -81,7 +81,7 @@ RHITimestampQueryPoolBase::RHITimestampQueryPoolBase(RHI& rhi, RHIAllocator& all
     inFlightQueries.Resize(MaxInFlightQueriesCount);
 }
 
-void RHITimestampQueryPoolBase::FetchQueriesTimestamps(RHICommandList& cmdList, std::span<QueryHandle> handles)
+void RHITimestampQueryPoolBase::FetchQueriesTimestamps(RHICommandList& cmdList, Span<QueryHandle> handles)
 {
     struct QueryRange
     {
@@ -116,7 +116,7 @@ void RHITimestampQueryPoolBase::FetchQueriesTimestamps(RHICommandList& cmdList, 
         cmdList.BufferBarrier(timestampBuffer, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource);
     }
 }
-void RHITimestampQueryPoolBase::UpdateSyncTokens(SyncToken token, std::span<QueryHandle> queries)
+void RHITimestampQueryPoolBase::UpdateSyncTokens(SyncToken token, Span<const QueryHandle> queries)
 {
     for (QueryHandle query : queries)
     {

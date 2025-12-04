@@ -1,13 +1,13 @@
 #pragma once
 
 #include <optional>
-#include <span>
+#include <Vex/Containers/Span.h>
 #include <variant>
 
 #include <Vex/Buffer.h>
-#include <Vex/Concepts.h>
-#include <Vex/EnumFlags.h>
-#include <Vex/Formattable.h>
+#include <Vex/Utility/Concepts.h>
+#include <Vex/Utility/EnumFlags.h>
+#include <Vex/Utility/Formattable.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
 
@@ -21,12 +21,19 @@ struct ConstantBinding
     constexpr ConstantBinding() = default;
 
     // Construct from raw ptr and size.
-    constexpr explicit ConstantBinding(const void* data, std::span<const byte>::size_type size)
+    constexpr explicit ConstantBinding(const void* data, Span<const byte>::size_type size)
         : data{ reinterpret_cast<const byte*>(data), size }
     {
     }
 
-    // Construct from span.
+    // Construct from vex::Span.
+    template <typename T>
+    explicit ConstantBinding(Span<T> data)
+        : data(std::as_bytes(data))
+    {
+    }
+
+    // Construct from std::span.
     template <typename T>
     explicit ConstantBinding(std::span<T> data)
         : data(std::as_bytes(data))
@@ -41,7 +48,6 @@ struct ConstantBinding
     explicit ConstantBinding(const T& data)
         : ConstantBinding(static_cast<const void*>(&data), sizeof(T))
     {
-    
     }
 
     constexpr bool IsValid() const
@@ -49,7 +55,7 @@ struct ConstantBinding
         return !data.empty();
     }
 
-    std::span<const byte> data;
+    Span<const byte> data;
 };
 
 struct BufferBinding
@@ -143,13 +149,13 @@ struct ResourceBinding
 
 struct DrawResourceBinding
 {
-    std::span<const TextureBinding> renderTargets;
+    Span<const TextureBinding> renderTargets;
     std::optional<const TextureBinding> depthStencil;
 
     u32 vertexBuffersFirstSlot = 0;
     // Vertex buffers to be bound starting at the above slot.
     // You can bind no vertex buffer and instead depend on SV_VertexID in your Vertex Shader.
-    std::span<BufferBinding> vertexBuffers;
+    Span<const BufferBinding> vertexBuffers;
 
     // Index buffer used for DrawIndexed.
     std::optional<BufferBinding> indexBuffer;

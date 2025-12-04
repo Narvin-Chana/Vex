@@ -4,7 +4,7 @@
 #include <utility>
 #include <vector>
 
-#include <Vex/NonNullPtr.h>
+#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/Shaders/DXCImpl.h>
 #include <Vex/Shaders/ShaderCompilerSettings.h>
 #include <Vex/Shaders/ShaderKey.h>

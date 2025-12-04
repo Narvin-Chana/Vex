@@ -1,9 +1,9 @@
 #pragma once
 
 #include <Vex/Buffer.h>
-#include <Vex/Hash.h>
+#include <Vex/Utility/Hash.h>
 #include <Vex/MemoryAllocation.h>
-#include <Vex/NonNullPtr.h>
+#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/Resource.h>
 #include <Vex/Types.h>
 

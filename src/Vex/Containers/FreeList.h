@@ -3,9 +3,9 @@
 #include <utility>
 #include <vector>
 
-#include <Vex/Debug.h>
-#include <Vex/MaybeUninitialized.h>
+#include <Vex/Platform/Debug.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/MaybeUninitialized.h>
 
 namespace vex
 {

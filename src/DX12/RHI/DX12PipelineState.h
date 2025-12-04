@@ -2,8 +2,8 @@
 
 #include <cstddef>
 
-#include <Vex/Hash.h>
-#include <Vex/MaybeUninitialized.h>
+#include <Vex/Utility/Hash.h>
+#include <Vex/Utility/MaybeUninitialized.h>
 
 #include <RHI/RHIPipelineState.h>
 

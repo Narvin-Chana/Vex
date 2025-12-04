@@ -2,8 +2,8 @@
 
 #include <string>
 
-#include <Vex/Hash.h>
-#include <Vex/NonNullPtr.h>
+#include <Vex/Utility/Hash.h>
+#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/Shaders/ShaderKey.h>
 #include <Vex/Types.h>
 

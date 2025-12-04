@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 #include <Vex/QueueType.h>
-#include <Vex/NonNullPtr.h>
-#include <Vex/UniqueHandle.h>
+#include <Vex/Utility/NonNullPtr.h>
+#include <Vex/Utility/UniqueHandle.h>
 
 #include <RHI/RHICommandPool.h>
 

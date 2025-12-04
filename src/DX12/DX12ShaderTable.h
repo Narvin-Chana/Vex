@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Vex/Containers/Span.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 
 namespace vex::dx12
@@ -10,7 +11,7 @@ struct DX12ShaderTable
     DX12ShaderTable(ComPtr<DX12Device>& device,
                     RHIAllocator& allocator,
                     const BufferDesc& desc,
-                    std::span<void*> shaderIdentifiers,
+                    Span<void*> shaderIdentifiers,
                     u64 shaderIdentifierSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
                     u64 recordStride = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 

@@ -6,7 +6,7 @@ namespace vex
 {
 
 TextureReadbackContext::TextureReadbackContext(const Buffer& buffer,
-                                               std::span<const TextureRegion> textureRegions,
+                                               Span<const TextureRegion> textureRegions,
                                                const TextureDesc& desc,
                                                Graphics& backend)
     : buffer{ buffer }
@@ -16,11 +16,11 @@ TextureReadbackContext::TextureReadbackContext(const Buffer& buffer,
 {
 }
 
-void BufferReadbackContext::ReadData(std::span<byte> outData)
+void BufferReadbackContext::ReadData(Span<byte> outData)
 {
     RHIBuffer& rhiBuffer = backend->GetRHIBuffer(buffer.handle);
 
-    std::span<byte> bufferData = rhiBuffer.Map();
+    Span<const byte> bufferData = rhiBuffer.Map();
     std::copy(bufferData.begin(), bufferData.begin() + outData.size(), outData.begin());
     rhiBuffer.Unmap();
 }
@@ -85,11 +85,11 @@ TextureReadbackContext& TextureReadbackContext::operator=(TextureReadbackContext
     return *this;
 }
 
-void TextureReadbackContext::ReadData(std::span<byte> outData) const
+void TextureReadbackContext::ReadData(Span<byte> outData) const
 {
     RHIBuffer& rhiBuffer = backend->GetRHIBuffer(buffer.handle);
 
-    std::span<byte> bufferData = rhiBuffer.Map();
+    Span<const byte> bufferData = rhiBuffer.Map();
     TextureCopyUtil::ReadTextureDataAligned(textureDesc, textureRegions, bufferData, outData);
     rhiBuffer.Unmap();
 }

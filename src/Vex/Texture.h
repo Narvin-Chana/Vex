@@ -2,10 +2,10 @@
 
 #include <string>
 
-#include <Vex/EnumFlags.h>
+#include <Vex/Utility/EnumFlags.h>
 #include <Vex/Formats.h>
-#include <Vex/Handle.h>
-#include <Vex/Hash.h>
+#include <Vex/Utility/Handle.h>
+#include <Vex/Utility/Hash.h>
 #include <Vex/Resource.h>
 #include <Vex/Types.h>
 
@@ -242,8 +242,8 @@ TextureViewType GetTextureViewType(const TextureBinding& binding);
 void ValidateTextureDescription(const TextureDesc& desc);
 float GetPixelByteSizeFromFormat(TextureFormat format);
 
-u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, std::span<const TextureRegion> uploadRegions);
-u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, std::span<const TextureRegion> uploadRegions);
+u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions);
+u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions);
 
 bool IsBindingUsageCompatibleWithUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage);
 

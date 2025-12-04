@@ -199,7 +199,7 @@ void Graphics::Present(bool isFullscreenMode)
 
 CommandContext Graphics::BeginScopedCommandContext(QueueType queueType,
                                                    SubmissionPolicy submissionPolicy,
-                                                   std::span<SyncToken> dependencies)
+                                                   Span<const SyncToken> dependencies)
 {
     if (submissionPolicy == SubmissionPolicy::DeferToPresent && !desc.useSwapChain)
     {
@@ -381,7 +381,7 @@ BindlessHandle Graphics::GetBindlessHandle(const BufferBinding& bindlessResource
     return buffer.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
 }
 
-std::vector<BindlessHandle> Graphics::GetBindlessHandles(std::span<const ResourceBinding> bindlessResources)
+std::vector<BindlessHandle> Graphics::GetBindlessHandles(Span<const ResourceBinding> bindlessResources)
 {
     std::vector<BindlessHandle> handles;
     handles.reserve(bindlessResources.size());
@@ -484,7 +484,7 @@ bool Graphics::IsTokenComplete(const SyncToken& token) const
     return rhi.IsTokenComplete(token);
 }
 
-bool Graphics::AreTokensComplete(std::span<const SyncToken> tokens) const
+bool Graphics::AreTokensComplete(Span<const SyncToken> tokens) const
 {
     for (const auto& token : tokens)
     {
@@ -527,7 +527,7 @@ void Graphics::SetShaderCompilationErrorsCallback(std::function<ShaderCompileErr
     }
 }
 
-void Graphics::SetSamplers(std::span<const TextureSampler> newSamplers)
+void Graphics::SetSamplers(Span<const TextureSampler> newSamplers)
 {
     // TODO(https://trello.com/c/T1DY4QOT): This is not the cleanest, we need a linear sampler for the mip generation
     // shader, so we add it to the end of the users samplers. Instead we should probably have a way to declare a

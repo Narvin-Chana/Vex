@@ -4,12 +4,12 @@
 #include <variant>
 #include <vector>
 
-#include <Vex/MaybeUninitialized.h>
-#include <Vex/NonNullPtr.h>
+#include <Vex/Utility/MaybeUninitialized.h>
+#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/Synchronization.h>
-#include <Vex/UniqueHandle.h>
+#include <Vex/Utility/UniqueHandle.h>
 
 #include <RHI/RHIFwd.h>
 

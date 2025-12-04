@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Vex/GraphicsPipeline.h>
-#include <Vex/Hash.h>
+#include <Vex/Utility/Hash.h>
 #include <Vex/RayTracing.h>
 #include <Vex/Shaders/Shader.h>
 #include <Vex/Shaders/ShaderKey.h>

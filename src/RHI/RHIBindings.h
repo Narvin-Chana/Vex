@@ -4,7 +4,7 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/Buffer.h>
-#include <Vex/NonNullPtr.h>
+#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/Texture.h>
 
 #include <RHI/RHIFwd.h>
