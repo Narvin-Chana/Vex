@@ -41,4 +41,27 @@ struct VexTest : testing::Test
     }
 };
 
+struct VexPerQueueTest : VexTestParam<QueueType>
+{
+};
+
+template <class T>
+struct VexPerQueueTestWithParam : VexTestParam<std::tuple<QueueType, T>>
+{
+    QueueType GetQueueType()
+    {
+        return std::get<0>(VexTestParam<std::tuple<QueueType, T>>::GetParam());
+    }
+
+    T GetParam()
+    {
+        return std::get<1>(VexTestParam<std::tuple<QueueType, T>>::GetParam());
+    }
+};
+
+const auto QueueTypeValue = testing::Values(QueueType::Graphics, QueueType::Compute, QueueType::Copy);
+
+#define INSTANTIATE_PER_QUEUE_TEST_SUITE_P(name, type, values)                                                         \
+    INSTANTIATE_TEST_SUITE_P(name, type, testing::Combine(QueueTypeValue, values));
+
 } // namespace vex

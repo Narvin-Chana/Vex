@@ -247,8 +247,8 @@ u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, std::span<const Te
 
 bool IsBindingUsageCompatibleWithUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage);
 
-void ValidateSubresource(const TextureSubresource& subresource, const TextureDesc& desc);
-void ValidateRegion(const TextureRegion& region, const TextureDesc& desc);
+void ValidateSubresource(const TextureDesc& desc, const TextureSubresource& subresource);
+void ValidateRegion(const TextureDesc& desc, const TextureRegion& region);
 void ValidateCopyDesc(const TextureDesc& srcDesc, const TextureDesc& dstDesc, const TextureCopyDesc& copyDesc);
 void ValidateCompatibleTextureDescs(const TextureDesc& srcDesc, const TextureDesc& dstDesc);
 
