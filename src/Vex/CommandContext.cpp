@@ -166,11 +166,13 @@ CommandContext::~CommandContext()
 void CommandContext::SetViewport(float x, float y, float width, float height, float minDepth, float maxDepth)
 {
     cmdList->SetViewport(x, y, width, height, minDepth, maxDepth);
+    hasInitializedViewport = true;
 }
 
 void CommandContext::SetScissor(i32 x, i32 y, u32 width, u32 height)
 {
     cmdList->SetScissor(x, y, width, height);
+    hasInitializedScissor = true;
 }
 
 void CommandContext::ClearTexture(const TextureBinding& binding,
@@ -209,6 +211,8 @@ void CommandContext::Draw(const DrawDesc& drawDesc,
                           u32 vertexOffset,
                           u32 instanceOffset)
 {
+    CheckViewportAndScissor();
+
     // Index buffers are not used in Draw, warn the user if they have still bound one.
     if (drawBindings.indexBuffer.has_value())
     {
@@ -239,6 +243,7 @@ void CommandContext::DrawIndexed(const DrawDesc& drawDesc,
                                  u32 vertexOffset,
                                  u32 instanceOffset)
 {
+    CheckViewportAndScissor();
     auto drawResources = PrepareDrawCall(drawDesc, drawBindings, constants);
     if (!drawResources.has_value())
     {
@@ -249,6 +254,20 @@ void CommandContext::DrawIndexed(const DrawDesc& drawDesc,
     // TODO(https://trello.com/c/IGxuLci9): Validate draw index count (eg: versus the currently used index buffer size)
     cmdList->DrawIndexed(indexCount, instanceCount, indexOffset, vertexOffset, instanceOffset);
     cmdList->EndRendering();
+}
+
+void CommandContext::DrawIndirect()
+{
+    CheckViewportAndScissor();
+
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
+void CommandContext::DrawIndexedIndirect()
+{
+    CheckViewportAndScissor();
+
+    VEX_NOT_YET_IMPLEMENTED();
 }
 
 void CommandContext::Dispatch(const ShaderKey& shader, ConstantBinding constants, std::array<u32, 3> groupCount)
@@ -288,6 +307,11 @@ void CommandContext::Dispatch(const ShaderKey& shader, ConstantBinding constants
 
     // Perform dispatch
     cmdList->Dispatch(groupCount);
+}
+
+void CommandContext::DispatchIndirect()
+{
+    VEX_NOT_YET_IMPLEMENTED();
 }
 
 void CommandContext::TraceRays(const RayTracingPassDescription& rayTracingPassDescription,
@@ -955,6 +979,18 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
     FlushBarriers();
 
     return drawResources;
+}
+
+void CommandContext::CheckViewportAndScissor() const
+{
+    // Graphics APIs require the viewport and scissor rect to be initialized before performing Graphics-Queue related
+    // operations. Keep track of this so that the user doesn't forget. We do not want to set it automatically since
+    // using the present texture's size is imprecise due to window resize being possible (additionally the user might
+    // not be using a swapchain).
+    VEX_CHECK(hasInitializedViewport,
+              "No viewport was set! Remember to call CommandContext::SetViewport before performing a draw call!");
+    VEX_CHECK(hasInitializedScissor,
+              "No scissor rect was set! Remember to call CommandContext::SetScissor before performing a draw call!");
 }
 
 std::vector<RHIBufferBarrier> CommandContext::SetVertexBuffers(u32 vertexBuffersFirstSlot,
