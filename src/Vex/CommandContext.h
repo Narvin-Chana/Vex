@@ -76,8 +76,17 @@ public:
                      u32 vertexOffset = 0,
                      u32 instanceOffset = 0);
 
+    // Not yet implemented
+    void DrawIndirect();
+
+    // Not yet implemented
+    void DrawIndexedIndirect();
+
     // Dispatches a compute shader.
     void Dispatch(const ShaderKey& shader, ConstantBinding constants, std::array<u32, 3> groupCount);
+
+    // Not yet implemented
+    void DispatchIndirect();
 
     // Dispatches a ray tracing pass.
     void TraceRays(const RayTracingPassDescription& rayTracingPassDescription,
@@ -220,6 +229,7 @@ private:
     std::optional<RHIDrawResources> PrepareDrawCall(const DrawDesc& drawDesc,
                                                     const DrawResourceBinding& drawBindings,
                                                     ConstantBinding constants);
+    void CheckViewportAndScissor() const;
 
     [[nodiscard]] std::vector<RHIBufferBarrier> SetVertexBuffers(u32 vertexBuffersFirstSlot,
                                                                  Span<const BufferBinding> vertexBuffers);
@@ -251,6 +261,9 @@ private:
     std::vector<RHITextureBarrier> pendingTextureBarriers;
 
     bool hasSubmitted = false;
+
+    bool hasInitializedViewport = false;
+    bool hasInitializedScissor = false;
 
     friend class Graphics;
 };
