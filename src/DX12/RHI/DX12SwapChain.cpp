@@ -253,7 +253,10 @@ DXGI_OUTPUT_DESC1 DX12SwapChain::GetBestOutputDesc() const
     };
 
     RECT windowBounds;
-    GetWindowRect(windowHandle.window, &windowBounds);
+    std::visit(
+    Visitor{ [](const PlatformWindowHandle::WindowsHandle&) { GetWindowRect(windowHandle.handle, &windowBounds); },
+             [](auto&&) {} },
+    windowHandle.handle);
 
     // Get the retangle bounds of the app window
     i32 ax1 = windowBounds.left;
