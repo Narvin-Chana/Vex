@@ -226,8 +226,8 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
     if (desc.usage & TextureUsage::RenderTarget)
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-        rtvHeap = DX12DescriptorHeap<DX12HeapType::RTV>(device, MaxViewCountPerRTVHeap, desc.name);
-        rtvHeapAllocator = FreeListAllocator(MaxViewCountPerRTVHeap);
+        rtvHeap = DX12DescriptorHeap<DX12HeapType::RTV>(device, InitialViewCountPerRTVHeap, desc.name);
+        rtvHeapAllocator = FreeListAllocator(InitialViewCountPerRTVHeap);
     }
     if (desc.usage & TextureUsage::ShaderReadWrite)
     {
@@ -241,8 +241,8 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
         }
 
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-        dsvHeap = DX12DescriptorHeap<DX12HeapType::DSV>(device, MaxViewCountPerDSVHeap, desc.name);
-        dsvHeapAllocator = FreeListAllocator(MaxViewCountPerDSVHeap);
+        dsvHeap = DX12DescriptorHeap<DX12HeapType::DSV>(device, InitialViewCountPerDSVHeap, desc.name);
+        dsvHeapAllocator = FreeListAllocator(InitialViewCountPerDSVHeap);
     }
 
     static const D3D12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
@@ -333,8 +333,8 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
     if (nativeDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
     {
         desc.usage |= TextureUsage::RenderTarget;
-        rtvHeap = DX12DescriptorHeap<DX12HeapType::RTV>(device, MaxViewCountPerRTVHeap, desc.name);
-        rtvHeapAllocator = FreeListAllocator(MaxViewCountPerRTVHeap);
+        rtvHeap = DX12DescriptorHeap<DX12HeapType::RTV>(device, InitialViewCountPerRTVHeap, desc.name);
+        rtvHeapAllocator = FreeListAllocator(InitialViewCountPerRTVHeap);
     }
     if (nativeDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)
     {
@@ -343,8 +343,8 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
     if (nativeDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
     {
         desc.usage |= TextureUsage::DepthStencil;
-        dsvHeap = DX12DescriptorHeap<DX12HeapType::DSV>(device, MaxViewCountPerDSVHeap, desc.name);
-        dsvHeapAllocator = FreeListAllocator(MaxViewCountPerDSVHeap);
+        dsvHeap = DX12DescriptorHeap<DX12HeapType::DSV>(device, InitialViewCountPerDSVHeap, desc.name);
+        dsvHeapAllocator = FreeListAllocator(InitialViewCountPerDSVHeap);
     }
 
 #if !VEX_SHIPPING
