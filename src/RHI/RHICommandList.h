@@ -55,7 +55,8 @@ public:
 
     virtual void ClearTexture(const RHITextureBinding& binding,
                               TextureUsage::Type usage,
-                              const TextureClearValue& clearValue) = 0;
+                              const TextureClearValue& clearValue,
+                              std::span<TextureClearRect> clearRects) = 0;
 
     void BufferBarrier(RHIBuffer& buffer, RHIBarrierSync sync, RHIBarrierAccess access);
     void TextureBarrier(RHITexture& texture, RHIBarrierSync sync, RHIBarrierAccess access, RHITextureLayout layout);

@@ -3,9 +3,9 @@
 #include <cmath>
 
 #include <Vex/Bindings.h>
-#include <Vex/Utility/ByteUtils.h>
 #include <Vex/Formattable.h>
 #include <Vex/Logger.h>
+#include <Vex/Utility/ByteUtils.h>
 #include <Vex/Validation.h>
 
 namespace vex
@@ -175,7 +175,7 @@ u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, std::span<const 
     for (const TextureRegion& region : uploadRegions)
     {
         const u32 sliceCount = region.subresource.GetSliceCount(desc);
-        
+
         VEX_CHECK(region.subresource.startSlice + sliceCount <= desc.GetSliceCount(),
                   "Cannot upload to a slice index ({}) greater or equal to the the texture's slice count ({})!",
                   region.subresource.startSlice + sliceCount,
@@ -208,7 +208,7 @@ u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, std::span<const Te
     for (const TextureRegion& region : uploadRegions)
     {
         const u32 sliceCount = region.subresource.GetSliceCount(desc);
-        
+
         VEX_CHECK(region.subresource.startSlice + sliceCount <= desc.GetSliceCount(),
                   "Cannot upload to a slice index ({}) greater or equal to the the texture's slice count ({})!",
                   region.subresource.startSlice + sliceCount,
@@ -479,6 +479,16 @@ TextureDesc TextureDesc::CreateTexture3DDesc(std::string name,
         .memoryLocality = memoryLocality,
     };
     return desc;
+}
+
+u32 TextureClearRect::GetExtentX(const TextureDesc& desc) const
+{
+    return extentX == GTextureClearRectMax ? desc.width : extentX;
+}
+
+u32 TextureClearRect::GetExtentY(const TextureDesc& desc) const
+{
+    return extentY == GTextureClearRectMax ? desc.height : extentY;
 }
 
 u16 TextureSubresource::GetMipCount(const TextureDesc& desc) const
