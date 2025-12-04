@@ -115,7 +115,7 @@ private:
             return;
         }
 
-        ComPtr<DX12Device> newHeap = CreateHeap(device, newSize, name);
+        ComPtr<ID3D12DescriptorHeap> newHeap = CreateHeap(device, newSize, name);
         device->CopyDescriptorsSimple(size,
                                       newHeap->GetCPUDescriptorHandleForHeapStart(),
                                       heap->GetCPUDescriptorHandleForHeapStart(),
