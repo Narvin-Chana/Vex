@@ -170,7 +170,7 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
 u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, std::span<const TextureRegion> uploadRegions)
 {
     const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
-    float totalSize = 0;
+    u64 totalSize = 0;
 
     for (const TextureRegion& region : uploadRegions)
     {
@@ -196,7 +196,7 @@ u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, std::span<const 
         }
     }
 
-    return static_cast<u64>(std::ceil(totalSize));
+    return totalSize;
 }
 
 u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, std::span<const TextureRegion> uploadRegions)

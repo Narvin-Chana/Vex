@@ -264,11 +264,6 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
     return ret;
 }
 
-RHITextureBarrier VkTexture::GetClearTextureBarrier()
-{
-    return RHITextureBarrier(*this, {}, RHIBarrierSync::Clear, RHIBarrierAccess::CopyDest, RHITextureLayout::CopyDest);
-}
-
 void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 {
     for (const auto& [viewDesc, entry] : bindlessCache)

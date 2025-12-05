@@ -2,9 +2,9 @@
 
 #include <vector>
 
-#include <Vex/QueueType.h>
 #include <Vex/Logger.h>
 #include <Vex/MemoryAllocation.h>
+#include <Vex/QueueType.h>
 #include <Vex/Resource.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
@@ -32,8 +32,6 @@ public:
                                                    RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeAllocation(RHIAllocator& allocator) = 0;
-
-    virtual RHITextureBarrier GetClearTextureBarrier() = 0;
 
     const TextureDesc& GetDesc() const
     {

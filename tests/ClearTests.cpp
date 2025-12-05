@@ -206,4 +206,48 @@ TEST_F(ClearTest, ClearDepthOnlyExpicit)
 //     EXPECT_TRUE(ValidateTextureValue(depthReadback, 0xEE000000, 0xFF000000));
 // }
 
+TEST_F(ClearTest, ClearDepthOnlyRect)
+{
+    auto texture = graphics.CreateTexture(TextureDesc::CreateTexture2DDesc(
+        "TestRenderTarget",
+        TextureFormat::BGRA8_UNORM,
+        10,
+        10,
+        1,
+        TextureUsage::RenderTarget,
+        TextureClearValue{ .flags = TextureClear::ClearColor, .color = { 1, 1, 1, 1 } }));
+
+    std::array clearRects{
+        TextureClearRect{ .extentX = 5, .extentY = 5 },
+        TextureClearRect{ .offsetX = 5, .offsetY = 5, .extentX = 5, .extentY = 5 },
+    };
+
+    auto ctx = graphics.BeginScopedCommandContext(QueueType::Graphics, SubmissionPolicy::Immediate);
+
+    ctx.ClearTexture({ .texture = texture }, std::nullopt, clearRects);
+
+    auto readbackTopLeftCtx = ctx.EnqueueDataReadback(texture,
+                                                      TextureRegion{
+                                                          .offset = { 0, 0 },
+                                                          .extent = { 5, 5 },
+                                                      });
+
+    auto readbackBottomRightCtx = ctx.EnqueueDataReadback(texture,
+                                                          TextureRegion{
+                                                              .offset = { 5, 5 },
+                                                              .extent = { 5, 5 },
+                                                          });
+
+    auto readbackBottomLeftCtx = ctx.EnqueueDataReadback(texture,
+                                                         TextureRegion{
+                                                             .offset = { 0, 5 },
+                                                             .extent = { 5, 5 },
+                                                         });
+    graphics.WaitForTokenOnCPU(ctx.Submit());
+
+    EXPECT_TRUE(ValidateTextureValue(readbackTopLeftCtx, 0xFFFFFFFF));
+    EXPECT_TRUE(ValidateTextureValue(readbackBottomRightCtx, 0xFFFFFFFF));
+    EXPECT_TRUE(ValidateTextureValue(readbackBottomLeftCtx, 0x00000000));
+}
+
 } // namespace vex

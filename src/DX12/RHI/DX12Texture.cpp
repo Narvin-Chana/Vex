@@ -409,32 +409,6 @@ void DX12Texture::FreeAllocation(RHIAllocator& allocator)
     }
 }
 
-RHITextureBarrier DX12Texture::GetClearTextureBarrier()
-{
-    if (desc.usage & TextureUsage::RenderTarget)
-    {
-        return RHITextureBarrier{ *this,
-                                  TextureSubresource{},
-                                  RHIBarrierSync::RenderTarget,
-                                  RHIBarrierAccess::RenderTarget,
-                                  RHITextureLayout::RenderTarget };
-    }
-
-    if (desc.usage & TextureUsage::DepthStencil)
-    {
-        return RHITextureBarrier{ *this,
-                                  TextureSubresource{},
-                                  RHIBarrierSync::DepthStencil,
-                                  RHIBarrierAccess::DepthStencilWrite,
-                                  RHITextureLayout::DepthStencilWrite };
-    }
-
-    VEX_LOG(Fatal,
-            "Invalid texture passed to ClearTexture, your texture must allow for either RenderTarget usage or "
-            "DepthStencil usage.");
-    std::unreachable();
-}
-
 CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(const DX12TextureView& view)
 {
     using namespace Texture_Internal;
