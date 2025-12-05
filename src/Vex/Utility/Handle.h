@@ -8,21 +8,25 @@
 namespace vex
 {
 
-template <class Derived, class ValueT, std::size_t IndexBitSize, std::size_t GenerationBitSize = sizeof(ValueT) * 8 - IndexBitSize>
-    requires(((sizeof(ValueT) * 8) - IndexBitSize == GenerationBitSize) and std::unsigned_integral<ValueT>)
+template <class Derived, class ValueT, std::size_t IndexBitSize>
+    requires((sizeof(ValueT) * 8 >= IndexBitSize) and std::unsigned_integral<ValueT>)
 struct Handle
 {
     using ValueType = ValueT;
+    static constexpr std::size_t GenerationBitSize = sizeof(ValueT) * 8 - IndexBitSize;
+    static constexpr bool HasGeneration = GenerationBitSize > 0;
 
     ValueType value = MaxValue;
 
     constexpr static Derived CreateHandle(ValueType index, ValueType generation)
+        requires(HasGeneration)
     {
         Derived handle;
         handle.SetHandle(index, generation);
         return handle;
     }
     constexpr void SetHandle(ValueType index, ValueType generation)
+        requires(HasGeneration)
     {
         value = 0;
         value |= index & (MaxValue >> GenerationBitSize);
@@ -30,10 +34,14 @@ struct Handle
     }
     constexpr ValueType GetIndex() const
     {
-        return value & (MaxValue >> GenerationBitSize);
+        if constexpr (HasGeneration)
+        {
+            return value & (MaxValue >> GenerationBitSize);
+        }
+        return value;
     }
     constexpr ValueType GetGeneration() const
-        requires(GenerationBitSize > 0)
+        requires(HasGeneration)
     {
         return value >> IndexBitSize;
     }
@@ -52,11 +60,11 @@ private:
 
 // 32 bit handle
 template <class Derived>
-using Handle32 = Handle<Derived, u32, 24, 8>;
+using Handle32 = Handle<Derived, u32, 24>;
 
 // 64 bit handle
 template <class Derived>
-using Handle64 = Handle<Derived, u64, 32, 32>;
+using Handle64 = Handle<Derived, u64, 32>;
 
 } // namespace vex
 
