@@ -3,9 +3,9 @@
 #include <optional>
 
 #include <Vex/Bindings.h>
-#include <Vex/Utility/ByteUtils.h>
 #include <Vex/Logger.h>
 #include <Vex/Texture.h>
+#include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Validation.h>
 
 #include <RHI/RHIBindings.h>
@@ -303,18 +303,37 @@ void DX12CommandList::SetInputAssembly(InputAssembly inputAssembly)
 
 void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
                                    TextureUsage::Type usage,
-                                   const TextureClearValue& clearValue)
+                                   const TextureClearValue& clearValue,
+                                   std::span<TextureClearRect> clearRects)
 {
     DX12TextureView dxTextureView{ binding.binding };
     const u32 maxMip = dxTextureView.subresource.startMip + dxTextureView.subresource.mipCount;
     // We'll be creating a RTV/DSV view per-mip.
     dxTextureView.subresource.mipCount = 1;
 
+    std::vector<D3D12_RECT> dxClearRects;
+    dxClearRects.reserve(clearRects.size());
+
+    for (const TextureClearRect& clearRect : clearRects)
+    {
+        dxClearRects.push_back({ .left = clearRect.offsetX,
+                                 .top = clearRect.offsetY,
+                                 .right = clearRect.offsetX + static_cast<i32>(clearRect.extentX),
+                                 .bottom = clearRect.offsetY + static_cast<i32>(clearRect.extentY) });
+    }
+
     // Clearing in DX12 allows for multiple slices to be cleared, however you cannot clear multiple mips with one
     // call.
     // Instead we iterate on the mips passed in by the user.
     if (usage == TextureUsage::RenderTarget)
     {
+        RHITextureBarrier barrier{ binding.texture,
+                                   TextureSubresource{},
+                                   RHIBarrierSync::RenderTarget,
+                                   RHIBarrierAccess::RenderTarget,
+                                   RHITextureLayout::RenderTarget };
+        Barrier({}, { &barrier, 1 });
+
         dxTextureView.usage = TextureUsage::RenderTarget;
         for (u32 mip = dxTextureView.subresource.startMip; mip < maxMip; ++mip)
         {
@@ -324,12 +343,19 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
                        desc.name);
             commandList->ClearRenderTargetView(binding.texture->GetOrCreateRTVDSVView(dxTextureView),
                                                clearValue.color.data(),
-                                               0,
-                                               nullptr);
+                                               dxClearRects.size(),
+                                               dxClearRects.data());
         }
     }
     else if (usage == TextureUsage::DepthStencil)
     {
+        RHITextureBarrier barrier{ binding.texture,
+                                   TextureSubresource{},
+                                   RHIBarrierSync::DepthStencil,
+                                   RHIBarrierAccess::DepthStencilWrite,
+                                   RHITextureLayout::DepthStencilWrite };
+        Barrier({}, { &barrier, 1 });
+
         dxTextureView.usage = TextureUsage::DepthStencil;
         for (u32 mip = dxTextureView.subresource.startMip; mip < maxMip; ++mip)
         {
@@ -352,8 +378,8 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
                                                clearFlags,
                                                clearValue.depth,
                                                clearValue.stencil,
-                                               0,
-                                               nullptr);
+                                               dxClearRects.size(),
+                                               dxClearRects.data());
         }
     }
     else
@@ -691,8 +717,7 @@ void DX12CommandList::Copy(RHITexture& src, RHITexture& dst)
 {
     VEX_ASSERT(src.GetDesc().width == dst.GetDesc().width && src.GetDesc().height == dst.GetDesc().height &&
                    src.GetDesc().depthOrSliceCount == dst.GetDesc().depthOrSliceCount &&
-                   src.GetDesc().mips == dst.GetDesc().mips &&
-                   src.GetDesc().format == dst.GetDesc().format,
+                   src.GetDesc().mips == dst.GetDesc().mips && src.GetDesc().format == dst.GetDesc().format,
                "The two textures must be compatible in order to Copy to be useable.");
     commandList->CopyResource(dst.GetRawTexture(), src.GetRawTexture());
 }

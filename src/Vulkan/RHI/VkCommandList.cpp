@@ -260,6 +260,13 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
 
     if (clearRects.empty())
     {
+        RHITextureBarrier textureBarrier{ binding.texture,
+                                          {},
+                                          RHIBarrierSync::Clear,
+                                          RHIBarrierAccess::CopyDest,
+                                          RHITextureLayout::CopyDest };
+        Barrier({}, { &textureBarrier, 1 });
+
         if (usage == TextureUsage::DepthStencil &&
             clearValue.flags & (TextureClear::ClearDepth | TextureClear::ClearStencil))
         {
@@ -286,30 +293,56 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
     else
     {
         RHIDrawResources resources;
+        std::optional<RHITextureBarrier> textureBarrier;
 
         std::vector<::vk::ClearRect> rects;
         for (auto rect : clearRects)
         {
-            rects.push_back({ .baseArrayLayer = ranges.baseArrayLayer,
-                              .layerCount = ranges.layerCount,
-                              .rect = ::vk::Rect2D{ .offset = { rect.offsetX, rect.offsetY },
+            rects.push_back({ .rect = ::vk::Rect2D{ .offset = { rect.offsetX, rect.offsetY },
                                                     .extent = { rect.GetExtentX(binding.texture->GetDesc()),
-                                                                rect.GetExtentY(binding.texture->GetDesc()) } } });
+                                                                rect.GetExtentY(binding.texture->GetDesc()) } },
+                              .baseArrayLayer = ranges.baseArrayLayer,
+                              .layerCount = ranges.layerCount });
         }
 
-        ::vk::ClearAttachment clearAttachment;
-        // TODO: fill clear attachment
+        ::vk::ClearAttachment clearAttachment{};
+        clearAttachment.aspectMask |= (clearValue.flags & TextureClear::ClearDepth) ? ::vk::ImageAspectFlagBits::eDepth
+                                                                                    : ::vk::ImageAspectFlagBits::eNone;
+        clearAttachment.aspectMask |= (clearValue.flags & TextureClear::ClearStencil)
+                                          ? ::vk::ImageAspectFlagBits::eStencil
+                                          : ::vk::ImageAspectFlagBits::eNone;
+        clearAttachment.aspectMask |= (clearValue.flags & TextureClear::ClearColor) ? ::vk::ImageAspectFlagBits::eColor
+                                                                                    : ::vk::ImageAspectFlagBits::eNone;
+
         if (usage == TextureUsage::DepthStencil &&
             clearValue.flags & (TextureClear::ClearDepth | TextureClear::ClearStencil))
         {
             resources.depthStencil = binding;
+            clearAttachment.clearValue.depthStencil = ::vk::ClearDepthStencilValue{
+                .depth = clearValue.depth,
+                .stencil = clearValue.stencil,
+            };
+            textureBarrier.emplace(binding.texture,
+                                   TextureSubresource{},
+                                   RHIBarrierSync::DepthStencil,
+                                   RHIBarrierAccess::DepthStencilWrite,
+                                   RHITextureLayout::DepthStencilWrite);
         }
         else
         {
             resources.renderTargets.push_back(binding);
+            clearAttachment.clearValue.color = ::vk::ClearColorValue{ .float32 = clearValue.color };
+            textureBarrier.emplace(binding.texture,
+                                   TextureSubresource{},
+                                   RHIBarrierSync::RenderTarget,
+                                   RHIBarrierAccess::RenderTarget,
+                                   RHITextureLayout::RenderTarget);
         }
 
+        Barrier({}, { &*textureBarrier, 1 });
+        BeginRendering(resources);
         commandBuffer->clearAttachments(1, &clearAttachment, rects.size(), rects.data());
+        EndRendering();
     }
 }
 

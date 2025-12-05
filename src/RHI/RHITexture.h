@@ -32,8 +32,6 @@ public:
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeAllocation(RHIAllocator& allocator) = 0;
 
-    virtual RHITextureBarrier GetClearTextureBarrier() = 0;
-
     const TextureDesc& GetDesc() const
     {
         return desc;
