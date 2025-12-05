@@ -39,7 +39,7 @@ public:
         return desc;
     }
 
-    const Allocation& GetAllocation() const noexcept
+    const Allocation& GetAllocation() const
     {
         return allocation;
     }

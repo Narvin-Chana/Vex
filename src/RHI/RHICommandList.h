@@ -38,7 +38,7 @@ public:
     {
     }
 
-    virtual void Open() = 0;
+    virtual void Open();
     virtual void Close();
 
     virtual void SetViewport(

@@ -6,7 +6,7 @@
 namespace vex::dx12
 {
 
-HrGrabber::HrGrabber(HRESULT hr, std::source_location loc) noexcept
+HrGrabber::HrGrabber(HRESULT hr, std::source_location loc)
     : hr(hr)
     , loc(std::move(loc))
 {

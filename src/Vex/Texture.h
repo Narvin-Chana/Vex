@@ -80,11 +80,11 @@ struct TextureDesc
     TextureClearValue clearValue;
     ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly;
 
-    [[nodiscard]] u32 GetDepth() const noexcept
+    [[nodiscard]] u32 GetDepth() const
     {
         return type == TextureType::Texture3D ? depthOrSliceCount : 1;
     }
-    [[nodiscard]] u32 GetSliceCount() const noexcept
+    [[nodiscard]] u32 GetSliceCount() const
     {
         if (type == TextureType::Texture3D)
         {

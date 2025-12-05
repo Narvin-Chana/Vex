@@ -7,14 +7,14 @@
 namespace vex
 {
 
-ResourceMappedMemory::ResourceMappedMemory(ResourceMappedMemory&& other) noexcept
+ResourceMappedMemory::ResourceMappedMemory(ResourceMappedMemory&& other)
     : mappedData{ other.mappedData }
     , resource{ other.resource }
     , isMapped{ std::exchange(other.isMapped, false) }
 {
 }
 
-ResourceMappedMemory& ResourceMappedMemory::operator=(ResourceMappedMemory&& other) noexcept
+ResourceMappedMemory& ResourceMappedMemory::operator=(ResourceMappedMemory&& other)
 {
     resource = other.resource;
     mappedData = other.mappedData;

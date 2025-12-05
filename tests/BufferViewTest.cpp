@@ -23,7 +23,7 @@ struct BufferBindingTest : public VexTestParam<BufferBindingTestData>
 
 TEST_P(BufferBindingTest, CustomBindingOffset)
 {
-    auto ctx = graphics.BeginScopedCommandContext(QueueType::Compute, SubmissionPolicy::Immediate);
+    CommandContext ctx = graphics.CreateCommandContext(QueueType::Compute);
 
     std::vector<float> data;
     data.resize(DataComponentCount * ElementCount);
@@ -137,9 +137,9 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
                      1u,
                  });
 
-    auto readbackContext = ctx.EnqueueDataReadback(resultBuffer);
+    BufferReadbackContext readbackContext = ctx.EnqueueDataReadback(resultBuffer);
 
-    graphics.WaitForTokenOnCPU(ctx.Submit());
+    graphics.WaitForTokenOnCPU(graphics.Submit(ctx));
 
     std::array<float, DataComponentCount> result{};
 

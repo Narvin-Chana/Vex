@@ -31,7 +31,7 @@ void HelloRayTracing::Run()
         glfwPollEvents();
 
         {
-            auto ctx = graphics->BeginScopedCommandContext(vex::QueueType::Graphics);
+            vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
 
             const vex::TextureBinding outputTextureBinding{
                 .texture = workingTexture,
@@ -76,6 +76,8 @@ void HelloRayTracing::Run()
 
             // Copy output to the backbuffer.
             ctx.Copy(workingTexture, graphics->GetCurrentPresentTexture());
+
+            graphics->Submit(ctx);
         }
 
         graphics->Present(windowMode == Fullscreen);

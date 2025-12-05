@@ -1,13 +1,24 @@
 #include "RHICommandList.h"
 
-#include <Vex/Utility/ByteUtils.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
+#include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Validation.h>
 
 namespace vex
 {
+
+void RHICommandListBase::Open()
+{
+    if (isOpen)
+    {
+        VEX_LOG(Fatal, "Attempting to open an already open command list.");
+        return;
+    }
+
+    isOpen = true;
+}
 
 void RHICommandListBase::Close()
 {
@@ -21,6 +32,8 @@ void RHICommandListBase::Close()
     {
         queryPool->FetchQueriesTimestamps(reinterpret_cast<RHICommandList&>(*this), queries);
     }
+
+    isOpen = false;
 }
 
 void RHICommandListBase::BufferBarrier(RHIBuffer& buffer, RHIBarrierSync sync, RHIBarrierAccess access)
@@ -72,6 +85,7 @@ void RHICommandListBase::Copy(RHITexture& src, RHIBuffer& dst)
 
     Copy(src, dst, bufferToTextureCopies);
 }
+
 void RHICommandListBase::SetSyncTokens(Span<const SyncToken> tokens)
 {
     syncTokens = { tokens.begin(), tokens.end() };

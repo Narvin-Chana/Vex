@@ -21,7 +21,6 @@
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
-#include <Vex/SubmissionPolicy.h>
 #include <Vex/Synchronization.h>
 #include <Vex/Utility/MaybeUninitialized.h>
 #include <Vex/Utility/NonNullPtr.h>
@@ -77,13 +76,9 @@ public:
     // before copying the present texture to the swapChain.
     void Present(bool isFullscreenMode);
 
-    // Begin a scoped CommandContext in which GPU commands can be submitted. The command context will automatically
-    // submit its commands upon destruction if you use immediate submission policy. The Deferred submission policy will
-    // instead submit all command queues batched together at swapchain present time.
-    [[nodiscard]] CommandContext BeginScopedCommandContext(
-        QueueType queueType,
-        SubmissionPolicy submissionPolicy = SubmissionPolicy::DeferToPresent,
-        Span<const SyncToken> dependencies = {});
+    // Create a CommandContext in which GPU commands can be recorded. The command context must later on be submitted to
+    // the GPU by calling vex::Graphics::Submit().
+    [[nodiscard]] CommandContext CreateCommandContext(QueueType queueType);
 
     // Creates a new texture with the specified description.
     [[nodiscard]] Texture CreateTexture(TextureDesc desc, ResourceLifetime lifetime = ResourceLifetime::Static);
@@ -114,6 +109,23 @@ public:
     // Allows users to fetch the bindless handles for multiple resource bindings. These bindless handles remain valid as
     // long as the resources themselves are alive.
     [[nodiscard]] std::vector<BindlessHandle> GetBindlessHandles(Span<const ResourceBinding> bindlessResources);
+
+    // Allows you to submit the command context to the GPU, receiving a SyncToken which can be optionally used to track
+    // work completion.
+    SyncToken Submit(CommandContext& ctx, std::span<SyncToken> dependencies = {});
+
+    // Allows you to submit the command contexts to the GPU, receiving a SyncToken which can be optionally used to track
+    // work completion.
+    // TODO(https://trello.com/c/gKJUXMD0): This is a bit annoying, std::spans in C++23 are not creatable from an
+    // initializer list, forcing us to have a helper function. I believe this was added in C++26. In the meantime, we
+    // should use a custom span that can be created from an initializer list.
+    std::vector<SyncToken> Submit(std::span<const NonNullPtr<CommandContext>> ctxSpan,
+                                  std::span<SyncToken> dependencies = {});
+
+    // Allows you to submit the command contexts to the GPU, receiving a SyncToken which can be optionally used to track
+    // work completion.
+    std::vector<SyncToken> Submit(std::initializer_list<const NonNullPtr<CommandContext>> ctxs,
+                                  std::span<SyncToken> dependencies = {});
 
     // Has the passed-in sync token been executed on the GPU yet?
     [[nodiscard]] bool IsTokenComplete(const SyncToken& token) const;
@@ -147,7 +159,7 @@ public:
 
     // Called when the underlying window resizes, allows the swapchain to be resized.
     void OnWindowResized(u32 newWidth, u32 newHeight);
-    [[nodiscard]] bool UsesSwapChain() const noexcept
+    [[nodiscard]] bool UsesSwapChain() const
     {
         return desc.useSwapChain;
     };
@@ -174,10 +186,8 @@ public:
     [[nodiscard]] std::expected<Query, QueryStatus> GetTimestampValue(QueryHandle handle);
 
 private:
-    void SubmitDeferredWork();
+    void PrepareCommandContextForSubmission(CommandContext& ctx);
     void CleanupResources();
-
-    std::vector<SyncToken> EndCommandContext(CommandContext& ctx);
 
     PipelineStateCache& GetPipelineStateCache();
 
@@ -223,11 +233,6 @@ private:
 
     std::vector<Texture> presentTextures;
     std::vector<SyncToken> presentTokens;
-
-    // We submit our command lists in batch at the end of frame, to reduce driver overhead.
-    std::vector<NonNullPtr<RHICommandList>> deferredSubmissionCommandLists;
-    std::unordered_set<SyncToken> deferredSubmissionDependencies;
-    std::vector<vex::Buffer> deferredSubmissionResources;
 
     std::vector<UniqueHandle<RenderExtension>> renderExtensions;
 

@@ -1,10 +1,12 @@
 ﻿#pragma once
+
 #include <gtest/gtest.h>
 
 #include <Vex.h>
 
 namespace vex
 {
+
 static const auto VexRootPath =
     std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path().parent_path();
 

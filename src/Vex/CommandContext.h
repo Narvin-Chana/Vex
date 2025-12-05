@@ -8,7 +8,6 @@
 #include <Vex/ResourceReadbackContext.h>
 #include <Vex/ScopedGPUEvent.h>
 #include <Vex/Shaders/ShaderKey.h>
-#include <Vex/SubmissionPolicy.h>
 #include <Vex/Synchronization.h>
 #include <Vex/Types.h>
 
@@ -36,9 +35,7 @@ class CommandContext
 private:
     CommandContext(NonNullPtr<Graphics> graphics,
                    NonNullPtr<RHICommandList> cmdList,
-                   NonNullPtr<RHITimestampQueryPool> queryPool,
-                   SubmissionPolicy submissionPolicy,
-                   Span<const SyncToken> dependencies);
+                   NonNullPtr<RHITimestampQueryPool> queryPool);
 
 public:
     ~CommandContext();
@@ -195,10 +192,6 @@ public:
 
     // ---------------------------------------------------------------------------------------------------------------
 
-    // Allows you to manually submit the command context, receiving SyncTokens which can be used to perform a CPU wait
-    // for the work to be done.
-    SyncToken Submit();
-
     // Useful for calling native API draws when wanting to render to a specific Render Target. Allows the passed in
     // lambda to be executed in a draw scope.
     void ExecuteInDrawContext(Span<const TextureBinding> renderTargets,
@@ -241,11 +234,6 @@ private:
     NonNullPtr<Graphics> graphics;
     NonNullPtr<RHICommandList> cmdList;
 
-    SubmissionPolicy submissionPolicy;
-
-    // The command queue will insert these sync tokens as dependencies before submission.
-    std::vector<SyncToken> dependencies;
-
     // Temporary resources (eg: staging resources) that will be marked for destruction once this command list is
     // submitted.
     std::vector<vex::Buffer> temporaryResources;
@@ -259,8 +247,6 @@ private:
 
     std::vector<RHIBufferBarrier> pendingBufferBarriers;
     std::vector<RHITextureBarrier> pendingTextureBarriers;
-
-    bool hasSubmitted = false;
 
     bool hasInitializedViewport = false;
     bool hasInitializedScissor = false;

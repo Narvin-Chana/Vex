@@ -13,7 +13,7 @@ namespace vex::dx12
 // https://github.com/planetchili/d3d12-shallow
 struct HrGrabber
 {
-    HrGrabber(HRESULT hr, std::source_location = std::source_location::current()) noexcept;
+    HrGrabber(HRESULT hr, std::source_location = std::source_location::current());
     HRESULT hr;
     std::source_location loc;
 };

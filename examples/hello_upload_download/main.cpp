@@ -65,7 +65,7 @@ int main()
                                                        .usage = vex::TextureUsage::ShaderReadWrite });
 
     vex::CommandContext ctx =
-        graphics.BeginScopedCommandContext(vex::QueueType::Compute, vex::SubmissionPolicy::Immediate);
+        graphics.CreateCommandContext(vex::QueueType::Compute);
 
     ctx.EnqueueDataUpload(srcTexture, srcImg.data, vex::TextureRegion::AllMips());
 
@@ -102,7 +102,7 @@ int main()
     vex::TextureReadbackContext readbackContext = ctx.EnqueueDataReadback(dstTexture, vex::TextureRegion::SingleMip(1));
 
     // Wait on the GPU to do its readback copy operations
-    graphics.WaitForTokenOnCPU(ctx.Submit());
+    graphics.WaitForTokenOnCPU(graphics.Submit(ctx));
 
     Image dstImg{ .data = std::vector<vex::byte>(srcImg.data.size() / 4),
                   .width = srcImg.width / 2,

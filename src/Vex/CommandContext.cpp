@@ -136,13 +136,9 @@ static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDesc& dr
 
 CommandContext::CommandContext(NonNullPtr<Graphics> graphics,
                                NonNullPtr<RHICommandList> cmdList,
-                               NonNullPtr<RHITimestampQueryPool> queryPool,
-                               SubmissionPolicy submissionPolicy,
-                               Span<const SyncToken> dependencies)
+                               NonNullPtr<RHITimestampQueryPool> queryPool)
     : graphics(graphics)
     , cmdList(cmdList)
-    , submissionPolicy(submissionPolicy)
-    , dependencies{ dependencies.begin(), dependencies.end() }
 {
     cmdList->Open();
     cmdList->SetTimestampQueryPool(queryPool);
@@ -154,13 +150,13 @@ CommandContext::CommandContext(NonNullPtr<Graphics> graphics,
 
 CommandContext::~CommandContext()
 {
-    if (hasSubmitted)
-    {
-        return;
-    }
-    // Flush barriers before closing our command list.
-    FlushBarriers();
-    graphics->EndCommandContext(*this);
+    // This must be disabled for tests, as it interferes with gtest's crash catching logic (this intercepts the actual
+    // error message). This is due to the fact that objects inside the test are destroyed upon test cleanup.
+#ifndef VEX_TESTS
+    VEX_CHECK(!cmdList->IsOpen(),
+              "A command context was destroyed while still being open for commands, remember to submit your command "
+              "context to the GPU using vex::Graphics::Submit()!");
+#endif
 }
 
 void CommandContext::SetViewport(float x, float y, float width, float height, float minDepth, float maxDepth)
@@ -867,23 +863,6 @@ void CommandContext::Barrier(const Buffer& buffer, RHIBarrierSync newSync, RHIBa
     pendingBufferBarriers.push_back(RHIBufferBarrier{ graphics->GetRHIBuffer(buffer.handle), newSync, newAccess });
 }
 
-SyncToken CommandContext::Submit()
-{
-    // Flush barriers before submitting.
-    FlushBarriers();
-
-    if (submissionPolicy != SubmissionPolicy::Immediate)
-    {
-        VEX_LOG(Fatal,
-                "Cannot call submit when your submission policy is anything other than SubmissionPolicy::Immediate.");
-    }
-    hasSubmitted = true;
-
-    std::vector<SyncToken> tokens = graphics->EndCommandContext(*this);
-    VEX_ASSERT(tokens.size() == 1);
-    return tokens[0];
-}
-
 void CommandContext::ExecuteInDrawContext(Span<const TextureBinding> renderTargets,
                                           std::optional<const TextureBinding> depthStencil,
                                           const std::function<void()>& callback)
@@ -915,6 +894,7 @@ RHICommandList& CommandContext::GetRHICommandList()
 
 ScopedGPUEvent CommandContext::CreateScopedGPUEvent(const char* markerLabel, std::array<float, 3> color)
 {
+    VEX_CHECK(cmdList->IsOpen(), "Cannot create a scoped GPU Event with a closed command context.");
     return { cmdList->CreateScopedMarker(markerLabel, color) };
 }
 

@@ -47,8 +47,8 @@ public:
     ResourceMappedMemory(const ResourceMappedMemory&) = delete;
     ResourceMappedMemory& operator=(const ResourceMappedMemory&) = delete;
 
-    ResourceMappedMemory(ResourceMappedMemory&&) noexcept;
-    ResourceMappedMemory& operator=(ResourceMappedMemory&&) noexcept;
+    ResourceMappedMemory(ResourceMappedMemory&&);
+    ResourceMappedMemory& operator=(ResourceMappedMemory&&);
 
     ResourceMappedMemory(MappableResourceInterface& resource);
 

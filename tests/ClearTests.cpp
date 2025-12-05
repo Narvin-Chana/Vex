@@ -17,10 +17,10 @@ bool ValidateTextureValue(const TextureReadbackContext& ctx, u32 expectedColor, 
 template <class F>
 TextureReadbackContext ExecuteAndReadback(Graphics& gfx, const Texture& texture, F func)
 {
-    auto ctx = gfx.BeginScopedCommandContext(QueueType::Graphics, SubmissionPolicy::Immediate);
+    CommandContext ctx = gfx.CreateCommandContext(QueueType::Graphics);
     func(ctx, texture);
-    auto readbackCtx = ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0));
-    gfx.WaitForTokenOnCPU(ctx.Submit());
+    TextureReadbackContext readbackCtx = ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0));
+    gfx.WaitForTokenOnCPU(gfx.Submit(ctx));
     return readbackCtx;
 }
 

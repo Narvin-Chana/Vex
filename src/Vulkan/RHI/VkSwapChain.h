@@ -22,7 +22,7 @@ struct VkSwapChainSupportDetails
     std::vector<::vk::SurfaceFormatKHR> formats;
     std::vector<::vk::PresentModeKHR> presentModes;
 
-    bool IsValid() const noexcept
+    bool IsValid() const
     {
         return !formats.empty() && !presentModes.empty();
     }
