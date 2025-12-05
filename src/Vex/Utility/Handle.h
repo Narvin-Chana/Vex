@@ -9,7 +9,7 @@ namespace vex
 {
 
 template <class Derived, class ValueT, std::size_t IndexBitSize, std::size_t GenerationBitSize = sizeof(ValueT) * 8 - IndexBitSize>
-    requires(((sizeof(ValueT) * 8) - IndexBitSize == GenerationBitSize) and std::is_integral_v<ValueT>)
+    requires(((sizeof(ValueT) * 8) - IndexBitSize == GenerationBitSize) and std::unsigned_integral<ValueT>)
 struct Handle
 {
     using ValueType = ValueT;
