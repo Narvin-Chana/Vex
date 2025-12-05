@@ -95,8 +95,8 @@ private:
     DX12DescriptorHeap<DX12HeapType::RTV> rtvHeap;
     DX12DescriptorHeap<DX12HeapType::DSV> dsvHeap;
 
-    FreeListAllocator rtvHeapAllocator;
-    FreeListAllocator dsvHeapAllocator;
+    FreeListAllocator32 rtvHeapAllocator;
+    FreeListAllocator32 dsvHeapAllocator;
 
     // Can be nullopt in the case of swapchain backbuffers.
     std::optional<Allocation> allocation;

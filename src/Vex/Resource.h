@@ -27,7 +27,7 @@ enum class ResourceMemoryLocality : u8
     CPUWrite,
 };
 
-struct BindlessHandle : Handle<BindlessHandle>
+struct BindlessHandle : Handle32<BindlessHandle>
 {
 };
 

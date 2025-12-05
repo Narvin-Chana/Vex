@@ -22,7 +22,7 @@ struct Query
     u64 timestampInterval;
 };
 
-struct QueryHandle : Handle<QueryHandle>
+struct QueryHandle : Handle64<QueryHandle>
 {
 };
 

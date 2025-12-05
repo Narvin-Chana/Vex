@@ -153,7 +153,7 @@ struct TextureDesc
 
 // Strongly defined type represents a texture.
 // We use a struct (instead of a typedef/using) to enforce compile-time correctness of handles.
-struct TextureHandle : public Handle<TextureHandle>
+struct TextureHandle : public Handle64<TextureHandle>
 {
 };
 

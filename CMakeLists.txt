@@ -173,7 +173,6 @@ add_library(Vex STATIC
     "src/Vex/Platform/Debug.h" 
     # Vex Containers
     "src/Vex/Containers/FreeList.h"
-    "src/Vex/Containers/FreeList.cpp"
     "src/Vex/Containers/ResourceCleanup.h"
     "src/Vex/Containers/ResourceCleanup.cpp"
     "src/Vex/Containers/Span.h"

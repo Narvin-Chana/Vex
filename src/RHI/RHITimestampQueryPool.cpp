@@ -85,8 +85,8 @@ void RHITimestampQueryPoolBase::FetchQueriesTimestamps(RHICommandList& cmdList, 
 {
     struct QueryRange
     {
-        u32 begin;
-        u32 count;
+        u64 begin;
+        u64 count;
     };
 
     // Will make sure we are as compact as possible
@@ -95,7 +95,7 @@ void RHITimestampQueryPoolBase::FetchQueriesTimestamps(RHICommandList& cmdList, 
               [](const QueryHandle& a, const QueryHandle& b) { return a.GetIndex() < b.GetIndex(); });
 
     std::vector<QueryRange> ranges;
-    u32 lastIndex = handles.begin()->GetIndex();
+    u64 lastIndex = handles.begin()->GetIndex();
     QueryRange& currentRange = ranges.emplace_back(lastIndex, 1);
     for (auto it = std::next(handles.begin()); it != handles.end(); ++it)
     {

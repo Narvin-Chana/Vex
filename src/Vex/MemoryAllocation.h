@@ -69,7 +69,7 @@ private:
     std::vector<MemoryRange> allocatedRanges;
 };
 
-struct PageHandle : public Handle<PageHandle>
+struct PageHandle : public Handle64<PageHandle>
 {
 };
 
