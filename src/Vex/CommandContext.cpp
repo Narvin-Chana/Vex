@@ -152,7 +152,7 @@ CommandContext::~CommandContext()
 {
     // This must be disabled for tests, as it interferes with gtest's crash catching logic (this intercepts the actual
     // error message). This is due to the fact that objects inside the test are destroyed upon test cleanup.
-#if !VEX_TESTS
+#ifndef VEX_TESTS
     VEX_CHECK(!cmdList->IsOpen(),
               "A command context was destroyed while still being open for commands, remember to submit your command "
               "context to the GPU using vex::Graphics::Submit()!");

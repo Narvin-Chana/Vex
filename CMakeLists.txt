@@ -298,8 +298,6 @@ if(WIN32)
     target_compile_definitions(Vex PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS)
 endif()
 
-target_compile_definitions(Vex PUBLIC VEX_TESTS=$<BOOL:${VEX_BUILD_TESTS}>)
-
 # =========================================
 # INSTALLATION
 # =========================================
