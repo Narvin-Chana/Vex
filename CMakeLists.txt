@@ -190,6 +190,7 @@ add_library(Vex STATIC
     "src/Vex/Shaders/CompilerBase.h"
     # Vex Built-In Shaders
     "src/Vex/BuiltInShaders/MipGeneration.h"
+    "src/Vex/BuiltInShaders/DepthStencilReadback.h"
     # Vex API
     "src/Vex.h"
     "src/Vex/Graphics.h" 
