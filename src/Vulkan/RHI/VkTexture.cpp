@@ -85,6 +85,19 @@ namespace VkTextureUtil
     return aspectFlags;
 }
 
+::vk::ImageAspectFlags BindingAspectToVkAspectFlags(TextureBindingAspect aspect)
+{
+    switch (aspect)
+    {
+    case TextureBindingAspect::Depth:
+        return ::vk::ImageAspectFlagBits::eDepth;
+    case TextureBindingAspect::Stencil:
+        return ::vk::ImageAspectFlagBits::eStencil;
+    default:
+        return ::vk::ImageAspectFlagBits::eColor;
+    }
+}
+
 ::vk::ImageAspectFlags GetFormatAspectFlags(TextureFormat format)
 {
     ::vk::ImageAspectFlags aspectFlags{};
@@ -188,8 +201,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
         .viewType = TextureTypeToVulkan(view.viewType),
         .format = view.format,
         .subresourceRange = {
-            .aspectMask = VkTextureUtil::GetFormatAspectFlags(
-                VulkanToTextureFormat(view.format)),
+            .aspectMask = VkTextureUtil::BindingAspectToVkAspectFlags(binding.aspect),
             .baseMipLevel = view.subresource.startMip,
             .levelCount = view.subresource.GetMipCount(binding.texture.desc),
             .baseArrayLayer = view.subresource.startSlice,

@@ -19,6 +19,7 @@ namespace vex::vk
 namespace VkTextureUtil
 {
 ::vk::ImageAspectFlags GetDepthAspectFlags(TextureFormat format);
+::vk::ImageAspectFlags BindingAspectToVkAspectFlags(TextureBindingAspect aspect);
 ::vk::ImageAspectFlags GetFormatAspectFlags(TextureFormat format);
 } // namespace VkTextureUtil
 
