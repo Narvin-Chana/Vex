@@ -664,7 +664,7 @@ void CommandContext::Copy(const Texture& source,
                                            .aspect = TextureBindingAspect::Stencil };
             BufferBinding destinationBinding{ .buffer = destination,
                                               .usage = BufferBindingUsage::RWStructuredBuffer,
-                                              .strideByteSize = sizeof(u32),
+                                              .strideByteSize = static_cast<u32>(sizeof(u32)),
                                               .offsetByteSize = copyDesc.bufferRegion.offset,
                                               .rangeByteSize = copyDesc.bufferRegion.byteSize };
             BarrierBindings({ depthBinding, stencilBinding, destinationBinding });
