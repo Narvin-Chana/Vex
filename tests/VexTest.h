@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include "RenderDoc.h"
+
 #include <gtest/gtest.h>
 
 #include <Vex.h>
@@ -12,9 +14,18 @@ static const auto VexRootPath =
 
 // Tests are ran in Development, in Debug we should enable GPU validation to ease test development.
 
+struct RenderDocInitializer
+{
+    RenderDocInitializer()
+    {
+        RenderDoc::Setup();
+    }
+};
+
 template <class ParamT>
 struct VexTestParam : testing::TestWithParam<ParamT>
 {
+    RenderDocInitializer initializer{};
     Graphics graphics;
 
     VexTestParam()
@@ -30,6 +41,7 @@ struct VexTestParam : testing::TestWithParam<ParamT>
 
 struct VexTest : testing::Test
 {
+    RenderDocInitializer initializer{};
     Graphics graphics;
 
     VexTest()
@@ -40,6 +52,16 @@ struct VexTest : testing::Test
           } }
     {
         GLogger.SetLogLevelFilter(Warning);
+    }
+
+    void SetUp() override
+    {
+        RenderDoc::StartCapture(testing::UnitTest::GetInstance()->current_test_info()->name());
+    }
+
+    void TearDown() override
+    {
+        RenderDoc::EndCapture();
     }
 };
 

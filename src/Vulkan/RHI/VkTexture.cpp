@@ -381,6 +381,7 @@ VkTextureViewDesc::VkTextureViewDesc(const TextureBinding& binding)
     : viewType{ TextureUtil::GetTextureViewType(binding) }
     , format{ TextureFormatToVulkan(binding.texture.desc.format, binding.isSRGB) }
     , usage{ static_cast<TextureUsage::Type>(binding.usage) }
+    , aspect{ binding.aspect }
     , subresource{ binding.subresource }
 {
     // Resolve subresource (replacing MAX values with the actual value).

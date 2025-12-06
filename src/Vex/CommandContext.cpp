@@ -646,7 +646,7 @@ void CommandContext::Copy(const Texture& source,
         struct Uniforms
         {
             u32 sourceOffsetX, sourceOffsetY;
-            u32 sourceExtentX, sourceExtentY;
+            u32 rowWordCount;
             BindlessHandle depthTextureHandle;
             BindlessHandle stencilTextureHandle;
             BindlessHandle destBufferHandle;
@@ -673,21 +673,20 @@ void CommandContext::Copy(const Texture& source,
             BindlessHandle stencilHandle = graphics->GetBindlessHandle(stencilBinding);
             BindlessHandle destinationHandle = graphics->GetBindlessHandle(destinationBinding);
 
-            Uniforms uniforms{
-                .sourceOffsetX = copyDesc.textureRegion.offset.x,
-                .sourceOffsetY = copyDesc.textureRegion.offset.y,
-                .sourceExtentX =
-                    copyDesc.textureRegion.extent.GetWidth(source.desc, copyDesc.textureRegion.subresource.startMip),
-                .sourceExtentY =
-                    copyDesc.textureRegion.extent.GetHeight(source.desc, copyDesc.textureRegion.subresource.startMip),
-                .depthTextureHandle = depthHandle,
-                .stencilTextureHandle = stencilHandle,
-                .destBufferHandle = destinationHandle
-            };
+            u32 textureWidth =
+                copyDesc.textureRegion.extent.GetWidth(source.desc, copyDesc.textureRegion.subresource.startMip);
+            u32 textureHeight =
+                copyDesc.textureRegion.extent.GetHeight(source.desc, copyDesc.textureRegion.subresource.startMip);
+            Uniforms uniforms{ .sourceOffsetX = copyDesc.textureRegion.offset.x,
+                               .sourceOffsetY = copyDesc.textureRegion.offset.y,
+                               .rowWordCount =
+                                   AlignUp<u32>(textureWidth * sizeof(u32), TextureUtil::RowPitchAlignment) /
+                                   static_cast<u32>(sizeof(u32)),
+                               .depthTextureHandle = depthHandle,
+                               .stencilTextureHandle = stencilHandle,
+                               .destBufferHandle = destinationHandle };
 
-            std::array<u32, 3> dispatchGroupCount{ (uniforms.sourceExtentX + 7u) / 8u,
-                                                   (uniforms.sourceExtentY + 7u) / 8u,
-                                                   1 };
+            std::array<u32, 3> dispatchGroupCount{ (textureWidth + 7u) / 8u, (textureHeight + 7u) / 8u, 1 };
             Dispatch(shaderKey, ConstantBinding(uniforms), dispatchGroupCount);
         }
     }

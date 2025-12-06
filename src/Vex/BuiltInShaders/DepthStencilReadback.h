@@ -16,7 +16,7 @@ static constexpr std::string_view DepthStencilReadbackSource = R"SHADER(
 
 struct Uniforms {
     uint2 textureOffset;
-    uint2 textureSize;
+    uint rowWordCount;
     uint depthTextureHandle;
     uint stencilTextureHandle;
     uint dstBufferHandle;
@@ -29,11 +29,16 @@ static const Texture2D<uint> StencilTexture = GetBindlessResource(UniformBuffer.
 static const RWStructuredBuffer<uint> DestinationBuffer = GetBindlessResource(UniformBuffer.dstBufferHandle);
 
 [numthreads(8, 8, 1)]
-void DepthStencilReadbackCS(uint2 threadId : SV_GroupThreadID)
+void DepthStencilReadbackCS(uint2 threadId : SV_DispatchThreadID)
 {
     float depthValue = DepthTexture.Load(int3(UniformBuffer.textureOffset + threadId.xy, 0));
     uint stencilValue = StencilTexture.Load(int3(UniformBuffer.textureOffset + threadId.xy, 0));
-    DestinationBuffer[threadId.y * UniformBuffer.textureSize.x + threadId.x] = stencilValue;
+    uint quatizedDepth = (uint)(depthValue * 0x00FFFFFF);
+
+    uint outputValue = 0;
+    outputValue |= (stencilValue  & 0x000000FF) << 24;
+    outputValue |= (quatizedDepth & 0x00FFFFFF);
+    DestinationBuffer[threadId.y * UniformBuffer.rowWordCount + threadId.x] = outputValue;
 }
 )SHADER";
 
