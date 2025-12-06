@@ -16,7 +16,10 @@ add_executable(vex_tests
     "BufferViewTest.cpp"
     "GraphicsBackendTest.cpp"
 	"ReflectionTest.cpp"
+    "ClearTests.cpp"
 )
+
+target_compile_definitions(Vex PUBLIC VEX_TESTS=1)
 
 target_link_libraries(vex_tests 
     GTest::gtest_main

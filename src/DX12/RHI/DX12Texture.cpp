@@ -7,6 +7,7 @@
 #include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
+#include <Vex/Utility/WString.h>
 
 #include <RHI/RHIDescriptorPool.h>
 
@@ -162,8 +163,8 @@ static D3D12_UNORDERED_ACCESS_VIEW_DESC CreateUnorderedAccessViewDesc(const DX12
     case TextureViewType::Texture2DArray:
     case TextureViewType::TextureCube:
     case TextureViewType::TextureCubeArray:
-        // UAVs for TextureCube and TextureCubeArray do not exist in D3D12, instead the user is expected to bind their texture cube as a
-        // RWTexture2DArray.
+        // UAVs for TextureCube and TextureCubeArray do not exist in D3D12, instead the user is expected to bind their
+        // texture cube as a RWTexture2DArray.
         desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
         desc.Texture2DArray = {
             .MipSlice = view.subresource.startMip,
@@ -225,8 +226,8 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
     if (desc.usage & TextureUsage::RenderTarget)
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-        rtvHeap = DX12DescriptorHeap<DX12HeapType::RTV>(device, MaxViewCountPerRTVHeap, desc.name);
-        rtvHeapAllocator = FreeListAllocator(MaxViewCountPerRTVHeap);
+        rtvHeap = DX12DescriptorHeap<DX12HeapType::RTV>(device, InitialViewCountPerRTVHeap, desc.name);
+        rtvHeapAllocator = FreeListAllocator(InitialViewCountPerRTVHeap);
     }
     if (desc.usage & TextureUsage::ShaderReadWrite)
     {
@@ -240,8 +241,8 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
         }
 
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-        dsvHeap = DX12DescriptorHeap<DX12HeapType::DSV>(device, MaxViewCountPerDSVHeap, desc.name);
-        dsvHeapAllocator = FreeListAllocator(MaxViewCountPerDSVHeap);
+        dsvHeap = DX12DescriptorHeap<DX12HeapType::DSV>(device, InitialViewCountPerDSVHeap, desc.name);
+        dsvHeapAllocator = FreeListAllocator(InitialViewCountPerDSVHeap);
     }
 
     static const D3D12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
@@ -332,8 +333,8 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
     if (nativeDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
     {
         desc.usage |= TextureUsage::RenderTarget;
-        rtvHeap = DX12DescriptorHeap<DX12HeapType::RTV>(device, MaxViewCountPerRTVHeap, desc.name);
-        rtvHeapAllocator = FreeListAllocator(MaxViewCountPerRTVHeap);
+        rtvHeap = DX12DescriptorHeap<DX12HeapType::RTV>(device, InitialViewCountPerRTVHeap, desc.name);
+        rtvHeapAllocator = FreeListAllocator(InitialViewCountPerRTVHeap);
     }
     if (nativeDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)
     {
@@ -342,8 +343,8 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
     if (nativeDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
     {
         desc.usage |= TextureUsage::DepthStencil;
-        dsvHeap = DX12DescriptorHeap<DX12HeapType::DSV>(device, MaxViewCountPerDSVHeap, desc.name);
-        dsvHeapAllocator = FreeListAllocator(MaxViewCountPerDSVHeap);
+        dsvHeap = DX12DescriptorHeap<DX12HeapType::DSV>(device, InitialViewCountPerDSVHeap, desc.name);
+        dsvHeapAllocator = FreeListAllocator(InitialViewCountPerDSVHeap);
     }
 
 #if !VEX_SHIPPING
@@ -477,7 +478,7 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(const DX12Textu
     }
 }
 
-std::span<byte> DX12Texture::Map()
+Span<byte> DX12Texture::Map()
 {
     VEX_NOT_YET_IMPLEMENTED();
     return {};

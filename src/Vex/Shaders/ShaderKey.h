@@ -7,8 +7,8 @@
 
 #include <magic_enum/magic_enum.hpp>
 
-#include <Vex/Formattable.h>
-#include <Vex/Hash.h>
+#include <Vex/Utility/Formattable.h>
+#include <Vex/Utility/Hash.h>
 #include <Vex/Types.h>
 
 namespace vex
@@ -45,16 +45,22 @@ struct ShaderDefine
 
 enum class ShaderCompilerBackend : u8
 {
-    Auto, // Will automatically deduce which compiler to use from the file extension.
-    DXC,  // DirectX Shader Compiler
+    Auto, // Will attempt to deduce which compiler to use from the file extension, if using shader sources, this will
+          // fallback to DXC.
+    DXC,  // DirectX Shader Compiler (for HLSL)
 #if VEX_SLANG
-    Slang, // Slang Compiler API
+    Slang, // Slang Compiler API (for Slang)
 #endif
 };
 
 struct ShaderKey
 {
+    // Vex accepts either a filepath, or the sourceCode directly.
+    // If both are filled in, we prefer the filepath.
+
     std::filesystem::path path;
+    std::string sourceCode;
+
     std::string entryPoint;
     ShaderType type;
     std::vector<ShaderDefine> defines;
@@ -74,6 +80,7 @@ VEX_MAKE_HASHABLE(vex::ShaderDefine,
 
 VEX_MAKE_HASHABLE(vex::ShaderKey, 
     VEX_HASH_COMBINE(seed, obj.path);
+    VEX_HASH_COMBINE(seed, obj.sourceCode);
     VEX_HASH_COMBINE(seed, obj.entryPoint);
     VEX_HASH_COMBINE(seed, obj.type);
     VEX_HASH_COMBINE_CONTAINER(seed, obj.defines);
@@ -85,8 +92,13 @@ VEX_MAKE_HASHABLE(vex::ShaderKey,
 VEX_FORMATTABLE(vex::ShaderDefine, "ShaderDefine(\"{}\", \"{}\")", obj.name, obj.value);
 
 VEX_FORMATTABLE(vex::ShaderKey,
-                "ShaderKey(\n\tPath: \"{}\"\n\tEntry Point: \"{}\"\n\tType: {}\n\tDefines: {}\n\tCompiler: {})",
-                obj.path.string(),
+                "ShaderKey(\n\t{}: \"{}\"\n\tEntry Point: \"{}\"\n\tType: {}\n\tDefines: {}\n\tCompiler: {})",
+                !obj.path.empty() ? "Path" : "Source code",
+                !obj.path.empty() ? obj.path.string()
+                                  : (obj.sourceCode.size() <= 500
+                                         ? obj.sourceCode
+                                         : obj.sourceCode.substr(0, 500).append(
+                                               "\"\n\t... rest is cutoff due to shader source being too long!")),
                 obj.entryPoint,
                 std::string(magic_enum::enum_name(obj.type)),
                 obj.defines,

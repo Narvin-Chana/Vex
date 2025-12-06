@@ -3,7 +3,7 @@
 #include <optional>
 #include <vector>
 
-#include <Vex/Handle.h>
+#include <Vex/Utility/Handle.h>
 #include <Vex/Types.h>
 
 #if defined(_WIN32)
@@ -69,7 +69,7 @@ private:
     std::vector<MemoryRange> allocatedRanges;
 };
 
-struct PageHandle : public Handle<PageHandle>
+struct PageHandle : public Handle64<PageHandle>
 {
 };
 

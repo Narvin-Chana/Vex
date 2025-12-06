@@ -4,9 +4,8 @@
 #include <cmath>
 #include <variant>
 
-#include <Vex/ByteUtils.h>
-#include <Vex/Containers/Utils.h>
-#include <Vex/Debug.h>
+#include <Vex/BuiltInShaders/MipGeneration.h>
+#include <Vex/Platform/Debug.h>
 #include <Vex/DrawHelpers.h>
 #include <Vex/Graphics.h>
 #include <Vex/GraphicsPipeline.h>
@@ -20,7 +19,9 @@
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/RayTracing.h>
 #include <Vex/ResourceBindingUtils.h>
-#include <Vex/Validation.h>
+#include <Vex/Utility/ByteUtils.h>
+#include <Vex/Utility/Visitor.h>
+#include <Vex/Utility/Validation.h>
 
 #include <RHI/RHIBarrier.h>
 #include <RHI/RHIBindings.h>
@@ -32,7 +33,7 @@ namespace CommandContext_Internal
 {
 
 static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureRegions(
-    const TextureDesc& desc, std::span<const TextureRegion> regions)
+    const TextureDesc& desc, Span<const TextureRegion> regions)
 {
     // Otherwise we have to translate the TextureRegions to their equivalent BufferTextureCopyDescs.
     std::vector<BufferTextureCopyDesc> copyDescs;
@@ -62,7 +63,7 @@ static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureReg
                         .startMip = mip,
                         .mipCount = 1,
                         .startSlice = region.subresource.startSlice,
-                        .sliceCount = region.subresource.GetSliceCount(desc), 
+                        .sliceCount = region.subresource.GetSliceCount(desc),
                     },
                     .offset = region.offset,
                     .extent = region.extent,
@@ -135,13 +136,9 @@ static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDesc& dr
 
 CommandContext::CommandContext(NonNullPtr<Graphics> graphics,
                                NonNullPtr<RHICommandList> cmdList,
-                               NonNullPtr<RHITimestampQueryPool> queryPool,
-                               SubmissionPolicy submissionPolicy,
-                               std::span<SyncToken> dependencies)
+                               NonNullPtr<RHITimestampQueryPool> queryPool)
     : graphics(graphics)
     , cmdList(cmdList)
-    , submissionPolicy(submissionPolicy)
-    , dependencies{ dependencies.begin(), dependencies.end() }
 {
     cmdList->Open();
     cmdList->SetTimestampQueryPool(queryPool);
@@ -153,23 +150,25 @@ CommandContext::CommandContext(NonNullPtr<Graphics> graphics,
 
 CommandContext::~CommandContext()
 {
-    if (hasSubmitted)
-    {
-        return;
-    }
-    // Flush barriers before closing our command list.
-    FlushBarriers();
-    graphics->EndCommandContext(*this);
+    // This must be disabled for tests, as it interferes with gtest's crash catching logic (this intercepts the actual
+    // error message). This is due to the fact that objects inside the test are destroyed upon test cleanup.
+#ifndef VEX_TESTS
+    VEX_CHECK(!cmdList->IsOpen(),
+              "A command context was destroyed while still being open for commands, remember to submit your command "
+              "context to the GPU using vex::Graphics::Submit()!");
+#endif
 }
 
 void CommandContext::SetViewport(float x, float y, float width, float height, float minDepth, float maxDepth)
 {
     cmdList->SetViewport(x, y, width, height, minDepth, maxDepth);
+    hasInitializedViewport = true;
 }
 
 void CommandContext::SetScissor(i32 x, i32 y, u32 width, u32 height)
 {
     cmdList->SetScissor(x, y, width, height);
+    hasInitializedScissor = true;
 }
 
 void CommandContext::ClearTexture(const TextureBinding& binding,
@@ -208,6 +207,8 @@ void CommandContext::Draw(const DrawDesc& drawDesc,
                           u32 vertexOffset,
                           u32 instanceOffset)
 {
+    CheckViewportAndScissor();
+
     // Index buffers are not used in Draw, warn the user if they have still bound one.
     if (drawBindings.indexBuffer.has_value())
     {
@@ -238,6 +239,7 @@ void CommandContext::DrawIndexed(const DrawDesc& drawDesc,
                                  u32 vertexOffset,
                                  u32 instanceOffset)
 {
+    CheckViewportAndScissor();
     auto drawResources = PrepareDrawCall(drawDesc, drawBindings, constants);
     if (!drawResources.has_value())
     {
@@ -248,6 +250,20 @@ void CommandContext::DrawIndexed(const DrawDesc& drawDesc,
     // TODO(https://trello.com/c/IGxuLci9): Validate draw index count (eg: versus the currently used index buffer size)
     cmdList->DrawIndexed(indexCount, instanceCount, indexOffset, vertexOffset, instanceOffset);
     cmdList->EndRendering();
+}
+
+void CommandContext::DrawIndirect()
+{
+    CheckViewportAndScissor();
+
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
+void CommandContext::DrawIndexedIndirect()
+{
+    CheckViewportAndScissor();
+
+    VEX_NOT_YET_IMPLEMENTED();
 }
 
 void CommandContext::Dispatch(const ShaderKey& shader, ConstantBinding constants, std::array<u32, 3> groupCount)
@@ -287,6 +303,11 @@ void CommandContext::Dispatch(const ShaderKey& shader, ConstantBinding constants
 
     // Perform dispatch
     cmdList->Dispatch(groupCount);
+}
+
+void CommandContext::DispatchIndirect()
+{
+    VEX_NOT_YET_IMPLEMENTED();
 }
 
 void CommandContext::TraceRays(const RayTracingPassDescription& rayTracingPassDescription,
@@ -352,8 +373,6 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         return;
     }
 
-    static constexpr std::string_view MipGenerationEntryPoint = "MipGenerationCS";
-
     auto GetTextureDimensionDefine = [desc = &texture.desc](TextureType type) -> std::string
     {
         switch (type)
@@ -369,18 +388,14 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         }
     };
 
-    // We have to perform a manual mip generation if not supported by the graphics API.
-    ShaderKey mipGenerationShaderKey{
-        .path = std::filesystem::current_path() / "MipGeneration.hlsl",
-        .entryPoint = std::string(MipGenerationEntryPoint),
-        .type = ShaderType::ComputeShader,
-        .defines = { ShaderDefine{ "TEXTURE_TYPE", std::string(FormatUtil::GetHLSLType(texture.desc.format)) },
-                     ShaderDefine{ "TEXTURE_DIMENSION", GetTextureDimensionDefine(texture.desc.type) },
-                     ShaderDefine{ "LINEAR_SAMPLER_SLOT", std::format("s{}", graphics->builtInLinearSamplerSlot) },
-                     ShaderDefine{ "CONVERT_TO_SRGB", textureBinding.isSRGB ? "1" : "0" },
-                     ShaderDefine{ "NON_POWER_OF_TWO" } }
-    };
-    const u32 nonPowerOfTwoDefineIndex = mipGenerationShaderKey.defines.size() - 1;
+    // We have to perform manual mip generation if not supported by the graphics API.
+    ShaderKey shaderKey = MipGenerationShaderKey;
+    shaderKey.defines = { ShaderDefine{ "TEXTURE_TYPE", std::string(FormatUtil::GetHLSLType(texture.desc.format)) },
+                          ShaderDefine{ "TEXTURE_DIMENSION", GetTextureDimensionDefine(texture.desc.type) },
+                          ShaderDefine{ "LINEAR_SAMPLER_SLOT", std::format("s{}", graphics->builtInLinearSamplerSlot) },
+                          ShaderDefine{ "CONVERT_TO_SRGB", textureBinding.isSRGB ? "1" : "0" },
+                          ShaderDefine{ "NON_POWER_OF_TWO" } };
+    const u32 nonPowerOfTwoDefineIndex = shaderKey.defines.size() - 1;
 
     static auto ComputeNPOTFlag = [](u32 srcWidth, u32 srcHeight, u32 srcDepth, bool is3D) -> u32
     {
@@ -423,7 +438,7 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
             isLastIteration = true;
         }
 
-        mipGenerationShaderKey.defines[nonPowerOfTwoDefineIndex].value =
+        shaderKey.defines[nonPowerOfTwoDefineIndex].value =
             std::to_string(ComputeNPOTFlag(width, height, depth, texture.desc.type == TextureType::Texture3D));
 
         std::vector<ResourceBinding> bindings{
@@ -473,7 +488,7 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         // For 3D: z = depth
         u32 dispatchZ = texture.desc.type == TextureType::Texture3D ? depth : texture.desc.GetSliceCount();
         std::array<u32, 3> dispatchGroupCount{ (width + 7u) / 8u, (height + 7u) / 8u, dispatchZ };
-        Dispatch(mipGenerationShaderKey, ConstantBinding(uniforms), dispatchGroupCount);
+        Dispatch(shaderKey, ConstantBinding(uniforms), dispatchGroupCount);
 
         width = std::max(1u, width >> (1 + !isLastIteration));
         height = std::max(1u, height >> (1 + !isLastIteration));
@@ -487,7 +502,7 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         .texture = texture,
         .usage = TextureBindingUsage::ShaderRead,
     };
-    BarrierBindings(std::span<const ResourceBinding>{ { finalBinding } });
+    BarrierBindings({ finalBinding });
 }
 
 void CommandContext::Copy(const Texture& source, const Texture& destination)
@@ -520,7 +535,7 @@ void CommandContext::Copy(const Texture& source, const Texture& destination, con
 
 void CommandContext::Copy(const Texture& source,
                           const Texture& destination,
-                          std::span<const TextureCopyDesc> regionMappings)
+                          Span<const TextureCopyDesc> regionMappings)
 {
     VEX_CHECK(source.handle != destination.handle, "Cannot copy a texture to itself!");
 
@@ -597,7 +612,7 @@ void CommandContext::Copy(const Buffer& source, const Texture& destination, cons
 
 void CommandContext::Copy(const Buffer& source,
                           const Texture& destination,
-                          std::span<const BufferTextureCopyDesc> copyDescs)
+                          Span<const BufferTextureCopyDesc> copyDescs)
 {
     for (auto& copyDesc : copyDescs)
     {
@@ -623,7 +638,7 @@ void CommandContext::Copy(const Texture& source, const Buffer& destination)
 
 void CommandContext::Copy(const Texture& source,
                           const Buffer& destination,
-                          std::span<const BufferTextureCopyDesc> bufferToTextureCopyDescriptions)
+                          Span<const BufferTextureCopyDesc> bufferToTextureCopyDescriptions)
 {
     for (auto& copyDesc : bufferToTextureCopyDescriptions)
     {
@@ -640,10 +655,21 @@ void CommandContext::Copy(const Texture& source,
     pendingBufferBarriers.push_back(
         RHIBufferBarrier{ destinationRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest });
     FlushBarriers();
-    cmdList->Copy(sourceRHI, destinationRHI, bufferToTextureCopyDescriptions);
+
+    if (FormatUtil::SupportsStencil(source.desc.format) &&
+        !GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::DepthStencilReadback))
+    {
+        // Run compute to copy the image to the buffer
+        // See: https://trello.com/c/vEaa2SUe
+        VEX_NOT_YET_IMPLEMENTED();
+    }
+    else
+    {
+        cmdList->Copy(sourceRHI, destinationRHI, bufferToTextureCopyDescriptions);
+    }
 }
 
-void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const byte> data, const BufferRegion& region)
+void CommandContext::EnqueueDataUpload(const Buffer& buffer, Span<const byte> data, const BufferRegion& region)
 {
     if (region == BufferRegion::FullBuffer())
     {
@@ -668,7 +694,7 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const byt
         BufferDesc::CreateStagingBufferDesc(buffer.desc.name + "_staging", region.GetByteSize(buffer.desc)));
 
     RHIBuffer& rhiStagingBuffer = graphics->GetRHIBuffer(stagingBuffer.handle);
-    ResourceMappedMemory(rhiStagingBuffer).WriteData(data);
+    ResourceMappedMemory(rhiStagingBuffer).WriteData({ data.begin(), data.begin() + region.GetByteSize(buffer.desc) });
 
     Copy(stagingBuffer,
          buffer,
@@ -683,9 +709,14 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, std::span<const byt
 }
 
 void CommandContext::EnqueueDataUpload(const Texture& texture,
-                                       std::span<const byte> packedData,
-                                       std::span<const TextureRegion> textureRegions)
+                                       Span<const byte> packedData,
+                                       Span<const TextureRegion> textureRegions)
 {
+    for (const auto& region : textureRegions)
+    {
+        TextureUtil::ValidateRegion(texture.desc, region);
+    }
+
     // Validate that the upload regions match the raw data passed in.
     u64 packedDataByteSize = TextureUtil::ComputePackedTextureDataByteSize(texture.desc, textureRegions);
     VEX_CHECK(packedData.size_bytes() == packedDataByteSize,
@@ -705,7 +736,7 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
 
     // The staging buffer has to respect the alignment that which Vex uses for uploads.
     // We suppose however that user data is tightly packed.
-    std::span<byte> stagingBufferData = rhiStagingBuffer.Map();
+    Span<byte> stagingBufferData = rhiStagingBuffer.Map();
     TextureCopyUtil::WriteTextureDataAligned(texture.desc, textureRegions, packedData, stagingBufferData);
     rhiStagingBuffer.Unmap();
 
@@ -725,15 +756,20 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
 }
 
 void CommandContext::EnqueueDataUpload(const Texture& texture,
-                                       std::span<const byte> packedData,
+                                       Span<const byte> packedData,
                                        const TextureRegion& textureRegion)
 {
     EnqueueDataUpload(texture, packedData, { &textureRegion, 1 });
 }
 
 TextureReadbackContext CommandContext::EnqueueDataReadback(const Texture& srcTexture,
-                                                           std::span<const TextureRegion> textureRegions)
+                                                           Span<const TextureRegion> textureRegions)
 {
+    for (const auto& region : textureRegions)
+    {
+        TextureUtil::ValidateRegion(srcTexture.desc, region);
+    }
+
     // Create packed readback buffer.
     u64 stagingBufferByteSize = TextureUtil::ComputeAlignedUploadBufferByteSize(srcTexture.desc, textureRegions);
     const BufferDesc readbackBufferDesc =
@@ -761,14 +797,23 @@ TextureReadbackContext CommandContext::EnqueueDataReadback(const Texture& srcTex
     return EnqueueDataReadback(srcTexture, { &textureRegion, 1 });
 }
 
-BufferReadbackContext CommandContext::EnqueueDataReadback(const Buffer& srcBuffer)
+BufferReadbackContext CommandContext::EnqueueDataReadback(const Buffer& srcBuffer, const BufferRegion& region)
 {
+    BufferUtil::ValidateBufferRegion(srcBuffer.desc, region);
+
     // Create packed readback buffer.
     const BufferDesc readbackBufferDesc =
-        BufferDesc::CreateReadbackBufferDesc(srcBuffer.desc.name + "_readback", srcBuffer.desc.byteSize);
+        BufferDesc::CreateReadbackBufferDesc(srcBuffer.desc.name + "_readback", region.GetByteSize(srcBuffer.desc));
     Buffer stagingBuffer = graphics->CreateBuffer(readbackBufferDesc, ResourceLifetime::Static);
 
-    Copy(srcBuffer, stagingBuffer);
+    if (srcBuffer.desc.byteSize == GBufferWholeSize)
+    {
+        Copy(srcBuffer, stagingBuffer);
+    }
+    else
+    {
+        Copy(srcBuffer, stagingBuffer, BufferCopyDesc{ region.offset, 0, region.GetByteSize(srcBuffer.desc) });
+    }
 
     return { stagingBuffer, *graphics };
 }
@@ -785,7 +830,7 @@ void CommandContext::BarrierBinding(const BufferBinding& bufferBinding)
     BarrierBindings({ &rb, 1 });
 }
 
-void CommandContext::BarrierBindings(std::span<const ResourceBinding> resourceBindings)
+void CommandContext::BarrierBindings(Span<const ResourceBinding> resourceBindings)
 {
     // Collect all underlying RHI textures.
     std::vector<RHITextureBinding> rhiTextureBindings;
@@ -818,24 +863,7 @@ void CommandContext::Barrier(const Buffer& buffer, RHIBarrierSync newSync, RHIBa
     pendingBufferBarriers.push_back(RHIBufferBarrier{ graphics->GetRHIBuffer(buffer.handle), newSync, newAccess });
 }
 
-SyncToken CommandContext::Submit()
-{
-    // Flush barriers before submitting.
-    FlushBarriers();
-
-    if (submissionPolicy != SubmissionPolicy::Immediate)
-    {
-        VEX_LOG(Fatal,
-                "Cannot call submit when your submission policy is anything other than SubmissionPolicy::Immediate.");
-    }
-    hasSubmitted = true;
-
-    std::vector<SyncToken> tokens = graphics->EndCommandContext(*this);
-    VEX_ASSERT(tokens.size() == 1);
-    return tokens[0];
-}
-
-void CommandContext::ExecuteInDrawContext(std::span<const TextureBinding> renderTargets,
+void CommandContext::ExecuteInDrawContext(Span<const TextureBinding> renderTargets,
                                           std::optional<const TextureBinding> depthStencil,
                                           const std::function<void()>& callback)
 {
@@ -866,6 +894,7 @@ RHICommandList& CommandContext::GetRHICommandList()
 
 ScopedGPUEvent CommandContext::CreateScopedGPUEvent(const char* markerLabel, std::array<float, 3> color)
 {
+    VEX_CHECK(cmdList->IsOpen(), "Cannot create a scoped GPU Event with a closed command context.");
     return { cmdList->CreateScopedMarker(markerLabel, color) };
 }
 
@@ -932,8 +961,20 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
     return drawResources;
 }
 
+void CommandContext::CheckViewportAndScissor() const
+{
+    // Graphics APIs require the viewport and scissor rect to be initialized before performing Graphics-Queue related
+    // operations. Keep track of this so that the user doesn't forget. We do not want to set it automatically since
+    // using the present texture's size is imprecise due to window resize being possible (additionally the user might
+    // not be using a swapchain).
+    VEX_CHECK(hasInitializedViewport,
+              "No viewport was set! Remember to call CommandContext::SetViewport before performing a draw call!");
+    VEX_CHECK(hasInitializedScissor,
+              "No scissor rect was set! Remember to call CommandContext::SetScissor before performing a draw call!");
+}
+
 std::vector<RHIBufferBarrier> CommandContext::SetVertexBuffers(u32 vertexBuffersFirstSlot,
-                                                               std::span<BufferBinding> vertexBuffers)
+                                                               Span<const BufferBinding> vertexBuffers)
 {
     if (vertexBuffers.empty())
     {
@@ -973,7 +1014,7 @@ std::optional<RHIBufferBarrier> CommandContext::SetIndexBuffer(std::optional<Buf
     return RHIBufferBarrier{ buffer, RHIBarrierSync::VertexInput, RHIBarrierAccess::VertexInputRead };
 }
 
-void CommandContext::EnqueueBarriers(std::span<const RHITextureBarrier> barriers)
+void CommandContext::EnqueueBarriers(Span<const RHITextureBarrier> barriers)
 {
 #ifdef __cpp_lib_containers_ranges
     pendingTextureBarriers.append_range(barriers);
@@ -982,7 +1023,7 @@ void CommandContext::EnqueueBarriers(std::span<const RHITextureBarrier> barriers
 #endif
 }
 
-void CommandContext::EnqueueBarriers(std::span<const RHIBufferBarrier> barriers)
+void CommandContext::EnqueueBarriers(Span<const RHIBufferBarrier> barriers)
 {
 #ifdef __cpp_lib_containers_ranges
     pendingBufferBarriers.append_range(barriers);

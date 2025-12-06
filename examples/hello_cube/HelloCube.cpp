@@ -17,14 +17,9 @@ static constexpr vex::u32 IndexCount = 36;
 HelloCubeApplication::HelloCubeApplication()
     : ExampleApplication("HelloCubeApplication")
 {
-#if defined(_WIN32)
-    vex::PlatformWindowHandle platformWindow = { .window = glfwGetWin32Window(window) };
-#elif defined(__linux__)
-    vex::PlatformWindowHandle platformWindow{ .window = glfwGetX11Window(window), .display = glfwGetX11Display() };
-#endif
 
     graphics = vex::MakeUnique<vex::Graphics>(vex::GraphicsCreateDesc{
-        .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
+        .platformWindow = { .windowHandle = GetPlatformWindowHandle(), .width = DefaultWidth, .height = DefaultHeight },
         .useSwapChain = true,
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
@@ -55,7 +50,7 @@ HelloCubeApplication::HelloCubeApplication()
     {
         // Immediate submission means the commands are instantly submitted upon destruction.
         vex::CommandContext ctx =
-            graphics->BeginScopedCommandContext(vex::QueueType::Graphics, vex::SubmissionPolicy::Immediate);
+            graphics->CreateCommandContext(vex::QueueType::Graphics);
 
         // clang-format off
 
@@ -137,6 +132,8 @@ HelloCubeApplication::HelloCubeApplication()
                     vex::RHIBarrierAccess::ShaderRead,
                     vex::RHITextureLayout::ShaderResource);
 
+        graphics->Submit(ctx);
+
         stbi_image_free(imageData);
     }
 
@@ -158,7 +155,7 @@ void HelloCubeApplication::Run()
             const double currentTime = glfwGetTime();
 
             // Scoped command context will submit commands automatically upon destruction.
-            auto ctx = graphics->BeginScopedCommandContext(vex::QueueType::Graphics);
+            vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
 
             ctx.SetScissor(0, 0, width, height);
             ctx.SetViewport(0, 0, width, height);
@@ -285,6 +282,8 @@ void HelloCubeApplication::Run()
                                 IndexCount);
             }
 #endif
+
+            graphics->Submit(ctx);
         }
 
         graphics->Present(windowMode == Fullscreen);

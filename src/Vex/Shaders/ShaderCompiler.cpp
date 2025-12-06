@@ -6,21 +6,36 @@
 
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
-#include <Vex/Platform/Platform.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/Shaders/CompilerBase.h>
 #include <Vex/Shaders/Shader.h>
 #include <Vex/Shaders/ShaderEnvironment.h>
-#include <Vex/TextureSampler.h>
 
 namespace vex
 {
 
-ShaderCompiler::ShaderCompiler() = default;
+namespace ShaderUtil
+{
+bool IsBuiltInSemantic(std::string_view name)
+{
+    return name.substr(0, 3) == "SV_";
+}
+bool CanReflectShaderType(ShaderType type)
+{
+    switch (type)
+    {
+    case ShaderType::ComputeShader:
+    case ShaderType::PixelShader:
+    case ShaderType::VertexShader:
+        return true;
+    default:;
+    }
+    return false;
+}
+} // namespace ShaderUtil
 
-ShaderCompiler::ShaderCompiler(RHI* rhi, const ShaderCompilerSettings& compilerSettings)
-    : rhi(rhi)
-    , compilerSettings(compilerSettings)
+ShaderCompiler::ShaderCompiler(const ShaderCompilerSettings& compilerSettings)
+    : compilerSettings(compilerSettings)
     , dxcCompilerImpl(compilerSettings.shaderIncludeDirectories)
 #if VEX_SLANG
     , slangCompilerImpl(compilerSettings.shaderIncludeDirectories)

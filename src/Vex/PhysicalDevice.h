@@ -4,7 +4,7 @@
 
 #include <Vex/FeatureChecker.h>
 #include <Vex/Types.h>
-#include <Vex/UniqueHandle.h>
+#include <Vex/Utility/UniqueHandle.h>
 
 namespace vex
 {

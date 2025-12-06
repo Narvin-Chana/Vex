@@ -3,10 +3,10 @@
 #include <optional>
 
 #include <Vex/Bindings.h>
-#include <Vex/ByteUtils.h>
+#include <Vex/Utility/ByteUtils.h>
 #include <Vex/Logger.h>
 #include <Vex/Texture.h>
-#include <Vex/Validation.h>
+#include <Vex/Utility/Validation.h>
 
 #include <RHI/RHIBindings.h>
 
@@ -197,15 +197,10 @@ DX12CommandList::DX12CommandList(const ComPtr<DX12Device>& device, QueueType typ
 
 void DX12CommandList::Open()
 {
-    if (isOpen)
-    {
-        VEX_LOG(Fatal, "Attempting to open an already open command list.");
-        return;
-    }
-
     chk << commandAllocator->Reset();
     chk << commandList->Reset(commandAllocator.Get(), nullptr);
-    isOpen = true;
+
+    RHICommandListBase::Open();
 }
 
 void DX12CommandList::Close()
@@ -213,8 +208,6 @@ void DX12CommandList::Close()
     RHICommandListBase::Close();
 
     chk << commandList->Close();
-
-    isOpen = false;
 }
 
 void DX12CommandList::SetViewport(float x, float y, float width, float height, float minDepth, float maxDepth)
@@ -272,7 +265,7 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
         break;
     }
 
-    std::span<const byte> localConstantsData = layout.GetLocalConstantsData();
+    Span<const byte> localConstantsData = layout.GetLocalConstantsData();
     if (localConstantsData.empty())
     {
         return;
@@ -372,8 +365,8 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
     }
 }
 
-void DX12CommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
-                              std::span<const RHITextureBarrier> textureBarriers)
+void DX12CommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers,
+                              Span<const RHITextureBarrier> textureBarriers)
 {
     std::vector<D3D12_BUFFER_BARRIER> dx12BufferBarriers;
     dx12BufferBarriers.reserve(bufferBarriers.size());
@@ -624,7 +617,7 @@ void DX12CommandList::DrawIndexed(
     commandList->DrawIndexedInstanced(indexCount, instanceCount, indexOffset, vertexOffset, instanceOffset);
 }
 
-void DX12CommandList::SetVertexBuffers(u32 startSlot, std::span<RHIBufferBinding> vertexBuffers)
+void DX12CommandList::SetVertexBuffers(u32 startSlot, Span<const RHIBufferBinding> vertexBuffers)
 {
     if (type != QueueType::Graphics)
     {
@@ -704,7 +697,7 @@ void DX12CommandList::Copy(RHITexture& src, RHITexture& dst)
     commandList->CopyResource(dst.GetRawTexture(), src.GetRawTexture());
 }
 
-void DX12CommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDesc> textureCopyDescs)
+void DX12CommandList::Copy(RHITexture& src, RHITexture& dst, Span<const TextureCopyDesc> textureCopyDescs)
 {
     ID3D12Resource* srcTexture = src.GetRawTexture();
     ID3D12Resource* dstTexture = dst.GetRawTexture();
@@ -752,7 +745,7 @@ void DX12CommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDesc&
                                   bufferCopyDescription.GetByteSize(src.GetDesc()));
 }
 
-void DX12CommandList::Copy(RHIBuffer& src, RHITexture& dst, std::span<const BufferTextureCopyDesc> copyDescriptions)
+void DX12CommandList::Copy(RHIBuffer& src, RHITexture& dst, Span<const BufferTextureCopyDesc> copyDescriptions)
 {
     for (const BufferTextureCopyDesc& copyDesc : copyDescriptions)
     {
@@ -766,7 +759,7 @@ void DX12CommandList::Copy(RHIBuffer& src, RHITexture& dst, std::span<const Buff
     }
 }
 
-void DX12CommandList::Copy(RHITexture& src, RHIBuffer& dst, std::span<const BufferTextureCopyDesc> copyDescriptions)
+void DX12CommandList::Copy(RHITexture& src, RHIBuffer& dst, Span<const BufferTextureCopyDesc> copyDescriptions)
 {
     for (const BufferTextureCopyDesc& copyDesc : copyDescriptions)
     {
@@ -805,7 +798,7 @@ void DX12CommandList::ResolveTimestampQueries(u32 firstQuery, u32 queryCount)
 
 RHIScopedGPUEvent DX12CommandList::CreateScopedMarker(const char* label, std::array<float, 3> labelColor)
 {
-    return { commandList, label, labelColor };
+    return { *this, label, labelColor };
 }
 
 } // namespace vex::dx12

@@ -3,7 +3,7 @@
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/Shaders/Shader.h>
-#include <Vex/Validation.h>
+#include <Vex/Utility/Validation.h>
 
 namespace vex
 {
@@ -56,7 +56,7 @@ static bool IsShaderCollectionStale(const RayTracingShaderCollection& shaderColl
         static auto CheckHitGroupOptionalVersion = [](const std::optional<const NonNullPtr<Shader>>& shader,
                                                       const std::optional<u32>& psVersion) -> bool
         {
-            if (shader.has_value() && !psVersion.has_value())
+            if (!shader.has_value() && !psVersion.has_value())
             {
                 return true;
             }
@@ -98,6 +98,36 @@ static bool IsShaderCollectionStale(const RayTracingShaderCollection& shaderColl
     return false;
 }
 
+static void ValidateVertexInputLayoutOnShader(const Shader& shader, const VertexInputLayout& inputLayout)
+{
+    const ShaderReflection* reflection = shader.GetReflection();
+    if (!reflection)
+        return;
+
+    VEX_CHECK(reflection->inputs.size() == inputLayout.attributes.size(),
+              "Error validating shader {}: Incoherent vertex input layout: size doesnt match shader",
+              shader.key);
+
+    for (u32 i = 0; i < reflection->inputs.size(); ++i)
+    {
+        VEX_CHECK(reflection->inputs[i].semanticName == inputLayout.attributes[i].semanticName,
+                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic name "
+                  "doesn't match shader",
+                  shader.key,
+                  i);
+        VEX_CHECK(reflection->inputs[i].semanticIndex == inputLayout.attributes[i].semanticIndex,
+                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic index "
+                  "doesn't match shader",
+                  shader.key,
+                  i);
+        VEX_CHECK(reflection->inputs[i].format == inputLayout.attributes[i].format,
+                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic index "
+                  "doesn't match shader",
+                  shader.key,
+                  i);
+    }
+}
+
 } // namespace PipelineStateCache_Internal
 
 PipelineStateCache::PipelineStateCache(RHI* rhi,
@@ -106,7 +136,7 @@ PipelineStateCache::PipelineStateCache(RHI* rhi,
                                        const ShaderCompilerSettings& compilerSettings)
     : rhi(rhi)
     , resourceCleanup(resourceCleanup)
-    , shaderCompiler(rhi, compilerSettings)
+    , shaderCompiler(compilerSettings)
     , resourceLayout(rhi->CreateResourceLayout(descriptorPool))
 {
 }
@@ -118,34 +148,6 @@ RHIResourceLayout& PipelineStateCache::GetResourceLayout()
     return *resourceLayout;
 }
 
-void ValidateVertexInputLayoutOnShader(const Shader& shader, const VertexInputLayout& inputLayout)
-{
-    const ShaderReflection& reflection = shader.GetReflection();
-
-    VEX_CHECK(reflection.inputs.size() == inputLayout.attributes.size(),
-              "Error validating shader {}: Incoherent vertex input layout: size doesnt match shader",
-              shader.key);
-
-    for (u32 i = 0; i < reflection.inputs.size(); ++i)
-    {
-        VEX_CHECK(reflection.inputs[i].semanticName == inputLayout.attributes[i].semanticName,
-                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic name "
-                  "doesn't match shader",
-                  shader.key,
-                  i);
-        VEX_CHECK(reflection.inputs[i].semanticIndex == inputLayout.attributes[i].semanticIndex,
-                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic index "
-                  "doesn't match shader",
-                  shader.key,
-                  i);
-        VEX_CHECK(reflection.inputs[i].format == inputLayout.attributes[i].format,
-                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic index "
-                  "doesn't match shader",
-                  shader.key,
-                  i);
-    }
-}
-
 const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(const RHIGraphicsPipelineState::Key& key)
 {
     const auto it = graphicsPSCache.find(key);
@@ -155,7 +157,7 @@ const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(con
             : graphicsPSCache.insert({ key, rhi->CreateGraphicsPipelineState(key) }).first->second;
 
     const NonNullPtr<Shader> vertexShader = shaderCompiler.GetShader(ps.key.vertexShader);
-    ValidateVertexInputLayoutOnShader(*vertexShader, key.vertexInputLayout);
+    PipelineStateCache_Internal::ValidateVertexInputLayoutOnShader(*vertexShader, key.vertexInputLayout);
 
     const NonNullPtr<Shader> pixelShader = shaderCompiler.GetShader(ps.key.pixelShader);
     if (!vertexShader->IsValid() || !pixelShader->IsValid())

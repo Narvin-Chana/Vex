@@ -3,7 +3,7 @@
 #include <unordered_map>
 
 #include <Vex/Containers/FreeList.h>
-#include <Vex/Hash.h>
+#include <Vex/Utility/Hash.h>
 #include <Vex/Resource.h>
 
 #include <RHI/RHIAllocator.h>
@@ -71,7 +71,7 @@ public:
 
     CD3DX12_CPU_DESCRIPTOR_HANDLE GetOrCreateRTVDSVView(const DX12TextureView& view);
 
-    virtual std::span<byte> Map() override;
+    virtual Span<byte> Map() override;
     virtual void Unmap() override;
 
 private:
@@ -87,16 +87,16 @@ private:
 
     std::unordered_map<DX12TextureView, CacheEntry> viewCache;
 
-    static constexpr u32 MaxViewCountPerRTVHeap = 8;
-    static constexpr u32 MaxViewCountPerDSVHeap = 4;
+    static constexpr u32 InitialViewCountPerRTVHeap = 2;
+    static constexpr u32 InitialViewCountPerDSVHeap = 1;
 
     // CPU-only visible heaps are "free" to create.
     // Aka they are just CPU memory, requiring no GPU calls.
     DX12DescriptorHeap<DX12HeapType::RTV> rtvHeap;
     DX12DescriptorHeap<DX12HeapType::DSV> dsvHeap;
 
-    FreeListAllocator rtvHeapAllocator;
-    FreeListAllocator dsvHeapAllocator;
+    FreeListAllocator32 rtvHeapAllocator;
+    FreeListAllocator32 dsvHeapAllocator;
 
     // Can be nullopt in the case of swapchain backbuffers.
     std::optional<Allocation> allocation;

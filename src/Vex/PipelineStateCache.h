@@ -2,7 +2,7 @@
 
 #include <unordered_map>
 
-#include <Vex/NonNullPtr.h>
+#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/Shaders/ShaderCompiler.h>

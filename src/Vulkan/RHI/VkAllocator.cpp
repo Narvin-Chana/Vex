@@ -68,7 +68,7 @@ VkAllocator::~VkAllocator()
     memoryPagesByType.clear();
 }
 
-std::span<byte> VkAllocator::MapAllocation(const Allocation& alloc)
+Span<byte> VkAllocator::MapAllocation(const Allocation& alloc)
 {
     ::vk::DeviceMemory memory = GetMemoryFromAllocation(alloc);
     void* ptr = VEX_VK_CHECK <<= ctx->device.mapMemory(memory, alloc.memoryRange.offset, alloc.memoryRange.size);

@@ -1,7 +1,7 @@
 #include "DX12Allocator.h"
 
 #include <Vex/Logger.h>
-#include <Vex/Platform/Platform.h>
+#include <Vex/Utility/WString.h>
 
 #include <DX12/HRChecker.h>
 

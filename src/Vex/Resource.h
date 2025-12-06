@@ -1,10 +1,9 @@
 #pragma once
 
-#include <span>
-
-#include <Vex/Concepts.h>
-#include <Vex/Handle.h>
+#include <Vex/Containers/Span.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/Concepts.h>
+#include <Vex/Utility/Handle.h>
 
 #ifndef VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
 #define VEX_USE_CUSTOM_ALLOCATOR_BUFFERS 1
@@ -12,6 +11,7 @@
 
 namespace vex
 {
+
 class CommandContext;
 
 enum class ResourceLifetime : u8
@@ -27,7 +27,7 @@ enum class ResourceMemoryLocality : u8
     CPUWrite,
 };
 
-struct BindlessHandle : Handle<BindlessHandle>
+struct BindlessHandle : Handle32<BindlessHandle>
 {
 };
 
@@ -35,7 +35,7 @@ static constexpr BindlessHandle GInvalidBindlessHandle;
 
 struct MappableResourceInterface
 {
-    virtual std::span<byte> Map() = 0;
+    virtual Span<byte> Map() = 0;
     virtual void Unmap() = 0;
     virtual ~MappableResourceInterface() = default;
 };
@@ -47,18 +47,18 @@ public:
     ResourceMappedMemory(const ResourceMappedMemory&) = delete;
     ResourceMappedMemory& operator=(const ResourceMappedMemory&) = delete;
 
-    ResourceMappedMemory(ResourceMappedMemory&&) noexcept;
-    ResourceMappedMemory& operator=(ResourceMappedMemory&&) noexcept;
+    ResourceMappedMemory(ResourceMappedMemory&&);
+    ResourceMappedMemory& operator=(ResourceMappedMemory&&);
 
     ResourceMappedMemory(MappableResourceInterface& resource);
 
     ~ResourceMappedMemory();
-    void WriteData(std::span<const byte> inData);
-    void WriteData(std::span<byte> inData);
-    void WriteData(std::span<const byte> inData, u32 offset);
-    void WriteData(std::span<byte> inData, u32 offset);
-    void ReadData(u32 offset, std::span<byte> outData);
-    void ReadData(std::span<byte> outData);
+    void WriteData(Span<const byte> inData);
+    void WriteData(Span<byte> inData);
+    void WriteData(Span<const byte> inData, u32 offset);
+    void WriteData(Span<byte> inData, u32 offset);
+    void ReadData(u32 offset, Span<byte> outData);
+    void ReadData(Span<byte> outData);
 
     template <class T>
         requires(not IsContainer<T>)
@@ -66,18 +66,18 @@ public:
     template <class T>
     void ReadData(T& outData);
 
-    [[nodiscard]] std::span<byte> GetMappedRange()
+    [[nodiscard]] Span<byte> GetMappedRange()
     {
         return mappedData;
     };
 
-    [[nodiscard]] std::span<const byte> GetMappedRange() const
+    [[nodiscard]] Span<const byte> GetMappedRange() const
     {
         return mappedData;
     };
 
 private:
-    std::span<byte> mappedData;
+    Span<byte> mappedData;
 
     MappableResourceInterface& resource;
 
@@ -89,14 +89,14 @@ template <class T>
 void ResourceMappedMemory::WriteData(const T& inData)
 {
     const byte* dataPtr = reinterpret_cast<const byte*>(&inData);
-    WriteData(std::span{ dataPtr, sizeof(T) });
+    WriteData({ dataPtr, sizeof(T) });
 }
 
 template <class T>
 void ResourceMappedMemory::ReadData(T& outData)
 {
     byte* dataPtr = reinterpret_cast<byte*>(&outData);
-    ReadData(std::span{ dataPtr, sizeof(T) });
+    ReadData({ dataPtr, sizeof(T) });
 }
 
 } // namespace vex

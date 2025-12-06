@@ -5,14 +5,8 @@
 HelloTriangleApplication::HelloTriangleApplication()
     : ExampleApplication("HelloTriangleApplication")
 {
-#if defined(_WIN32)
-    vex::PlatformWindowHandle platformWindow = { .window = glfwGetWin32Window(window) };
-#elif defined(__linux__)
-    vex::PlatformWindowHandle platformWindow{ .window = glfwGetX11Window(window), .display = glfwGetX11Display() };
-#endif
-
     graphics = vex::MakeUnique<vex::Graphics>(vex::GraphicsCreateDesc{
-        .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
+        .platformWindow = { .windowHandle = GetPlatformWindowHandle(), .width = DefaultWidth, .height = DefaultHeight },
         .useSwapChain = true,
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
@@ -57,7 +51,8 @@ void HelloTriangleApplication::Run()
             float invOscillatedColor = 1 - oscillatedColor;
             float color[] = { invOscillatedColor, oscillatedColor, invOscillatedColor, 1.0 };
 
-            auto ctx = graphics->BeginScopedCommandContext(vex::QueueType::Graphics);
+            // Command context is used to record commands to be executed by the GPU.
+            vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
 
             // Create the bindings and obtain the bindless handles we need for our compute passes.
             std::array<vex::ResourceBinding, 3> pass1Bindings{
@@ -167,6 +162,8 @@ void HelloTriangleApplication::Run()
                     });
 #endif
             }
+
+            graphics->Submit(ctx);
         }
 
         graphics->Present(windowMode == Fullscreen);

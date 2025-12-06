@@ -61,18 +61,17 @@ void ImGuiRenderExtension::OnPrePresent()
     ImGui::Render();
 
     // Render ImGui to the backbuffer.
-    {
-        vex::CommandContext ctx = graphics.BeginScopedCommandContext(vex::QueueType::Graphics);
+    vex::CommandContext ctx = graphics.CreateCommandContext(vex::QueueType::Graphics);
 
-        vex::TextureBinding backBufferBinding = { .texture = graphics.GetCurrentPresentTexture() };
-        vex::TextureClearValue clearValue{ .flags = vex::TextureClear::ClearColor, .color = { 0, 0, 0, 0 } };
-        ctx.ClearTexture(backBufferBinding, clearValue);
+    vex::TextureBinding backBufferBinding = { .texture = graphics.GetCurrentPresentTexture() };
+    vex::TextureClearValue clearValue{ .flags = vex::TextureClear::ClearColor, .color = { 0, 0, 0, 0 } };
+    ctx.ClearTexture(backBufferBinding, clearValue);
 
-        // ImGui renders to the texture that is currently set as render target. In this case we want to render
-        // directly to the backbuffer. For this we use the ExecuteInDrawContext function, which will take care of
-        // binding the render targets/depth stencil and then execute the passed in callback.
-        ctx.ExecuteInDrawContext({ &backBufferBinding, 1 },
-                                 std::nullopt,
-                                 [&ctx]() { ImGui_ImplVex_RenderDrawData(ctx); });
-    }
+    // ImGui renders to the texture that is currently set as render target. In this case we want to render
+    // directly to the backbuffer. For this we use the ExecuteInDrawContext function, which will take care of
+    // binding the render targets/depth stencil and then execute the passed in callback.
+    ctx.ExecuteInDrawContext({ &backBufferBinding, 1 }, std::nullopt, [&ctx]() { ImGui_ImplVex_RenderDrawData(ctx); });
+
+    // Submit our command context.
+    graphics.Submit(ctx);
 }

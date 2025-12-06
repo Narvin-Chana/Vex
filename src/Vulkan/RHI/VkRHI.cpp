@@ -1,10 +1,11 @@
 #include "VkRHI.h"
 
 #include <set>
+#include <utility>
 
 #include <Vex/CommandContext.h>
 #include <Vex/Logger.h>
-#include <Vex/PlatformWindow.h>
+#include <Vex/Platform/PlatformWindow.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
@@ -19,6 +20,7 @@
 #include <Vex/Shaders/ShaderCompilerSettings.h>
 #include <Vex/Shaders/ShaderEnvironment.h>
 #include <Vex/Synchronization.h>
+#include <Vex/Utility/Visitor.h>
 
 #include <Vulkan/VkCommandQueue.h>
 #include <Vulkan/VkDebug.h>
@@ -136,7 +138,7 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
     // Only activate setting debug names if the debug layer is active. Otherwise Vulkan will error out.
     GEnableDebugName = enableGPUDebugLayer;
 
-    if (windowHandle.window)
+    if (!std::holds_alternative<std::monostate>(windowHandle.handle))
     {
         InitWindow(windowHandle);
     }
@@ -144,21 +146,38 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
 
 VkRHI::~VkRHI() = default;
 
-void VkRHI::InitWindow(const PlatformWindowHandle& windowHandle)
+void VkRHI::InitWindow(const PlatformWindowHandle& platformWindowHandle)
 {
+std::visit(Visitor{
 #if defined(_WIN32)
-    ::vk::Win32SurfaceCreateInfoKHR createInfo{
-        .hinstance = GetModuleHandle(nullptr),
-        .hwnd = windowHandle.window,
-    };
-    surface = VEX_VK_CHECK <<= instance->createWin32SurfaceKHRUnique(createInfo);
+        [this](const PlatformWindowHandle::WindowsHandle& windowHandle)
+        {
+            ::vk::Win32SurfaceCreateInfoKHR createInfo{
+                .hinstance = GetModuleHandle(nullptr),
+                .hwnd = windowHandle.window,
+            };
+            surface = VEX_VK_CHECK <<= instance->createWin32SurfaceKHRUnique(createInfo);
+        },
 #elif defined(__linux__)
-    ::vk::XlibSurfaceCreateInfoKHR createInfo{
+    [this] (const PlatformWindowHandle::X11Handle& windowHandle)
+    {
+                ::vk::XlibSurfaceCreateInfoKHR createInfo{
         .dpy = windowHandle.display,
         .window = windowHandle.window,
     };
     surface = VEX_VK_CHECK <<= instance->createXlibSurfaceKHRUnique(createInfo);
+    },
+    [this] (const PlatformWindowHandle::WaylandHandle& windowHandle)
+    {
+        ::vk::WaylandSurfaceCreateInfoKHR createInfo{
+            .display = windowHandle.display,
+            .surface = windowHandle.window,
+        };
+        surface = VEX_VK_CHECK <<= instance->createWaylandSurfaceKHRUnique(createInfo);
+    },
 #endif
+    [] (auto&& args) {}
+}, platformWindowHandle.handle);
 }
 
 std::vector<UniqueHandle<PhysicalDevice>> VkRHI::EnumeratePhysicalDevices()
@@ -440,8 +459,8 @@ void VkRHI::AddDependencyWait(std::vector<::vk::SemaphoreSubmitInfo>& waitSemaph
 }
 
 SyncToken VkRHI::SubmitToQueue(QueueType queueType,
-                               std::span<::vk::CommandBufferSubmitInfo> commandBuffers,
-                               std::span<::vk::SemaphoreSubmitInfo> waitSemaphores,
+                               Span<const ::vk::CommandBufferSubmitInfo> commandBuffers,
+                               Span<const ::vk::SemaphoreSubmitInfo> waitSemaphores,
                                std::vector<::vk::SemaphoreSubmitInfo> signalSemaphores)
 {
     auto& fence = (*fences)[queueType];
@@ -467,8 +486,8 @@ SyncToken VkRHI::SubmitToQueue(QueueType queueType,
     return SyncToken{ queueType, signalValue };
 }
 
-std::vector<SyncToken> VkRHI::Submit(std::span<NonNullPtr<RHICommandList>> commandLists,
-                                     std::span<SyncToken> dependencies)
+std::vector<SyncToken> VkRHI::Submit(Span<const NonNullPtr<RHICommandList>> commandLists,
+                                     Span<const SyncToken> dependencies)
 {
     // Group by queue type
     std::array<std::vector<::vk::CommandBufferSubmitInfo>, QueueTypes::Count> commandListsPerQueue;

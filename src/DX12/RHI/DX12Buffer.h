@@ -24,7 +24,7 @@ public:
                                         BindlessHandle handle,
                                         const BufferViewDesc& viewDesc) override;
 
-    virtual std::span<byte> Map() override;
+    virtual Span<byte> Map() override;
     virtual void Unmap() override;
 
     ID3D12Resource* GetRawBuffer()

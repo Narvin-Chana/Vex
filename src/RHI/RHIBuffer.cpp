@@ -59,7 +59,7 @@ void RHIBufferBase::FreeAllocation(RHIAllocator& allocator)
 #endif
 }
 
-u32 BufferViewDesc::GetElementStride() const noexcept
+u32 BufferViewDesc::GetElementStride() const
 {
     switch (usage)
     {
@@ -75,7 +75,7 @@ u32 BufferViewDesc::GetElementStride() const noexcept
     return 0;
 }
 
-u64 BufferViewDesc::GetFirstElement() const noexcept
+u64 BufferViewDesc::GetFirstElement() const
 {
     if (usage == BufferBindingUsage::ConstantBuffer)
     {
@@ -84,7 +84,7 @@ u64 BufferViewDesc::GetFirstElement() const noexcept
 
     return offsetByteSize / GetElementStride();
 }
-u64 BufferViewDesc::GetElementCount() const noexcept
+u64 BufferViewDesc::GetElementCount() const
 {
     if (usage == BufferBindingUsage::ConstantBuffer)
     {

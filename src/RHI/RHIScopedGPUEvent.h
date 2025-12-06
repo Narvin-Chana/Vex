@@ -1,7 +1,12 @@
 ﻿#pragma once
+
 #include <array>
 #include <string>
 #include <string_view>
+
+#include <Vex/Utility/NonNullPtr.h>
+
+#include <RHI/RHIFwd.h>
 
 namespace vex
 {
@@ -11,36 +16,16 @@ inline bool GEnableGPUScopedEvents = false;
 class RHIScopedGPUEventBase
 {
 protected:
-    RHIScopedGPUEventBase(std::string_view label, std::array<float, 3> color)
-        : emitMarker{ true }
-        , label{ label }
-        , color{ color }
-    {
-    }
+    RHIScopedGPUEventBase(NonNullPtr<RHICommandList> commandList, std::string_view label, std::array<float, 3> color);
+    ~RHIScopedGPUEventBase();
 
     RHIScopedGPUEventBase(const RHIScopedGPUEventBase&) = delete;
     RHIScopedGPUEventBase& operator=(RHIScopedGPUEventBase&) = delete;
 
-    RHIScopedGPUEventBase(RHIScopedGPUEventBase&& other) noexcept
-        : emitMarker{ other.emitMarker }
-        , label{ std::move(other.label) }
-        , color{ other.color }
-    {
-        other.color = { 0, 0, 0 };
-        other.emitMarker = false;
-    }
+    RHIScopedGPUEventBase(RHIScopedGPUEventBase&& other);
+    RHIScopedGPUEventBase& operator=(RHIScopedGPUEventBase&& other);
 
-    RHIScopedGPUEventBase& operator=(RHIScopedGPUEventBase&& other) noexcept
-    {
-        emitMarker = other.emitMarker;
-        label = std::move(other.label);
-        color = other.color;
-
-        other.color = { 0, 0, 0 };
-        other.emitMarker = false;
-        return *this;
-    }
-
+    NonNullPtr<RHICommandList> commandList;
     bool emitMarker;
     std::string label;
     std::array<float, 3> color;

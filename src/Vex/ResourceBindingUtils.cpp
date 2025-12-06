@@ -1,6 +1,7 @@
 ﻿#include "ResourceBindingUtils.h"
 
-#include <Vex/Containers/Utils.h>
+#include <Vex/Utility/WString.h>
+#include <Vex/Utility/Visitor.h>
 #include <Vex/Graphics.h>
 
 #include <RHI/RHIBuffer.h>
@@ -64,7 +65,7 @@ RHITextureBarrier ResourceBindingUtils::CreateBarrierFromRHIBinding(RHIBarrierSy
 }
 
 void ResourceBindingUtils::CollectRHIResources(Graphics& graphics,
-                                               std::span<const ResourceBinding> resources,
+                                               Span<const ResourceBinding> resources,
                                                std::vector<RHITextureBinding>& textureBindings,
                                                std::vector<RHIBufferBinding>& bufferBindings)
 {
@@ -85,7 +86,7 @@ void ResourceBindingUtils::CollectRHIResources(Graphics& graphics,
 }
 
 RHIDrawResources ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(Graphics& graphics,
-                                                                          std::span<const TextureBinding> renderTargets,
+                                                                          Span<const TextureBinding> renderTargets,
                                                                           std::optional<TextureBinding> depthStencil,
                                                                           std::vector<RHITextureBarrier>& barriers)
 {

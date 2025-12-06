@@ -5,9 +5,7 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include <Vex.h>
-#include <Vex/ByteUtils.h>
 #include <Vex/CommandContext.h>
-#include <Vex/Containers/Utils.h>
 #include <Vex/FeatureChecker.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
@@ -19,6 +17,9 @@
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
 #include <Vex/RenderExtension.h>
+#include <Vex/Utility/ByteUtils.h>
+#include <Vex/Utility/Visitor.h>
+#include <Vex/Utility/WString.h>
 
 namespace vex
 {
@@ -100,15 +101,7 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
 
 Graphics::~Graphics()
 {
-    if (!deferredSubmissionCommandLists.empty())
-    {
-        VEX_LOG(Warning,
-                "Destroying Vex Graphics in the middle of a frame, this is valid, although not recommended."
-                "Make sure to not exit before Presenting if you use the Deferred submission policy as otherwise this "
-                "could result in uncompleted work.");
-    }
-
-    //  Wait for work to be done before starting the deletion of resources.
+    // Wait for work to be done before starting the deletion of resources.
     FlushGPU();
 
     for (auto& renderExtension : renderExtensions)
@@ -135,9 +128,6 @@ void Graphics::Present(bool isFullscreenMode)
 
     // Make sure the ((n - FRAME_BUFFERING) % FRAME_BUFFERING) present has finished before presenting anew.
     rhi.WaitForTokenOnCPU(presentTokens[currentFrameIndex]);
-
-    // Before presenting we have to handle all the queued for submission command lists (and their dependencies).
-    SubmitDeferredWork();
 
     if (std::optional<RHITexture> backBuffer = swapChain->AcquireBackBuffer(currentFrameIndex))
     {
@@ -196,38 +186,19 @@ void Graphics::Present(bool isFullscreenMode)
     }
 }
 
-CommandContext Graphics::BeginScopedCommandContext(QueueType queueType,
-                                                   SubmissionPolicy submissionPolicy,
-                                                   std::span<SyncToken> dependencies)
+CommandContext Graphics::CreateCommandContext(QueueType queueType)
 {
-    if (submissionPolicy == SubmissionPolicy::DeferToPresent && !desc.useSwapChain)
-    {
-        VEX_LOG(Fatal,
-                "Cannot use deferred submission policy when your graphics backend has no swapchain. Use "
-                "SubmissionPolicy::Immediate instead!");
-    }
-
-    return CommandContext{ *this,
-                           commandPool->GetOrCreateCommandList(queueType),
-                           *queryPool,
-                           submissionPolicy,
-                           dependencies };
+    return CommandContext{ *this, commandPool->GetOrCreateCommandList(queueType), *queryPool };
 }
 
-void Graphics::SubmitDeferredWork()
+void Graphics::PrepareCommandContextForSubmission(CommandContext& ctx)
 {
-    std::vector dependencies(deferredSubmissionDependencies.begin(), deferredSubmissionDependencies.end());
-    std::vector deferredSubmissionTokens = rhi.Submit(deferredSubmissionCommandLists, dependencies);
-    commandPool->OnCommandListsSubmitted(deferredSubmissionCommandLists, deferredSubmissionTokens);
+    VEX_ASSERT(ctx.cmdList->IsOpen(), "Error on submit: attempting to submit an already closed command context...");
 
-    for (Buffer& tempBuffer : deferredSubmissionResources)
-    {
-        DestroyBuffer(tempBuffer);
-    }
-
-    deferredSubmissionCommandLists.clear();
-    deferredSubmissionDependencies.clear();
-    deferredSubmissionResources.clear();
+    // Flush barriers before submitting.
+    ctx.FlushBarriers();
+    // We want to close a command list asap, to allow for driver optimizations.
+    ctx.cmdList->Close();
 }
 
 void Graphics::CleanupResources()
@@ -240,53 +211,6 @@ void Graphics::CleanupResources()
     // Send all shader errors to the user, we do this every time we cleanup, since cleanup occurs when we submit or
     // present.
     psCache->GetShaderCompiler().FlushCompilationErrors();
-}
-
-std::vector<SyncToken> Graphics::EndCommandContext(CommandContext& ctx)
-{
-    // We want to close a command list asap, to allow for driver optimizations.
-    ctx.cmdList->Close();
-
-    std::vector<SyncToken> syncTokens;
-
-    // No swapchain means we submit asap, since no presents will occur.
-    // If we have dependencies, we submit asap, since in order to insert dependency signals, we have to submit this
-    // separately anyways.
-    if (!desc.useSwapChain || ctx.submissionPolicy == SubmissionPolicy::Immediate || !ctx.dependencies.empty())
-    {
-        syncTokens = rhi.Submit({ &ctx.cmdList, 1 }, ctx.dependencies);
-
-        // Enqueue the command context's temporary resources for destruction.
-        for (Buffer& tempBuffer : ctx.temporaryResources)
-        {
-            DestroyBuffer(tempBuffer);
-        }
-
-        commandPool->OnCommandListsSubmitted({ &ctx.cmdList, 1 }, syncTokens);
-
-        // Users will not necessarily present (in the case we don't have a swapchain). So we instead cleanup our
-        // resources at this point.
-        CleanupResources();
-    }
-    else if (desc.useSwapChain && (ctx.submissionPolicy == SubmissionPolicy::DeferToPresent))
-    {
-        // The submission of a commandList when we have a swapchain should be batched as much as possible for further
-        // driver optimizations (allowed to append them together during execution or reorder if no dependencies
-        // exist).
-        deferredSubmissionCommandLists.push_back(ctx.cmdList);
-        deferredSubmissionDependencies.insert(ctx.dependencies.begin(), ctx.dependencies.end());
-        deferredSubmissionResources.reserve(ctx.temporaryResources.size() + deferredSubmissionResources.size());
-        for (Buffer& tempBuffer : ctx.temporaryResources)
-        {
-            deferredSubmissionResources.push_back(tempBuffer);
-        }
-    }
-    else
-    {
-        VEX_LOG(Fatal, "Unsupported submission policy when submitting CommandContext...");
-    }
-
-    return syncTokens;
 }
 
 Texture Graphics::CreateTexture(TextureDesc desc, ResourceLifetime lifetime)
@@ -380,7 +304,7 @@ BindlessHandle Graphics::GetBindlessHandle(const BufferBinding& bindlessResource
     return buffer.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
 }
 
-std::vector<BindlessHandle> Graphics::GetBindlessHandles(std::span<const ResourceBinding> bindlessResources)
+std::vector<BindlessHandle> Graphics::GetBindlessHandles(Span<const ResourceBinding> bindlessResources)
 {
     std::vector<BindlessHandle> handles;
     handles.reserve(bindlessResources.size());
@@ -395,11 +319,72 @@ std::vector<BindlessHandle> Graphics::GetBindlessHandles(std::span<const Resourc
     return handles;
 }
 
+SyncToken Graphics::Submit(CommandContext& ctx, std::span<SyncToken> dependencies)
+{
+    PrepareCommandContextForSubmission(ctx);
+
+    std::vector<SyncToken> syncTokens = rhi.Submit({ &ctx.cmdList, 1 }, dependencies);
+
+    // Enqueue the command context's temporary resources for destruction.
+    for (Buffer& tempBuffer : ctx.temporaryResources)
+    {
+        DestroyBuffer(tempBuffer);
+    }
+
+    commandPool->OnCommandListsSubmitted({ &ctx.cmdList, 1 }, syncTokens);
+
+    // Users will not necessarily present (in the case we don't have a swapchain). So we instead cleanup our
+    // resources at this point.
+    CleanupResources();
+
+    VEX_ASSERT(syncTokens.size() == 1);
+    return syncTokens[0];
+}
+
+std::vector<SyncToken> Graphics::Submit(std::span<const NonNullPtr<CommandContext>> ctxSpan,
+                                        std::span<SyncToken> dependencies)
+{
+    VEX_CHECK(!ctxSpan.empty(), "You must submit at least one command context...");
+
+    std::vector<NonNullPtr<RHICommandList>> rhiCommandLists;
+    rhiCommandLists.reserve(ctxSpan.size());
+
+    for (NonNullPtr<CommandContext> ctx : ctxSpan)
+    {
+        PrepareCommandContextForSubmission(*ctx);
+        rhiCommandLists.emplace_back(ctx->cmdList);
+    }
+
+    // Submit all the command contexts together.
+    std::vector<SyncToken> syncTokens = rhi.Submit(rhiCommandLists, dependencies);
+    
+    for (NonNullPtr<CommandContext> ctx : ctxSpan)
+    {
+        // Enqueue the command context's temporary resources for destruction.
+        for (Buffer& tempBuffer : ctx->temporaryResources)
+        {
+            DestroyBuffer(tempBuffer);
+        }
+    }
+
+    commandPool->OnCommandListsSubmitted(rhiCommandLists, syncTokens);
+
+    // Users will not necessarily present (in the case we don't have a swapchain). So we instead cleanup our
+    // resources at this point.
+    CleanupResources();
+
+    return syncTokens;
+}
+
+std::vector<SyncToken> Graphics::Submit(std::initializer_list<const NonNullPtr<CommandContext>> ctxs,
+                                        std::span<SyncToken> dependencies)
+{
+    return Submit(std::span(ctxs), dependencies);
+}
+
 void Graphics::FlushGPU()
 {
     VEX_LOG(Info, "Forcing a GPU flush...");
-
-    SubmitDeferredWork();
 
     rhi.FlushGPU();
 
@@ -483,7 +468,7 @@ bool Graphics::IsTokenComplete(const SyncToken& token) const
     return rhi.IsTokenComplete(token);
 }
 
-bool Graphics::AreTokensComplete(std::span<const SyncToken> tokens) const
+bool Graphics::AreTokensComplete(Span<const SyncToken> tokens) const
 {
     for (const auto& token : tokens)
     {
@@ -526,7 +511,7 @@ void Graphics::SetShaderCompilationErrorsCallback(std::function<ShaderCompileErr
     }
 }
 
-void Graphics::SetSamplers(std::span<const TextureSampler> newSamplers)
+void Graphics::SetSamplers(Span<const TextureSampler> newSamplers)
 {
     // TODO(https://trello.com/c/T1DY4QOT): This is not the cleanest, we need a linear sampler for the mip generation
     // shader, so we add it to the end of the users samplers. Instead we should probably have a way to declare a
@@ -603,7 +588,7 @@ void Graphics::RecreatePresentTextures()
         }
     }
 
-    auto ctx = BeginScopedCommandContext(vex::QueueType::Graphics, vex::SubmissionPolicy::Immediate);
+    CommandContext ctx = CreateCommandContext(QueueType::Graphics);
 
     // Clear current present textures.
     for (const Texture& tex : presentTextures)
@@ -629,6 +614,8 @@ void Graphics::RecreatePresentTextures()
         // Force the present textures to start zeroed out.
         ctx.ClearTexture({ .texture = presentTextures[presentTextureIndex] });
     }
+
+    Submit(ctx);
 }
 
 } // namespace vex

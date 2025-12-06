@@ -5,8 +5,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-#include <Vex/Formattable.h>
-
 float* hdrData;
 vex::i32 hdrWidth, hdrHeight, hdrChannels;
 
@@ -15,14 +13,8 @@ static constexpr vex::u32 FloatRGBANumChannels = 4;
 HDRApplication::HDRApplication()
     : ExampleApplication("HDRApplication", hdrWidth * 1.5f, hdrHeight * 1.5f, false)
 {
-#if defined(_WIN32)
-    vex::PlatformWindowHandle platformWindow = { .window = glfwGetWin32Window(window) };
-#elif defined(__linux__)
-    vex::PlatformWindowHandle platformWindow{ .window = glfwGetX11Window(window), .display = glfwGetX11Display() };
-#endif
-
     graphics = vex::MakeUnique<vex::Graphics>(vex::GraphicsCreateDesc{
-        .platformWindow = { .windowHandle = platformWindow,
+        .platformWindow = { .windowHandle = GetPlatformWindowHandle(),
                             .width = static_cast<vex::u32>(width),
                             .height = static_cast<vex::u32>(height) },
         .useSwapChain = true,
@@ -39,21 +31,19 @@ HDRApplication::HDRApplication()
                                                                                vex::TextureUsage::ShaderRead));
 
     // Upload the HDR image to the GPU.
-    {
-        vex::CommandContext ctx =
-            graphics->BeginScopedCommandContext(vex::QueueType::Graphics, vex::SubmissionPolicy::Immediate);
+    vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
 
-        ctx.EnqueueDataUpload(
-            hdrTexture,
-            std::span<const vex::byte>{ reinterpret_cast<vex::byte*>(hdrData),
-                                        hdrWidth * hdrHeight * FloatRGBANumChannels * sizeof(float) });
+    ctx.EnqueueDataUpload(hdrTexture,
+                          std::span<const vex::byte>{ reinterpret_cast<vex::byte*>(hdrData),
+                                                      hdrWidth * hdrHeight * FloatRGBANumChannels * sizeof(float) });
 
-        // Now keep the texture in a shader read state.
-        ctx.Barrier(hdrTexture,
-                    vex::RHIBarrierSync::AllCommands,
-                    vex::RHIBarrierAccess::ShaderRead,
-                    vex::RHITextureLayout::ShaderResource);
-    }
+    // Now keep the texture in a shader read state.
+    ctx.Barrier(hdrTexture,
+                vex::RHIBarrierSync::AllCommands,
+                vex::RHIBarrierAccess::ShaderRead,
+                vex::RHITextureLayout::ShaderResource);
+
+    graphics->Submit(ctx);
 
     std::array samplers{
         vex::TextureSampler::CreateSampler(vex::FilterMode::Linear, vex::AddressMode::Clamp),
@@ -71,7 +61,7 @@ void HDRApplication::Run()
             vex::u32 texWidth = hdrTexture.desc.width * 0.75f;
             vex::u32 texHeight = hdrTexture.desc.height * 0.75f;
 
-            vex::CommandContext ctx = graphics->BeginScopedCommandContext(vex::QueueType::Graphics);
+            vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
 
             vex::TextureBinding renderTarget = { .texture = graphics->GetCurrentPresentTexture(), .isSRGB = false };
             ctx.ClearTexture(renderTarget);
@@ -125,6 +115,8 @@ void HDRApplication::Run()
             ctx.SetViewport(texWidth, texHeight, texWidth, texHeight);
             ctx.Draw(drawDesc, { .renderTargets = { &renderTarget, 1 } }, vex::ConstantBinding{ data }, 3);
 #endif
+
+            graphics->Submit(ctx);
         }
 
         graphics->Present(windowMode == Fullscreen);

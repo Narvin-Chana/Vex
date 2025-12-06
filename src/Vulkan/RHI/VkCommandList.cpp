@@ -4,7 +4,7 @@
 #include <cmath>
 
 #include <Vex/Bindings.h>
-#include <Vex/ByteUtils.h>
+#include <Vex/Utility/ByteUtils.h>
 #include <Vex/DrawHelpers.h>
 #include <Vex/PhysicalDevice.h>
 
@@ -100,13 +100,9 @@ static ::vk::ImageMemoryBarrier2 MergeBarriers(const ::vk::ImageMemoryBarrier2& 
 }
 
 static std::vector<::vk::BufferImageCopy> GetBufferImageCopyFromBufferToImageDescriptions(
-    const RHITexture& texture, std::span<const BufferTextureCopyDesc> descriptions)
+    const RHITexture& texture, Span<const BufferTextureCopyDesc> descriptions)
 {
-    const ::vk::ImageAspectFlags dstAspectMask =
-        FormatUtil::IsDepthStencilCompatible(texture.GetDesc().format)
-            ? ::vk::ImageAspectFlagBits::eDepth | ::vk::ImageAspectFlagBits::eStencil
-            : ::vk::ImageAspectFlagBits::eColor;
-
+    ::vk::ImageAspectFlags aspectFlag = VkTextureUtil::GetFormatAspectFlags(texture.GetDesc().format);
     float pixelByteSize = TextureUtil::GetPixelByteSizeFromFormat(texture.GetDesc().format);
 
     std::vector<::vk::BufferImageCopy> regions;
@@ -124,7 +120,7 @@ static std::vector<::vk::BufferImageCopy> GetBufferImageCopyFromBufferToImageDes
             .bufferImageHeight = 0,
             .imageSubresource =
                 ::vk::ImageSubresourceLayers{
-                    .aspectMask = dstAspectMask,
+                    .aspectMask = aspectFlag,
                     .mipLevel = textureRegion.subresource.startMip,
                     .baseArrayLayer = textureRegion.subresource.startSlice,
                     .layerCount = textureRegion.subresource.GetSliceCount(texture.GetDesc()),
@@ -144,18 +140,12 @@ static std::vector<::vk::BufferImageCopy> GetBufferImageCopyFromBufferToImageDes
 
 void VkCommandList::Open()
 {
-    if (isOpen)
-    {
-        VEX_LOG(Fatal, "Attempting to open an already open command list.");
-        return;
-    }
-
     VEX_VK_CHECK << commandBuffer->reset();
 
     constexpr ::vk::CommandBufferBeginInfo beginInfo{};
     VEX_VK_CHECK << commandBuffer->begin(beginInfo);
 
-    isOpen = true;
+    RHICommandListBase::Open();
 }
 
 void VkCommandList::Close()
@@ -163,8 +153,6 @@ void VkCommandList::Close()
     RHICommandListBase::Close();
 
     VEX_VK_CHECK << commandBuffer->end();
-
-    isOpen = false;
 }
 
 void VkCommandList::SetViewport(float x, float y, float width, float height, float minDepth, float maxDepth)
@@ -208,7 +196,7 @@ void VkCommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTracin
 
 void VkCommandList::SetLayout(RHIResourceLayout& layout)
 {
-    std::span<const byte> localConstantsData = layout.GetLocalConstantsData();
+    Span<const byte> localConstantsData = layout.GetLocalConstantsData();
     if (localConstantsData.empty())
     {
         return;
@@ -269,32 +257,6 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
         .layerCount = binding.binding.subresource.GetSliceCount(binding.texture->GetDesc()),
     };
 
-    // const TextureDesc& desc = binding.texture->GetDesc();
-    // if (desc.usage & TextureUsage::RenderTarget && clearValue.flags & TextureClear::ClearColor)
-    // {
-    //     ::vk::ClearAttachment clearAttachment{
-    //         .aspectMask = static_cast<::vk::ImageAspectFlagBits>(clearValue.flags),
-    //         .colorAttachment = 0, // TODO: replace with correct attachment index?
-    //         .clearValue{
-    //             .color = ::vk::ClearColorValue{
-    //                 .float32 = clearValue.color
-    //             }
-    //         }
-    //     };
-    //
-    //     ::vk::ClearRect clearRect{
-    //         .rect = ::vk::Rect2D{
-    //             .offset = ::vk::Offset2D{ 0, 0 },
-    //             .extent = ::vk::Extent2D{ desc.width, desc.height }
-    //         },
-    //         .baseArrayLayer = clearBinding.startSlice,
-    //         .layerCount = layerCount,
-    //     };
-    //
-    //     commandBuffer->clearAttachments(1, &clearAttachment, 1, &clearRect);
-    // }
-    // else
-
     if (usage == TextureUsage::DepthStencil &&
         clearValue.flags & (TextureClear::ClearDepth | TextureClear::ClearStencil))
     {
@@ -319,8 +281,8 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
     }
 }
 
-void VkCommandList::Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
-                            std::span<const RHITextureBarrier> textureBarriers)
+void VkCommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers,
+                            Span<const RHITextureBarrier> textureBarriers)
 {
     std::vector<::vk::BufferMemoryBarrier2> vkBufferBarriers;
     vkBufferBarriers.reserve(bufferBarriers.size());
@@ -564,7 +526,7 @@ void VkCommandList::DrawIndexed(
     commandBuffer->drawIndexed(indexCount, instanceCount, indexOffset, vertexOffset, instanceOffset);
 }
 
-void VkCommandList::SetVertexBuffers(u32 startSlot, std::span<RHIBufferBinding> vertexBuffers)
+void VkCommandList::SetVertexBuffers(u32 startSlot, Span<const RHIBufferBinding> vertexBuffers)
 {
     std::vector<::vk::Buffer> vkBuffers;
     vkBuffers.reserve(vertexBuffers.size());
@@ -719,7 +681,7 @@ void VkCommandList::ResolveTimestampQueries(u32 firstQuery, u32 queryCount)
                                         ::vk::QueryResultFlagBits::e64 | ::vk::QueryResultFlagBits::eWait);
 }
 
-void VkCommandList::Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDesc> textureCopyDescriptions)
+void VkCommandList::Copy(RHITexture& src, RHITexture& dst, Span<const TextureCopyDesc> textureCopyDescriptions)
 {
     const auto& srcDesc = src.desc;
     const auto& dstDesc = dst.desc;
@@ -766,7 +728,7 @@ void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDesc& b
     commandBuffer->copyBuffer(src.GetNativeBuffer(), dst.GetNativeBuffer(), 1, &copy);
 }
 
-void VkCommandList::Copy(RHIBuffer& src, RHITexture& dst, std::span<const BufferTextureCopyDesc> copyDescriptions)
+void VkCommandList::Copy(RHIBuffer& src, RHITexture& dst, Span<const BufferTextureCopyDesc> copyDescriptions)
 {
     auto regions = CommandList_Internal::GetBufferImageCopyFromBufferToImageDescriptions(dst, copyDescriptions);
 
@@ -777,8 +739,12 @@ void VkCommandList::Copy(RHIBuffer& src, RHITexture& dst, std::span<const Buffer
                                      regions.data());
 }
 
-void VkCommandList::Copy(RHITexture& src, RHIBuffer& dst, std::span<const BufferTextureCopyDesc> copyDescriptions)
+void VkCommandList::Copy(RHITexture& src, RHIBuffer& dst, Span<const BufferTextureCopyDesc> copyDescriptions)
 {
+    VEX_CHECK(!FormatUtil::SupportsStencil(src.GetDesc().format),
+              "DepthStencil image copy to buffer is not supported directly. The only supported aspects are either "
+              "Color or Depth.");
+
     auto regions = CommandList_Internal::GetBufferImageCopyFromBufferToImageDescriptions(src, copyDescriptions);
 
     commandBuffer->copyImageToBuffer(src.GetResource(),
@@ -787,9 +753,10 @@ void VkCommandList::Copy(RHITexture& src, RHIBuffer& dst, std::span<const Buffer
                                      static_cast<u32>(regions.size()),
                                      regions.data());
 }
+
 RHIScopedGPUEvent VkCommandList::CreateScopedMarker(const char* label, std::array<float, 3> labelColor)
 {
-    return { *commandBuffer, label, labelColor };
+    return { *this, label, labelColor };
 }
 
 VkCommandList::VkCommandList(NonNullPtr<VkGPUContext> ctx, ::vk::UniqueCommandBuffer&& commandBuffer, QueueType type)

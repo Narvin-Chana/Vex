@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <Vex/NonNullPtr.h>
+#include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHICommandList.h>
 #include <RHI/RHITimestampQueryPool.h>
@@ -41,8 +41,8 @@ public:
                               TextureUsage::Type usage,
                               const TextureClearValue& clearValue) override;
 
-    virtual void Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
-                         std::span<const RHITextureBarrier> textureBarriers) override;
+    virtual void Barrier(Span<const RHIBufferBarrier> bufferBarriers,
+                         Span<const RHITextureBarrier> textureBarriers) override;
 
     virtual void BeginRendering(const RHIDrawResources& resources) override;
     virtual void EndRendering() override;
@@ -51,7 +51,7 @@ public:
     virtual void DrawIndexed(
         u32 indexCount, u32 instanceCount, u32 indexOffset, u32 vertexOffset, u32 instanceOffset) override;
 
-    virtual void SetVertexBuffers(u32 startSlot, std::span<RHIBufferBinding> vertexBuffers) override;
+    virtual void SetVertexBuffers(u32 startSlot, Span<const RHIBufferBinding> vertexBuffers) override;
     virtual void SetIndexBuffer(const RHIBufferBinding& indexBuffer) override;
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount) override;
@@ -66,10 +66,10 @@ public:
     virtual void ResolveTimestampQueries(u32 firstQuery, u32 queryCount) override;
 
     using RHICommandListBase::Copy;
-    virtual void Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDesc> textureCopyDesc) override;
+    virtual void Copy(RHITexture& src, RHITexture& dst, Span<const TextureCopyDesc> textureCopyDesc) override;
     virtual void Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDesc& bufferCopyDesc) override;
-    virtual void Copy(RHIBuffer& src, RHITexture& dst, std::span<const BufferTextureCopyDesc> copyDesc) override;
-    virtual void Copy(RHITexture& src, RHIBuffer& dst, std::span<const BufferTextureCopyDesc> copyDesc) override;
+    virtual void Copy(RHIBuffer& src, RHITexture& dst, Span<const BufferTextureCopyDesc> copyDesc) override;
+    virtual void Copy(RHITexture& src, RHIBuffer& dst, Span<const BufferTextureCopyDesc> copyDesc) override;
 
     ::vk::CommandBuffer GetNativeCommandList()
     {

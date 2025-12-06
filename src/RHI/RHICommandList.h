@@ -1,7 +1,7 @@
 #pragma once
 
 #include <array>
-#include <span>
+#include <Vex/Containers/Span.h>
 #include <utility>
 #include <vector>
 
@@ -38,7 +38,7 @@ public:
     {
     }
 
-    virtual void Open() = 0;
+    virtual void Open();
     virtual void Close();
 
     virtual void SetViewport(
@@ -59,8 +59,8 @@ public:
 
     void BufferBarrier(RHIBuffer& buffer, RHIBarrierSync sync, RHIBarrierAccess access);
     void TextureBarrier(RHITexture& texture, RHIBarrierSync sync, RHIBarrierAccess access, RHITextureLayout layout);
-    virtual void Barrier(std::span<const RHIBufferBarrier> bufferBarriers,
-                         std::span<const RHITextureBarrier> textureBarriers) = 0;
+    virtual void Barrier(Span<const RHIBufferBarrier> bufferBarriers,
+                         Span<const RHITextureBarrier> textureBarriers) = 0;
 
     // Need to be called before and after all draw commands with the same DrawBinding
     virtual void BeginRendering(const RHIDrawResources& resources) = 0;
@@ -70,7 +70,7 @@ public:
     virtual void DrawIndexed(
         u32 indexCount, u32 instanceCount = 1, u32 indexOffset = 0, u32 vertexOffset = 0, u32 instanceOffset = 0) = 0;
 
-    virtual void SetVertexBuffers(u32 startSlot, std::span<RHIBufferBinding> vertexBuffers) = 0;
+    virtual void SetVertexBuffers(u32 startSlot, Span<const RHIBufferBinding> vertexBuffers) = 0;
     virtual void SetIndexBuffer(const RHIBufferBinding& indexBuffer) = 0;
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount) = 0;
@@ -88,7 +88,7 @@ public:
     // format, etc...
     virtual void Copy(RHITexture& src, RHITexture& dst);
     // Copies from src to dst the various copy descriptions.
-    virtual void Copy(RHITexture& src, RHITexture& dst, std::span<const TextureCopyDesc> textureCopyDescriptions) = 0;
+    virtual void Copy(RHITexture& src, RHITexture& dst, Span<const TextureCopyDesc> textureCopyDescriptions) = 0;
     // Copies the whole contents of src to dst. Buffers need to have the same byte size.
     virtual void Copy(RHIBuffer& src, RHIBuffer& dst);
     // Copies the buffer from src to dst.
@@ -98,12 +98,12 @@ public:
     // be in the buffer.
     virtual void Copy(RHIBuffer& src, RHITexture& dst);
     // Copies the different regions of buffers to dst texture regions.
-    virtual void Copy(RHIBuffer& src, RHITexture& dst, std::span<const BufferTextureCopyDesc> copyDescs) = 0;
+    virtual void Copy(RHIBuffer& src, RHITexture& dst, Span<const BufferTextureCopyDesc> copyDescs) = 0;
 
     // Copies a texture into a buffer.
     virtual void Copy(RHITexture& src, RHIBuffer& dst);
     // Copies a texture into a buffer using copyDescs.
-    virtual void Copy(RHITexture& src, RHIBuffer& dst, std::span<const BufferTextureCopyDesc> copyDescs) = 0;
+    virtual void Copy(RHITexture& src, RHIBuffer& dst, Span<const BufferTextureCopyDesc> copyDescs) = 0;
 
     virtual RHIScopedGPUEvent CreateScopedMarker(const char* label, std::array<float, 3> labelColor) = 0;
 
@@ -121,11 +121,11 @@ public:
         state = newState;
     }
 
-    std::span<const SyncToken> GetSyncTokens() const
+    Span<const SyncToken> GetSyncTokens() const
     {
         return syncTokens;
     }
-    void SetSyncTokens(std::span<SyncToken> tokens);
+    void SetSyncTokens(Span<const SyncToken> tokens);
 
     bool IsOpen() const
     {

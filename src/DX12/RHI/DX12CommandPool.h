@@ -4,7 +4,7 @@
 #include <mutex>
 #include <vector>
 
-#include <Vex/UniqueHandle.h>
+#include <Vex/Utility/UniqueHandle.h>
 
 #include <RHI/RHI.h>
 #include <RHI/RHICommandPool.h>

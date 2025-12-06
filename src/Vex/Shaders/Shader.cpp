@@ -10,7 +10,7 @@ Shader::Shader(const ShaderKey& key)
 
 Shader::~Shader() = default;
 
-std::span<const byte> Shader::GetBlob() const
+Span<const byte> Shader::GetBlob() const
 {
     return res.compiledCode;
 }
@@ -24,9 +24,10 @@ bool Shader::NeedsRecompile() const
 {
     return isDirty && !isErrored;
 }
-const ShaderReflection& Shader::GetReflection() const
+
+const ShaderReflection* Shader::GetReflection() const
 {
-    return res.reflection;
+    return res.reflection ? &*res.reflection : nullptr;
 }
 
 void Shader::MarkDirty()

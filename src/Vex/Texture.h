@@ -2,10 +2,10 @@
 
 #include <string>
 
-#include <Vex/EnumFlags.h>
+#include <Vex/Utility/EnumFlags.h>
 #include <Vex/Formats.h>
-#include <Vex/Handle.h>
-#include <Vex/Hash.h>
+#include <Vex/Utility/Handle.h>
+#include <Vex/Utility/Hash.h>
 #include <Vex/Resource.h>
 #include <Vex/Types.h>
 
@@ -80,11 +80,11 @@ struct TextureDesc
     TextureClearValue clearValue;
     ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly;
 
-    [[nodiscard]] u32 GetDepth() const noexcept
+    [[nodiscard]] u32 GetDepth() const
     {
         return type == TextureType::Texture3D ? depthOrSliceCount : 1;
     }
-    [[nodiscard]] u32 GetSliceCount() const noexcept
+    [[nodiscard]] u32 GetSliceCount() const
     {
         if (type == TextureType::Texture3D)
         {
@@ -153,7 +153,7 @@ struct TextureDesc
 
 // Strongly defined type represents a texture.
 // We use a struct (instead of a typedef/using) to enforce compile-time correctness of handles.
-struct TextureHandle : public Handle<TextureHandle>
+struct TextureHandle : public Handle64<TextureHandle>
 {
 };
 
@@ -242,13 +242,13 @@ TextureViewType GetTextureViewType(const TextureBinding& binding);
 void ValidateTextureDescription(const TextureDesc& desc);
 float GetPixelByteSizeFromFormat(TextureFormat format);
 
-u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, std::span<const TextureRegion> uploadRegions);
-u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, std::span<const TextureRegion> uploadRegions);
+u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions);
+u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions);
 
 bool IsBindingUsageCompatibleWithUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage);
 
-void ValidateSubresource(const TextureSubresource& subresource, const TextureDesc& desc);
-void ValidateRegion(const TextureRegion& region, const TextureDesc& desc);
+void ValidateSubresource(const TextureDesc& desc, const TextureSubresource& subresource);
+void ValidateRegion(const TextureDesc& desc, const TextureRegion& region);
 void ValidateCopyDesc(const TextureDesc& srcDesc, const TextureDesc& dstDesc, const TextureCopyDesc& copyDesc);
 void ValidateCompatibleTextureDescs(const TextureDesc& srcDesc, const TextureDesc& dstDesc);
 

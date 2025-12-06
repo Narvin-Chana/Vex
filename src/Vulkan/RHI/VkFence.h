@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Vex/NonNullPtr.h>
+#include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIFence.h>
 

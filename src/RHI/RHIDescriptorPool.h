@@ -30,7 +30,7 @@ protected:
     struct BindlessAllocation
     {
         std::vector<u8> generations;
-        FreeListAllocator handles;
+        FreeListAllocator32 handles;
     };
     BindlessAllocation allocator;
 };

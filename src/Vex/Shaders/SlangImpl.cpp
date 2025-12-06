@@ -18,7 +18,10 @@
 namespace vex
 {
 
-TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
+namespace SlangImpl_Internal
+{
+
+static TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
 {
     auto kind = type->getKind();
 
@@ -36,6 +39,7 @@ TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
                 return TextureFormat::RGB32_FLOAT;
             case 4:
                 return TextureFormat::RGBA32_FLOAT;
+            default:;
             }
         case slang::TypeReflection::ScalarType::Float16:
             switch (count)
@@ -44,6 +48,7 @@ TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
                 return TextureFormat::RG16_FLOAT;
             case 4:
                 return TextureFormat::RGBA16_FLOAT;
+            default:;
             }
         case slang::TypeReflection::ScalarType::Int32:
             switch (count)
@@ -54,6 +59,7 @@ TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
                 return TextureFormat::RGB32_SINT;
             case 4:
                 return TextureFormat::RGBA32_SINT;
+            default:;
             }
         case slang::TypeReflection::ScalarType::Int16:
             switch (count)
@@ -62,6 +68,7 @@ TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
                 return TextureFormat::RG16_SINT;
             case 4:
                 return TextureFormat::RGBA16_SINT;
+            default:;
             }
         case slang::TypeReflection::ScalarType::Int8:
             switch (count)
@@ -70,6 +77,7 @@ TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
                 return TextureFormat::RG8_SINT;
             case 4:
                 return TextureFormat::RGBA8_SINT;
+            default:;
             }
         case slang::TypeReflection::ScalarType::UInt32:
             switch (count)
@@ -80,6 +88,7 @@ TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
                 return TextureFormat::RGB32_UINT;
             case 4:
                 return TextureFormat::RGBA32_UINT;
+            default:;
             }
         case slang::TypeReflection::ScalarType::UInt16:
             switch (count)
@@ -88,6 +97,7 @@ TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
                 return TextureFormat::RG16_UINT;
             case 4:
                 return TextureFormat::RGBA16_UINT;
+            default:;
             }
         case slang::TypeReflection::ScalarType::UInt8:
             switch (count)
@@ -96,7 +106,9 @@ TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
                 return TextureFormat::RG8_UINT;
             case 4:
                 return TextureFormat::RGBA8_UINT;
+            default:;
             }
+        default:;
         }
     }
     else if (kind == slang::TypeReflection::Kind::Scalar)
@@ -121,23 +133,31 @@ TextureFormat SlangTypeToFormat(slang::TypeReflection* type)
             return TextureFormat::R16_UINT;
         case slang::TypeReflection::ScalarType::UInt8:
             return TextureFormat::R8_UINT;
+        default:;
         }
     }
 
     return TextureFormat::UNKNOWN;
 }
 
-ShaderReflection GetSlangReflection(slang::IComponentType* program)
+static ShaderReflection GetSlangReflection(slang::IComponentType* program)
 {
     slang::ProgramLayout* reflection = program->getLayout();
     slang::EntryPointReflection* entryPoint = reflection->getEntryPointByIndex(0);
 
     ShaderReflection reflectionData;
 
+    auto TryAddShaderInput = [&reflectionData](const ShaderReflection::Input& input)
+    {
+        if (!ShaderUtil::IsBuiltInSemantic(input.semanticName))
+        {
+            reflectionData.inputs.push_back(input);
+        }
+    };
+
     for (u32 i = 0; i < entryPoint->getParameterCount(); ++i)
     {
         slang::VariableLayoutReflection* param = entryPoint->getParameterByIndex(i);
-
         if (param->getCategory() == slang::VaryingInput)
         {
             // If semantic name is null we need to look into the struct for the vertex input semantics
@@ -147,16 +167,16 @@ ShaderReflection GetSlangReflection(slang::IComponentType* program)
                 for (u32 j = 0; j < paramLayout->getFieldCount(); j++)
                 {
                     slang::VariableLayoutReflection* field = paramLayout->getFieldByIndex(j);
-                    reflectionData.inputs.emplace_back(field->getSemanticName(),
-                                                       static_cast<u32>(field->getSemanticIndex()),
-                                                       SlangTypeToFormat(field->getType()));
+                    TryAddShaderInput({ field->getSemanticName(),
+                                        static_cast<u32>(field->getSemanticIndex()),
+                                        SlangTypeToFormat(field->getType()) });
                 }
             }
             else
             {
-                reflectionData.inputs.emplace_back(param->getSemanticName(),
-                                                   static_cast<u32>(param->getSemanticIndex()),
-                                                   SlangTypeToFormat(param->getType()));
+                TryAddShaderInput({ param->getSemanticName(),
+                                    static_cast<u32>(param->getSemanticIndex()),
+                                    SlangTypeToFormat(param->getType()) });
             }
         }
     }
@@ -164,11 +184,11 @@ ShaderReflection GetSlangReflection(slang::IComponentType* program)
     return reflectionData;
 }
 
+} // namespace SlangImpl_Internal
+
 SlangCompilerImpl::SlangCompilerImpl(std::vector<std::filesystem::path> incDirs)
     : CompilerBase(std::move(incDirs))
 {
-    FeatureChecker* featureChecker = GPhysicalDevice->featureChecker.get();
-
     slang::createGlobalSession(globalSession.writeRef());
 }
 
@@ -177,7 +197,15 @@ SlangCompilerImpl::~SlangCompilerImpl() = default;
 std::expected<ShaderCompilationResult, std::string> SlangCompilerImpl::CompileShader(
     const Shader& shader, ShaderEnvironment& shaderEnv, const ShaderCompilerSettings& compilerSettings) const
 {
-    if (shader.key.path.extension() != ".slang")
+    const bool useFilepath = !shader.key.path.empty();
+    if (useFilepath && !shader.key.sourceCode.empty())
+    {
+        VEX_LOG(Warning,
+                "Shader {} has both a shader filepath and shader source string. Using the filepath for compilation...",
+                shader.key);
+    }
+
+    if (useFilepath && shader.key.path.extension() != ".slang")
     {
         VEX_LOG(Fatal,
                 "Slang shaders must use a .slang file format, your extension: {}!",
@@ -188,8 +216,23 @@ std::expected<ShaderCompilationResult, std::string> SlangCompilerImpl::CompileSh
 
     Slang::ComPtr<ISlangBlob> diagnostics;
 
-    // loadModule compiles the shader with the passed-in name (searches in the IFileSystem).
-    slang::IModule* module = session->loadModule(shader.key.path.string().c_str(), diagnostics.writeRef());
+    slang::IModule* module = nullptr;
+    if (useFilepath)
+    {
+        // loadModule compiles the shader with the passed-in name (searches in the IFileSystem).
+        module = session->loadModule(shader.key.path.string().c_str(), diagnostics.writeRef());
+    }
+    else
+    {
+        // Used for identifying the shader inside the session.
+        // Should be unique per compilation session, which is why we give it a slightly convoluted name.
+        constexpr const char* moduleName = "VEX_InlineShaderModule";
+        module = session->loadModuleFromSourceString(moduleName,
+                                                     nullptr,
+                                                     shader.key.sourceCode.c_str(),
+                                                     diagnostics.writeRef());
+    }
+
     if (!module || diagnostics)
     {
         return std::unexpected(
@@ -210,8 +253,6 @@ std::expected<ShaderCompilationResult, std::string> SlangCompilerImpl::CompileSh
     {
         return std::unexpected("Unable to create composite component type.");
     }
-
-    // TODO: this is where reflection would be done (using program)
 
     Slang::ComPtr<slang::IComponentType> linkedProgram;
     diagnostics = nullptr;
@@ -242,7 +283,12 @@ std::expected<ShaderCompilationResult, std::string> SlangCompilerImpl::CompileSh
     finalShaderBlob.resize(blobSize);
     std::memcpy(finalShaderBlob.data(), bytecodeBlob->getBufferPointer(), blobSize);
 
-    return ShaderCompilationResult{ finalShaderBlob, GetSlangReflection(linkedProgram) };
+    std::optional<ShaderReflection> reflection;
+    if (ShaderUtil::CanReflectShaderType(shader.key.type))
+    {
+        reflection = SlangImpl_Internal::GetSlangReflection(linkedProgram);
+    }
+    return ShaderCompilationResult{ finalShaderBlob, reflection };
 }
 
 void SlangCompilerImpl::FillInIncludeDirectories(std::vector<std::string>& includeDirStrings,

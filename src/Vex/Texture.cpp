@@ -3,10 +3,10 @@
 #include <cmath>
 
 #include <Vex/Bindings.h>
-#include <Vex/ByteUtils.h>
-#include <Vex/Formattable.h>
+#include <Vex/Utility/Formattable.h>
 #include <Vex/Logger.h>
-#include <Vex/Validation.h>
+#include <Vex/Utility/ByteUtils.h>
+#include <Vex/Utility/Validation.h>
 
 namespace vex
 {
@@ -167,7 +167,7 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
     return 0;
 }
 
-u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, std::span<const TextureRegion> uploadRegions)
+u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions)
 {
     const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
     float totalSize = 0;
@@ -175,7 +175,7 @@ u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, std::span<const 
     for (const TextureRegion& region : uploadRegions)
     {
         const u32 sliceCount = region.subresource.GetSliceCount(desc);
-        
+
         VEX_CHECK(region.subresource.startSlice + sliceCount <= desc.GetSliceCount(),
                   "Cannot upload to a slice index ({}) greater or equal to the the texture's slice count ({})!",
                   region.subresource.startSlice + sliceCount,
@@ -199,7 +199,7 @@ u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, std::span<const 
     return static_cast<u64>(std::ceil(totalSize));
 }
 
-u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, std::span<const TextureRegion> uploadRegions)
+u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions)
 {
     // Pixel byte size could be less than 1 (BlockCompressed formats).
     const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
@@ -208,7 +208,7 @@ u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, std::span<const Te
     for (const TextureRegion& region : uploadRegions)
     {
         const u32 sliceCount = region.subresource.GetSliceCount(desc);
-        
+
         VEX_CHECK(region.subresource.startSlice + sliceCount <= desc.GetSliceCount(),
                   "Cannot upload to a slice index ({}) greater or equal to the the texture's slice count ({})!",
                   region.subresource.startSlice + sliceCount,
@@ -245,7 +245,7 @@ bool IsBindingUsageCompatibleWithUsage(TextureUsage::Flags usages, TextureBindin
     return true;
 }
 
-void ValidateSubresource(const TextureSubresource& subresource, const TextureDesc& desc)
+void ValidateSubresource(const TextureDesc& desc, const TextureSubresource& subresource)
 {
     VEX_CHECK(subresource.startMip < desc.mips,
               "Invalid subresource for resource \"{}\": The subresource's startMip ({}) cannot be larger than the "
@@ -288,9 +288,9 @@ void ValidateSubresource(const TextureSubresource& subresource, const TextureDes
     }
 }
 
-void ValidateRegion(const TextureRegion& region, const TextureDesc& desc)
+void ValidateRegion(const TextureDesc& desc, const TextureRegion& region)
 {
-    ValidateSubresource(region.subresource, desc);
+    ValidateSubresource(desc, region.subresource);
 
     // If any of the extents is not set to GTextureExtentMax, we validate that the underlying subresource only has 1
     // mip! (this requires a span of regions, since the extent is only valid for one mip).
@@ -343,8 +343,8 @@ void ValidateRegion(const TextureRegion& region, const TextureDesc& desc)
 
 void ValidateCopyDesc(const TextureDesc& srcDesc, const TextureDesc& dstDesc, const TextureCopyDesc& copyDesc)
 {
-    ValidateRegion(copyDesc.srcRegion, srcDesc);
-    ValidateRegion(copyDesc.dstRegion, dstDesc);
+    ValidateRegion(srcDesc, copyDesc.srcRegion);
+    ValidateRegion(dstDesc, copyDesc.dstRegion);
     VEX_CHECK(copyDesc.srcRegion.extent == copyDesc.dstRegion.extent,
               "A texture copy's src and dst extents should match!");
 }

@@ -2,18 +2,19 @@
 
 #include <WinPixEventRuntime/pix3.h>
 
+#include <DX12/RHI/DX12CommandList.h>
+
 namespace vex::dx12
 {
 
-DX12ScopedGPUEvent::DX12ScopedGPUEvent(const ComPtr<ID3D12GraphicsCommandList>& commandList,
+DX12ScopedGPUEvent::DX12ScopedGPUEvent(NonNullPtr<DX12CommandList> commandList,
                                        const char* label,
                                        std::array<float, 3> color)
-    : RHIScopedGPUEventBase(label, color)
-    , cmdList{ commandList }
+    : RHIScopedGPUEventBase(commandList, label, color)
 {
     if (GEnableGPUScopedEvents)
     {
-        PIXBeginEvent(cmdList.Get(),
+        PIXBeginEvent(commandList->GetNativeCommandList().Get(),
                       PIX_COLOR(static_cast<BYTE>(color[0] * 255.0f),
                                 static_cast<BYTE>(color[1] * 255.0f),
                                 static_cast<BYTE>(color[2] * 255.0f)),
@@ -25,7 +26,7 @@ DX12ScopedGPUEvent::~DX12ScopedGPUEvent()
 {
     if (emitMarker && GEnableGPUScopedEvents)
     {
-        PIXEndEvent(cmdList.Get());
+        PIXEndEvent(commandList->GetNativeCommandList().Get());
     }
 }
 

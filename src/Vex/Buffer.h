@@ -2,11 +2,11 @@
 
 #include <string>
 
-#include <Vex/EnumFlags.h>
-#include <Vex/Handle.h>
 #include <Vex/Logger.h>
 #include <Vex/Resource.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/EnumFlags.h>
+#include <Vex/Utility/Handle.h>
 
 namespace vex
 {
@@ -89,7 +89,7 @@ struct BufferDesc
 
 // Strongly defined type represents a buffer.
 // We use a struct (instead of a typedef/using) to enforce compile-time correctness of handles.
-struct BufferHandle : public Handle<BufferHandle>
+struct BufferHandle : public Handle64<BufferHandle>
 {
 };
 

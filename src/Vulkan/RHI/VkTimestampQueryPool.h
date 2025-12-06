@@ -16,7 +16,7 @@ protected:
 public:
     VkTimestampQueryPool(NonNullPtr<VkGPUContext> ctx, RHI& rhi, RHIAllocator& allocator);
 
-    ::vk::QueryPool GetNativeQueryPool() const noexcept
+    ::vk::QueryPool GetNativeQueryPool() const
     {
         return *queryPool;
     }

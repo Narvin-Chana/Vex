@@ -53,8 +53,8 @@ public:
 
     virtual std::array<SyncToken, QueueTypes::Count> GetMostRecentSyncTokenPerQueue() const override;
 
-    virtual std::vector<SyncToken> Submit(std::span<NonNullPtr<RHICommandList>> commandLists,
-                                          std::span<SyncToken> dependencies) override;
+    virtual std::vector<SyncToken> Submit(Span<const NonNullPtr<RHICommandList>> commandLists,
+                                          Span<const SyncToken> dependencies) override;
 
     virtual void FlushGPU() override;
 

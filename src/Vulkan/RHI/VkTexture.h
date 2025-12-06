@@ -2,8 +2,8 @@
 
 #include <variant>
 
-#include <Vex/Hash.h>
-#include <Vex/NonNullPtr.h>
+#include <Vex/Utility/Hash.h>
+#include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHITexture.h>
 
@@ -82,7 +82,7 @@ public:
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
     virtual void FreeAllocation(RHIAllocator& allocator) override;
 
-    virtual std::span<byte> Map() override;
+    virtual Span<byte> Map() override;
     virtual void Unmap() override;
 
     struct CacheEntry

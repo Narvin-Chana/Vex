@@ -1,12 +1,11 @@
 #include "DX12SwapChain.h"
 
-#include <Vex/Formattable.h>
 #include <Vex/Logger.h>
-#include <Vex/PlatformWindow.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/Synchronization.h>
+#include <Vex/Utility/Formattable.h>
 
 #include <DX12/DX12Formats.h>
 #include <DX12/DX12PhysicalDevice.h>
@@ -16,7 +15,7 @@
 namespace vex::dx12
 {
 
-namespace DX12SwapChain_Private
+namespace DX12SwapChain_Internal
 {
 
 static ColorSpace DXGIToColorSpace(DXGI_COLOR_SPACE_TYPE dxgiColorSpace)
@@ -47,7 +46,7 @@ static DXGI_COLOR_SPACE_TYPE ColorSpaceToDXGI(ColorSpace colorSpace)
     }
 }
 
-} // namespace DX12SwapChain_Private
+} // namespace DX12SwapChain_Internal
 
 DX12SwapChain::DX12SwapChain(ComPtr<DX12Device>& device,
                              SwapChainDesc& desc,
@@ -115,7 +114,11 @@ void DX12SwapChain::RecreateSwapChain(u32 width, u32 height)
             .AlphaMode = DXGI_ALPHA_MODE_IGNORE,
             .Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING,
         };
-        swapChain = DXGIFactory::CreateSwapChain(nativeSwapChainDesc, graphicsCommandQueue, windowHandle.window);
+
+        swapChain =
+            DXGIFactory::CreateSwapChain(nativeSwapChainDesc,
+                                         graphicsCommandQueue,
+                                         std::get<PlatformWindowHandle::WindowsHandle>(windowHandle.handle).window);
     }
     else
     {
@@ -138,7 +141,7 @@ ColorSpace DX12SwapChain::GetValidColorSpace(ColorSpace preferredColorSpace) con
 
     // If the preferred is not supported, instead fallback to the output's recommended color space.
     const DXGI_OUTPUT_DESC1 outputDesc = GetBestOutputDesc();
-    const ColorSpace recommendedColorSpace = DX12SwapChain_Private::DXGIToColorSpace(outputDesc.ColorSpace);
+    const ColorSpace recommendedColorSpace = DX12SwapChain_Internal::DXGIToColorSpace(outputDesc.ColorSpace);
     const bool isHDRColorSpace = recommendedColorSpace != ColorSpace::sRGB;
     // HDR color spaces being available means we can use any user-preferred color space.
     if (isHDRColorSpace)
@@ -215,9 +218,8 @@ DXGI_OUTPUT_DESC1 DX12SwapChain::GetBestOutputDesc() const
 
     ComPtr<IDXGIAdapter1> adapter;
     // Get a fresh adapter from the current factory (since it could have been changed).
-    for (UINT adapterIndex = 0;
-            DXGIFactory::dxgiFactory->EnumAdapters1(adapterIndex, &adapter) != DXGI_ERROR_NOT_FOUND;
-            ++adapterIndex)
+    for (UINT adapterIndex = 0; DXGIFactory::dxgiFactory->EnumAdapters1(adapterIndex, &adapter) != DXGI_ERROR_NOT_FOUND;
+         ++adapterIndex)
     {
         DXGI_ADAPTER_DESC1 desc;
         adapter->GetDesc1(&desc);
@@ -253,7 +255,7 @@ DXGI_OUTPUT_DESC1 DX12SwapChain::GetBestOutputDesc() const
     };
 
     RECT windowBounds;
-    GetWindowRect(windowHandle.window, &windowBounds);
+    GetWindowRect(std::get<PlatformWindowHandle::WindowsHandle>(windowHandle.handle).window, &windowBounds);
 
     // Get the retangle bounds of the app window
     i32 ax1 = windowBounds.left;
@@ -297,7 +299,7 @@ DXGI_OUTPUT_DESC1 DX12SwapChain::GetBestOutputDesc() const
 
 void DX12SwapChain::ApplyColorSpace() const
 {
-    DXGI_COLOR_SPACE_TYPE dxgiColorSpace = DX12SwapChain_Private::ColorSpaceToDXGI(currentColorSpace);
+    DXGI_COLOR_SPACE_TYPE dxgiColorSpace = DX12SwapChain_Internal::ColorSpaceToDXGI(currentColorSpace);
     chk << swapChain->SetColorSpace1(dxgiColorSpace);
 }
 

@@ -19,16 +19,27 @@ struct SynchronizationTest : public VexTest
 TEST_F(SynchronizationTest, GraphicsCreationFlush)
 {
     // Simple submit then flush
-    auto ctx = graphics.BeginScopedCommandContext(QueueType::Graphics, SubmissionPolicy::Immediate);
-    ctx.Submit();
+    CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
+    graphics.Submit(ctx);
     graphics.FlushGPU();
 }
 
 TEST_F(SynchronizationTest, ImmediateSubmission)
 {
-    auto ctx1 = graphics.BeginScopedCommandContext(QueueType::Graphics, SubmissionPolicy::Immediate);
-    auto ctx2 = graphics.BeginScopedCommandContext(QueueType::Compute, SubmissionPolicy::Immediate);
-    auto ctx3 = graphics.BeginScopedCommandContext(QueueType::Copy, SubmissionPolicy::Immediate);
+    CommandContext ctx1 = graphics.CreateCommandContext(QueueType::Graphics);
+    graphics.Submit(ctx1);
+    CommandContext ctx2 = graphics.CreateCommandContext(QueueType::Compute);
+    graphics.Submit(ctx2);
+    CommandContext ctx3 = graphics.CreateCommandContext(QueueType::Copy);
+    graphics.Submit(ctx3);
+}
+
+TEST_F(SynchronizationTest, ImmediateSubmissionBatched)
+{
+    CommandContext ctx1 = graphics.CreateCommandContext(QueueType::Graphics);
+    CommandContext ctx2 = graphics.CreateCommandContext(QueueType::Compute);
+    CommandContext ctx3 = graphics.CreateCommandContext(QueueType::Copy);
+    graphics.Submit({ ctx1, ctx2, ctx3 });
 }
 
 TEST_F(SynchronizationTest, CrossQueueDependecy)
@@ -38,16 +49,16 @@ TEST_F(SynchronizationTest, CrossQueueDependecy)
 
     // Submit work on compute queue
     {
-        auto computeCtx = graphics.BeginScopedCommandContext(QueueType::Compute, SubmissionPolicy::Immediate);
-        tokens = computeCtx.Submit();
+        CommandContext computeCtx = graphics.CreateCommandContext(QueueType::Compute);
+        tokens = graphics.Submit(computeCtx);
         VEX_LOG(Info, "Submitted compute work, token: {}/{}", tokens.queueType, tokens.value);
     }
 
     // Submit work on graphics queue that depends on compute
     {
-        auto graphicsCtx =
-            graphics.BeginScopedCommandContext(QueueType::Graphics, SubmissionPolicy::Immediate, { &tokens, 1 });
-        graphicsTokens = graphicsCtx.Submit();
+        CommandContext graphicsCtx =
+            graphics.CreateCommandContext(QueueType::Graphics);
+        graphicsTokens = graphics.Submit(graphicsCtx, { &tokens, 1 });
         VEX_LOG(Info,
                 "Submitted graphics work dependent on compute, token: {}/{}",
                 graphicsTokens.queueType,
@@ -56,10 +67,8 @@ TEST_F(SynchronizationTest, CrossQueueDependecy)
 
     // Submit copy work that depends on graphics
     {
-        auto copyCtx = graphics.BeginScopedCommandContext(QueueType::Copy,
-                                                          SubmissionPolicy::Immediate,
-                                                          { &graphicsTokens, 1 });
-        auto copyTokens = copyCtx.Submit();
+        CommandContext copyCtx = graphics.CreateCommandContext(QueueType::Copy);
+        auto copyTokens = graphics.Submit(copyCtx, { &graphicsTokens, 1 });
         VEX_LOG(Info,
                 "Submitted copy work dependent on graphics, token: {}/{}",
                 copyTokens.queueType,
@@ -114,9 +123,9 @@ TEST_F(SynchronizationTest, HeavyResouceCreationAndUsage)
         std::span<SyncToken> deps =
             allTokens.size() > 3 ? std::span<SyncToken>(allTokens.end() - 3, allTokens.end()) : std::span<SyncToken>();
 
-        auto ctx = graphics.BeginScopedCommandContext(queueType, SubmissionPolicy::Immediate, deps);
+        CommandContext ctx = graphics.CreateCommandContext(queueType);
 
-        if (queueType == QueueType::Graphics)
+        if (queueType == QueueType::Graphics && srcIdx != dstIdx)
         {
             // Graphics operations
             ctx.Copy(textures[srcIdx], textures[dstIdx]);
@@ -129,7 +138,7 @@ TEST_F(SynchronizationTest, HeavyResouceCreationAndUsage)
             VEX_LOG(Verbose, "Copy: Copied buffer {} to {}", srcIdx, dstIdx);
         }
 
-        allTokens.push_back(ctx.Submit());
+        allTokens.push_back(graphics.Submit(ctx, deps));
 
         VEX_LOG(Verbose, "Iteration {}: Submitted to {} queue", iteration, queueType);
     }
@@ -173,8 +182,8 @@ TEST_F(SynchronizationTest, RapidContextCreationDestruction)
         }
 
         {
-            auto ctx = graphics.BeginScopedCommandContext(queueType, SubmissionPolicy::Immediate, deps);
-            tokens.push_back(ctx.Submit());
+            CommandContext ctx = graphics.CreateCommandContext(queueType);
+            tokens.push_back(graphics.Submit(ctx, deps));
         }
 
         // Occasionally flush GPU
@@ -192,21 +201,20 @@ TEST_F(SynchronizationTest, SubmissionWithDependency)
 
     // Create some immediate work
     {
-        auto ctx1 = graphics.BeginScopedCommandContext(QueueType::Compute, SubmissionPolicy::Immediate);
-        immediateTokens.push_back(ctx1.Submit());
+        CommandContext ctx1 = graphics.CreateCommandContext(QueueType::Compute);
+        immediateTokens.push_back(graphics.Submit(ctx1));
     }
 
     // Create work that depends on immediate work
     {
-        auto ctx2 = graphics.BeginScopedCommandContext(QueueType::Graphics,
-                                                       SubmissionPolicy::Immediate,
-                                                       immediateTokens);
+        CommandContext ctx2 = graphics.CreateCommandContext(QueueType::Graphics);
+        graphics.Submit(ctx2, immediateTokens);
     }
 
     // Create more immediate work
     {
-        auto ctx3 = graphics.BeginScopedCommandContext(QueueType::Copy, SubmissionPolicy::Immediate);
-        auto moreTokens = ctx3.Submit();
+        CommandContext ctx3 = graphics.CreateCommandContext(QueueType::Copy);
+        auto moreTokens = graphics.Submit(ctx3);
         immediateTokens.push_back(moreTokens);
     }
 
@@ -245,14 +253,14 @@ TEST_F(SynchronizationTest, ResourceUploadTorture)
                                         ? std::span<SyncToken>(uploadTokens.end() - 2, uploadTokens.end())
                                         : std::span<SyncToken>();
 
-        auto ctx = graphics.BeginScopedCommandContext(QueueType::Copy, SubmissionPolicy::Immediate, deps);
+        CommandContext ctx = graphics.CreateCommandContext(QueueType::Copy);
 
         // Generate dummy data and upload a 1024 section of the buffer.
         std::vector<byte> dummyData(1024, static_cast<byte>(i));
         ctx.EnqueueDataUpload(uploadBuffer, dummyData, BufferRegion{ .offset = 1024ull * i, .byteSize = 1024 });
         ctx.Copy(uploadBuffer, targetTexture);
 
-        uploadTokens.push_back(ctx.Submit());
+        uploadTokens.push_back(graphics.Submit(ctx, deps));
 
         VEX_LOG(Verbose, "Upload iteration {}", i);
     }
@@ -309,7 +317,7 @@ TEST_F(SynchronizationTest, FinalStressTest)
         }
 
         {
-            auto ctx = graphics.BeginScopedCommandContext(queueType, SubmissionPolicy::Immediate, deps);
+            CommandContext ctx = graphics.CreateCommandContext(queueType);
 
             // Random operations
             int opType = i % 4;
@@ -334,7 +342,7 @@ TEST_F(SynchronizationTest, FinalStressTest)
                 }
             }
 
-            allTokens.push_back(ctx.Submit());
+            allTokens.push_back(graphics.Submit(ctx, deps));
         }
 
         // Random flushes

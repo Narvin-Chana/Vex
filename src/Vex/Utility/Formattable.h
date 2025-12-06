@@ -5,7 +5,7 @@
 
 #include <magic_enum/magic_enum.hpp>
 
-#include <Vex/Platform/Platform.h>
+#include <Vex/Utility/WString.h>
 
 // Defines the std::formatter boilerplate for making a type printable using VEX_LOG (and std:format).
 // formatStr should be the output format and the variadic should be the type's fields to output.

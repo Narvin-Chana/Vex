@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Vex/Hash.h>
+#include <Vex/Utility/Hash.h>
 #include <Vex/QueueType.h>
 #include <Vex/Types.h>
 

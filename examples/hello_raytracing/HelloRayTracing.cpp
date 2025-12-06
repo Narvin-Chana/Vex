@@ -5,14 +5,8 @@
 HelloRayTracing::HelloRayTracing()
     : ExampleApplication("HelloRayTracing")
 {
-#if defined(_WIN32)
-    vex::PlatformWindowHandle platformWindow = { .window = glfwGetWin32Window(window) };
-#elif defined(__linux__)
-    vex::PlatformWindowHandle platformWindow{ .window = glfwGetX11Window(window), .display = glfwGetX11Display() };
-#endif
-
     graphics = vex::MakeUnique<vex::Graphics>(vex::GraphicsCreateDesc{
-        .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
+        .platformWindow = { .windowHandle = GetPlatformWindowHandle(), .width = DefaultWidth, .height = DefaultHeight },
         .useSwapChain = true,
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
@@ -22,7 +16,7 @@ HelloRayTracing::HelloRayTracing()
     workingTexture =
         graphics->CreateTexture({ .name = "Working Texture",
                                   .type = vex::TextureType::Texture2D,
-                                  .format = vex::TextureFormat::RGBA8_UNORM,
+                                  .format = vex::TextureFormat::BGRA8_UNORM,
                                   .width = DefaultWidth,
                                   .height = DefaultHeight,
                                   .depthOrSliceCount = 1,
@@ -37,7 +31,7 @@ void HelloRayTracing::Run()
         glfwPollEvents();
 
         {
-            auto ctx = graphics->BeginScopedCommandContext(vex::QueueType::Graphics);
+            vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
 
             const vex::TextureBinding outputTextureBinding{
                 .texture = workingTexture,
@@ -82,6 +76,8 @@ void HelloRayTracing::Run()
 
             // Copy output to the backbuffer.
             ctx.Copy(workingTexture, graphics->GetCurrentPresentTexture());
+
+            graphics->Submit(ctx);
         }
 
         graphics->Present(windowMode == Fullscreen);
@@ -102,7 +98,7 @@ void HelloRayTracing::OnResize(GLFWwindow* window, uint32_t newWidth, uint32_t n
     workingTexture = graphics->CreateTexture({
         .name = "Working Texture",
         .type = vex::TextureType::Texture2D,
-        .format = vex::TextureFormat::RGBA8_UNORM,
+        .format = vex::TextureFormat::BGRA8_UNORM,
         .width = newWidth,
         .height = newHeight,
         .depthOrSliceCount = 1,

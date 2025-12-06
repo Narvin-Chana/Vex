@@ -142,6 +142,8 @@ add_library(Vex STATIC
     "src/RHI/RHIFence.h"
     "src/RHI/RHITimestampQueryPool.cpp"
     "src/RHI/RHITimestampQueryPool.h"
+    "src/RHI/RHIScopedGPUEvent.h"
+    "src/RHI/RHIScopedGPUEvent.cpp"
     "src/Vex/RHIImpl/RHIFence.h"
     "src/Vex/RHIImpl/RHICommandList.h"
     "src/Vex/RHIImpl/RHICommandPool.h"
@@ -154,21 +156,51 @@ add_library(Vex STATIC
     "src/Vex/RHIImpl/RHIBuffer.h"
     "src/Vex/RHIImpl/RHIAllocator.h"
     "src/Vex/RHIImpl/RHITimestampQueryPool.h"
+    # Vex Utilities
+    "src/Vex/Utility/UniqueHandle.h" 
+    "src/Vex/Utility/Concepts.h"
+    "src/Vex/Utility/EnumFlags.h"
+    "src/Vex/Utility/Handle.h"
+    "src/Vex/Utility/Formattable.h"    
+    "src/Vex/Utility/Hash.h"
+    "src/Vex/Utility/MaybeUninitialized.h"
+    "src/Vex/Utility/NonNullPtr.h"
+    "src/Vex/Utility/ByteUtils.h"
+    "src/Vex/Utility/WString.h"
+    "src/Vex/Utility/Visitor.h"
+    # Vex Platform
+    "src/Vex/Platform/PlatformWindow.h" 
+    "src/Vex/Platform/Debug.h" 
+    # Vex Containers
+    "src/Vex/Containers/FreeList.h"
+    "src/Vex/Containers/ResourceCleanup.h"
+    "src/Vex/Containers/ResourceCleanup.cpp"
+    "src/Vex/Containers/Span.h"
+    # Vex Shader API
+    "src/Vex/Shaders/ShaderKey.h"
+    "src/Vex/Shaders/Shader.h"
+    "src/Vex/Shaders/Shader.cpp"
+    "src/Vex/Shaders/ShaderCompiler.h"
+    "src/Vex/Shaders/ShaderCompiler.cpp"
+    "src/Vex/Shaders/ShaderCompilerSettings.h"
+    "src/Vex/Shaders/DXCImpl.h"
+    "src/Vex/Shaders/DXCImpl.cpp"
+    "src/Vex/Shaders/DXCImplReflection.cpp"
+    "src/Vex/Shaders/ShaderEnvironment.h"
+    "src/Vex/Shaders/CompilerBase.h"
+    # Vex Built-In Shaders
+    "src/Vex/BuiltInShaders/MipGeneration.h"
     # Vex API
     "src/Vex.h"
     "src/Vex/Graphics.h" 
     "src/Vex/Graphics.cpp" 
     "src/Vex/Formats.h" 
-    "src/Vex/PlatformWindow.h" 
     "src/Vex/Types.h" 
-    "src/Vex/UniqueHandle.h" 
     "src/Vex/Logger.h" 
     "src/Vex/Logger.cpp"
-    "src/Vex/Debug.h" 
     "src/Vex/FeatureChecker.h" 
     "src/Vex/PhysicalDevice.h"
     "src/Vex/PhysicalDevice.cpp"
-    "src/Vex/EnumFlags.h"
     "src/Vex/FrameResource.h"
     "src/Vex/Formats.cpp"
     "src/Vex/Texture.h"
@@ -178,60 +210,36 @@ add_library(Vex STATIC
     "src/Vex/QueueType.h"
     "src/Vex/CommandContext.h"
     "src/Vex/CommandContext.cpp"
-    "src/Vex/Shaders/ShaderKey.h"
     "src/Vex/Bindings.h"
     "src/Vex/Bindings.cpp"
     "src/Vex/PipelineStateCache.h"
     "src/Vex/PipelineStateCache.cpp"
-    "src/Vex/Shaders/Shader.h"
-    "src/Vex/Shaders/Shader.cpp"
-    "src/Vex/Hash.h"
-    "src/Vex/Containers/FreeList.h"
-    "src/Vex/Containers/FreeList.cpp"
-    "src/Vex/Handle.h"
     "src/Vex/Resource.cpp"
     "src/Vex/Resource.h"
-    "src/Vex/Containers/ResourceCleanup.h"
-    "src/Vex/Containers/ResourceCleanup.cpp"
-    "src/Vex/Shaders/ShaderCompiler.h"
-    "src/Vex/Shaders/ShaderCompiler.cpp"
-    "src/Vex/Formattable.h"    
     "src/Vex/TextureSampler.h"
     "src/Vex/GraphicsPipeline.h"
     "src/Vex/DrawHelpers.h"
-    "src/Vex/Shaders/ShaderCompilerSettings.h"
     "src/Vex/RenderExtension.h"
     "src/Vex/RenderExtension.cpp"
     "src/Vex/ResourceBindingUtils.cpp"
-    "src/Vex/MaybeUninitialized.h"
-    "src/Vex/NonNullPtr.h"
     "src/Vex/RayTracing.h"
     "src/Vex/RayTracing.cpp"
-    "src/Vex/ByteUtils.h"
-    "src/Vex/Shaders/DXCImpl.h"
-    "src/Vex/Shaders/DXCImpl.cpp"
-    "src/Vex/Shaders/DXCImplReflection.cpp"
-    "src/Vex/Shaders/ShaderEnvironment.h"
-    "src/Vex/Shaders/CompilerBase.h"
-    "src/Vex/SubmissionPolicy.h"
     "src/Vex/Synchronization.h"
     "src/Vex/ResourceCopy.h"
     "src/Vex/ResourceCopy.cpp"
-    "src/Vex/Concepts.h"
     "src/Vex/ResourceReadbackContext.cpp"
     "src/Vex/ResourceReadbackContext.h"
 )
 
 if(WIN32)
     target_sources(Vex PRIVATE
-        "src/Vex/Platform/Windows/WString.h"
         "src/Vex/Platform/Windows/HResult.h"
     )
 endif()
 
 if(LINUX)
     target_sources(Vex PRIVATE
-        "src/Vex/Platform/Linux/WString.h"
+    # Nothing for now...
     )
 endif()
 
@@ -285,7 +293,8 @@ target_compile_definitions(Vex PUBLIC VEX_DX12=$<BOOL:${VEX_ENABLE_DX12}> VEX_VU
 
 if(WIN32)
     # Avoid windows polluting the code with macros.
-    target_compile_definitions(Vex PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN)
+    # Allow for typically "unsafe" C functions.
+    target_compile_definitions(Vex PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS)
 endif()
 
 # =========================================

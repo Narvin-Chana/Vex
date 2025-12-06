@@ -1,7 +1,7 @@
 #include "DX12ShaderTable.h"
 
-#include <Vex/ByteUtils.h>
-#include <Vex/Debug.h>
+#include <Vex/Utility/ByteUtils.h>
+#include <Vex/Platform/Debug.h>
 
 namespace vex::dx12
 {
@@ -9,7 +9,7 @@ namespace vex::dx12
 DX12ShaderTable::DX12ShaderTable(ComPtr<DX12Device>& device,
                                  RHIAllocator& allocator,
                                  const BufferDesc& desc,
-                                 std::span<void*> shaderIdentifiers,
+                                 Span<void*> shaderIdentifiers,
                                  u64 shaderIdentifierSize,
                                  u64 recordStride)
     : buffer(device, allocator, desc)
@@ -31,7 +31,7 @@ DX12ShaderTable::DX12ShaderTable(ComPtr<DX12Device>& device,
     u64 alignedRecordStride = AlignUp<u64>(recordStride, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
     shaderTableStride = alignedRecordStride;
 
-    std::span<byte> mappedData = buffer.Map();
+    Span<byte> mappedData = buffer.Map();
 
     // Write each shader identifier.
     for (u64 i = 0; i < shaderIdentifiers.size(); ++i)

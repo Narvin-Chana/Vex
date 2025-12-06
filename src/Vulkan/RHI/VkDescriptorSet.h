@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include <variant>
 
-#include <Vex/NonNullPtr.h>
+#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/Resource.h>
 
 #include <Vulkan/VkHeaders.h>
@@ -15,13 +15,13 @@ class VkDescriptorSet final
 {
     VkDescriptorSet(NonNullPtr<VkGPUContext> ctx,
                     const ::vk::DescriptorPool& descriptorPool,
-                    std::span<::vk::DescriptorType> descriptorTypes);
+                    Span<::vk::DescriptorType> descriptorTypes);
 
 public:
     void UpdateDescriptor(u32 index, ::vk::DescriptorImageInfo createInfo);
-    void UpdateDescriptors(u32 startIndex, std::span<::vk::DescriptorImageInfo> createInfo);
+    void UpdateDescriptors(u32 startIndex, Span<const ::vk::DescriptorImageInfo> createInfo);
     void UpdateDescriptor(u32 index, ::vk::DescriptorBufferInfo createInfo);
-    void UpdateDescriptors(u32 startIndex, std::span<::vk::DescriptorBufferInfo> createInfo);
+    void UpdateDescriptors(u32 startIndex, Span<const ::vk::DescriptorBufferInfo> createInfo);
 
 private:
     ::vk::UniqueDescriptorSet descriptorSet;

@@ -2,8 +2,8 @@
 
 #include <magic_enum/magic_enum.hpp>
 
+#include <Vex/Utility/Formattable.h>
 #include <Vex/Logger.h>
-#include <Vex/Formattable.h>
 
 #include <DX12/DX12Formats.h>
 #include <DX12/DX12Headers.h>
@@ -67,6 +67,8 @@ bool DX12FeatureChecker::IsFeatureSupported(Feature feature) const
     case Feature::MipGeneration:
         // DX12 has no built-in way to generate mip-maps.
         return false;
+    case Feature::DepthStencilReadback:
+        return true;
     default:
         VEX_LOG(Fatal, "Unable to determine feature support for {}", feature);
         return false;

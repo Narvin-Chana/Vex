@@ -5,14 +5,8 @@
 HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
     : ExampleApplication("HelloTriangleGraphicsApplication")
 {
-#if defined(_WIN32)
-    vex::PlatformWindowHandle platformWindow = { .window = glfwGetWin32Window(window) };
-#elif defined(__linux__)
-    vex::PlatformWindowHandle platformWindow{ .window = glfwGetX11Window(window), .display = glfwGetX11Display() };
-#endif
-
     graphics = vex::MakeUnique<vex::Graphics>(vex::GraphicsCreateDesc{
-        .platformWindow = { .windowHandle = platformWindow, .width = DefaultWidth, .height = DefaultHeight },
+        .platformWindow = { .windowHandle = GetPlatformWindowHandle(), .width = DefaultWidth, .height = DefaultHeight },
         .useSwapChain = true,
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
@@ -42,17 +36,16 @@ void HelloTriangleGraphicsApplication::Run()
     {
         glfwPollEvents();
 
+        // Command context is used to record commands to be executed by the GPU.
+        vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
         {
+            VEX_GPU_SCOPED_EVENT_COL(ctx, "Triangles", 1, 0, 1);
+
             // Make the color buffer's contents oscillate over time.
             const double currentTime = glfwGetTime();
             float oscillatedColor = static_cast<float>(cos(currentTime) / 2 + 0.5);
             float invOscillatedColor = 1 - oscillatedColor;
             float color[4] = { invOscillatedColor, oscillatedColor, invOscillatedColor, 1.0 };
-
-            // Scoped command context will submit commands automatically upon destruction.
-            auto ctx = graphics->BeginScopedCommandContext(vex::QueueType::Graphics);
-
-            VEX_GPU_SCOPED_EVENT_COL(ctx, "Triangles", 1, 0, 1);
 
             // Upload the constant data to our color buffer.
             ctx.EnqueueDataUpload(colorBuffer, std::as_bytes(std::span(color)));
@@ -131,6 +124,7 @@ void HelloTriangleGraphicsApplication::Run()
                 vex::ConstantBinding(lc),
                 3);
         }
+        graphics->Submit(ctx);
 
         graphics->Present(windowMode == Fullscreen);
     }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Vex/NonNullPtr.h>
+#include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIFwd.h>
 #include <RHI/RHISwapChain.h>
@@ -22,7 +22,7 @@ struct VkSwapChainSupportDetails
     std::vector<::vk::SurfaceFormatKHR> formats;
     std::vector<::vk::PresentModeKHR> presentModes;
 
-    bool IsValid() const noexcept
+    bool IsValid() const
     {
         return !formats.empty() && !presentModes.empty();
     }

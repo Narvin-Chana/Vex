@@ -1,9 +1,5 @@
 #include "VexTest.h"
 
-#include <gtest/gtest.h>
-
-#include <Vex.h>
-
 namespace vex
 {
 

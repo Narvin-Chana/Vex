@@ -22,7 +22,7 @@ struct Query
     u64 timestampInterval;
 };
 
-struct QueryHandle : Handle<QueryHandle>
+struct QueryHandle : Handle64<QueryHandle>
 {
 };
 
@@ -70,9 +70,9 @@ public:
     RHITimestampQueryPoolBase(RHI& rhi, RHIAllocator& allocator);
 
     // Transfer recorded data from GPU to mappable buffer for a specific set of queries on a command list
-    void FetchQueriesTimestamps(RHICommandList& cmdList, std::span<QueryHandle> handles);
+    void FetchQueriesTimestamps(RHICommandList& cmdList, Span<QueryHandle> handles);
     // Updates the given queries with the provided sync token
-    void UpdateSyncTokens(SyncToken token, std::span<QueryHandle> queries);
+    void UpdateSyncTokens(SyncToken token, Span<const QueryHandle> queries);
     // Allocates a query
     QueryHandle AllocateQuery(QueueType queueType);
 
