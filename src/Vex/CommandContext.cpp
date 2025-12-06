@@ -641,6 +641,13 @@ void CommandContext::Copy(const Texture& source,
     if (FormatUtil::SupportsStencil(source.desc.format) &&
         !GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::DepthStencilReadback))
     {
+        // Since we cant write directly to the readback buffer we need to have a temporary buffer to write to to then
+        // copy to readback
+        Buffer tempBuffer = graphics->CreateBuffer(
+            BufferDesc::CreateStructuredBufferDesc(std::format("{}_DepthStencilReadback", destination.desc.name),
+                                                   destination.desc.byteSize));
+        temporaryResources.push_back(tempBuffer);
+
         ShaderKey shaderKey = DepthStencilReadbackShaderKey;
 
         struct Uniforms
@@ -662,7 +669,7 @@ void CommandContext::Copy(const Texture& source,
                                            .usage = TextureBindingUsage::ShaderRead,
                                            .subresource = copyDesc.textureRegion.subresource,
                                            .aspect = TextureBindingAspect::Stencil };
-            BufferBinding destinationBinding{ .buffer = destination,
+            BufferBinding destinationBinding{ .buffer = tempBuffer,
                                               .usage = BufferBindingUsage::RWStructuredBuffer,
                                               .strideByteSize = static_cast<u32>(sizeof(u32)),
                                               .offsetByteSize = copyDesc.bufferRegion.offset,
@@ -688,6 +695,8 @@ void CommandContext::Copy(const Texture& source,
 
             std::array<u32, 3> dispatchGroupCount{ (textureWidth + 7u) / 8u, (textureHeight + 7u) / 8u, 1 };
             Dispatch(shaderKey, ConstantBinding(uniforms), dispatchGroupCount);
+
+            Copy(tempBuffer, destination);
         }
     }
     else
@@ -808,9 +817,8 @@ TextureReadbackContext CommandContext::EnqueueDataReadback(const Texture& srcTex
 
     // Create packed readback buffer.
     u64 stagingBufferByteSize = TextureUtil::ComputeAlignedUploadBufferByteSize(srcTexture.desc, textureRegions);
-    const BufferDesc readbackBufferDesc = BufferDesc::CreateReadbackBufferDesc(srcTexture.desc.name + "_readback",
-                                                                               stagingBufferByteSize,
-                                                                               BufferUsage::ReadWriteBuffer);
+    const BufferDesc readbackBufferDesc =
+        BufferDesc::CreateReadbackBufferDesc(srcTexture.desc.name + "_readback", stagingBufferByteSize);
 
     Buffer stagingBuffer = graphics->CreateBuffer(readbackBufferDesc, ResourceLifetime::Static);
 
