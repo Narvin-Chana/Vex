@@ -21,11 +21,11 @@ struct RenderDocInitializer
         RenderDoc::Setup();
     }
 };
+inline RenderDocInitializer initializer{};
 
 template <class ParamT>
 struct VexTestParam : testing::TestWithParam<ParamT>
 {
-    RenderDocInitializer initializer{};
     Graphics graphics;
 
     VexTestParam()
@@ -41,7 +41,6 @@ struct VexTestParam : testing::TestWithParam<ParamT>
 
 struct VexTest : testing::Test
 {
-    RenderDocInitializer initializer{};
     Graphics graphics;
 
     VexTest()
