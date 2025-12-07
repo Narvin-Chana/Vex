@@ -32,15 +32,13 @@ class VkSwapChain final : public RHISwapChainBase
 {
 
 public:
-    VkSwapChain(NonNullPtr<VkGPUContext> ctx,
-                SwapChainDesc& desc,
-                const PlatformWindow& platformWindow);
+    VkSwapChain(NonNullPtr<VkGPUContext> ctx, SwapChainDesc& desc, const PlatformWindow& platformWindow);
 
     virtual void RecreateSwapChain(u32 width, u32 height) override;
     virtual bool NeedsRecreation() const override;
 
     virtual TextureDesc GetBackBufferTextureDescription() const override;
-    
+
     virtual ColorSpace GetValidColorSpace(ColorSpace preferredColorSpace) const override;
 
     virtual std::optional<RHITexture> AcquireBackBuffer(u8 frameIndex) override;
@@ -67,7 +65,7 @@ private:
     // Used to wait for all command lists to finish before presenting.
     std::vector<::vk::UniqueSemaphore> presentSemaphore;
 
-    bool backbufferIsOutOfDate = false;
+    bool swapchainIsInErrorState = false;
 
     u32 currentBackbufferId;
     u32 width, height;
