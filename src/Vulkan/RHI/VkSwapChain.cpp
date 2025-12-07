@@ -46,7 +46,7 @@ static ::vk::PresentModeKHR GetBestPresentMode(const VkSwapChainSupportDetails& 
         return it != details.presentModes.end() ? *it : ::vk::PresentModeKHR::eFifo;
     }
 
-    // If eMailbox is not an option we use immediate which never waits for the present to complete to swap the images
+    // If not using VSync, we use eImmediate which never waits for the present to complete to swap the images.
     return ::vk::PresentModeKHR::eImmediate;
 }
 
