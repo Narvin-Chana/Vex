@@ -127,6 +127,8 @@ void Graphics::Present(bool isFullscreenMode)
     }
 
     // Make sure the ((n - FRAME_BUFFERING) % FRAME_BUFFERING) present has finished before presenting anew.
+    // TODO: Reasses the necessity of this
+    // See: https://trello.com/c/E3ipWUc7
     rhi.WaitForTokenOnCPU(presentTokens[currentFrameIndex]);
 
     if (std::optional<RHITexture> backBuffer = swapChain->AcquireBackBuffer(currentFrameIndex))
@@ -357,7 +359,7 @@ std::vector<SyncToken> Graphics::Submit(std::span<const NonNullPtr<CommandContex
 
     // Submit all the command contexts together.
     std::vector<SyncToken> syncTokens = rhi.Submit(rhiCommandLists, dependencies);
-    
+
     for (NonNullPtr<CommandContext> ctx : ctxSpan)
     {
         // Enqueue the command context's temporary resources for destruction.

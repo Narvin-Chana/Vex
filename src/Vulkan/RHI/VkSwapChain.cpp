@@ -36,15 +36,18 @@ static bool IsSwapChainSupported(::vk::PhysicalDevice device, ::vk::SurfaceKHR s
 
 static ::vk::PresentModeKHR GetBestPresentMode(const VkSwapChainSupportDetails& details, bool useVSync)
 {
-    // VSync means we should use eFifo which is available on most platforms.
-    // Source: https://stackoverflow.com/questions/36896021/enabling-vsync-in-vulkan
-    if (!useVSync)
+    // See for more info: https://docs.vulkan.org/refpages/latest/refpages/source/VkPresentModeKHR.html
+    if (useVSync)
     {
-        return ::vk::PresentModeKHR::eFifo;
+        // with VSync we want to use eFifo or eMailbox which do not cause tearing to the screen
+        // eMailbox is a bit better as it allows the app to keep rendering and always keeps the latest frame
+        // whereas eFifo keeps the order and forces a wait before presenting if the queue is full
+        auto it = std::ranges::find(details.presentModes, ::vk::PresentModeKHR::eMailbox);
+        return it != details.presentModes.end() ? *it : ::vk::PresentModeKHR::eFifo;
     }
 
-    auto it = std::ranges::find(details.presentModes, ::vk::PresentModeKHR::eMailbox);
-    return it != details.presentModes.end() ? *it : ::vk::PresentModeKHR::eFifo;
+    // If eMailbox is not an option we use immediate which never waits for the present to complete to swap the images
+    return ::vk::PresentModeKHR::eImmediate;
 }
 
 static ::vk::Extent2D GetBestSwapExtent(const VkSwapChainSupportDetails& details, u32 width, u32 height)
