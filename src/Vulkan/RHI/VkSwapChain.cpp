@@ -3,13 +3,13 @@
 #include <algorithm>
 #include <utility>
 
-#include <Vex/Utility/Formattable.h>
 #include <Vex/Platform/PlatformWindow.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHIFence.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/Synchronization.h>
+#include <Vex/Utility/Formattable.h>
 
 #include <Vulkan/VkCommandQueue.h>
 #include <Vulkan/VkErrorHandler.h>
@@ -71,14 +71,6 @@ VkSwapChain::VkSwapChain(NonNullPtr<VkGPUContext> ctx, SwapChainDesc& desc, cons
     VEX_ASSERT(IsSwapChainSupported(ctx->physDevice, ctx->surface));
     RecreateSwapChain(platformWindow.width, platformWindow.height);
 
-    auto BinarySemaphoreCreator = [ctx = ctx]
-    {
-        ::vk::SemaphoreTypeCreateInfoKHR createInfo{ .semaphoreType = ::vk::SemaphoreType::eBinary };
-        return VEX_VK_CHECK <<= ctx->device.createSemaphoreUnique(::vk::SemaphoreCreateInfo{
-                   .pNext = &createInfo,
-               });
-    };
-
     const u32 maxSupportedImageCount =
         std::max(supportDetails.capabilities.minImageCount + 1, supportDetails.capabilities.maxImageCount);
     const u8 requestedImageCount = std::to_underlying(desc.frameBuffering);
@@ -98,7 +90,7 @@ VkSwapChain::VkSwapChain(NonNullPtr<VkGPUContext> ctx, SwapChainDesc& desc, cons
     };
     // Requires including the heavy <algorithm>
     std::ranges::generate_n(std::back_inserter(presentSemaphore), requestedImageCount, BinarySemaphoreCreator);
-    backbufferAcquisition.resize(requestedImageCount);
+    std::ranges::generate_n(std::back_inserter(backbufferAcquisition), requestedImageCount, BinarySemaphoreCreator);
 }
 
 void VkSwapChain::RecreateSwapChain(u32 width, u32 height)
@@ -138,14 +130,15 @@ bool VkSwapChain::NeedsRecreation() const
 
 TextureDesc VkSwapChain::GetBackBufferTextureDescription() const
 {
-    return TextureDesc{ .name = "backbuffer",
-                        .type = TextureType::Texture2D,
-                        .format = VulkanToTextureFormat(surfaceFormat.format),
-                        .width = width,
-                        .height = height,
-                        .depthOrSliceCount = 1,
-                        .mips = 1,
-                        .usage = TextureUsage::RenderTarget | TextureUsage::ShaderRead,
+    return TextureDesc{
+        .name = "backbuffer",
+        .type = TextureType::Texture2D,
+        .format = VulkanToTextureFormat(surfaceFormat.format),
+        .width = width,
+        .height = height,
+        .depthOrSliceCount = 1,
+        .mips = 1,
+        .usage = TextureUsage::RenderTarget | TextureUsage::ShaderRead,
     };
 }
 
@@ -206,16 +199,9 @@ ColorSpace VkSwapChain::GetValidColorSpace(ColorSpace preferredColorSpace) const
 std::optional<RHITexture> VkSwapChain::AcquireBackBuffer(u8 frameIndex)
 {
     // Acquire the next backbuffer image.
-    ::vk::SemaphoreTypeCreateInfoKHR createInfo{ .semaphoreType = ::vk::SemaphoreType::eBinary };
-
-    ::vk::UniqueSemaphore acquireSemaphore = VEX_VK_CHECK <<=
-        ctx->device.createSemaphoreUnique(::vk::SemaphoreCreateInfo{
-            .pNext = &createInfo,
-        });
-
     auto res = ctx->device.acquireNextImageKHR(*swapchain,
                                                std::numeric_limits<u64>::max(),
-                                               *acquireSemaphore,
+                                               *backbufferAcquisition[frameIndex],
                                                VK_NULL_HANDLE,
                                                &currentBackbufferId);
     if (res == ::vk::Result::eErrorOutOfDateKHR || res == ::vk::Result::eSuboptimalKHR)
@@ -223,8 +209,6 @@ std::optional<RHITexture> VkSwapChain::AcquireBackBuffer(u8 frameIndex)
         swapchainIsInErrorState = true;
         return {};
     }
-
-    backbufferAcquisition[currentBackbufferId] = std::move(acquireSemaphore);
 
     VEX_VK_CHECK << res;
 
@@ -243,13 +227,13 @@ SyncToken VkSwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandLis
     // Before rendering the graphics queue, we must wait for acquireImage to be done.
     // This equates to waiting on the backbufferAcquisition binary semaphore of this backbuffer.
     ::vk::SemaphoreSubmitInfo acquireWaitInfo = {
-        .semaphore = *backbufferAcquisition[currentBackbufferId],
+        .semaphore = *backbufferAcquisition[frameIndex],
         .stageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput,
     };
 
     // Signal the present binary semaphore (we only want to present once rendering work is done).
     ::vk::SemaphoreSubmitInfo presentSignalInfo = {
-        .semaphore = *presentSemaphore[frameIndex],
+        .semaphore = *presentSemaphore[currentBackbufferId],
         .stageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput,
     };
 
@@ -261,7 +245,7 @@ SyncToken VkSwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandLis
     // Present now that we've submitted the present copy work.
     ::vk::PresentInfoKHR presentInfo = {
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &*presentSemaphore[frameIndex],
+        .pWaitSemaphores = &*presentSemaphore[currentBackbufferId],
         .swapchainCount = 1,
         .pSwapchains = &*swapchain,
         .pImageIndices = &currentBackbufferId,
