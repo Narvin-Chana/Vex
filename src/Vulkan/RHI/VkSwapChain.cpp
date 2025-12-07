@@ -3,13 +3,13 @@
 #include <algorithm>
 #include <utility>
 
-#include <Vex/Utility/Formattable.h>
 #include <Vex/Platform/PlatformWindow.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHIFence.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/Synchronization.h>
+#include <Vex/Utility/Formattable.h>
 
 #include <Vulkan/VkCommandQueue.h>
 #include <Vulkan/VkErrorHandler.h>
@@ -36,15 +36,18 @@ static bool IsSwapChainSupported(::vk::PhysicalDevice device, ::vk::SurfaceKHR s
 
 static ::vk::PresentModeKHR GetBestPresentMode(const VkSwapChainSupportDetails& details, bool useVSync)
 {
-    // VSync means we should use eFifo which is available on most platforms.
-    // Source: https://stackoverflow.com/questions/36896021/enabling-vsync-in-vulkan
+    // See for more info: https://docs.vulkan.org/refpages/latest/refpages/source/VkPresentModeKHR.html
     if (useVSync)
     {
-        return ::vk::PresentModeKHR::eFifo;
+        // with VSync we want to use eFifo or eMailbox which do not cause tearing to the screen
+        // eMailbox is a bit better as it allows the app to keep rendering and always keeps the latest frame
+        // whereas eFifo keeps the order and forces a wait before presenting if the queue is full
+        auto it = std::ranges::find(details.presentModes, ::vk::PresentModeKHR::eMailbox);
+        return it != details.presentModes.end() ? *it : ::vk::PresentModeKHR::eFifo;
     }
 
-    auto it = std::ranges::find(details.presentModes, ::vk::PresentModeKHR::eMailbox);
-    return it != details.presentModes.end() ? *it : ::vk::PresentModeKHR::eFifo;
+    // If not using VSync, we use eImmediate which never waits for the present to complete to swap the images.
+    return ::vk::PresentModeKHR::eImmediate;
 }
 
 static ::vk::Extent2D GetBestSwapExtent(const VkSwapChainSupportDetails& details, u32 width, u32 height)
@@ -71,22 +74,26 @@ VkSwapChain::VkSwapChain(NonNullPtr<VkGPUContext> ctx, SwapChainDesc& desc, cons
     VEX_ASSERT(IsSwapChainSupported(ctx->physDevice, ctx->surface));
     RecreateSwapChain(platformWindow.width, platformWindow.height);
 
-    auto BinarySemaphoreCreator = [ctx = ctx]
-    {
-        ::vk::SemaphoreTypeCreateInfoKHR createInfo{ .semaphoreType = ::vk::SemaphoreType::eBinary };
-        return VEX_VK_CHECK <<= ctx->device.createSemaphoreUnique(::vk::SemaphoreCreateInfo{
-                   .pNext = &createInfo,
-               });
-    };
-
     const u32 maxSupportedImageCount =
         std::max(supportDetails.capabilities.minImageCount + 1, supportDetails.capabilities.maxImageCount);
     const u8 requestedImageCount = std::to_underlying(desc.frameBuffering);
 
     // Need to have at least the requested amount of swap chain images
     VEX_ASSERT(maxSupportedImageCount >= requestedImageCount);
-    std::ranges::generate_n(std::back_inserter(backbufferAcquisition), requestedImageCount, BinarySemaphoreCreator);
+
+    InitSwapchainResource(platformWindow.width, platformWindow.height);
+
+    auto BinarySemaphoreCreator = [&ctx]
+    {
+        ::vk::SemaphoreTypeCreateInfoKHR createInfo{ .semaphoreType = ::vk::SemaphoreType::eBinary };
+        auto semaphore = VEX_VK_CHECK <<= ctx->device.createSemaphoreUnique(::vk::SemaphoreCreateInfo{
+            .pNext = &createInfo,
+        });
+        return semaphore;
+    };
+    // Requires including the heavy <algorithm>
     std::ranges::generate_n(std::back_inserter(presentSemaphore), requestedImageCount, BinarySemaphoreCreator);
+    std::ranges::generate_n(std::back_inserter(backbufferAcquisition), requestedImageCount, BinarySemaphoreCreator);
 }
 
 void VkSwapChain::RecreateSwapChain(u32 width, u32 height)
@@ -229,7 +236,7 @@ SyncToken VkSwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandLis
 
     // Signal the present binary semaphore (we only want to present once rendering work is done).
     ::vk::SemaphoreSubmitInfo presentSignalInfo = {
-        .semaphore = *presentSemaphore[frameIndex],
+        .semaphore = *presentSemaphore[currentBackbufferId],
         .stageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput,
     };
 
@@ -241,7 +248,7 @@ SyncToken VkSwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandLis
     // Present now that we've submitted the present copy work.
     ::vk::PresentInfoKHR presentInfo = {
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &*presentSemaphore[frameIndex],
+        .pWaitSemaphores = &*presentSemaphore[currentBackbufferId],
         .swapchainCount = 1,
         .pSwapchains = &*swapchain,
         .pImageIndices = &currentBackbufferId,
