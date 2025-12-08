@@ -149,6 +149,11 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(const ComPtr<DX12D
                                   nullptr,
                                   nullptr);
 
+    auto [width, height, depth] = desc.textureRegion.GetExtents(texture.GetDesc(), desc.textureRegion.subresource.startMip);
+    bufferLoc.PlacedFootprint.Footprint.Width = width;
+    bufferLoc.PlacedFootprint.Footprint.Height = height;
+    bufferLoc.PlacedFootprint.Footprint.Depth = depth;
+
     D3D12_TEXTURE_COPY_LOCATION textureLoc = {};
     textureLoc.pResource = texture.GetRawTexture();
     textureLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
