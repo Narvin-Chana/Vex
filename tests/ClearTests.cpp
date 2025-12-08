@@ -222,7 +222,7 @@ TEST_F(ClearTest, ClearDepthOnlyRect)
         TextureClearRect{ .offsetX = 5, .offsetY = 5, .extentX = 5, .extentY = 5 },
     };
 
-    auto ctx = graphics.BeginScopedCommandContext(QueueType::Graphics, SubmissionPolicy::Immediate);
+    auto ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
     ctx.ClearTexture({ .texture = texture }, std::nullopt, clearRects);
 
@@ -243,7 +243,7 @@ TEST_F(ClearTest, ClearDepthOnlyRect)
                                                              .offset = { 0, 5 },
                                                              .extent = { 5, 5 },
                                                          });
-    graphics.WaitForTokenOnCPU(ctx.Submit());
+    graphics.WaitForTokenOnCPU(graphics.Submit(ctx));
 
     EXPECT_TRUE(ValidateTextureValue(readbackTopLeftCtx, 0xFFFFFFFF));
     EXPECT_TRUE(ValidateTextureValue(readbackBottomRightCtx, 0xFFFFFFFF));

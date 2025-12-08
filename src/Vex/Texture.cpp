@@ -3,10 +3,9 @@
 #include <cmath>
 
 #include <Vex/Bindings.h>
-#include <Vex/Utility/Formattable.h>
 #include <Vex/Logger.h>
 #include <Vex/Utility/ByteUtils.h>
-#include <Vex/Utility/ByteUtils.h>
+#include <Vex/Utility/Formattable.h>
 #include <Vex/Utility/Validation.h>
 
 namespace vex
@@ -258,13 +257,13 @@ void ValidateSubresource(const TextureDesc& desc, const TextureSubresource& subr
     if (subresource.mipCount != GTextureAllMips)
     {
         VEX_CHECK(
-            subresource.startMip + subresource.mipCount <= desc.mips,
+            subresource.startMip + subresource.GetMipCount(desc) <= desc.mips,
             "Invalid subresource for resource \"{}\": TextureSubresource accesses more mips than available, startMip : "
             "{}, mipCount: "
             "{}, texture mip count: {}",
             desc.name,
             subresource.startMip,
-            subresource.mipCount,
+            subresource.GetMipCount(desc),
             desc.mips);
     }
 
@@ -298,14 +297,14 @@ void ValidateRegion(const TextureDesc& desc, const TextureRegion& region)
     if (region.extent.width != GTextureExtentMax || region.extent.height != GTextureExtentMax ||
         region.extent.depth != GTextureExtentMax)
     {
-        VEX_CHECK(region.subresource.mipCount == 1,
+        VEX_CHECK(region.subresource.GetMipCount(desc) == 1,
                   "Invalid region for resource \"{}\": If you use a non-default region extent, your region may only "
                   "describe a single mip.",
                   desc.name);
     }
 
     auto [mipWidth, mipHeight, mipDepth] = TextureUtil::GetMipSize(desc, region.subresource.startMip);
-    for (u32 mip = region.subresource.startMip; mip < region.subresource.mipCount; ++mip)
+    for (u32 mip = region.subresource.startMip; mip < region.subresource.GetMipCount(desc); ++mip)
     {
         VEX_CHECK(region.offset.x < mipWidth && region.offset.y < mipHeight && region.offset.z < mipDepth,
                   "Invalid region for resource \"{}\": Region offset is beyond the mip's resource size. Mip size: "

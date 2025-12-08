@@ -307,7 +307,8 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
                                    std::span<TextureClearRect> clearRects)
 {
     DX12TextureView dxTextureView{ binding.binding };
-    const u32 maxMip = dxTextureView.subresource.startMip + dxTextureView.subresource.mipCount;
+    const u32 maxMip =
+        dxTextureView.subresource.startMip + dxTextureView.subresource.GetMipCount(binding.texture->GetDesc());
     // We'll be creating a RTV/DSV view per-mip.
     dxTextureView.subresource.mipCount = 1;
 
