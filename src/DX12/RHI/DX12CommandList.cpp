@@ -351,7 +351,7 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
             commandList->ClearRenderTargetView(binding.texture->GetOrCreateRTVDSVView(dxTextureView),
                                                clearValue.color.data(),
                                                dxClearRects.size(),
-                                               dxClearRects.data());
+                                               !dxClearRects.empty() ? dxClearRects.data() : nullptr);
         }
     }
     else if (usage == TextureUsage::DepthStencil)
@@ -386,7 +386,7 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
                                                clearValue.depth,
                                                clearValue.stencil,
                                                dxClearRects.size(),
-                                               dxClearRects.data());
+                                               !dxClearRects.empty() ? dxClearRects.data() : nullptr);
         }
     }
     else
