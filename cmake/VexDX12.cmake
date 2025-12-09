@@ -44,14 +44,15 @@ function(setup_dx12_backend TARGET)
     # =========================================
 
     # Fetch DX12 Agility SDK
-    set(DX_AGILITY_VERSION "618")
-    set(AGILITY_SDK_DIR "${FETCHCONTENT_BASE_DIR}/DirectX-AgilitySDK-${DX_AGILITY_VERSION}")
+    set(DX_AGILITY_SDK_VERSION "618")
+    set(DX_AGILITY_SDK_VERSION_FULL "1.${DX_AGILITY_SDK_VERSION}.4")
+    set(AGILITY_SDK_DIR "${FETCHCONTENT_BASE_DIR}/DirectX-AgilitySDK-${DX_AGILITY_SDK_VERSION_FULL}")
 
     # Download the NuGet package if not already downloaded
     if(NOT EXISTS "${AGILITY_SDK_DIR}/build")
-        message(STATUS "Downloading DX12 Agility SDK 1.${DX_AGILITY_VERSION}.1...")
+        message(STATUS "Downloading DX12 Agility SDK ${DX_AGILITY_SDK_VERSION_FULL}...")
         download_and_decompress_archive(
-            "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.${DX_AGILITY_VERSION}.1"
+            "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/${DX_AGILITY_SDK_VERSION_FULL}"
             "${AGILITY_SDK_DIR}"
         )
         message(STATUS "DirectX Agility SDK extracted to: ${AGILITY_SDK_DIR}")
@@ -71,7 +72,7 @@ function(setup_dx12_backend TARGET)
     endif()
 
     # Store version for downstream use
-    set(DX_AGILITY_SDK_VERSION ${DX_AGILITY_VERSION} CACHE INTERNAL "DirectX Agility SDK Version")
+    set_target_properties(${TARGET} PROPERTIES DIRECTX_AGILITY_SDK_VERSION ${DX_AGILITY_SDK_VERSION})
 
     # =========================================
     # Vex DX12 Sources
@@ -137,10 +138,10 @@ function(setup_dx12_backend TARGET)
     add_header_only_dependency(${TARGET} DirectXAgilitySDK "${DX_AGILITY_SDK_SOURCE_DIR}" "include" "directx")
 
     target_compile_definitions(${TARGET} PRIVATE 
-        DIRECTX_AGILITY_SDK_VERSION=${DX_AGILITY_VERSION}
+        DIRECTX_AGILITY_SDK_VERSION=${DX_AGILITY_SDK_VERSION}
         D3D12_AGILITY_SDK_ENABLED
     )
-    
+
     # Register D3D12 Agility SDK DLLs (these need special D3D12/ subdirectory)
     vex_add_files_to_target_property(${TARGET} "VEX_D3D12_AGILITY_DLLS" ${DX_AGILITY_RUNTIME_DLLS})
 

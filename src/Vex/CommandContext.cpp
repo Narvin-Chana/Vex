@@ -173,7 +173,7 @@ void CommandContext::SetScissor(i32 x, i32 y, u32 width, u32 height)
 
 void CommandContext::ClearTexture(const TextureBinding& binding,
                                   std::optional<TextureClearValue> textureClearValue,
-                                  std::optional<std::array<float, 4>> clearRect)
+                                  std::span<TextureClearRect> clearRects)
 {
     if (!(binding.texture.desc.usage & (TextureUsage::RenderTarget | TextureUsage::DepthStencil)))
     {
@@ -182,21 +182,14 @@ void CommandContext::ClearTexture(const TextureBinding& binding,
                 "stencil!");
     }
 
-    if (clearRect.has_value())
-    {
-        // Clear Rect not yet supported.
-        VEX_NOT_YET_IMPLEMENTED();
-    }
-
     RHITexture& texture = graphics->GetRHITexture(binding.texture.handle);
-    pendingTextureBarriers.push_back(texture.GetClearTextureBarrier());
-    FlushBarriers();
 
     cmdList->ClearTexture({ binding, NonNullPtr(texture) },
                           // This is a safe cast, textures can only contain one of the two usages (RT/DS).
                           static_cast<TextureUsage::Type>(binding.texture.desc.usage &
                                                           (TextureUsage::RenderTarget | TextureUsage::DepthStencil)),
-                          textureClearValue.value_or(binding.texture.desc.clearValue));
+                          textureClearValue.value_or(binding.texture.desc.clearValue),
+                          clearRects);
 }
 
 void CommandContext::Draw(const DrawDesc& drawDesc,

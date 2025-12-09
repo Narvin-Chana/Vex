@@ -62,8 +62,6 @@ public:
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
     virtual void FreeAllocation(RHIAllocator& allocator) override;
 
-    virtual RHITextureBarrier GetClearTextureBarrier() override;
-
     ID3D12Resource* GetRawTexture()
     {
         return texture.Get();

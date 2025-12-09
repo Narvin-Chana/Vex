@@ -3,9 +3,9 @@
 #include <optional>
 
 #include <Vex/Bindings.h>
-#include <Vex/Utility/ByteUtils.h>
 #include <Vex/Logger.h>
 #include <Vex/Texture.h>
+#include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Validation.h>
 
 #include <RHI/RHIBindings.h>
@@ -149,18 +149,24 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(const ComPtr<DX12D
                                   nullptr,
                                   nullptr);
 
+    auto [width, height, depth] =
+        desc.textureRegion.GetExtents(texture.GetDesc(), desc.textureRegion.subresource.startMip);
+    bufferLoc.PlacedFootprint.Footprint.Width = std::max(width, 1u);
+    bufferLoc.PlacedFootprint.Footprint.Height = std::max(height, 1u);
+    bufferLoc.PlacedFootprint.Footprint.Depth = std::max(depth, 1u);
+
     D3D12_TEXTURE_COPY_LOCATION textureLoc = {};
     textureLoc.pResource = texture.GetRawTexture();
     textureLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
     textureLoc.SubresourceIndex = subresourceIndex;
 
     D3D12_BOX box = {};
-    box.left = 0;
-    box.top = 0;
-    box.front = 0;
-    box.right = desc.textureRegion.extent.GetWidth(texture.GetDesc(), desc.textureRegion.subresource.startMip);
-    box.bottom = desc.textureRegion.extent.GetHeight(texture.GetDesc(), desc.textureRegion.subresource.startMip);
-    box.back = desc.textureRegion.extent.GetDepth(texture.GetDesc(), desc.textureRegion.subresource.startMip);
+    box.left = desc.textureRegion.offset.x;
+    box.top = desc.textureRegion.offset.y;
+    box.front = desc.textureRegion.offset.z;
+    box.right = desc.textureRegion.offset.x + width;
+    box.bottom = desc.textureRegion.offset.y + height;
+    box.back = desc.textureRegion.offset.z + depth;
 
     return { bufferLoc, textureLoc, box };
 }
@@ -303,18 +309,38 @@ void DX12CommandList::SetInputAssembly(InputAssembly inputAssembly)
 
 void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
                                    TextureUsage::Type usage,
-                                   const TextureClearValue& clearValue)
+                                   const TextureClearValue& clearValue,
+                                   std::span<TextureClearRect> clearRects)
 {
     DX12TextureView dxTextureView{ binding.binding };
-    const u32 maxMip = dxTextureView.subresource.startMip + dxTextureView.subresource.mipCount;
+    const u32 maxMip =
+        dxTextureView.subresource.startMip + dxTextureView.subresource.GetMipCount(binding.texture->GetDesc());
     // We'll be creating a RTV/DSV view per-mip.
     dxTextureView.subresource.mipCount = 1;
+
+    std::vector<D3D12_RECT> dxClearRects;
+    dxClearRects.reserve(clearRects.size());
+
+    for (const TextureClearRect& clearRect : clearRects)
+    {
+        dxClearRects.push_back({ .left = clearRect.offsetX,
+                                 .top = clearRect.offsetY,
+                                 .right = clearRect.offsetX + static_cast<i32>(clearRect.extentX),
+                                 .bottom = clearRect.offsetY + static_cast<i32>(clearRect.extentY) });
+    }
 
     // Clearing in DX12 allows for multiple slices to be cleared, however you cannot clear multiple mips with one
     // call.
     // Instead we iterate on the mips passed in by the user.
     if (usage == TextureUsage::RenderTarget)
     {
+        RHITextureBarrier barrier{ binding.texture,
+                                   TextureSubresource{},
+                                   RHIBarrierSync::RenderTarget,
+                                   RHIBarrierAccess::RenderTarget,
+                                   RHITextureLayout::RenderTarget };
+        Barrier({}, { &barrier, 1 });
+
         dxTextureView.usage = TextureUsage::RenderTarget;
         for (u32 mip = dxTextureView.subresource.startMip; mip < maxMip; ++mip)
         {
@@ -324,12 +350,19 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
                        desc.name);
             commandList->ClearRenderTargetView(binding.texture->GetOrCreateRTVDSVView(dxTextureView),
                                                clearValue.color.data(),
-                                               0,
-                                               nullptr);
+                                               dxClearRects.size(),
+                                               !dxClearRects.empty() ? dxClearRects.data() : nullptr);
         }
     }
     else if (usage == TextureUsage::DepthStencil)
     {
+        RHITextureBarrier barrier{ binding.texture,
+                                   TextureSubresource{},
+                                   RHIBarrierSync::DepthStencil,
+                                   RHIBarrierAccess::DepthStencilWrite,
+                                   RHITextureLayout::DepthStencilWrite };
+        Barrier({}, { &barrier, 1 });
+
         dxTextureView.usage = TextureUsage::DepthStencil;
         for (u32 mip = dxTextureView.subresource.startMip; mip < maxMip; ++mip)
         {
@@ -352,8 +385,8 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
                                                clearFlags,
                                                clearValue.depth,
                                                clearValue.stencil,
-                                               0,
-                                               nullptr);
+                                               dxClearRects.size(),
+                                               !dxClearRects.empty() ? dxClearRects.data() : nullptr);
         }
     }
     else
@@ -691,8 +724,7 @@ void DX12CommandList::Copy(RHITexture& src, RHITexture& dst)
 {
     VEX_ASSERT(src.GetDesc().width == dst.GetDesc().width && src.GetDesc().height == dst.GetDesc().height &&
                    src.GetDesc().depthOrSliceCount == dst.GetDesc().depthOrSliceCount &&
-                   src.GetDesc().mips == dst.GetDesc().mips &&
-                   src.GetDesc().format == dst.GetDesc().format,
+                   src.GetDesc().mips == dst.GetDesc().mips && src.GetDesc().format == dst.GetDesc().format,
                "The two textures must be compatible in order to Copy to be useable.");
     commandList->CopyResource(dst.GetRawTexture(), src.GetRawTexture());
 }
@@ -764,12 +796,7 @@ void DX12CommandList::Copy(RHITexture& src, RHIBuffer& dst, Span<const BufferTex
     for (const BufferTextureCopyDesc& copyDesc : copyDescriptions)
     {
         auto locations = CommandList_Internal::GetCopyLocationsFromCopyDesc(device, dst, src, copyDesc);
-        commandList->CopyTextureRegion(&locations.bufferLoc,
-                                       copyDesc.textureRegion.offset.x,
-                                       copyDesc.textureRegion.offset.y,
-                                       copyDesc.textureRegion.offset.z,
-                                       &locations.textureLoc,
-                                       &locations.box);
+        commandList->CopyTextureRegion(&locations.bufferLoc, 0, 0, 0, &locations.textureLoc, &locations.box);
     }
 }
 
