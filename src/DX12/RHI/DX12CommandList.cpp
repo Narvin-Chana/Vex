@@ -149,10 +149,11 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(const ComPtr<DX12D
                                   nullptr,
                                   nullptr);
 
-    auto [width, height, depth] = desc.textureRegion.GetExtents(texture.GetDesc(), desc.textureRegion.subresource.startMip);
-    bufferLoc.PlacedFootprint.Footprint.Width = width;
-    bufferLoc.PlacedFootprint.Footprint.Height = height;
-    bufferLoc.PlacedFootprint.Footprint.Depth = depth;
+    auto [width, height, depth] =
+        desc.textureRegion.GetExtents(texture.GetDesc(), desc.textureRegion.subresource.startMip);
+    bufferLoc.PlacedFootprint.Footprint.Width = std::max(width, 1u);
+    bufferLoc.PlacedFootprint.Footprint.Height = std::max(height, 1u);
+    bufferLoc.PlacedFootprint.Footprint.Depth = std::max(depth, 1u);
 
     D3D12_TEXTURE_COPY_LOCATION textureLoc = {};
     textureLoc.pResource = texture.GetRawTexture();
@@ -160,12 +161,12 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(const ComPtr<DX12D
     textureLoc.SubresourceIndex = subresourceIndex;
 
     D3D12_BOX box = {};
-    box.left = 0;
-    box.top = 0;
-    box.front = 0;
-    box.right = desc.textureRegion.extent.GetWidth(texture.GetDesc(), desc.textureRegion.subresource.startMip);
-    box.bottom = desc.textureRegion.extent.GetHeight(texture.GetDesc(), desc.textureRegion.subresource.startMip);
-    box.back = desc.textureRegion.extent.GetDepth(texture.GetDesc(), desc.textureRegion.subresource.startMip);
+    box.left = desc.textureRegion.offset.x;
+    box.top = desc.textureRegion.offset.y;
+    box.front = desc.textureRegion.offset.z;
+    box.right = desc.textureRegion.offset.x + width;
+    box.bottom = desc.textureRegion.offset.y + height;
+    box.back = desc.textureRegion.offset.z + depth;
 
     return { bufferLoc, textureLoc, box };
 }
@@ -795,12 +796,7 @@ void DX12CommandList::Copy(RHITexture& src, RHIBuffer& dst, Span<const BufferTex
     for (const BufferTextureCopyDesc& copyDesc : copyDescriptions)
     {
         auto locations = CommandList_Internal::GetCopyLocationsFromCopyDesc(device, dst, src, copyDesc);
-        commandList->CopyTextureRegion(&locations.bufferLoc,
-                                       copyDesc.textureRegion.offset.x,
-                                       copyDesc.textureRegion.offset.y,
-                                       copyDesc.textureRegion.offset.z,
-                                       &locations.textureLoc,
-                                       &locations.box);
+        commandList->CopyTextureRegion(&locations.bufferLoc, 0, 0, 0, &locations.textureLoc, &locations.box);
     }
 }
 

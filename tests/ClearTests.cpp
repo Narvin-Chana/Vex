@@ -6,12 +6,13 @@ struct ClearTest : VexTest
 {
 };
 
-bool ValidateTextureValue(const TextureReadbackContext& ctx, u32 expectedColor, u32 mask = 0xFFFFFFFF)
+template <class T>
+bool ValidateTextureValue(const TextureReadbackContext& ctx, T expectedValue)
 {
-    std::vector<u32> texels;
-    texels.resize(ctx.GetDataByteSize() / 4);
+    std::vector<T> texels;
+    texels.resize(ctx.GetDataByteSize() / sizeof(T));
     ctx.ReadData(std::as_writable_bytes(std::span{ texels }));
-    return std::ranges::all_of(texels, [&](auto v) { return (v & mask) == expectedColor; });
+    return std::ranges::all_of(texels, [&](auto v) { return v == expectedValue; });
 }
 
 template <class F>
@@ -82,8 +83,7 @@ TEST_F(ClearTest, ClearDepthOnlyImplicit)
                                             [](CommandContext& ctx, const Texture& texture)
                                             { ctx.ClearTexture({ .texture = texture }); });
 
-    float value = 0.54f;
-    EXPECT_TRUE(ValidateTextureValue(depthReadback, reinterpret_cast<u32&>(value)));
+    EXPECT_TRUE(ValidateTextureValue(depthReadback, 0.54f));
 }
 
 TEST_F(ClearTest, ClearDepthOnlyExpicit)
@@ -106,8 +106,7 @@ TEST_F(ClearTest, ClearDepthOnlyExpicit)
                                                                  });
                                             });
 
-    float value = 0.54f;
-    EXPECT_TRUE(ValidateTextureValue(depthReadback, reinterpret_cast<u32&>(value)));
+    EXPECT_TRUE(ValidateTextureValue(depthReadback, 0.54f));
 }
 
 // TODO: Uncomment those tests when https://trello.com/c/vEaa2SUe is done
@@ -208,14 +207,14 @@ TEST_F(ClearTest, ClearDepthOnlyExpicit)
 
 TEST_F(ClearTest, ClearDepthOnlyRect)
 {
-    auto texture = graphics.CreateTexture(TextureDesc::CreateTexture2DDesc(
-        "TestRenderTarget",
-        TextureFormat::BGRA8_UNORM,
-        10,
-        10,
-        1,
-        TextureUsage::RenderTarget,
-        TextureClearValue{ .flags = TextureClear::ClearColor, .color = { 1, 1, 1, 1 } }));
+    auto texture = graphics.CreateTexture(
+        TextureDesc::CreateTexture2DDesc("TestRenderTarget",
+                                         TextureFormat::D32_FLOAT,
+                                         10,
+                                         10,
+                                         1,
+                                         TextureUsage::DepthStencil,
+                                         TextureClearValue{ .flags = TextureClear::ClearDepth, .depth = 0.0f }));
 
     std::array clearRects{
         TextureClearRect{ .extentX = 5, .extentY = 5 },
@@ -224,7 +223,11 @@ TEST_F(ClearTest, ClearDepthOnlyRect)
 
     auto ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
-    ctx.ClearTexture({ .texture = texture }, std::nullopt, clearRects);
+    // Need to clear full texture first because a partial clear doesnt count as valid init
+    ctx.ClearTexture({ .texture = texture }, texture.desc.clearValue);
+    ctx.ClearTexture({ .texture = texture },
+                     TextureClearValue{ .flags = TextureClear::ClearDepth, .depth = 0.7f },
+                     clearRects);
 
     auto readbackTopLeftCtx = ctx.EnqueueDataReadback(texture,
                                                       TextureRegion{
@@ -245,9 +248,57 @@ TEST_F(ClearTest, ClearDepthOnlyRect)
                                                          });
     graphics.WaitForTokenOnCPU(graphics.Submit(ctx));
 
-    EXPECT_TRUE(ValidateTextureValue(readbackTopLeftCtx, 0xFFFFFFFF));
-    EXPECT_TRUE(ValidateTextureValue(readbackBottomRightCtx, 0xFFFFFFFF));
-    EXPECT_TRUE(ValidateTextureValue(readbackBottomLeftCtx, 0x00000000));
+    EXPECT_TRUE(ValidateTextureValue(readbackTopLeftCtx, 0.7f));
+    EXPECT_TRUE(ValidateTextureValue(readbackBottomRightCtx, 0.7f));
+    EXPECT_TRUE(ValidateTextureValue(readbackBottomLeftCtx, 0.0f));
+}
+
+TEST_F(ClearTest, ClearRenderTargetRect)
+{
+    auto texture = graphics.CreateTexture(TextureDesc::CreateTexture2DDesc(
+        "TestRenderTarget",
+        TextureFormat::BGRA8_UNORM,
+        10,
+        10,
+        1,
+        TextureUsage::RenderTarget,
+        TextureClearValue{ .flags = TextureClear::ClearColor, .color = { 0, 0, 0, 0 } }));
+
+    std::array clearRects{
+        TextureClearRect{ .extentX = 5, .extentY = 5 },
+        TextureClearRect{ .offsetX = 5, .offsetY = 5, .extentX = 5, .extentY = 5 },
+    };
+
+    auto ctx = graphics.CreateCommandContext(QueueType::Graphics);
+
+    // Need to clear full texture first because a partial clear doesnt count as valid init
+    ctx.ClearTexture({ .texture = texture }, texture.desc.clearValue);
+    ctx.ClearTexture({ .texture = texture },
+                     TextureClearValue{ .flags = TextureClear::ClearColor, .color = { 1, 0, 1, 0 } },
+                     clearRects);
+
+    auto readbackTopLeftCtx = ctx.EnqueueDataReadback(texture,
+                                                      TextureRegion{
+                                                          .offset = { 0, 0 },
+                                                          .extent = { 5, 5 },
+                                                      });
+
+    auto readbackBottomRightCtx = ctx.EnqueueDataReadback(texture,
+                                                          TextureRegion{
+                                                              .offset = { 5, 5 },
+                                                              .extent = { 5, 5 },
+                                                          });
+
+    auto readbackBottomLeftCtx = ctx.EnqueueDataReadback(texture,
+                                                         TextureRegion{
+                                                             .offset = { 0, 5 },
+                                                             .extent = { 5, 5 },
+                                                         });
+    graphics.WaitForTokenOnCPU(graphics.Submit(ctx));
+
+    EXPECT_TRUE(ValidateTextureValue(readbackTopLeftCtx, std::array<u8, 4>{ 0xFF, 0x00, 0xFF, 0x00 }));
+    EXPECT_TRUE(ValidateTextureValue(readbackBottomRightCtx, std::array<u8, 4>{ 0xFF, 0x00, 0xFF, 0x00 }));
+    EXPECT_TRUE(ValidateTextureValue(readbackBottomLeftCtx, std::array<u8, 4>{ 0, 0, 0, 0 }));
 }
 
 } // namespace vex
