@@ -170,7 +170,7 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
 u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions)
 {
     const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
-    u64 totalSize = 0;
+    float totalSize = 0;
 
     for (const TextureRegion& region : uploadRegions)
     {
@@ -196,7 +196,7 @@ u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Span<const Textu
         }
     }
 
-    return totalSize;
+    return static_cast<u64>(std::ceil(totalSize));
 }
 
 u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions)
@@ -483,12 +483,12 @@ TextureDesc TextureDesc::CreateTexture3DDesc(std::string name,
 
 u32 TextureClearRect::GetExtentX(const TextureDesc& desc) const
 {
-    return extentX == GTextureClearRectMax ? desc.width : extentX;
+    return extentX == GTextureClearRectMax ? desc.width - offsetX : extentX;
 }
 
 u32 TextureClearRect::GetExtentY(const TextureDesc& desc) const
 {
-    return extentY == GTextureClearRectMax ? desc.height : extentY;
+    return extentY == GTextureClearRectMax ? desc.height - offsetY : extentY;
 }
 
 u16 TextureSubresource::GetMipCount(const TextureDesc& desc) const
