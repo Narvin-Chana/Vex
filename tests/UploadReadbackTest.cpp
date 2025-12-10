@@ -412,7 +412,7 @@ TEST_P(BufferUploadReadbackTests, BufferUploadAndFullReadback)
     }
 
     Buffer uploadBuffer =
-        graphics.CreateBuffer(BufferDesc::CreateStructuredBufferDesc("GPUBuffer", sizeof(float) * 100));
+        graphics.CreateBuffer(BufferDesc::CreateGenericBufferDesc("GPUBuffer", sizeof(float) * 100));
 
     ctx.EnqueueDataUpload(uploadBuffer, std::as_bytes(std::span(data)), params.uploadRegion);
 

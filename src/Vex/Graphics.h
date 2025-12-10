@@ -5,6 +5,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include <Vex/AccelerationStructure.h>
 #include <Vex/Containers/FreeList.h>
 #include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/Containers/Span.h>
@@ -85,6 +86,12 @@ public:
 
     // Creates a new buffer with the specified description.
     [[nodiscard]] Buffer CreateBuffer(BufferDesc desc, ResourceLifetime lifetime = ResourceLifetime::Static);
+
+    // Creates a bottom level acceleration structure. Invalid for use in shaders until it is built.
+    [[nodiscard]] ASHandle CreateBottomLevelAccelerationStructure(BLASDesc desc);
+
+    // Creates a top level acceleration structure. Invalid for use in shaders until it is built.
+    [[nodiscard]] ASHandle CreateTopLevelAccelerationStructure(BLASDesc desc);
 
     // Writes data to buffer memory. This only supports buffers with ResourceMemoryLocality::CPUWrite.
     [[nodiscard]] ResourceMappedMemory MapResource(const Buffer& buffer);
@@ -230,6 +237,7 @@ private:
     // Converts from the Handle to the actual underlying RHI resource.
     FreeList<RHITexture, TextureHandle> textureRegistry;
     FreeList<RHIBuffer, BufferHandle> bufferRegistry;
+    FreeList<RHIAccelerationStructure, ASHandle> accelerationStructureRegistry;
 
     std::vector<Texture> presentTextures;
     std::vector<SyncToken> presentTokens;

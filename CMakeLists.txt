@@ -230,7 +230,7 @@ add_library(Vex STATIC
     "src/Vex/ResourceCopy.cpp"
     "src/Vex/ResourceReadbackContext.cpp"
     "src/Vex/ResourceReadbackContext.h"
-)
+ "src/Vex/RHIImpl/RHIAccelerationStructure.h" "src/RHI/RHIAccelerationStructure.h" "src/Vex/AccelerationStructure.h")
 
 if(WIN32)
     target_sources(Vex PRIVATE

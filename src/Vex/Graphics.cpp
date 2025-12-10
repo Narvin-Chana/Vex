@@ -254,6 +254,16 @@ Buffer Graphics::CreateBuffer(BufferDesc desc, ResourceLifetime lifetime)
                    .desc = std::move(desc) };
 }
 
+ASHandle Graphics::CreateBottomLevelAccelerationStructure(BLASDesc desc)
+{
+    return accelerationStructureRegistry.AllocateElement(std::move(rhi.CreateAccelerationStructure()));
+}
+
+ASHandle Graphics::CreateTopLevelAccelerationStructure(BLASDesc desc)
+{
+    return ASHandle();
+}
+
 ResourceMappedMemory Graphics::MapResource(const Buffer& buffer)
 {
     RHIBuffer& rhiBuffer = GetRHIBuffer(buffer.handle);

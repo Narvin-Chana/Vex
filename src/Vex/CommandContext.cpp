@@ -886,6 +886,7 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
                                                                 const DrawResourceBinding& drawBindings,
                                                                 ConstantBinding constants)
 {
+    // TODO: determine if this one is not already covered by BindingUtil::ValidateDrawResource.
     VEX_CHECK(!drawBindings.depthStencil ||
                   (drawBindings.depthStencil &&
                    FormatUtil::IsDepthOrStencilFormat(drawBindings.depthStencil->texture.desc.format)),

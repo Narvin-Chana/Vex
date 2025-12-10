@@ -58,6 +58,19 @@ TextureFormat GetCopyFormat(TextureFormat format, TextureAspect::Type aspect)
 
 void ValidateTextureDescription(const TextureDesc& desc)
 {
+    VEX_CHECK(desc.width != 0,
+        "Invalid Texture description for texture \"{}\": Cannot create a texture with a width of 0.",
+        desc.name);
+    VEX_CHECK(desc.height != 0,
+        "Invalid Texture description for texture \"{}\": Cannot create a texture with a height of 0.",
+        desc.name);
+    VEX_CHECK(desc.GetDepth() != 0,
+        "Invalid Texture description for texture \"{}\": Cannot create a texture with a depth of 0.",
+        desc.name);
+    VEX_CHECK(desc.GetSliceCount() != 0,
+        "Invalid Texture description for texture \"{}\": Cannot create a texture with a slice count of 0.",
+        desc.name);
+
     bool isDepthStencilFormat = FormatUtil::IsDepthOrStencilFormat(desc.format);
     if (isDepthStencilFormat && !(desc.usage & TextureUsage::DepthStencil))
     {
