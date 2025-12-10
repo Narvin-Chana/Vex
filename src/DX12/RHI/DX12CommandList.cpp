@@ -153,12 +153,14 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(const ComPtr<DX12D
     auto [width, height, depth] =
         desc.textureRegion.GetExtents(texture.GetDesc(), desc.textureRegion.subresource.startMip);
     bufferLoc.SubresourceIndex = subresourceIndex;
-    bufferLoc.PlacedFootprint.Offset = 0;
+    bufferLoc.PlacedFootprint.Offset = desc.bufferRegion.offset;
     bufferLoc.PlacedFootprint.Footprint.Format = TextureFormatToDXGI(texture.GetDesc().format, false);
     bufferLoc.PlacedFootprint.Footprint.Width = std::max(width, 1u);
     bufferLoc.PlacedFootprint.Footprint.Height = std::max(height, 1u);
     bufferLoc.PlacedFootprint.Footprint.Depth = std::max(depth, 1u);
-    bufferLoc.PlacedFootprint.Footprint.RowPitch = TextureUtil::RowPitchAlignment;
+    bufferLoc.PlacedFootprint.Footprint.RowPitch =
+        AlignUp<u64>(width * TextureUtil::GetPixelByteSizeFromFormat(texture.GetDesc().format),
+                     TextureUtil::RowPitchAlignment);
 
     D3D12_TEXTURE_COPY_LOCATION textureLoc = {};
     textureLoc.pResource = texture.GetRawTexture();
@@ -464,7 +466,9 @@ void DX12CommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers,
             dx12Barrier.Subresources.NumArraySlices =
                 textureBarrier.subresource.GetSliceCount(textureBarrier.texture->GetDesc());
             dx12Barrier.Subresources.FirstPlane = 0;
-            dx12Barrier.Subresources.NumPlanes = 1; // Most textures have 1 plane
+            dx12Barrier.Subresources.NumPlanes = FormatUtil::SupportsStencil(textureBarrier.texture->GetDesc().format)
+                                                     ? 2
+                                                     : 1; // Most textures have 1 plane
             dx12Barrier.Flags = D3D12_TEXTURE_BARRIER_FLAG_NONE;
             dx12TextureBarriers.push_back(std::move(dx12Barrier));
 
@@ -521,7 +525,10 @@ void DX12CommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers,
                     dx12Barrier.Subresources.FirstArraySlice = slice;
                     dx12Barrier.Subresources.NumArraySlices = 1;
                     dx12Barrier.Subresources.FirstPlane = 0;
-                    dx12Barrier.Subresources.NumPlanes = 1; // Most textures have 1 plane
+                    dx12Barrier.Subresources.NumPlanes =
+                        FormatUtil::SupportsStencil(textureBarrier.texture->GetDesc().format)
+                            ? 2
+                            : 1; // Most textures have 1 plane
                     dx12Barrier.Flags = D3D12_TEXTURE_BARRIER_FLAG_NONE;
                     dx12TextureBarriers.push_back(std::move(dx12Barrier));
 

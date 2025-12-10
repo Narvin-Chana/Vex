@@ -28,26 +28,6 @@ void PixEventsApplication::Run()
         {
             PIX::StartCapture(vex::StringToWString("ExampleCapture.wpix"));
 
-            using namespace vex;
-            auto texture = graphics->CreateTexture(
-                TextureDesc::CreateTexture2DDesc("TestDepthStencil",
-                                                 TextureFormat::D32_FLOAT,
-                                                 10,
-                                                 10,
-                                                 1,
-                                                 TextureUsage::DepthStencil | TextureUsage::ShaderRead,
-                                                 TextureClearValue{
-                                                     .flags = TextureClear::ClearDepth,
-                                                     .depth = .54,
-                                                 }));
-
-            auto ctx = graphics->CreateCommandContext(QueueType::Graphics);
-            ctx.ClearTexture({ .texture = texture });
-
-            ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0));
-
-            graphics->WaitForTokenOnCPU(graphics->Submit(ctx));
-
             PIX::EndCapture();
             VEX_LOG(vex::Info, "Capture frame with PIX");
             hasCaptured = true;
