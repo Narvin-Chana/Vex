@@ -15,6 +15,16 @@ bool ValidateTextureValue(const TextureReadbackContext& ctx, T expectedValue)
     return std::ranges::all_of(texels, [&](auto v) { return v == expectedValue; });
 }
 
+template <class T>
+    requires std::is_integral_v<T>
+bool ValidateTextureValueMasked(const TextureReadbackContext& ctx, T expectedValue, u32 mask)
+{
+    std::vector<T> texels;
+    texels.resize(ctx.GetDataByteSize() / sizeof(T));
+    ctx.ReadData(std::as_writable_bytes(std::span{ texels }));
+    return std::ranges::all_of(texels, [&](auto v) { return (v & mask) == expectedValue; });
+}
+
 template <class F>
 TextureReadbackContext ExecuteAndReadback(Graphics& gfx, const Texture& texture, F func)
 {
@@ -109,101 +119,102 @@ TEST_F(ClearTest, ClearDepthOnlyExpicit)
     EXPECT_TRUE(ValidateTextureValue(depthReadback, 0.54f));
 }
 
-// TODO: Uncomment those tests when https://trello.com/c/vEaa2SUe is done
-//
-// TEST_F(ClearTest, ClearDepthStencilImplicit)
-// {
-//     auto texture = graphics.CreateTexture(
-//         TextureDesc::CreateTexture2DDesc("TestDepthStencil",
-//                                          TextureFormat::D24_UNORM_S8_UINT,
-//                                          10,
-//                                          10,
-//                                          1,
-//                                          TextureUsage::DepthStencil,
-//                                          TextureClearValue{
-//                                              .flags = TextureClear::ClearStencil | TextureClear::ClearDepth,
-//                                              .depth = 1.0f,
-//                                              .stencil = 0xEE,
-//                                          }));
-//
-//     auto depthReadback = ExecuteAndReadback(graphics,
-//                                             texture,
-//                                             [](CommandContext& ctx, const Texture& texture)
-//                                             { ctx.ClearTexture({ .texture = texture }); });
-//
-//     EXPECT_TRUE(ValidateTextureValue(depthReadback, 0x00FFFFFF, 0x00FFFFFF));
-//     EXPECT_TRUE(ValidateTextureValue(depthReadback, 0xEE000000, 0xFF000000));
-// }
-//
-// TEST_F(ClearTest, ClearDepthStencilExplicit)
-// {
-//     auto texture = graphics.CreateTexture(TextureDesc::CreateTexture2DDesc("TestDepthStencil",
-//                                                                            TextureFormat::D24_UNORM_S8_UINT,
-//                                                                            10,
-//                                                                            10,
-//                                                                            1,
-//                                                                            TextureUsage::DepthStencil));
-//
-//     auto depthReadback =
-//         ExecuteAndReadback(graphics,
-//                            texture,
-//                            [](CommandContext& ctx, const Texture& texture)
-//                            {
-//                                ctx.ClearTexture({ .texture = texture },
-//                                                 TextureClearValue{
-//                                                     .flags = TextureClear::ClearStencil | TextureClear::ClearDepth,
-//                                                     .depth = 1.0f,
-//                                                     .stencil = 0xEE,
-//                                                 });
-//                            });
-//
-//     EXPECT_TRUE(ValidateTextureValue(depthReadback, 0x00FFFFFF, 0x00FFFFFF));
-//     EXPECT_TRUE(ValidateTextureValue(depthReadback, 0xEE000000, 0xFF000000));
-// }
-//
-// TEST_F(ClearTest, ClearStencilImplicit)
-// {
-//     auto texture = graphics.CreateTexture(TextureDesc::CreateTexture2DDesc("TestDepthStencil",
-//                                                                            TextureFormat::D24_UNORM_S8_UINT,
-//                                                                            10,
-//                                                                            10,
-//                                                                            1,
-//                                                                            TextureUsage::DepthStencil,
-//                                                                            TextureClearValue{
-//                                                                                .flags = TextureClear::ClearStencil,
-//                                                                                .stencil = 0xEE,
-//                                                                            }));
-//
-//     auto depthReadback = ExecuteAndReadback(graphics,
-//                                             texture,
-//                                             [](CommandContext& ctx, const Texture& texture)
-//                                             { ctx.ClearTexture({ .texture = texture }); });
-//
-//     EXPECT_TRUE(ValidateTextureValue(depthReadback, 0xEE000000, 0xFF000000));
-// }
-//
-// TEST_F(ClearTest, ClearStencilExplicit)
-// {
-//     auto texture = graphics.CreateTexture(TextureDesc::CreateTexture2DDesc("TestDepthStencil",
-//                                                                            TextureFormat::D24_UNORM_S8_UINT,
-//                                                                            10,
-//                                                                            10,
-//                                                                            1,
-//                                                                            TextureUsage::DepthStencil));
-//
-//     auto depthReadback = ExecuteAndReadback(graphics,
-//                                             texture,
-//                                             [](CommandContext& ctx, const Texture& texture)
-//                                             {
-//                                                 ctx.ClearTexture({ .texture = texture },
-//                                                                  TextureClearValue{
-//                                                                      .flags = TextureClear::ClearStencil,
-//                                                                      .stencil = 0xEE,
-//                                                                  });
-//                                             });
-//
-//     EXPECT_TRUE(ValidateTextureValue(depthReadback, 0xEE000000, 0xFF000000));
-// }
+TEST_F(ClearTest, ClearDepthStencilImplicit)
+{
+    auto texture = graphics.CreateTexture(
+        TextureDesc::CreateTexture2DDesc("TestDepthStencil",
+                                         TextureFormat::D24_UNORM_S8_UINT,
+                                         10,
+                                         10,
+                                         1,
+                                         TextureUsage::DepthStencil | TextureUsage::ShaderRead,
+                                         TextureClearValue{
+                                             .flags = TextureClear::ClearStencil | TextureClear::ClearDepth,
+                                             .depth = .54,
+                                             .stencil = 0xEE,
+                                         }));
+
+    auto depthReadback = ExecuteAndReadback(graphics,
+                                            texture,
+                                            [](CommandContext& ctx, const Texture& texture)
+                                            { ctx.ClearTexture({ .texture = texture }); });
+
+    EXPECT_TRUE(ValidateTextureValueMasked(depthReadback, 0x00FFFFFF, 0x00FFFFFF));
+    EXPECT_TRUE(ValidateTextureValueMasked(depthReadback, 0xEE000000, 0xFF000000));
+}
+
+TEST_F(ClearTest, ClearDepthStencilExplicit)
+{
+    auto texture =
+        graphics.CreateTexture(TextureDesc::CreateTexture2DDesc("TestDepthStencil",
+                                                                TextureFormat::D24_UNORM_S8_UINT,
+                                                                10,
+                                                                10,
+                                                                1,
+                                                                TextureUsage::DepthStencil | TextureUsage::ShaderRead));
+
+    auto depthReadback =
+        ExecuteAndReadback(graphics,
+                           texture,
+                           [](CommandContext& ctx, const Texture& texture)
+                           {
+                               ctx.ClearTexture({ .texture = texture },
+                                                TextureClearValue{
+                                                    .flags = TextureClear::ClearStencil | TextureClear::ClearDepth,
+                                                    .depth = 1.0f,
+                                                    .stencil = 0xEE,
+                                                });
+                           });
+
+    EXPECT_TRUE(ValidateTextureValueMasked(depthReadback, 0x00FFFFFF, 0x00FFFFFF));
+    EXPECT_TRUE(ValidateTextureValueMasked(depthReadback, 0xEE000000, 0xFF000000));
+}
+
+TEST_F(ClearTest, ClearStencilImplicit)
+{
+    auto texture =
+        graphics.CreateTexture(TextureDesc::CreateTexture2DDesc("TestDepthStencil",
+                                                                TextureFormat::D24_UNORM_S8_UINT,
+                                                                10,
+                                                                10,
+                                                                1,
+                                                                TextureUsage::DepthStencil | TextureUsage::ShaderRead,
+                                                                TextureClearValue{
+                                                                    .flags = TextureClear::ClearStencil,
+                                                                    .stencil = 0xEE,
+                                                                }));
+
+    auto depthReadback = ExecuteAndReadback(graphics,
+                                            texture,
+                                            [](CommandContext& ctx, const Texture& texture)
+                                            { ctx.ClearTexture({ .texture = texture }); });
+
+    EXPECT_TRUE(ValidateTextureValue(depthReadback, 0xEE));
+}
+
+TEST_F(ClearTest, ClearStencilExplicit)
+{
+    auto texture =
+        graphics.CreateTexture(TextureDesc::CreateTexture2DDesc("TestDepthStencil",
+                                                                TextureFormat::D24_UNORM_S8_UINT,
+                                                                10,
+                                                                10,
+                                                                1,
+                                                                TextureUsage::DepthStencil | TextureUsage::ShaderRead));
+
+    auto depthReadback = ExecuteAndReadback(graphics,
+                                            texture,
+                                            [](CommandContext& ctx, const Texture& texture)
+                                            {
+                                                ctx.ClearTexture({ .texture = texture },
+                                                                 TextureClearValue{
+                                                                     .flags = TextureClear::ClearStencil,
+                                                                     .stencil = 0xEE,
+                                                                 });
+                                            });
+
+    EXPECT_TRUE(ValidateTextureValue(depthReadback, 0xEE));
+}
 
 TEST_F(ClearTest, ClearDepthOnlyRect)
 {

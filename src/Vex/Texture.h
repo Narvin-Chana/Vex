@@ -2,12 +2,12 @@
 
 #include <string>
 
-#include <Vex/Utility/EnumFlags.h>
 #include <Vex/Formats.h>
-#include <Vex/Utility/Handle.h>
-#include <Vex/Utility/Hash.h>
 #include <Vex/Resource.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/EnumFlags.h>
+#include <Vex/Utility/Handle.h>
+#include <Vex/Utility/Hash.h>
 
 namespace vex
 {
@@ -46,6 +46,13 @@ enum class TextureBindingUsage : u8
     None = 0,
     ShaderRead = TextureUsage::ShaderRead,           // Equivalent to SRV in DX12.
     ShaderReadWrite = TextureUsage::ShaderReadWrite, // Equivalent to UAV in DX12.
+};
+
+enum class TextureBindingAspect : u8
+{
+    Color,
+    Depth,
+    Stencil
 };
 
 // clang-format off

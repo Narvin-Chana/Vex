@@ -3,8 +3,8 @@
 #include <unordered_map>
 
 #include <Vex/Containers/FreeList.h>
-#include <Vex/Utility/Hash.h>
 #include <Vex/Resource.h>
+#include <Vex/Utility/Hash.h>
 
 #include <RHI/RHIAllocator.h>
 #include <RHI/RHIFwd.h>
@@ -30,6 +30,7 @@ struct DX12TextureView
     // Uses the underlying resource's format if set to DXGI_FORMAT_UNKNOWN (and if the texture's format is not
     // TYPELESS!).
     DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
+    TextureBindingAspect aspect = TextureBindingAspect::Color;
 
     TextureSubresource subresource;
 
@@ -44,6 +45,7 @@ VEX_MAKE_HASHABLE(vex::dx12::DX12TextureView,
     VEX_HASH_COMBINE(seed, obj.dimension);
     VEX_HASH_COMBINE(seed, obj.format);
     VEX_HASH_COMBINE(seed, obj.subresource);
+    VEX_HASH_COMBINE(seed, obj.aspect);
 )
 // clang-format on
 

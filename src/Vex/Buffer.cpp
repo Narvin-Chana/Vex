@@ -121,12 +121,17 @@ BufferDesc BufferDesc::CreateReadbackBufferDesc(std::string name, u64 byteSize, 
     };
 }
 
-BufferDesc BufferDesc::CreateStructuredBufferDesc(std::string name, u64 byteSize)
+BufferDesc BufferDesc::CreateStructuredBufferDesc(std::string name, u64 byteSize, bool readWrite)
 {
+    BufferUsage::Flags usage = BufferUsage::GenericBuffer;
+    if (readWrite)
+    {
+        usage |= BufferUsage::ReadWriteBuffer;
+    }
     return {
         .name = std::move(name),
         .byteSize = byteSize,
-        .usage = BufferUsage::GenericBuffer,
+        .usage = usage,
         .memoryLocality = ResourceMemoryLocality::GPUOnly,
     };
 }

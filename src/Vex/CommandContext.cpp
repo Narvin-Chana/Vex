@@ -4,13 +4,14 @@
 #include <cmath>
 #include <variant>
 
+#include <Vex/BuiltInShaders/DepthStencilReadback.h>
 #include <Vex/BuiltInShaders/MipGeneration.h>
-#include <Vex/Platform/Debug.h>
 #include <Vex/DrawHelpers.h>
 #include <Vex/Graphics.h>
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
+#include <Vex/Platform/Debug.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
@@ -20,8 +21,8 @@
 #include <Vex/RayTracing.h>
 #include <Vex/ResourceBindingUtils.h>
 #include <Vex/Utility/ByteUtils.h>
-#include <Vex/Utility/Visitor.h>
 #include <Vex/Utility/Validation.h>
+#include <Vex/Utility/Visitor.h>
 
 #include <RHI/RHIBarrier.h>
 #include <RHI/RHIBindings.h>
@@ -32,8 +33,8 @@ namespace vex
 namespace CommandContext_Internal
 {
 
-static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureRegions(
-    const TextureDesc& desc, Span<const TextureRegion> regions)
+static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureRegions(const TextureDesc& desc,
+                                                                                     Span<const TextureRegion> regions)
 {
     // Otherwise we have to translate the TextureRegions to their equivalent BufferTextureCopyDescs.
     std::vector<BufferTextureCopyDesc> copyDescs;
@@ -526,9 +527,7 @@ void CommandContext::Copy(const Texture& source, const Texture& destination, con
     Copy(source, destination, { &regionMapping, 1 });
 }
 
-void CommandContext::Copy(const Texture& source,
-                          const Texture& destination,
-                          Span<const TextureCopyDesc> regionMappings)
+void CommandContext::Copy(const Texture& source, const Texture& destination, Span<const TextureCopyDesc> regionMappings)
 {
     VEX_CHECK(source.handle != destination.handle, "Cannot copy a texture to itself!");
 
@@ -603,9 +602,7 @@ void CommandContext::Copy(const Buffer& source, const Texture& destination, cons
     Copy(source, destination, { &copyDesc, 1 });
 }
 
-void CommandContext::Copy(const Buffer& source,
-                          const Texture& destination,
-                          Span<const BufferTextureCopyDesc> copyDescs)
+void CommandContext::Copy(const Buffer& source, const Texture& destination, Span<const BufferTextureCopyDesc> copyDescs)
 {
     for (auto& copyDesc : copyDescs)
     {
@@ -640,24 +637,79 @@ void CommandContext::Copy(const Texture& source,
 
     RHITexture& sourceRHI = graphics->GetRHITexture(source.handle);
     RHIBuffer& destinationRHI = graphics->GetRHIBuffer(destination.handle);
-    pendingTextureBarriers.push_back(RHITextureBarrier{ sourceRHI,
-                                                        {},
-                                                        RHIBarrierSync::Copy,
-                                                        RHIBarrierAccess::CopySource,
-                                                        RHITextureLayout::CopySource });
-    pendingBufferBarriers.push_back(
-        RHIBufferBarrier{ destinationRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest });
-    FlushBarriers();
 
-    if (FormatUtil::SupportsStencil(source.desc.format) &&
-        !GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::DepthStencilReadback))
+    if (FormatUtil::SupportsStencil(source.desc.format))
     {
-        // Run compute to copy the image to the buffer
-        // See: https://trello.com/c/vEaa2SUe
-        VEX_NOT_YET_IMPLEMENTED();
+        // Since we cant write directly to the readback buffer we need to have a temporary buffer to write to to then
+        // copy to readback
+        Buffer tempBuffer = graphics->CreateBuffer(
+            BufferDesc::CreateStructuredBufferDesc(std::format("{}_DepthStencilReadback", destination.desc.name),
+                                                   destination.desc.byteSize,
+                                                   true));
+        temporaryResources.push_back(tempBuffer);
+
+        ShaderKey shaderKey = DepthStencilReadbackShaderKey;
+
+        struct Uniforms
+        {
+            u32 sourceOffsetX, sourceOffsetY;
+            u32 rowWordCount;
+            BindlessHandle depthTextureHandle;
+            BindlessHandle stencilTextureHandle;
+            BindlessHandle destBufferHandle;
+        };
+
+        for (const auto& copyDesc : bufferToTextureCopyDescriptions)
+        {
+            TextureBinding depthBinding{ .texture = source,
+                                         .usage = TextureBindingUsage::ShaderRead,
+                                         .subresource = copyDesc.textureRegion.subresource,
+                                         .aspect = TextureBindingAspect::Depth };
+            TextureBinding stencilBinding{ .texture = source,
+                                           .usage = TextureBindingUsage::ShaderRead,
+                                           .subresource = copyDesc.textureRegion.subresource,
+                                           .aspect = TextureBindingAspect::Stencil };
+            BufferBinding destinationBinding{ .buffer = tempBuffer,
+                                              .usage = BufferBindingUsage::RWStructuredBuffer,
+                                              .strideByteSize = static_cast<u32>(sizeof(u32)),
+                                              .offsetByteSize = copyDesc.bufferRegion.offset,
+                                              .rangeByteSize = copyDesc.bufferRegion.byteSize };
+            BarrierBindings({ depthBinding, stencilBinding, destinationBinding });
+
+            BindlessHandle depthHandle = graphics->GetBindlessHandle(depthBinding);
+            BindlessHandle stencilHandle = graphics->GetBindlessHandle(stencilBinding);
+            BindlessHandle destinationHandle = graphics->GetBindlessHandle(destinationBinding);
+
+            u32 textureWidth =
+                copyDesc.textureRegion.extent.GetWidth(source.desc, copyDesc.textureRegion.subresource.startMip);
+            u32 textureHeight =
+                copyDesc.textureRegion.extent.GetHeight(source.desc, copyDesc.textureRegion.subresource.startMip);
+            Uniforms uniforms{ .sourceOffsetX = copyDesc.textureRegion.offset.x,
+                               .sourceOffsetY = copyDesc.textureRegion.offset.y,
+                               .rowWordCount =
+                                   AlignUp<u32>(textureWidth * sizeof(u32), TextureUtil::RowPitchAlignment) /
+                                   static_cast<u32>(sizeof(u32)),
+                               .depthTextureHandle = depthHandle,
+                               .stencilTextureHandle = stencilHandle,
+                               .destBufferHandle = destinationHandle };
+
+            std::array<u32, 3> dispatchGroupCount{ (textureWidth + 7u) / 8u, (textureHeight + 7u) / 8u, 1 };
+            Dispatch(shaderKey, ConstantBinding(uniforms), dispatchGroupCount);
+
+            Copy(tempBuffer, destination);
+        }
     }
     else
     {
+        pendingTextureBarriers.push_back(RHITextureBarrier{ sourceRHI,
+                                                            {},
+                                                            RHIBarrierSync::Copy,
+                                                            RHIBarrierAccess::CopySource,
+                                                            RHITextureLayout::CopySource });
+        pendingBufferBarriers.push_back(
+            RHIBufferBarrier{ destinationRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest });
+        FlushBarriers();
+
         cmdList->Copy(sourceRHI, destinationRHI, bufferToTextureCopyDescriptions);
     }
 }
