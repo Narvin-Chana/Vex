@@ -20,6 +20,7 @@ class DX12RHI;
 class DX12Fence;
 class DX12ScopedGPUEvent;
 class DX12TimestampQueryPool;
+class DX12AccelerationStructure;
 
 } // namespace vex::dx12
 
@@ -44,5 +45,6 @@ using RHI = dx12::DX12RHI;
 using RHIFence = dx12::DX12Fence;
 using RHITimestampQueryPool = dx12::DX12TimestampQueryPool;
 using RHIScopedGPUEvent = dx12::DX12ScopedGPUEvent;
+using RHIAccelerationStructure = dx12::DX12AccelerationStructure;
 
 } // namespace vex
