@@ -87,7 +87,7 @@ static D3D12_DEPTH_STENCIL_VIEW_DESC CreateDepthStencilViewDesc(const DX12Textur
 static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const DX12TextureView& view)
 {
     D3D12_SHADER_RESOURCE_VIEW_DESC desc{
-        .Format = GetDX12FormatForShaderResourceViewFormat(view.format),
+        .Format = GetDX12FormatForShaderResourceViewFormat(view.format, view.aspect),
         .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
     };
 
@@ -99,7 +99,7 @@ static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const DX12Te
         desc.Texture2D = {
             .MostDetailedMip = view.subresource.startMip,
             .MipLevels = view.subresource.mipCount,
-            .PlaneSlice = 0,
+            .PlaneSlice = view.aspect == TextureBindingAspect::Stencil ? 1u : 0u,
             .ResourceMinLODClamp = 0,
         };
         break;
@@ -111,7 +111,7 @@ static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const DX12Te
             .MipLevels = view.subresource.mipCount,
             .FirstArraySlice = view.subresource.startSlice,
             .ArraySize = view.subresource.sliceCount,
-            .PlaneSlice = 0,
+            .PlaneSlice = view.aspect == TextureBindingAspect::Stencil ? 1u : 0u,
             .ResourceMinLODClamp = 0,
         };
         break;
@@ -469,6 +469,7 @@ DX12TextureView::DX12TextureView(const TextureBinding& binding)
     , dimension{ TextureUtil::GetTextureViewType(binding) }
     , format{ TextureFormatToDXGI(binding.texture.desc.format, binding.isSRGB) }
     , subresource{ binding.subresource }
+    , aspect{ binding.aspect }
 {
     if (binding.usage == TextureBindingUsage::ShaderRead)
     {

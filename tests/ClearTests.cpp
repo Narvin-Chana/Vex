@@ -15,6 +15,16 @@ bool ValidateTextureValue(const TextureReadbackContext& ctx, T expectedValue)
     return std::ranges::all_of(texels, [&](auto v) { return v == expectedValue; });
 }
 
+template <class T>
+    requires std::is_integral_v<T>
+bool ValidateTextureValueMasked(const TextureReadbackContext& ctx, T expectedValue, u32 mask)
+{
+    std::vector<T> texels;
+    texels.resize(ctx.GetDataByteSize() / sizeof(T));
+    ctx.ReadData(std::as_writable_bytes(std::span{ texels }));
+    return std::ranges::all_of(texels, [&](auto v) { return (v & mask) == expectedValue; });
+}
+
 template <class F>
 TextureReadbackContext ExecuteAndReadback(Graphics& gfx, const Texture& texture, F func)
 {
@@ -120,7 +130,7 @@ TEST_F(ClearTest, ClearDepthStencilImplicit)
                                          TextureUsage::DepthStencil | TextureUsage::ShaderRead,
                                          TextureClearValue{
                                              .flags = TextureClear::ClearStencil | TextureClear::ClearDepth,
-                                             .depth = 1.0f,
+                                             .depth = .54,
                                              .stencil = 0xEE,
                                          }));
 
@@ -129,8 +139,8 @@ TEST_F(ClearTest, ClearDepthStencilImplicit)
                                             [](CommandContext& ctx, const Texture& texture)
                                             { ctx.ClearTexture({ .texture = texture }); });
 
-    EXPECT_TRUE(ValidateTextureValue(depthReadback, 0x00FFFFFF, 0x00FFFFFF));
-    EXPECT_TRUE(ValidateTextureValue(depthReadback, 0xEE000000, 0xFF000000));
+    EXPECT_TRUE(ValidateTextureValueMasked(depthReadback, 0x00FFFFFF, 0x00FFFFFF));
+    EXPECT_TRUE(ValidateTextureValueMasked(depthReadback, 0xEE000000, 0xFF000000));
 }
 
 TEST_F(ClearTest, ClearDepthStencilExplicit)
@@ -156,8 +166,8 @@ TEST_F(ClearTest, ClearDepthStencilExplicit)
                                                 });
                            });
 
-    EXPECT_TRUE(ValidateTextureValue(depthReadback, 0x00FFFFFF, 0x00FFFFFF));
-    EXPECT_TRUE(ValidateTextureValue(depthReadback, 0xEE000000, 0xFF000000));
+    EXPECT_TRUE(ValidateTextureValueMasked(depthReadback, 0x00FFFFFF, 0x00FFFFFF));
+    EXPECT_TRUE(ValidateTextureValueMasked(depthReadback, 0xEE000000, 0xFF000000));
 }
 
 TEST_F(ClearTest, ClearStencilImplicit)
@@ -179,7 +189,7 @@ TEST_F(ClearTest, ClearStencilImplicit)
                                             [](CommandContext& ctx, const Texture& texture)
                                             { ctx.ClearTexture({ .texture = texture }); });
 
-    EXPECT_TRUE(ValidateTextureValue(depthReadback, 0xEE000000, 0xFF000000));
+    EXPECT_TRUE(ValidateTextureValue(depthReadback, 0xEE));
 }
 
 TEST_F(ClearTest, ClearStencilExplicit)
@@ -203,7 +213,7 @@ TEST_F(ClearTest, ClearStencilExplicit)
                                                                  });
                                             });
 
-    EXPECT_TRUE(ValidateTextureValue(depthReadback, 0xEE000000, 0xFF000000));
+    EXPECT_TRUE(ValidateTextureValue(depthReadback, 0xEE));
 }
 
 TEST_F(ClearTest, ClearDepthOnlyRect)

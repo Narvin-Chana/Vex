@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIFwd.h>
 
@@ -101,6 +101,9 @@ struct RHITextureBarrier
     RHIBarrierSync dstSync;
     RHIBarrierAccess dstAccess;
     RHITextureLayout dstLayout;
+
+    u32 startPlane = 0;
+    u32 planeCount = 1;
 };
 
 } // namespace vex

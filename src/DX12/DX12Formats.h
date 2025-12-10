@@ -3,6 +3,7 @@
 #include <dxgiformat.h>
 
 #include <Vex/Formats.h>
+#include <Vex/Texture.h>
 
 namespace vex::dx12
 {
@@ -341,7 +342,8 @@ constexpr inline DXGI_FORMAT GetTypelessFormatForDepthStencilCompatibleDX12Forma
     }
 }
 
-constexpr inline DXGI_FORMAT GetDX12FormatForShaderResourceViewFormat(DXGI_FORMAT typelessFormat)
+constexpr inline DXGI_FORMAT GetDX12FormatForShaderResourceViewFormat(DXGI_FORMAT typelessFormat,
+                                                                      TextureBindingAspect aspect)
 {
     switch (typelessFormat)
     {
@@ -354,6 +356,8 @@ constexpr inline DXGI_FORMAT GetDX12FormatForShaderResourceViewFormat(DXGI_FORMA
     case DXGI_FORMAT_R32G32_TYPELESS:
         return DXGI_FORMAT_R32G32_FLOAT;
     case DXGI_FORMAT_R32G8X24_TYPELESS:
+        return aspect == TextureBindingAspect::Depth ? DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS
+                                                     : DXGI_FORMAT_X32_TYPELESS_G8X24_UINT;
         return DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
     case DXGI_FORMAT_R10G10B10A2_TYPELESS:
         return DXGI_FORMAT_R10G10B10A2_UNORM;
@@ -364,7 +368,8 @@ constexpr inline DXGI_FORMAT GetDX12FormatForShaderResourceViewFormat(DXGI_FORMA
     case DXGI_FORMAT_R32_TYPELESS:
         return DXGI_FORMAT_R32_FLOAT;
     case DXGI_FORMAT_R24G8_TYPELESS:
-        return DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+        return aspect == TextureBindingAspect::Depth ? DXGI_FORMAT_R24_UNORM_X8_TYPELESS
+                                                     : DXGI_FORMAT_X24_TYPELESS_G8_UINT;
     case DXGI_FORMAT_R8G8_TYPELESS:
         return DXGI_FORMAT_R8G8_UNORM;
     case DXGI_FORMAT_R16_TYPELESS:

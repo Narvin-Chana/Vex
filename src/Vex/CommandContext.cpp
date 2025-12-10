@@ -638,14 +638,14 @@ void CommandContext::Copy(const Texture& source,
     RHITexture& sourceRHI = graphics->GetRHITexture(source.handle);
     RHIBuffer& destinationRHI = graphics->GetRHIBuffer(destination.handle);
 
-    if (FormatUtil::SupportsStencil(source.desc.format) &&
-        !GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::DepthStencilReadback))
+    if (FormatUtil::SupportsStencil(source.desc.format))
     {
         // Since we cant write directly to the readback buffer we need to have a temporary buffer to write to to then
         // copy to readback
         Buffer tempBuffer = graphics->CreateBuffer(
             BufferDesc::CreateStructuredBufferDesc(std::format("{}_DepthStencilReadback", destination.desc.name),
-                                                   destination.desc.byteSize));
+                                                   destination.desc.byteSize,
+                                                   true));
         temporaryResources.push_back(tempBuffer);
 
         ShaderKey shaderKey = DepthStencilReadbackShaderKey;

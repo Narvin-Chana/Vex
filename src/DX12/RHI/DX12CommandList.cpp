@@ -10,6 +10,7 @@
 
 #include <RHI/RHIBindings.h>
 
+#include <DX12/DX12Formats.h>
 #include <DX12/DX12GraphicsPipeline.h>
 #include <DX12/HRChecker.h>
 #include <DX12/RHI/DX12Barrier.h>
@@ -140,20 +141,24 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(const ComPtr<DX12D
     }
     const u32 subresourceIndex =
         desc.textureRegion.subresource.startSlice * texture.GetDesc().mips + desc.textureRegion.subresource.startMip;
-    device->GetCopyableFootprints(&textureDesc,
-                                  subresourceIndex,
-                                  1,
-                                  desc.bufferRegion.offset,
-                                  &bufferLoc.PlacedFootprint,
-                                  nullptr,
-                                  nullptr,
-                                  nullptr);
+    // device->GetCopyableFootprints(&textureDesc,
+    //                               subresourceIndex,
+    //                               1,
+    //                               desc.bufferRegion.offset,
+    //                               &bufferLoc.PlacedFootprint,
+    //                               nullptr,
+    //                               nullptr,
+    //                               nullptr);
 
     auto [width, height, depth] =
         desc.textureRegion.GetExtents(texture.GetDesc(), desc.textureRegion.subresource.startMip);
+    bufferLoc.SubresourceIndex = subresourceIndex;
+    bufferLoc.PlacedFootprint.Offset = 0;
+    bufferLoc.PlacedFootprint.Footprint.Format = TextureFormatToDXGI(texture.GetDesc().format, false);
     bufferLoc.PlacedFootprint.Footprint.Width = std::max(width, 1u);
     bufferLoc.PlacedFootprint.Footprint.Height = std::max(height, 1u);
     bufferLoc.PlacedFootprint.Footprint.Depth = std::max(depth, 1u);
+    bufferLoc.PlacedFootprint.Footprint.RowPitch = TextureUtil::RowPitchAlignment;
 
     D3D12_TEXTURE_COPY_LOCATION textureLoc = {};
     textureLoc.pResource = texture.GetRawTexture();
