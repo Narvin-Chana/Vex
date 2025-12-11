@@ -70,6 +70,11 @@ public:
     virtual void EndTimestampQuery(QueryHandle handle) override;
     virtual void ResolveTimestampQueries(u32 firstQuery, u32 queryCount) override;
 
+    virtual void BuildBLAS(RHIAccelerationStructure& as,
+                           RHIBuffer& scratchBuffer,
+                           const RHIBLASBuildDesc& desc) override;
+    virtual void BuildTLAS(RHIAccelerationStructure& as, const RHITLASBuildDesc& desc) override;
+
     ComPtr<ID3D12GraphicsCommandList10>& GetNativeCommandList()
     {
         return commandList;

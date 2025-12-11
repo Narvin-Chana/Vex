@@ -13,4 +13,6 @@ protected:
 
 private:
     vex::Texture workingTexture;
+    vex::AccelerationStructure triangleBLAS;
+    vex::AccelerationStructure tlas;
 };

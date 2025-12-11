@@ -14,6 +14,7 @@
 #include <DX12/DX12Formats.h>
 #include <DX12/DX12GraphicsPipeline.h>
 #include <DX12/HRChecker.h>
+#include <DX12/RHI/DX12AccelerationStructure.h>
 #include <DX12/RHI/DX12Barrier.h>
 #include <DX12/RHI/DX12Buffer.h>
 #include <DX12/RHI/DX12DescriptorPool.h>
@@ -839,6 +840,63 @@ void DX12CommandList::ResolveTimestampQueries(u32 firstQuery, u32 queryCount)
                                   queryCount,
                                   queryPool->GetTimestampBuffer().GetRawBuffer(),
                                   firstQuery * sizeof(u64));
+}
+
+void DX12CommandList::BuildBLAS(RHIAccelerationStructure& as, RHIBuffer& scratchBuffer, const RHIBLASBuildDesc& desc)
+{
+    // Fill in the BLAS geometry descs.
+    std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> geometryDescs;
+    geometryDescs.reserve(desc.geometry.size());
+    for (const RHIBLASGeometryDesc& rhiGeometryDesc : desc.geometry)
+    {
+        D3D12_RAYTRACING_GEOMETRY_DESC geometryDesc{};
+        geometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+        geometryDesc.Flags = static_cast<D3D12_RAYTRACING_GEOMETRY_FLAGS>(rhiGeometryDesc.flags);
+        const D3D12_VERTEX_BUFFER_VIEW vbView = rhiGeometryDesc.vertexBufferBinding.buffer->GetVertexBufferView(
+            rhiGeometryDesc.vertexBufferBinding.binding);
+        geometryDesc.Triangles.VertexBuffer = {
+            .StartAddress = vbView.BufferLocation,
+            .StrideInBytes = vbView.StrideInBytes,
+        };
+        geometryDesc.Triangles.VertexCount = vbView.SizeInBytes / vbView.StrideInBytes;
+        // TODO: other formats
+        geometryDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+
+        if (rhiGeometryDesc.indexBufferBinding.has_value())
+        {
+            const D3D12_VERTEX_BUFFER_VIEW ibView = rhiGeometryDesc.indexBufferBinding->buffer->GetVertexBufferView(
+                rhiGeometryDesc.indexBufferBinding->binding);
+            geometryDesc.Triangles.IndexBuffer = ibView.BufferLocation;
+            geometryDesc.Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
+        }
+        else
+        {
+            geometryDesc.Triangles.IndexFormat = DXGI_FORMAT_UNKNOWN;
+        }
+        geometryDescs.push_back(std::move(geometryDesc));
+    }
+
+    // Build the BLAS.
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc{};
+    buildDesc.Inputs = D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS{
+        .Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
+        // TODO: convert vex enum to DX12 native enum
+        .Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE,
+        .NumDescs = static_cast<u32>(geometryDescs.size()),
+        .DescsLayout = D3D12_ELEMENTS_LAYOUT::D3D12_ELEMENTS_LAYOUT_ARRAY,
+        .pGeometryDescs = geometryDescs.data(),
+        // TODO: handle opacity micromaps
+    };
+    buildDesc.ScratchAccelerationStructureData = scratchBuffer.GetGPUVirtualAddress();
+    buildDesc.DestAccelerationStructureData = as.GetRHIBuffer().GetGPUVirtualAddress();
+    // TODO: create scratch buffer, probably by filling in AS before calling this so that it generates the geometry desc
+    // (DX12-specific).
+    commandList->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
+}
+
+void DX12CommandList::BuildTLAS(RHIAccelerationStructure& as, const RHITLASBuildDesc& desc)
+{
+    VEX_NOT_YET_IMPLEMENTED();
 }
 
 RHIScopedGPUEvent DX12CommandList::CreateScopedMarker(const char* label, std::array<float, 3> labelColor)

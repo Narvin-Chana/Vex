@@ -1,5 +1,8 @@
 #include "HelloRayTracing.h"
 
+#include <array>
+#include <vector>
+
 #include <GLFWIncludes.h>
 
 HelloRayTracing::HelloRayTracing()
@@ -22,6 +25,68 @@ HelloRayTracing::HelloRayTracing()
                                   .depthOrSliceCount = 1,
                                   .mips = 1,
                                   .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
+
+    using Vertex = std::array<float, 3>;
+    static constexpr std::array TriangleVerts{
+        // Triangle
+        Vertex{ -0.5f, -0.5f, 0.0f },
+        Vertex{ 0.0f, 0.5f, 0.0f },
+        Vertex{ 0.5f, -0.5f, 0.0f },
+    };
+    static constexpr std::array<vex::u32, 3> TriangleIndices{ 0, 1, 2 };
+
+    triangleBLAS = graphics->CreateBottomLevelAccelerationStructure(
+        { .name = "TriangleBLAS", .buildFlags = vex::ASBuildFlags::PreferFastTrace });
+    tlas = graphics->CreateTopLevelAccelerationStructure({ .name = "HelloRayTracing_TLAS" });
+
+    // Create vertex and index buffers
+    vex::BufferDesc vbDesc =
+        vex::BufferDesc::CreateVertexBufferDesc("RT Vertex Buffer", sizeof(Vertex) * TriangleVerts.size());
+    vbDesc.usage |= vex::BufferUsage::RaytracingAccelerationStructure;
+    vex::Buffer vertexBuffer = graphics->CreateBuffer(vbDesc);
+
+    vex::BufferDesc ibDesc =
+        vex::BufferDesc::CreateIndexBufferDesc("RT Index Buffer", sizeof(vex::u32) * TriangleIndices.size());
+    vex::Buffer indexBuffer = graphics->CreateBuffer(ibDesc);
+
+    vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
+
+    ctx.BuildBLAS(triangleBLAS,
+                  { .geometry = { vex::BLASGeometryDesc{
+                        .vertexBufferBinding = { .buffer = vertexBuffer },
+                        .indexBufferBinding = vex::BufferBinding{ .buffer = indexBuffer },
+                        .transform = std::nullopt,
+                        .flags = vex::ASGeometryFlags::Opaque,
+                    } } });
+
+    std::array<vex::TLASInstanceDesc, 2> instances{
+        // Left triangle
+        vex::TLASInstanceDesc{
+            .transform = {
+                1.0f, 0.0f, 0.0f, -1.5f,
+                0.0f, 1.0f, 0.0f,  0.0f,
+                0.0f, 0.0f, 1.0f,  0.0f,
+            },
+            .instanceID = 0,
+            .blas = triangleBLAS,
+        },
+        // Right triangle
+        vex::TLASInstanceDesc{
+            .transform = {
+                1.0f, 0.0f, 0.0f, 1.5f,
+                0.0f, 1.0f, 0.0f, 0.0f,
+                0.0f, 0.0f, 1.0f, 0.0f,
+            },
+            .instanceID = 1,
+            .blas = triangleBLAS,
+        },
+    };
+    ctx.BuildTLAS(tlas, { .instances = instances });
+
+    graphics->Submit(ctx);
+
+    graphics->DestroyBuffer(vertexBuffer);
+    graphics->DestroyBuffer(indexBuffer);
 }
 
 void HelloRayTracing::Run()

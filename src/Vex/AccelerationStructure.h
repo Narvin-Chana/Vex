@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <string>
 
 #include <Vex/Bindings.h>
 #include <Vex/Containers/Span.h>
@@ -20,6 +21,12 @@ enum class ASType : u8
 {
     BottomLevel, // BLAS, represents the different geometry.
     TopLevel,    // TLAS, represents instances (with transforms) for a specific geometry.
+};
+
+struct AccelerationStructure
+{
+    ASHandle handle;
+    ASType type;
 };
 
 // clang-format off
@@ -44,13 +51,14 @@ END_VEX_ENUM_FLAGS();
 
 struct BLASGeometryDesc
 {
+    // Geometry vertices.
     BufferBinding vertexBufferBinding;
+    // Optional index buffer for the geometry.
     std::optional<BufferBinding> indexBufferBinding;
+    // Optional 3x4 transform matrix to apply to vertices before building the BLAS.
+    std::optional<std::array<float, 3 * 4>> transform;
 
-    // Optional 3x4 GPU buffer of a transform matrix to apply to vertices before building the BLAS.
-    std::optional<BufferBinding> transform;
-
-    ASGeometryFlags::Type flags = ASGeometryFlags::None;
+    ASGeometryFlags::Type flags = ASGeometryFlags::Opaque;
 };
 
 struct BLASDesc
@@ -61,8 +69,6 @@ struct BLASDesc
 
 struct BLASBuildDesc
 {
-    ASHandle blas;
-
     // Geometry to include in this BLAS.
     // Typically you'd have only one geometry per BLAS (one mesh or a mesh and its connected parts, eg: a car with its
     // wheels).
@@ -71,7 +77,7 @@ struct BLASBuildDesc
     // TODO: handle BLAS update.
 };
 
-struct ASInstanceDesc
+struct TLASInstanceDesc
 {
     // 3x4 row-major transform matrix.
     std::array<float, 3 * 4> transform{
@@ -90,34 +96,22 @@ struct ASInstanceDesc
     u32 instanceContributionToHitGroupIndex = 0;
 
     // Handle to this instance's corresponding BLAS.
-    ASHandle blasHandle;
+    AccelerationStructure blas;
 };
 
-struct ASDesc
+static constexpr u32 GTLASDeduceInstanceCountFromFirstBuild = ~0u;
+struct TLASDesc
 {
     std::string name;
-    ASType type;
-    ASBuildFlags::Type buildFlags;
-
-    // For building the BLAS.
-    Span<const ASGeometryDesc> geometry;
-
-    // Max number of TLAS instances allowed (needed at construction-time).
-    u32 maxInstanceCount = 0;
+    // Number of instances to allow for in this TLAS.
+    // If set to the default value, Vex will set the max instance count to the number of instances passed in during the first build.
+    u32 maxInstanceCount = GTLASDeduceInstanceCountFromFirstBuild;
 };
 
-struct ASBuildDesc
+struct TLASBuildDesc
 {
-    ASHandle accelerationStructure;
-
-    // BLAS geometry. If different from the AS's creation geometry, this will cause a full BLAS rebuild which can be
-    // very expensive..
-    Span<const ASGeometryDesc> geometry;
-
-    // TLAS instance.
-    Span<const ASInstanceDesc> instances;
-
-    // TODO: figure out how to do TLAS/BLAS updates...
+    // TLAS instances.
+    Span<const TLASInstanceDesc> instances;
 };
 
 } // namespace vex

@@ -25,6 +25,8 @@ struct PlatformWindow;
 enum class ShaderCompilerBackend : u8;
 struct ShaderEnvironment;
 struct SyncToken;
+struct BLASDesc;
+struct TLASDesc;
 
 struct RHIBase
 {
@@ -48,6 +50,9 @@ struct RHIBase
     virtual RHIAllocator CreateAllocator() = 0;
 
     virtual RHITimestampQueryPool CreateTimestampQueryPool(RHIAllocator& allocator) = 0;
+
+    virtual RHIAccelerationStructure CreateBLAS(const BLASDesc& desc) = 0;
+    virtual RHIAccelerationStructure CreateTLAS(const TLASDesc& desc) = 0;
 
     virtual void WaitForTokenOnCPU(const SyncToken& syncToken) = 0;
     virtual bool IsTokenComplete(const SyncToken& syncToken) const = 0;

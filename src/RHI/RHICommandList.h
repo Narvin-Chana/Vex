@@ -1,10 +1,10 @@
 #pragma once
 
 #include <array>
-#include <Vex/Containers/Span.h>
 #include <utility>
 #include <vector>
 
+#include <Vex/Containers/Span.h>
 #include <Vex/QueueType.h>
 #include <Vex/ResourceCopy.h>
 #include <Vex/Synchronization.h>
@@ -18,10 +18,13 @@
 
 namespace vex
 {
+
 struct RHIDrawResources;
 struct RHIBufferBinding;
 struct RHITextureBinding;
 struct InputAssembly;
+struct RHIBLASBuildDesc;
+struct RHITLASBuildDesc;
 
 enum class RHICommandListState : u8
 {
@@ -84,6 +87,9 @@ public:
     virtual QueryHandle BeginTimestampQuery() = 0;
     virtual void EndTimestampQuery(QueryHandle handle) = 0;
     virtual void ResolveTimestampQueries(u32 firstQuery, u32 queryCount) = 0;
+
+    virtual void BuildBLAS(RHIAccelerationStructure& as, RHIBuffer& scratchBuffer, const RHIBLASBuildDesc& desc) = 0;
+    virtual void BuildTLAS(RHIAccelerationStructure& as, const RHITLASBuildDesc& desc) = 0;
 
     // Copies the whole texture data from src to dst. These textures should have the same size, mips, slice, type,
     // format, etc...

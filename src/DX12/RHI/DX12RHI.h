@@ -34,6 +34,7 @@ public:
     virtual RHISwapChain CreateSwapChain(SwapChainDesc& desc, const PlatformWindow& platformWindow) override;
 
     virtual RHICommandPool CreateCommandPool() override;
+
     virtual RHIGraphicsPipelineState CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key) override;
     virtual RHIComputePipelineState CreateComputePipelineState(const ComputePipelineStateKey& key) override;
     virtual RHIRayTracingPipelineState CreateRayTracingPipelineState(const RayTracingPipelineStateKey& key) override;
@@ -45,7 +46,11 @@ public:
     virtual RHIDescriptorPool CreateDescriptorPool() override;
 
     virtual RHIAllocator CreateAllocator() override;
+
     virtual RHITimestampQueryPool CreateTimestampQueryPool(RHIAllocator& allocator) override;
+
+    virtual RHIAccelerationStructure CreateBLAS(const BLASDesc& desc) override;
+    virtual RHIAccelerationStructure CreateTLAS(const TLASDesc& desc) override;
 
     virtual void WaitForTokenOnCPU(const SyncToken& syncToken) override;
     virtual bool IsTokenComplete(const SyncToken& syncToken) const override;

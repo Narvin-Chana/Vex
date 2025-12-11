@@ -4,12 +4,12 @@
 
 #include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/Containers/Span.h>
-#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/ResourceReadbackContext.h>
 #include <Vex/ScopedGPUEvent.h>
 #include <Vex/Shaders/ShaderKey.h>
 #include <Vex/Synchronization.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIBindings.h>
 #include <RHI/RHIBuffer.h>
@@ -102,9 +102,7 @@ public:
     // Copies a region of the source texture to the destination texture.
     void Copy(const Texture& source, const Texture& destination, const TextureCopyDesc& textureCopyDescription);
     // Copies multiple regions of the source texture to the destination texture.
-    void Copy(const Texture& source,
-              const Texture& destination,
-              Span<const TextureCopyDesc> textureCopyDescriptions);
+    void Copy(const Texture& source, const Texture& destination, Span<const TextureCopyDesc> textureCopyDescriptions);
     // Copies the entirety of the source buffer to the destination buffer.
     void Copy(const Buffer& source, const Buffer& destination);
     // Copies the specified region from the source buffer to the destination buffer.
@@ -158,12 +156,23 @@ public:
 
     // Enqueues for the entirety of a texture to be readback from the GPU to the specified output.
     // Will automatically use a staging buffer if necessary.
-    TextureReadbackContext EnqueueDataReadback(const Texture& srcTexture,
-                                               Span<const TextureRegion> textureRegions);
+    TextureReadbackContext EnqueueDataReadback(const Texture& srcTexture, Span<const TextureRegion> textureRegions);
     // Enqueues for the entirety of a texture to be readback from the GPU to the specified output.
     // Will automatically use a staging buffer if necessary.
     TextureReadbackContext EnqueueDataReadback(const Texture& srcTexture,
                                                const TextureRegion& textureRegion = TextureRegion::AllMips());
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // Acceleration Structure Operations
+    // ---------------------------------------------------------------------------------------------------------------
+
+    // Builds a Bottom Level Acceleration Structure for Hardware Ray Tracing, by uploading the passed in Geometry.
+    void BuildBLAS(const AccelerationStructure& accelerationStructure, const BLASBuildDesc& desc);
+    //void BuildBLAS(Span<std::pair<const AccelerationStructure&, const BLASBuildDesc&>> blasToBuild);
+
+    // Builds a Top Level Acceleration Structure for Hardware Ray Tracing, by uploading the passed in Instances.
+    void BuildTLAS(const AccelerationStructure& accelerationStructure, const TLASBuildDesc& desc);
+    //void BuildTLAS(Span<std::pair<const AccelerationStructure&, const TLASBuildDesc&>> tlasToBuild);
 
     // ---------------------------------------------------------------------------------------------------------------
     // Barrier Operations

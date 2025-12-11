@@ -11,6 +11,7 @@
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/Platform/Debug.h>
+#include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
@@ -779,6 +780,120 @@ TextureReadbackContext CommandContext::EnqueueDataReadback(const Texture& srcTex
                                                            const TextureRegion& textureRegion)
 {
     return EnqueueDataReadback(srcTexture, { &textureRegion, 1 });
+}
+
+void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructure, const BLASBuildDesc& desc)
+{
+    VEX_CHECK(accelerationStructure.type == ASType::BottomLevel,
+              "BuildBLAS only accepts bottom level acceleration structures...");
+
+    VEX_CHECK(!desc.geometry.empty(), "Cannot build an empty BLAS...");
+
+    std::vector<RHIBLASGeometryDesc> rhiBLASGeometryDescs;
+    rhiBLASGeometryDescs.reserve(desc.geometry.size());
+
+    // Upload all the transforms into one GPU/ staging buffer.
+    std::vector<std::array<float, 3 * 4>> transformsToUpload;
+    // Conservative allocation.
+    transformsToUpload.reserve(desc.geometry.size());
+    for (const BLASGeometryDesc& blasGeometry : desc.geometry)
+    {
+        if (blasGeometry.transform.has_value())
+        {
+            transformsToUpload.push_back(*blasGeometry.transform);
+        }
+    }
+
+    static constexpr u64 TransformMatrixSize = sizeof(float) * 3uz * 4uz;
+
+    // Upload transform data.
+    Buffer transformBuffer;
+    if (!transformsToUpload.empty())
+    {
+        const BufferDesc transformBufferDesc = BufferDesc::CreateStagingBufferDesc(
+            graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetBLASDesc().name +
+                "_build_blas_transforms",
+            transformsToUpload.size() * TransformMatrixSize);
+        transformBuffer = graphics->CreateBuffer(transformBufferDesc);
+        temporaryResources.push_back(transformBuffer);
+        ResourceMappedMemory mappedMemory = graphics->MapResource(transformBuffer);
+        mappedMemory.WriteData(std::as_bytes(std::span<std::array<float, 3 * 4>>(transformsToUpload)));
+    }
+
+    u32 transformIndex = 0;
+    for (const BLASGeometryDesc& blasGeometry : desc.geometry)
+    {
+        RHIBLASGeometryDesc rhiBLASGeometry{
+            .vertexBufferBinding =
+                RHIBufferBinding(blasGeometry.vertexBufferBinding,
+                                 graphics->GetRHIBuffer(blasGeometry.vertexBufferBinding.buffer.handle)),
+            .flags = blasGeometry.flags,
+        };
+
+        if (blasGeometry.indexBufferBinding.has_value())
+        {
+            rhiBLASGeometry.indexBufferBinding =
+                RHIBufferBinding(*blasGeometry.indexBufferBinding,
+                                 graphics->GetRHIBuffer(blasGeometry.indexBufferBinding->buffer.handle));
+        }
+
+        if (blasGeometry.transform.has_value())
+        {
+            rhiBLASGeometry.transform = RHIBufferBinding{
+                .binding = { .buffer = transformBuffer,
+                             .offsetByteSize = TransformMatrixSize * transformIndex,
+                             .rangeByteSize = TransformMatrixSize },
+                .buffer = graphics->GetRHIBuffer(transformBuffer.handle),
+            };
+            ++transformIndex;
+        }
+
+        rhiBLASGeometryDescs.push_back(std::move(rhiBLASGeometry));
+    }
+
+    RHIBLASBuildDesc rhiBLASDesc{ .geometry = rhiBLASGeometryDescs };
+
+    cmdList->BuildBLAS(graphics->GetRHIAccelerationStructure(accelerationStructure.handle), rhiBLASDesc);
+}
+
+void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructure, const TLASBuildDesc& desc)
+{
+    VEX_CHECK(accelerationStructure.type == ASType::TopLevel,
+              "BuildTLAS only accepts top level acceleration structures...");
+
+    VEX_CHECK(!desc.instances.empty(), "Cannot build an empty TLAS...");
+
+    std::vector<std::array<float, 3 * 4>> transformsToUpload;
+    transformsToUpload.reserve(desc.instances.size());
+    for (const TLASInstanceDesc& tlasInstanceDesc : desc.instances)
+    {
+        transformsToUpload.push_back(tlasInstanceDesc.transform);
+    }
+
+    static constexpr u64 TransformMatrixSize = sizeof(float) * 3uz * 4uz;
+
+    const BufferDesc transformBufferDesc = BufferDesc::CreateStagingBufferDesc(
+        graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetTLASDesc().name +
+            "_build_tlas_transforms",
+        TransformMatrixSize * transformsToUpload.size());
+
+    Buffer transformBuffer = graphics->CreateBuffer(transformBufferDesc);
+    temporaryResources.push_back(transformBuffer);
+
+    std::vector<NonNullPtr<RHIAccelerationStructure>> perInstanceBLAS;
+    perInstanceBLAS.reserve(desc.instances.size());
+    for (const TLASInstanceDesc& tlasInstanceDesc : desc.instances)
+    {
+        perInstanceBLAS.push_back(graphics->GetRHIAccelerationStructure(tlasInstanceDesc.blas.handle));
+    }
+
+    RHITLASBuildDesc rhiTLASDesc{
+        .perInstanceTransformBufferBinding = { .buffer = graphics->GetRHIBuffer(transformBuffer.handle) },
+        .instanceDescs = desc.instances,
+        .perInstanceBLAS = perInstanceBLAS,
+    };
+
+    cmdList->BuildTLAS(graphics->GetRHIAccelerationStructure(accelerationStructure.handle), rhiTLASDesc);
 }
 
 BufferReadbackContext CommandContext::EnqueueDataReadback(const Buffer& srcBuffer, const BufferRegion& region)

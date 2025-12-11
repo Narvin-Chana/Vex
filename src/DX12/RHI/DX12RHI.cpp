@@ -2,6 +2,7 @@
 
 #include <Vex/Logger.h>
 #include <Vex/Platform/PlatformWindow.h>
+#include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
@@ -196,6 +197,16 @@ RHIAllocator DX12RHI::CreateAllocator()
 RHITimestampQueryPool DX12RHI::CreateTimestampQueryPool(RHIAllocator& allocator)
 {
     return RHITimestampQueryPool{ *this, allocator };
+}
+
+RHIAccelerationStructure DX12RHI::CreateBLAS(const BLASDesc& desc)
+{
+    return RHIAccelerationStructure(device, desc);
+}
+
+RHIAccelerationStructure DX12RHI::CreateTLAS(const TLASDesc& desc)
+{
+    return RHIAccelerationStructure(device, desc);
 }
 
 void DX12RHI::WaitForTokenOnCPU(const SyncToken& syncToken)
