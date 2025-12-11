@@ -10,7 +10,8 @@ namespace vex::dx12
 class DX12AccelerationStructure final : public RHIAccelerationStructureBase
 {
 public:
-    DX12AccelerationStructure(ComPtr<DX12Device>& device, const ASDesc& desc);
+    DX12AccelerationStructure(ComPtr<DX12Device>& device, const BLASDesc& desc);
+    DX12AccelerationStructure(ComPtr<DX12Device>& device, const TLASDesc& desc);
 
 private:
     ComPtr<DX12Device> device;

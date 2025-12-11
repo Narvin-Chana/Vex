@@ -88,10 +88,10 @@ public:
     [[nodiscard]] Buffer CreateBuffer(BufferDesc desc, ResourceLifetime lifetime = ResourceLifetime::Static);
 
     // Creates a bottom level acceleration structure. Invalid for use in shaders until it is built.
-    [[nodiscard]] ASHandle CreateBottomLevelAccelerationStructure(BLASDesc desc);
+    [[nodiscard]] AccelerationStructure CreateBottomLevelAccelerationStructure(const BLASDesc& desc);
 
     // Creates a top level acceleration structure. Invalid for use in shaders until it is built.
-    [[nodiscard]] ASHandle CreateTopLevelAccelerationStructure(BLASDesc desc);
+    [[nodiscard]] AccelerationStructure CreateTopLevelAccelerationStructure(const TLASDesc& desc);
 
     // Writes data to buffer memory. This only supports buffers with ResourceMemoryLocality::CPUWrite.
     [[nodiscard]] ResourceMappedMemory MapResource(const Buffer& buffer);
@@ -200,6 +200,7 @@ private:
 
     RHITexture& GetRHITexture(TextureHandle textureHandle);
     RHIBuffer& GetRHIBuffer(BufferHandle bufferHandle);
+    RHIAccelerationStructure& GetRHIAccelerationStructure(ASHandle asHandle);
 
     void RecreatePresentTextures();
 

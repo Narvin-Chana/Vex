@@ -3,7 +3,13 @@
 namespace vex::dx12
 {
 
-DX12AccelerationStructure::DX12AccelerationStructure(ComPtr<DX12Device>& device, const ASDesc& desc)
+DX12AccelerationStructure::DX12AccelerationStructure(ComPtr<DX12Device>& device, const BLASDesc& desc)
+    : RHIAccelerationStructureBase(desc)
+    , device(device)
+{
+}
+
+DX12AccelerationStructure::DX12AccelerationStructure(ComPtr<DX12Device>& device, const TLASDesc& desc)
     : RHIAccelerationStructureBase(desc)
     , device(device)
 {

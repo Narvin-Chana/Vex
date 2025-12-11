@@ -16,6 +16,7 @@
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
+#include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RenderExtension.h>
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Visitor.h>
@@ -254,14 +255,16 @@ Buffer Graphics::CreateBuffer(BufferDesc desc, ResourceLifetime lifetime)
                    .desc = std::move(desc) };
 }
 
-ASHandle Graphics::CreateBottomLevelAccelerationStructure(BLASDesc desc)
+AccelerationStructure Graphics::CreateBottomLevelAccelerationStructure(const BLASDesc& desc)
 {
-    return accelerationStructureRegistry.AllocateElement(std::move(rhi.CreateAccelerationStructure()));
+    return { .handle = accelerationStructureRegistry.AllocateElement(std::move(rhi.CreateBLAS(desc))),
+             .type = ASType::BottomLevel };
 }
 
-ASHandle Graphics::CreateTopLevelAccelerationStructure(BLASDesc desc)
+AccelerationStructure Graphics::CreateTopLevelAccelerationStructure(const TLASDesc& desc)
 {
-    return ASHandle();
+    return { .handle = accelerationStructureRegistry.AllocateElement(std::move(rhi.CreateTLAS(desc))),
+             .type = ASType::TopLevel };
 }
 
 ResourceMappedMemory Graphics::MapResource(const Buffer& buffer)
@@ -584,6 +587,11 @@ RHITexture& Graphics::GetRHITexture(TextureHandle textureHandle)
 RHIBuffer& Graphics::GetRHIBuffer(BufferHandle bufferHandle)
 {
     return bufferRegistry[bufferHandle];
+}
+
+RHIAccelerationStructure& Graphics::GetRHIAccelerationStructure(ASHandle asHandle)
+{
+    return accelerationStructureRegistry[asHandle];
 }
 
 void Graphics::RecreatePresentTextures()
