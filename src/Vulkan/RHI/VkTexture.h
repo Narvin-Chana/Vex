@@ -19,8 +19,10 @@ namespace vex::vk
 namespace VkTextureUtil
 {
 ::vk::ImageAspectFlags GetDepthAspectFlags(TextureFormat format);
-::vk::ImageAspectFlags BindingAspectToVkAspectFlags(TextureBindingAspect aspect);
+::vk::ImageAspectFlags BindingAspectToVkAspectFlags(TextureAspect::Type aspect);
 ::vk::ImageAspectFlags GetFormatAspectFlags(TextureFormat format);
+::vk::ImageAspectFlags AspectFlagFromPlaneIndex(TextureFormat format, u32 plane);
+
 } // namespace VkTextureUtil
 
 struct VkTextureViewDesc
@@ -30,7 +32,6 @@ struct VkTextureViewDesc
     TextureViewType viewType = TextureViewType::Texture2D;
     ::vk::Format format;
     TextureUsage::Type usage = TextureUsage::None;
-    TextureBindingAspect aspect = TextureBindingAspect::Color;
 
     TextureSubresource subresource;
 
@@ -44,7 +45,6 @@ VEX_MAKE_HASHABLE(vex::vk::VkTextureViewDesc,
     VEX_HASH_COMBINE(seed, obj.viewType);
     VEX_HASH_COMBINE(seed, obj.format);
     VEX_HASH_COMBINE(seed, obj.usage);
-    VEX_HASH_COMBINE(seed, obj.aspect);
     VEX_HASH_COMBINE(seed, obj.subresource);
 );
 // clang-format on

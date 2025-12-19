@@ -117,8 +117,6 @@ struct TextureBinding
     bool isSRGB = false;
     // Subresource of the texture, defaults to all mips and all slices (so the entirety of the resource).
     TextureSubresource subresource;
-    // Set this to depth or stencil to access those types of textures in shader. Otherwise use Color
-    TextureBindingAspect aspect = TextureBindingAspect::Color;
 };
 
 struct ResourceBinding

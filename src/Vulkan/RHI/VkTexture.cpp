@@ -85,13 +85,13 @@ namespace VkTextureUtil
     return aspectFlags;
 }
 
-::vk::ImageAspectFlags BindingAspectToVkAspectFlags(TextureBindingAspect aspect)
+::vk::ImageAspectFlags BindingAspectToVkAspectFlags(TextureAspect::Type aspect)
 {
     switch (aspect)
     {
-    case TextureBindingAspect::Depth:
+    case TextureAspect::Depth:
         return ::vk::ImageAspectFlagBits::eDepth;
-    case TextureBindingAspect::Stencil:
+    case TextureAspect::Stencil:
         return ::vk::ImageAspectFlagBits::eStencil;
     default:
         return ::vk::ImageAspectFlagBits::eColor;
@@ -114,6 +114,22 @@ namespace VkTextureUtil
     default:
         return ::vk::ImageAspectFlagBits::eColor;
     }
+}
+
+::vk::ImageAspectFlags AspectFlagFromPlaneIndex(TextureFormat format, u32 plane)
+{
+    if (FormatUtil::IsDepthOrStencilFormat(format))
+    {
+        VEX_ASSERT(plane <= 1);
+        if (plane == 1)
+        {
+            return ::vk::ImageAspectFlagBits::eStencil;
+        }
+        return ::vk::ImageAspectFlagBits::eDepth;
+    }
+
+    VEX_ASSERT(plane == 0);
+    return ::vk::ImageAspectFlagBits::eColor;
 }
 
 } // namespace VkTextureUtil
@@ -201,7 +217,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
         .viewType = TextureTypeToVulkan(view.viewType),
         .format = view.format,
         .subresourceRange = {
-            .aspectMask = VkTextureUtil::BindingAspectToVkAspectFlags(binding.aspect),
+            .aspectMask = VkTextureUtil::BindingAspectToVkAspectFlags(binding.subresource.GetSingleAspect()),
             .baseMipLevel = view.subresource.startMip,
             .levelCount = view.subresource.GetMipCount(binding.texture.desc),
             .baseArrayLayer = view.subresource.startSlice,
@@ -381,7 +397,6 @@ VkTextureViewDesc::VkTextureViewDesc(const TextureBinding& binding)
     : viewType{ TextureUtil::GetTextureViewType(binding) }
     , format{ TextureFormatToVulkan(binding.texture.desc.format, binding.isSRGB) }
     , usage{ static_cast<TextureUsage::Type>(binding.usage) }
-    , aspect{ binding.aspect }
     , subresource{ binding.subresource }
 {
     // Resolve subresource (replacing MAX values with the actual value).

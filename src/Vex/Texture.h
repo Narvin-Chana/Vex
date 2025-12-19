@@ -48,14 +48,13 @@ enum class TextureBindingUsage : u8
     ShaderReadWrite = TextureUsage::ShaderReadWrite, // Equivalent to UAV in DX12.
 };
 
-enum class TextureBindingAspect : u8
-{
-    Color,
-    Depth,
-    Stencil
-};
-
 // clang-format off
+
+BEGIN_VEX_ENUM_FLAGS(TextureAspect, u8)
+    Color = 1 << 0,
+    Depth = 1 << 1,
+    Stencil = 1 << 2
+END_VEX_ENUM_FLAGS();
 
 BEGIN_VEX_ENUM_FLAGS(TextureClear, u8)
     None = 0,
@@ -105,6 +104,10 @@ struct TextureDesc
             sliceCount *= GTextureCubeFaceCount;
         }
         return sliceCount;
+    }
+    [[nodiscard]] u32 GetPlaneCount() const
+    {
+        return FormatUtil::GetPlaneCount(format);
     }
 
     // Helpers to create a texture description.
@@ -218,9 +221,15 @@ struct TextureSubresource
     u16 mipCount = GTextureAllMips;
     u32 startSlice = 0;
     u32 sliceCount = GTextureAllSlices;
+    // Refers to the slice in DX12 and the aspect mask in Vulkan
+    TextureAspect::Flags aspect = TextureAspect::Color;
 
     u16 GetMipCount(const TextureDesc& desc) const;
     u32 GetSliceCount(const TextureDesc& desc) const;
+    u32 GetStartPlane() const;
+    u32 GetPlaneCount() const;
+    TextureAspect::Type GetSingleAspect() const;
+    static TextureAspect::Flags GetDefaultAspect(const TextureDesc& desc);
 
     constexpr bool operator==(const TextureSubresource&) const = default;
 };
@@ -231,14 +240,14 @@ struct TextureRegion
     TextureOffset3D offset;
     TextureExtent3D extent;
 
-    std::tuple<u32, u32, u32> GetExtents(const TextureDesc& desc, u16 mip) const;
+    [[nodiscard]] std::tuple<u32, u32, u32> GetExtents(const TextureDesc& desc, u16 mip) const;
 
     constexpr bool operator==(const TextureRegion&) const = default;
 
     // The entirety of the texture (all mips and all slices).
-    static TextureRegion AllMips();
+    static TextureRegion AllMips(TextureAspect::Type aspect = TextureAspect::Color);
     // The entirety of a single mip (one mip and all slices).
-    static TextureRegion SingleMip(u16 mipIndex);
+    static TextureRegion SingleMip(u16 mipIndex, TextureAspect::Type aspect = TextureAspect::Color);
 };
 
 struct TextureCopyDesc
@@ -259,13 +268,23 @@ static constexpr u64 MipAlignment = 512;
 
 std::tuple<u32, u32, u32> GetMipSize(const TextureDesc& desc, u32 mip);
 TextureViewType GetTextureViewType(const TextureBinding& binding);
+// This provides the correct format on which the data should be interpreted when copying data from and to a texture.
+// This applies mostly to depth/stencil formats that are read separately from their original format. (It applies to any
+// multi planar format)
+TextureFormat GetCopyFormat(TextureFormat format, TextureAspect::Type aspect);
 void ValidateTextureDescription(const TextureDesc& desc);
 float GetPixelByteSizeFromFormat(TextureFormat format);
+
+u32 TextureAspectToPlaneIndex(TextureAspect::Type aspect);
 
 u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions);
 u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions);
 
 bool IsBindingUsageCompatibleWithUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage);
+
+void ForEachSubresourceIndices(const TextureSubresource& subresource,
+                               const TextureDesc& desc,
+                               std::function<void(u32 mip, u32 slice, u32 plane)> func);
 
 void ValidateSubresource(const TextureDesc& desc, const TextureSubresource& subresource);
 void ValidateRegion(const TextureDesc& desc, const TextureRegion& region);
@@ -282,5 +301,6 @@ VEX_MAKE_HASHABLE(vex::TextureSubresource,
     VEX_HASH_COMBINE(seed, obj.mipCount);
     VEX_HASH_COMBINE(seed, obj.startSlice);
     VEX_HASH_COMBINE(seed, obj.sliceCount);
+    VEX_HASH_COMBINE(seed, obj.aspect);
 );
 // clang-format on

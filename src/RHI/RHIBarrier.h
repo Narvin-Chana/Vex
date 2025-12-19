@@ -101,9 +101,6 @@ struct RHITextureBarrier
     RHIBarrierSync dstSync;
     RHIBarrierAccess dstAccess;
     RHITextureLayout dstLayout;
-
-    u32 startPlane = 0;
-    u32 planeCount = 1;
 };
 
 } // namespace vex

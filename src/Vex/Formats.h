@@ -2,8 +2,8 @@
 
 #include <string_view>
 
-#include <Vex/Utility/Hash.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/Hash.h>
 
 namespace vex
 {
@@ -80,9 +80,12 @@ enum class TextureFormat : u8
 namespace FormatUtil
 {
 
+u32 GetPlaneCount(TextureFormat format);
+
 bool HasSRGBEquivalent(TextureFormat format);
-bool IsDepthStencilCompatible(TextureFormat format);
-bool SupportsStencil(TextureFormat format);
+bool IsDepthOrStencilFormat(TextureFormat format);
+bool IsDepthOnlyFormat(TextureFormat format);
+bool IsDepthAndStencilFormat(TextureFormat format);
 std::string_view GetHLSLType(TextureFormat format);
 bool IsBlockCompressed(TextureFormat format);
 bool SupportsMipGeneration(TextureFormat format);

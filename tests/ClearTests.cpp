@@ -15,26 +15,6 @@ bool ValidateTextureValue(const TextureReadbackContext& ctx, T expectedValue)
     return std::ranges::all_of(texels, [&](auto v) { return v == expectedValue; });
 }
 
-template <class T>
-    requires std::is_integral_v<T>
-bool ValidateTextureValueMasked(const TextureReadbackContext& ctx, T expectedValue, u32 mask)
-{
-    std::vector<T> texels;
-    texels.resize(ctx.GetDataByteSize() / sizeof(T));
-    ctx.ReadData(std::as_writable_bytes(std::span{ texels }));
-    return std::ranges::all_of(texels, [&](auto v) { return (v & mask) == expectedValue; });
-}
-
-template <class F>
-TextureReadbackContext ExecuteAndReadback(Graphics& gfx, const Texture& texture, F func)
-{
-    CommandContext ctx = gfx.CreateCommandContext(QueueType::Graphics);
-    func(ctx, texture);
-    TextureReadbackContext readbackCtx = ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0));
-    gfx.WaitForTokenOnCPU(gfx.Submit(ctx));
-    return readbackCtx;
-}
-
 TEST_F(ClearTest, ClearRenderTargetImplicit)
 {
     auto texture = graphics.CreateTexture(TextureDesc::CreateTexture2DDesc(
@@ -46,12 +26,15 @@ TEST_F(ClearTest, ClearRenderTargetImplicit)
         TextureUsage::RenderTarget,
         TextureClearValue{ .flags = TextureClear::ClearColor, .color = { 1, 1, 1, 1 } }));
 
-    auto readbackCtx = ExecuteAndReadback(graphics,
-                                          texture,
-                                          [](CommandContext& ctx, const Texture& texture)
-                                          { ctx.ClearTexture({ .texture = texture }); });
+    CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
-    EXPECT_TRUE(ValidateTextureValue(readbackCtx, 0xFFFFFFFF));
+    ctx.ClearTexture({ .texture = texture });
+
+    TextureReadbackContext readbackColorCtx =
+        ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Color));
+    graphics.WaitForTokenOnCPU(graphics.Submit(ctx));
+
+    EXPECT_TRUE(ValidateTextureValue(readbackColorCtx, std::array<u8, 4>{ 0xFF, 0xFF, 0xFF, 0xFF }));
 }
 
 TEST_F(ClearTest, ClearRenderTargetExplicit)
@@ -63,16 +46,16 @@ TEST_F(ClearTest, ClearRenderTargetExplicit)
                                                                            1,
                                                                            TextureUsage::RenderTarget));
 
-    auto readbackCtx = ExecuteAndReadback(
-        graphics,
-        texture,
-        [](CommandContext& ctx, const Texture& texture)
-        {
-            ctx.ClearTexture({ .texture = texture },
-                             TextureClearValue{ .flags = TextureClear::ClearColor, .color = { 1, 1, 1, 1 } });
-        });
+    CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
-    EXPECT_TRUE(ValidateTextureValue(readbackCtx, 0xFFFFFFFF));
+    ctx.ClearTexture({ .texture = texture },
+                     TextureClearValue{ .flags = TextureClear::ClearColor, .color = { 1, 1, 1, 1 } });
+
+    TextureReadbackContext readbackColorCtx =
+        ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Color));
+    graphics.WaitForTokenOnCPU(graphics.Submit(ctx));
+
+    EXPECT_TRUE(ValidateTextureValue(readbackColorCtx, std::array<u8, 4>{ 0xFF, 0xFF, 0xFF, 0xFF }));
 }
 
 TEST_F(ClearTest, ClearDepthOnlyImplicit)
@@ -88,12 +71,15 @@ TEST_F(ClearTest, ClearDepthOnlyImplicit)
                                                                                .depth = 0.54f,
                                                                            }));
 
-    auto depthReadback = ExecuteAndReadback(graphics,
-                                            texture,
-                                            [](CommandContext& ctx, const Texture& texture)
-                                            { ctx.ClearTexture({ .texture = texture }); });
+    CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
-    EXPECT_TRUE(ValidateTextureValue(depthReadback, 0.54f));
+    ctx.ClearTexture({ .texture = texture });
+
+    TextureReadbackContext readbackDepthCtx =
+        ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Depth));
+    graphics.WaitForTokenOnCPU(graphics.Submit(ctx));
+
+    EXPECT_TRUE(ValidateTextureValue<float>(readbackDepthCtx, 0.54f));
 }
 
 TEST_F(ClearTest, ClearDepthOnlyExpicit)
@@ -105,18 +91,19 @@ TEST_F(ClearTest, ClearDepthOnlyExpicit)
                                                                            1,
                                                                            TextureUsage::DepthStencil));
 
-    auto depthReadback = ExecuteAndReadback(graphics,
-                                            texture,
-                                            [](CommandContext& ctx, const Texture& texture)
-                                            {
-                                                ctx.ClearTexture({ .texture = texture },
-                                                                 TextureClearValue{
-                                                                     .flags = TextureClear::ClearDepth,
-                                                                     .depth = 0.54f,
-                                                                 });
-                                            });
+    CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
-    EXPECT_TRUE(ValidateTextureValue(depthReadback, 0.54f));
+    ctx.ClearTexture({ .texture = texture },
+                     TextureClearValue{
+                         .flags = TextureClear::ClearDepth,
+                         .depth = 0.54f,
+                     });
+
+    TextureReadbackContext readbackDepthCtx =
+        ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Depth));
+    graphics.WaitForTokenOnCPU(graphics.Submit(ctx));
+
+    EXPECT_TRUE(ValidateTextureValue<float>(readbackDepthCtx, 0.54f));
 }
 
 TEST_F(ClearTest, ClearDepthStencilImplicit)
@@ -130,17 +117,22 @@ TEST_F(ClearTest, ClearDepthStencilImplicit)
                                          TextureUsage::DepthStencil | TextureUsage::ShaderRead,
                                          TextureClearValue{
                                              .flags = TextureClear::ClearStencil | TextureClear::ClearDepth,
-                                             .depth = .54,
+                                             .depth = .54f,
                                              .stencil = 0xEE,
                                          }));
 
-    auto depthReadback = ExecuteAndReadback(graphics,
-                                            texture,
-                                            [](CommandContext& ctx, const Texture& texture)
-                                            { ctx.ClearTexture({ .texture = texture }); });
+    CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
-    EXPECT_TRUE(ValidateTextureValueMasked(depthReadback, 0x00FFFFFF, 0x00FFFFFF));
-    EXPECT_TRUE(ValidateTextureValueMasked(depthReadback, 0xEE000000, 0xFF000000));
+    ctx.ClearTexture({ .texture = texture });
+
+    TextureReadbackContext readbackDepthCtx =
+        ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Depth));
+    TextureReadbackContext readbackStencilCtx =
+        ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Stencil));
+    graphics.WaitForTokenOnCPU(graphics.Submit(ctx));
+
+    EXPECT_TRUE(ValidateTextureValue<u32>(readbackDepthCtx, static_cast<u32>(0xFFFFFF * 0.54f)));
+    EXPECT_TRUE(ValidateTextureValue<u8>(readbackStencilCtx, 0xEE));
 }
 
 TEST_F(ClearTest, ClearDepthStencilExplicit)
@@ -153,21 +145,23 @@ TEST_F(ClearTest, ClearDepthStencilExplicit)
                                                                 1,
                                                                 TextureUsage::DepthStencil | TextureUsage::ShaderRead));
 
-    auto depthReadback =
-        ExecuteAndReadback(graphics,
-                           texture,
-                           [](CommandContext& ctx, const Texture& texture)
-                           {
-                               ctx.ClearTexture({ .texture = texture },
-                                                TextureClearValue{
-                                                    .flags = TextureClear::ClearStencil | TextureClear::ClearDepth,
-                                                    .depth = 1.0f,
-                                                    .stencil = 0xEE,
-                                                });
-                           });
+    CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
-    EXPECT_TRUE(ValidateTextureValueMasked(depthReadback, 0x00FFFFFF, 0x00FFFFFF));
-    EXPECT_TRUE(ValidateTextureValueMasked(depthReadback, 0xEE000000, 0xFF000000));
+    ctx.ClearTexture({ .texture = texture },
+                     TextureClearValue{
+                         .flags = TextureClear::ClearStencil | TextureClear::ClearDepth,
+                         .depth = 1.0f,
+                         .stencil = 0xEE,
+                     });
+
+    TextureReadbackContext readbackDepthCtx =
+        ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Depth));
+    TextureReadbackContext readbackStencilCtx =
+        ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Stencil));
+    graphics.WaitForTokenOnCPU(graphics.Submit(ctx));
+
+    EXPECT_TRUE(ValidateTextureValue<u32>(readbackDepthCtx, 0xFFFFFF));
+    EXPECT_TRUE(ValidateTextureValue<u8>(readbackStencilCtx, 0xEE));
 }
 
 TEST_F(ClearTest, ClearStencilImplicit)
@@ -184,12 +178,15 @@ TEST_F(ClearTest, ClearStencilImplicit)
                                                                     .stencil = 0xEE,
                                                                 }));
 
-    auto depthReadback = ExecuteAndReadback(graphics,
-                                            texture,
-                                            [](CommandContext& ctx, const Texture& texture)
-                                            { ctx.ClearTexture({ .texture = texture }); });
+    CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
-    EXPECT_TRUE(ValidateTextureValue(depthReadback, 0xEE));
+    ctx.ClearTexture({ .texture = texture });
+
+    TextureReadbackContext readbackStencilCtx =
+        ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Stencil));
+    graphics.WaitForTokenOnCPU(graphics.Submit(ctx));
+
+    EXPECT_TRUE(ValidateTextureValue<u8>(readbackStencilCtx, 0xEE));
 }
 
 TEST_F(ClearTest, ClearStencilExplicit)
@@ -202,18 +199,19 @@ TEST_F(ClearTest, ClearStencilExplicit)
                                                                 1,
                                                                 TextureUsage::DepthStencil | TextureUsage::ShaderRead));
 
-    auto depthReadback = ExecuteAndReadback(graphics,
-                                            texture,
-                                            [](CommandContext& ctx, const Texture& texture)
-                                            {
-                                                ctx.ClearTexture({ .texture = texture },
-                                                                 TextureClearValue{
-                                                                     .flags = TextureClear::ClearStencil,
-                                                                     .stencil = 0xEE,
-                                                                 });
-                                            });
+    CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
-    EXPECT_TRUE(ValidateTextureValue(depthReadback, 0xEE));
+    ctx.ClearTexture({ .texture = texture },
+                     TextureClearValue{
+                         .flags = TextureClear::ClearStencil,
+                         .stencil = 0xEE,
+                     });
+
+    TextureReadbackContext readbackStencilCtx =
+        ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Stencil));
+    graphics.WaitForTokenOnCPU(graphics.Submit(ctx));
+
+    EXPECT_TRUE(ValidateTextureValue<u8>(readbackStencilCtx, 0xEE));
 }
 
 TEST_F(ClearTest, ClearDepthOnlyRect)
@@ -242,18 +240,21 @@ TEST_F(ClearTest, ClearDepthOnlyRect)
 
     auto readbackTopLeftCtx = ctx.EnqueueDataReadback(texture,
                                                       TextureRegion{
+                                                          .subresource = { .aspect = TextureAspect::Depth },
                                                           .offset = { 0, 0 },
                                                           .extent = { 5, 5 },
                                                       });
 
     auto readbackBottomRightCtx = ctx.EnqueueDataReadback(texture,
                                                           TextureRegion{
+                                                              .subresource = { .aspect = TextureAspect::Depth },
                                                               .offset = { 5, 5 },
                                                               .extent = { 5, 5 },
                                                           });
 
     auto readbackBottomLeftCtx = ctx.EnqueueDataReadback(texture,
                                                          TextureRegion{
+                                                             .subresource = { .aspect = TextureAspect::Depth },
                                                              .offset = { 0, 5 },
                                                              .extent = { 5, 5 },
                                                          });

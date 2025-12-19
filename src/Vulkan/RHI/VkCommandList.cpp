@@ -99,19 +99,26 @@ static ::vk::ImageMemoryBarrier2 MergeBarriers(const ::vk::ImageMemoryBarrier2& 
     return merged;
 }
 
-static std::vector<::vk::BufferImageCopy> GetBufferImageCopyFromBufferToImageDescriptions(
+static std::pair<::vk::ImageLayout, std::vector<::vk::BufferImageCopy>> GetBufferImageCopyFromBufferToImageDescriptions(
     const RHITexture& texture, Span<const BufferTextureCopyDesc> descriptions)
 {
-    ::vk::ImageAspectFlags aspectFlag = VkTextureUtil::GetFormatAspectFlags(texture.GetDesc().format);
-    float pixelByteSize = TextureUtil::GetPixelByteSizeFromFormat(texture.GetDesc().format);
+    std::optional<RHITextureLayout> layout{};
 
     std::vector<::vk::BufferImageCopy> regions;
     regions.reserve(descriptions.size());
     for (const auto& [bufferRegion, textureRegion] : descriptions)
     {
+        float pixelByteSize = TextureUtil::GetPixelByteSizeFromFormat(
+            TextureUtil::GetCopyFormat(texture.GetDesc().format, textureRegion.subresource.GetSingleAspect()));
+
         u32 alignedRowPitch = static_cast<u32>(AlignUp<u64>(
             textureRegion.extent.GetWidth(texture.GetDesc(), textureRegion.subresource.startMip) * pixelByteSize,
             TextureUtil::RowPitchAlignment));
+
+        TextureAspect::Type aspect = textureRegion.subresource.GetSingleAspect();
+
+        u32 startLayer = textureRegion.subresource.startSlice;
+        u32 layerCount = textureRegion.subresource.GetSliceCount(texture.GetDesc());
 
         regions.push_back(::vk::BufferImageCopy{
             .bufferOffset = bufferRegion.offset,
@@ -120,10 +127,10 @@ static std::vector<::vk::BufferImageCopy> GetBufferImageCopyFromBufferToImageDes
             .bufferImageHeight = 0,
             .imageSubresource =
                 ::vk::ImageSubresourceLayers{
-                    .aspectMask = aspectFlag,
+                    .aspectMask = VkTextureUtil::BindingAspectToVkAspectFlags(aspect),
                     .mipLevel = textureRegion.subresource.startMip,
-                    .baseArrayLayer = textureRegion.subresource.startSlice,
-                    .layerCount = textureRegion.subresource.GetSliceCount(texture.GetDesc()),
+                    .baseArrayLayer = startLayer,
+                    .layerCount = layerCount,
                 },
             .imageOffset = ::vk::Offset3D(textureRegion.offset.x, textureRegion.offset.y, textureRegion.offset.z),
             .imageExtent = {
@@ -131,9 +138,26 @@ static std::vector<::vk::BufferImageCopy> GetBufferImageCopyFromBufferToImageDes
                 textureRegion.extent.GetHeight(texture.GetDesc(), textureRegion.subresource.startMip),
                 textureRegion.extent.GetDepth(texture.GetDesc(), textureRegion.subresource.startMip),
             } });
+
+        for (u32 i = startLayer; i < startLayer + layerCount; ++i)
+        {
+            auto subresourceLayout =
+                texture.GetLastLayoutForSubresource(textureRegion.subresource.startMip,
+                                                    i,
+                                                    TextureUtil::TextureAspectToPlaneIndex(aspect));
+            if (!layout)
+            {
+                layout = subresourceLayout;
+            }
+            else
+            {
+                VEX_CHECK(*layout == subresourceLayout,
+                          "All regions must have the same subresource layout when attempting a image copy");
+            }
+        }
     }
 
-    return regions;
+    return { RHITextureLayoutToVulkan(*layout), regions };
 }
 
 } // namespace CommandList_Internal
@@ -258,10 +282,18 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
         .layerCount = binding.binding.subresource.GetSliceCount(binding.texture->GetDesc()),
     };
 
+    TextureAspect::Flags aspect = 0;
+    if (clearValue.flags & TextureClear::ClearColor)
+        aspect |= TextureAspect::Color;
+    if (clearValue.flags & TextureClear::ClearDepth)
+        aspect |= TextureAspect::Depth;
+    if (clearValue.flags & TextureClear::ClearStencil)
+        aspect |= TextureAspect::Stencil;
+
     if (clearRects.empty())
     {
         RHITextureBarrier textureBarrier{ binding.texture,
-                                          {},
+                                          { .aspect = aspect },
                                           RHIBarrierSync::Clear,
                                           RHIBarrierAccess::CopyDest,
                                           RHITextureLayout::CopyDest };
@@ -274,17 +306,20 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
                 .depth = clearValue.depth,
                 .stencil = clearValue.stencil,
             };
-            commandBuffer->clearDepthStencilImage(binding.texture->GetResource(),
-                                                  RHITextureLayoutToVulkan(binding.texture->GetLastLayout()),
-                                                  &clearVal,
-                                                  1,
-                                                  &ranges);
+            commandBuffer->clearDepthStencilImage(
+                binding.texture->GetResource(),
+                RHITextureLayoutToVulkan(
+                    binding.texture->GetLastLayoutForTextureSubresource(binding.binding.subresource)),
+                &clearVal,
+                1,
+                &ranges);
         }
         else
         {
             ::vk::ClearColorValue clearVal{ .float32 = clearValue.color };
             commandBuffer->clearColorImage(binding.texture->GetResource(),
-                                           RHITextureLayoutToVulkan(binding.texture->GetLastLayout()),
+                                           RHITextureLayoutToVulkan(binding.texture->GetLastLayoutForTextureSubresource(
+                                               binding.binding.subresource)),
                                            &clearVal,
                                            1,
                                            &ranges);
@@ -323,17 +358,17 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
                 .stencil = clearValue.stencil,
             };
             textureBarrier.emplace(binding.texture,
-                                   TextureSubresource{},
+                                   TextureSubresource{ .aspect = aspect },
                                    RHIBarrierSync::DepthStencil,
-                                   RHIBarrierAccess::DepthStencilWrite,
-                                   RHITextureLayout::DepthStencilWrite);
+                                   RHIBarrierAccess::DepthStencilRead,
+                                   RHITextureLayout::DepthStencilRead);
         }
         else
         {
             resources.renderTargets.push_back(binding);
             clearAttachment.clearValue.color = ::vk::ClearColorValue{ .float32 = clearValue.color };
             textureBarrier.emplace(binding.texture,
-                                   TextureSubresource{},
+                                   TextureSubresource{ .aspect = aspect },
                                    RHIBarrierSync::RenderTarget,
                                    RHIBarrierAccess::RenderTarget,
                                    RHITextureLayout::RenderTarget);
@@ -346,8 +381,7 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
     }
 }
 
-void VkCommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers,
-                            Span<const RHITextureBarrier> textureBarriers)
+void VkCommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers, Span<const RHITextureBarrier> textureBarriers)
 {
     std::vector<::vk::BufferMemoryBarrier2> vkBufferBarriers;
     vkBufferBarriers.reserve(bufferBarriers.size());
@@ -417,6 +451,7 @@ void VkCommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers,
             // Ensures the texture uses non-uniform last barrier states.
             textureBarrier.texture->EnsureLastBarrierStateNonUniform();
 
+            // TODO: Replace that with TextureUtil::ForEachSubresourceIndices
             for (u16 mip = textureBarrier.subresource.startMip;
                  mip < textureBarrier.subresource.startMip + textureBarrier.subresource.GetMipCount(desc);
                  ++mip)
@@ -426,44 +461,54 @@ void VkCommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers,
                                  textureBarrier.subresource.GetSliceCount(textureBarrier.texture->GetDesc());
                      ++slice)
                 {
-                    ::vk::ImageMemoryBarrier2 vkBarrier = {};
-                    if (textureBarrier.texture->IsBackBufferTexture() &&
-                        textureBarrier.texture->GetLastLayoutForSubresource(mip, slice) == RHITextureLayout::Undefined)
+                    for (u32 plane = textureBarrier.subresource.GetStartPlane();
+                         plane <
+                         textureBarrier.subresource.GetStartPlane() + textureBarrier.subresource.GetPlaneCount();
+                         ++plane)
                     {
-                        // Synchronize with vkAcquireNextImageKHR
-                        vkBarrier.srcStageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput;
-                        vkBarrier.srcAccessMask = ::vk::AccessFlagBits2::eNone;
-                    }
-                    else
-                    {
-                        vkBarrier.srcStageMask =
-                            RHIBarrierSyncToVulkan(textureBarrier.texture->GetLastSyncForSubresource(mip, slice));
-                        vkBarrier.srcAccessMask =
-                            RHIBarrierAccessToVulkan(textureBarrier.texture->GetLastAccessForSubresource(mip, slice));
-                    }
-                    vkBarrier.oldLayout =
-                        RHITextureLayoutToVulkan(textureBarrier.texture->GetLastLayoutForSubresource(mip, slice));
-                    vkBarrier.dstStageMask = RHIBarrierSyncToVulkan(textureBarrier.dstSync);
-                    vkBarrier.dstAccessMask = RHIBarrierAccessToVulkan(textureBarrier.dstAccess);
-                    vkBarrier.newLayout = RHITextureLayoutToVulkan(textureBarrier.dstLayout);
-                    vkBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                    vkBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                    vkBarrier.image = textureBarrier.texture->GetResource();
-                    vkBarrier.subresourceRange = { .aspectMask = VkTextureUtil::GetFormatAspectFlags(desc.format),
-                                                   .baseMipLevel = mip,
-                                                   .levelCount = 1,
-                                                   .baseArrayLayer = slice,
-                                                   .layerCount = 1 },
-                    vkTextureBarriers.push_back(std::move(vkBarrier));
+                        ::vk::ImageMemoryBarrier2 vkBarrier = {};
+                        if (textureBarrier.texture->IsBackBufferTexture() &&
+                            textureBarrier.texture->GetLastLayoutForSubresource(mip, slice, plane) ==
+                                RHITextureLayout::Undefined)
+                        {
+                            // Synchronize with vkAcquireNextImageKHR
+                            vkBarrier.srcStageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput;
+                            vkBarrier.srcAccessMask = ::vk::AccessFlagBits2::eNone;
+                        }
+                        else
+                        {
+                            vkBarrier.srcStageMask = RHIBarrierSyncToVulkan(
+                                textureBarrier.texture->GetLastSyncForSubresource(mip, slice, plane));
+                            vkBarrier.srcAccessMask = RHIBarrierAccessToVulkan(
+                                textureBarrier.texture->GetLastAccessForSubresource(mip, slice, plane));
+                        }
+                        vkBarrier.oldLayout = RHITextureLayoutToVulkan(
+                            textureBarrier.texture->GetLastLayoutForSubresource(mip, slice, plane));
+                        vkBarrier.dstStageMask = RHIBarrierSyncToVulkan(textureBarrier.dstSync);
+                        vkBarrier.dstAccessMask = RHIBarrierAccessToVulkan(textureBarrier.dstAccess);
+                        vkBarrier.newLayout = RHITextureLayoutToVulkan(textureBarrier.dstLayout);
+                        vkBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                        vkBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                        vkBarrier.image = textureBarrier.texture->GetResource();
+                        vkBarrier.subresourceRange = { .aspectMask = VkTextureUtil::AspectFlagFromPlaneIndex(
+                                                           textureBarrier.texture->GetDesc().format,
+                                                           plane),
+                                                       .baseMipLevel = mip,
+                                                       .levelCount = 1,
+                                                       .baseArrayLayer = slice,
+                                                       .layerCount = 1 },
+                        vkTextureBarriers.push_back(std::move(vkBarrier));
 
-                    if (!isSubresourceFullResource)
-                    {
-                        // Update last barrier state for the subresource.
-                        textureBarrier.texture->SetLastBarrierStateForSubresource(textureBarrier.dstSync,
-                                                                                  textureBarrier.dstAccess,
-                                                                                  textureBarrier.dstLayout,
-                                                                                  mip,
-                                                                                  slice);
+                        if (!isSubresourceFullResource)
+                        {
+                            // Update last barrier state for the subresource.
+                            textureBarrier.texture->SetLastBarrierStateForSubresource(textureBarrier.dstSync,
+                                                                                      textureBarrier.dstAccess,
+                                                                                      textureBarrier.dstLayout,
+                                                                                      mip,
+                                                                                      slice,
+                                                                                      plane);
+                        }
                     }
                 }
             }
@@ -510,6 +555,11 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
         maxArea.extent.width = std::min(renderTargets.texture->GetDesc().width, maxArea.extent.width);
         maxArea.extent.height = std::min(renderTargets.texture->GetDesc().height, maxArea.extent.height);
     }
+    if (resources.depthStencil)
+    {
+        maxArea.extent.width = std::min(resources.depthStencil->texture->GetDesc().width, maxArea.extent.width);
+        maxArea.extent.height = std::min(resources.depthStencil->texture->GetDesc().height, maxArea.extent.height);
+    }
 
     std::vector<::vk::RenderingAttachmentInfo> colorAttachmentsInfo(resources.renderTargets.size());
 
@@ -520,7 +570,8 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
         {
             return ::vk::RenderingAttachmentInfo{
                 .imageView = rtBindings.texture->GetOrCreateImageView(rtBindings.binding, TextureUsage::RenderTarget),
-                .imageLayout = RHITextureLayoutToVulkan(rtBindings.texture->GetLastLayout()),
+                .imageLayout = RHITextureLayoutToVulkan(
+                    rtBindings.texture->GetLastLayoutForTextureSubresource(rtBindings.binding.subresource)),
             };
         });
 
@@ -530,7 +581,8 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
         depthInfo = ::vk::RenderingAttachmentInfo{
             .imageView = resources.depthStencil->texture->GetOrCreateImageView(resources.depthStencil->binding,
                                                                                TextureUsage::DepthStencil),
-            .imageLayout = RHITextureLayoutToVulkan(resources.depthStencil->texture->GetLastLayout()),
+            .imageLayout = RHITextureLayoutToVulkan(resources.depthStencil->texture->GetLastLayoutForTextureSubresource(
+                resources.depthStencil->binding.subresource)),
         };
     };
 
@@ -542,8 +594,9 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
         .pColorAttachments = colorAttachmentsInfo.data(),
         .pDepthAttachment = depthInfo ? &*depthInfo : nullptr,
         .pStencilAttachment =
-            depthInfo && FormatUtil::SupportsStencil(resources.depthStencil->texture->GetDesc().format) ? &*depthInfo
-                                                                                                        : nullptr,
+            depthInfo && FormatUtil::IsDepthAndStencilFormat(resources.depthStencil->texture->GetDesc().format)
+                ? &*depthInfo
+                : nullptr,
     };
 
     commandBuffer->beginRendering(info);
@@ -641,7 +694,7 @@ void VkCommandList::TraceRays(const std::array<u32, 3>& widthHeightDepth,
 
 void VkCommandList::GenerateMips(RHITexture& texture, const TextureSubresource& subresource)
 {
-    bool isDepthStencilFormat = FormatUtil::IsDepthStencilCompatible(texture.GetDesc().format);
+    bool isDepthStencilFormat = FormatUtil::IsDepthOrStencilFormat(texture.GetDesc().format);
     ::vk::ImageAspectFlags aspectMask =
         isDepthStencilFormat ? ::vk::ImageAspectFlagBits::eDepth : ::vk::ImageAspectFlagBits::eColor;
 
@@ -795,25 +848,23 @@ void VkCommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDesc& b
 
 void VkCommandList::Copy(RHIBuffer& src, RHITexture& dst, Span<const BufferTextureCopyDesc> copyDescriptions)
 {
-    auto regions = CommandList_Internal::GetBufferImageCopyFromBufferToImageDescriptions(dst, copyDescriptions);
+    auto [layout, regions] =
+        CommandList_Internal::GetBufferImageCopyFromBufferToImageDescriptions(dst, copyDescriptions);
 
     commandBuffer->copyBufferToImage(src.GetNativeBuffer(),
                                      dst.GetResource(),
-                                     RHITextureLayoutToVulkan(dst.GetLastLayout()),
+                                     layout,
                                      static_cast<u32>(regions.size()),
                                      regions.data());
 }
 
 void VkCommandList::Copy(RHITexture& src, RHIBuffer& dst, Span<const BufferTextureCopyDesc> copyDescriptions)
 {
-    VEX_CHECK(!FormatUtil::SupportsStencil(src.GetDesc().format),
-              "DepthStencil image copy to buffer is not supported directly. The only supported aspects are either "
-              "Color or Depth.");
-
-    auto regions = CommandList_Internal::GetBufferImageCopyFromBufferToImageDescriptions(src, copyDescriptions);
+    auto [layout, regions] =
+        CommandList_Internal::GetBufferImageCopyFromBufferToImageDescriptions(src, copyDescriptions);
 
     commandBuffer->copyImageToBuffer(src.GetResource(),
-                                     RHITextureLayoutToVulkan(src.GetLastLayout()),
+                                     layout,
                                      dst.GetNativeBuffer(),
                                      static_cast<u32>(regions.size()),
                                      regions.data());
