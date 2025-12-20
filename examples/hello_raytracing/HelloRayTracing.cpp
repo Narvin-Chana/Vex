@@ -40,21 +40,22 @@ HelloRayTracing::HelloRayTracing()
     tlas = graphics->CreateTopLevelAccelerationStructure({ .name = "HelloRayTracing_TLAS" });
 
     // Create vertex and index buffers
-    vex::BufferDesc vbDesc =
+    const vex::BufferDesc vbDesc =
         vex::BufferDesc::CreateVertexBufferDesc("RT Vertex Buffer", sizeof(Vertex) * TriangleVerts.size());
-    vbDesc.usage |= vex::BufferUsage::RaytracingAccelerationStructure;
     vex::Buffer vertexBuffer = graphics->CreateBuffer(vbDesc);
 
-    vex::BufferDesc ibDesc =
+    const vex::BufferDesc ibDesc =
         vex::BufferDesc::CreateIndexBufferDesc("RT Index Buffer", sizeof(vex::u32) * TriangleIndices.size());
     vex::Buffer indexBuffer = graphics->CreateBuffer(ibDesc);
 
     vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
 
+    ctx.EnqueueDataUpload(vertexBuffer, std::as_bytes(std::span(TriangleVerts)));
+    ctx.EnqueueDataUpload(indexBuffer, std::as_bytes(std::span(TriangleIndices)));
     ctx.BuildBLAS(triangleBLAS,
                   { .geometry = { vex::BLASGeometryDesc{
-                        .vertexBufferBinding = { .buffer = vertexBuffer },
-                        .indexBufferBinding = vex::BufferBinding{ .buffer = indexBuffer },
+                        .vertexBufferBinding = { .buffer = vertexBuffer, .strideByteSize = static_cast<vex::u32>(sizeof(Vertex)), },
+                        .indexBufferBinding = vex::BufferBinding{ .buffer = indexBuffer, .strideByteSize = static_cast<vex::u32>(sizeof(vex::u32)), },
                         .transform = std::nullopt,
                         .flags = vex::ASGeometryFlags::Opaque,
                     } } });

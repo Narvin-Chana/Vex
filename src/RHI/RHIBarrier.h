@@ -28,6 +28,10 @@ enum class RHIBarrierSync : u8
     RenderTarget,
     DrawIndirect,
     Host,
+    // Synchronize for raytracing GPU execution.
+    RayTracing,
+    // Synchronize for building an acceleration structure.
+    BuildAccelerationStructure,
     AllGraphics,
     AllCommands,
     // Supported only in Vulkan, is mapped to Copy in DX12.
@@ -55,6 +59,8 @@ enum class RHIBarrierAccess : u8
     CopyDest,
     HostRead,
     HostWrite,
+    AccelerationStructureRead,
+    AccelerationStructureWrite,
     MemoryRead,
     MemoryWrite,
 };

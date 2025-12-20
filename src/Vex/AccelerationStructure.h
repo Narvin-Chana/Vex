@@ -37,6 +37,15 @@ BEGIN_VEX_ENUM_FLAGS(ASGeometryFlags, u8)
 	NoDuplicateAnyHitInvocation = 1 << 1,	// Guarantees single AnyHit invocations.
 END_VEX_ENUM_FLAGS();
 
+BEGIN_VEX_ENUM_FLAGS(ASInstanceFlags, u8)
+	None						  = 0,
+	TriangleCullDisable			  = 1 << 0,
+	TriangleFrontCounterClockwise = 1 << 1,
+	ForceOpaque                   = 1 << 2,
+	ForceNonOpaque                = 1 << 3,
+	// TODO: Opacity Micro-Maps flags.
+END_VEX_ENUM_FLAGS();
+
 // Flags for Acceleration Structure building. Currently these are not yet implemented.
 BEGIN_VEX_ENUM_FLAGS(ASBuildFlags, u8)
 	None			= 0,
@@ -94,6 +103,8 @@ struct TLASInstanceDesc
     u32 instanceMask : 8 = 0xFF;
     // Shader Binding Table (SBT) offset.
     u32 instanceContributionToHitGroupIndex = 0;
+    // Flags for the instance.
+    ASInstanceFlags::Flags instanceFlags = ASInstanceFlags::None;
 
     // Handle to this instance's corresponding BLAS.
     AccelerationStructure blas;

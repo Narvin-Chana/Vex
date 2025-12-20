@@ -675,8 +675,7 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, Span<const byte> da
     BufferUtil::ValidateBufferRegion(buffer.desc, region);
 
     // Buffer creation invalidates pointers to existing RHI buffers.
-    Buffer stagingBuffer = graphics->CreateBuffer(
-        BufferDesc::CreateStagingBufferDesc(buffer.desc.name + "_staging", region.GetByteSize(buffer.desc)));
+    Buffer stagingBuffer = CreateTemporaryStagingBuffer(buffer.desc.name, region.GetByteSize(buffer.desc));
 
     RHIBuffer& rhiStagingBuffer = graphics->GetRHIBuffer(stagingBuffer.handle);
     ResourceMappedMemory(rhiStagingBuffer).WriteData({ data.begin(), data.begin() + region.GetByteSize(buffer.desc) });
@@ -688,9 +687,6 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, Span<const byte> da
              .dstOffset = region.offset,
              .byteSize = region.GetByteSize(buffer.desc),
          });
-
-    // Schedule a cleanup of the staging buffer.
-    temporaryResources.emplace_back(stagingBuffer);
 }
 
 void CommandContext::EnqueueDataUpload(const Texture& texture,
@@ -712,11 +708,7 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
 
     // Create aligned staging buffer.
     u64 stagingBufferByteSize = TextureUtil::ComputeAlignedUploadBufferByteSize(texture.desc, textureRegions);
-
-    const BufferDesc stagingBufferDesc =
-        BufferDesc::CreateStagingBufferDesc(texture.desc.name + "_staging", stagingBufferByteSize);
-
-    Buffer stagingBuffer = graphics->CreateBuffer(stagingBufferDesc);
+    Buffer stagingBuffer = CreateTemporaryStagingBuffer(texture.desc.name, stagingBufferByteSize);
     RHIBuffer& rhiStagingBuffer = graphics->GetRHIBuffer(stagingBuffer.handle);
 
     // The staging buffer has to respect the alignment that which Vex uses for uploads.
@@ -735,9 +727,6 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
             CommandContext_Internal::GetBufferTextureCopyDescFromTextureRegions(texture.desc, textureRegions);
         Copy(stagingBuffer, texture, bufferToTexDescs);
     }
-
-    // Schedule a cleanup of the staging buffer.
-    temporaryResources.emplace_back(stagingBuffer);
 }
 
 void CommandContext::EnqueueDataUpload(const Texture& texture,
@@ -759,7 +748,6 @@ TextureReadbackContext CommandContext::EnqueueDataReadback(const Texture& srcTex
     u64 stagingBufferByteSize = TextureUtil::ComputeAlignedUploadBufferByteSize(srcTexture.desc, textureRegions);
     const BufferDesc readbackBufferDesc =
         BufferDesc::CreateReadbackBufferDesc(srcTexture.desc.name + "_readback", stagingBufferByteSize);
-
     Buffer stagingBuffer = graphics->CreateBuffer(readbackBufferDesc, ResourceLifetime::Static);
 
     if (textureRegions.empty())
@@ -810,14 +798,14 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
     Buffer transformBuffer;
     if (!transformsToUpload.empty())
     {
-        const BufferDesc transformBufferDesc = BufferDesc::CreateStagingBufferDesc(
+        transformBuffer = CreateTemporaryStagingBuffer(
             graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetBLASDesc().name +
                 "_build_blas_transforms",
             transformsToUpload.size() * TransformMatrixSize);
-        transformBuffer = graphics->CreateBuffer(transformBufferDesc);
-        temporaryResources.push_back(transformBuffer);
+
         ResourceMappedMemory mappedMemory = graphics->MapResource(transformBuffer);
         mappedMemory.WriteData(std::as_bytes(std::span<std::array<float, 3 * 4>>(transformsToUpload)));
+        Barrier(transformBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderRead);
     }
 
     u32 transformIndex = 0;
@@ -827,14 +815,19 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
             .vertexBufferBinding =
                 RHIBufferBinding(blasGeometry.vertexBufferBinding,
                                  graphics->GetRHIBuffer(blasGeometry.vertexBufferBinding.buffer.handle)),
-            .flags = blasGeometry.flags,
         };
+        Barrier(blasGeometry.vertexBufferBinding.buffer,
+                RHIBarrierSync::BuildAccelerationStructure,
+                RHIBarrierAccess::ShaderRead);
 
         if (blasGeometry.indexBufferBinding.has_value())
         {
             rhiBLASGeometry.indexBufferBinding =
                 RHIBufferBinding(*blasGeometry.indexBufferBinding,
                                  graphics->GetRHIBuffer(blasGeometry.indexBufferBinding->buffer.handle));
+            Barrier(blasGeometry.indexBufferBinding->buffer,
+                    RHIBarrierSync::BuildAccelerationStructure,
+                    RHIBarrierAccess::ShaderRead);
         }
 
         if (blasGeometry.transform.has_value())
@@ -851,34 +844,32 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
         rhiBLASGeometryDescs.push_back(std::move(rhiBLASGeometry));
     }
 
-    RHIBLASBuildDesc rhiBLASDesc{ .geometry = rhiBLASGeometryDescs };
+    const RHIAccelerationStructureBuildInfo& buildInfo =
+        graphics->GetRHIAccelerationStructure(accelerationStructure.handle)
+            .SetupBLASBuild(*graphics->allocator, RHIBLASBuildDesc{ .geometry = rhiBLASGeometryDescs });
+    Barrier(accelerationStructure,
+            RHIBarrierSync::BuildAccelerationStructure,
+            RHIBarrierAccess::AccelerationStructureWrite);
 
-    cmdList->BuildBLAS(graphics->GetRHIAccelerationStructure(accelerationStructure.handle), rhiBLASDesc);
+    BufferDesc scratchBufferDesc{
+        .name = graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetBLASDesc().name +
+                "_build_blas_scratch",
+        .byteSize = buildInfo.scratchByteSize,
+        .usage = BufferUsage::ReadWriteBuffer,
+    };
+    Buffer scratchBuffer = CreateTemporaryBuffer(scratchBufferDesc);
+    Barrier(scratchBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderReadWrite);
+
+    FlushBarriers();
+    cmdList->BuildBLAS(graphics->GetRHIAccelerationStructure(accelerationStructure.handle),
+                       graphics->GetRHIBuffer(scratchBuffer.handle));
 }
 
 void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructure, const TLASBuildDesc& desc)
 {
     VEX_CHECK(accelerationStructure.type == ASType::TopLevel,
               "BuildTLAS only accepts top level acceleration structures...");
-
     VEX_CHECK(!desc.instances.empty(), "Cannot build an empty TLAS...");
-
-    std::vector<std::array<float, 3 * 4>> transformsToUpload;
-    transformsToUpload.reserve(desc.instances.size());
-    for (const TLASInstanceDesc& tlasInstanceDesc : desc.instances)
-    {
-        transformsToUpload.push_back(tlasInstanceDesc.transform);
-    }
-
-    static constexpr u64 TransformMatrixSize = sizeof(float) * 3uz * 4uz;
-
-    const BufferDesc transformBufferDesc = BufferDesc::CreateStagingBufferDesc(
-        graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetTLASDesc().name +
-            "_build_tlas_transforms",
-        TransformMatrixSize * transformsToUpload.size());
-
-    Buffer transformBuffer = graphics->CreateBuffer(transformBufferDesc);
-    temporaryResources.push_back(transformBuffer);
 
     std::vector<NonNullPtr<RHIAccelerationStructure>> perInstanceBLAS;
     perInstanceBLAS.reserve(desc.instances.size());
@@ -887,13 +878,31 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
         perInstanceBLAS.push_back(graphics->GetRHIAccelerationStructure(tlasInstanceDesc.blas.handle));
     }
 
-    RHITLASBuildDesc rhiTLASDesc{
-        .perInstanceTransformBufferBinding = { .buffer = graphics->GetRHIBuffer(transformBuffer.handle) },
+    const RHITLASBuildDesc rhiTLASDesc{
         .instanceDescs = desc.instances,
         .perInstanceBLAS = perInstanceBLAS,
     };
 
-    cmdList->BuildTLAS(graphics->GetRHIAccelerationStructure(accelerationStructure.handle), rhiTLASDesc);
+    const RHIAccelerationStructureBuildInfo& buildInfo =
+        graphics->GetRHIAccelerationStructure(accelerationStructure.handle)
+            .SetupTLASBuild(*graphics->allocator, rhiTLASDesc);
+    BufferDesc scratchBufferDesc{
+        .name = graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetTLASDesc().name +
+                "_build_tlas_scratch",
+        .byteSize = buildInfo.scratchByteSize,
+        .usage = BufferUsage::ReadWriteBuffer,
+    };
+    Buffer scratchBuffer = CreateTemporaryBuffer(scratchBufferDesc);
+    Barrier(scratchBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderReadWrite);
+    Buffer uploadBuffer = CreateTemporaryStagingBuffer(
+        graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetTLASDesc().name + "_build_tlas",
+        *buildInfo.uploadBufferByteSize);
+
+    FlushBarriers();
+    cmdList->BuildTLAS(graphics->GetRHIAccelerationStructure(accelerationStructure.handle),
+                       graphics->GetRHIBuffer(scratchBuffer.handle),
+                       graphics->GetRHIBuffer(uploadBuffer.handle),
+                       rhiTLASDesc);
 }
 
 BufferReadbackContext CommandContext::EnqueueDataReadback(const Buffer& srcBuffer, const BufferRegion& region)
@@ -962,6 +971,12 @@ void CommandContext::Barrier(const Buffer& buffer, RHIBarrierSync newSync, RHIBa
     pendingBufferBarriers.push_back(RHIBufferBarrier{ graphics->GetRHIBuffer(buffer.handle), newSync, newAccess });
 }
 
+void CommandContext::Barrier(const AccelerationStructure& as, RHIBarrierSync newSync, RHIBarrierAccess newAccess)
+{
+    pendingBufferBarriers.push_back(
+        RHIBufferBarrier{ graphics->GetRHIAccelerationStructure(as.handle).GetRHIBuffer(), newSync, newAccess });
+}
+
 void CommandContext::ExecuteInDrawContext(Span<const TextureBinding> renderTargets,
                                           std::optional<const TextureBinding> depthStencil,
                                           const std::function<void()>& callback)
@@ -995,6 +1010,25 @@ ScopedGPUEvent CommandContext::CreateScopedGPUEvent(const char* markerLabel, std
 {
     VEX_CHECK(cmdList->IsOpen(), "Cannot create a scoped GPU Event with a closed command context.");
     return { cmdList->CreateScopedMarker(markerLabel, color) };
+}
+
+Buffer CommandContext::CreateTemporaryStagingBuffer(const std::string& name,
+                                                    u64 byteSize,
+                                                    BufferUsage::Flags additionalUsages)
+{
+    const Buffer stagingBuffer =
+        graphics->CreateBuffer(BufferDesc::CreateStagingBufferDesc(name + "_staging", byteSize, additionalUsages));
+    // Schedule a cleanup of the staging buffer.
+    temporaryResources.push_back(stagingBuffer);
+    return stagingBuffer;
+}
+
+Buffer CommandContext::CreateTemporaryBuffer(const BufferDesc& desc)
+{
+    const Buffer buf = graphics->CreateBuffer(desc);
+    // Schedule a cleanup of the buffer.
+    temporaryResources.push_back(buf);
+    return buf;
 }
 
 std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& drawDesc,

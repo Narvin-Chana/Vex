@@ -198,6 +198,9 @@ public:
     // Will apply a barrier to the passed in buffer.
     void Barrier(const Buffer& buffer, RHIBarrierSync newSync, RHIBarrierAccess newAccess);
 
+    // Will apply a barrier to the passed in acceleration structure's buffer.
+    void Barrier(const AccelerationStructure& as, RHIBarrierSync newSync, RHIBarrierAccess newAccess);
+
     // ---------------------------------------------------------------------------------------------------------------
 
     // Useful for calling native API draws when wanting to render to a specific Render Target. Allows the passed in
@@ -227,6 +230,16 @@ public:
     void FlushBarriers();
 
 private:
+    // Creates a temporary staging buffer that will be destroyed once the command context is done executing.
+    // Buffer creation invalidates pointers to existing RHI buffers.
+    Buffer CreateTemporaryStagingBuffer(const std::string& name,
+                                        u64 byteSize,
+                                        BufferUsage::Flags additionalUsages = BufferUsage::None);
+
+    // Creates a temporary buffer that will be destroyed once the command context is done executing.
+    // Buffer creation invalidates pointers to existing RHI buffers.
+    Buffer CreateTemporaryBuffer(const BufferDesc& desc);
+
     std::optional<RHIDrawResources> PrepareDrawCall(const DrawDesc& drawDesc,
                                                     const DrawResourceBinding& drawBindings,
                                                     ConstantBinding constants);
