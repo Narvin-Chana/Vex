@@ -4,9 +4,11 @@
 #include <variant>
 
 #include <Vex/AccelerationStructure.h>
+#include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/Utility/MaybeUninitialized.h>
 
 #include <RHI/RHIBindings.h>
+#include <RHI/RHIBuffer.h>
 #include <RHI/RHIFwd.h>
 
 namespace vex
@@ -31,12 +33,23 @@ struct RHIBLASBuildDesc
 // RHI version of TLASBuildDesc
 struct RHITLASBuildDesc
 {
-    // Buffer containing the transforms of each instance.
-    RHIBufferBinding perInstanceTransformBufferBinding;
     // Description of each individual instance in the TLAS.
     Span<const TLASInstanceDesc> instanceDescs;
     // Per-instance BLAS to map each TLAS instance to.
     Span<const NonNullPtr<RHIAccelerationStructure>> perInstanceBLAS;
+};
+
+struct RHIAccelerationStructureBuildInfo
+{
+    // Required size to store the acceleration structure.
+    u64 asByteSize;
+    // Required size to build the acceleration structure.
+    u64 scratchByteSize;
+    // Required size to update the acceleration structure.
+    u64 updateScratchByteSize;
+
+    // Potentially required upload buffer for acceleration structure initialization.
+    std::optional<u64> uploadBufferByteSize;
 };
 
 class RHIAccelerationStructureBase
@@ -78,10 +91,17 @@ public:
         return *accelerationStructure;
     }
 
+    virtual const RHIAccelerationStructureBuildInfo& SetupBLASBuild(RHIAllocator& allocator,
+                                                                    const RHIBLASBuildDesc& desc) = 0;
+    virtual const RHIAccelerationStructureBuildInfo& SetupTLASBuild(RHIAllocator& allocator,
+                                                                    const RHITLASBuildDesc& desc) = 0;
+
 protected:
     ASType type;
     std::variant<BLASDesc, TLASDesc> desc;
+    // TODO: add a cleanup method to destroy this once GPU is done using it.
     MaybeUninitialized<RHIBuffer> accelerationStructure;
+    RHIAccelerationStructureBuildInfo prebuildInfo;
 };
 
 } // namespace vex

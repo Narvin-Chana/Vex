@@ -2,9 +2,9 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/Buffer.h>
-#include <Vex/Platform/Debug.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
+#include <Vex/Platform/Debug.h>
 #include <Vex/Platform/Platform.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/Utility/ByteUtils.h>
@@ -27,13 +27,21 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
         size = AlignUp<u64>(desc.byteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
     }
 
-    CD3DX12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(size,
-                                                                     (desc.usage & BufferUsage::ReadWriteBuffer)
-                                                                         ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
-                                                                         : D3D12_RESOURCE_FLAG_NONE);
-    if (reinterpret_cast<DX12FeatureChecker*>(GPhysicalDevice->featureChecker.get())->SupportsTightAlignment())
+    CD3DX12_RESOURCE_DESC1 bufferDesc = CD3DX12_RESOURCE_DESC1::Buffer(size,
+                                                                       (desc.usage & BufferUsage::ReadWriteBuffer)
+                                                                           ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
+                                                                           : D3D12_RESOURCE_FLAG_NONE);
+    if (VEX_USE_CUSTOM_ALLOCATOR_BUFFERS &&
+        static_cast<DX12FeatureChecker*>(GPhysicalDevice->featureChecker.get())->SupportsTightAlignment())
     {
         bufferDesc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
+    }
+
+    if (desc.usage & BufferUsage::AccelerationStructure)
+    {
+        bufferDesc.Flags |= D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE;
+        VEX_ASSERT(bufferDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+                   "Acceleration Structure buffer usage flag also requires the UnorderedAccess flag!");
     }
 
     CD3DX12_HEAP_PROPERTIES heapProps;
@@ -52,14 +60,17 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
     }
 
 #if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
-    allocation = allocator.AllocateResource(buffer, bufferDesc, desc.memoryLocality, D3D12_RESOURCE_STATE_COMMON);
+    allocation = allocator.AllocateResource(buffer, bufferDesc, desc.memoryLocality);
 #else
-    chk << device->CreateCommittedResource(&heapProps,
-                                           D3D12_HEAP_FLAG_NONE,
-                                           &bufferDesc,
-                                           dxInitialState,
-                                           nullptr,
-                                           IID_PPV_ARGS(&buffer));
+    chk << device->CreateCommittedResource3(&heapProps,
+                                            D3D12_HEAP_FLAG_NONE,
+                                            &bufferDesc,
+                                            D3D12_BARRIER_LAYOUT_UNDEFINED,
+                                            nullptr,
+                                            nullptr,
+                                            0,
+                                            nullptr,
+                                            IID_PPV_ARGS(&buffer));
 #endif
 
 #if !VEX_SHIPPING
