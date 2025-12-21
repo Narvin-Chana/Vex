@@ -27,10 +27,10 @@ void RayGenMain()
     uint2 launchDimensions = DispatchRaysDimensions().xy;
 
     // HLSL writes to the left side of the screen.
-    // if (launchIndex.x > launchDimensions.x / 2.0f)
-    // {
-    //     return;
-    // }
+    if (launchIndex.x > launchDimensions.x / 2.0f)
+    {
+        return;
+    }
 
     // Convert pixel coordinates to clip space (xy in [-1, 1])
     float2 clipPos = float2((float(launchIndex.x) + 0.5f) * 2.0f / float(launchDimensions.x) - 1.0f,
