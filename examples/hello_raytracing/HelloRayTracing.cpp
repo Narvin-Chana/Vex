@@ -31,9 +31,9 @@ HelloRayTracing::HelloRayTracing()
     static constexpr float Offset = 0.7f;
     static constexpr std::array TriangleVerts{
         // Triangle
-        Vertex{ 0, -Offset, DepthValue },
-        Vertex{ -Offset, Offset, DepthValue },
-        Vertex{ Offset, Offset, DepthValue },
+        Vertex{ 0, Offset, DepthValue },
+        Vertex{ Offset, -Offset, DepthValue },
+        Vertex{ -Offset, -Offset, DepthValue },
     };
     static constexpr std::array<vex::u32, 3> TriangleIndices{ 0, 1, 2 };
 
@@ -54,6 +54,7 @@ HelloRayTracing::HelloRayTracing()
 
     ctx.EnqueueDataUpload(vertexBuffer, std::as_bytes(std::span(TriangleVerts)));
     ctx.EnqueueDataUpload(indexBuffer, std::as_bytes(std::span(TriangleIndices)));
+
     ctx.BuildBLAS(triangleBLAS,
                   { .geometry = { vex::BLASGeometryDesc{
                         .vertexBufferBinding = { .buffer = vertexBuffer, .strideByteSize = static_cast<vex::u32>(sizeof(Vertex)), },
@@ -65,22 +66,22 @@ HelloRayTracing::HelloRayTracing()
     ctx.Barrier(triangleBLAS, vex::RHIBarrierSync::AllCommands, vex::RHIBarrierAccess::AccelerationStructureRead);
 
     std::array<vex::TLASInstanceDesc, 2> instances{
-        // Left triangle
+        // Left triangle (in front)
         vex::TLASInstanceDesc{
             .transform = {
-                1.0f, 0.0f, 0.0f, -1.5f,
-                0.0f, 1.0f, 0.0f,  0.0f,
-                0.0f, 0.0f, 1.0f,  0.0f,
+                1.0f, 0.0f, 0.0f, -0.3f,
+                0.0f, 1.0f, 0.0f, 0.0f,
+                0.0f, 0.0f, 1.0f, 0.0f,
             },
             .instanceID = 0,
             .blas = triangleBLAS,
         },
-        // Right triangle
+        // Right triangle (behind)
         vex::TLASInstanceDesc{
             .transform = {
-                1.0f, 0.0f, 0.0f, 1.5f,
+                1.0f, 0.0f, 0.0f, 0.3f,
                 0.0f, 1.0f, 0.0f, 0.0f,
-                0.0f, 0.0f, 1.0f, 0.0f,
+                0.0f, 0.0f, 1.0f, 1.0f,
             },
             .instanceID = 1,
             .blas = triangleBLAS,

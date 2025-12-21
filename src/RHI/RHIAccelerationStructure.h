@@ -21,7 +21,7 @@ struct RHIBLASGeometryDesc
     std::optional<RHIBufferBinding> indexBufferBinding;
     std::optional<RHIBufferBinding> transform;
 
-    ASGeometryFlags::Type flags = ASGeometryFlags::None;
+    ASGeometryFlags::Flags flags = ASGeometryFlags::None;
 };
 
 // RHI version of BLASBuildDesc

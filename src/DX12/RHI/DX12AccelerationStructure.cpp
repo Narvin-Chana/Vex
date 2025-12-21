@@ -111,15 +111,24 @@ void DX12AccelerationStructure::InitRayTracingGeometryDesc(const RHIBLASBuildDes
 
         if (rhiGeometryDesc.indexBufferBinding.has_value())
         {
-            const D3D12_VERTEX_BUFFER_VIEW ibView = rhiGeometryDesc.indexBufferBinding->buffer->GetVertexBufferView(
+            const D3D12_INDEX_BUFFER_VIEW ibView = rhiGeometryDesc.indexBufferBinding->buffer->GetIndexBufferView(
                 rhiGeometryDesc.indexBufferBinding->binding);
             geometryDesc.Triangles.IndexBuffer = ibView.BufferLocation;
+            geometryDesc.Triangles.IndexCount =
+                ibView.SizeInBytes / *rhiGeometryDesc.indexBufferBinding->binding.strideByteSize;
             geometryDesc.Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
         }
         else
         {
             geometryDesc.Triangles.IndexFormat = DXGI_FORMAT_UNKNOWN;
         }
+
+        if (rhiGeometryDesc.transform.has_value())
+        {
+            geometryDesc.Triangles.Transform3x4 = rhiGeometryDesc.transform->buffer->GetGPUVirtualAddress() +
+                                                  rhiGeometryDesc.transform->binding.offsetByteSize.value_or(0);
+        }
+
         geometryDescs.push_back(std::move(geometryDesc));
     }
 }
