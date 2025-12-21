@@ -84,31 +84,28 @@ public:
     // Creates a new texture with the specified description.
     [[nodiscard]] Texture CreateTexture(TextureDesc desc, ResourceLifetime lifetime = ResourceLifetime::Static);
 
-    // Creates a new buffer with the specified description.
-    [[nodiscard]] Buffer CreateBuffer(BufferDesc desc, ResourceLifetime lifetime = ResourceLifetime::Static);
-
-    // Creates a bottom level acceleration structure. Invalid for use in shaders until it is built.
-    [[nodiscard]] AccelerationStructure CreateBottomLevelAccelerationStructure(const BLASDesc& desc);
-
-    // Creates a top level acceleration structure. Invalid for use in shaders until it is built.
-    [[nodiscard]] AccelerationStructure CreateTopLevelAccelerationStructure(const TLASDesc& desc);
-
-    // Writes data to buffer memory. This only supports buffers with ResourceMemoryLocality::CPUWrite.
-    [[nodiscard]] ResourceMappedMemory MapResource(const Buffer& buffer);
-    [[nodiscard]] ResourceMappedMemory MapResource(const Texture& texture);
-
     // Destroys a texture, the handle passed in must be the one obtained from calling CreateTexture earlier.
     // Once destroyed, the handle passed in is invalid and should no longer be used.
     void DestroyTexture(const Texture& texture);
+
+    // Creates a new buffer with the specified description.
+    [[nodiscard]] Buffer CreateBuffer(BufferDesc desc, ResourceLifetime lifetime = ResourceLifetime::Static);
 
     // Destroys a buffer, the handle passed in must be the one obtained from calling CreateBuffer earlier.
     // Once destroyed, the handle passed in is invalid and should no longer be used.
     void DestroyBuffer(const Buffer& buffer);
 
+    // Creates an acceleration structure. Invalid for use in shaders until it is built with a CommandContext.
+    [[nodiscard]] AccelerationStructure CreateAccelerationStructure(const ASDesc& desc);
+
     // Destroys an acceleration structure, the handle passed in must be the one obtained from calling
-    // Create*AccelerationStructure earlier. Once destroyed, the handle passed in is invalid and should no longer be
+    // CreateAccelerationStructure earlier. Once destroyed, the handle passed in is invalid and should no longer be
     // used.
     void DestroyAccelerationStructure(const AccelerationStructure& accelerationStructure);
+
+    // Writes data to buffer memory. This only supports buffers with ResourceMemoryLocality::CPUWrite.
+    [[nodiscard]] ResourceMappedMemory MapResource(const Buffer& buffer);
+    [[nodiscard]] ResourceMappedMemory MapResource(const Texture& texture);
 
     // Allows users to fetch the bindless handles for a texture binding. This bindless handle remains valid as long as
     // the resource itself is alive.

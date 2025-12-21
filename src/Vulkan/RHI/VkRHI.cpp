@@ -422,6 +422,13 @@ RHITimestampQueryPool VkRHI::CreateTimestampQueryPool(RHIAllocator& allocator)
     return { GetGPUContext(), *this, allocator };
 }
 
+RHIAccelerationStructure VkRHI::CreateAS(const ASDesc& desc)
+{
+    // TODO(https://trello.com/c/rLevCOvT): Implement vulkan AS upload/creation.
+    VEX_NOT_YET_IMPLEMENTED();
+    return VkAccelerationStructure(desc);
+}
+
 void VkRHI::WaitForTokenOnCPU(const SyncToken& syncToken)
 {
     auto& fence = (*fences)[syncToken.queueType];

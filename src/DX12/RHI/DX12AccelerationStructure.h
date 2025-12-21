@@ -1,6 +1,6 @@
 #pragma once
 
-#include <optional>
+#include <vector>
 
 #include <RHI/RHIAccelerationStructure.h>
 
@@ -12,8 +12,7 @@ namespace vex::dx12
 class DX12AccelerationStructure final : public RHIAccelerationStructureBase
 {
 public:
-    DX12AccelerationStructure(ComPtr<DX12Device>& device, const BLASDesc& desc);
-    DX12AccelerationStructure(ComPtr<DX12Device>& device, const TLASDesc& desc);
+    DX12AccelerationStructure(ComPtr<DX12Device>& device, const ASDesc& desc);
 
     const std::vector<D3D12_RAYTRACING_GEOMETRY_DESC>& GetGeometryDescs() const
     {
@@ -32,8 +31,8 @@ private:
     std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> geometryDescs;
 };
 
-D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS ASBuildFlagsToDX12ASBuildFlags(ASBuildFlags::Flags flags);
-
-u32 ASInstanceFlagsToDX12InstanceFlags(ASInstanceFlags::Flags flags);
+D3D12_RAYTRACING_GEOMETRY_FLAGS ASGeometryFlagsToDX12GeometryFlags(ASGeometry::Flags flags);
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS ASBuildFlagsToDX12ASBuildFlags(ASBuild::Flags flags);
+u32 ASInstanceFlagsToDX12InstanceFlags(ASInstance::Flags flags);
 
 } // namespace vex::dx12

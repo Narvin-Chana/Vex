@@ -71,6 +71,7 @@ VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, VkAllocator& allocator, const B
     allocation = newAllocation;
     VEX_VK_CHECK << ctx->device.bindBufferMemory(*buffer, memory, allocation.memoryRange.offset);
 #else
+    // TODO(https://trello.com/c/4CKvUpd2): Fix the non-custom allocator buffer codepath for VkBuffers.
     ::vk::MemoryPropertyFlags memPropFlags = GetMemoryPropsFromLocality(memLocality);
     memory = VEX_VK_CHECK <<= ctx->device.allocateMemoryUnique(
         { .allocationSize = reqs.size,

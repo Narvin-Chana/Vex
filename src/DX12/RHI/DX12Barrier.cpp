@@ -98,9 +98,9 @@ D3D12_BARRIER_ACCESS RHIBarrierAccessToDX12(RHIBarrierAccess barrierAccess)
         // Host access doesn't have direct D3D12 equivalent
         return D3D12_BARRIER_ACCESS_NO_ACCESS;
     case AccelerationStructureRead:
-        return D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ | D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
+        return D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ;
     case AccelerationStructureWrite:
-        return D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE | D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
+        return D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
     case MemoryRead:
     case MemoryWrite:
         // Generic memory read/write

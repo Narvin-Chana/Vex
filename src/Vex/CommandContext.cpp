@@ -4,8 +4,8 @@
 #include <cmath>
 #include <variant>
 
-#include <Vex/BuiltInShaders/MipGeneration.h>
 #include <Vex/AccelerationStructure.h>
+#include <Vex/BuiltInShaders/MipGeneration.h>
 #include <Vex/DrawHelpers.h>
 #include <Vex/Graphics.h>
 #include <Vex/GraphicsPipeline.h>
@@ -774,7 +774,7 @@ TextureReadbackContext CommandContext::EnqueueDataReadback(const Texture& srcTex
 
 void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructure, const BLASBuildDesc& desc)
 {
-    VEX_CHECK(accelerationStructure.type == ASType::BottomLevel,
+    VEX_CHECK(accelerationStructure.desc.type == ASType::BottomLevel,
               "BuildBLAS only accepts bottom level acceleration structures...");
 
     VEX_CHECK(!desc.geometry.empty(), "Cannot build an empty BLAS...");
@@ -801,7 +801,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
     if (!transformsToUpload.empty())
     {
         transformBuffer = CreateTemporaryStagingBuffer(
-            graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetBLASDesc().name +
+            graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name +
                 "_build_blas_transforms",
             transformsToUpload.size() * TransformMatrixSize);
 
@@ -854,8 +854,8 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
             RHIBarrierAccess::AccelerationStructureWrite);
 
     BufferDesc scratchBufferDesc{
-        .name = graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetBLASDesc().name +
-                "_build_blas_scratch",
+        .name =
+            graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_blas_scratch",
         .byteSize = buildInfo.scratchByteSize,
         .usage = BufferUsage::ReadWriteBuffer,
     };
@@ -869,7 +869,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
 
 void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructure, const TLASBuildDesc& desc)
 {
-    VEX_CHECK(accelerationStructure.type == ASType::TopLevel,
+    VEX_CHECK(accelerationStructure.desc.type == ASType::TopLevel,
               "BuildTLAS only accepts top level acceleration structures...");
     VEX_CHECK(!desc.instances.empty(), "Cannot build an empty TLAS...");
 
@@ -896,15 +896,15 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
         graphics->GetRHIAccelerationStructure(accelerationStructure.handle)
             .SetupTLASBuild(*graphics->allocator, rhiTLASDesc);
     BufferDesc scratchBufferDesc{
-        .name = graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetTLASDesc().name +
-                "_build_tlas_scratch",
+        .name =
+            graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_tlas_scratch",
         .byteSize = buildInfo.scratchByteSize,
         .usage = BufferUsage::ReadWriteBuffer,
     };
     Buffer scratchBuffer = CreateTemporaryBuffer(scratchBufferDesc);
     Barrier(scratchBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderReadWrite);
     Buffer uploadBuffer = CreateTemporaryStagingBuffer(
-        graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetTLASDesc().name + "_build_tlas",
+        graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_tlas",
         *buildInfo.uploadBufferByteSize);
 
     FlushBarriers();

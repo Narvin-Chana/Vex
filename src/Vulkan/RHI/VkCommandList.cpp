@@ -798,6 +798,19 @@ void VkCommandList::ResolveTimestampQueries(u32 firstQuery, u32 queryCount)
                                         ::vk::QueryResultFlagBits::e64 | ::vk::QueryResultFlagBits::eWait);
 }
 
+void VkCommandList::BuildBLAS(RHIAccelerationStructure& as, RHIBuffer& scratchBuffer)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
+void VkCommandList::BuildTLAS(RHIAccelerationStructure& as,
+                              RHIBuffer& scratchBuffer,
+                              RHIBuffer& uploadBuffer,
+                              const RHITLASBuildDesc& desc)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
 void VkCommandList::Copy(RHITexture& src, RHITexture& dst, Span<const TextureCopyDesc> textureCopyDescriptions)
 {
     const auto& srcDesc = src.desc;

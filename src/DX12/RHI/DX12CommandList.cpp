@@ -844,11 +844,12 @@ void DX12CommandList::ResolveTimestampQueries(u32 firstQuery, u32 queryCount)
 
 void DX12CommandList::BuildBLAS(RHIAccelerationStructure& as, RHIBuffer& scratchBuffer)
 {
+    VEX_ASSERT(as.GetDesc().type == ASType::BottomLevel, "Invalid Acceleration Structure type...");
     // Build the BLAS.
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc{};
     buildDesc.Inputs = D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS{
         .Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
-        .Flags = ASBuildFlagsToDX12ASBuildFlags(as.GetBLASDesc().buildFlags),
+        .Flags = ASBuildFlagsToDX12ASBuildFlags(as.GetDesc().buildFlags),
         .NumDescs = static_cast<u32>(as.GetGeometryDescs().size()),
         .DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
         .pGeometryDescs = as.GetGeometryDescs().data(),
@@ -869,6 +870,7 @@ void DX12CommandList::BuildTLAS(RHIAccelerationStructure& as,
                                 RHIBuffer& uploadBuffer,
                                 const RHITLASBuildDesc& desc)
 {
+    VEX_ASSERT(as.GetDesc().type == ASType::TopLevel, "Invalid Acceleration Structure type...");
     // Upload required info into the upload buffer.
     {
         ResourceMappedMemory map{ uploadBuffer };
@@ -893,13 +895,10 @@ void DX12CommandList::BuildTLAS(RHIAccelerationStructure& as,
         }
     }
 
-    // Barrier the upload buffer to finish the upload.
-    Barrier({ RHIBufferBarrier(uploadBuffer, RHIBarrierSync::AllCommands, RHIBarrierAccess::ShaderRead) }, {});
-
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {};
     buildDesc.Inputs = D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS{
         .Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
-        .Flags = ASBuildFlagsToDX12ASBuildFlags(as.GetTLASDesc().buildFlags),
+        .Flags = ASBuildFlagsToDX12ASBuildFlags(as.GetDesc().buildFlags),
         .NumDescs = static_cast<u32>(desc.instanceDescs.size()),
         .DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
         .InstanceDescs = uploadBuffer.GetGPUVirtualAddress(),

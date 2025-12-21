@@ -255,16 +255,12 @@ Buffer Graphics::CreateBuffer(BufferDesc desc, ResourceLifetime lifetime)
                    .desc = std::move(desc) };
 }
 
-AccelerationStructure Graphics::CreateBottomLevelAccelerationStructure(const BLASDesc& desc)
+AccelerationStructure Graphics::CreateAccelerationStructure(const ASDesc& desc)
 {
-    return { .handle = accelerationStructureRegistry.AllocateElement(std::move(rhi.CreateBLAS(desc))),
-             .type = ASType::BottomLevel };
-}
-
-AccelerationStructure Graphics::CreateTopLevelAccelerationStructure(const TLASDesc& desc)
-{
-    return { .handle = accelerationStructureRegistry.AllocateElement(std::move(rhi.CreateTLAS(desc))),
-             .type = ASType::TopLevel };
+    return {
+        .handle = accelerationStructureRegistry.AllocateElement(std::move(rhi.CreateAS(desc))),
+        .desc = desc,
+    };
 }
 
 ResourceMappedMemory Graphics::MapResource(const Buffer& buffer)

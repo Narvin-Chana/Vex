@@ -6,7 +6,7 @@
 #include <Vex/Utility/Handle.h>
 
 #ifndef VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
-#define VEX_USE_CUSTOM_ALLOCATOR_BUFFERS 0
+#define VEX_USE_CUSTOM_ALLOCATOR_BUFFERS 1
 #endif
 
 namespace vex

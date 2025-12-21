@@ -37,9 +37,16 @@ HelloRayTracing::HelloRayTracing()
     };
     static constexpr std::array<vex::u32, 3> TriangleIndices{ 0, 1, 2 };
 
-    triangleBLAS = graphics->CreateBottomLevelAccelerationStructure(
-        { .name = "TriangleBLAS", .buildFlags = vex::ASBuildFlags::PreferFastTrace });
-    tlas = graphics->CreateTopLevelAccelerationStructure({ .name = "HelloRayTracing_TLAS" });
+    triangleBLAS = graphics->CreateAccelerationStructure({
+        .name = "TriangleBLAS",
+        .type = vex::ASType::BottomLevel,
+        .buildFlags = vex::ASBuild::PreferFastTrace,
+    });
+    tlas = graphics->CreateAccelerationStructure({
+        .name = "HelloRayTracing_TLAS",
+        .type = vex::ASType::TopLevel,
+        .buildFlags = vex::ASBuild::PreferFastTrace,
+    });
 
     // Create vertex and index buffers
     const vex::BufferDesc vbDesc =
@@ -60,7 +67,7 @@ HelloRayTracing::HelloRayTracing()
                         .vertexBufferBinding = { .buffer = vertexBuffer, .strideByteSize = static_cast<vex::u32>(sizeof(Vertex)), },
                         .indexBufferBinding = vex::BufferBinding{ .buffer = indexBuffer, .strideByteSize = static_cast<vex::u32>(sizeof(vex::u32)), },
                         .transform = std::nullopt,
-                        .flags = vex::ASGeometryFlags::Opaque,
+                        .flags = vex::ASGeometry::Opaque,
                     } } });
 
     ctx.Barrier(triangleBLAS, vex::RHIBarrierSync::AllCommands, vex::RHIBarrierAccess::AccelerationStructureRead);
@@ -89,7 +96,7 @@ HelloRayTracing::HelloRayTracing()
     };
     ctx.BuildTLAS(tlas, { .instances = instances });
 
-    ctx.Barrier(tlas, vex::RHIBarrierSync::AllCommands, vex::RHIBarrierAccess::AccelerationStructureRead);
+    ctx.Barrier(tlas, vex::RHIBarrierSync::RayTracing, vex::RHIBarrierAccess::AccelerationStructureRead);
 
     graphics->Submit(ctx);
 
