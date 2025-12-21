@@ -21,6 +21,8 @@ struct BufferViewDesc
     u64 offsetByteSize;
     u64 rangeByteSize;
 
+    bool isAccelerationStructure = false;
+
     bool operator==(const BufferViewDesc&) const = default;
 
     u32 GetElementStride() const;
@@ -29,9 +31,15 @@ struct BufferViewDesc
 };
 } // namespace vex
 
-VEX_MAKE_HASHABLE(vex::BufferViewDesc, VEX_HASH_COMBINE(seed, obj.usage); VEX_HASH_COMBINE(seed, obj.strideByteSize);
-                  VEX_HASH_COMBINE(seed, obj.offsetByteSize);
-                  VEX_HASH_COMBINE(seed, obj.rangeByteSize););
+// clang-format off
+VEX_MAKE_HASHABLE(vex::BufferViewDesc, 
+    VEX_HASH_COMBINE(seed, obj.usage);
+    VEX_HASH_COMBINE(seed, obj.strideByteSize);
+    VEX_HASH_COMBINE(seed, obj.offsetByteSize);
+    VEX_HASH_COMBINE(seed, obj.rangeByteSize);
+    VEX_HASH_COMBINE(seed, obj.isAccelerationStructure);
+);
+// clang-format on
 
 namespace vex
 {
@@ -46,7 +54,6 @@ public:
     RHIBufferBase& operator=(RHIBufferBase&&) = default;
     ~RHIBufferBase() = default;
 
-    // Raw direct access to buffer memory
     virtual BindlessHandle GetOrCreateBindlessView(const BufferBinding& binding, RHIDescriptorPool& descriptorPool);
     void FreeBindlessHandles(RHIDescriptorPool& descriptorPool);
     void FreeAllocation(RHIAllocator& allocator);

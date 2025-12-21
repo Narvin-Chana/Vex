@@ -4,11 +4,12 @@
 #include <variant>
 #include <vector>
 
-#include <Vex/Utility/MaybeUninitialized.h>
-#include <Vex/Utility/NonNullPtr.h>
+#include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/Synchronization.h>
+#include <Vex/Utility/MaybeUninitialized.h>
+#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/Utility/UniqueHandle.h>
 
 #include <RHI/RHIFwd.h>
@@ -21,6 +22,7 @@ class ResourceCleanup
 public:
     using CleanupVariant = std::variant<MaybeUninitialized<RHITexture>,
                                         MaybeUninitialized<RHIBuffer>,
+                                        MaybeUninitialized<RHIAccelerationStructure>,
                                         UniqueHandle<RHIGraphicsPipelineState>,
                                         UniqueHandle<RHIComputePipelineState>,
                                         UniqueHandle<RHIRayTracingPipelineState>>;

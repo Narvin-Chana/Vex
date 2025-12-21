@@ -56,11 +56,7 @@ static bool IsShaderCollectionStale(const RayTracingShaderCollection& shaderColl
         static auto CheckHitGroupOptionalVersion = [](const std::optional<const NonNullPtr<Shader>>& shader,
                                                       const std::optional<u32>& psVersion) -> bool
         {
-            if (!shader.has_value() && !psVersion.has_value())
-            {
-                return true;
-            }
-            if (IsShaderVersionStale(shader.value(), psVersion.value()))
+            if (shader.has_value() && IsShaderVersionStale(shader.value(), psVersion.value()))
             {
                 return true;
             }
@@ -104,28 +100,22 @@ static void ValidateVertexInputLayoutOnShader(const Shader& shader, const Vertex
     if (!reflection)
         return;
 
-//    VEX_CHECK(reflection->inputs.size() == inputLayout.attributes.size(),
-//              "Error validating shader {}: Incoherent vertex input layout: size doesnt match shader",
-//              shader.key);
-//
-//    for (u32 i = 0; i < reflection->inputs.size(); ++i)
-//    {
-//        VEX_CHECK(reflection->inputs[i].semanticName == inputLayout.attributes[i].semanticName,
-//                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic name "
-//                  "doesn't match shader",
-//                  shader.key,
-//                  i);
-//        VEX_CHECK(reflection->inputs[i].semanticIndex == inputLayout.attributes[i].semanticIndex,
-//                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic index "
-//                  "doesn't match shader",
-//                  shader.key,
-//                  i);
-//        VEX_CHECK(reflection->inputs[i].format == inputLayout.attributes[i].format,
-//                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic index "
-//                  "doesn't match shader",
-//                  shader.key,
-//                  i);
-//    }
+    //    VEX_CHECK(reflection->inputs.size() == inputLayout.attributes.size(),
+    //              "Error validating shader {}: Incoherent vertex input layout: size doesnt match shader",
+    //              shader.key);
+    //
+    //    for (u32 i = 0; i < reflection->inputs.size(); ++i)
+    //    {
+    //        VEX_CHECK(reflection->inputs[i].semanticName == inputLayout.attributes[i].semanticName,
+    //                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic name
+    //                  " "doesn't match shader", shader.key, i);
+    //        VEX_CHECK(reflection->inputs[i].semanticIndex == inputLayout.attributes[i].semanticIndex,
+    //                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic index
+    //                  " "doesn't match shader", shader.key, i);
+    //        VEX_CHECK(reflection->inputs[i].format == inputLayout.attributes[i].format,
+    //                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic index
+    //                  " "doesn't match shader", shader.key, i);
+    //    }
 }
 
 } // namespace PipelineStateCache_Internal
@@ -238,7 +228,10 @@ std::optional<RayTracingShaderCollection> PipelineStateCache::GetRayTracingShade
             VEX_LOG(Error, "Unable to obtain valid rayClosestHitShader: {}", hitGroup.rayClosestHitShader);
             return std::nullopt;
         }
-        RayTracingShaderCollection::HitGroup hitGroupShaderCollection{ .rayClosestHitShader = rayClosestHitShader };
+        RayTracingShaderCollection::HitGroup hitGroupShaderCollection{
+            .name = hitGroup.name,
+            .rayClosestHitShader = rayClosestHitShader,
+        };
 
         if (hitGroup.rayAnyHitShader.has_value())
         {

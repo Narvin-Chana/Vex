@@ -10,13 +10,13 @@
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHI.h>
+#include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHICommandPool.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
-#include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RenderExtension.h>
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Visitor.h>
@@ -303,6 +303,11 @@ void Graphics::DestroyBuffer(const Buffer& buffer)
     resourceCleanup.CleanupResource(bufferRegistry.ExtractElement(buffer.handle));
 }
 
+void Graphics::DestroyAccelerationStructure(const AccelerationStructure& accelerationStructure)
+{
+    resourceCleanup.CleanupResource(accelerationStructureRegistry.ExtractElement(accelerationStructure.handle));
+}
+
 BindlessHandle Graphics::GetBindlessHandle(const TextureBinding& bindlessResource)
 {
     BindingUtil::ValidateTextureBinding(bindlessResource, bindlessResource.texture.desc.usage);
@@ -317,6 +322,13 @@ BindlessHandle Graphics::GetBindlessHandle(const BufferBinding& bindlessResource
 
     auto& buffer = GetRHIBuffer(bindlessResource.buffer.handle);
     return buffer.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
+}
+
+BindlessHandle Graphics::GetBindlessHandle(const AccelerationStructure& accelerationStructure)
+{
+    return GetRHIAccelerationStructure(accelerationStructure.handle)
+        .GetRHIBuffer()
+        .GetOrCreateBindlessView({}, *descriptorPool);
 }
 
 std::vector<BindlessHandle> Graphics::GetBindlessHandles(Span<const ResourceBinding> bindlessResources)
@@ -608,13 +620,13 @@ void Graphics::RecreatePresentTextures()
         }
     }
 
-    CommandContext ctx = CreateCommandContext(QueueType::Graphics);
-
     // Clear current present textures.
     for (const Texture& tex : presentTextures)
     {
         DestroyTexture(tex);
     }
+
+    CommandContext ctx = CreateCommandContext(QueueType::Graphics);
 
     // Create new present textures.
     presentTextures.resize(std::to_underlying(desc.swapChainDesc.frameBuffering));

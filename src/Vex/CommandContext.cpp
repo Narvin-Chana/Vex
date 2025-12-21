@@ -5,6 +5,7 @@
 #include <variant>
 
 #include <Vex/BuiltInShaders/MipGeneration.h>
+#include <Vex/AccelerationStructure.h>
 #include <Vex/DrawHelpers.h>
 #include <Vex/Graphics.h>
 #include <Vex/GraphicsPipeline.h>
@@ -21,6 +22,7 @@
 #include <Vex/RayTracing.h>
 #include <Vex/ResourceBindingUtils.h>
 #include <Vex/Utility/ByteUtils.h>
+#include <Vex/Utility/Hash.h>
 #include <Vex/Utility/Validation.h>
 #include <Vex/Utility/Visitor.h>
 
@@ -871,11 +873,18 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
               "BuildTLAS only accepts top level acceleration structures...");
     VEX_CHECK(!desc.instances.empty(), "Cannot build an empty TLAS...");
 
+    std::unordered_set<AccelerationStructure> uniqueBLAS;
     std::vector<NonNullPtr<RHIAccelerationStructure>> perInstanceBLAS;
     perInstanceBLAS.reserve(desc.instances.size());
     for (const TLASInstanceDesc& tlasInstanceDesc : desc.instances)
     {
         perInstanceBLAS.push_back(graphics->GetRHIAccelerationStructure(tlasInstanceDesc.blas.handle));
+        uniqueBLAS.insert(tlasInstanceDesc.blas);
+    }
+
+    for (auto& blas : uniqueBLAS)
+    {
+        Barrier(blas, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::AccelerationStructureRead);
     }
 
     const RHITLASBuildDesc rhiTLASDesc{

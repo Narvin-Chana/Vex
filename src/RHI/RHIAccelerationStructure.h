@@ -96,6 +96,9 @@ public:
     virtual const RHIAccelerationStructureBuildInfo& SetupTLASBuild(RHIAllocator& allocator,
                                                                     const RHITLASBuildDesc& desc) = 0;
 
+    void FreeBindlessHandles(RHIDescriptorPool& descriptorPool);
+    void FreeAllocation(RHIAllocator& allocator);
+
 protected:
     ASType type;
     std::variant<BLASDesc, TLASDesc> desc;

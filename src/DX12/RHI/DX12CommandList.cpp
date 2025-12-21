@@ -860,6 +860,9 @@ void DX12CommandList::BuildBLAS(RHIAccelerationStructure& as, RHIBuffer& scratch
     // TODO: handle BLAS update.
     buildDesc.SourceAccelerationStructureData = NULL;
     commandList->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
+    // Force last sync to BuildRaytracingAccelerationStructure, since BuildRaytracingAccelerationStructure touches the
+    // resource.
+    as.GetRHIBuffer().SetLastSync(RHIBarrierSync::BuildAccelerationStructure);
 }
 
 void DX12CommandList::BuildTLAS(RHIAccelerationStructure& as,
@@ -867,12 +870,12 @@ void DX12CommandList::BuildTLAS(RHIAccelerationStructure& as,
                                 RHIBuffer& uploadBuffer,
                                 const RHITLASBuildDesc& desc)
 {
-    // Upload required info into the upload buffer:
+    // Upload required info into the upload buffer.
     {
         ResourceMappedMemory map{ uploadBuffer };
         D3D12_RAYTRACING_INSTANCE_DESC* instanceDescs =
             reinterpret_cast<D3D12_RAYTRACING_INSTANCE_DESC*>(map.GetMappedRange().data());
-         for (u32 instance = 0; instance < desc.instanceDescs.size(); ++instance)
+        for (u32 instance = 0; instance < desc.instanceDescs.size(); ++instance)
         {
             const TLASInstanceDesc& tlasDesc = desc.instanceDescs[instance];
             *instanceDescs = D3D12_RAYTRACING_INSTANCE_DESC{
@@ -884,11 +887,16 @@ void DX12CommandList::BuildTLAS(RHIAccelerationStructure& as,
                 .AccelerationStructure = desc.perInstanceBLAS[instance]->GetRHIBuffer().GetGPUVirtualAddress(),
             };
 
-            std::memcpy(reinterpret_cast<float*>(instanceDescs->Transform), tlasDesc.transform.data(), tlasDesc.transform.size() * sizeof(float));
+            std::memcpy(reinterpret_cast<float*>(instanceDescs->Transform),
+                        tlasDesc.transform.data(),
+                        tlasDesc.transform.size() * sizeof(float));
 
             ++instanceDescs;
         }
     }
+
+    // Barrier the upload buffer to finish the upload.
+    Barrier({ RHIBufferBarrier(uploadBuffer, RHIBarrierSync::AllCommands, RHIBarrierAccess::ShaderRead) }, {});
 
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {};
     buildDesc.Inputs = D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS{
@@ -903,6 +911,9 @@ void DX12CommandList::BuildTLAS(RHIAccelerationStructure& as,
     // TODO: handle TLAS update.
     buildDesc.SourceAccelerationStructureData = NULL;
     commandList->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
+    // Force last sync to BuildRaytracingAccelerationStructure, since BuildRaytracingAccelerationStructure touches the
+    // resource.
+    as.GetRHIBuffer().SetLastSync(RHIBarrierSync::BuildAccelerationStructure);
 }
 
 RHIScopedGPUEvent DX12CommandList::CreateScopedMarker(const char* label, std::array<float, 3> labelColor)

@@ -7,6 +7,7 @@
 #include <Vex/Containers/Span.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/EnumFlags.h>
+#include <Vex/Utility/Hash.h>
 
 namespace vex
 {
@@ -27,6 +28,8 @@ struct AccelerationStructure
 {
     ASHandle handle;
     ASType type;
+
+    constexpr bool operator==(const AccelerationStructure&) const = default;
 };
 
 // clang-format off
@@ -126,3 +129,12 @@ struct TLASBuildDesc
 };
 
 } // namespace vex
+
+// clang-format off
+
+VEX_MAKE_HASHABLE(vex::AccelerationStructure,
+    VEX_HASH_COMBINE(seed, obj.handle);
+    VEX_HASH_COMBINE(seed, obj.type);
+);
+
+// clang-format on
