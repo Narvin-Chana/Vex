@@ -848,16 +848,15 @@ void DX12CommandList::BuildBLAS(RHIAccelerationStructure& as, RHIBuffer& scratch
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc{};
     buildDesc.Inputs = D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS{
         .Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
-        // TODO: convert vex enum to DX12 native enum
-        .Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE,
+        .Flags = ASBuildFlagsToDX12ASBuildFlags(as.GetBLASDesc().buildFlags),
         .NumDescs = static_cast<u32>(as.GetGeometryDescs().size()),
         .DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
         .pGeometryDescs = as.GetGeometryDescs().data(),
-        // TODO: handle opacity micromaps
+        // TODO(https://trello.com/c/YPn5ypzR): handle opacity micromaps
     };
     buildDesc.ScratchAccelerationStructureData = scratchBuffer.GetGPUVirtualAddress();
     buildDesc.DestAccelerationStructureData = as.GetRHIBuffer().GetGPUVirtualAddress();
-    // TODO: handle BLAS update.
+    // TODO(https://trello.com/c/LIEtASpP): handle BLAS update.
     buildDesc.SourceAccelerationStructureData = NULL;
     commandList->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
     // Force last sync to BuildRaytracingAccelerationStructure, since BuildRaytracingAccelerationStructure touches the
@@ -882,8 +881,7 @@ void DX12CommandList::BuildTLAS(RHIAccelerationStructure& as,
                 .InstanceID = tlasDesc.instanceID,
                 .InstanceMask = tlasDesc.instanceMask,
                 .InstanceContributionToHitGroupIndex = tlasDesc.instanceContributionToHitGroupIndex,
-                // TODO: convert vex enum to DX12 native enum
-                .Flags = D3D12_RAYTRACING_INSTANCE_FLAG_FORCE_OPAQUE,
+                .Flags = ASInstanceFlagsToDX12InstanceFlags(tlasDesc.instanceFlags),
                 .AccelerationStructure = desc.perInstanceBLAS[instance]->GetRHIBuffer().GetGPUVirtualAddress(),
             };
 
@@ -901,14 +899,14 @@ void DX12CommandList::BuildTLAS(RHIAccelerationStructure& as,
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {};
     buildDesc.Inputs = D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS{
         .Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
-        .Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE,
+        .Flags = ASBuildFlagsToDX12ASBuildFlags(as.GetTLASDesc().buildFlags),
         .NumDescs = static_cast<u32>(desc.instanceDescs.size()),
         .DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
         .InstanceDescs = uploadBuffer.GetGPUVirtualAddress(),
     };
     buildDesc.ScratchAccelerationStructureData = scratchBuffer.GetGPUVirtualAddress();
     buildDesc.DestAccelerationStructureData = as.GetRHIBuffer().GetGPUVirtualAddress();
-    // TODO: handle TLAS update.
+    // TODO(https://trello.com/c/LIEtASpP): handle TLAS update.
     buildDesc.SourceAccelerationStructureData = NULL;
     commandList->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
     // Force last sync to BuildRaytracingAccelerationStructure, since BuildRaytracingAccelerationStructure touches the

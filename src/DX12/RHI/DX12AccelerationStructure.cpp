@@ -26,12 +26,11 @@ const RHIAccelerationStructureBuildInfo& DX12AccelerationStructure::SetupBLASBui
 
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS buildInputs{
         .Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
-        // TODO: convert vex enum to DX12 native enum
-        .Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE,
+        .Flags = ASBuildFlagsToDX12ASBuildFlags(GetBLASDesc().buildFlags),
         .NumDescs = static_cast<u32>(geometryDescs.size()),
         .DescsLayout = D3D12_ELEMENTS_LAYOUT::D3D12_ELEMENTS_LAYOUT_ARRAY,
         .pGeometryDescs = geometryDescs.data(),
-        // TODO: handle opacity micromaps
+        // TODO(https://trello.com/c/YPn5ypzR): handle opacity micromaps
     };
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO dx12PrebuildInfo{};
     device->GetRaytracingAccelerationStructurePrebuildInfo(&buildInputs, &dx12PrebuildInfo);
@@ -62,8 +61,7 @@ const RHIAccelerationStructureBuildInfo& DX12AccelerationStructure::SetupTLASBui
 
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS buildInputs{
         .Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
-        // TODO: convert vex enum to DX12 native enum
-        .Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE,
+        .Flags = ASBuildFlagsToDX12ASBuildFlags(GetTLASDesc().buildFlags),
         .NumDescs = static_cast<u32>(desc.instanceDescs.size()),
         .DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
     };
@@ -106,8 +104,11 @@ void DX12AccelerationStructure::InitRayTracingGeometryDesc(const RHIBLASBuildDes
             .StrideInBytes = vbView.StrideInBytes,
         };
         geometryDesc.Triangles.VertexCount = vbView.SizeInBytes / vbView.StrideInBytes;
-        // TODO: handle other vertex formats
         geometryDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+        // TODO(https://trello.com/c/srGndUSP): Handle other vertex formats, this should be cross-referenced with Vulkan
+        // to make sure only formats supported by both APIs are accepted.
+        VEX_ASSERT(vbView.StrideInBytes == sizeof(float) * 3,
+                   "Vex currently does not support Vertices with a larger stride than 12 bytes.");
 
         if (rhiGeometryDesc.indexBufferBinding.has_value())
         {
@@ -131,6 +132,33 @@ void DX12AccelerationStructure::InitRayTracingGeometryDesc(const RHIBLASBuildDes
 
         geometryDescs.push_back(std::move(geometryDesc));
     }
+}
+
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS ASBuildFlagsToDX12ASBuildFlags(ASBuildFlags::Flags flags)
+{
+    return static_cast<D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS>(flags);
+}
+
+u32 ASInstanceFlagsToDX12InstanceFlags(ASInstanceFlags::Flags flags)
+{
+    u32 dxFlags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
+    if (flags & ASInstanceFlags::TriangleCullDisable)
+    {
+        dxFlags |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE;
+    }
+    if (flags & ASInstanceFlags::TriangleFrontCounterClockwise)
+    {
+        dxFlags |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE;
+    }
+    if (flags & ASInstanceFlags::ForceOpaque)
+    {
+        dxFlags |= D3D12_RAYTRACING_INSTANCE_FLAG_FORCE_OPAQUE;
+    }
+    if (flags & ASInstanceFlags::ForceNonOpaque)
+    {
+        dxFlags |= D3D12_RAYTRACING_INSTANCE_FLAG_FORCE_NON_OPAQUE;
+    }
+    return dxFlags;
 }
 
 } // namespace vex::dx12
