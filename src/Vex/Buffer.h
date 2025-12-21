@@ -36,6 +36,7 @@ enum class BufferBindingUsage : u8
     RWStructuredBuffer,
     ByteAddressBuffer,
     RWByteAddressBuffer,
+    AccelerationStructure, // Reserved for internal use.
     Invalid = 0xFF
 };
 

@@ -73,7 +73,6 @@ function(setup_dx12_backend TARGET)
 
     # Store version for downstream use
     set_property(TARGET Vex PROPERTY DIRECTX_AGILITY_SDK_VERSION ${DX_AGILITY_VERSION})
-    set(DX_AGILITY_SDK_VERSION ${DX_AGILITY_VERSION} CACHE INTERNAL "DirectX Agility SDK Version")
 
     # =========================================
     # Vex DX12 Sources

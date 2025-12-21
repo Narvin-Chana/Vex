@@ -45,11 +45,14 @@ RHIBufferBase::RHIBufferBase(RHIAllocator& allocator, const BufferDesc& desc)
 
 BufferViewDesc RHIBufferBase::GetViewDescFromBinding(const BufferBinding& binding)
 {
-    auto offset = binding.offsetByteSize.value_or(0);
-    return { binding.usage,
-             binding.strideByteSize.value_or(0),
-             offset,
-             binding.rangeByteSize.value_or(binding.buffer.desc.byteSize - offset) };
+    const u64 offset = binding.offsetByteSize.value_or(0);
+    return BufferViewDesc{
+        .usage = binding.usage,
+        .strideByteSize = binding.strideByteSize.value_or(0),
+        .offsetByteSize = offset,
+        .rangeByteSize = binding.rangeByteSize.value_or(binding.buffer.desc.byteSize - offset),
+        .isAccelerationStructure = (binding.buffer.desc.usage & BufferUsage::AccelerationStructure) != 0,
+    };
 }
 
 void RHIBufferBase::FreeAllocation(RHIAllocator& allocator)

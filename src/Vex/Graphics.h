@@ -105,6 +105,11 @@ public:
     // Once destroyed, the handle passed in is invalid and should no longer be used.
     void DestroyBuffer(const Buffer& buffer);
 
+    // Destroys an acceleration structure, the handle passed in must be the one obtained from calling
+    // Create*AccelerationStructure earlier. Once destroyed, the handle passed in is invalid and should no longer be
+    // used.
+    void DestroyAccelerationStructure(const AccelerationStructure& accelerationStructure);
+
     // Allows users to fetch the bindless handles for a texture binding. This bindless handle remains valid as long as
     // the resource itself is alive.
     [[nodiscard]] BindlessHandle GetBindlessHandle(const TextureBinding& bindlessResource);
@@ -112,6 +117,10 @@ public:
     // Allows users to fetch the bindless handles for a buffer binding. This bindless handle remains valid as long as
     // the resource itself is alive.
     [[nodiscard]] BindlessHandle GetBindlessHandle(const BufferBinding& bindlessResource);
+
+    // Allows users to fetch the bindless handles for an Acceleration Structure. This bindless handle remains valid as
+    // long as the resource itself is alive.
+    [[nodiscard]] BindlessHandle GetBindlessHandle(const AccelerationStructure& accelerationStructure);
 
     // Allows users to fetch the bindless handles for multiple resource bindings. These bindless handles remain valid as
     // long as the resources themselves are alive.

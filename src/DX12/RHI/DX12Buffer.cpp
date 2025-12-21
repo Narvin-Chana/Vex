@@ -142,11 +142,13 @@ void DX12Buffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
                                         const BufferViewDesc& viewDesc)
 {
     BufferBindingUsage usage = viewDesc.usage;
-    bool isCBV = usage == BufferBindingUsage::ConstantBuffer;
-    bool isSRV = usage == BufferBindingUsage::StructuredBuffer || usage == BufferBindingUsage::ByteAddressBuffer;
-    bool isUAV = usage == BufferBindingUsage::RWStructuredBuffer || usage == BufferBindingUsage::RWByteAddressBuffer;
+    const bool isCBV = usage == BufferBindingUsage::ConstantBuffer;
+    const bool isSRV = usage == BufferBindingUsage::StructuredBuffer || usage == BufferBindingUsage::ByteAddressBuffer;
+    const bool isUAV =
+        usage == BufferBindingUsage::RWStructuredBuffer || usage == BufferBindingUsage::RWByteAddressBuffer;
+    const bool isAccelerationStructure = desc.usage & BufferUsage::AccelerationStructure;
 
-    VEX_ASSERT(isSRV || isUAV || isCBV,
+    VEX_ASSERT(isSRV || isUAV || isCBV || isAccelerationStructure,
                "The bindless view requested for buffer '{}' must be either of type SRV, CBV or UAV.",
                desc.name);
 
@@ -189,6 +191,16 @@ void DX12Buffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
         }
 
         device->CreateShaderResourceView(buffer.Get(), &srvDesc, cpuHandle);
+    }
+    else if (isAccelerationStructure)
+    {
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{
+            .Format = DXGI_FORMAT_UNKNOWN,
+            .ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE,
+            .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+            .RaytracingAccelerationStructure = { .Location = GetGPUVirtualAddress() },
+        };
+        device->CreateShaderResourceView(nullptr, &srvDesc, cpuHandle);
     }
     else // if (isUAVView)
     {

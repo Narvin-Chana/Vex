@@ -15,7 +15,9 @@
 #include <DX12/DX12Formats.h>
 #include <DX12/HRChecker.h>
 
+#ifndef VEX_USE_CUSTOM_ALLOCATOR_TEXTURES
 #define VEX_USE_CUSTOM_ALLOCATOR_TEXTURES 1
+#endif
 
 namespace vex::dx12
 {
@@ -279,12 +281,15 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
     allocation =
         allocator.AllocateResource(texture, texDesc, desc.memoryLocality, D3D12_BARRIER_LAYOUT_UNDEFINED, clearValue);
 #else
-    chk << device->CreateCommittedResource(&heapProps,
-                                           D3D12_HEAP_FLAG_NONE,
-                                           &texDesc,
-                                           D3D12_RESOURCE_STATE_COMMON,
-                                           clearValue.has_value() ? &clearValue.value() : nullptr,
-                                           IID_PPV_ARGS(&texture));
+    chk << device->CreateCommittedResource3(&heapProps,
+                                            D3D12_HEAP_FLAG_NONE,
+                                            &texDesc,
+                                            D3D12_BARRIER_LAYOUT_UNDEFINED,
+                                            clearValue.has_value() ? &clearValue.value() : nullptr,
+                                            nullptr,
+                                            0,
+                                            nullptr,
+                                            IID_PPV_ARGS(&texture));
 #endif
 
 #if !VEX_SHIPPING
