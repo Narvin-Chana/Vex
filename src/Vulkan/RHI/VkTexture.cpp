@@ -191,9 +191,9 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
             .aspectMask = VkTextureUtil::GetFormatAspectFlags(
                 VulkanToTextureFormat(view.format)),
             .baseMipLevel = view.subresource.startMip,
-            .levelCount = view.subresource.mipCount,
+            .levelCount = view.subresource.GetMipCount(binding.texture.desc),
             .baseArrayLayer = view.subresource.startSlice,
-            .layerCount = view.subresource.sliceCount,
+            .layerCount = view.subresource.GetSliceCount(binding.texture.desc),
         },
     };
 
@@ -251,9 +251,9 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
                                     VulkanToTextureFormat(view.format))
                                 : ::vk::ImageAspectFlagBits::eColor,
             .baseMipLevel = view.subresource.startMip,
-            .levelCount = view.subresource.mipCount,
+            .levelCount = view.subresource.GetMipCount(binding.texture.desc),
             .baseArrayLayer = view.subresource.startSlice,
-            .layerCount = view.subresource.sliceCount,
+            .layerCount = view.subresource.GetSliceCount(binding.texture.desc),
         }, 
     };
 
@@ -262,11 +262,6 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
     const ::vk::ImageView ret = *imageView;
     viewCache[view] = std::move(imageView);
     return ret;
-}
-
-RHITextureBarrier VkTexture::GetClearTextureBarrier()
-{
-    return RHITextureBarrier(*this, {}, RHIBarrierSync::Clear, RHIBarrierAccess::CopyDest, RHITextureLayout::CopyDest);
 }
 
 void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)

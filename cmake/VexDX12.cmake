@@ -140,10 +140,10 @@ function(setup_dx12_backend TARGET)
     add_header_only_dependency(${TARGET} DirectXAgilitySDK "${DX_AGILITY_SDK_SOURCE_DIR}" "include" "directx")
 
     target_compile_definitions(${TARGET} PRIVATE 
-        DIRECTX_AGILITY_SDK_VERSION=${DX_AGILITY_VERSION}
+        DIRECTX_AGILITY_SDK_VERSION=${DX_AGILITY_SDK_VERSION}
         D3D12_AGILITY_SDK_ENABLED
     )
-    
+
     # Register D3D12 Agility SDK DLLs (these need special D3D12/ subdirectory)
     vex_add_files_to_target_property(${TARGET} "VEX_D3D12_AGILITY_DLLS" ${DX_AGILITY_RUNTIME_DLLS})
 

@@ -192,6 +192,19 @@ struct TextureOffset3D
 static constexpr u16 GTextureAllMips = ~static_cast<u16>(0);
 static constexpr u32 GTextureAllSlices = ~static_cast<u32>(0);
 
+static constexpr u32 GTextureClearRectMax = ~static_cast<u32>(0);
+
+struct TextureClearRect
+{
+    i32 offsetX = 0, offsetY = 0;
+    u32 extentX = GTextureClearRectMax, extentY = GTextureClearRectMax;
+
+    u32 GetExtentX(const TextureDesc& desc) const;
+    u32 GetExtentY(const TextureDesc& desc) const;
+
+    constexpr bool operator==(const TextureClearRect&) const = default;
+};
+
 struct TextureSubresource
 {
     u16 startMip = 0;

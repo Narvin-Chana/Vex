@@ -77,8 +77,6 @@ public:
 
     ::vk::ImageView GetOrCreateImageView(const TextureBinding& binding, TextureUsage::Type usage);
 
-    virtual RHITextureBarrier GetClearTextureBarrier() override;
-
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
     virtual void FreeAllocation(RHIAllocator& allocator) override;
 
