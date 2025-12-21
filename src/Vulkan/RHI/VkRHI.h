@@ -52,6 +52,8 @@ public:
 
     virtual RHITimestampQueryPool CreateTimestampQueryPool(RHIAllocator& allocator) override;
 
+    virtual RHIAccelerationStructure CreateAS(const ASDesc& desc) override;
+
     ::vk::Instance GetNativeInstance()
     {
         return *instance;

@@ -40,6 +40,8 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
     if (desc.usage & BufferUsage::AccelerationStructure)
     {
         bufferDesc.Flags |= D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE;
+        // TODO(https://trello.com/c/rLevCOvT): Decide if this should be moved up into the Vex layer or not!
+        // This depends on how Vulkan implements HWRT.
         VEX_ASSERT(bufferDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
                    "Acceleration Structure buffer usage flag also requires the UnorderedAccess flag!");
     }

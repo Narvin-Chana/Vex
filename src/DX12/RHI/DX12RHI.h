@@ -49,8 +49,7 @@ public:
 
     virtual RHITimestampQueryPool CreateTimestampQueryPool(RHIAllocator& allocator) override;
 
-    virtual RHIAccelerationStructure CreateBLAS(const BLASDesc& desc) override;
-    virtual RHIAccelerationStructure CreateTLAS(const TLASDesc& desc) override;
+    virtual RHIAccelerationStructure CreateAS(const ASDesc& desc) override;
 
     virtual void WaitForTokenOnCPU(const SyncToken& syncToken) override;
     virtual bool IsTokenComplete(const SyncToken& syncToken) const override;

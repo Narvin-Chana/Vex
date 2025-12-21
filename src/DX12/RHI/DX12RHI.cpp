@@ -199,12 +199,7 @@ RHITimestampQueryPool DX12RHI::CreateTimestampQueryPool(RHIAllocator& allocator)
     return RHITimestampQueryPool{ *this, allocator };
 }
 
-RHIAccelerationStructure DX12RHI::CreateBLAS(const BLASDesc& desc)
-{
-    return RHIAccelerationStructure(device, desc);
-}
-
-RHIAccelerationStructure DX12RHI::CreateTLAS(const TLASDesc& desc)
+RHIAccelerationStructure DX12RHI::CreateAS(const ASDesc& desc)
 {
     return RHIAccelerationStructure(device, desc);
 }

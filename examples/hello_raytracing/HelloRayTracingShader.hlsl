@@ -47,7 +47,7 @@ void RayGenMain()
     RayPayload payload;
     TraceRay(
         AccelerationStructure, // Acceleration Structure
-        RAY_FLAG_FORCE_OPAQUE, // Ray Flags
+        RAY_FLAG_FORCE_OPAQUE, // Ray Flags, see this for more info: https://learn.microsoft.com/en-us/windows/win32/direct3d12/ray_flag
         0xFF,                  // Instance inclusion mask
         0,                     // Ray contribution to hitgroup index
         1,                     // Multiplier for geometry contribution to hit group index
@@ -56,7 +56,7 @@ void RayGenMain()
         payload                // InOut RayPayload
     );
 
-    // Write to output
+    // Write payload result to output
     OutputTexture[launchIndex] = float4(payload.color, 1.0f);
 }
 

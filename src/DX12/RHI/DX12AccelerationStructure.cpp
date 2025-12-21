@@ -5,13 +5,7 @@
 namespace vex::dx12
 {
 
-DX12AccelerationStructure::DX12AccelerationStructure(ComPtr<DX12Device>& device, const BLASDesc& desc)
-    : RHIAccelerationStructureBase(desc)
-    , device(device)
-{
-}
-
-DX12AccelerationStructure::DX12AccelerationStructure(ComPtr<DX12Device>& device, const TLASDesc& desc)
+DX12AccelerationStructure::DX12AccelerationStructure(ComPtr<DX12Device>& device, const ASDesc& desc)
     : RHIAccelerationStructureBase(desc)
     , device(device)
 {
@@ -26,7 +20,7 @@ const RHIAccelerationStructureBuildInfo& DX12AccelerationStructure::SetupBLASBui
 
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS buildInputs{
         .Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
-        .Flags = ASBuildFlagsToDX12ASBuildFlags(GetBLASDesc().buildFlags),
+        .Flags = ASBuildFlagsToDX12ASBuildFlags(GetDesc().buildFlags),
         .NumDescs = static_cast<u32>(geometryDescs.size()),
         .DescsLayout = D3D12_ELEMENTS_LAYOUT::D3D12_ELEMENTS_LAYOUT_ARRAY,
         .pGeometryDescs = geometryDescs.data(),
@@ -43,7 +37,7 @@ const RHIAccelerationStructureBuildInfo& DX12AccelerationStructure::SetupBLASBui
 
     // Create the actual AS buffer.
     BufferDesc asDesc{
-        .name = GetBLASDesc().name,
+        .name = GetDesc().name,
         .byteSize = prebuildInfo.asByteSize,
         .usage = BufferUsage::AccelerationStructure,
         .memoryLocality = ResourceMemoryLocality::GPUOnly,
@@ -61,7 +55,7 @@ const RHIAccelerationStructureBuildInfo& DX12AccelerationStructure::SetupTLASBui
 
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS buildInputs{
         .Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
-        .Flags = ASBuildFlagsToDX12ASBuildFlags(GetTLASDesc().buildFlags),
+        .Flags = ASBuildFlagsToDX12ASBuildFlags(GetDesc().buildFlags),
         .NumDescs = static_cast<u32>(desc.instanceDescs.size()),
         .DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
     };
@@ -77,7 +71,7 @@ const RHIAccelerationStructureBuildInfo& DX12AccelerationStructure::SetupTLASBui
 
     // Create the actual AS buffer.
     BufferDesc asDesc{
-        .name = GetTLASDesc().name,
+        .name = GetDesc().name,
         .byteSize = prebuildInfo.asByteSize,
         .usage = BufferUsage::AccelerationStructure,
         .memoryLocality = ResourceMemoryLocality::GPUOnly,
@@ -96,7 +90,7 @@ void DX12AccelerationStructure::InitRayTracingGeometryDesc(const RHIBLASBuildDes
     {
         D3D12_RAYTRACING_GEOMETRY_DESC geometryDesc{};
         geometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-        geometryDesc.Flags = static_cast<D3D12_RAYTRACING_GEOMETRY_FLAGS>(rhiGeometryDesc.flags);
+        geometryDesc.Flags = ASGeometryFlagsToDX12GeometryFlags(rhiGeometryDesc.flags);
         const D3D12_VERTEX_BUFFER_VIEW vbView = rhiGeometryDesc.vertexBufferBinding.buffer->GetVertexBufferView(
             rhiGeometryDesc.vertexBufferBinding.binding);
         geometryDesc.Triangles.VertexBuffer = {
@@ -134,27 +128,32 @@ void DX12AccelerationStructure::InitRayTracingGeometryDesc(const RHIBLASBuildDes
     }
 }
 
-D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS ASBuildFlagsToDX12ASBuildFlags(ASBuildFlags::Flags flags)
+D3D12_RAYTRACING_GEOMETRY_FLAGS ASGeometryFlagsToDX12GeometryFlags(ASGeometry::Flags flags)
+{
+    return static_cast<D3D12_RAYTRACING_GEOMETRY_FLAGS>(flags);
+}
+
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS ASBuildFlagsToDX12ASBuildFlags(ASBuild::Flags flags)
 {
     return static_cast<D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS>(flags);
 }
 
-u32 ASInstanceFlagsToDX12InstanceFlags(ASInstanceFlags::Flags flags)
+u32 ASInstanceFlagsToDX12InstanceFlags(ASInstance::Flags flags)
 {
     u32 dxFlags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
-    if (flags & ASInstanceFlags::TriangleCullDisable)
+    if (flags & ASInstance::TriangleCullDisable)
     {
         dxFlags |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE;
     }
-    if (flags & ASInstanceFlags::TriangleFrontCounterClockwise)
+    if (flags & ASInstance::TriangleFrontCounterClockwise)
     {
         dxFlags |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE;
     }
-    if (flags & ASInstanceFlags::ForceOpaque)
+    if (flags & ASInstance::ForceOpaque)
     {
         dxFlags |= D3D12_RAYTRACING_INSTANCE_FLAG_FORCE_OPAQUE;
     }
-    if (flags & ASInstanceFlags::ForceNonOpaque)
+    if (flags & ASInstance::ForceNonOpaque)
     {
         dxFlags |= D3D12_RAYTRACING_INSTANCE_FLAG_FORCE_NON_OPAQUE;
     }

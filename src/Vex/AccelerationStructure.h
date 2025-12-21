@@ -24,23 +24,15 @@ enum class ASType : u8
     TopLevel,    // TLAS, represents instances (with transforms) for a specific geometry.
 };
 
-struct AccelerationStructure
-{
-    ASHandle handle;
-    ASType type;
-
-    constexpr bool operator==(const AccelerationStructure&) const = default;
-};
-
 // clang-format off
 
-BEGIN_VEX_ENUM_FLAGS(ASGeometryFlags, u8)
+BEGIN_VEX_ENUM_FLAGS(ASGeometry, u8)
 	None						= 0,
 	Opaque						= 1 << 0,	// This means AnyHit shaders will not be invoked.
 	NoDuplicateAnyHitInvocation = 1 << 1,	// Guarantees single AnyHit invocations.
 END_VEX_ENUM_FLAGS();
 
-BEGIN_VEX_ENUM_FLAGS(ASInstanceFlags, u8)
+BEGIN_VEX_ENUM_FLAGS(ASInstance, u8)
 	None						  = 0,
 	TriangleCullDisable			  = 1 << 0,
 	TriangleFrontCounterClockwise = 1 << 1,
@@ -50,7 +42,7 @@ BEGIN_VEX_ENUM_FLAGS(ASInstanceFlags, u8)
 END_VEX_ENUM_FLAGS();
 
 // Flags for Acceleration Structure building. Currently these are not yet implemented.
-BEGIN_VEX_ENUM_FLAGS(ASBuildFlags, u8)
+BEGIN_VEX_ENUM_FLAGS(ASBuild, u8)
 	None			= 0,
 	AllowUpdate		= 1 << 0,	// Allows for incremental updates to the AccelerationStructure.
 	AllowCompaction = 1 << 1,	// Allows for acceleration structure compaction to save memory.
@@ -63,6 +55,23 @@ END_VEX_ENUM_FLAGS();
 
 // clang-format on
 
+struct ASDesc
+{
+    std::string name;
+    ASType type;
+    ASBuild::Flags buildFlags = ASBuild::PreferFastTrace;
+
+    constexpr bool operator==(const ASDesc&) const = default;
+};
+
+struct AccelerationStructure
+{
+    ASHandle handle;
+    ASDesc desc;
+
+    constexpr bool operator==(const AccelerationStructure&) const = default;
+};
+
 struct BLASGeometryDesc
 {
     // Geometry vertices.
@@ -71,14 +80,7 @@ struct BLASGeometryDesc
     std::optional<BufferBinding> indexBufferBinding;
     // Optional 3x4 transform matrix to apply to vertices before building the BLAS.
     std::optional<std::array<float, 3 * 4>> transform;
-
-    ASGeometryFlags::Type flags = ASGeometryFlags::Opaque;
-};
-
-struct BLASDesc
-{
-    std::string name;
-    ASBuildFlags::Type buildFlags = ASBuildFlags::PreferFastTrace;
+    ASGeometry::Flags flags = ASGeometry::Opaque;
 };
 
 struct BLASBuildDesc
@@ -109,20 +111,10 @@ struct TLASInstanceDesc
     // Shader Binding Table (SBT) offset.
     u32 instanceContributionToHitGroupIndex = 0;
     // Flags for the instance.
-    ASInstanceFlags::Flags instanceFlags = ASInstanceFlags::None;
+    ASInstance::Flags instanceFlags = ASInstance::None;
 
     // Handle to this instance's corresponding BLAS.
     AccelerationStructure blas;
-};
-
-static constexpr u32 GTLASDeduceInstanceCountFromFirstBuild = ~0u;
-struct TLASDesc
-{
-    std::string name;
-    // Number of instances to allow for in this TLAS.
-    // If set to the default value, Vex will set the max instance count to the number of instances passed in during the first build.
-    u32 maxInstanceCount = GTLASDeduceInstanceCountFromFirstBuild;
-    ASBuildFlags::Type buildFlags = ASBuildFlags::PreferFastTrace;
 };
 
 struct TLASBuildDesc
@@ -135,9 +127,15 @@ struct TLASBuildDesc
 
 // clang-format off
 
+VEX_MAKE_HASHABLE(vex::ASDesc,
+    VEX_HASH_COMBINE(seed, obj.name);
+    VEX_HASH_COMBINE(seed, obj.type);
+    VEX_HASH_COMBINE(seed, obj.buildFlags);
+);
+
 VEX_MAKE_HASHABLE(vex::AccelerationStructure,
     VEX_HASH_COMBINE(seed, obj.handle);
-    VEX_HASH_COMBINE(seed, obj.type);
+    VEX_HASH_COMBINE(seed, obj.desc);
 );
 
 // clang-format on

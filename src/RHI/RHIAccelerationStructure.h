@@ -1,7 +1,6 @@
 #pragma once
 
 #include <optional>
-#include <variant>
 
 #include <Vex/AccelerationStructure.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
@@ -21,7 +20,7 @@ struct RHIBLASGeometryDesc
     std::optional<RHIBufferBinding> indexBufferBinding;
     std::optional<RHIBufferBinding> transform;
 
-    ASGeometryFlags::Flags flags = ASGeometryFlags::None;
+    ASGeometry::Flags flags = ASGeometry::None;
 };
 
 // RHI version of BLASBuildDesc
@@ -55,30 +54,14 @@ struct RHIAccelerationStructureBuildInfo
 class RHIAccelerationStructureBase
 {
 public:
-    // BLAS Constructor
-    RHIAccelerationStructureBase(const BLASDesc& desc)
-        : type(ASType::BottomLevel)
-        , desc(desc)
+    RHIAccelerationStructureBase(const ASDesc& desc)
+        : desc(desc)
     {
     }
 
-    // TLAS Constructor
-    RHIAccelerationStructureBase(const TLASDesc& desc)
-        : type(ASType::TopLevel)
-        , desc(desc)
+    const ASDesc& GetDesc() const
     {
-    }
-
-    const BLASDesc& GetBLASDesc() const
-    {
-        VEX_ASSERT(std::holds_alternative<BLASDesc>(desc), "Cannot obtain BLAS desc from a TLAS.");
-        return std::get<BLASDesc>(desc);
-    }
-
-    const TLASDesc& GetTLASDesc() const
-    {
-        VEX_ASSERT(std::holds_alternative<TLASDesc>(desc), "Cannot obtain TLAS desc from a BLAS.");
-        return std::get<TLASDesc>(desc);
+        return desc;
     }
 
     const RHIBuffer& GetRHIBuffer() const
@@ -100,8 +83,7 @@ public:
     void FreeAllocation(RHIAllocator& allocator);
 
 protected:
-    ASType type;
-    std::variant<BLASDesc, TLASDesc> desc;
+    ASDesc desc;
     MaybeUninitialized<RHIBuffer> accelerationStructure;
     RHIAccelerationStructureBuildInfo prebuildInfo;
 };
