@@ -102,7 +102,6 @@ public:
 protected:
     ASType type;
     std::variant<BLASDesc, TLASDesc> desc;
-    // TODO: add a cleanup method to destroy this once GPU is done using it.
     MaybeUninitialized<RHIBuffer> accelerationStructure;
     RHIAccelerationStructureBuildInfo prebuildInfo;
 };

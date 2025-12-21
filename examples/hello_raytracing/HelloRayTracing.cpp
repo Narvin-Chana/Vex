@@ -169,16 +169,44 @@ void HelloRayTracing::Run()
                 { static_cast<vex::u32>(width), static_cast<vex::u32>(height), 1 } // One ray per pixel.
             );
 
-// #if VEX_SLANG
-#if 0
+#if VEX_SLANG
+            static const std::filesystem::path SlangShaderPath =
+                ExamplesDir / "hello_raytracing" / "HelloRayTracingShader.slang";
+
             ctx.TraceRays(
-                { 
-                    .rayGenerationShader = 
-                    {
-                        .path = ExamplesDir / "hello_raytracing" / "HelloRayTracingShader.slang",
+               vex::RayTracingPassDescription{ 
+                    .rayGenerationShader =
+                    vex::ShaderKey{
+                        .path = SlangShaderPath,
                         .entryPoint = "RayGenMain",
                         .type = vex::ShaderType::RayGenerationShader,
                     },
+                    .rayMissShaders =
+                    {
+                        vex::ShaderKey{
+                            .path = SlangShaderPath,
+                            .entryPoint = "RayMiss",
+                            .type = vex::ShaderType::RayMissShader,
+                        }
+                    },
+                    .hitGroups =
+                    {
+                        vex::HitGroup{
+                            .name = "HelloRayTracing_HitGroup",
+                            .rayClosestHitShader = 
+                            {
+                                .path = SlangShaderPath,
+                                .entryPoint = "RayClosestHit",
+                                .type = vex::ShaderType::RayClosestHitShader,
+                            },
+                        }
+                    },
+                    // Allow for primary rays only.
+                    .maxRecursionDepth = 1,
+                    // We use a payload of 3 floats (so 12 bytes).
+                    .maxPayloadByteSize = 12,
+                    // We use the built-in hlsl attributes (so 8 bytes).
+                    .maxAttributeByteSize = 8,
                 },
                 vex::ConstantBinding(data),
                 { static_cast<vex::u32>(width), static_cast<vex::u32>(height), 1 } // One ray per pixel.
