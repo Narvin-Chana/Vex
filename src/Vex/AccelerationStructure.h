@@ -46,7 +46,7 @@ BEGIN_VEX_ENUM_FLAGS(ASInstanceFlags, u8)
 	TriangleFrontCounterClockwise = 1 << 1,
 	ForceOpaque                   = 1 << 2,
 	ForceNonOpaque                = 1 << 3,
-	// TODO: Opacity Micro-Maps flags.
+	// TODO(https://trello.com/c/YPn5ypzR): Opacity Micro-Maps flags.
 END_VEX_ENUM_FLAGS();
 
 // Flags for Acceleration Structure building. Currently these are not yet implemented.
@@ -57,6 +57,8 @@ BEGIN_VEX_ENUM_FLAGS(ASBuildFlags, u8)
 	PreferFastTrace = 1 << 2,	// Optimizes building for raytracing performance. Incompatible with PreferFastBuild.
 	PreferFastBuild = 1 << 3,	// Optimizes building for build-speed. Incompatible with PreferFastTrace.
 	MinimizeMemory	= 1 << 4,	// Minimizes memory usage.
+    // TODO(https://trello.com/c/LIEtASpP): Updating AS is not currently supported.
+    PerformUpdate   = 1 << 5,   // Allows for updating the AS.
 END_VEX_ENUM_FLAGS();
 
 // clang-format on
@@ -86,7 +88,7 @@ struct BLASBuildDesc
     // wheels).
     Span<const BLASGeometryDesc> geometry;
 
-    // TODO: handle BLAS update.
+    // TODO(https://trello.com/c/LIEtASpP): handle BLAS update.
 };
 
 struct TLASInstanceDesc
@@ -120,6 +122,7 @@ struct TLASDesc
     // Number of instances to allow for in this TLAS.
     // If set to the default value, Vex will set the max instance count to the number of instances passed in during the first build.
     u32 maxInstanceCount = GTLASDeduceInstanceCountFromFirstBuild;
+    ASBuildFlags::Type buildFlags = ASBuildFlags::PreferFastTrace;
 };
 
 struct TLASBuildDesc
