@@ -27,18 +27,18 @@ void RayGenMain()
     uint2 launchDimensions = DispatchRaysDimensions().xy;
 
     // HLSL writes to the left side of the screen.
-    if (launchIndex.x > launchDimensions.x / 2.0f)
-    {
-        return;
-    }
+    // if (launchIndex.x > launchDimensions.x / 2.0f)
+    // {
+    //     return;
+    // }
 
-    // Convert pixel coordinates to clip space
-    // float2 clipPos = float2((float(launchIndex.x) + 0.5f) * 2.0f / float(launchDimensions.x) - 1.0f,
-    //                         1.0f - (float(launchIndex.y) + 0.5f) * 2.0f / float(launchDimensions.y));
+    // Convert pixel coordinates to clip space (xy in [-1, 1])
+    float2 clipPos = float2((float(launchIndex.x) + 0.5f) * 2.0f / float(launchDimensions.x) - 1.0f,
+                            1.0f - (float(launchIndex.y) + 0.5f) * 2.0f / float(launchDimensions.y));
 
     RayDesc ray;
-    ray.Direction = float3(0, 0, -1);
-    ray.Origin = float3(0, 0, 0);
+    ray.Direction = float3(0, 0, 1);
+    ray.Origin = float3(clipPos, 0);
     // Set TMin to a non-zero small value to avoid aliasing issues due to floating-point errors.
     // TMin should be kept small to prevent missing geometry at close contact areas.
     ray.TMin = 0.001f;
@@ -68,7 +68,9 @@ void RayMiss(inout RayPayload payload)
 }
 
 [shader("closesthit")]
-void RayClosestHit(inout RayPayload payload, in HitAttributes attrib)
+void RayClosestHit(inout RayPayload payload, in HitAttributes attr)
 {
-    payload.color = InstanceID() == 0 ? float3(1, 0, 0) : float3(0, 1, 1);
+    payload.color = InstanceID() == 0 ? float3(1, 1, 1) : float3(0, 1, 1);
+    float3 barycentrics = float3(1 - attr.barycentrics.x - attr.barycentrics.y, attr.barycentrics.x, attr.barycentrics.y);
+    payload.color *= float3(barycentrics);
 }

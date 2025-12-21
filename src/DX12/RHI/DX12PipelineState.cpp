@@ -375,6 +375,8 @@ void DX12RayTracingPipelineState::Compile(const RayTracingShaderCollection& shad
 
 #define VEX_DX12_OUTPUT_RT_PSO_DESC 0
 #if VEX_DX12_OUTPUT_RT_PSO_DESC
+    // Debugs the state of the SBT DXIL library.
+    // Sourced from MSFT's D3D12RaytracingHelloWorld sample.
     DX12GraphicsPipeline_Internal::PrintStateObjectDesc(raytracingPipeline.operator const D3D12_STATE_OBJECT_DESC*());
 #endif
 
