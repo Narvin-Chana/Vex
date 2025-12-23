@@ -1,6 +1,4 @@
-﻿#pragma once
-
-#if defined(_WIN32)
+﻿#if defined(_WIN32)
 #include <Windows.h>
 #elif defined(__linux__)
 #include <dlfcn.h>
