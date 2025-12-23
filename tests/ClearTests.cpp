@@ -17,14 +17,14 @@ bool ValidateTextureValue(const TextureReadbackContext& ctx, T expectedValue)
 
 TEST_F(ClearTest, ClearRenderTargetImplicit)
 {
-    auto texture = graphics.CreateTexture(TextureDesc::CreateTexture2DDesc(
-        "TestRenderTarget",
-        TextureFormat::BGRA8_UNORM,
-        10,
-        10,
-        1,
-        TextureUsage::RenderTarget,
-        TextureClearValue{ .flags = TextureClear::ClearColor, .color = { 1, 1, 1, 1 } }));
+    auto texture = graphics.CreateTexture(
+        TextureDesc::CreateTexture2DDesc("TestRenderTarget",
+                                         TextureFormat::BGRA8_UNORM,
+                                         10,
+                                         10,
+                                         1,
+                                         TextureUsage::RenderTarget,
+                                         TextureClearValue{ .flags = TextureAspect::Color, .color = { 1, 1, 1, 1 } }));
 
     CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
@@ -49,7 +49,7 @@ TEST_F(ClearTest, ClearRenderTargetExplicit)
     CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
     ctx.ClearTexture({ .texture = texture },
-                     TextureClearValue{ .flags = TextureClear::ClearColor, .color = { 1, 1, 1, 1 } });
+                     TextureClearValue{ .flags = TextureAspect::Color, .color = { 1, 1, 1, 1 } });
 
     TextureReadbackContext readbackColorCtx =
         ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Color));
@@ -67,7 +67,7 @@ TEST_F(ClearTest, ClearDepthOnlyImplicit)
                                                                            1,
                                                                            TextureUsage::DepthStencil,
                                                                            TextureClearValue{
-                                                                               .flags = TextureClear::ClearDepth,
+                                                                               .flags = TextureAspect::Depth,
                                                                                .depth = 0.54f,
                                                                            }));
 
@@ -95,7 +95,7 @@ TEST_F(ClearTest, ClearDepthOnlyExpicit)
 
     ctx.ClearTexture({ .texture = texture },
                      TextureClearValue{
-                         .flags = TextureClear::ClearDepth,
+                         .flags = TextureAspect::Depth,
                          .depth = 0.54f,
                      });
 
@@ -116,7 +116,7 @@ TEST_F(ClearTest, ClearDepthStencilImplicit)
                                          1,
                                          TextureUsage::DepthStencil | TextureUsage::ShaderRead,
                                          TextureClearValue{
-                                             .flags = TextureClear::ClearStencil | TextureClear::ClearDepth,
+                                             .flags = TextureAspect::Stencil | TextureAspect::Depth,
                                              .depth = .54f,
                                              .stencil = 0xEE,
                                          }));
@@ -149,7 +149,7 @@ TEST_F(ClearTest, ClearDepthStencilExplicit)
 
     ctx.ClearTexture({ .texture = texture },
                      TextureClearValue{
-                         .flags = TextureClear::ClearStencil | TextureClear::ClearDepth,
+                         .flags = TextureAspect::Stencil | TextureAspect::Depth,
                          .depth = 1.0f,
                          .stencil = 0xEE,
                      });
@@ -174,7 +174,7 @@ TEST_F(ClearTest, ClearStencilImplicit)
                                                                 1,
                                                                 TextureUsage::DepthStencil | TextureUsage::ShaderRead,
                                                                 TextureClearValue{
-                                                                    .flags = TextureClear::ClearStencil,
+                                                                    .flags = TextureAspect::Stencil,
                                                                     .stencil = 0xEE,
                                                                 }));
 
@@ -203,7 +203,7 @@ TEST_F(ClearTest, ClearStencilExplicit)
 
     ctx.ClearTexture({ .texture = texture },
                      TextureClearValue{
-                         .flags = TextureClear::ClearStencil,
+                         .flags = TextureAspect::Stencil,
                          .stencil = 0xEE,
                      });
 
@@ -223,7 +223,7 @@ TEST_F(ClearTest, ClearDepthOnlyRect)
                                          10,
                                          1,
                                          TextureUsage::DepthStencil,
-                                         TextureClearValue{ .flags = TextureClear::ClearDepth, .depth = 0.0f }));
+                                         TextureClearValue{ .flags = TextureAspect::Depth, .depth = 0.0f }));
 
     std::array clearRects{
         TextureClearRect{ .extentX = 5, .extentY = 5 },
@@ -235,7 +235,7 @@ TEST_F(ClearTest, ClearDepthOnlyRect)
     // Need to clear full texture first because a partial clear doesnt count as valid init
     ctx.ClearTexture({ .texture = texture }, texture.desc.clearValue);
     ctx.ClearTexture({ .texture = texture },
-                     TextureClearValue{ .flags = TextureClear::ClearDepth, .depth = 0.7f },
+                     TextureClearValue{ .flags = TextureAspect::Depth, .depth = 0.7f },
                      clearRects);
 
     auto readbackTopLeftCtx = ctx.EnqueueDataReadback(texture,
@@ -267,14 +267,14 @@ TEST_F(ClearTest, ClearDepthOnlyRect)
 
 TEST_F(ClearTest, ClearRenderTargetRect)
 {
-    auto texture = graphics.CreateTexture(TextureDesc::CreateTexture2DDesc(
-        "TestRenderTarget",
-        TextureFormat::BGRA8_UNORM,
-        10,
-        10,
-        1,
-        TextureUsage::RenderTarget,
-        TextureClearValue{ .flags = TextureClear::ClearColor, .color = { 0, 0, 0, 0 } }));
+    auto texture = graphics.CreateTexture(
+        TextureDesc::CreateTexture2DDesc("TestRenderTarget",
+                                         TextureFormat::BGRA8_UNORM,
+                                         10,
+                                         10,
+                                         1,
+                                         TextureUsage::RenderTarget,
+                                         TextureClearValue{ .flags = TextureAspect::Color, .color = { 0, 0, 0, 0 } }));
 
     std::array clearRects{
         TextureClearRect{ .extentX = 5, .extentY = 5 },
@@ -286,7 +286,7 @@ TEST_F(ClearTest, ClearRenderTargetRect)
     // Need to clear full texture first because a partial clear doesnt count as valid init
     ctx.ClearTexture({ .texture = texture }, texture.desc.clearValue);
     ctx.ClearTexture({ .texture = texture },
-                     TextureClearValue{ .flags = TextureClear::ClearColor, .color = { 1, 0, 1, 0 } },
+                     TextureClearValue{ .flags = TextureAspect::Color, .color = { 1, 0, 1, 0 } },
                      clearRects);
 
     auto readbackTopLeftCtx = ctx.EnqueueDataReadback(texture,

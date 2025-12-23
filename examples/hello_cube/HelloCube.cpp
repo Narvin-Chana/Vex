@@ -35,7 +35,7 @@ HelloCubeApplication::HelloCubeApplication()
         .usage = vex::TextureUsage::DepthStencil,
         .clearValue =
             vex::TextureClearValue{
-                .flags = vex::TextureClear::ClearDepth,
+                .flags = vex::TextureAspect::Depth,
                 .depth = 0,
             },
     });
@@ -49,8 +49,7 @@ HelloCubeApplication::HelloCubeApplication()
 
     {
         // Immediate submission means the commands are instantly submitted upon destruction.
-        vex::CommandContext ctx =
-            graphics->CreateCommandContext(vex::QueueType::Graphics);
+        vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
 
         // clang-format off
 
@@ -161,8 +160,7 @@ void HelloCubeApplication::Run()
             ctx.SetViewport(0, 0, width, height);
 
             // Clear backbuffer.
-            vex::TextureClearValue clearValue{ .flags = vex::TextureClear::ClearColor,
-                                               .color = { 0.2f, 0.2f, 0.2f, 1 } };
+            vex::TextureClearValue clearValue{ .flags = vex::TextureAspect::Color, .color = { 0.2f, 0.2f, 0.2f, 1 } };
             ctx.ClearTexture(
                 vex::TextureBinding{
                     .texture = graphics->GetCurrentPresentTexture(),
@@ -310,7 +308,7 @@ void HelloCubeApplication::OnResize(GLFWwindow* window, uint32_t width, uint32_t
         .usage = vex::TextureUsage::DepthStencil,
         .clearValue =
             vex::TextureClearValue{
-                .flags = vex::TextureClear::ClearDepth,
+                .flags = vex::TextureAspect::Depth,
                 .depth = 0,
             },
     });

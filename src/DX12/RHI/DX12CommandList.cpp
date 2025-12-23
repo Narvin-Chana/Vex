@@ -338,11 +338,11 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
     }
 
     TextureAspect::Flags aspect = 0;
-    if (clearValue.flags & TextureClear::ClearColor)
+    if (clearValue.flags & TextureAspect::Color)
         aspect |= TextureAspect::Color;
-    if (clearValue.flags & TextureClear::ClearDepth)
+    if (clearValue.flags & TextureAspect::Depth)
         aspect |= TextureAspect::Depth;
-    if (clearValue.flags & TextureClear::ClearStencil)
+    if (clearValue.flags & TextureAspect::Stencil)
         aspect |= TextureAspect::Stencil;
 
     // Clearing in DX12 allows for multiple slices to be cleared, however you cannot clear multiple mips with one
@@ -361,7 +361,7 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
         for (u32 mip = dxTextureView.subresource.startMip; mip < maxMip; ++mip)
         {
             dxTextureView.subresource.startMip = mip;
-            VEX_ASSERT(clearValue.flags & TextureClear::ClearColor,
+            VEX_ASSERT(clearValue.flags & TextureAspect::Color,
                        "Clearing the color requires the TextureClear::ClearColor flag for texture: {}.",
                        desc.name);
             commandList->ClearRenderTargetView(binding.texture->GetOrCreateRTVDSVView(dxTextureView),
@@ -385,11 +385,11 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
         {
             dxTextureView.subresource.startMip = mip;
             D3D12_CLEAR_FLAGS clearFlags = static_cast<D3D12_CLEAR_FLAGS>(0);
-            if (clearValue.flags & TextureClear::ClearDepth)
+            if (clearValue.flags & TextureAspect::Depth)
             {
                 clearFlags |= D3D12_CLEAR_FLAG_DEPTH;
             }
-            if (clearValue.flags & TextureClear::ClearStencil)
+            if (clearValue.flags & TextureAspect::Stencil)
             {
                 clearFlags |= D3D12_CLEAR_FLAG_STENCIL;
             }

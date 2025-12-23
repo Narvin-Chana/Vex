@@ -49,7 +49,7 @@ struct GraphicsCreateDesc
     SwapChainDesc swapChainDesc;
 
     // Clear value to use for present textures.
-    TextureClearValue presentTextureClearValue = { .flags = TextureClear::ClearColor, .color = { 0, 0, 0, 0 } };
+    TextureClearValue presentTextureClearValue = { .flags = TextureAspect::Color, .color = { 0, 0, 0, 0 } };
 
     // Enables the GPU debug layer.
     bool enableGPUDebugLayer = !VEX_SHIPPING;

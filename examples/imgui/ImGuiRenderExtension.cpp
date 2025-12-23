@@ -64,7 +64,7 @@ void ImGuiRenderExtension::OnPrePresent()
     vex::CommandContext ctx = graphics.CreateCommandContext(vex::QueueType::Graphics);
 
     vex::TextureBinding backBufferBinding = { .texture = graphics.GetCurrentPresentTexture() };
-    vex::TextureClearValue clearValue{ .flags = vex::TextureClear::ClearColor, .color = { 0, 0, 0, 0 } };
+    vex::TextureClearValue clearValue{ .flags = vex::TextureAspect::Color, .color = { 0, 0, 0, 0 } };
     ctx.ClearTexture(backBufferBinding, clearValue);
 
     // ImGui renders to the texture that is currently set as render target. In this case we want to render

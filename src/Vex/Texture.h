@@ -51,23 +51,17 @@ enum class TextureBindingUsage : u8
 // clang-format off
 
 BEGIN_VEX_ENUM_FLAGS(TextureAspect, u8)
+    None = 0, // Invalid in most cases
     Color = 1 << 0,
     Depth = 1 << 1,
     Stencil = 1 << 2
-END_VEX_ENUM_FLAGS();
-
-BEGIN_VEX_ENUM_FLAGS(TextureClear, u8)
-    None = 0,
-    ClearColor = 1,
-    ClearDepth = 2,
-    ClearStencil = 4,
 END_VEX_ENUM_FLAGS();
 
 // clang-format on
 
 struct TextureClearValue
 {
-    TextureClear::Flags flags = TextureClear::None;
+    TextureAspect::Flags flags = TextureAspect::None;
     std::array<float, 4> color;
     float depth;
     u8 stencil;
