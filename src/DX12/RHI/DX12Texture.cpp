@@ -248,7 +248,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
     static const D3D12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 
     std::optional<D3D12_CLEAR_VALUE> clearValue;
-    if (desc.clearValue.flags != TextureAspect::None)
+    if (desc.clearValue.clearAspect != TextureAspect::None)
     {
         clearValue = D3D12_CLEAR_VALUE();
         clearValue->Format = texDesc.Format;

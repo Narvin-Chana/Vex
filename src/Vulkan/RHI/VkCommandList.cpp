@@ -275,7 +275,7 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
                                  std::span<TextureClearRect> clearRects)
 {
     const ::vk::ImageSubresourceRange ranges{
-        .aspectMask = static_cast<::vk::ImageAspectFlagBits>(clearValue.flags),
+        .aspectMask = static_cast<::vk::ImageAspectFlagBits>(clearValue.clearAspect),
         .baseMipLevel = binding.binding.subresource.startMip,
         .levelCount = binding.binding.subresource.GetMipCount(binding.texture->GetDesc()),
         .baseArrayLayer = binding.binding.subresource.startSlice,
@@ -283,11 +283,11 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
     };
 
     TextureAspect::Flags aspect = 0;
-    if (clearValue.flags & TextureAspect::Color)
+    if (clearValue.clearAspect & TextureAspect::Color)
         aspect |= TextureAspect::Color;
-    if (clearValue.flags & TextureAspect::Depth)
+    if (clearValue.clearAspect & TextureAspect::Depth)
         aspect |= TextureAspect::Depth;
-    if (clearValue.flags & TextureAspect::Stencil)
+    if (clearValue.clearAspect & TextureAspect::Stencil)
         aspect |= TextureAspect::Stencil;
 
     if (clearRects.empty())
@@ -299,7 +299,8 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
                                           RHITextureLayout::CopyDest };
         Barrier({}, { &textureBarrier, 1 });
 
-        if (usage == TextureUsage::DepthStencil && clearValue.flags & (TextureAspect::Depth | TextureAspect::Stencil))
+        if (usage == TextureUsage::DepthStencil &&
+            clearValue.clearAspect & (TextureAspect::Depth | TextureAspect::Stencil))
         {
             ::vk::ClearDepthStencilValue clearVal{
                 .depth = clearValue.depth,
@@ -340,14 +341,18 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
         }
 
         ::vk::ClearAttachment clearAttachment{};
-        clearAttachment.aspectMask |= (clearValue.flags & TextureAspect::Depth) ? ::vk::ImageAspectFlagBits::eDepth
-                                                                                : ::vk::ImageAspectFlagBits::eNone;
-        clearAttachment.aspectMask |= (clearValue.flags & TextureAspect::Stencil) ? ::vk::ImageAspectFlagBits::eStencil
-                                                                                  : ::vk::ImageAspectFlagBits::eNone;
-        clearAttachment.aspectMask |= (clearValue.flags & TextureAspect::Color) ? ::vk::ImageAspectFlagBits::eColor
-                                                                                : ::vk::ImageAspectFlagBits::eNone;
+        clearAttachment.aspectMask |= (clearValue.clearAspect & TextureAspect::Depth)
+                                          ? ::vk::ImageAspectFlagBits::eDepth
+                                          : ::vk::ImageAspectFlagBits::eNone;
+        clearAttachment.aspectMask |= (clearValue.clearAspect & TextureAspect::Stencil)
+                                          ? ::vk::ImageAspectFlagBits::eStencil
+                                          : ::vk::ImageAspectFlagBits::eNone;
+        clearAttachment.aspectMask |= (clearValue.clearAspect & TextureAspect::Color)
+                                          ? ::vk::ImageAspectFlagBits::eColor
+                                          : ::vk::ImageAspectFlagBits::eNone;
 
-        if (usage == TextureUsage::DepthStencil && clearValue.flags & (TextureAspect::Depth | TextureAspect::Stencil))
+        if (usage == TextureUsage::DepthStencil &&
+            clearValue.clearAspect & (TextureAspect::Depth | TextureAspect::Stencil))
         {
             resources.depthStencil = binding;
             clearAttachment.clearValue.depthStencil = ::vk::ClearDepthStencilValue{

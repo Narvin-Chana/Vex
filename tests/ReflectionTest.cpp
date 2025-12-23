@@ -31,7 +31,7 @@ TEST_P(ReflectionTestFull, CompleteGraphicsPSOTest)
                                                                                     1,
                                                                                     TextureUsage::RenderTarget));
 
-    TextureClearValue clearValue{ .flags = TextureAspect::Color, .color = { 0.2f, 0.2f, 0.2f, 1 } };
+    TextureClearValue clearValue{ .clearAspect = TextureAspect::Color, .color = { 0.2f, 0.2f, 0.2f, 1 } };
     ctx.ClearTexture(
         TextureBinding{
             .texture = renderTexture,
