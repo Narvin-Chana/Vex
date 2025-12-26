@@ -77,11 +77,11 @@ VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, VkAllocator& allocator, const B
         { .allocationSize = reqs.size,
           .memoryTypeIndex = GetBestMemoryType(ctx->physDevice, reqs.memoryTypeBits, memoryProps) });
 
-    SetDebugName(ctx->device, *memory, std::format("{}_Memory", desc.name).c_str());
+    SetDebugName(ctx->device, *memory, std::format("Memory: {}", desc.name).c_str());
     VEX_VK_CHECK << ctx->device.bindBufferMemory(*buffer, *memory, 0);
 #endif
 
-    SetDebugName(ctx->device, *buffer, desc.name.c_str());
+    SetDebugName(ctx->device, *buffer, std::format("Buffer: {}", desc.name).c_str());
 }
 
 void VkBuffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,

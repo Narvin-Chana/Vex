@@ -151,7 +151,8 @@ void DX12Buffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
     const bool isAccelerationStructure = desc.usage & BufferUsage::AccelerationStructure;
 
     VEX_ASSERT(isSRV || isUAV || isCBV || isAccelerationStructure,
-               "The bindless view requested for buffer '{}' must be either of type SRV, CBV or UAV.",
+               "The bindless view requested for buffer '{}' must be either of type SRV, CBV, UAV or the underlying "
+               "buffer should be an Acceleration Structure.",
                desc.name);
 
     auto cpuHandle = descriptorPool.GetCPUDescriptor(handle);

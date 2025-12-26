@@ -140,7 +140,7 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDesc&& inDescription, 
     , image{ backbufferImage }
 {
     desc = std::move(inDescription);
-    SetDebugName(ctx->device, backbufferImage, desc.name.c_str());
+    SetDebugName(ctx->device, backbufferImage, std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name).c_str());
 }
 
 VkTexture::VkTexture(const NonNullPtr<VkGPUContext> ctx, const TextureDesc& inDescription, ::vk::UniqueImage rawImage)
@@ -149,7 +149,9 @@ VkTexture::VkTexture(const NonNullPtr<VkGPUContext> ctx, const TextureDesc& inDe
     , image{ std::move(rawImage) }
 {
     desc = inDescription;
-    SetDebugName(ctx->device, *rawImage, desc.name.c_str());
+    SetDebugName(ctx->device,
+                 *rawImage,
+                 std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name).c_str());
 }
 
 VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDesc&& inDescription, ::vk::UniqueImage rawImage)
@@ -158,7 +160,7 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDesc&& inDescription, 
     , image{ std::move(rawImage) }
 {
     desc = std::move(inDescription);
-    SetDebugName(ctx->device, *rawImage, desc.name.c_str());
+    SetDebugName(ctx->device, *rawImage, std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name).c_str());
 }
 
 VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, RHIAllocator& allocator, TextureDesc&& inDescription)
@@ -384,10 +386,12 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
                                                                         ::vk::MemoryPropertyFlagBits::eDeviceLocal),
     };
     memory = VEX_VK_CHECK <<= ctx->device.allocateMemoryUnique(allocateInfo);
-    SetDebugName(ctx->device, *memory, std::format("{}_Memory", desc.name).c_str());
+    SetDebugName(ctx->device, *memory, std::format("Memory: {}", desc.name).c_str());
     VEX_VK_CHECK << ctx->device.bindImageMemory(*imageTmp, *memory, 0);
 #endif
-    SetDebugName(ctx->device, imageTmp.get(), desc.name.c_str());
+    SetDebugName(ctx->device,
+                 imageTmp.get(),
+                 std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name).c_str());
 
     image = std::move(imageTmp);
 }

@@ -69,7 +69,7 @@ public:
     u32 computeShaderVersion = 0;
 };
 
-using RayTracingPipelineStateKey = RayTracingPassDescription;
+using RayTracingPipelineStateKey = RayTracingPassDesc;
 
 class RHIRayTracingPipelineStateInterface
 {

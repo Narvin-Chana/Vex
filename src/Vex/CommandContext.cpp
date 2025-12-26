@@ -265,11 +265,6 @@ void CommandContext::DrawIndexedIndirect()
 
 void CommandContext::Dispatch(const ShaderKey& shader, ConstantBinding constants, std::array<u32, 3> groupCount)
 {
-    if (shader.type != ShaderType::ComputeShader)
-    {
-        VEX_LOG(Fatal, "Invalid shader type passed to Dispatch call: {}", shader.type);
-    }
-
     using namespace CommandContext_Internal;
 
     ComputePipelineStateKey psoKey = { .computeShader = shader };
@@ -307,11 +302,11 @@ void CommandContext::DispatchIndirect()
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-void CommandContext::TraceRays(const RayTracingPassDescription& rayTracingPassDescription,
+void CommandContext::TraceRays(const RayTracingPassDesc& rayTracingPassDescription,
                                ConstantBinding constants,
                                std::array<u32, 3> widthHeightDepth)
 {
-    RayTracingPassDescription::ValidateShaderTypes(rayTracingPassDescription);
+    RayTracingPassDesc::ValidateShaderTypes(rayTracingPassDescription);
 
     const RHIRayTracingPipelineState* pipelineState =
         graphics->psCache->GetRayTracingPipelineState(rayTracingPassDescription, *graphics->allocator);
@@ -776,7 +771,6 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
 {
     VEX_CHECK(accelerationStructure.desc.type == ASType::BottomLevel,
               "BuildBLAS only accepts bottom level acceleration structures...");
-
     VEX_CHECK(!desc.geometry.empty(), "Cannot build an empty BLAS...");
 
     std::vector<RHIBLASGeometryDesc> rhiBLASGeometryDescs;
@@ -1044,18 +1038,6 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
                                                                 const DrawResourceBinding& drawBindings,
                                                                 ConstantBinding constants)
 {
-    // TODO: determine if this one is not already covered by BindingUtil::ValidateDrawResource.
-    VEX_CHECK(!drawBindings.depthStencil ||
-                  (drawBindings.depthStencil &&
-                   FormatUtil::IsDepthOrStencilFormat(drawBindings.depthStencil->texture.desc.format)),
-              "The provided depth stencil should have a depth stencil format");
-    VEX_CHECK(drawDesc.vertexShader.type == ShaderType::VertexShader,
-              "Invalid type passed to Draw call for vertex shader: {}",
-              drawDesc.vertexShader.type);
-    VEX_CHECK(drawDesc.pixelShader.type == ShaderType::PixelShader,
-              "Invalid type passed to Draw call for pixel shader: {}",
-              drawDesc.pixelShader.type);
-
     // Transition RTs/DepthStencil
     RHIDrawResources drawResources =
         ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(*graphics,

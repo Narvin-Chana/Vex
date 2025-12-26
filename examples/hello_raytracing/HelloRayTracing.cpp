@@ -104,6 +104,45 @@ HelloRayTracing::HelloRayTracing()
     graphics->DestroyBuffer(indexBuffer);
 }
 
+// Creates a ray tracing pass desc, used to specify the various shaders and RT-related properties for RT shader
+// invocations.
+static vex::RayTracingPassDesc CreateRTPassDesc(const std::filesystem::path& shaderPath)
+{
+    return vex::RayTracingPassDesc{
+        .rayGenerationShader = vex::ShaderKey{
+             .path = shaderPath,
+             .entryPoint = "RayGenMain",
+             .type = vex::ShaderType::RayGenerationShader,
+         },
+         .rayMissShaders =
+         {
+             vex::ShaderKey{
+                 .path = shaderPath,
+                 .entryPoint = "RayMiss",
+                 .type = vex::ShaderType::RayMissShader,
+             }
+         },
+         .hitGroups =
+         {
+             vex::HitGroup{
+                 .name = "HelloRayTracing_HitGroup",
+                 .rayClosestHitShader = 
+                 {
+                     .path = shaderPath,
+                     .entryPoint = "RayClosestHit",
+                     .type = vex::ShaderType::RayClosestHitShader,
+                 },
+             }
+         },
+         // Allow for primary rays only (no recursion).
+         .maxRecursionDepth = 1,
+         // We use a payload of 3 floats (so 12 bytes).
+         .maxPayloadByteSize = 12,
+         // We use the built-in hlsl attributes (so 8 bytes).
+         .maxAttributeByteSize = 8,
+    };
+}
+
 void HelloRayTracing::Run()
 {
     while (!glfwWindowShouldClose(window))
@@ -136,87 +175,19 @@ void HelloRayTracing::Run()
 
             static const std::filesystem::path HLSLShaderPath =
                 ExamplesDir / "hello_raytracing" / "HelloRayTracingShader.hlsl";
-
-            ctx.TraceRays(
-                vex::RayTracingPassDescription{ 
-                    .rayGenerationShader =
-                    vex::ShaderKey{
-                        .path = HLSLShaderPath,
-                        .entryPoint = "RayGenMain",
-                        .type = vex::ShaderType::RayGenerationShader,
-                    },
-                    .rayMissShaders =
-                    {
-                        vex::ShaderKey{
-                            .path = HLSLShaderPath,
-                            .entryPoint = "RayMiss",
-                            .type = vex::ShaderType::RayMissShader,
-                        }
-                    },
-                    .hitGroups =
-                    {
-                        vex::HitGroup{
-                            .name = "HelloRayTracing_HitGroup",
-                            .rayClosestHitShader = 
-                            {
-                                .path = HLSLShaderPath,
-                                .entryPoint = "RayClosestHit",
-                                .type = vex::ShaderType::RayClosestHitShader,
-                            },
-                        }
-                    },
-                    // Allow for primary rays only.
-                    .maxRecursionDepth = 1,
-                    // We use a payload of 3 floats (so 12 bytes).
-                    .maxPayloadByteSize = 12,
-                    // We use the built-in hlsl attributes (so 8 bytes).
-                    .maxAttributeByteSize = 8,
-                },
-                vex::ConstantBinding(data),
-                { static_cast<vex::u32>(width), static_cast<vex::u32>(height), 1 } // One ray per pixel.
+            static const vex::RayTracingPassDesc HLSLRayTracingPassDesc = CreateRTPassDesc(HLSLShaderPath);
+            ctx.TraceRays(HLSLRayTracingPassDesc,
+                          vex::ConstantBinding(data),
+                          { static_cast<vex::u32>(width), static_cast<vex::u32>(height), 1 } // One ray per pixel.
             );
 
 #if VEX_SLANG
             static const std::filesystem::path SlangShaderPath =
                 ExamplesDir / "hello_raytracing" / "HelloRayTracingShader.slang";
-
-            ctx.TraceRays(
-               vex::RayTracingPassDescription{ 
-                    .rayGenerationShader =
-                    vex::ShaderKey{
-                        .path = SlangShaderPath,
-                        .entryPoint = "RayGenMain",
-                        .type = vex::ShaderType::RayGenerationShader,
-                    },
-                    .rayMissShaders =
-                    {
-                        vex::ShaderKey{
-                            .path = SlangShaderPath,
-                            .entryPoint = "RayMiss",
-                            .type = vex::ShaderType::RayMissShader,
-                        }
-                    },
-                    .hitGroups =
-                    {
-                        vex::HitGroup{
-                            .name = "HelloRayTracing_HitGroup",
-                            .rayClosestHitShader = 
-                            {
-                                .path = SlangShaderPath,
-                                .entryPoint = "RayClosestHit",
-                                .type = vex::ShaderType::RayClosestHitShader,
-                            },
-                        }
-                    },
-                    // Allow for primary rays only.
-                    .maxRecursionDepth = 1,
-                    // We use a payload of 3 floats (so 12 bytes).
-                    .maxPayloadByteSize = 12,
-                    // We use the built-in hlsl attributes (so 8 bytes).
-                    .maxAttributeByteSize = 8,
-                },
-                vex::ConstantBinding(data),
-                { static_cast<vex::u32>(width), static_cast<vex::u32>(height), 1 } // One ray per pixel.
+            static const vex::RayTracingPassDesc SlangRayTracingPassDesc = CreateRTPassDesc(SlangShaderPath);
+            ctx.TraceRays(SlangRayTracingPassDesc,
+                          vex::ConstantBinding(data),
+                          { static_cast<vex::u32>(width), static_cast<vex::u32>(height), 1 } // One ray per pixel.
             );
 #endif
 

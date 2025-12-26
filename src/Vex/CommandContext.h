@@ -28,7 +28,7 @@ struct Texture;
 struct Buffer;
 struct TextureClearValue;
 struct DrawDesc;
-struct RayTracingPassDescription;
+struct RayTracingPassDesc;
 
 class CommandContext
 {
@@ -86,7 +86,7 @@ public:
     void DispatchIndirect();
 
     // Dispatches a ray tracing pass.
-    void TraceRays(const RayTracingPassDescription& rayTracingPassDescription,
+    void TraceRays(const RayTracingPassDesc& rayTracingPassDescription,
                    ConstantBinding constants,
                    std::array<u32, 3> widthHeightDepth);
 

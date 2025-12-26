@@ -140,6 +140,13 @@ RHIResourceLayout& PipelineStateCache::GetResourceLayout()
 
 const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(const RHIGraphicsPipelineState::Key& key)
 {
+    VEX_CHECK(key.vertexShader.type == ShaderType::VertexShader,
+              "Invalid ShaderType for vertex shader: {}",
+              key.vertexShader.type);
+    VEX_CHECK(key.pixelShader.type == ShaderType::PixelShader,
+              "Invalid ShaderType for pixel shader: {}",
+              key.pixelShader.type);
+
     const auto it = graphicsPSCache.find(key);
     RHIGraphicsPipelineState& ps =
         it != graphicsPSCache.end()
@@ -171,6 +178,10 @@ const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(con
 
 const RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const RHIComputePipelineState::Key& key)
 {
+    VEX_CHECK(key.computeShader.type == ShaderType::ComputeShader,
+              "Invalid ShaderType for compute shader: {}",
+              key.computeShader.type);
+
     const auto it = computePSCache.find(key);
     RHIComputePipelineState& ps =
         it != computePSCache.end() ? it->second
@@ -199,6 +210,10 @@ const RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const
 std::optional<RayTracingShaderCollection> PipelineStateCache::GetRayTracingShaderCollection(
     const RHIRayTracingPipelineState::Key& key)
 {
+    static auto ValidateShaderType = [](ShaderType expectedType, const ShaderKey& shaderKey)
+    { VEX_CHECK(shaderKey.type == expectedType, "Invalid ShaderType for {}: {}", expectedType, shaderKey.type); };
+
+    ValidateShaderType(ShaderType::RayGenerationShader, key.rayGenerationShader);
     const NonNullPtr<Shader> rayGenerationShader = shaderCompiler.GetShader(key.rayGenerationShader);
     if (!rayGenerationShader->IsValid())
     {
@@ -210,6 +225,7 @@ std::optional<RayTracingShaderCollection> PipelineStateCache::GetRayTracingShade
     collection.rayMissShaders.reserve(key.rayMissShaders.size());
     for (const ShaderKey& key : key.rayMissShaders)
     {
+        ValidateShaderType(ShaderType::RayMissShader, key);
         const NonNullPtr<Shader> rayMissShader = shaderCompiler.GetShader(key);
         if (!rayMissShader->IsValid())
         {
@@ -222,6 +238,7 @@ std::optional<RayTracingShaderCollection> PipelineStateCache::GetRayTracingShade
     collection.hitGroupShaders.reserve(key.hitGroups.size());
     for (const HitGroup& hitGroup : key.hitGroups)
     {
+        ValidateShaderType(ShaderType::RayClosestHitShader, hitGroup.rayClosestHitShader);
         const NonNullPtr<Shader> rayClosestHitShader = shaderCompiler.GetShader(hitGroup.rayClosestHitShader);
         if (!rayClosestHitShader->IsValid())
         {
@@ -235,6 +252,7 @@ std::optional<RayTracingShaderCollection> PipelineStateCache::GetRayTracingShade
 
         if (hitGroup.rayAnyHitShader.has_value())
         {
+            ValidateShaderType(ShaderType::RayAnyHitShader, *hitGroup.rayAnyHitShader);
             const NonNullPtr<Shader> rayAnyHitShader = shaderCompiler.GetShader(*hitGroup.rayAnyHitShader);
             if (!rayAnyHitShader->IsValid())
             {
@@ -246,6 +264,7 @@ std::optional<RayTracingShaderCollection> PipelineStateCache::GetRayTracingShade
 
         if (hitGroup.rayIntersectionShader.has_value())
         {
+            ValidateShaderType(ShaderType::RayIntersectionShader, *hitGroup.rayIntersectionShader);
             const NonNullPtr<Shader> rayIntersectionShader = shaderCompiler.GetShader(*hitGroup.rayIntersectionShader);
             if (!rayIntersectionShader->IsValid())
             {
@@ -261,6 +280,7 @@ std::optional<RayTracingShaderCollection> PipelineStateCache::GetRayTracingShade
     collection.rayCallableShaders.reserve(key.rayCallableShaders.size());
     for (const ShaderKey& key : key.rayCallableShaders)
     {
+        ValidateShaderType(ShaderType::RayCallableShader, key);
         const NonNullPtr<Shader> rayCallableShader = shaderCompiler.GetShader(key);
         if (!rayCallableShader->IsValid())
         {

@@ -22,7 +22,7 @@ struct HitGroup
     bool operator==(const HitGroup& other) const = default;
 };
 
-struct RayTracingPassDescription
+struct RayTracingPassDesc
 {
     ShaderKey rayGenerationShader;
     std::vector<ShaderKey> rayMissShaders;
@@ -36,12 +36,12 @@ struct RayTracingPassDescription
     // Max size of triangle attributes.
     u32 maxAttributeByteSize;
 
-    bool operator==(const RayTracingPassDescription& other) const = default;
+    bool operator==(const RayTracingPassDesc& other) const = default;
 
-    static void ValidateShaderTypes(const RayTracingPassDescription& desc);
+    static void ValidateShaderTypes(const RayTracingPassDesc& desc);
 };
 
-// Mirrored to RayTracingPassDescription, but with the actual shader objects instead of keys (for PSO compilation).
+// Mirrored to RayTracingPassDesc, but with the actual shader objects instead of keys (for PSO compilation).
 struct RayTracingShaderCollection
 {
     RayTracingShaderCollection() = delete;
@@ -79,7 +79,7 @@ VEX_MAKE_HASHABLE(vex::HitGroup,
     VEX_HASH_COMBINE(seed, obj.rayIntersectionShader);
 );
 
-VEX_MAKE_HASHABLE(vex::RayTracingPassDescription,
+VEX_MAKE_HASHABLE(vex::RayTracingPassDesc,
     VEX_HASH_COMBINE(seed, obj.rayGenerationShader);
     VEX_HASH_COMBINE_CONTAINER(seed, obj.rayMissShaders);
     VEX_HASH_COMBINE_CONTAINER(seed, obj.hitGroups);
