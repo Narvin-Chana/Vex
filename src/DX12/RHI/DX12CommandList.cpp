@@ -141,7 +141,6 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(RHIBuffer& buffer,
         textureDesc.Alignment = 0;
     }
 
-    // TODO: Make sure params are correct here for all texture types
     const u32 subresourceIndex = D3D12CalcSubresource(
         desc.textureRegion.subresource.startMip,
         texture.GetDesc().type == TextureType::Texture3D ? 0 : desc.textureRegion.subresource.startSlice,
@@ -443,8 +442,8 @@ void DX12CommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers,
     for (const auto& textureBarrier : textureBarriers)
     {
         // Check if we can use the fast-path.
-        // TODO: fix for non color planes
-        const bool isSubresourceFullResource = textureBarrier.subresource == TextureSubresource{};
+        const bool isSubresourceFullResource =
+            textureBarrier.subresource.IsFullResource(textureBarrier.texture->GetDesc());
         if (isSubresourceFullResource && textureBarrier.texture->IsLastBarrierStateUniform())
         {
             D3D12_TEXTURE_BARRIER dx12Barrier = {};
@@ -493,71 +492,58 @@ void DX12CommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers,
             textureBarrier.texture->EnsureLastBarrierStateNonUniform();
 
             // We have to iterate on the barrier's subresource ranges.
-            // TODO: Replace that with TextureUtil::ForEachSubresourceIndices
-            for (u16 mip = textureBarrier.subresource.startMip;
-                 mip < textureBarrier.subresource.startMip +
-                           textureBarrier.subresource.GetMipCount(textureBarrier.texture->GetDesc());
-                 ++mip)
-            {
-                for (u32 slice = textureBarrier.subresource.startSlice;
-                     slice < textureBarrier.subresource.startSlice +
-                                 textureBarrier.subresource.GetSliceCount(textureBarrier.texture->GetDesc());
-                     ++slice)
+            TextureUtil::ForEachSubresourceIndices(
+                textureBarrier.subresource,
+                textureBarrier.texture->GetDesc(),
+                [&](u32 mip, u32 slice, u32 plane)
                 {
-                    for (u32 plane = textureBarrier.subresource.GetStartPlane();
-                         plane <
-                         textureBarrier.subresource.GetStartPlane() + textureBarrier.subresource.GetPlaneCount();
-                         ++plane)
+                    D3D12_TEXTURE_BARRIER dx12Barrier = {};
+                    dx12Barrier.SyncBefore =
+                        RHIBarrierSyncToDX12(textureBarrier.texture->GetLastSyncForSubresource(mip, slice, plane));
+                    dx12Barrier.SyncAfter = RHIBarrierSyncToDX12(textureBarrier.dstSync);
+                    dx12Barrier.AccessBefore =
+                        RHIBarrierAccessToDX12(textureBarrier.texture->GetLastAccessForSubresource(mip, slice, plane));
+                    dx12Barrier.AccessAfter = RHIBarrierAccessToDX12(textureBarrier.dstAccess);
+                    dx12Barrier.LayoutBefore =
+                        RHITextureLayoutToDX12(textureBarrier.texture->GetLastLayoutForSubresource(mip, slice, plane));
+                    dx12Barrier.LayoutAfter = RHITextureLayoutToDX12(textureBarrier.dstLayout);
+                    dx12Barrier.pResource = textureBarrier.texture->GetRawTexture();
+
+                    // Copy command queues do not support the CopyDest stage.
+                    bool remapToCommon = false;
+                    if (type == QueueType::Copy && textureBarrier.dstLayout == RHITextureLayout::CopyDest)
                     {
-                        D3D12_TEXTURE_BARRIER dx12Barrier = {};
-                        dx12Barrier.SyncBefore =
-                            RHIBarrierSyncToDX12(textureBarrier.texture->GetLastSyncForSubresource(mip, slice, plane));
-                        dx12Barrier.SyncAfter = RHIBarrierSyncToDX12(textureBarrier.dstSync);
-                        dx12Barrier.AccessBefore = RHIBarrierAccessToDX12(
-                            textureBarrier.texture->GetLastAccessForSubresource(mip, slice, plane));
-                        dx12Barrier.AccessAfter = RHIBarrierAccessToDX12(textureBarrier.dstAccess);
-                        dx12Barrier.LayoutBefore = RHITextureLayoutToDX12(
-                            textureBarrier.texture->GetLastLayoutForSubresource(mip, slice, plane));
-                        dx12Barrier.LayoutAfter = RHITextureLayoutToDX12(textureBarrier.dstLayout);
-                        dx12Barrier.pResource = textureBarrier.texture->GetRawTexture();
-
-                        // Copy command queues do not support the CopyDest stage.
-                        bool remapToCommon = false;
-                        if (type == QueueType::Copy && textureBarrier.dstLayout == RHITextureLayout::CopyDest)
-                        {
-                            dx12Barrier.LayoutAfter = D3D12_BARRIER_LAYOUT_COMMON;
-                            remapToCommon = true;
-                        }
-
-                        if (dx12Barrier.AccessAfter & D3D12_BARRIER_ACCESS_NO_ACCESS)
-                        {
-                            dx12Barrier.SyncAfter = D3D12_BARRIER_SYNC_NONE;
-                        }
-
-                        // Handle binding subresource, to allow for a transition per-mip / per-slice.
-                        dx12Barrier.Subresources.IndexOrFirstMipLevel = mip;
-                        dx12Barrier.Subresources.NumMipLevels = 1;
-                        dx12Barrier.Subresources.FirstArraySlice = slice;
-                        dx12Barrier.Subresources.NumArraySlices = 1;
-                        dx12Barrier.Subresources.FirstPlane = plane;
-                        dx12Barrier.Subresources.NumPlanes = 1;
-                        dx12Barrier.Flags = D3D12_TEXTURE_BARRIER_FLAG_NONE;
-                        dx12TextureBarriers.push_back(std::move(dx12Barrier));
-
-                        if (!isSubresourceFullResource)
-                        {
-                            // Update last barrier state for the subresource.
-                            textureBarrier.texture->SetLastBarrierStateForSubresource(
-                                textureBarrier.dstSync,
-                                textureBarrier.dstAccess,
-                                remapToCommon ? RHITextureLayout::Common : textureBarrier.dstLayout,
-                                mip,
-                                slice,
-                                plane);
-                        }
+                        dx12Barrier.LayoutAfter = D3D12_BARRIER_LAYOUT_COMMON;
+                        remapToCommon = true;
                     }
-                }
-            }
+
+                    if (dx12Barrier.AccessAfter & D3D12_BARRIER_ACCESS_NO_ACCESS)
+                    {
+                        dx12Barrier.SyncAfter = D3D12_BARRIER_SYNC_NONE;
+                    }
+
+                    // Handle binding subresource, to allow for a transition per-mip / per-slice.
+                    dx12Barrier.Subresources.IndexOrFirstMipLevel = mip;
+                    dx12Barrier.Subresources.NumMipLevels = 1;
+                    dx12Barrier.Subresources.FirstArraySlice = slice;
+                    dx12Barrier.Subresources.NumArraySlices = 1;
+                    dx12Barrier.Subresources.FirstPlane = plane;
+                    dx12Barrier.Subresources.NumPlanes = 1;
+                    dx12Barrier.Flags = D3D12_TEXTURE_BARRIER_FLAG_NONE;
+                    dx12TextureBarriers.push_back(std::move(dx12Barrier));
+
+                    if (!isSubresourceFullResource)
+                    {
+                        // Update last barrier state for the subresource.
+                        textureBarrier.texture->SetLastBarrierStateForSubresource(
+                            textureBarrier.dstSync,
+                            textureBarrier.dstAccess,
+                            remapToCommon ? RHITextureLayout::Common : textureBarrier.dstLayout,
+                            mip,
+                            slice,
+                            plane);
+                    }
+                });
 
             // If the dst barrier is constant across the entire resource, we can just revert to uniform barriers.
             if (isSubresourceFullResource)

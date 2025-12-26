@@ -308,8 +308,7 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
             };
             commandBuffer->clearDepthStencilImage(
                 binding.texture->GetResource(),
-                RHITextureLayoutToVulkan(
-                    binding.texture->GetLastLayoutForTextureSubresource(binding.binding.subresource)),
+                RHITextureLayoutToVulkan(binding.texture->GetLastLayoutForSubresource(binding.binding.subresource)),
                 &clearVal,
                 1,
                 &ranges);
@@ -317,12 +316,12 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
         else
         {
             ::vk::ClearColorValue clearVal{ .float32 = clearValue.color };
-            commandBuffer->clearColorImage(binding.texture->GetResource(),
-                                           RHITextureLayoutToVulkan(binding.texture->GetLastLayoutForTextureSubresource(
-                                               binding.binding.subresource)),
-                                           &clearVal,
-                                           1,
-                                           &ranges);
+            commandBuffer->clearColorImage(
+                binding.texture->GetResource(),
+                RHITextureLayoutToVulkan(binding.texture->GetLastLayoutForSubresource(binding.binding.subresource)),
+                &clearVal,
+                1,
+                &ranges);
         }
     }
     else
@@ -453,67 +452,55 @@ void VkCommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers, Span<co
             // Ensures the texture uses non-uniform last barrier states.
             textureBarrier.texture->EnsureLastBarrierStateNonUniform();
 
-            // TODO: Replace that with TextureUtil::ForEachSubresourceIndices
-            for (u16 mip = textureBarrier.subresource.startMip;
-                 mip < textureBarrier.subresource.startMip + textureBarrier.subresource.GetMipCount(desc);
-                 ++mip)
-            {
-                for (u32 slice = textureBarrier.subresource.startSlice;
-                     slice < textureBarrier.subresource.startSlice +
-                                 textureBarrier.subresource.GetSliceCount(textureBarrier.texture->GetDesc());
-                     ++slice)
+            TextureUtil::ForEachSubresourceIndices(
+                textureBarrier.subresource,
+                textureBarrier.texture->GetDesc(),
+                [&](u32 mip, u32 slice, u32 plane)
                 {
-                    for (u32 plane = textureBarrier.subresource.GetStartPlane();
-                         plane <
-                         textureBarrier.subresource.GetStartPlane() + textureBarrier.subresource.GetPlaneCount();
-                         ++plane)
+                    ::vk::ImageMemoryBarrier2 vkBarrier = {};
+                    if (textureBarrier.texture->IsBackBufferTexture() &&
+                        textureBarrier.texture->GetLastLayoutForSubresource(mip, slice, plane) ==
+                            RHITextureLayout::Undefined)
                     {
-                        ::vk::ImageMemoryBarrier2 vkBarrier = {};
-                        if (textureBarrier.texture->IsBackBufferTexture() &&
-                            textureBarrier.texture->GetLastLayoutForSubresource(mip, slice, plane) ==
-                                RHITextureLayout::Undefined)
-                        {
-                            // Synchronize with vkAcquireNextImageKHR
-                            vkBarrier.srcStageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput;
-                            vkBarrier.srcAccessMask = ::vk::AccessFlagBits2::eNone;
-                        }
-                        else
-                        {
-                            vkBarrier.srcStageMask = RHIBarrierSyncToVulkan(
-                                textureBarrier.texture->GetLastSyncForSubresource(mip, slice, plane));
-                            vkBarrier.srcAccessMask = RHIBarrierAccessToVulkan(
-                                textureBarrier.texture->GetLastAccessForSubresource(mip, slice, plane));
-                        }
-                        vkBarrier.oldLayout = RHITextureLayoutToVulkan(
-                            textureBarrier.texture->GetLastLayoutForSubresource(mip, slice, plane));
-                        vkBarrier.dstStageMask = RHIBarrierSyncToVulkan(textureBarrier.dstSync);
-                        vkBarrier.dstAccessMask = RHIBarrierAccessToVulkan(textureBarrier.dstAccess);
-                        vkBarrier.newLayout = RHITextureLayoutToVulkan(textureBarrier.dstLayout);
-                        vkBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                        vkBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                        vkBarrier.image = textureBarrier.texture->GetResource();
-                        vkBarrier.subresourceRange = { .aspectMask = VkTextureUtil::AspectFlagFromPlaneIndex(
-                                                           textureBarrier.texture->GetDesc().format,
-                                                           plane),
-                                                       .baseMipLevel = mip,
-                                                       .levelCount = 1,
-                                                       .baseArrayLayer = slice,
-                                                       .layerCount = 1 },
-                        vkTextureBarriers.push_back(std::move(vkBarrier));
-
-                        if (!isSubresourceFullResource)
-                        {
-                            // Update last barrier state for the subresource.
-                            textureBarrier.texture->SetLastBarrierStateForSubresource(textureBarrier.dstSync,
-                                                                                      textureBarrier.dstAccess,
-                                                                                      textureBarrier.dstLayout,
-                                                                                      mip,
-                                                                                      slice,
-                                                                                      plane);
-                        }
+                        // Synchronize with vkAcquireNextImageKHR
+                        vkBarrier.srcStageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput;
+                        vkBarrier.srcAccessMask = ::vk::AccessFlagBits2::eNone;
                     }
-                }
-            }
+                    else
+                    {
+                        vkBarrier.srcStageMask = RHIBarrierSyncToVulkan(
+                            textureBarrier.texture->GetLastSyncForSubresource(mip, slice, plane));
+                        vkBarrier.srcAccessMask = RHIBarrierAccessToVulkan(
+                            textureBarrier.texture->GetLastAccessForSubresource(mip, slice, plane));
+                    }
+                    vkBarrier.oldLayout = RHITextureLayoutToVulkan(
+                        textureBarrier.texture->GetLastLayoutForSubresource(mip, slice, plane));
+                    vkBarrier.dstStageMask = RHIBarrierSyncToVulkan(textureBarrier.dstSync);
+                    vkBarrier.dstAccessMask = RHIBarrierAccessToVulkan(textureBarrier.dstAccess);
+                    vkBarrier.newLayout = RHITextureLayoutToVulkan(textureBarrier.dstLayout);
+                    vkBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                    vkBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                    vkBarrier.image = textureBarrier.texture->GetResource();
+                    vkBarrier.subresourceRange = { .aspectMask = VkTextureUtil::AspectFlagFromPlaneIndex(
+                                                       textureBarrier.texture->GetDesc().format,
+                                                       plane),
+                                                   .baseMipLevel = mip,
+                                                   .levelCount = 1,
+                                                   .baseArrayLayer = slice,
+                                                   .layerCount = 1 },
+                    vkTextureBarriers.push_back(std::move(vkBarrier));
+
+                    if (!isSubresourceFullResource)
+                    {
+                        // Update last barrier state for the subresource.
+                        textureBarrier.texture->SetLastBarrierStateForSubresource(textureBarrier.dstSync,
+                                                                                  textureBarrier.dstAccess,
+                                                                                  textureBarrier.dstLayout,
+                                                                                  mip,
+                                                                                  slice,
+                                                                                  plane);
+                    }
+                });
 
             // If the dst barrier is constant across the entire resource, we can just revert to uniform barriers.
             if (isSubresourceFullResource)
@@ -573,7 +560,7 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
             return ::vk::RenderingAttachmentInfo{
                 .imageView = rtBindings.texture->GetOrCreateImageView(rtBindings.binding, TextureUsage::RenderTarget),
                 .imageLayout = RHITextureLayoutToVulkan(
-                    rtBindings.texture->GetLastLayoutForTextureSubresource(rtBindings.binding.subresource)),
+                    rtBindings.texture->GetLastLayoutForSubresource(rtBindings.binding.subresource)),
             };
         });
 
@@ -583,7 +570,7 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
         depthInfo = ::vk::RenderingAttachmentInfo{
             .imageView = resources.depthStencil->texture->GetOrCreateImageView(resources.depthStencil->binding,
                                                                                TextureUsage::DepthStencil),
-            .imageLayout = RHITextureLayoutToVulkan(resources.depthStencil->texture->GetLastLayoutForTextureSubresource(
+            .imageLayout = RHITextureLayoutToVulkan(resources.depthStencil->texture->GetLastLayoutForSubresource(
                 resources.depthStencil->binding.subresource)),
         };
     };

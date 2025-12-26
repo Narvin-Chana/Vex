@@ -587,6 +587,12 @@ TextureAspect::Flags TextureSubresource::GetDefaultAspect(const TextureDesc& des
     return TextureAspect::Color;
 }
 
+bool TextureSubresource::IsFullResource(const TextureDesc& desc) const
+{
+    return startMip == 0 && mipCount == GTextureAllMips && startSlice == 0 && sliceCount == GTextureAllSlices &&
+           desc.GetPlaneCount() == GetPlaneCount();
+}
+
 std::tuple<u32, u32, u32> TextureRegion::GetExtents(const TextureDesc& desc, u16 mip) const
 {
     return { extent.GetWidth(desc, mip), extent.GetHeight(desc, mip), extent.GetDepth(desc, mip) };

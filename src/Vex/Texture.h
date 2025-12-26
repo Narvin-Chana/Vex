@@ -218,6 +218,8 @@ struct TextureSubresource
     // Refers to the slice in DX12 and the aspect mask in Vulkan
     TextureAspect::Flags aspect = TextureAspect::Color;
 
+    bool IsFullResource(const TextureDesc& desc) const;
+
     u16 GetMipCount(const TextureDesc& desc) const;
     u32 GetSliceCount(const TextureDesc& desc) const;
     u32 GetStartPlane() const;

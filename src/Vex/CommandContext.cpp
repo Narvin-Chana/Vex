@@ -4,7 +4,6 @@
 #include <cmath>
 #include <variant>
 
-#include <Vex/BuiltInShaders/DepthStencilReadback.h>
 #include <Vex/BuiltInShaders/MipGeneration.h>
 #include <Vex/DrawHelpers.h>
 #include <Vex/Graphics.h>

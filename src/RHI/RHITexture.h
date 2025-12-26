@@ -34,12 +34,12 @@ public:
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeAllocation(RHIAllocator& allocator) = 0;
 
-    const TextureDesc& GetDesc() const
+    [[nodiscard]] const TextureDesc& GetDesc() const
     {
         return desc;
     }
 
-    const Allocation& GetAllocation() const
+    [[nodiscard]] const Allocation& GetAllocation() const
     {
         return allocation;
     }
@@ -63,7 +63,7 @@ public:
         return uniformLastBarrierState->lastLayout;
     }
 
-    [[nodiscard]] RHITextureLayout GetLastLayoutForTextureSubresource(const TextureSubresource& subresource) const
+    [[nodiscard]] RHITextureLayout GetLastLayoutForSubresource(const TextureSubresource& subresource) const
     {
         if (IsLastBarrierStateUniform())
             return GetLastLayout();
@@ -146,14 +146,15 @@ public:
         uniformLastBarrierState.reset();
     }
 
-    bool IsLastBarrierStateUniform() const
+    [[nodiscard]] bool IsLastBarrierStateUniform() const
     {
         return uniformLastBarrierState.has_value();
     }
 
 protected:
-    u32 GetSubresourceIndex(u16 mip, u32 slice, u32 plane) const
+    [[nodiscard]] u32 GetSubresourceIndex(u16 mip, u32 slice, u32 plane) const
     {
+        VEX_ASSERT(mip < desc.mips && slice < desc.GetSliceCount() && plane < desc.GetPlaneCount());
         return plane * (desc.mips * desc.GetSliceCount()) + static_cast<u32>(mip) + slice * desc.mips;
     }
 
