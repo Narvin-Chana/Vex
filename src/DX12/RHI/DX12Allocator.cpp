@@ -2,6 +2,7 @@
 
 #include <Vex/Logger.h>
 #include <Vex/Utility/WString.h>
+#include <Vex/Utility/ByteUtils.h>
 
 #include <DX12/HRChecker.h>
 
@@ -24,6 +25,12 @@ Allocation DX12Allocator::AllocateResource(ComPtr<ID3D12Resource>& resource,
     // We cannot compute this ourselves as this depends on hardware/vendors.
     D3D12_RESOURCE_ALLOCATION_INFO allocInfo =
         device->GetResourceAllocationInfo3(0, 1, &resourceDesc, nullptr, nullptr, nullptr);
+
+    // RT acceleration structures have a higher alignment requirement, for some reason GetResourceAllocationInfo3, does not return the correct alignment.
+    if (resourceDesc.Flags & D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE)
+    {
+        allocInfo.Alignment = AlignUp<u64>(allocInfo.Alignment, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
+    }
 
     // Allocates and handles finding an optimal place to allocate the memory.
     // No api calls will be made if a valid MemoryRange is already available, making this super fast!
