@@ -5,12 +5,12 @@
 #include <variant>
 
 #include <Vex/BuiltInShaders/MipGeneration.h>
-#include <Vex/Platform/Debug.h>
 #include <Vex/DrawHelpers.h>
 #include <Vex/Graphics.h>
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
+#include <Vex/Platform/Debug.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
@@ -20,8 +20,8 @@
 #include <Vex/RayTracing.h>
 #include <Vex/ResourceBindingUtils.h>
 #include <Vex/Utility/ByteUtils.h>
-#include <Vex/Utility/Visitor.h>
 #include <Vex/Utility/Validation.h>
+#include <Vex/Utility/Visitor.h>
 
 #include <RHI/RHIBarrier.h>
 #include <RHI/RHIBindings.h>
@@ -32,8 +32,8 @@ namespace vex
 namespace CommandContext_Internal
 {
 
-static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureRegions(
-    const TextureDesc& desc, Span<const TextureRegion> regions)
+static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureRegions(const TextureDesc& desc,
+                                                                                     Span<const TextureRegion> regions)
 {
     // Otherwise we have to translate the TextureRegions to their equivalent BufferTextureCopyDescs.
     std::vector<BufferTextureCopyDesc> copyDescs;
@@ -64,6 +64,7 @@ static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureReg
                         .mipCount = 1,
                         .startSlice = region.subresource.startSlice,
                         .sliceCount = region.subresource.GetSliceCount(desc),
+                        .aspect = region.subresource.aspect
                     },
                     .offset = region.offset,
                     .extent = region.extent,
@@ -526,9 +527,7 @@ void CommandContext::Copy(const Texture& source, const Texture& destination, con
     Copy(source, destination, { &regionMapping, 1 });
 }
 
-void CommandContext::Copy(const Texture& source,
-                          const Texture& destination,
-                          Span<const TextureCopyDesc> regionMappings)
+void CommandContext::Copy(const Texture& source, const Texture& destination, Span<const TextureCopyDesc> regionMappings)
 {
     VEX_CHECK(source.handle != destination.handle, "Cannot copy a texture to itself!");
 
@@ -603,9 +602,7 @@ void CommandContext::Copy(const Buffer& source, const Texture& destination, cons
     Copy(source, destination, { &copyDesc, 1 });
 }
 
-void CommandContext::Copy(const Buffer& source,
-                          const Texture& destination,
-                          Span<const BufferTextureCopyDesc> copyDescs)
+void CommandContext::Copy(const Buffer& source, const Texture& destination, Span<const BufferTextureCopyDesc> copyDescs)
 {
     for (auto& copyDesc : copyDescs)
     {
@@ -633,33 +630,27 @@ void CommandContext::Copy(const Texture& source,
                           const Buffer& destination,
                           Span<const BufferTextureCopyDesc> bufferToTextureCopyDescriptions)
 {
+    TextureAspect::Flags aspects = 0;
     for (auto& copyDesc : bufferToTextureCopyDescriptions)
     {
         TextureCopyUtil::ValidateBufferTextureCopyDesc(destination.desc, source.desc, copyDesc);
+        aspects |= copyDesc.textureRegion.subresource.aspect;
     }
 
     RHITexture& sourceRHI = graphics->GetRHITexture(source.handle);
     RHIBuffer& destinationRHI = graphics->GetRHIBuffer(destination.handle);
+
     pendingTextureBarriers.push_back(RHITextureBarrier{ sourceRHI,
-                                                        {},
+                                                        { .aspect = aspects },
                                                         RHIBarrierSync::Copy,
                                                         RHIBarrierAccess::CopySource,
                                                         RHITextureLayout::CopySource });
+
     pendingBufferBarriers.push_back(
         RHIBufferBarrier{ destinationRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest });
     FlushBarriers();
 
-    if (FormatUtil::SupportsStencil(source.desc.format) &&
-        !GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::DepthStencilReadback))
-    {
-        // Run compute to copy the image to the buffer
-        // See: https://trello.com/c/vEaa2SUe
-        VEX_NOT_YET_IMPLEMENTED();
-    }
-    else
-    {
-        cmdList->Copy(sourceRHI, destinationRHI, bufferToTextureCopyDescriptions);
-    }
+    cmdList->Copy(sourceRHI, destinationRHI, bufferToTextureCopyDescriptions);
 }
 
 void CommandContext::EnqueueDataUpload(const Buffer& buffer, Span<const byte> data, const BufferRegion& region)
@@ -897,7 +888,7 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
 {
     VEX_CHECK(!drawBindings.depthStencil ||
                   (drawBindings.depthStencil &&
-                   FormatUtil::IsDepthStencilCompatible(drawBindings.depthStencil->texture.desc.format)),
+                   FormatUtil::IsDepthOrStencilFormat(drawBindings.depthStencil->texture.desc.format)),
               "The provided depth stencil should have a depth stencil format");
     VEX_CHECK(drawDesc.vertexShader.type == ShaderType::VertexShader,
               "Invalid type passed to Draw call for vertex shader: {}",

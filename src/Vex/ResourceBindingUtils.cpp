@@ -1,8 +1,8 @@
 ﻿#include "ResourceBindingUtils.h"
 
-#include <Vex/Utility/WString.h>
-#include <Vex/Utility/Visitor.h>
 #include <Vex/Graphics.h>
+#include <Vex/Utility/Visitor.h>
+#include <Vex/Utility/WString.h>
 
 #include <RHI/RHIBuffer.h>
 #include <RHI/RHITexture.h>
@@ -115,7 +115,7 @@ RHIDrawResources ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(Graphi
 
         // TODO: This deduces depth and/or stencil from the texture's format, ideally we'd pass this info along in
         // the binding somehow.
-        bool supportsStencil = FormatUtil::SupportsStencil(texture.GetDesc().format);
+        bool supportsStencil = FormatUtil::IsDepthAndStencilFormat(texture.GetDesc().format);
 
         barriers.push_back(RHITextureBarrier{
             texture,

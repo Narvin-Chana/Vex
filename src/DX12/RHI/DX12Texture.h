@@ -3,8 +3,8 @@
 #include <unordered_map>
 
 #include <Vex/Containers/FreeList.h>
-#include <Vex/Utility/Hash.h>
 #include <Vex/Resource.h>
+#include <Vex/Utility/Hash.h>
 
 #include <RHI/RHIAllocator.h>
 #include <RHI/RHIFwd.h>

@@ -148,36 +148,37 @@ VkRHI::~VkRHI() = default;
 
 void VkRHI::InitWindow(const PlatformWindowHandle& platformWindowHandle)
 {
-std::visit(Visitor{
+    std::visit(
+        Visitor{
 #if defined(_WIN32)
-        [this](const PlatformWindowHandle::WindowsHandle& windowHandle)
-        {
-            ::vk::Win32SurfaceCreateInfoKHR createInfo{
-                .hinstance = GetModuleHandle(nullptr),
-                .hwnd = windowHandle.window,
-            };
-            surface = VEX_VK_CHECK <<= instance->createWin32SurfaceKHRUnique(createInfo);
-        },
+            [this](const PlatformWindowHandle::WindowsHandle& windowHandle)
+            {
+                ::vk::Win32SurfaceCreateInfoKHR createInfo{
+                    .hinstance = GetModuleHandle(nullptr),
+                    .hwnd = windowHandle.window,
+                };
+                surface = VEX_VK_CHECK <<= instance->createWin32SurfaceKHRUnique(createInfo);
+            },
 #elif defined(__linux__)
-    [this] (const PlatformWindowHandle::X11Handle& windowHandle)
-    {
+            [this](const PlatformWindowHandle::X11Handle& windowHandle)
+            {
                 ::vk::XlibSurfaceCreateInfoKHR createInfo{
-        .dpy = windowHandle.display,
-        .window = windowHandle.window,
-    };
-    surface = VEX_VK_CHECK <<= instance->createXlibSurfaceKHRUnique(createInfo);
-    },
-    [this] (const PlatformWindowHandle::WaylandHandle& windowHandle)
-    {
-        ::vk::WaylandSurfaceCreateInfoKHR createInfo{
-            .display = windowHandle.display,
-            .surface = windowHandle.window,
-        };
-        surface = VEX_VK_CHECK <<= instance->createWaylandSurfaceKHRUnique(createInfo);
-    },
+                    .dpy = windowHandle.display,
+                    .window = windowHandle.window,
+                };
+                surface = VEX_VK_CHECK <<= instance->createXlibSurfaceKHRUnique(createInfo);
+            },
+            [this](const PlatformWindowHandle::WaylandHandle& windowHandle)
+            {
+                ::vk::WaylandSurfaceCreateInfoKHR createInfo{
+                    .display = windowHandle.display,
+                    .surface = windowHandle.window,
+                };
+                surface = VEX_VK_CHECK <<= instance->createWaylandSurfaceKHRUnique(createInfo);
+            },
 #endif
-    [] (auto&& args) {}
-}, platformWindowHandle.handle);
+            [](auto&& args) {} },
+        platformWindowHandle.handle);
 }
 
 std::vector<UniqueHandle<PhysicalDevice>> VkRHI::EnumeratePhysicalDevices()
@@ -305,6 +306,7 @@ void VkRHI::Init(const UniqueHandle<PhysicalDevice>& vexPhysicalDevice)
     features12.vulkanMemoryModelDeviceScope = true;
     features12.storageBuffer8BitAccess = true;
     features12.scalarBlockLayout = true;
+    features12.separateDepthStencilLayouts = true;
 
     auto physDeviceFeatures = physDevice.getFeatures();
     // Geometry shader being enabled forces SV_PrimitiveID to also be enabled!

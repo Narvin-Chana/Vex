@@ -25,7 +25,6 @@ void ReadTextureDataAligned(const TextureDesc& desc,
                             Span<byte> packedOutputData)
 
 {
-    const u32 bytesPerPixel = TextureUtil::GetPixelByteSizeFromFormat(desc.format);
     const byte* srcData = alignedTextureData.data();
     byte* dstData = packedOutputData.data();
     u64 srcOffset = 0;
@@ -33,6 +32,9 @@ void ReadTextureDataAligned(const TextureDesc& desc,
 
     for (const auto& region : textureRegions)
     {
+        const u32 bytesPerPixel = static_cast<u32>(TextureUtil::GetPixelByteSizeFromFormat(
+            TextureUtil::GetCopyFormat(desc.format, region.subresource.GetSingleAspect())));
+
         for (u16 mip = region.subresource.startMip;
              mip < region.subresource.startMip + region.subresource.GetMipCount(desc);
              ++mip)
@@ -164,15 +166,15 @@ std::vector<BufferTextureCopyDesc> BufferTextureCopyDesc::AllMips(const TextureD
 
         bufferTextureCopyDescriptions.push_back(BufferTextureCopyDesc{
             .bufferRegion = BufferRegion{ .offset = bufferOffset, .byteSize = alignedMipByteSize },
-            .textureRegion = TextureRegion{
-                .subresource = {
-                    .startMip = mip,
-                    .mipCount = 1,
-                    .startSlice = 0,
-                    .sliceCount = sliceCount,
+            .textureRegion =
+                TextureRegion{
+                    .subresource = { .startMip = mip,
+                                     .mipCount = 1,
+                                     .startSlice = 0,
+                                     .sliceCount = sliceCount,
+                                     .aspect = TextureSubresource::GetDefaultAspect(desc) },
+                    .extent = { mipSize.width, mipSize.height, mipSize.depth },
                 },
-                .extent = { mipSize.width, mipSize.height, mipSize.depth },
-            },
         });
 
         bufferOffset += alignedMipByteSize;
@@ -222,15 +224,15 @@ std::vector<BufferTextureCopyDesc> BufferTextureCopyDesc::SingleMip(u16 mipIndex
 
     bufferTextureCopyDescriptions.push_back(BufferTextureCopyDesc{
         .bufferRegion = BufferRegion{ .offset = 0, .byteSize = alignedMipByteSize },
-        .textureRegion = TextureRegion{
-            .subresource = {
-                .startMip = mipIndex,
-                .mipCount = 1,
-                .startSlice = 0,
-                .sliceCount = sliceCount,
+        .textureRegion =
+            TextureRegion{
+                .subresource = { .startMip = mipIndex,
+                                 .mipCount = 1,
+                                 .startSlice = 0,
+                                 .sliceCount = sliceCount,
+                                 .aspect = TextureSubresource::GetDefaultAspect(desc) },
+                .extent = { mipSize.width, mipSize.height, mipSize.depth },
             },
-            .extent = { mipSize.width, mipSize.height, mipSize.depth },
-        },
     });
 
     return bufferTextureCopyDescriptions;

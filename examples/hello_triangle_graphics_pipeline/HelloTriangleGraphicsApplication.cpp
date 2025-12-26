@@ -60,7 +60,7 @@ void HelloTriangleGraphicsApplication::Run()
             ctx.SetScissor(0, 0, width, height);
 
             // Clear backbuffer.
-            vex::TextureClearValue clearValue{ .flags = vex::TextureClear::ClearColor, .color = { 1, 0.5f, 1, 1 } };
+            vex::TextureClearValue clearValue{ .clearAspect = vex::TextureAspect::Color, .color = { 1, 0.5f, 1, 1 } };
             ctx.ClearTexture(
                 vex::TextureBinding{
                     .texture = graphics->GetCurrentPresentTexture(),

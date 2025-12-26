@@ -165,7 +165,7 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
         .colorAttachmentCount = static_cast<u32>(attachmentFormats.size()),
         .pColorAttachmentFormats = attachmentFormats.data(),
         .depthAttachmentFormat = TextureFormatToVulkan(key.renderTargetState.depthStencilFormat, false),
-        .stencilAttachmentFormat = FormatUtil::SupportsStencil(key.renderTargetState.depthStencilFormat)
+        .stencilAttachmentFormat = FormatUtil::IsDepthAndStencilFormat(key.renderTargetState.depthStencilFormat)
                                        ? TextureFormatToVulkan(key.renderTargetState.depthStencilFormat, false)
                                        : ::vk::Format::eUndefined
     };

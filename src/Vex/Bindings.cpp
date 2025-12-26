@@ -104,7 +104,7 @@ void ValidateTextureBinding(const TextureBinding& binding, TextureUsage::Flags v
     }
 
     if ((validTextureUsageFlags & TextureUsage::DepthStencil) &&
-        !FormatUtil::IsDepthStencilCompatible(texture.desc.format))
+        !FormatUtil::IsDepthOrStencilFormat(texture.desc.format))
     {
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": texture cannot be bound as depth stencil",
@@ -141,7 +141,7 @@ void ValidateTextureBinding(const TextureBinding& binding, TextureUsage::Flags v
         }
     }
 
-    if (FormatUtil::IsDepthStencilCompatible(texture.desc.format) && !(texture.desc.usage & TextureUsage::DepthStencil))
+    if (FormatUtil::IsDepthOrStencilFormat(texture.desc.format) && !(texture.desc.usage & TextureUsage::DepthStencil))
     {
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": Texture's format ({}) requires the depth stencil usage "
