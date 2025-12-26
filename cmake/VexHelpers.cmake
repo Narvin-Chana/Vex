@@ -123,17 +123,21 @@ function(vex_setup_runtime TARGET)
         
         # Add the Agility SDK version define to the target
         get_target_property(AGILITY_VERSION Vex DIRECTX_AGILITY_SDK_VERSION)
-        if(AGILITY_VERSION)
-            target_compile_definitions(${TARGET} PRIVATE 
-                DIRECTX_AGILITY_SDK_VERSION=${AGILITY_VERSION}
-                D3D12_AGILITY_SDK_ENABLED
-            )
-            
-            # Add the DX12AgilitySDK.cpp source if not already added
-            target_sources(${TARGET} PRIVATE
-                "${VEX_ROOT_DIR}/src/DX12/DX12AgilitySDK.cpp"
-            )
+        if(NOT AGILITY_VERSION)
+            message(FATAL_ERROR "Unable to obtain the DIRECTX_AGILITY_SDK_VERSION") 
         endif()
+
+        target_compile_definitions(${TARGET} PRIVATE 
+            DIRECTX_AGILITY_SDK_VERSION=${AGILITY_VERSION}
+            D3D12_AGILITY_SDK_ENABLED
+        )
+            
+        # Add the DX12AgilitySDK.cpp source if not already added
+        target_sources(${TARGET} PRIVATE
+            "${VEX_ROOT_DIR}/src/DX12/DX12AgilitySDK.cpp"
+        )
+
+        message(STATUS "D3D12 Agility SDK ${DX_AGILITY_SDK_VERSION} will be deployed with ${TARGET}")
     endif()
 
     # Copy Vex shader files

@@ -10,6 +10,7 @@
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHI.h>
+#include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHICommandPool.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
@@ -254,6 +255,14 @@ Buffer Graphics::CreateBuffer(BufferDesc desc, ResourceLifetime lifetime)
                    .desc = std::move(desc) };
 }
 
+AccelerationStructure Graphics::CreateAccelerationStructure(const ASDesc& desc)
+{
+    return {
+        .handle = accelerationStructureRegistry.AllocateElement(std::move(rhi.CreateAS(desc))),
+        .desc = desc,
+    };
+}
+
 ResourceMappedMemory Graphics::MapResource(const Buffer& buffer)
 {
     RHIBuffer& rhiBuffer = GetRHIBuffer(buffer.handle);
@@ -290,6 +299,11 @@ void Graphics::DestroyBuffer(const Buffer& buffer)
     resourceCleanup.CleanupResource(bufferRegistry.ExtractElement(buffer.handle));
 }
 
+void Graphics::DestroyAccelerationStructure(const AccelerationStructure& accelerationStructure)
+{
+    resourceCleanup.CleanupResource(accelerationStructureRegistry.ExtractElement(accelerationStructure.handle));
+}
+
 BindlessHandle Graphics::GetBindlessHandle(const TextureBinding& bindlessResource)
 {
     BindingUtil::ValidateTextureBinding(bindlessResource, bindlessResource.texture.desc.usage);
@@ -304,6 +318,13 @@ BindlessHandle Graphics::GetBindlessHandle(const BufferBinding& bindlessResource
 
     auto& buffer = GetRHIBuffer(bindlessResource.buffer.handle);
     return buffer.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
+}
+
+BindlessHandle Graphics::GetBindlessHandle(const AccelerationStructure& accelerationStructure)
+{
+    return GetRHIAccelerationStructure(accelerationStructure.handle)
+        .GetRHIBuffer()
+        .GetOrCreateBindlessView({}, *descriptorPool);
 }
 
 std::vector<BindlessHandle> Graphics::GetBindlessHandles(Span<const ResourceBinding> bindlessResources)
@@ -576,6 +597,11 @@ RHIBuffer& Graphics::GetRHIBuffer(BufferHandle bufferHandle)
     return bufferRegistry[bufferHandle];
 }
 
+RHIAccelerationStructure& Graphics::GetRHIAccelerationStructure(ASHandle asHandle)
+{
+    return accelerationStructureRegistry[asHandle];
+}
+
 void Graphics::RecreatePresentTextures()
 {
     if (!presentTextures.empty())
@@ -590,13 +616,13 @@ void Graphics::RecreatePresentTextures()
         }
     }
 
-    CommandContext ctx = CreateCommandContext(QueueType::Graphics);
-
     // Clear current present textures.
     for (const Texture& tex : presentTextures)
     {
         DestroyTexture(tex);
     }
+
+    CommandContext ctx = CreateCommandContext(QueueType::Graphics);
 
     // Create new present textures.
     presentTextures.resize(std::to_underlying(desc.swapChainDesc.frameBuffering));

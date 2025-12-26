@@ -346,8 +346,7 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
     }
 }
 
-void VkCommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers,
-                            Span<const RHITextureBarrier> textureBarriers)
+void VkCommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers, Span<const RHITextureBarrier> textureBarriers)
 {
     std::vector<::vk::BufferMemoryBarrier2> vkBufferBarriers;
     vkBufferBarriers.reserve(bufferBarriers.size());
@@ -744,6 +743,19 @@ void VkCommandList::ResolveTimestampQueries(u32 firstQuery, u32 queryCount)
                                         firstQuery * sizeof(u64),
                                         sizeof(u64),
                                         ::vk::QueryResultFlagBits::e64 | ::vk::QueryResultFlagBits::eWait);
+}
+
+void VkCommandList::BuildBLAS(RHIAccelerationStructure& as, RHIBuffer& scratchBuffer)
+{
+    VEX_NOT_YET_IMPLEMENTED();
+}
+
+void VkCommandList::BuildTLAS(RHIAccelerationStructure& as,
+                              RHIBuffer& scratchBuffer,
+                              RHIBuffer& uploadBuffer,
+                              const RHITLASBuildDesc& desc)
+{
+    VEX_NOT_YET_IMPLEMENTED();
 }
 
 void VkCommandList::Copy(RHITexture& src, RHITexture& dst, Span<const TextureCopyDesc> textureCopyDescriptions)

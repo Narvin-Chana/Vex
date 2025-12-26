@@ -66,6 +66,12 @@ public:
     virtual void EndTimestampQuery(QueryHandle handle) override;
     virtual void ResolveTimestampQueries(u32 firstQuery, u32 queryCount) override;
 
+    virtual void BuildBLAS(RHIAccelerationStructure& as, RHIBuffer& scratchBuffer) override;
+    virtual void BuildTLAS(RHIAccelerationStructure& as,
+                           RHIBuffer& scratchBuffer,
+                           RHIBuffer& uploadBuffer,
+                           const RHITLASBuildDesc& desc) override;
+
     using RHICommandListBase::Copy;
     virtual void Copy(RHITexture& src, RHITexture& dst, Span<const TextureCopyDesc> textureCopyDesc) override;
     virtual void Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDesc& bufferCopyDesc) override;

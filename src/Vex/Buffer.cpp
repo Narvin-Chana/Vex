@@ -121,7 +121,7 @@ BufferDesc BufferDesc::CreateReadbackBufferDesc(std::string name, u64 byteSize, 
     };
 }
 
-BufferDesc BufferDesc::CreateStructuredBufferDesc(std::string name, u64 byteSize)
+BufferDesc BufferDesc::CreateGenericBufferDesc(std::string name, u64 byteSize)
 {
     return {
         .name = std::move(name),

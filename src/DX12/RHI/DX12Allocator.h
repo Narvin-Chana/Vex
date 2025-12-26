@@ -19,9 +19,9 @@ public:
     DX12Allocator(const ComPtr<DX12Device>& device);
 
     Allocation AllocateResource(ComPtr<ID3D12Resource>& resource,
-                                const CD3DX12_RESOURCE_DESC& resourceDesc,
+                                const CD3DX12_RESOURCE_DESC1& resourceDesc,
                                 HeapType heapType,
-                                D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON,
+                                D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_UNDEFINED,
                                 std::optional<D3D12_CLEAR_VALUE> optionalClearValue = std::nullopt);
     void FreeResource(const Allocation& allocation);
 

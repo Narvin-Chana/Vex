@@ -44,15 +44,15 @@ function(setup_dx12_backend TARGET)
     # =========================================
 
     # Fetch DX12 Agility SDK
-    set(DX_AGILITY_SDK_VERSION "618")
-    set(DX_AGILITY_SDK_VERSION_FULL "1.${DX_AGILITY_SDK_VERSION}.4")
-    set(AGILITY_SDK_DIR "${FETCHCONTENT_BASE_DIR}/DirectX-AgilitySDK-${DX_AGILITY_SDK_VERSION_FULL}")
+    set(DX_AGILITY_VERSION "717")
+    set(FULL_DX_AGILITY_VERSION "1.${DX_AGILITY_VERSION}.1-preview")
+    set(AGILITY_SDK_DIR "${FETCHCONTENT_BASE_DIR}/DirectX-AgilitySDK-${FULL_DX_AGILITY_VERSION}")
 
     # Download the NuGet package if not already downloaded
     if(NOT EXISTS "${AGILITY_SDK_DIR}/build")
-        message(STATUS "Downloading DX12 Agility SDK ${DX_AGILITY_SDK_VERSION_FULL}...")
+        message(STATUS "Downloading DX12 Agility SDK ${FULL_DX_AGILITY_VERSION}...")
         download_and_decompress_archive(
-            "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/${DX_AGILITY_SDK_VERSION_FULL}"
+            "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/${FULL_DX_AGILITY_VERSION}"
             "${AGILITY_SDK_DIR}"
         )
         message(STATUS "DirectX Agility SDK extracted to: ${AGILITY_SDK_DIR}")
@@ -72,7 +72,7 @@ function(setup_dx12_backend TARGET)
     endif()
 
     # Store version for downstream use
-    set_target_properties(${TARGET} PROPERTIES DIRECTX_AGILITY_SDK_VERSION ${DX_AGILITY_SDK_VERSION})
+    set_property(TARGET Vex PROPERTY DIRECTX_AGILITY_SDK_VERSION ${DX_AGILITY_VERSION})
 
     # =========================================
     # Vex DX12 Sources
@@ -106,8 +106,10 @@ function(setup_dx12_backend TARGET)
         "src/DX12/RHI/DX12Allocator.cpp"
         "src/DX12/RHI/DX12ScopedGPUEvent.h"
         "src/DX12/RHI/DX12ScopedGPUEvent.cpp"
-        "src/DX12/RHI/Dx12TimestampQueryPool.cpp"
-        "src/DX12/RHI/Dx12TimestampQueryPool.h"
+        "src/DX12/RHI/DX12TimestampQueryPool.cpp"
+        "src/DX12/RHI/DX12TimestampQueryPool.h"
+        "src/DX12/RHI/DX12AccelerationStructure.h"
+        "src/DX12/RHI/DX12AccelerationStructure.cpp"
         # DX12 API
         "src/DX12/DX12DescriptorHeap.h"
         "src/DX12/DX12Headers.h"
@@ -158,41 +160,5 @@ function(vex_setup_pix_events TARGET)
             "$<TARGET_FILE_DIR:${TARGET}>/WinPixEventRuntime.dll"
             COMMENT "Copying PixEvents DLLs to output directory : $<TARGET_FILE_DIR:${TARGET}>..."
         )
-    endif()
-endfunction()
-
-function(vex_setup_d3d12_agility_runtime TARGET)
-    if (VEX_ENABLE_DX12)
-        set(VEX_D3D12_AGILITY_SOURCE_SDK_DIR "${DX_AGILITY_SDK_SOURCE_DIR}/bin/x64")
-
-        if(NOT EXISTS "${VEX_D3D12_AGILITY_SOURCE_SDK_DIR}/D3D12Core.dll")
-            message(STATUS ERROR " Missing D3D12Core.dll in Agility SDK directory: ${VEX_D3D12_AGILITY_SOURCE_SDK_DIR}.")
-            return()
-        endif()
-
-        target_compile_definitions(Vex PRIVATE 
-            DIRECTX_AGILITY_SDK_VERSION=${DX_AGILITY_SDK_VERSION}
-            D3D12_AGILITY_SDK_ENABLED
-        )
-
-        target_compile_definitions(${TARGET} PRIVATE 
-            DIRECTX_AGILITY_SDK_VERSION=${DX_AGILITY_SDK_VERSION}
-            D3D12_AGILITY_SDK_ENABLED
-        )
-
-        target_sources(${TARGET} PRIVATE
-            "${VEX_ROOT_DIR}/src/DX12/DX12AgilitySDK.cpp"
-        )
-
-        add_custom_command(TARGET ${TARGET} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${TARGET}>/D3D12"
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${VEX_D3D12_AGILITY_SOURCE_SDK_DIR}/D3D12Core.dll"
-                "${VEX_D3D12_AGILITY_SOURCE_SDK_DIR}/d3d12SDKLayers.dll"
-                "$<TARGET_FILE_DIR:${TARGET}>/D3D12"
-            COMMENT "Copying Agility SDK's DLLs to output directory : $<TARGET_FILE_DIR:${TARGET}>/D3D12..."
-        )
-
-        message(STATUS "D3D12 Agility SDK 1.${DX_AGILITY_SDK_VERSION}.0 will be deployed with ${TARGET}")
     endif()
 endfunction()
