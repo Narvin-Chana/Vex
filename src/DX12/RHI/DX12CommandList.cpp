@@ -5,6 +5,7 @@
 #include <Vex/Bindings.h>
 #include <Vex/Logger.h>
 #include <Vex/Texture.h>
+#include <Vex/Utility/Algorithms.h>
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Validation.h>
 
@@ -48,18 +49,22 @@ static bool CanMergeBarriers(const D3D12_TEXTURE_BARRIER& a, const D3D12_TEXTURE
     if (a.Flags != b.Flags)
         return false;
 
-    // Must have the same plane
-    if (a.Subresources.FirstPlane != b.Subresources.FirstPlane || a.Subresources.NumPlanes != b.Subresources.NumPlanes)
+    if (!DoesRangeOverlap(a.Subresources.FirstPlane,
+                          a.Subresources.NumPlanes,
+                          b.Subresources.FirstPlane,
+                          b.Subresources.NumPlanes))
         return false;
 
     // Check if subresources are contiguous
     // Case 1: Adjacent mips in the same array slice
     if (a.Subresources.FirstArraySlice == b.Subresources.FirstArraySlice &&
-        a.Subresources.NumArraySlices == b.Subresources.NumArraySlices && a.Subresources.NumArraySlices == 1)
+        a.Subresources.NumArraySlices == b.Subresources.NumArraySlices)
     {
         // Check if mips are adjacent
-        u32 aLastMip = a.Subresources.IndexOrFirstMipLevel + a.Subresources.NumMipLevels;
-        if (aLastMip == b.Subresources.IndexOrFirstMipLevel)
+        if (DoesRangeOverlap(a.Subresources.IndexOrFirstMipLevel,
+                             a.Subresources.NumMipLevels,
+                             b.Subresources.IndexOrFirstMipLevel,
+                             b.Subresources.NumMipLevels))
             return true;
     }
 
@@ -68,8 +73,10 @@ static bool CanMergeBarriers(const D3D12_TEXTURE_BARRIER& a, const D3D12_TEXTURE
         a.Subresources.NumMipLevels == b.Subresources.NumMipLevels)
     {
         // Check if array slices are adjacent
-        u32 aLastSlice = a.Subresources.FirstArraySlice + a.Subresources.NumArraySlices;
-        if (aLastSlice == b.Subresources.FirstArraySlice)
+        if (DoesRangeOverlap(a.Subresources.FirstArraySlice,
+                             a.Subresources.NumArraySlices,
+                             b.Subresources.FirstArraySlice,
+                             b.Subresources.NumArraySlices))
             return true;
     }
 
@@ -80,35 +87,34 @@ static D3D12_TEXTURE_BARRIER MergeBarriers(const D3D12_TEXTURE_BARRIER& a, const
 {
     D3D12_TEXTURE_BARRIER merged = a;
 
-    // Merge adjacent mips (same array slice)
-    if (a.Subresources.FirstArraySlice == b.Subresources.FirstArraySlice &&
-        a.Subresources.NumArraySlices == b.Subresources.NumArraySlices)
+    if (merged.Subresources.FirstArraySlice == b.Subresources.FirstArraySlice &&
+        merged.Subresources.NumArraySlices == b.Subresources.NumArraySlices)
     {
-        // Determine which comes first
-        if (a.Subresources.IndexOrFirstMipLevel < b.Subresources.IndexOrFirstMipLevel)
-        {
-            merged.Subresources.IndexOrFirstMipLevel = a.Subresources.IndexOrFirstMipLevel;
-        }
-        else
-        {
-            merged.Subresources.IndexOrFirstMipLevel = b.Subresources.IndexOrFirstMipLevel;
-        }
-        merged.Subresources.NumMipLevels = a.Subresources.NumMipLevels + b.Subresources.NumMipLevels;
+        u32 firstMip = std::min(merged.Subresources.IndexOrFirstMipLevel, b.Subresources.IndexOrFirstMipLevel);
+        u32 lastMip = std::max(merged.Subresources.IndexOrFirstMipLevel + merged.Subresources.NumMipLevels,
+                               b.Subresources.IndexOrFirstMipLevel + b.Subresources.NumMipLevels);
+        merged.Subresources.IndexOrFirstMipLevel = firstMip;
+        merged.Subresources.NumMipLevels = lastMip - firstMip;
     }
-    // Merge adjacent array slices (same mip range)
-    else if (a.Subresources.IndexOrFirstMipLevel == b.Subresources.IndexOrFirstMipLevel &&
-             a.Subresources.NumMipLevels == b.Subresources.NumMipLevels)
+    else if (merged.Subresources.IndexOrFirstMipLevel == b.Subresources.IndexOrFirstMipLevel &&
+             merged.Subresources.NumMipLevels == b.Subresources.NumMipLevels)
     {
-        // Determine which comes first
-        if (a.Subresources.FirstArraySlice < b.Subresources.FirstArraySlice)
-        {
-            merged.Subresources.FirstArraySlice = a.Subresources.FirstArraySlice;
-        }
-        else
-        {
-            merged.Subresources.FirstArraySlice = b.Subresources.FirstArraySlice;
-        }
-        merged.Subresources.NumArraySlices = a.Subresources.NumArraySlices + b.Subresources.NumArraySlices;
+        u32 firstSlice = std::min(merged.Subresources.FirstArraySlice, b.Subresources.FirstArraySlice);
+        u32 lastSlice = std::max(merged.Subresources.FirstArraySlice + merged.Subresources.NumArraySlices,
+                                 b.Subresources.FirstArraySlice + b.Subresources.NumArraySlices);
+        merged.Subresources.FirstArraySlice = firstSlice;
+        merged.Subresources.NumArraySlices = lastSlice - firstSlice;
+    }
+
+    bool samePlane = merged.Subresources.FirstPlane == b.Subresources.FirstPlane &&
+                     merged.Subresources.NumPlanes == b.Subresources.NumPlanes;
+    if (!samePlane)
+    {
+        u32 firstPlane = std::min(merged.Subresources.FirstPlane, b.Subresources.FirstPlane);
+        u32 lastPlane = std::max(merged.Subresources.FirstPlane + merged.Subresources.NumPlanes,
+                                 b.Subresources.FirstPlane + b.Subresources.NumPlanes);
+        merged.Subresources.FirstPlane = firstPlane;
+        merged.Subresources.NumPlanes = lastPlane - firstPlane;
     }
 
     return merged;

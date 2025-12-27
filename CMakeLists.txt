@@ -168,6 +168,7 @@ add_library(Vex STATIC
     "src/Vex/Utility/ByteUtils.h"
     "src/Vex/Utility/WString.h"
     "src/Vex/Utility/Visitor.h"
+    "src/Vex/Utility/Algorithms.h"
     # Vex Platform
     "src/Vex/Platform/PlatformWindow.h" 
     "src/Vex/Platform/Debug.h" 

@@ -6,6 +6,7 @@
 #include <Vex/Bindings.h>
 #include <Vex/DrawHelpers.h>
 #include <Vex/PhysicalDevice.h>
+#include <Vex/Utility/Algorithms.h>
 #include <Vex/Utility/ByteUtils.h>
 
 #include <RHI/RHIBindings.h>
@@ -48,18 +49,20 @@ static bool CanMergeBarriers(const ::vk::ImageMemoryBarrier2& a, const ::vk::Ima
     if (a.srcQueueFamilyIndex != b.srcQueueFamilyIndex || a.dstQueueFamilyIndex != b.dstQueueFamilyIndex)
         return false;
 
-    // Must have the same aspect mask
-    if (a.subresourceRange.aspectMask != b.subresourceRange.aspectMask)
+    // If they dont share an aspect mask they can be merged
+    if (a.subresourceRange.aspectMask & b.subresourceRange.aspectMask)
         return false;
 
     // Check if subresources are contiguous
     // Case 1: Adjacent mips in the same array layer
     if (a.subresourceRange.baseArrayLayer == b.subresourceRange.baseArrayLayer &&
-        a.subresourceRange.layerCount == b.subresourceRange.layerCount && a.subresourceRange.layerCount == 1)
+        a.subresourceRange.layerCount == b.subresourceRange.layerCount)
     {
         // Check if mips are adjacent
-        u32 aLastMip = a.subresourceRange.baseMipLevel + a.subresourceRange.levelCount;
-        if (aLastMip == b.subresourceRange.baseMipLevel)
+        if (DoesRangeOverlap(a.subresourceRange.baseMipLevel,
+                             a.subresourceRange.levelCount,
+                             b.subresourceRange.baseMipLevel,
+                             b.subresourceRange.levelCount))
             return true;
     }
 
@@ -68,8 +71,10 @@ static bool CanMergeBarriers(const ::vk::ImageMemoryBarrier2& a, const ::vk::Ima
         a.subresourceRange.levelCount == b.subresourceRange.levelCount)
     {
         // Check if array layers are adjacent
-        u32 aLastLayer = a.subresourceRange.baseArrayLayer + a.subresourceRange.layerCount;
-        if (aLastLayer == b.subresourceRange.baseArrayLayer)
+        if (DoesRangeOverlap(a.subresourceRange.baseArrayLayer,
+                             a.subresourceRange.layerCount,
+                             b.subresourceRange.baseArrayLayer,
+                             b.subresourceRange.layerCount))
             return true;
     }
 
@@ -80,22 +85,27 @@ static ::vk::ImageMemoryBarrier2 MergeBarriers(const ::vk::ImageMemoryBarrier2& 
 {
     ::vk::ImageMemoryBarrier2 merged = a;
 
-    // Merge adjacent mips (same array layer)
     if (a.subresourceRange.baseArrayLayer == b.subresourceRange.baseArrayLayer &&
         a.subresourceRange.layerCount == b.subresourceRange.layerCount)
     {
-        merged.subresourceRange.baseMipLevel =
-            std::min(a.subresourceRange.baseMipLevel, b.subresourceRange.baseMipLevel);
-        merged.subresourceRange.levelCount = a.subresourceRange.levelCount + b.subresourceRange.levelCount;
+        u32 firstMip = std::min(merged.subresourceRange.baseMipLevel, b.subresourceRange.baseMipLevel);
+        u32 lastMip = std::max(merged.subresourceRange.baseMipLevel + merged.subresourceRange.levelCount,
+                               b.subresourceRange.baseMipLevel + b.subresourceRange.levelCount);
+        merged.subresourceRange.baseMipLevel = firstMip;
+        merged.subresourceRange.levelCount = lastMip - firstMip;
     }
-    // Merge adjacent array layers (same mip range)
-    else if (a.subresourceRange.baseMipLevel == b.subresourceRange.baseMipLevel &&
-             a.subresourceRange.levelCount == b.subresourceRange.levelCount)
+    else if (merged.subresourceRange.baseMipLevel == b.subresourceRange.baseMipLevel &&
+             merged.subresourceRange.levelCount == b.subresourceRange.levelCount)
     {
-        merged.subresourceRange.baseArrayLayer =
-            std::min(a.subresourceRange.baseArrayLayer, b.subresourceRange.baseArrayLayer);
-        merged.subresourceRange.layerCount = a.subresourceRange.layerCount + b.subresourceRange.layerCount;
+        u32 firstSlice = std::min(merged.subresourceRange.baseArrayLayer, b.subresourceRange.baseArrayLayer);
+        u32 lastSlice = std::max(merged.subresourceRange.baseArrayLayer + merged.subresourceRange.layerCount,
+                                 b.subresourceRange.baseArrayLayer + b.subresourceRange.layerCount);
+        merged.subresourceRange.baseArrayLayer = firstSlice;
+        merged.subresourceRange.layerCount = lastSlice - firstSlice;
     }
+
+    merged.subresourceRange.aspectMask |= b.subresourceRange.aspectMask;
+
     return merged;
 }
 
