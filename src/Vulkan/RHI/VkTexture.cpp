@@ -1,6 +1,7 @@
 ﻿#include "VkTexture.h"
 
 #include <Vex/Bindings.h>
+#include <Vex/Utility/Visitor.h>
 
 #include <RHI/RHIBindings.h>
 
@@ -308,25 +309,44 @@ void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 
 void VkTexture::FreeAllocation(RHIAllocator& allocator)
 {
+#if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
     allocator.FreeResource(allocation);
+#else
+    memory.release();
+#endif
 }
 
 Span<byte> VkTexture::Map()
 {
+#if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
     if (!allocator)
     {
         VEX_LOG(Fatal, "Texture {} cannot be mapped to", desc.name);
     }
     return allocator->MapAllocation(allocation);
+#else
+    ::vk::Image rawImage = std::visit(Visitor{
+        [](::vk::Image image){ return image; },
+        [](::vk::UniqueImage& image){ return *image; }
+    }, image);
+
+    ::vk::MemoryRequirements imageMemoryReq = ctx->device.getImageMemoryRequirements(rawImage);
+    void* ptr = VEX_VK_CHECK <<= ctx->device.mapMemory(*memory, 0, VK_WHOLE_SIZE);
+    return { static_cast<byte*>(ptr), imageMemoryReq.size };
+#endif
 }
 
 void VkTexture::Unmap()
 {
+#if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
     if (!allocator)
     {
         VEX_LOG(Fatal, "Texture {} cannot be unmapped", desc.name);
     }
     allocator->UnmapAllocation(allocation);
+#else
+    ctx->device.unmapMemory(*memory);
+#endif
 }
 
 void VkTexture::CreateImage(RHIAllocator& allocator)
