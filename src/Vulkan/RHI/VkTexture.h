@@ -62,7 +62,7 @@ public:
 
     // UniqueImage constructors:
     // Takes ownership of the image
-    VkTexture(const NonNullPtr<VkGPUContext> ctx, const TextureDesc& desc, ::vk::UniqueImage rawImage);
+    VkTexture(NonNullPtr<VkGPUContext> ctx, const TextureDesc& desc, ::vk::UniqueImage rawImage);
     VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDesc&& desc, ::vk::UniqueImage rawImage);
 
     // Creates a new image from the description
