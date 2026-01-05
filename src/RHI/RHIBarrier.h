@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIFwd.h>
 

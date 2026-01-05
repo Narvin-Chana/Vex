@@ -34,7 +34,7 @@ namespace vex::vk
         return eLateFragmentTests;
     case Depth:
     case DepthStencil:
-        return eEarlyFragmentTests | eLateFragmentTests;
+        return eEarlyFragmentTests;
     case ComputeShader:
         return eComputeShader;
     case Copy:

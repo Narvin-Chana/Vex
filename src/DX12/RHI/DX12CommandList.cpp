@@ -5,11 +5,13 @@
 #include <Vex/Bindings.h>
 #include <Vex/Logger.h>
 #include <Vex/Texture.h>
+#include <Vex/Utility/Algorithms.h>
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Validation.h>
 
 #include <RHI/RHIBindings.h>
 
+#include <DX12/DX12Formats.h>
 #include <DX12/DX12GraphicsPipeline.h>
 #include <DX12/HRChecker.h>
 #include <DX12/RHI/DX12Barrier.h>
@@ -47,18 +49,22 @@ static bool CanMergeBarriers(const D3D12_TEXTURE_BARRIER& a, const D3D12_TEXTURE
     if (a.Flags != b.Flags)
         return false;
 
-    // Must have the same plane
-    if (a.Subresources.FirstPlane != b.Subresources.FirstPlane || a.Subresources.NumPlanes != b.Subresources.NumPlanes)
+    if (!DoesRangeOverlap(a.Subresources.FirstPlane,
+                          a.Subresources.NumPlanes,
+                          b.Subresources.FirstPlane,
+                          b.Subresources.NumPlanes))
         return false;
 
     // Check if subresources are contiguous
     // Case 1: Adjacent mips in the same array slice
     if (a.Subresources.FirstArraySlice == b.Subresources.FirstArraySlice &&
-        a.Subresources.NumArraySlices == b.Subresources.NumArraySlices && a.Subresources.NumArraySlices == 1)
+        a.Subresources.NumArraySlices == b.Subresources.NumArraySlices)
     {
         // Check if mips are adjacent
-        u32 aLastMip = a.Subresources.IndexOrFirstMipLevel + a.Subresources.NumMipLevels;
-        if (aLastMip == b.Subresources.IndexOrFirstMipLevel)
+        if (DoesRangeOverlap(a.Subresources.IndexOrFirstMipLevel,
+                             a.Subresources.NumMipLevels,
+                             b.Subresources.IndexOrFirstMipLevel,
+                             b.Subresources.NumMipLevels))
             return true;
     }
 
@@ -67,8 +73,10 @@ static bool CanMergeBarriers(const D3D12_TEXTURE_BARRIER& a, const D3D12_TEXTURE
         a.Subresources.NumMipLevels == b.Subresources.NumMipLevels)
     {
         // Check if array slices are adjacent
-        u32 aLastSlice = a.Subresources.FirstArraySlice + a.Subresources.NumArraySlices;
-        if (aLastSlice == b.Subresources.FirstArraySlice)
+        if (DoesRangeOverlap(a.Subresources.FirstArraySlice,
+                             a.Subresources.NumArraySlices,
+                             b.Subresources.FirstArraySlice,
+                             b.Subresources.NumArraySlices))
             return true;
     }
 
@@ -79,35 +87,34 @@ static D3D12_TEXTURE_BARRIER MergeBarriers(const D3D12_TEXTURE_BARRIER& a, const
 {
     D3D12_TEXTURE_BARRIER merged = a;
 
-    // Merge adjacent mips (same array slice)
-    if (a.Subresources.FirstArraySlice == b.Subresources.FirstArraySlice &&
-        a.Subresources.NumArraySlices == b.Subresources.NumArraySlices)
+    if (merged.Subresources.FirstArraySlice == b.Subresources.FirstArraySlice &&
+        merged.Subresources.NumArraySlices == b.Subresources.NumArraySlices)
     {
-        // Determine which comes first
-        if (a.Subresources.IndexOrFirstMipLevel < b.Subresources.IndexOrFirstMipLevel)
-        {
-            merged.Subresources.IndexOrFirstMipLevel = a.Subresources.IndexOrFirstMipLevel;
-        }
-        else
-        {
-            merged.Subresources.IndexOrFirstMipLevel = b.Subresources.IndexOrFirstMipLevel;
-        }
-        merged.Subresources.NumMipLevels = a.Subresources.NumMipLevels + b.Subresources.NumMipLevels;
+        u32 firstMip = std::min(merged.Subresources.IndexOrFirstMipLevel, b.Subresources.IndexOrFirstMipLevel);
+        u32 lastMip = std::max(merged.Subresources.IndexOrFirstMipLevel + merged.Subresources.NumMipLevels,
+                               b.Subresources.IndexOrFirstMipLevel + b.Subresources.NumMipLevels);
+        merged.Subresources.IndexOrFirstMipLevel = firstMip;
+        merged.Subresources.NumMipLevels = lastMip - firstMip;
     }
-    // Merge adjacent array slices (same mip range)
-    else if (a.Subresources.IndexOrFirstMipLevel == b.Subresources.IndexOrFirstMipLevel &&
-             a.Subresources.NumMipLevels == b.Subresources.NumMipLevels)
+    else if (merged.Subresources.IndexOrFirstMipLevel == b.Subresources.IndexOrFirstMipLevel &&
+             merged.Subresources.NumMipLevels == b.Subresources.NumMipLevels)
     {
-        // Determine which comes first
-        if (a.Subresources.FirstArraySlice < b.Subresources.FirstArraySlice)
-        {
-            merged.Subresources.FirstArraySlice = a.Subresources.FirstArraySlice;
-        }
-        else
-        {
-            merged.Subresources.FirstArraySlice = b.Subresources.FirstArraySlice;
-        }
-        merged.Subresources.NumArraySlices = a.Subresources.NumArraySlices + b.Subresources.NumArraySlices;
+        u32 firstSlice = std::min(merged.Subresources.FirstArraySlice, b.Subresources.FirstArraySlice);
+        u32 lastSlice = std::max(merged.Subresources.FirstArraySlice + merged.Subresources.NumArraySlices,
+                                 b.Subresources.FirstArraySlice + b.Subresources.NumArraySlices);
+        merged.Subresources.FirstArraySlice = firstSlice;
+        merged.Subresources.NumArraySlices = lastSlice - firstSlice;
+    }
+
+    bool samePlane = merged.Subresources.FirstPlane == b.Subresources.FirstPlane &&
+                     merged.Subresources.NumPlanes == b.Subresources.NumPlanes;
+    if (!samePlane)
+    {
+        u32 firstPlane = std::min(merged.Subresources.FirstPlane, b.Subresources.FirstPlane);
+        u32 lastPlane = std::max(merged.Subresources.FirstPlane + merged.Subresources.NumPlanes,
+                                 b.Subresources.FirstPlane + b.Subresources.NumPlanes);
+        merged.Subresources.FirstPlane = firstPlane;
+        merged.Subresources.NumPlanes = lastPlane - firstPlane;
     }
 
     return merged;
@@ -120,8 +127,7 @@ struct DX12BufferTextureCopyDesc
     D3D12_BOX box;
 };
 
-static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(const ComPtr<DX12Device>& device,
-                                                              RHIBuffer& buffer,
+static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(RHIBuffer& buffer,
                                                               RHITexture& texture,
                                                               const BufferTextureCopyDesc& desc)
 {
@@ -132,28 +138,35 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(const ComPtr<DX12D
     bufferLoc.pResource = buffer.GetRawBuffer();
     bufferLoc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 
+    TextureFormat format = texture.GetDesc().format;
+
     D3D12_RESOURCE_DESC textureDesc = texture.GetRawTexture()->GetDesc();
     if (textureDesc.Flags & D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT)
     {
         // Tight alignment means we have to force the alignment field to 0.
         textureDesc.Alignment = 0;
     }
-    const u32 subresourceIndex =
-        desc.textureRegion.subresource.startSlice * texture.GetDesc().mips + desc.textureRegion.subresource.startMip;
-    device->GetCopyableFootprints(&textureDesc,
-                                  subresourceIndex,
-                                  1,
-                                  desc.bufferRegion.offset,
-                                  &bufferLoc.PlacedFootprint,
-                                  nullptr,
-                                  nullptr,
-                                  nullptr);
+
+    const u32 subresourceIndex = D3D12CalcSubresource(
+        desc.textureRegion.subresource.startMip,
+        texture.GetDesc().type == TextureType::Texture3D ? 0 : desc.textureRegion.subresource.startSlice,
+        desc.textureRegion.subresource.GetStartPlane(),
+        texture.GetDesc().mips,
+        texture.GetDesc().GetSliceCount());
 
     auto [width, height, depth] =
         desc.textureRegion.GetExtents(texture.GetDesc(), desc.textureRegion.subresource.startMip);
+    bufferLoc.SubresourceIndex = subresourceIndex;
+    bufferLoc.PlacedFootprint.Offset = desc.bufferRegion.offset;
+
+    bufferLoc.PlacedFootprint.Footprint.Format =
+        TextureFormatToDXGI(TextureUtil::GetCopyFormat(format, desc.textureRegion.subresource.GetSingleAspect()),
+                            false);
     bufferLoc.PlacedFootprint.Footprint.Width = std::max(width, 1u);
     bufferLoc.PlacedFootprint.Footprint.Height = std::max(height, 1u);
     bufferLoc.PlacedFootprint.Footprint.Depth = std::max(depth, 1u);
+    bufferLoc.PlacedFootprint.Footprint.RowPitch =
+        AlignUp<u64>(width * TextureUtil::GetPixelByteSizeFromFormat(format), TextureUtil::RowPitchAlignment);
 
     D3D12_TEXTURE_COPY_LOCATION textureLoc = {};
     textureLoc.pResource = texture.GetRawTexture();
@@ -329,13 +342,21 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
                                  .bottom = clearRect.offsetY + static_cast<i32>(clearRect.extentY) });
     }
 
+    TextureAspect::Flags aspect = 0;
+    if (clearValue.clearAspect & TextureAspect::Color)
+        aspect |= TextureAspect::Color;
+    if (clearValue.clearAspect & TextureAspect::Depth)
+        aspect |= TextureAspect::Depth;
+    if (clearValue.clearAspect & TextureAspect::Stencil)
+        aspect |= TextureAspect::Stencil;
+
     // Clearing in DX12 allows for multiple slices to be cleared, however you cannot clear multiple mips with one
     // call.
     // Instead we iterate on the mips passed in by the user.
     if (usage == TextureUsage::RenderTarget)
     {
         RHITextureBarrier barrier{ binding.texture,
-                                   TextureSubresource{},
+                                   TextureSubresource{ .aspect = aspect },
                                    RHIBarrierSync::RenderTarget,
                                    RHIBarrierAccess::RenderTarget,
                                    RHITextureLayout::RenderTarget };
@@ -345,7 +366,7 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
         for (u32 mip = dxTextureView.subresource.startMip; mip < maxMip; ++mip)
         {
             dxTextureView.subresource.startMip = mip;
-            VEX_ASSERT(clearValue.flags & TextureClear::ClearColor,
+            VEX_ASSERT(clearValue.clearAspect & TextureAspect::Color,
                        "Clearing the color requires the TextureClear::ClearColor flag for texture: {}.",
                        desc.name);
             commandList->ClearRenderTargetView(binding.texture->GetOrCreateRTVDSVView(dxTextureView),
@@ -356,23 +377,24 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
     }
     else if (usage == TextureUsage::DepthStencil)
     {
-        RHITextureBarrier barrier{ binding.texture,
-                                   TextureSubresource{},
-                                   RHIBarrierSync::DepthStencil,
-                                   RHIBarrierAccess::DepthStencilWrite,
-                                   RHITextureLayout::DepthStencilWrite };
-        Barrier({}, { &barrier, 1 });
+        RHITextureBarrier barrierDepth{ binding.texture,
+                                        TextureSubresource{ .aspect = aspect },
+                                        RHIBarrierSync::DepthStencil,
+                                        RHIBarrierAccess::DepthStencilWrite,
+                                        RHITextureLayout::DepthStencilWrite };
+
+        Barrier({}, { barrierDepth });
 
         dxTextureView.usage = TextureUsage::DepthStencil;
         for (u32 mip = dxTextureView.subresource.startMip; mip < maxMip; ++mip)
         {
             dxTextureView.subresource.startMip = mip;
             D3D12_CLEAR_FLAGS clearFlags = static_cast<D3D12_CLEAR_FLAGS>(0);
-            if (clearValue.flags & TextureClear::ClearDepth)
+            if (clearValue.clearAspect & TextureAspect::Depth)
             {
                 clearFlags |= D3D12_CLEAR_FLAG_DEPTH;
             }
-            if (clearValue.flags & TextureClear::ClearStencil)
+            if (clearValue.clearAspect & TextureAspect::Stencil)
             {
                 clearFlags |= D3D12_CLEAR_FLAG_STENCIL;
             }
@@ -426,7 +448,8 @@ void DX12CommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers,
     for (const auto& textureBarrier : textureBarriers)
     {
         // Check if we can use the fast-path.
-        const bool isSubresourceFullResource = textureBarrier.subresource == TextureSubresource{};
+        const bool isSubresourceFullResource =
+            textureBarrier.subresource.IsFullResource(textureBarrier.texture->GetDesc());
         if (isSubresourceFullResource && textureBarrier.texture->IsLastBarrierStateUniform())
         {
             D3D12_TEXTURE_BARRIER dx12Barrier = {};
@@ -458,8 +481,8 @@ void DX12CommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers,
             dx12Barrier.Subresources.FirstArraySlice = textureBarrier.subresource.startSlice;
             dx12Barrier.Subresources.NumArraySlices =
                 textureBarrier.subresource.GetSliceCount(textureBarrier.texture->GetDesc());
-            dx12Barrier.Subresources.FirstPlane = 0;
-            dx12Barrier.Subresources.NumPlanes = 1; // Most textures have 1 plane
+            dx12Barrier.Subresources.FirstPlane = textureBarrier.subresource.GetStartPlane();
+            dx12Barrier.Subresources.NumPlanes = textureBarrier.subresource.GetPlaneCount();
             dx12Barrier.Flags = D3D12_TEXTURE_BARRIER_FLAG_NONE;
             dx12TextureBarriers.push_back(std::move(dx12Barrier));
 
@@ -475,25 +498,20 @@ void DX12CommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers,
             textureBarrier.texture->EnsureLastBarrierStateNonUniform();
 
             // We have to iterate on the barrier's subresource ranges.
-            for (u16 mip = textureBarrier.subresource.startMip;
-                 mip < textureBarrier.subresource.startMip +
-                           textureBarrier.subresource.GetMipCount(textureBarrier.texture->GetDesc());
-                 ++mip)
-            {
-                for (u32 slice = textureBarrier.subresource.startSlice;
-                     slice < textureBarrier.subresource.startSlice +
-                                 textureBarrier.subresource.GetSliceCount(textureBarrier.texture->GetDesc());
-                     ++slice)
+            TextureUtil::ForEachSubresourceIndices(
+                textureBarrier.subresource,
+                textureBarrier.texture->GetDesc(),
+                [&](u32 mip, u32 slice, u32 plane)
                 {
                     D3D12_TEXTURE_BARRIER dx12Barrier = {};
                     dx12Barrier.SyncBefore =
-                        RHIBarrierSyncToDX12(textureBarrier.texture->GetLastSyncForSubresource(mip, slice));
+                        RHIBarrierSyncToDX12(textureBarrier.texture->GetLastSyncForSubresource(mip, slice, plane));
                     dx12Barrier.SyncAfter = RHIBarrierSyncToDX12(textureBarrier.dstSync);
                     dx12Barrier.AccessBefore =
-                        RHIBarrierAccessToDX12(textureBarrier.texture->GetLastAccessForSubresource(mip, slice));
+                        RHIBarrierAccessToDX12(textureBarrier.texture->GetLastAccessForSubresource(mip, slice, plane));
                     dx12Barrier.AccessAfter = RHIBarrierAccessToDX12(textureBarrier.dstAccess);
                     dx12Barrier.LayoutBefore =
-                        RHITextureLayoutToDX12(textureBarrier.texture->GetLastLayoutForSubresource(mip, slice));
+                        RHITextureLayoutToDX12(textureBarrier.texture->GetLastLayoutForSubresource(mip, slice, plane));
                     dx12Barrier.LayoutAfter = RHITextureLayoutToDX12(textureBarrier.dstLayout);
                     dx12Barrier.pResource = textureBarrier.texture->GetRawTexture();
 
@@ -515,8 +533,8 @@ void DX12CommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers,
                     dx12Barrier.Subresources.NumMipLevels = 1;
                     dx12Barrier.Subresources.FirstArraySlice = slice;
                     dx12Barrier.Subresources.NumArraySlices = 1;
-                    dx12Barrier.Subresources.FirstPlane = 0;
-                    dx12Barrier.Subresources.NumPlanes = 1; // Most textures have 1 plane
+                    dx12Barrier.Subresources.FirstPlane = plane;
+                    dx12Barrier.Subresources.NumPlanes = 1;
                     dx12Barrier.Flags = D3D12_TEXTURE_BARRIER_FLAG_NONE;
                     dx12TextureBarriers.push_back(std::move(dx12Barrier));
 
@@ -528,10 +546,10 @@ void DX12CommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers,
                             textureBarrier.dstAccess,
                             remapToCommon ? RHITextureLayout::Common : textureBarrier.dstLayout,
                             mip,
-                            slice);
+                            slice,
+                            plane);
                     }
-                }
-            }
+                });
 
             // If the dst barrier is constant across the entire resource, we can just revert to uniform barriers.
             if (isSubresourceFullResource)
@@ -781,7 +799,7 @@ void DX12CommandList::Copy(RHIBuffer& src, RHITexture& dst, Span<const BufferTex
 {
     for (const BufferTextureCopyDesc& copyDesc : copyDescriptions)
     {
-        auto locations = CommandList_Internal::GetCopyLocationsFromCopyDesc(device, src, dst, copyDesc);
+        auto locations = CommandList_Internal::GetCopyLocationsFromCopyDesc(src, dst, copyDesc);
         commandList->CopyTextureRegion(&locations.textureLoc,
                                        copyDesc.textureRegion.offset.x,
                                        copyDesc.textureRegion.offset.y,
@@ -795,7 +813,7 @@ void DX12CommandList::Copy(RHITexture& src, RHIBuffer& dst, Span<const BufferTex
 {
     for (const BufferTextureCopyDesc& copyDesc : copyDescriptions)
     {
-        auto locations = CommandList_Internal::GetCopyLocationsFromCopyDesc(device, dst, src, copyDesc);
+        auto locations = CommandList_Internal::GetCopyLocationsFromCopyDesc(dst, src, copyDesc);
         commandList->CopyTextureRegion(&locations.bufferLoc, 0, 0, 0, &locations.textureLoc, &locations.box);
     }
 }

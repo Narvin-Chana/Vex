@@ -7,6 +7,15 @@
 namespace vex
 {
 
+u32 FormatUtil::GetPlaneCount(TextureFormat format)
+{
+    if (IsDepthAndStencilFormat(format))
+    {
+        return 2;
+    }
+    return 1;
+}
+
 bool FormatUtil::HasSRGBEquivalent(TextureFormat format)
 {
     switch (format)
@@ -23,13 +32,16 @@ bool FormatUtil::HasSRGBEquivalent(TextureFormat format)
     }
 }
 
-bool FormatUtil::IsDepthStencilCompatible(TextureFormat format)
+bool FormatUtil::IsDepthOrStencilFormat(TextureFormat format)
+{
+    return IsDepthOnlyFormat(format) || IsDepthAndStencilFormat(format);
+}
+
+bool FormatUtil::IsDepthOnlyFormat(TextureFormat format)
 {
     switch (format)
     {
     case TextureFormat::D16_UNORM:
-    case TextureFormat::D24_UNORM_S8_UINT:
-    case TextureFormat::D32_FLOAT_S8_UINT:
     case TextureFormat::D32_FLOAT:
         return true;
     default:
@@ -37,7 +49,7 @@ bool FormatUtil::IsDepthStencilCompatible(TextureFormat format)
     }
 }
 
-bool FormatUtil::SupportsStencil(TextureFormat format)
+bool FormatUtil::IsDepthAndStencilFormat(TextureFormat format)
 {
     switch (format)
     {
@@ -196,7 +208,7 @@ bool FormatUtil::SupportsMipGeneration(TextureFormat format)
     VEX_ASSERT(format != UNKNOWN, "Unknown is an invalid texture format!");
 
     // Depth-stencil textures are unsupported for mip generation.
-    if (IsDepthStencilCompatible(format))
+    if (IsDepthOrStencilFormat(format))
     {
         return false;
     }

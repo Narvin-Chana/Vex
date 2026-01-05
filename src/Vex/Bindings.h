@@ -1,15 +1,15 @@
 #pragma once
 
 #include <optional>
-#include <Vex/Containers/Span.h>
 #include <variant>
 
 #include <Vex/Buffer.h>
+#include <Vex/Containers/Span.h>
+#include <Vex/Texture.h>
+#include <Vex/Types.h>
 #include <Vex/Utility/Concepts.h>
 #include <Vex/Utility/EnumFlags.h>
 #include <Vex/Utility/Formattable.h>
-#include <Vex/Texture.h>
-#include <Vex/Types.h>
 
 #include <RHI/RHIFwd.h>
 
@@ -41,8 +41,8 @@ struct ConstantBinding
     }
 
     // Construct constant binding from any non-container T.
-    // This constructor's concepts are here to avoid taking in a container, and thus polluting constant data with the container's data (eg: a
-    // vector's size/capacity).
+    // This constructor's concepts are here to avoid taking in a container, and thus polluting constant data with the
+    // container's data (eg: a vector's size/capacity).
     template <typename T>
         requires(sizeof(T) <= MaxTheoreticalLocalConstantsByteSize and not IsContainer<T>)
     explicit ConstantBinding(const T& data)

@@ -10,10 +10,12 @@
 #include <Vex/Utility/Validation.h>
 
 #include <RHI/RHIBarrier.h>
+#include <RHI/RHIBindings.h>
 #include <RHI/RHIFwd.h>
 
 namespace vex
 {
+struct RHITextureBinding;
 
 class RHITextureBase : public MappableResourceInterface
 {
@@ -32,12 +34,12 @@ public:
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeAllocation(RHIAllocator& allocator) = 0;
 
-    const TextureDesc& GetDesc() const
+    [[nodiscard]] const TextureDesc& GetDesc() const
     {
         return desc;
     }
 
-    const Allocation& GetAllocation() const
+    [[nodiscard]] const Allocation& GetAllocation() const
     {
         return allocation;
     }
@@ -61,20 +63,49 @@ public:
         return uniformLastBarrierState->lastLayout;
     }
 
-    [[nodiscard]] RHIBarrierSync GetLastSyncForSubresource(u16 mip, u32 slice) const
+    [[nodiscard]] RHITextureLayout GetLastLayoutForSubresource(const TextureSubresource& subresource) const
     {
-        VEX_CHECK(!IsLastBarrierStateUniform(), "Resource is in a uniform state, call GetLastSync instead.");
-        return perSubresourceLastBarrierState[GetSubresourceIndex(mip, slice)].lastSync;
+        if (IsLastBarrierStateUniform())
+            return GetLastLayout();
+
+        std::optional<RHITextureLayout> layout;
+
+        TextureUtil::ForEachSubresourceIndices(
+            subresource,
+            GetDesc(),
+            [this, &layout](u32 mip, u32 slice, u32 plane)
+            {
+                RHITextureLayout resourceLayout = GetLastLayoutForSubresource(mip, slice, plane);
+                if (!layout)
+                {
+                    layout = resourceLayout;
+                }
+                else
+                {
+                    VEX_ASSERT(*layout == resourceLayout, "Subresource parts are not all in the same layout");
+                }
+            });
+
+        return *layout;
     }
-    [[nodiscard]] RHIBarrierAccess GetLastAccessForSubresource(u16 mip, u32 slice) const
+
+    [[nodiscard]] RHIBarrierSync GetLastSyncForSubresource(u16 mip, u32 slice, u32 plane) const
     {
-        VEX_CHECK(!IsLastBarrierStateUniform(), "Resource is in a uniform state, call GetLastAccess instead.");
-        return perSubresourceLastBarrierState[GetSubresourceIndex(mip, slice)].lastAccess;
+        if (IsLastBarrierStateUniform())
+            return GetLastSync();
+        return perSubresourceLastBarrierState[GetSubresourceIndex(mip, slice, plane)].lastSync;
     }
-    [[nodiscard]] RHITextureLayout GetLastLayoutForSubresource(u16 mip, u32 slice) const
+    [[nodiscard]] RHIBarrierAccess GetLastAccessForSubresource(u16 mip, u32 slice, u32 plane) const
     {
-        VEX_CHECK(!IsLastBarrierStateUniform(), "Resource is in a uniform state, call GetLastLayout instead.");
-        return perSubresourceLastBarrierState[GetSubresourceIndex(mip, slice)].lastLayout;
+        if (IsLastBarrierStateUniform())
+            return GetLastAccess();
+        return perSubresourceLastBarrierState[GetSubresourceIndex(mip, slice, plane)].lastAccess;
+    }
+    [[nodiscard]] RHITextureLayout GetLastLayoutForSubresource(u16 mip, u32 slice, u32 plane) const
+    {
+        if (IsLastBarrierStateUniform())
+            return GetLastLayout();
+        return perSubresourceLastBarrierState[GetSubresourceIndex(mip, slice, plane)].lastLayout;
     }
 
     void SetLastBarrierState(RHIBarrierSync sync, RHIBarrierAccess access, RHITextureLayout layout)
@@ -85,10 +116,10 @@ public:
     }
 
     void SetLastBarrierStateForSubresource(
-        RHIBarrierSync sync, RHIBarrierAccess access, RHITextureLayout layout, u16 mip, u32 slice)
+        RHIBarrierSync sync, RHIBarrierAccess access, RHITextureLayout layout, u16 mip, u32 slice, u32 plane)
     {
         // Now update the subresource with the required last barrier state.
-        perSubresourceLastBarrierState[GetSubresourceIndex(mip, slice)] = { sync, access, layout };
+        perSubresourceLastBarrierState[GetSubresourceIndex(mip, slice, plane)] = { sync, access, layout };
     }
 
     void EnsureLastBarrierStateNonUniform()
@@ -100,27 +131,31 @@ public:
         }
 
         // If we still haven't allocated the perSubresource last barrier state vector, do it now!
-        perSubresourceLastBarrierState.resize(desc.mips * desc.GetSliceCount());
+        perSubresourceLastBarrierState.resize(desc.mips * desc.GetSliceCount() * desc.GetPlaneCount());
         for (u16 mip = 0; mip < desc.mips; ++mip)
         {
             for (u32 slice = 0; slice < desc.GetSliceCount(); ++slice)
             {
-                perSubresourceLastBarrierState[mip * desc.GetSliceCount() + slice] = *uniformLastBarrierState;
+                for (u32 plane = 0; plane < desc.GetPlaneCount(); ++plane)
+                {
+                    perSubresourceLastBarrierState[GetSubresourceIndex(mip, slice, plane)] = *uniformLastBarrierState;
+                }
             }
         }
         // Reset the uniform last barrier state, so that future barriers are split per subresource.
         uniformLastBarrierState.reset();
     }
 
-    bool IsLastBarrierStateUniform() const
+    [[nodiscard]] bool IsLastBarrierStateUniform() const
     {
         return uniformLastBarrierState.has_value();
     }
 
 protected:
-    u32 GetSubresourceIndex(u16 mip, u32 slice) const
+    [[nodiscard]] u32 GetSubresourceIndex(u16 mip, u32 slice, u32 plane) const
     {
-        return static_cast<u32>(mip) + slice * desc.mips;
+        VEX_ASSERT(mip < desc.mips && slice < desc.GetSliceCount() && plane < desc.GetPlaneCount());
+        return plane * (desc.mips * desc.GetSliceCount()) + static_cast<u32>(mip) + slice * desc.mips;
     }
 
     TextureDesc desc;
