@@ -4,7 +4,7 @@ namespace vex::dx12
 {
 
 DX12DescriptorPool::DX12DescriptorPool(ComPtr<DX12Device>& device)
-    // TODO: allow resizing, currently disallowed
+    // TODO(https://trello.com/c/uGignSlW): allow resizing of the GPU heap, currently disallowed due to synchro issues.
     : device{ device }
     , gpuHeap(device, GDefaultDescriptorPoolSize, "DescriptorPool Heap")
     , nullHeap(device, 1, "NullDescriptor Heap")

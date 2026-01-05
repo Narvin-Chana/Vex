@@ -135,6 +135,8 @@ add_library(Vex STATIC
     "src/RHI/RHIResourceLayout.h"
     "src/RHI/RHIDescriptorPool.h"
     "src/RHI/RHIDescriptorPool.cpp"
+    "src/RHI/RHIAccelerationStructure.h"
+    "src/RHI/RHIAccelerationStructure.cpp"
     "src/RHI/RHICommandList.h"
     "src/RHI/RHICommandList.cpp"
     "src/RHI/RHIAllocator.h"
@@ -156,6 +158,7 @@ add_library(Vex STATIC
     "src/Vex/RHIImpl/RHIBuffer.h"
     "src/Vex/RHIImpl/RHIAllocator.h"
     "src/Vex/RHIImpl/RHITimestampQueryPool.h"
+    "src/Vex/RHIImpl/RHIAccelerationStructure.h"
     # Vex Utilities
     "src/Vex/Utility/UniqueHandle.h" 
     "src/Vex/Utility/Concepts.h"
@@ -230,6 +233,7 @@ add_library(Vex STATIC
     "src/Vex/ResourceCopy.cpp"
     "src/Vex/ResourceReadbackContext.cpp"
     "src/Vex/ResourceReadbackContext.h"
+    "src/Vex/AccelerationStructure.h"
 )
 
 if(WIN32)

@@ -206,7 +206,7 @@ std::pair<bool, std::size_t> ShaderCompiler::IsShaderStale(const Shader& shader)
     // bool isShaderStale = shader.hash != *newHash;
     // return { isShaderStale, *newHash };
 
-    // TODO: figure out a better way to determine which shaders are due for recompilation...
+    // TODO(https://trello.com/c/UquJz7ow): figure out a better way to determine which shaders are due for recompilation...
     // For now we recompile ALL shaders upon request.
     return { true, 0 };
 }
@@ -244,7 +244,7 @@ void ShaderCompiler::MarkAllStaleShadersDirty()
     u32 numStaleShaders = 0;
     for (auto& [key, shader] : shaderCache)
     {
-        // TODO: figure out a better way to determine which shaders are due for recompilation...
+        // TODO(https://trello.com/c/UquJz7ow): figure out a better way to determine which shaders are due for recompilation...
         // if (auto [isShaderStale, newShaderHash] = IsShaderStale(shader); isShaderStale || shader.isErrored)
         {
             // shader.hash = newShaderHash;

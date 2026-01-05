@@ -2,6 +2,7 @@
 
 #include <Vex/Logger.h>
 #include <Vex/Utility/WString.h>
+#include <Vex/Utility/ByteUtils.h>
 
 #include <DX12/HRChecker.h>
 
@@ -15,14 +16,21 @@ DX12Allocator::DX12Allocator(const ComPtr<DX12Device>& device)
 }
 
 Allocation DX12Allocator::AllocateResource(ComPtr<ID3D12Resource>& resource,
-                                           const CD3DX12_RESOURCE_DESC& resourceDesc,
+                                           const CD3DX12_RESOURCE_DESC1& resourceDesc,
                                            HeapType heapType,
-                                           D3D12_RESOURCE_STATES initialState,
+                                           D3D12_BARRIER_LAYOUT initialLayout,
                                            std::optional<D3D12_CLEAR_VALUE> optionalClearValue)
 {
     // Query device for the byte size and alignment of the resource.
     // We cannot compute this ourselves as this depends on hardware/vendors.
-    D3D12_RESOURCE_ALLOCATION_INFO allocInfo = device->GetResourceAllocationInfo(0, 1, &resourceDesc);
+    D3D12_RESOURCE_ALLOCATION_INFO allocInfo =
+        device->GetResourceAllocationInfo3(0, 1, &resourceDesc, nullptr, nullptr, nullptr);
+
+    // RT acceleration structures have a higher alignment requirement, for some reason GetResourceAllocationInfo3, does not return the correct alignment.
+    if (resourceDesc.Flags & D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE)
+    {
+        allocInfo.Alignment = AlignUp<u64>(allocInfo.Alignment, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
+    }
 
     // Allocates and handles finding an optimal place to allocate the memory.
     // No api calls will be made if a valid MemoryRange is already available, making this super fast!
@@ -71,12 +79,14 @@ Allocation DX12Allocator::AllocateResource(ComPtr<ID3D12Resource>& resource,
 
     auto& heapList = heaps[std::to_underlying(heapType)];
 
-    chk << device->CreatePlacedResource(heapList[allocation.pageHandle].Get(),
-                                        allocation.memoryRange.offset,
-                                        &resourceDesc,
-                                        initialState,
-                                        optionalClearValue.has_value() ? &optionalClearValue.value() : nullptr,
-                                        IID_PPV_ARGS(&resource));
+    chk << device->CreatePlacedResource2(heapList[allocation.pageHandle].Get(),
+                                         allocation.memoryRange.offset,
+                                         &resourceDesc,
+                                         initialLayout,
+                                         optionalClearValue.has_value() ? &optionalClearValue.value() : nullptr,
+                                         0,
+                                         nullptr,
+                                         IID_PPV_ARGS(&resource));
 
     return allocation;
 }

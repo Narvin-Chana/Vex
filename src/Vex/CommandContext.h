@@ -4,12 +4,12 @@
 
 #include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/Containers/Span.h>
-#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/ResourceReadbackContext.h>
 #include <Vex/ScopedGPUEvent.h>
 #include <Vex/Shaders/ShaderKey.h>
 #include <Vex/Synchronization.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIBindings.h>
 #include <RHI/RHIBuffer.h>
@@ -28,7 +28,7 @@ struct Texture;
 struct Buffer;
 struct TextureClearValue;
 struct DrawDesc;
-struct RayTracingPassDescription;
+struct RayTracingPassDesc;
 
 class CommandContext
 {
@@ -86,7 +86,7 @@ public:
     void DispatchIndirect();
 
     // Dispatches a ray tracing pass.
-    void TraceRays(const RayTracingPassDescription& rayTracingPassDescription,
+    void TraceRays(const RayTracingPassDesc& rayTracingPassDescription,
                    ConstantBinding constants,
                    std::array<u32, 3> widthHeightDepth);
 
@@ -102,9 +102,7 @@ public:
     // Copies a region of the source texture to the destination texture.
     void Copy(const Texture& source, const Texture& destination, const TextureCopyDesc& textureCopyDescription);
     // Copies multiple regions of the source texture to the destination texture.
-    void Copy(const Texture& source,
-              const Texture& destination,
-              Span<const TextureCopyDesc> textureCopyDescriptions);
+    void Copy(const Texture& source, const Texture& destination, Span<const TextureCopyDesc> textureCopyDescriptions);
     // Copies the entirety of the source buffer to the destination buffer.
     void Copy(const Buffer& source, const Buffer& destination);
     // Copies the specified region from the source buffer to the destination buffer.
@@ -158,12 +156,23 @@ public:
 
     // Enqueues for the entirety of a texture to be readback from the GPU to the specified output.
     // Will automatically use a staging buffer if necessary.
-    TextureReadbackContext EnqueueDataReadback(const Texture& srcTexture,
-                                               Span<const TextureRegion> textureRegions);
+    TextureReadbackContext EnqueueDataReadback(const Texture& srcTexture, Span<const TextureRegion> textureRegions);
     // Enqueues for the entirety of a texture to be readback from the GPU to the specified output.
     // Will automatically use a staging buffer if necessary.
     TextureReadbackContext EnqueueDataReadback(const Texture& srcTexture,
                                                const TextureRegion& textureRegion = TextureRegion::AllMips());
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // Acceleration Structure Operations
+    // ---------------------------------------------------------------------------------------------------------------
+
+    // Builds a Bottom Level Acceleration Structure for Hardware Ray Tracing, by uploading the passed in Geometry.
+    void BuildBLAS(const AccelerationStructure& accelerationStructure, const BLASBuildDesc& desc);
+    //void BuildBLAS(Span<std::pair<const AccelerationStructure&, const BLASBuildDesc&>> blasToBuild);
+
+    // Builds a Top Level Acceleration Structure for Hardware Ray Tracing, by uploading the passed in Instances.
+    void BuildTLAS(const AccelerationStructure& accelerationStructure, const TLASBuildDesc& desc);
+    //void BuildTLAS(Span<std::pair<const AccelerationStructure&, const TLASBuildDesc&>> tlasToBuild);
 
     // ---------------------------------------------------------------------------------------------------------------
     // Barrier Operations
@@ -188,6 +197,9 @@ public:
 
     // Will apply a barrier to the passed in buffer.
     void Barrier(const Buffer& buffer, RHIBarrierSync newSync, RHIBarrierAccess newAccess);
+
+    // Will apply a barrier to the passed in acceleration structure's buffer.
+    void Barrier(const AccelerationStructure& as, RHIBarrierSync newSync, RHIBarrierAccess newAccess);
 
     // ---------------------------------------------------------------------------------------------------------------
 
@@ -218,6 +230,16 @@ public:
     void FlushBarriers();
 
 private:
+    // Creates a temporary staging buffer that will be destroyed once the command context is done executing.
+    // Buffer creation invalidates pointers to existing RHI buffers.
+    Buffer CreateTemporaryStagingBuffer(const std::string& name,
+                                        u64 byteSize,
+                                        BufferUsage::Flags additionalUsages = BufferUsage::None);
+
+    // Creates a temporary buffer that will be destroyed once the command context is done executing.
+    // Buffer creation invalidates pointers to existing RHI buffers.
+    Buffer CreateTemporaryBuffer(const BufferDesc& desc);
+
     std::optional<RHIDrawResources> PrepareDrawCall(const DrawDesc& drawDesc,
                                                     const DrawResourceBinding& drawBindings,
                                                     ConstantBinding constants);

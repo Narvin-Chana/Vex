@@ -59,6 +59,8 @@ function(setup_vulkan_backend TARGET)
         "src/Vulkan/RHI/VkTimestampQueryPool.h"
         "src/Vulkan/RHI/VkScopedGPUEvent.h"
         "src/Vulkan/RHI/VkScopedGPUEvent.cpp"
+        "src/Vulkan/RHI/VkAccelerationStructure.h"
+        "src/Vulkan/RHI/VkAccelerationStructure.cpp"
         # Vulkan API
         "src/Vulkan/VkGraphicsPipeline.h"
         "src/Vulkan/VkGraphicsPipeline.cpp"
@@ -73,7 +75,7 @@ function(setup_vulkan_backend TARGET)
         "src/Vulkan/VkPhysicalDevice.cpp"
         "src/Vulkan/VkCommandQueue.h"
         "src/Vulkan/VkGPUContext.h"
-     )
+    )
 
     # Add Vulkan sources to target
     target_sources(${TARGET} PRIVATE ${VEX_VULKAN_SOURCES})

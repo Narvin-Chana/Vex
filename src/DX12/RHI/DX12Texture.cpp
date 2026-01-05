@@ -15,7 +15,9 @@
 #include <DX12/DX12Formats.h>
 #include <DX12/HRChecker.h>
 
+#ifndef VEX_USE_CUSTOM_ALLOCATOR_TEXTURES
 #define VEX_USE_CUSTOM_ALLOCATOR_TEXTURES 1
+#endif
 
 namespace vex::dx12
 {
@@ -201,25 +203,25 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
 {
     this->desc = desc;
 
-    CD3DX12_RESOURCE_DESC texDesc;
+    CD3DX12_RESOURCE_DESC1 texDesc;
     switch (desc.type)
     {
     case TextureType::TextureCube:
     case TextureType::Texture2D:
     {
-        texDesc = CD3DX12_RESOURCE_DESC::Tex2D(TextureFormatToDXGI(desc.format, false),
-                                               desc.width,
-                                               desc.height,
-                                               desc.GetSliceCount(),
-                                               desc.mips);
+        texDesc = CD3DX12_RESOURCE_DESC1::Tex2D(TextureFormatToDXGI(desc.format, false),
+                                                desc.width,
+                                                desc.height,
+                                                desc.GetSliceCount(),
+                                                desc.mips);
         break;
     }
     case TextureType::Texture3D:
-        texDesc = CD3DX12_RESOURCE_DESC::Tex3D(TextureFormatToDXGI(desc.format, false),
-                                               desc.width,
-                                               desc.height,
-                                               desc.depthOrSliceCount,
-                                               desc.mips);
+        texDesc = CD3DX12_RESOURCE_DESC1::Tex3D(TextureFormatToDXGI(desc.format, false),
+                                                desc.width,
+                                                desc.height,
+                                                desc.depthOrSliceCount,
+                                                desc.mips);
         break;
     }
 
@@ -269,21 +271,25 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
         texDesc.Format = GetTypelessFormatForSRGBCompatibleDX12Format(texDesc.Format);
     }
 
-    if (reinterpret_cast<DX12FeatureChecker*>(GPhysicalDevice->featureChecker.get())->SupportsTightAlignment())
+    if (VEX_USE_CUSTOM_ALLOCATOR_TEXTURES &&
+        reinterpret_cast<DX12FeatureChecker*>(GPhysicalDevice->featureChecker.get())->SupportsTightAlignment())
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
     }
 
 #if VEX_USE_CUSTOM_ALLOCATOR_TEXTURES
     allocation =
-        allocator.AllocateResource(texture, texDesc, desc.memoryLocality, D3D12_RESOURCE_STATE_COMMON, clearValue);
+        allocator.AllocateResource(texture, texDesc, desc.memoryLocality, D3D12_BARRIER_LAYOUT_UNDEFINED, clearValue);
 #else
-    chk << device->CreateCommittedResource(&heapProps,
-                                           D3D12_HEAP_FLAG_NONE,
-                                           &texDesc,
-                                           D3D12_RESOURCE_STATE_COMMON,
-                                           clearValue.has_value() ? &clearValue.value() : nullptr,
-                                           IID_PPV_ARGS(&texture));
+    chk << device->CreateCommittedResource3(&heapProps,
+                                            D3D12_HEAP_FLAG_NONE,
+                                            &texDesc,
+                                            D3D12_BARRIER_LAYOUT_UNDEFINED,
+                                            clearValue.has_value() ? &clearValue.value() : nullptr,
+                                            nullptr,
+                                            0,
+                                            nullptr,
+                                            IID_PPV_ARGS(&texture));
 #endif
 
 #if !VEX_SHIPPING

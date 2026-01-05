@@ -12,7 +12,7 @@
 namespace vex
 {
 
-void RayTracingPassDescription::ValidateShaderTypes(const RayTracingPassDescription& desc)
+void RayTracingPassDesc::ValidateShaderTypes(const RayTracingPassDesc& desc)
 {
     if (desc.rayGenerationShader.type != ShaderType::RayGenerationShader)
     {

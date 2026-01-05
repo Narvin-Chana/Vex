@@ -17,7 +17,7 @@ BindlessHandle RHIDescriptorPoolBase::AllocateStaticDescriptor()
 {
     if (allocator.handles.freeIndices.empty())
     {
-        // TODO: Add resizing, would require copying previous descriptors into the new heap AND making sure the heap
+        // TODO(https://trello.com/c/uGignSlW): Add resizing, would require copying previous descriptors into the new heap AND making sure the heap
         // survives for atleast FrameBuffering frames. Resize(gpuHeap.size() * 2);
         VEX_LOG(Fatal, "Ran out of static descriptors...");
     }

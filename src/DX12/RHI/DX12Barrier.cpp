@@ -46,6 +46,10 @@ D3D12_BARRIER_SYNC RHIBarrierSyncToDX12(RHIBarrierSync barrierSync)
         return D3D12_BARRIER_SYNC_EXECUTE_INDIRECT;
     case Host:
         return D3D12_BARRIER_SYNC_NONE; // Host operations don't sync with GPU in D3D12
+    case RayTracing:
+        return D3D12_BARRIER_SYNC_RAYTRACING;
+    case BuildAccelerationStructure:
+        return D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
     case AllGraphics:
         return D3D12_BARRIER_SYNC_ALL_SHADING;
     case AllCommands:
@@ -93,6 +97,10 @@ D3D12_BARRIER_ACCESS RHIBarrierAccessToDX12(RHIBarrierAccess barrierAccess)
     case HostWrite:
         // Host access doesn't have direct D3D12 equivalent
         return D3D12_BARRIER_ACCESS_NO_ACCESS;
+    case AccelerationStructureRead:
+        return D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ;
+    case AccelerationStructureWrite:
+        return D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
     case MemoryRead:
     case MemoryWrite:
         // Generic memory read/write

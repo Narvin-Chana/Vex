@@ -40,7 +40,8 @@ void ResourceCleanup::FlushResources(RHIDescriptorPool& descriptorPool, RHIAlloc
                           {
                               using T = std::remove_cvref_t<decltype(val)>;
                               if constexpr (std::is_same_v<MaybeUninitialized<RHITexture>, T> or
-                                            std::is_same_v<MaybeUninitialized<RHIBuffer>, T>)
+                                            std::is_same_v<MaybeUninitialized<RHIBuffer>, T> or
+                                            std::is_same_v<MaybeUninitialized<RHIAccelerationStructure>, T>)
                               {
                                   val->FreeBindlessHandles(descriptorPool);
                                   val->FreeAllocation(allocator);

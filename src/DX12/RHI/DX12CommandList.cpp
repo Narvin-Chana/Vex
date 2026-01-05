@@ -14,6 +14,7 @@
 #include <DX12/DX12Formats.h>
 #include <DX12/DX12GraphicsPipeline.h>
 #include <DX12/HRChecker.h>
+#include <DX12/RHI/DX12AccelerationStructure.h>
 #include <DX12/RHI/DX12Barrier.h>
 #include <DX12/RHI/DX12Buffer.h>
 #include <DX12/RHI/DX12DescriptorPool.h>
@@ -839,6 +840,77 @@ void DX12CommandList::ResolveTimestampQueries(u32 firstQuery, u32 queryCount)
                                   queryCount,
                                   queryPool->GetTimestampBuffer().GetRawBuffer(),
                                   firstQuery * sizeof(u64));
+}
+
+void DX12CommandList::BuildBLAS(RHIAccelerationStructure& as, RHIBuffer& scratchBuffer)
+{
+    VEX_ASSERT(as.GetDesc().type == ASType::BottomLevel, "Invalid Acceleration Structure type...");
+    // Build the BLAS.
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc{};
+    buildDesc.Inputs = D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS{
+        .Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
+        .Flags = ASBuildFlagsToDX12ASBuildFlags(as.GetDesc().buildFlags),
+        .NumDescs = static_cast<u32>(as.GetGeometryDescs().size()),
+        .DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
+        .pGeometryDescs = as.GetGeometryDescs().data(),
+        // TODO(https://trello.com/c/YPn5ypzR): handle opacity micromaps
+    };
+    buildDesc.ScratchAccelerationStructureData = scratchBuffer.GetGPUVirtualAddress();
+    buildDesc.DestAccelerationStructureData = as.GetRHIBuffer().GetGPUVirtualAddress();
+    // TODO(https://trello.com/c/LIEtASpP): handle BLAS update.
+    buildDesc.SourceAccelerationStructureData = NULL;
+    commandList->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
+    // Force last sync to BuildRaytracingAccelerationStructure, since BuildRaytracingAccelerationStructure touches the
+    // resource.
+    as.GetRHIBuffer().SetLastSync(RHIBarrierSync::BuildAccelerationStructure);
+}
+
+void DX12CommandList::BuildTLAS(RHIAccelerationStructure& as,
+                                RHIBuffer& scratchBuffer,
+                                RHIBuffer& uploadBuffer,
+                                const RHITLASBuildDesc& desc)
+{
+    VEX_ASSERT(as.GetDesc().type == ASType::TopLevel, "Invalid Acceleration Structure type...");
+    // Upload required info into the upload buffer.
+    {
+        ResourceMappedMemory map{ uploadBuffer };
+        D3D12_RAYTRACING_INSTANCE_DESC* instanceDescs =
+            reinterpret_cast<D3D12_RAYTRACING_INSTANCE_DESC*>(map.GetMappedRange().data());
+        for (u32 instance = 0; instance < desc.instanceDescs.size(); ++instance)
+        {
+            const TLASInstanceDesc& tlasDesc = desc.instanceDescs[instance];
+            *instanceDescs = D3D12_RAYTRACING_INSTANCE_DESC{
+                .InstanceID = tlasDesc.instanceID,
+                .InstanceMask = tlasDesc.instanceMask,
+                .InstanceContributionToHitGroupIndex = tlasDesc.instanceContributionToHitGroupIndex,
+                .Flags = ASInstanceFlagsToDX12InstanceFlags(tlasDesc.instanceFlags),
+                .AccelerationStructure = desc.perInstanceBLAS[instance]->GetRHIBuffer().GetGPUVirtualAddress(),
+            };
+
+            std::memcpy(reinterpret_cast<float*>(instanceDescs->Transform),
+                        tlasDesc.transform.data(),
+                        tlasDesc.transform.size() * sizeof(float));
+
+            ++instanceDescs;
+        }
+    }
+
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {};
+    buildDesc.Inputs = D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS{
+        .Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
+        .Flags = ASBuildFlagsToDX12ASBuildFlags(as.GetDesc().buildFlags),
+        .NumDescs = static_cast<u32>(desc.instanceDescs.size()),
+        .DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
+        .InstanceDescs = uploadBuffer.GetGPUVirtualAddress(),
+    };
+    buildDesc.ScratchAccelerationStructureData = scratchBuffer.GetGPUVirtualAddress();
+    buildDesc.DestAccelerationStructureData = as.GetRHIBuffer().GetGPUVirtualAddress();
+    // TODO(https://trello.com/c/LIEtASpP): handle TLAS update.
+    buildDesc.SourceAccelerationStructureData = NULL;
+    commandList->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
+    // Force last sync to BuildRaytracingAccelerationStructure, since BuildRaytracingAccelerationStructure touches the
+    // resource.
+    as.GetRHIBuffer().SetLastSync(RHIBarrierSync::BuildAccelerationStructure);
 }
 
 RHIScopedGPUEvent DX12CommandList::CreateScopedMarker(const char* label, std::array<float, 3> labelColor)

@@ -16,13 +16,13 @@ namespace vex
 // Determines how the buffer can be used.
 BEGIN_VEX_ENUM_FLAGS(BufferUsage, u8)
     None                            = 0,      // Buffers that will never be bound anywhere. Mostly used for staging buffers.
-    GenericBuffer                   = 1 << 0, // Buffers that can be read from shaders (SRV)
-    UniformBuffer                   = 1 << 1, // Buffers with specific alignment constraints uniformly read across waves (CBV)
-    ReadWriteBuffer                 = 1 << 2, // Buffers with read and write operations in shaders (UAV)
-    VertexBuffer                    = 1 << 3, // Buffers used for vertex buffers
-    IndexBuffer                     = 1 << 4, // Buffers used for index buffers
+    GenericBuffer                   = 1 << 0, // Buffers that can be read from shaders (SRV).
+    UniformBuffer                   = 1 << 1, // Buffers with specific alignment constraints uniformly read across waves (CBV).
+    ReadWriteBuffer                 = 1 << 2, // Buffers with read and write operations in shaders (UAV).
+    VertexBuffer                    = 1 << 3, // Buffers used for vertex buffers.
+    IndexBuffer                     = 1 << 4, // Buffers used for index buffers.
     IndirectArgs                    = 1 << 5, // Buffers used as parameters for an indirect dispatch.
-    RaytracingAccelerationStructure = 1 << 6, // Buffers used as an RT Acceleration Structure.
+    AccelerationStructure           = (1 << 6) | ReadWriteBuffer, // Buffers used as a HWRT Acceleration Structure, require the ReadWriteBuffer usage.
 END_VEX_ENUM_FLAGS();
 
 // clang-format on
@@ -36,6 +36,7 @@ enum class BufferBindingUsage : u8
     RWStructuredBuffer,
     ByteAddressBuffer,
     RWByteAddressBuffer,
+    AccelerationStructure, // Reserved for internal use.
     Invalid = 0xFF
 };
 
@@ -83,8 +84,8 @@ struct BufferDesc
     static BufferDesc CreateReadbackBufferDesc(std::string name,
                                                u64 byteSize,
                                                BufferUsage::Flags usageFlags = BufferUsage::None);
-    // Creates a GPUOnly buffer useable as a Structured Buffer.
-    static BufferDesc CreateStructuredBufferDesc(std::string name, u64 byteSize, bool readWrite = false);
+    // Creates a GPUOnly buffer useable as a StructuredBuffer or ByteAddressBuffer.
+    static BufferDesc CreateGenericBufferDesc(std::string name, u64 byteSize, bool readWrite = false);
 };
 
 // Strongly defined type represents a buffer.

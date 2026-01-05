@@ -18,13 +18,14 @@ struct TextureDesc;
 struct PhysicalDevice;
 struct GraphicsPipelineStateKey;
 struct ComputePipelineStateKey;
-struct RayTracingPassDescription;
-using RayTracingPipelineStateKey = RayTracingPassDescription;
+struct RayTracingPassDesc;
+using RayTracingPipelineStateKey = RayTracingPassDesc;
 struct SwapChainDesc;
 struct PlatformWindow;
 enum class ShaderCompilerBackend : u8;
 struct ShaderEnvironment;
 struct SyncToken;
+struct ASDesc;
 
 struct RHIBase
 {
@@ -48,6 +49,8 @@ struct RHIBase
     virtual RHIAllocator CreateAllocator() = 0;
 
     virtual RHITimestampQueryPool CreateTimestampQueryPool(RHIAllocator& allocator) = 0;
+
+    virtual RHIAccelerationStructure CreateAS(const ASDesc& desc) = 0;
 
     virtual void WaitForTokenOnCPU(const SyncToken& syncToken) = 0;
     virtual bool IsTokenComplete(const SyncToken& syncToken) const = 0;

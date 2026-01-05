@@ -1,5 +1,8 @@
 #include "HelloRayTracing.h"
 
+#include <array>
+#include <vector>
+
 #include <GLFWIncludes.h>
 
 HelloRayTracing::HelloRayTracing()
@@ -22,6 +25,122 @@ HelloRayTracing::HelloRayTracing()
                                   .depthOrSliceCount = 1,
                                   .mips = 1,
                                   .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
+
+    using Vertex = std::array<float, 3>;
+    static constexpr float DepthValue = 1.0;
+    static constexpr float Offset = 0.7f;
+    static constexpr std::array TriangleVerts{
+        // Triangle
+        Vertex{ 0, Offset, DepthValue },
+        Vertex{ Offset, -Offset, DepthValue },
+        Vertex{ -Offset, -Offset, DepthValue },
+    };
+    static constexpr std::array<vex::u32, 3> TriangleIndices{ 0, 1, 2 };
+
+    triangleBLAS = graphics->CreateAccelerationStructure({
+        .name = "TriangleBLAS",
+        .type = vex::ASType::BottomLevel,
+        .buildFlags = vex::ASBuild::PreferFastTrace,
+    });
+    tlas = graphics->CreateAccelerationStructure({
+        .name = "HelloRayTracing_TLAS",
+        .type = vex::ASType::TopLevel,
+        .buildFlags = vex::ASBuild::PreferFastTrace,
+    });
+
+    // Create vertex and index buffers
+    const vex::BufferDesc vbDesc =
+        vex::BufferDesc::CreateVertexBufferDesc("RT Vertex Buffer", sizeof(Vertex) * TriangleVerts.size());
+    vex::Buffer vertexBuffer = graphics->CreateBuffer(vbDesc);
+
+    const vex::BufferDesc ibDesc =
+        vex::BufferDesc::CreateIndexBufferDesc("RT Index Buffer", sizeof(vex::u32) * TriangleIndices.size());
+    vex::Buffer indexBuffer = graphics->CreateBuffer(ibDesc);
+
+    vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
+
+    ctx.EnqueueDataUpload(vertexBuffer, std::as_bytes(std::span(TriangleVerts)));
+    ctx.EnqueueDataUpload(indexBuffer, std::as_bytes(std::span(TriangleIndices)));
+
+    ctx.BuildBLAS(triangleBLAS,
+                  { .geometry = { vex::BLASGeometryDesc{
+                        .vertexBufferBinding = { .buffer = vertexBuffer, .strideByteSize = static_cast<vex::u32>(sizeof(Vertex)), },
+                        .indexBufferBinding = vex::BufferBinding{ .buffer = indexBuffer, .strideByteSize = static_cast<vex::u32>(sizeof(vex::u32)), },
+                        .transform = std::nullopt,
+                        .flags = vex::ASGeometry::Opaque,
+                    } } });
+
+    ctx.Barrier(triangleBLAS, vex::RHIBarrierSync::AllCommands, vex::RHIBarrierAccess::AccelerationStructureRead);
+
+    std::array<vex::TLASInstanceDesc, 2> instances{
+        // Left triangle (in front)
+        vex::TLASInstanceDesc{
+            .transform = {
+                1.0f, 0.0f, 0.0f, -0.3f,
+                0.0f, 1.0f, 0.0f, 0.0f,
+                0.0f, 0.0f, 1.0f, 0.0f,
+            },
+            .instanceID = 0,
+            .blas = triangleBLAS,
+        },
+        // Right triangle (behind)
+        vex::TLASInstanceDesc{
+            .transform = {
+                1.0f, 0.0f, 0.0f, 0.3f,
+                0.0f, 1.0f, 0.0f, 0.0f,
+                0.0f, 0.0f, 1.0f, 1.0f,
+            },
+            .instanceID = 1,
+            .blas = triangleBLAS,
+        },
+    };
+    ctx.BuildTLAS(tlas, { .instances = instances });
+
+    ctx.Barrier(tlas, vex::RHIBarrierSync::RayTracing, vex::RHIBarrierAccess::AccelerationStructureRead);
+
+    graphics->Submit(ctx);
+
+    graphics->DestroyBuffer(vertexBuffer);
+    graphics->DestroyBuffer(indexBuffer);
+}
+
+// Creates a ray tracing pass desc, used to specify the various shaders and RT-related properties for RT shader
+// invocations.
+static vex::RayTracingPassDesc CreateRTPassDesc(const std::filesystem::path& shaderPath)
+{
+    return vex::RayTracingPassDesc{
+        .rayGenerationShader = vex::ShaderKey{
+             .path = shaderPath,
+             .entryPoint = "RayGenMain",
+             .type = vex::ShaderType::RayGenerationShader,
+         },
+         .rayMissShaders =
+         {
+             vex::ShaderKey{
+                 .path = shaderPath,
+                 .entryPoint = "RayMiss",
+                 .type = vex::ShaderType::RayMissShader,
+             }
+         },
+         .hitGroups =
+         {
+             vex::HitGroup{
+                 .name = "HelloRayTracing_HitGroup",
+                 .rayClosestHitShader = 
+                 {
+                     .path = shaderPath,
+                     .entryPoint = "RayClosestHit",
+                     .type = vex::ShaderType::RayClosestHitShader,
+                 },
+             }
+         },
+         // Allow for primary rays only (no recursion).
+         .maxRecursionDepth = 1,
+         // We use a payload of 3 floats (so 12 bytes).
+         .maxPayloadByteSize = 12,
+         // We use the built-in hlsl attributes (so 8 bytes).
+         .maxAttributeByteSize = 8,
+    };
 }
 
 void HelloRayTracing::Run()
@@ -41,36 +160,34 @@ void HelloRayTracing::Run()
             // Make sure our resource is ready for writing.
             ctx.BarrierBinding(outputTextureBinding);
 
-            vex::BindlessHandle handle = graphics->GetBindlessHandle(outputTextureBinding);
+            struct Data
+            {
+                vex::BindlessHandle outputHandle;
+                vex::BindlessHandle accelerationStructureHandle;
+            } data{
+                .outputHandle = graphics->GetBindlessHandle(outputTextureBinding),
+                .accelerationStructureHandle = graphics->GetBindlessHandle(tlas),
+            };
 
-            // Two ray invocations, one for the HLSL shader, and one for the Slang shader.
+            // Two ray generation invocations, one for the HLSL shader, and one for the Slang shader.
             // The HLSL shader will write to the left side and the Slang shader to the right side.
             // Since we know the writes will not overlap, we don't have to add a barrier between the two.
-            ctx.TraceRays(
-                { 
-                    .rayGenerationShader = 
-                    {
-                        .path = ExamplesDir / "hello_raytracing" / "HelloRayTracingShader.hlsl",
-                        .entryPoint = "RayGenMain",
-                        .type = vex::ShaderType::RayGenerationShader,
-                    },
-                },
-                vex::ConstantBinding(handle),
-                { static_cast<vex::u32>(width), static_cast<vex::u32>(height), 1 } // One ray per pixel.
+
+            static const std::filesystem::path HLSLShaderPath =
+                ExamplesDir / "hello_raytracing" / "HelloRayTracingShader.hlsl";
+            static const vex::RayTracingPassDesc HLSLRayTracingPassDesc = CreateRTPassDesc(HLSLShaderPath);
+            ctx.TraceRays(HLSLRayTracingPassDesc,
+                          vex::ConstantBinding(data),
+                          { static_cast<vex::u32>(width), static_cast<vex::u32>(height), 1 } // One ray per pixel.
             );
 
 #if VEX_SLANG
-            ctx.TraceRays(
-                { 
-                    .rayGenerationShader = 
-                    {
-                        .path = ExamplesDir / "hello_raytracing" / "HelloRayTracingShader.slang",
-                        .entryPoint = "RayGenMain",
-                        .type = vex::ShaderType::RayGenerationShader,
-                    },
-                },
-                vex::ConstantBinding(handle),
-                { static_cast<vex::u32>(width), static_cast<vex::u32>(height), 1 } // One ray per pixel.
+            static const std::filesystem::path SlangShaderPath =
+                ExamplesDir / "hello_raytracing" / "HelloRayTracingShader.slang";
+            static const vex::RayTracingPassDesc SlangRayTracingPassDesc = CreateRTPassDesc(SlangShaderPath);
+            ctx.TraceRays(SlangRayTracingPassDesc,
+                          vex::ConstantBinding(data),
+                          { static_cast<vex::u32>(width), static_cast<vex::u32>(height), 1 } // One ray per pixel.
             );
 #endif
 

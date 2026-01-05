@@ -55,20 +55,20 @@ public:
 
     using RHICommandListBase::Copy;
     virtual void Copy(RHITexture& src, RHITexture& dst) override;
-    virtual void Copy(RHITexture& src,
-                      RHITexture& dst,
-                      Span<const TextureCopyDesc> textureCopyDescriptions) override;
+    virtual void Copy(RHITexture& src, RHITexture& dst, Span<const TextureCopyDesc> textureCopyDescriptions) override;
     virtual void Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDesc& bufferCopyDescription) override;
-    virtual void Copy(RHIBuffer& src,
-                      RHITexture& dst,
-                      Span<const BufferTextureCopyDesc> copyDescriptions) override;
-    virtual void Copy(RHITexture& src,
-                      RHIBuffer& dst,
-                      Span<const BufferTextureCopyDesc> copyDescriptions) override;
+    virtual void Copy(RHIBuffer& src, RHITexture& dst, Span<const BufferTextureCopyDesc> copyDescriptions) override;
+    virtual void Copy(RHITexture& src, RHIBuffer& dst, Span<const BufferTextureCopyDesc> copyDescriptions) override;
 
     virtual QueryHandle BeginTimestampQuery() override;
     virtual void EndTimestampQuery(QueryHandle handle) override;
     virtual void ResolveTimestampQueries(u32 firstQuery, u32 queryCount) override;
+
+    virtual void BuildBLAS(RHIAccelerationStructure& as, RHIBuffer& scratchBuffer) override;
+    virtual void BuildTLAS(RHIAccelerationStructure& as,
+                           RHIBuffer& scratchBuffer,
+                           RHIBuffer& uploadBuffer,
+                           const RHITLASBuildDesc& desc) override;
 
     ComPtr<ID3D12GraphicsCommandList10>& GetNativeCommandList()
     {
