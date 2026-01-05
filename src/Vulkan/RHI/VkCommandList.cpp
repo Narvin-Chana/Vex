@@ -49,8 +49,8 @@ static bool CanMergeBarriers(const ::vk::ImageMemoryBarrier2& a, const ::vk::Ima
     if (a.srcQueueFamilyIndex != b.srcQueueFamilyIndex || a.dstQueueFamilyIndex != b.dstQueueFamilyIndex)
         return false;
 
-    // If they dont share an aspect mask they can be merged
-    if (a.subresourceRange.aspectMask & b.subresourceRange.aspectMask)
+    // Must share an aspect mask bit
+    if (!(a.subresourceRange.aspectMask & b.subresourceRange.aspectMask))
         return false;
 
     // Check if subresources are contiguous

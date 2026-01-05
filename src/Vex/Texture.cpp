@@ -589,7 +589,8 @@ TextureAspect::Flags TextureSubresource::GetDefaultAspect(const TextureDesc& des
 
 bool TextureSubresource::IsFullResource(const TextureDesc& desc) const
 {
-    return startMip == 0 && mipCount == GTextureAllMips && startSlice == 0 && sliceCount == GTextureAllSlices &&
+    return startMip == 0 && (mipCount == GTextureAllMips || mipCount == desc.mips) &&
+           startSlice == 0 && (sliceCount == GTextureAllSlices || sliceCount == desc.depthOrSliceCount) &&
            desc.GetPlaneCount() == GetPlaneCount();
 }
 
