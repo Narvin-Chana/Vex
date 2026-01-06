@@ -200,7 +200,7 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
     pixelShaderVersion = pixelShader.version;
     rootSignatureVersion = resourceLayout.version;
 
-    SetDebugName(device, *graphicsPipeline, std::format("{}", key).c_str());
+    SetDebugName(device, *graphicsPipeline, std::format("GraphicsPSO: {}", key).c_str());
 }
 
 void VkGraphicsPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
@@ -246,7 +246,7 @@ void VkComputePipelineState::Compile(const Shader& computeShader, RHIResourceLay
     computeShaderVersion = computeShader.version;
     rootSignatureVersion = resourceLayout.version;
 
-    SetDebugName(device, *computePipeline, std::format("{}", key).c_str());
+    SetDebugName(device, *computePipeline, std::format("ComputePSO: {}", key).c_str());
 }
 
 void VkComputePipelineState::Cleanup(ResourceCleanup& resourceCleanup)
