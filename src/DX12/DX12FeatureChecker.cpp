@@ -21,7 +21,6 @@ static constexpr D3D_FEATURE_LEVEL GMinimumFeatureLevel = D3D_FEATURE_LEVEL_12_1
 DX12FeatureChecker::DX12FeatureChecker(const ComPtr<ID3D12Device>& device)
     : device{ device }
 {
-    // Try to get device5 interface (needed for ray tracing)
     chk << featureSupport.Init(device.Get());
 }
 
@@ -37,7 +36,7 @@ bool DX12FeatureChecker::IsFeatureSupported(Feature feature) const
     case Feature::RayTracing:
     {
         bool rayTracingSupported = featureSupport.RaytracingTier() >= GMinimumRayTracingTier;
-        // For correctness, RT also requires SM_6_3+.
+        // For correctness, RT also requires SM_6_3+, although Vex itself requires 6_6.
         rayTracingSupported &= featureSupport.HighestShaderModel() >= D3D_SHADER_MODEL_6_3;
         return rayTracingSupported;
     }

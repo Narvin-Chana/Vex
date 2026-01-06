@@ -306,6 +306,8 @@ void CommandContext::TraceRays(const RayTracingPassDesc& rayTracingPassDescripti
                                ConstantBinding constants,
                                std::array<u32, 3> widthHeightDepth)
 {
+    VEX_CHECK(GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing),
+              "Your GPU does not support ray tracing, unable to dispatch rays!");
     RayTracingPassDesc::ValidateShaderTypes(rayTracingPassDescription);
 
     const RHIRayTracingPipelineState* pipelineState =
@@ -769,6 +771,8 @@ TextureReadbackContext CommandContext::EnqueueDataReadback(const Texture& srcTex
 
 void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructure, const BLASBuildDesc& desc)
 {
+    VEX_CHECK(GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing),
+              "Your GPU does not support ray tracing, unable to build BLAS!");
     VEX_CHECK(accelerationStructure.desc.type == ASType::BottomLevel,
               "BuildBLAS only accepts bottom level acceleration structures...");
     VEX_CHECK(!desc.geometry.empty(), "Cannot build an empty BLAS...");
@@ -863,6 +867,8 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
 
 void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructure, const TLASBuildDesc& desc)
 {
+    VEX_CHECK(GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing),
+              "Your GPU does not support ray tracing, unable to build TLAS!");
     VEX_CHECK(accelerationStructure.desc.type == ASType::TopLevel,
               "BuildTLAS only accepts top level acceleration structures...");
     VEX_CHECK(!desc.instances.empty(), "Cannot build an empty TLAS...");

@@ -47,7 +47,8 @@ bool VkFeatureChecker::IsFeatureSupported(Feature feature) const
     case Feature::MeshShader:
         return meshShaderFeatures.meshShader && meshShaderFeatures.taskShader;
     case Feature::RayTracing:
-        return rayTracingFeatures.rayTracingPipeline;
+        // Vulkan RHI currently does not support ray tracing.
+        return false and rayTracingFeatures.rayTracingPipeline;
     case Feature::BindlessResources:
         return descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing &&
                descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind &&

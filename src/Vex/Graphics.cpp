@@ -257,6 +257,8 @@ Buffer Graphics::CreateBuffer(BufferDesc desc, ResourceLifetime lifetime)
 
 AccelerationStructure Graphics::CreateAccelerationStructure(const ASDesc& desc)
 {
+    VEX_CHECK(GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing),
+              "Your GPU does not support ray tracing, unable to create an acceleration structure!");
     return {
         .handle = accelerationStructureRegistry.AllocateElement(std::move(rhi.CreateAS(desc))),
         .desc = desc,
@@ -288,6 +290,8 @@ void Graphics::DestroyBuffer(const Buffer& buffer)
 
 void Graphics::DestroyAccelerationStructure(const AccelerationStructure& accelerationStructure)
 {
+    VEX_CHECK(GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing),
+              "Your GPU does not support ray tracing, unable to create an acceleration structure!");
     resourceCleanup.CleanupResource(accelerationStructureRegistry.ExtractElement(accelerationStructure.handle));
 }
 
