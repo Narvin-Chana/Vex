@@ -194,7 +194,7 @@ std::vector<UniqueHandle<PhysicalDevice>> VkRHI::EnumeratePhysicalDevices()
     physicalDevices.reserve(vkPhysicalDevices.size());
     for (const ::vk::PhysicalDevice& dev : vkPhysicalDevices)
     {
-        physicalDevices.push_back(MakeUnique<vex::vk::VkPhysicalDevice>(dev));
+        physicalDevices.push_back(MakeUnique<VkPhysicalDevice>(dev));
     }
 
     return physicalDevices;

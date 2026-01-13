@@ -80,9 +80,12 @@ std::vector<UniqueHandle<PhysicalDevice>> DX12RHI::EnumeratePhysicalDevices()
             // Make sure we can cast the device to our chosen dx12 device type.
             ComPtr<DX12Device> minVersionDevice;
             device.As(&minVersionDevice);
-            if (minVersionDevice)
+
+            UniqueHandle<DX12PhysicalDevice> physicalDevice = MakeUnique<DX12PhysicalDevice>(adapter, minVersionDevice);
+
+            if (minVersionDevice && physicalDevice->featureChecker->DoesSupportMinimalRequirements())
             {
-                physicalDevices.push_back(MakeUnique<DX12PhysicalDevice>(adapter, minVersionDevice));
+                physicalDevices.push_back(std::move(physicalDevice));
             }
         }
 

@@ -27,6 +27,7 @@ public:
 
     std::string_view GetMaxSupportedSpirVVersion() const;
     std::string_view GetMaxSupportedVulkanVersion() const;
+    bool DoesSupportMinimalRequirements() const override;
 
     bool DoesTextureFormatSupportLinearFiltering(TextureFormat format);
 
