@@ -72,10 +72,10 @@ VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, VkAllocator& allocator, const B
     VEX_VK_CHECK << ctx->device.bindBufferMemory(*buffer, memory, allocation.memoryRange.offset);
 #else
     // TODO(https://trello.com/c/4CKvUpd2): Fix the non-custom allocator buffer codepath for VkBuffers.
-    ::vk::MemoryPropertyFlags memPropFlags = GetMemoryPropsFromLocality(memLocality);
+    ::vk::MemoryPropertyFlags memPropFlags = AllocatorUtils::GetMemoryPropsFromLocality(desc.memoryLocality);
     memory = VEX_VK_CHECK <<= ctx->device.allocateMemoryUnique(
         { .allocationSize = reqs.size,
-          .memoryTypeIndex = GetBestMemoryType(ctx->physDevice, reqs.memoryTypeBits, memoryProps) });
+          .memoryTypeIndex = AllocatorUtils::GetBestSuitedMemoryTypeIndex(ctx->physDevice, reqs.memoryTypeBits, memPropFlags) });
 
     SetDebugName(ctx->device, *memory, std::format("Memory: {}", desc.name).c_str());
     VEX_VK_CHECK << ctx->device.bindBufferMemory(*buffer, *memory, 0);
@@ -104,12 +104,21 @@ void VkBuffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
 
 Span<byte> VkBuffer::Map()
 {
+#if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
     return allocator->MapAllocation(allocation);
+#else
+    void* ptr = VEX_VK_CHECK <<= ctx->device.mapMemory(*memory, 0, VK_WHOLE_SIZE);
+    return { static_cast<byte*>(ptr), desc.byteSize };
+#endif
 }
 
 void VkBuffer::Unmap()
 {
+#if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
     allocator->UnmapAllocation(allocation);
+#else
+    ctx->device.unmapMemory(*memory);
+#endif
 }
 
 } // namespace vex::vk
