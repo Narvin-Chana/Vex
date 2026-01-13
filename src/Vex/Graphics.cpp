@@ -276,19 +276,6 @@ ResourceMappedMemory Graphics::MapResource(const Buffer& buffer)
     return { rhiBuffer };
 }
 
-ResourceMappedMemory Graphics::MapResource(const Texture& texture)
-{
-    RHITexture& rhiTexture = GetRHITexture(texture.handle);
-
-    if (rhiTexture.GetDesc().memoryLocality != ResourceMemoryLocality::CPUWrite &&
-        rhiTexture.GetDesc().memoryLocality != ResourceMemoryLocality::CPURead)
-    {
-        VEX_LOG(Fatal, "Texture needs to have CPUWrite or CPURead locality to be mapped to directly");
-    }
-
-    return { rhiTexture };
-}
-
 void Graphics::DestroyTexture(const Texture& texture)
 {
     resourceCleanup.CleanupResource(textureRegistry.ExtractElement(texture.handle));

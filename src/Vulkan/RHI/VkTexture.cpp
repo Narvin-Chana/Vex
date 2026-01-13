@@ -141,7 +141,9 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDesc&& inDescription, 
     , image{ backbufferImage }
 {
     desc = std::move(inDescription);
-    SetDebugName(ctx->device, backbufferImage, std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name).c_str());
+    SetDebugName(ctx->device,
+                 backbufferImage,
+                 std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name).c_str());
 }
 
 VkTexture::VkTexture(const NonNullPtr<VkGPUContext> ctx, const TextureDesc& inDescription, ::vk::UniqueImage rawImage)
@@ -150,9 +152,7 @@ VkTexture::VkTexture(const NonNullPtr<VkGPUContext> ctx, const TextureDesc& inDe
     , image{ std::move(rawImage) }
 {
     desc = inDescription;
-    SetDebugName(ctx->device,
-                 *rawImage,
-                 std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name).c_str());
+    SetDebugName(ctx->device, *rawImage, std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name).c_str());
 }
 
 VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDesc&& inDescription, ::vk::UniqueImage rawImage)
@@ -313,39 +313,6 @@ void VkTexture::FreeAllocation(RHIAllocator& allocator)
     allocator.FreeResource(allocation);
 #else
     memory.release();
-#endif
-}
-
-Span<byte> VkTexture::Map()
-{
-#if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
-    if (!allocator)
-    {
-        VEX_LOG(Fatal, "Texture {} cannot be mapped to", desc.name);
-    }
-    return allocator->MapAllocation(allocation);
-#else
-    ::vk::Image rawImage = std::visit(Visitor{
-        [](::vk::Image image){ return image; },
-        [](::vk::UniqueImage& image){ return *image; }
-    }, image);
-
-    ::vk::MemoryRequirements imageMemoryReq = ctx->device.getImageMemoryRequirements(rawImage);
-    void* ptr = VEX_VK_CHECK <<= ctx->device.mapMemory(*memory, 0, VK_WHOLE_SIZE);
-    return { static_cast<byte*>(ptr), imageMemoryReq.size };
-#endif
-}
-
-void VkTexture::Unmap()
-{
-#if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
-    if (!allocator)
-    {
-        VEX_LOG(Fatal, "Texture {} cannot be unmapped", desc.name);
-    }
-    allocator->UnmapAllocation(allocation);
-#else
-    ctx->device.unmapMemory(*memory);
 #endif
 }
 

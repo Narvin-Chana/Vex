@@ -458,17 +458,6 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(const DX12Textu
     }
 }
 
-Span<byte> DX12Texture::Map()
-{
-    VEX_NOT_YET_IMPLEMENTED();
-    return {};
-}
-
-void DX12Texture::Unmap()
-{
-    VEX_NOT_YET_IMPLEMENTED();
-}
-
 DX12TextureView::DX12TextureView(const TextureBinding& binding)
     : usage{ binding.usage != TextureBindingUsage::None ? static_cast<TextureUsage::Type>(binding.usage)
                                                         : TextureUsage::None }

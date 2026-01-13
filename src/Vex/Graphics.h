@@ -105,7 +105,6 @@ public:
 
     // Writes data to buffer memory. This only supports buffers with ResourceMemoryLocality::CPUWrite.
     [[nodiscard]] ResourceMappedMemory MapResource(const Buffer& buffer);
-    [[nodiscard]] ResourceMappedMemory MapResource(const Texture& texture);
 
     // Allows users to fetch the bindless handles for a texture binding. This bindless handle remains valid as long as
     // the resource itself is alive.

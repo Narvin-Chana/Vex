@@ -83,9 +83,6 @@ public:
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
     virtual void FreeAllocation(RHIAllocator& allocator) override;
 
-    virtual Span<byte> Map() override;
-    virtual void Unmap() override;
-
     struct CacheEntry
     {
         BindlessHandle handle = GInvalidBindlessHandle;

@@ -17,7 +17,7 @@ namespace vex
 {
 struct RHITextureBinding;
 
-class RHITextureBase : public MappableResourceInterface
+class RHITextureBase
 {
 public:
     RHITextureBase() = default;
