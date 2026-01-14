@@ -1,6 +1,6 @@
 # Vex RenderDoc Example
 
-This example shows an integration with Pix in Vex using RenderExtensions.
+This example shows an integration with Pix in Vex.
 
 Launching this alone will capture the first frame and store to file in the working directory of the example.
 This allows the developer to control when the capture is taken instead of having it be on a frame by frame basis. 
