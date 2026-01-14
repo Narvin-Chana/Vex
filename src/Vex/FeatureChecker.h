@@ -12,7 +12,6 @@ enum class Feature : u8
     RayTracing,
     BindlessResources,
     MipGeneration,
-    DepthStencilReadback
     // Additional features go here...
 };
 

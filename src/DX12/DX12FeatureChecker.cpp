@@ -46,8 +46,6 @@ bool DX12FeatureChecker::IsFeatureSupported(Feature feature) const
     case Feature::MipGeneration:
         // DX12 has no built-in way to generate mip-maps.
         return false;
-    case Feature::DepthStencilReadback:
-        return true;
     default:
         VEX_LOG(Fatal, "Unable to determine feature support for {}", feature);
         return false;
