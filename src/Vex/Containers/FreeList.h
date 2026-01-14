@@ -92,21 +92,21 @@ public:
 
     T& operator[](HandleT handle)
     {
-        VEX_ASSERT(IsValid(handle));
-        VEX_ASSERT(values[handle.GetIndex()].has_value());
+        VEX_ASSERT(IsValid(handle), "Invalid handle passed to freelist: {}", handle);
+        VEX_ASSERT(values[handle.GetIndex()].has_value(), "Invalid handle passed to freelist: {}", handle);
         return *values[handle.GetIndex()];
     }
 
     const T& operator[](HandleT handle) const
     {
-        VEX_ASSERT(IsValid(handle));
-        VEX_ASSERT(values[handle.GetIndex()].has_value());
+        VEX_ASSERT(IsValid(handle), "Invalid handle passed to freelist: {}", handle);
+        VEX_ASSERT(values[handle.GetIndex()].has_value(), "Invalid handle passed to freelist: {}", handle);
         return *values[handle.GetIndex()];
     }
 
     bool IsValid(HandleT handle) const
     {
-        return handle.GetGeneration() == generations[handle.GetIndex()];
+        return handle.IsValid() && handle.GetGeneration() == generations[handle.GetIndex()];
     }
 
     HandleT AllocateElement(T elem)
@@ -117,7 +117,9 @@ public:
         }
 
         IndexT idx = allocator.Allocate();
-        VEX_ASSERT(!values[idx].has_value());
+        VEX_ASSERT(!values[idx].has_value(),
+                   "Error: freelist free slot and values do not match up, trying to create an element in a slot which "
+                   "already contains a valid element.");
         values[idx].emplace(std::move(elem));
 
         return HandleT::CreateHandle(idx, generations[idx]);
@@ -127,7 +129,7 @@ public:
     void FreeElement(HandleT handle)
     {
         IndexT idx = handle.GetIndex();
-        VEX_ASSERT(values[idx].has_value());
+        VEX_ASSERT(values[idx].has_value(), "Error: trying to free an element which does not exist.");
         values[idx].reset();
         generations[idx]++;
         allocator.Deallocate(idx);
@@ -139,7 +141,7 @@ public:
         IndexT idx = handle.GetIndex();
         generations[idx]++;
         allocator.Deallocate(idx);
-        VEX_ASSERT(values[idx].has_value());
+        VEX_ASSERT(values[idx].has_value(), "Error: trying to extract an element which does not exist.");
         return std::exchange(values[idx], std::nullopt);
     }
 

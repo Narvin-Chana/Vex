@@ -18,6 +18,7 @@ DX12Allocator::DX12Allocator(const ComPtr<DX12Device>& device)
 Allocation DX12Allocator::AllocateResource(ComPtr<ID3D12Resource>& resource,
                                            const CD3DX12_RESOURCE_DESC1& resourceDesc,
                                            HeapType heapType,
+                                           u64 forcedAlignment,
                                            D3D12_BARRIER_LAYOUT initialLayout,
                                            std::optional<D3D12_CLEAR_VALUE> optionalClearValue)
 {
@@ -26,10 +27,10 @@ Allocation DX12Allocator::AllocateResource(ComPtr<ID3D12Resource>& resource,
     D3D12_RESOURCE_ALLOCATION_INFO allocInfo =
         device->GetResourceAllocationInfo3(0, 1, &resourceDesc, nullptr, nullptr, nullptr);
 
-    // RT acceleration structures have a higher alignment requirement, for some reason GetResourceAllocationInfo3, does not return the correct alignment.
-    if (resourceDesc.Flags & D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE)
+    // If the caller has requested a forced alignment, take this into account.
+    if (forcedAlignment != 0)
     {
-        allocInfo.Alignment = AlignUp<u64>(allocInfo.Alignment, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
+        allocInfo.Alignment = std::max(allocInfo.Alignment, forcedAlignment);
     }
 
     // Allocates and handles finding an optimal place to allocate the memory.
