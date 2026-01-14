@@ -1,6 +1,7 @@
 ﻿#include "VkTexture.h"
 
 #include <Vex/Bindings.h>
+#include <Vex/Utility/Visitor.h>
 
 #include <RHI/RHIBindings.h>
 
@@ -140,7 +141,9 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDesc&& inDescription, 
     , image{ backbufferImage }
 {
     desc = std::move(inDescription);
-    SetDebugName(ctx->device, backbufferImage, std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name).c_str());
+    SetDebugName(ctx->device,
+                 backbufferImage,
+                 std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name).c_str());
 }
 
 VkTexture::VkTexture(const NonNullPtr<VkGPUContext> ctx, const TextureDesc& inDescription, ::vk::UniqueImage rawImage)
@@ -149,9 +152,7 @@ VkTexture::VkTexture(const NonNullPtr<VkGPUContext> ctx, const TextureDesc& inDe
     , image{ std::move(rawImage) }
 {
     desc = inDescription;
-    SetDebugName(ctx->device,
-                 *rawImage,
-                 std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name).c_str());
+    SetDebugName(ctx->device, *rawImage, std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name).c_str());
 }
 
 VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDesc&& inDescription, ::vk::UniqueImage rawImage)
@@ -308,25 +309,11 @@ void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 
 void VkTexture::FreeAllocation(RHIAllocator& allocator)
 {
+#if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
     allocator.FreeResource(allocation);
-}
-
-Span<byte> VkTexture::Map()
-{
-    if (!allocator)
-    {
-        VEX_LOG(Fatal, "Texture {} cannot be mapped to", desc.name);
-    }
-    return allocator->MapAllocation(allocation);
-}
-
-void VkTexture::Unmap()
-{
-    if (!allocator)
-    {
-        VEX_LOG(Fatal, "Texture {} cannot be unmapped", desc.name);
-    }
-    allocator->UnmapAllocation(allocation);
+#else
+    memory.release();
+#endif
 }
 
 void VkTexture::CreateImage(RHIAllocator& allocator)

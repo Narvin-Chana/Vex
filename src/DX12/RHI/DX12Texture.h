@@ -69,9 +69,6 @@ public:
 
     CD3DX12_CPU_DESCRIPTOR_HANDLE GetOrCreateRTVDSVView(const DX12TextureView& view);
 
-    virtual Span<byte> Map() override;
-    virtual void Unmap() override;
-
 private:
     ComPtr<ID3D12Resource> texture;
 

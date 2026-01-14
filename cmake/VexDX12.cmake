@@ -44,8 +44,8 @@ function(setup_dx12_backend TARGET)
     # =========================================
 
     # Fetch DX12 Agility SDK
-    set(DX_AGILITY_VERSION "717")
-    set(FULL_DX_AGILITY_VERSION "1.${DX_AGILITY_VERSION}.1-preview")
+    set(DX_AGILITY_VERSION "618")
+    set(FULL_DX_AGILITY_VERSION "1.${DX_AGILITY_VERSION}.4")
     set(AGILITY_SDK_DIR "${FETCHCONTENT_BASE_DIR}/DirectX-AgilitySDK-${FULL_DX_AGILITY_VERSION}")
 
     # Download the NuGet package if not already downloaded
