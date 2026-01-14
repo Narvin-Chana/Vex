@@ -52,7 +52,7 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
     auto physicalDevices = rhi.EnumeratePhysicalDevices();
     if (physicalDevices.empty())
     {
-        VEX_LOG(Fatal, "The underlying graphics API was unable to find atleast one physical device.");
+        VEX_LOG(Fatal, "The underlying graphics API was unable to find atleast one physical device. Most likely due to not having Vex required features (see Vex documentation for required features)");
     }
 
     // Obtain the best physical device.

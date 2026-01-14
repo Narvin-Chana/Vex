@@ -788,7 +788,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
         }
     }
 
-    static constexpr u64 TransformMatrixSize = sizeof(float) * 3uz * 4uz;
+    static constexpr u64 TransformMatrixSize = sizeof(float) * 3 * 4;
 
     // Upload transform data.
     Buffer transformBuffer;
