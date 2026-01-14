@@ -214,7 +214,7 @@ std::string_view VkFeatureChecker::GetMaxSupportedVulkanVersion() const
     return "vulkan1.0";
 }
 
-bool VkFeatureChecker::DoesSupportMinimalRequirements() const
+bool VkFeatureChecker::SupportsMinimalRequirements() const
 {
     if (deviceProperties.apiVersion < VK_API_VERSION_1_3)
     {

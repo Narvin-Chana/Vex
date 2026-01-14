@@ -2,8 +2,8 @@
 
 #include <magic_enum/magic_enum.hpp>
 
-#include <Vex/Utility/Formattable.h>
 #include <Vex/Logger.h>
+#include <Vex/Utility/Formattable.h>
 
 #include <DX12/DX12Formats.h>
 #include <DX12/DX12Headers.h>
@@ -89,7 +89,7 @@ bool DX12FeatureChecker::SupportsTightAlignment() const
     return featureSupport.TightAlignmentSupportTier() > D3D12_TIGHT_ALIGNMENT_TIER_NOT_SUPPORTED;
 }
 
-bool DX12FeatureChecker::DoesSupportMinimalRequirements() const
+bool DX12FeatureChecker::SupportsMinimalRequirements() const
 {
     // Vex requires a minimum feature level of 12_1.
     if (featureSupport.MaxSupportedFeatureLevel() < GMinimumFeatureLevel)

@@ -195,7 +195,7 @@ std::vector<UniqueHandle<PhysicalDevice>> VkRHI::EnumeratePhysicalDevices()
     for (const ::vk::PhysicalDevice& dev : vkPhysicalDevices)
     {
         UniqueHandle<VkPhysicalDevice> newDevice = MakeUnique<VkPhysicalDevice>(dev);
-        if (newDevice->featureChecker->DoesSupportMinimalRequirements())
+        if (newDevice->featureChecker->SupportsMinimalRequirements())
         {
             physicalDevices.push_back(std::move(newDevice));
         }
