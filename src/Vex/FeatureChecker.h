@@ -64,6 +64,8 @@ public:
     virtual ShaderModel GetShaderModel() const = 0;
     virtual u32 GetMaxLocalConstantsByteSize() const = 0;
     virtual bool FormatSupportsLinearFiltering(TextureFormat format, bool isSRGB) const = 0;
+
+    virtual bool SupportsMinimalRequirements() const = 0;
 };
 
 } // namespace vex
