@@ -36,7 +36,7 @@ Git (for using CMake's FetchContent)
 
 DirectX: Windows 10/11 SDK, with feature level 12_1 and DirectX Raytracing (DXR) tier 1.1 for inline RayTracing and Bindless Resources.
 
-Vulkan: Vulkan LunarG SDK, with compatibility for Vulkan 1.3 for Dynamic Rendering purposes.
+Vulkan: Vulkan LunarG SDK (1.4+), with compatibility for Vulkan 1.3 for Dynamic Rendering purposes.
 
 You can use DirectX and/or Vulkan separately, by changing the `VEX_GRAPHICS_BACKEND` CMake property to either `DX12` or `VULKAN`. The default value is `AUTO` which will default to DX12 on Windows and Vulkan on Linux.
 Unused APIs will not be linked and compiled (and thus will not incur any compile-time/runtime costs for your desired platform).
