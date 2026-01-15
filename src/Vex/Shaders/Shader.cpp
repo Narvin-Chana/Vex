@@ -27,7 +27,7 @@ const ShaderReflection* Shader::GetReflection() const
 
 void Shader::MarkDirty()
 {
-    markForRecompile = true;
+    needsRecompile = true;
 }
 
 } // namespace vex

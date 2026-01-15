@@ -89,9 +89,9 @@ NonNullPtr<Shader> ShaderCompiler::GetShader(const ShaderKey& key)
         shaderPtr = &shaderCache.find(key)->second;
     }
 
-    if (shaderPtr->markForRecompile)
+    if (shaderPtr->needsRecompile)
     {
-        shaderPtr->markForRecompile = false;
+        shaderPtr->needsRecompile = false;
         std::expected<void, std::string> res = GetCompiler(key).and_then(
             [&](CompilerBase* compiler)
             {

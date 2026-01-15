@@ -28,7 +28,7 @@ public:
     u32 version = 0;
 
 private:
-    bool markForRecompile = true;
+    bool needsRecompile = true;
     // Errored shaders are set in stasis while awaiting a confirmation of whether to launch a recompilation.
     bool isErrored = false;
     ShaderCompilationResult res;
