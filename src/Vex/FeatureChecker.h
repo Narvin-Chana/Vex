@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Vex/Types.h>
-#include <Vex/Utility/UniqueHandle.h>
 
 namespace vex
 {
@@ -10,7 +9,6 @@ enum class Feature : u8
 {
     MeshShader,
     RayTracing,
-    BindlessResources,
     MipGeneration,
     // Additional features go here...
 };

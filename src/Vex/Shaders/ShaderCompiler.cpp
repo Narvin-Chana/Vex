@@ -45,11 +45,11 @@ ShaderCompiler::ShaderCompiler(const ShaderCompilerSettings& compilerSettings)
     // Force disable shader debugging in shipping.
     this->compilerSettings.enableShaderDebugging = false;
 #endif
+    globalShaderEnv = CreateShaderEnvironment();
 }
 
 ShaderCompiler::~ShaderCompiler() = default;
 
-// TODO: make this static
 ShaderEnvironment ShaderCompiler::CreateShaderEnvironment()
 {
     ShaderEnvironment env;
@@ -65,12 +65,6 @@ ShaderEnvironment ShaderCompiler::CreateShaderEnvironment()
 
 std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader)
 {
-    // TODO: move to SupportsMinimalFeatures
-    if (!GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::BindlessResources))
-    {
-        VEX_LOG(Fatal, "Vex requires BindlessResources in order to bind global resources.");
-    }
-
     return GetCompiler(shader.key).and_then([&](CompilerBase* compiler) { return CompileShader(compiler, shader); });
 }
 
@@ -101,7 +95,7 @@ NonNullPtr<Shader> ShaderCompiler::GetShader(const ShaderKey& key)
         std::expected<void, std::string> res = GetCompiler(key).and_then(
             [&](CompilerBase* compiler)
             {
-                return compiler->GetShaderCodeHash(*shaderPtr, CreateShaderEnvironment(), compilerSettings)
+                return compiler->GetShaderCodeHash(*shaderPtr, globalShaderEnv, compilerSettings)
                     .and_then(
                         [&](const SHA1HashDigest& digest) -> std::expected<void, std::string>
                         {
@@ -139,23 +133,8 @@ NonNullPtr<Shader> ShaderCompiler::GetShader(const ShaderKey& key)
 
 std::pair<bool, std::size_t> ShaderCompiler::IsShaderStale(const Shader& shader) const
 {
-    // if (!std::filesystem::exists(shader.key.path))
-    //{
-    //     VEX_LOG(Fatal, "Unable to parse a shader file which no longer exists: {}.", shader.key);
-    //     return { false, shader.hash };
-    // }
-
-    // std::optional<std::size_t> newHash = compilerImpl->GetShaderHash(shader);
-    // if (!newHash)
-    //{
-    //     return { false, shader.hash };
-    // }
-
-    // bool isShaderStale = shader.hash != *newHash;
-    // return { isShaderStale, *newHash };
-
-    // TODO(https://trello.com/c/UquJz7ow): figure out a better way to determine which shaders are due for
-    // recompilation... For now we recompile ALL shaders upon request.
+    // TODO(https://trello.com/c/UquJz7ow): figure out a better way to determine which shaders are due for recompilation
+    // For now all shaders are considered stale when asked
     return { true, 0 };
 }
 
@@ -190,13 +169,10 @@ void ShaderCompiler::MarkAllShadersDirty()
 void ShaderCompiler::MarkAllStaleShadersDirty()
 {
     u32 numStaleShaders = 0;
-    for (auto& [key, shader] : shaderCache)
+    for (auto& [_, shader] : shaderCache)
     {
-        // TODO(https://trello.com/c/UquJz7ow): figure out a better way to determine which shaders are due for
-        // recompilation... if (auto [isShaderStale, newShaderHash] = IsShaderStale(shader); isShaderStale ||
-        // shader.isErrored)
+        if (auto [isShaderStale, newShaderHash] = IsShaderStale(shader); isShaderStale || shader.isErrored)
         {
-            // shader.hash = newShaderHash;
             shader.MarkDirty();
             shader.isErrored = false;
             numStaleShaders++;
@@ -230,7 +206,7 @@ void ShaderCompiler::FlushCompilationErrors()
 
 std::expected<void, std::string> ShaderCompiler::CompileShader(CompilerBase* compiler, Shader& shader)
 {
-    return compiler->CompileShader(shader, CreateShaderEnvironment(), compilerSettings)
+    return compiler->CompileShader(shader, globalShaderEnv, compilerSettings)
         .and_then(
             [&](ShaderCompilationResult result) -> std::expected<void, std::string>
             {

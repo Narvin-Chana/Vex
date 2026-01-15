@@ -6,6 +6,7 @@
 
 #include <Vex/Shaders/DXCImpl.h>
 #include <Vex/Shaders/ShaderCompilerSettings.h>
+#include <Vex/Shaders/ShaderEnvironment.h>
 #include <Vex/Shaders/ShaderKey.h>
 #include <Vex/Utility/NonNullPtr.h>
 
@@ -59,13 +60,15 @@ private:
     // Checks if the shader's hash is different compared to the last time it was compiled. Returns if the shader is
     // stale or not and the shader's latest hash (which can potentially be the same as the original).
     std::pair<bool, std::size_t> IsShaderStale(const Shader& shader) const;
-    ShaderEnvironment CreateShaderEnvironment();
+    static ShaderEnvironment CreateShaderEnvironment();
 
     ShaderCompilerSettings compilerSettings;
     DXCCompilerImpl dxcCompilerImpl;
 #if VEX_SLANG
     SlangCompilerImpl slangCompilerImpl;
 #endif
+
+    ShaderEnvironment globalShaderEnv;
 
     std::unordered_map<ShaderKey, Shader> shaderCache;
 
