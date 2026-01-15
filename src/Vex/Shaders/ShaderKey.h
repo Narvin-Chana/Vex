@@ -7,9 +7,9 @@
 
 #include <magic_enum/magic_enum.hpp>
 
+#include <Vex/Types.h>
 #include <Vex/Utility/Formattable.h>
 #include <Vex/Utility/Hash.h>
-#include <Vex/Types.h>
 
 namespace vex
 {
@@ -91,15 +91,17 @@ VEX_MAKE_HASHABLE(vex::ShaderKey,
 
 VEX_FORMATTABLE(vex::ShaderDefine, "ShaderDefine(\"{}\", \"{}\")", obj.name, obj.value);
 
-VEX_FORMATTABLE(vex::ShaderKey,
-                "ShaderKey(\n\t{}: \"{}\"\n\tEntry Point: \"{}\"\n\tType: {}\n\tDefines: {}\n\tCompiler: {})",
-                !obj.path.empty() ? "Path" : "Source code",
-                !obj.path.empty() ? obj.path.string()
-                                  : (obj.sourceCode.size() <= 500
-                                         ? obj.sourceCode
-                                         : obj.sourceCode.substr(0, 500).append(
-                                               "\"\n\t... rest is cutoff due to shader source being too long!")),
-                obj.entryPoint,
-                std::string(magic_enum::enum_name(obj.type)),
-                obj.defines,
-                std::string(magic_enum::enum_name(obj.compiler)));
+VEX_FORMATTABLE(
+    vex::ShaderKey,
+    "ShaderKey(\n\tKey Hash: \"{}\"\n\t{}: \"{}\"\n\tEntry Point: \"{}\"\n\tType: {}\n\tDefines: {}\n\tCompiler: {})",
+    std::hash<vex::ShaderKey>{}(obj),
+    !obj.path.empty() ? "Path" : "Source code",
+    !obj.path.empty()
+        ? obj.path.string()
+        : (obj.sourceCode.size() <= 500
+               ? obj.sourceCode
+               : obj.sourceCode.substr(0, 500).append("\"\n\t... rest is cutoff due to shader source being too long!")),
+    obj.entryPoint,
+    std::string(magic_enum::enum_name(obj.type)),
+    obj.defines,
+    std::string(magic_enum::enum_name(obj.compiler)));

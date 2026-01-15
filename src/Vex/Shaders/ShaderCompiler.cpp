@@ -111,7 +111,6 @@ NonNullPtr<Shader> ShaderCompiler::GetShader(const ShaderKey& key)
                                     .and_then(
                                         [&]() -> std::expected<void, std::string>
                                         {
-                                            VEX_LOG(Info, "CompiledShader: {}", std::hash<ShaderKey>{}(shaderPtr->key));
                                             shaderPtr->res.sourceHash = digest;
                                             return {};
                                         });

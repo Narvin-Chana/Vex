@@ -39,6 +39,7 @@ std::expected<Slang::ComPtr<slang::IBlob>, std::string> GetByteCode(slang::IComp
     }
     return bytecodeBlob;
 }
+
 SHA1HashDigest GetProgramHash(slang::IComponentType* linkedProgram)
 {
     slang::IBlob* blob;
@@ -47,6 +48,7 @@ SHA1HashDigest GetProgramHash(slang::IComponentType* linkedProgram)
     std::uninitialized_copy_n(static_cast<const u32*>(blob->getBufferPointer()), 5, hash.data());
     return hash;
 }
+
 std::expected<slang::IModule*, std::string> LoadModule(slang::ISession* session, const ShaderKey& shaderKey)
 {
     Slang::ComPtr<ISlangBlob> diagnostics;
