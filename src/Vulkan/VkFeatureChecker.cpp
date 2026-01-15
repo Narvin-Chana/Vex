@@ -49,13 +49,6 @@ bool VkFeatureChecker::IsFeatureSupported(Feature feature) const
     case Feature::RayTracing:
         // Vulkan RHI currently does not support ray tracing.
         return false && rayTracingFeatures.rayTracingPipeline;
-    case Feature::BindlessResources:
-        return descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing &&
-               descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind &&
-               descriptorIndexingFeatures.shaderUniformBufferArrayNonUniformIndexing &&
-               descriptorIndexingFeatures.descriptorBindingUniformBufferUpdateAfterBind &&
-               descriptorIndexingFeatures.shaderStorageBufferArrayNonUniformIndexing &&
-               descriptorIndexingFeatures.descriptorBindingStorageBufferUpdateAfterBind;
     case Feature::MipGeneration:
         // Vk can use vkCmdBlitImage to generate mips.
         return true;
@@ -215,6 +208,17 @@ std::string_view VkFeatureChecker::GetMaxSupportedVulkanVersion() const
 
 bool VkFeatureChecker::SupportsMinimalRequirements() const
 {
+    bool supportsBindless = descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing &&
+                            descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind &&
+                            descriptorIndexingFeatures.shaderUniformBufferArrayNonUniformIndexing &&
+                            descriptorIndexingFeatures.descriptorBindingUniformBufferUpdateAfterBind &&
+                            descriptorIndexingFeatures.shaderStorageBufferArrayNonUniformIndexing &&
+                            descriptorIndexingFeatures.descriptorBindingStorageBufferUpdateAfterBind;
+    if (!supportsBindless)
+    {
+        return false;
+    }
+
     if (deviceProperties.apiVersion < VK_API_VERSION_1_3)
     {
         return false;

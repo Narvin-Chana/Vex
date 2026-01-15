@@ -22,7 +22,7 @@ void PhysicalDevice::DumpPhysicalDeviceInfo()
         "\tAdvanced Features:\n"
         "\t\tMesh Shaders: {}\n"
         "\t\tRayTracing: {}\n"
-        "\t\tBindlessResources: {}",
+        "\t\tMipGeneration: {}\n",
         deviceName,
         dedicatedVideoMemoryMB,
         featureChecker->GetFeatureLevel(),
@@ -30,7 +30,7 @@ void PhysicalDevice::DumpPhysicalDeviceInfo()
         featureChecker->GetShaderModel(),
         featureChecker->IsFeatureSupported(Feature::MeshShader),
         featureChecker->IsFeatureSupported(Feature::RayTracing),
-        featureChecker->IsFeatureSupported(Feature::BindlessResources));
+        featureChecker->IsFeatureSupported(Feature::MipGeneration));
 }
 #endif
 

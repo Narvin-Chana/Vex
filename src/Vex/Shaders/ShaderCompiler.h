@@ -57,9 +57,7 @@ private:
     std::expected<void, std::string> CompileShader(CompilerBase* Compiler, Shader& shader);
     std::expected<CompilerBase*, std::string> GetCompiler(const ShaderKey& key);
 
-    // Checks if the shader's hash is different compared to the last time it was compiled. Returns if the shader is
-    // stale or not and the shader's latest hash (which can potentially be the same as the original).
-    std::pair<bool, std::size_t> IsShaderStale(const Shader& shader) const;
+    bool IsShaderStale(const Shader& shader) const;
     static ShaderEnvironment CreateShaderEnvironment();
 
     ShaderCompilerSettings compilerSettings;

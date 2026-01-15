@@ -131,11 +131,11 @@ NonNullPtr<Shader> ShaderCompiler::GetShader(const ShaderKey& key)
     return NonNullPtr(shaderPtr);
 }
 
-std::pair<bool, std::size_t> ShaderCompiler::IsShaderStale(const Shader& shader) const
+bool ShaderCompiler::IsShaderStale(const Shader& shader) const
 {
     // TODO(https://trello.com/c/UquJz7ow): figure out a better way to determine which shaders are due for recompilation
     // For now all shaders are considered stale when asked
-    return { true, 0 };
+    return true;
 }
 
 void ShaderCompiler::MarkShaderDirty(const ShaderKey& key)
@@ -171,7 +171,7 @@ void ShaderCompiler::MarkAllStaleShadersDirty()
     u32 numStaleShaders = 0;
     for (auto& [_, shader] : shaderCache)
     {
-        if (auto [isShaderStale, newShaderHash] = IsShaderStale(shader); isShaderStale || shader.isErrored)
+        if (auto isShaderStale = IsShaderStale(shader); isShaderStale || shader.isErrored)
         {
             shader.MarkDirty();
             shader.isErrored = false;
