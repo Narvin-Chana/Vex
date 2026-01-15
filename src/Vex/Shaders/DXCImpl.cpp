@@ -235,7 +235,7 @@ std::expected<ComPtr<IDxcResult>, std::string> CompileShader(
     HRESULT compilationHR = compiler->Compile(&shaderSource,
                                               compilerArgs->GetArguments(),
                                               compilerArgs->GetCount(),
-                                              includeHandler.Get(),
+                                              includeHandler.operator->(),
                                               IID_PPV_ARGS(&shaderCompilationResults));
     ComPtr<IDxcBlobUtf8> errors = nullptr;
     if (HRESULT hrError = shaderCompilationResults->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
