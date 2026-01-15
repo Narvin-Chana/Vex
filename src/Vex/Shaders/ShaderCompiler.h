@@ -4,10 +4,10 @@
 #include <utility>
 #include <vector>
 
-#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/Shaders/DXCImpl.h>
 #include <Vex/Shaders/ShaderCompilerSettings.h>
 #include <Vex/Shaders/ShaderKey.h>
+#include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIFwd.h>
 
@@ -53,10 +53,13 @@ struct ShaderCompiler
     void FlushCompilationErrors();
 
 private:
+    std::expected<void, std::string> CompileShader(CompilerBase* Compiler, Shader& shader);
+    std::expected<CompilerBase*, std::string> GetCompiler(const ShaderKey& key);
+
     // Checks if the shader's hash is different compared to the last time it was compiled. Returns if the shader is
     // stale or not and the shader's latest hash (which can potentially be the same as the original).
     std::pair<bool, std::size_t> IsShaderStale(const Shader& shader) const;
-    ShaderEnvironment CreateShaderEnvironment(ShaderCompilerBackend compiler);
+    ShaderEnvironment CreateShaderEnvironment();
 
     ShaderCompilerSettings compilerSettings;
     DXCCompilerImpl dxcCompilerImpl;

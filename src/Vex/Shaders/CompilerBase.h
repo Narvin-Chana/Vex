@@ -34,6 +34,7 @@ struct ShaderReflection
 
 struct ShaderCompilationResult
 {
+    SHA1HashDigest sourceHash = {};
     std::vector<byte> compiledCode;
     std::optional<ShaderReflection> reflection;
 };
@@ -47,8 +48,12 @@ struct CompilerBase
     }
     virtual ~CompilerBase() = default;
 
+    virtual std::expected<SHA1HashDigest, std::string> GetShaderCodeHash(
+        const Shader& shader, const ShaderEnvironment& shaderEnv, const ShaderCompilerSettings& compilerSettings) = 0;
     virtual std::expected<ShaderCompilationResult, std::string> CompileShader(
-        const Shader& shader, ShaderEnvironment& shaderEnv, const ShaderCompilerSettings& compilerSettings) const = 0;
+        const Shader& shader,
+        const ShaderEnvironment& shaderEnv,
+        const ShaderCompilerSettings& compilerSettings) const = 0;
 
 protected:
     std::vector<std::filesystem::path> includeDirectories;

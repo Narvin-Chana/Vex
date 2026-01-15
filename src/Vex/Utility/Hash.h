@@ -1,5 +1,8 @@
 #pragma once
 
+#include <iomanip>
+#include <sstream>
+
 #include <magic_enum/magic_enum.hpp>
 
 namespace vex
@@ -18,6 +21,19 @@ constexpr auto PurifyHashValue(const T& obj) -> auto
         // For primitive types and other hashable types
         return obj;
     }
+}
+
+using SHA1HashDigest = std::array<uint32_t, 5>;
+
+inline std::string HashToString(const SHA1HashDigest& hash)
+{
+    std::ostringstream result;
+    for (size_t i = 0; i < sizeof(hash) / sizeof(hash[0]); i++)
+    {
+        result << std::hex << std::setfill('0') << std::setw(8);
+        result << hash[i];
+    }
+    return result.str();
 }
 
 } // namespace vex
