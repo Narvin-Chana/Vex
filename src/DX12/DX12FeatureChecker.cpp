@@ -2,8 +2,8 @@
 
 #include <magic_enum/magic_enum.hpp>
 
-#include <Vex/Utility/Formattable.h>
 #include <Vex/Logger.h>
+#include <Vex/Utility/Formattable.h>
 
 #include <DX12/DX12Formats.h>
 #include <DX12/DX12Headers.h>
@@ -21,29 +21,7 @@ static constexpr D3D_FEATURE_LEVEL GMinimumFeatureLevel = D3D_FEATURE_LEVEL_12_1
 DX12FeatureChecker::DX12FeatureChecker(const ComPtr<ID3D12Device>& device)
     : device{ device }
 {
-    // Try to get device5 interface (needed for ray tracing)
     chk << featureSupport.Init(device.Get());
-
-    // Vex requires a minimum feature level of 12_1.
-    if (featureSupport.MaxSupportedFeatureLevel() < GMinimumFeatureLevel)
-    {
-        VEX_LOG(Fatal,
-                "DX12RHI incompatible: Vex DX12RHI requires feature level 12_1 which is not supported by your GPU.");
-    }
-
-    // Vex requires DX12's EnhancedBarriers for GPU resource synchronization.
-    if (!featureSupport.EnhancedBarriersSupported())
-    {
-        VEX_LOG(Fatal, "DX12RHI incompatible: Vex DX12RHI uses Enhanced Barriers which are not supported by your GPU.");
-    }
-
-    // Vex requires SM6_6 for bindless (currently a hard requirement due to Vex not supporting "bindful" code).
-    if (featureSupport.HighestShaderModel() < GMinimumShaderModel)
-    {
-        VEX_LOG(Fatal,
-                "DX12RHI incompatible: Vex's DX12 implementation requires at least SM_6_6 for the untyped "
-                "ResourceDescriptorHeap feature.");
-    }
 }
 
 DX12FeatureChecker::~DX12FeatureChecker() = default;
@@ -58,7 +36,7 @@ bool DX12FeatureChecker::IsFeatureSupported(Feature feature) const
     case Feature::RayTracing:
     {
         bool rayTracingSupported = featureSupport.RaytracingTier() >= GMinimumRayTracingTier;
-        // For correctness, RT also requires SM_6_3+.
+        // For correctness, RT also requires SM_6_3+, although Vex itself requires 6_6.
         rayTracingSupported &= featureSupport.HighestShaderModel() >= D3D_SHADER_MODEL_6_3;
         return rayTracingSupported;
     }
@@ -67,8 +45,6 @@ bool DX12FeatureChecker::IsFeatureSupported(Feature feature) const
     case Feature::MipGeneration:
         // DX12 has no built-in way to generate mip-maps.
         return false;
-    case Feature::DepthStencilReadback:
-        return true;
     default:
         VEX_LOG(Fatal, "Unable to determine feature support for {}", feature);
         return false;
@@ -108,6 +84,29 @@ bool DX12FeatureChecker::FormatSupportsLinearFiltering(TextureFormat format, boo
 bool DX12FeatureChecker::SupportsTightAlignment() const
 {
     return featureSupport.TightAlignmentSupportTier() > D3D12_TIGHT_ALIGNMENT_TIER_NOT_SUPPORTED;
+}
+
+bool DX12FeatureChecker::SupportsMinimalRequirements() const
+{
+    // Vex requires a minimum feature level of 12_1.
+    if (featureSupport.MaxSupportedFeatureLevel() < GMinimumFeatureLevel)
+    {
+        return false;
+    }
+
+    // Vex requires DX12's EnhancedBarriers for GPU resource synchronization.
+    if (!featureSupport.EnhancedBarriersSupported())
+    {
+        return false;
+    }
+
+    // Vex requires SM6_6 for bindless (currently a hard requirement due to Vex not supporting "bindful" code).
+    if (featureSupport.HighestShaderModel() < GMinimumShaderModel)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 FeatureLevel DX12FeatureChecker::ConvertDX12FeatureLevelToFeatureLevel(D3D_FEATURE_LEVEL featureLevel)

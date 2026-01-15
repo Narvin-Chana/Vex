@@ -50,7 +50,7 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
     auto physicalDevices = rhi.EnumeratePhysicalDevices();
     if (physicalDevices.empty())
     {
-        VEX_LOG(Fatal, "The underlying graphics API was unable to find atleast one physical device.");
+        VEX_LOG(Fatal, "The underlying graphics API was unable to find atleast one physical device. Most likely due to not having Vex required features (see Vex documentation for required features)");
     }
 
     // Obtain the best physical device.
@@ -245,6 +245,8 @@ Buffer Graphics::CreateBuffer(BufferDesc desc, ResourceLifetime lifetime)
 
 AccelerationStructure Graphics::CreateAccelerationStructure(const ASDesc& desc)
 {
+    VEX_CHECK(GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing),
+              "Your GPU does not support ray tracing, unable to create an acceleration structure!");
     return {
         .handle = accelerationStructureRegistry.AllocateElement(std::move(rhi.CreateAS(desc))),
         .desc = desc,
@@ -276,6 +278,8 @@ void Graphics::DestroyBuffer(const Buffer& buffer)
 
 void Graphics::DestroyAccelerationStructure(const AccelerationStructure& accelerationStructure)
 {
+    VEX_CHECK(GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing),
+              "Your GPU does not support ray tracing, unable to create an acceleration structure!");
     resourceCleanup.CleanupResource(accelerationStructureRegistry.ExtractElement(accelerationStructure.handle));
 }
 

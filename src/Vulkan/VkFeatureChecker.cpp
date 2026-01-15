@@ -17,12 +17,6 @@ VkFeatureChecker::VkFeatureChecker(const ::vk::PhysicalDevice& physicalDevice)
     ::vk::PhysicalDeviceFeatures2 features2_vk12;
     physicalDevice.getFeatures2(&features2_vk12);
 
-    if (deviceProperties.apiVersion < VK_API_VERSION_1_3)
-    {
-        VEX_LOG(Warning, "Physical device must support Vulkan 1.3. App may be unstable");
-        return;
-    }
-
     // Get vk 1.3 features
     ::vk::PhysicalDeviceFeatures2 features2_vk13;
     features2_vk13.setPNext(&vulkan13Features);
@@ -53,7 +47,8 @@ bool VkFeatureChecker::IsFeatureSupported(Feature feature) const
     case Feature::MeshShader:
         return meshShaderFeatures.meshShader && meshShaderFeatures.taskShader;
     case Feature::RayTracing:
-        return rayTracingFeatures.rayTracingPipeline;
+        // Vulkan RHI currently does not support ray tracing.
+        return false && rayTracingFeatures.rayTracingPipeline;
     case Feature::BindlessResources:
         return descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing &&
                descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind &&
@@ -64,8 +59,6 @@ bool VkFeatureChecker::IsFeatureSupported(Feature feature) const
     case Feature::MipGeneration:
         // Vk can use vkCmdBlitImage to generate mips.
         return true;
-    case Feature::DepthStencilReadback:
-        // Not supported on vulkan
     default:
         return false;
     }
@@ -218,6 +211,15 @@ std::string_view VkFeatureChecker::GetMaxSupportedVulkanVersion() const
         return "vulkan1.1";
     }
     return "vulkan1.0";
+}
+
+bool VkFeatureChecker::SupportsMinimalRequirements() const
+{
+    if (deviceProperties.apiVersion < VK_API_VERSION_1_3)
+    {
+        return false;
+    }
+    return true;
 }
 
 bool VkFeatureChecker::FormatSupportsLinearFiltering(TextureFormat format, bool isSRGB) const
