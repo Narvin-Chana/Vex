@@ -65,19 +65,19 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         # Add the ubuntu-toolchain-r/test PPA which provides newer GCC versions
-        sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        sudo apt-get update
+        # sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        # sudo apt-get update
         
         # Find the latest GCC version available
-        LATEST_GCC=$(apt-cache search 'gcc-[0-9]+' | grep -oP 'gcc-\K[0-9]+' | sort -rn | head -n1)
-        echo "Latest GCC version found: gcc-$LATEST_GCC"
+        # LATEST_GCC=$(apt-cache search 'gcc-[0-9]+' | grep -oP 'gcc-\K[0-9]+' | sort -rn | head -n1)
+        # echo "Latest GCC version found: gcc-$LATEST_GCC"
         
         # Install the latest GCC version
-        sudo apt-get install -y gcc-$LATEST_GCC g++-$LATEST_GCC
+        # sudo apt-get install -y gcc-$LATEST_GCC g++-$LATEST_GCC
         
         # Set the latest GCC as the default
-        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-$LATEST_GCC 100
-        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-$LATEST_GCC 100
+        # sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-$LATEST_GCC 100
+        # sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-$LATEST_GCC 100
         
         # Verify the version
         gcc --version
