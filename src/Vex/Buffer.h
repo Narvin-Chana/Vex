@@ -22,7 +22,8 @@ BEGIN_VEX_ENUM_FLAGS(BufferUsage, u8)
     VertexBuffer                    = 1 << 3, // Buffers used for vertex buffers.
     IndexBuffer                     = 1 << 4, // Buffers used for index buffers.
     IndirectArgs                    = 1 << 5, // Buffers used as parameters for an indirect dispatch.
-    AccelerationStructure           = (1 << 6) | ReadWriteBuffer, // Buffers used as a HWRT Acceleration Structure, require the ReadWriteBuffer usage.
+    AccelerationStructure           = 1 << 6, // Buffers used as a HWRT Acceleration Structure, these also implicitly require the ReadWriteBuffer usage.
+    ScratchBuffer                   = 1 << 7, // Buffers used as a scratch buffer for building HWRT Acceleration Structures, these also implicitly require the ReadWriteBuffer usage.
 END_VEX_ENUM_FLAGS();
 
 // clang-format on
@@ -36,7 +37,6 @@ enum class BufferBindingUsage : u8
     RWStructuredBuffer,
     ByteAddressBuffer,
     RWByteAddressBuffer,
-    AccelerationStructure, // Reserved for internal use.
     Invalid = 0xFF
 };
 

@@ -855,7 +855,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
         .name =
             graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_blas_scratch",
         .byteSize = buildInfo.scratchByteSize,
-        .usage = BufferUsage::ReadWriteBuffer,
+        .usage = BufferUsage::ScratchBuffer | BufferUsage::ReadWriteBuffer,
     };
     Buffer scratchBuffer = CreateTemporaryBuffer(scratchBufferDesc);
     Barrier(scratchBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderReadWrite);
@@ -899,7 +899,7 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
         .name =
             graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_tlas_scratch",
         .byteSize = buildInfo.scratchByteSize,
-        .usage = BufferUsage::ReadWriteBuffer,
+        .usage = BufferUsage::ScratchBuffer | BufferUsage::ReadWriteBuffer,
     };
     Buffer scratchBuffer = CreateTemporaryBuffer(scratchBufferDesc);
     Barrier(scratchBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderReadWrite);
