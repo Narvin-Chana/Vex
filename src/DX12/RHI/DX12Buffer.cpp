@@ -8,6 +8,7 @@
 #include <Vex/Platform/Platform.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/Utility/ByteUtils.h>
+#include <Vex/Utility/Validation.h>
 
 #include <DX12/DX12FeatureChecker.h>
 #include <DX12/RHI/DX12DescriptorPool.h>
@@ -20,12 +21,7 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
     , device(device)
 {
     u64 size = desc.byteSize;
-
-    // Size of constant buffers need to be multiples of 256. User won't know its bigger so it shouldn't be an issue.
-    if (desc.usage & BufferUsage::UniformBuffer)
-    {
-        size = AlignUp<u64>(desc.byteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
-    }
+    u64 forcedAlignment = 0;
 
     CD3DX12_RESOURCE_DESC1 bufferDesc = CD3DX12_RESOURCE_DESC1::Buffer(size,
                                                                        (desc.usage & BufferUsage::ReadWriteBuffer)
@@ -37,13 +33,32 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
         bufferDesc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
     }
 
+    if (desc.usage & BufferUsage::UniformBuffer)
+    {
+        // Constant buffers need to be aligned to 256.
+        forcedAlignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
+    }
+
     if (desc.usage & BufferUsage::AccelerationStructure)
     {
         bufferDesc.Flags |= D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE;
         // TODO(https://trello.com/c/rLevCOvT): Decide if this should be moved up into the Vex layer or not!
         // This depends on how Vulkan implements HWRT.
+        VEX_ASSERT(desc.usage & BufferUsage::ReadWriteBuffer,
+                   "Acceleration Structure usage requires the ReadWriteBuffer usage flag.");
         VEX_ASSERT(bufferDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
                    "Acceleration Structure buffer usage flag also requires the UnorderedAccess flag!");
+
+        // RT acceleration structures have a higher alignment requirement, for some reason GetResourceAllocationInfo3,
+        // does not return the correct alignment.
+        forcedAlignment = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
+    }
+
+    if (desc.usage & BufferUsage::ScratchBuffer)
+    {
+        // RT scratch buffers have a higher alignment requirement, for some reason GetResourceAllocationInfo3,
+        // does not return the correct alignment.
+        forcedAlignment = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
     }
 
     CD3DX12_HEAP_PROPERTIES heapProps;
@@ -62,7 +77,7 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
     }
 
 #if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
-    allocation = allocator.AllocateResource(buffer, bufferDesc, desc.memoryLocality);
+    allocation = allocator.AllocateResource(buffer, bufferDesc, desc.memoryLocality, forcedAlignment);
 #else
     chk << device->CreateCommittedResource3(&heapProps,
                                             D3D12_HEAP_FLAG_NONE,
@@ -159,9 +174,11 @@ void DX12Buffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
 
     if (isCBV)
     {
+        VEX_CHECK(IsAligned<u64>(viewDesc.offsetByteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT),
+                  "DX12 requires that constant buffer locations be aligned to 256. If you want more precise offsets, "
+                  "use a raw ByteAddressBuffer to access your resource!");
         D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
-        cbvDesc.BufferLocation = buffer->GetGPUVirtualAddress() +
-                                 AlignUp<u64>(viewDesc.offsetByteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+        cbvDesc.BufferLocation = buffer->GetGPUVirtualAddress() + viewDesc.offsetByteSize;
         cbvDesc.SizeInBytes = AlignUp<u64>(viewDesc.rangeByteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
         device->CreateConstantBufferView(&cbvDesc, cpuHandle);
     }

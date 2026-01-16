@@ -21,6 +21,7 @@ public:
     Allocation AllocateResource(ComPtr<ID3D12Resource>& resource,
                                 const CD3DX12_RESOURCE_DESC1& resourceDesc,
                                 HeapType heapType,
+                                u64 forcedAlignment = 0,
                                 D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_UNDEFINED,
                                 std::optional<D3D12_CLEAR_VALUE> optionalClearValue = std::nullopt);
     void FreeResource(const Allocation& allocation);

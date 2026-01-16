@@ -279,7 +279,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
 
 #if VEX_USE_CUSTOM_ALLOCATOR_TEXTURES
     allocation =
-        allocator.AllocateResource(texture, texDesc, desc.memoryLocality, D3D12_BARRIER_LAYOUT_UNDEFINED, clearValue);
+        allocator.AllocateResource(texture, texDesc, desc.memoryLocality, 0, D3D12_BARRIER_LAYOUT_UNDEFINED, clearValue);
 #else
     chk << device->CreateCommittedResource3(&heapProps,
                                             D3D12_HEAP_FLAG_NONE,

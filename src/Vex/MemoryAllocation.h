@@ -22,7 +22,7 @@ struct MemoryRange
 
     bool operator==(const MemoryRange& other) const = default;
 
-    // When sorting only the offset has importance.
+    // When sorting only the offsets have importance.
     auto operator<=>(const MemoryRange& other) const
     {
         return offset <=> other.offset;

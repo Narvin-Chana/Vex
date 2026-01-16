@@ -18,6 +18,8 @@ FetchContent_MakeAvailable(render_doc)
 include(GoogleTest)
 
 add_executable(vex_tests
+	"RenderDoc.h"
+	"RenderDoc.cpp"
 	"SynchronizationTest.cpp"
 	"UploadReadbackTest.cpp"
     "MipGenerationTest.cpp"
@@ -25,8 +27,7 @@ add_executable(vex_tests
     "GraphicsBackendTest.cpp"
 	"ReflectionTest.cpp"
     "ClearTests.cpp"
-	"RenderDoc.h"
-	"RenderDoc.cpp"
+    "AccelerationStructureTest.cpp"
 )
 
 target_compile_definitions(Vex PUBLIC VEX_TESTS=1)

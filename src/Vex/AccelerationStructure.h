@@ -41,7 +41,7 @@ BEGIN_VEX_ENUM_FLAGS(ASInstance, u8)
 	// TODO(https://trello.com/c/YPn5ypzR): Opacity Micro-Maps flags.
 END_VEX_ENUM_FLAGS();
 
-// Flags for Acceleration Structure building. Currently these are not yet implemented.
+// Flags for Acceleration Structure building. Currently most of these are not yet implemented.
 BEGIN_VEX_ENUM_FLAGS(ASBuild, u8)
 	None			= 0,
 	AllowUpdate		= 1 << 0,	// Allows for incremental updates to the AccelerationStructure.

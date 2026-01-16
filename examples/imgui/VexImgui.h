@@ -37,7 +37,7 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
     initInfo.QueueFamily = commandQueue.family;
     initInfo.ImageCount = std::to_underlying(data.buffering);
     initInfo.MinImageCount = initInfo.ImageCount;
-    initInfo.DescriptorPool = data.descriptorPool->GetNativeDescriptorPool();
+    initInfo.DescriptorPoolSize = 1024;
     initInfo.PipelineCache = data.rhi->GetNativePSOCache();
 
     initInfo.UseDynamicRendering = true;

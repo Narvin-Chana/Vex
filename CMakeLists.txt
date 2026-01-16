@@ -223,8 +223,6 @@ add_library(Vex STATIC
     "src/Vex/TextureSampler.h"
     "src/Vex/GraphicsPipeline.h"
     "src/Vex/DrawHelpers.h"
-    "src/Vex/RenderExtension.h"
-    "src/Vex/RenderExtension.cpp"
     "src/Vex/ResourceBindingUtils.cpp"
     "src/Vex/RayTracing.h"
     "src/Vex/RayTracing.cpp"

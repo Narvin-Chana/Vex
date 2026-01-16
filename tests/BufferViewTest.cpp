@@ -42,8 +42,8 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
         .name = "DataBuffer",
         .byteSize = data.size() * sizeof(float),
         .usage = usage == BufferBindingUsage::ConstantBuffer
-                     ? static_cast<u8>(BufferUsage::UniformBuffer)
-                     : static_cast<u8>(BufferUsage::GenericBuffer | BufferUsage::ReadWriteBuffer),
+                     ? static_cast<BufferUsage::Type>(BufferUsage::UniformBuffer)
+                     : static_cast<BufferUsage::Type>(BufferUsage::GenericBuffer | BufferUsage::ReadWriteBuffer),
     });
     Buffer resultBuffer =
         graphics.CreateBuffer(BufferDesc{ .name = "ResultBuffer",
@@ -79,7 +79,8 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
                                                            testData.elementCount);
         break;
     default:
-        break;
+        ADD_FAILURE() << "Unsupported buffer binding usage!";
+        return;
     }
 
     ctx.EnqueueDataUpload(dataBuffer, std::as_bytes(std::span{ data }));
