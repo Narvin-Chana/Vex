@@ -74,10 +74,14 @@ jobs:
         
         # Install the latest GCC version
         # sudo apt-get install -y gcc-$LATEST_GCC g++-$LATEST_GCC
+
+        sudo add-apt-repository universe && sudo apt update
         
         # Set the latest GCC as the default
-        # sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-$LATEST_GCC 100
-        # sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-$LATEST_GCC 100
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
+
+        
         
         # Verify the version
         gcc --version
