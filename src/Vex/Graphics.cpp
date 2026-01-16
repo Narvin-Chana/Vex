@@ -17,10 +17,8 @@
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
-#include <Vex/RenderExtension.h>
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Visitor.h>
-#include <Vex/Utility/WString.h>
 
 namespace vex
 {
@@ -105,11 +103,6 @@ Graphics::~Graphics()
     // Wait for work to be done before starting the deletion of resources.
     FlushGPU();
 
-    for (auto& renderExtension : renderExtensions)
-    {
-        renderExtension->Destroy();
-    }
-
     // Clear the global physical device.
     GPhysicalDevice = nullptr;
     GEnableGPUScopedEvents = false;
@@ -120,11 +113,6 @@ void Graphics::Present(bool isFullscreenMode)
     if (!desc.useSwapChain)
     {
         VEX_LOG(Fatal, "Cannot present without using a swapchain!");
-    }
-
-    for (auto& renderExtension : renderExtensions)
-    {
-        renderExtension->OnPrePresent();
     }
 
     // Make sure the ((n - FRAME_BUFFERING) % FRAME_BUFFERING) present has finished before presenting anew.
@@ -459,11 +447,6 @@ void Graphics::OnWindowResized(u32 newWidth, u32 newHeight)
     swapChain->RecreateSwapChain(newWidth, newHeight);
     RecreatePresentTextures();
 
-    for (auto& renderExtension : renderExtensions)
-    {
-        renderExtension->OnResize(newWidth, newHeight);
-    }
-
     desc.platformWindow.width = newWidth;
     desc.platformWindow.height = newHeight;
 }
@@ -534,25 +517,6 @@ void Graphics::SetSamplers(Span<const TextureSampler> newSamplers)
     samplers.push_back(TextureSampler::CreateSampler(FilterMode::Linear, AddressMode::Clamp));
     builtInLinearSamplerSlot = samplers.size() - 1u;
     psCache->GetResourceLayout().SetSamplers(samplers);
-}
-
-RenderExtension* Graphics::RegisterRenderExtension(UniqueHandle<RenderExtension>&& renderExtension)
-{
-    renderExtension->data = RenderExtensionData{ .rhi = &rhi, .descriptorPool = &*descriptorPool };
-    renderExtension->Initialize();
-    renderExtensions.push_back(std::move(renderExtension));
-    return renderExtensions.back().get();
-}
-
-void Graphics::UnregisterRenderExtension(NonNullPtr<RenderExtension> renderExtension)
-{
-    auto el = std::ranges::find_if(renderExtensions,
-                                   [renderExtension](const UniqueHandle<RenderExtension>& ext)
-                                   { return ext.get() == renderExtension; });
-    if (el != renderExtensions.end())
-    {
-        renderExtensions.erase(el);
-    }
 }
 
 std::expected<Query, QueryStatus> Graphics::GetTimestampValue(QueryHandle handle)

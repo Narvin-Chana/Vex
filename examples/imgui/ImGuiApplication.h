@@ -5,7 +5,9 @@
 struct ImGuiApplication : public ExampleApplication
 {
     ImGuiApplication();
+    virtual ~ImGuiApplication() override;
     void Run();
+    void RenderImGui();
 
 protected:
     static constexpr auto FrameBuffering = vex::FrameBuffering::Triple;

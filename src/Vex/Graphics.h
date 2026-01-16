@@ -1,16 +1,12 @@
 #pragma once
 
 #include <optional>
-#include <queue>
-#include <unordered_set>
 #include <vector>
 
 #include <Vex/AccelerationStructure.h>
 #include <Vex/Containers/FreeList.h>
 #include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/Containers/Span.h>
-#include <Vex/Formats.h>
-#include <Vex/FrameResource.h>
 #include <Vex/PipelineStateCache.h>
 #include <Vex/Platform/PlatformWindow.h>
 #include <Vex/QueueType.h>
@@ -25,7 +21,6 @@
 #include <Vex/Synchronization.h>
 #include <Vex/Utility/MaybeUninitialized.h>
 #include <Vex/Utility/NonNullPtr.h>
-#include <Vex/Utility/UniqueHandle.h>
 
 #include <RHI/RHIFwd.h>
 
@@ -40,7 +35,6 @@ struct TextureSampler;
 struct TextureBinding;
 struct BufferBinding;
 struct ResourceBinding;
-class RenderExtension;
 
 struct GraphicsCreateDesc
 {
@@ -189,11 +183,6 @@ public:
 
     void SetSamplers(Span<const TextureSampler> newSamplers);
 
-    // Register a custom RenderExtension, it will be automatically unregistered when the graphics backend is destroyed.
-    RenderExtension* RegisterRenderExtension(UniqueHandle<RenderExtension>&& renderExtension);
-    // You can manually unregister a RenderExtension by passing in the pointer returned on creation.
-    void UnregisterRenderExtension(NonNullPtr<RenderExtension> renderExtension);
-
     // Returns Query or status if query is not yet ready
     [[nodiscard]] std::expected<Query, QueryStatus> GetTimestampValue(QueryHandle handle);
 
@@ -248,8 +237,6 @@ private:
     std::vector<Texture> presentTextures;
     std::vector<SyncToken> presentTokens;
 
-    std::vector<UniqueHandle<RenderExtension>> renderExtensions;
-
     u32 builtInLinearSamplerSlot = ~0;
 
     static constexpr u32 DefaultRegistrySize = 1024;
@@ -258,6 +245,28 @@ private:
     friend struct ResourceBindingUtils;
     friend class TextureReadbackContext;
     friend class BufferReadbackContext;
+
+    friend struct RHIAccessor;
+};
+
+struct RHIAccessor
+{
+    explicit RHIAccessor(Graphics& graphics)
+        : graphics{ &graphics }
+    {
+    }
+
+    RHI& GetRHI() const
+    {
+        return graphics->rhi;
+    }
+    RHIDescriptorPool& GetDescriptorPool() const
+    {
+        return *graphics->descriptorPool;
+    };
+    // Add getters if needed...
+private:
+    Graphics* graphics;
 };
 
 } // namespace vex
