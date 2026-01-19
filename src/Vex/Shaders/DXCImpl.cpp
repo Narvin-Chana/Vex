@@ -291,6 +291,7 @@ std::expected<SHA1HashDigest, std::string> DXCCompilerImpl::GetShaderCodeHash(
 
                 std::vector<std::wstring> args =
                     DXCImpl_Internal::BuildDefaultArgumentList(compilerSettings, includeDirectories);
+                // -P resolves the pre-processor, allowing us to hash the result.
                 args.push_back(L"-P");
                 std::vector<std::pair<std::wstring, std::wstring>> dxcDefines =
                     DXCImpl_Internal::BuildDefineList(shader.key, shaderEnv);
