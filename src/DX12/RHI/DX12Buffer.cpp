@@ -23,6 +23,14 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
     u64 size = desc.byteSize;
     u64 forcedAlignment = 0;
 
+    if (desc.usage & BufferUsage::UniformBuffer)
+    {
+        // Constant buffers need to be aligned to 256.
+        forcedAlignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
+        // Force size to 256 alignment, in order to avoid issues later on when creating CBVs (CBVs must be 256 bytes aligned).
+        size = AlignUp<u64>(size, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+    }
+
     CD3DX12_RESOURCE_DESC1 bufferDesc = CD3DX12_RESOURCE_DESC1::Buffer(size,
                                                                        (desc.usage & BufferUsage::ReadWriteBuffer)
                                                                            ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
@@ -33,11 +41,6 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
         bufferDesc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
     }
 
-    if (desc.usage & BufferUsage::UniformBuffer)
-    {
-        // Constant buffers need to be aligned to 256.
-        forcedAlignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
-    }
 
     if (desc.usage & BufferUsage::AccelerationStructure)
     {
