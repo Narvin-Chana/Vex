@@ -1,15 +1,16 @@
-#include "VkFeatureChecker.h"
-
-#include <Vex/Logger.h>
+#include "VkPhysicalDevice.h"
 
 #include <Vulkan/VkFormats.h>
 
 namespace vex::vk
 {
 
-VkFeatureChecker::VkFeatureChecker(const ::vk::PhysicalDevice& physicalDevice)
-    : physDevice(physicalDevice)
+VkPhysicalDevice::VkPhysicalDevice(const ::vk::PhysicalDevice& dev)
+    : physicalDevice(dev)
 {
+    info.deviceName = dev.getProperties().deviceName.data();
+    info.dedicatedVideoMemoryMB = GetDeviceVRAMSize(dev);
+
     deviceProperties = physicalDevice.getProperties();
     deviceFeatures = physicalDevice.getFeatures();
 
@@ -38,9 +39,26 @@ VkFeatureChecker::VkFeatureChecker(const ::vk::PhysicalDevice& physicalDevice)
     physicalDevice.getFeatures2(&descriptorIndexingFeatures2);
 }
 
-VkFeatureChecker::~VkFeatureChecker() = default;
+double VkPhysicalDevice::GetDeviceVRAMSize(const ::vk::PhysicalDevice& physicalDevice)
+{
+    ::vk::PhysicalDeviceMemoryProperties memoryProperties = physicalDevice.getMemoryProperties();
 
-bool VkFeatureChecker::IsFeatureSupported(Feature feature) const
+    double totalDeviceLocalMemoryMB = 0;
+    for (uint32_t i = 0; i < memoryProperties.memoryHeapCount; ++i)
+    {
+        if (memoryProperties.memoryHeaps[i].flags & ::vk::MemoryHeapFlagBits::eDeviceLocal)
+        {
+            // Device local implies its VRAM memory
+            VkDeviceSize heapSize = memoryProperties.memoryHeaps[i].size;
+
+            // Convert to a more readable format (MB)
+            totalDeviceLocalMemoryMB += static_cast<double>(heapSize) / (1024.0 * 1024.0);
+        }
+    }
+    return totalDeviceLocalMemoryMB;
+}
+
+bool VkPhysicalDevice::IsFeatureSupported(Feature feature) const
 {
     switch (feature)
     {
@@ -58,7 +76,7 @@ bool VkFeatureChecker::IsFeatureSupported(Feature feature) const
     std::unreachable();
 }
 
-FeatureLevel VkFeatureChecker::GetFeatureLevel() const
+FeatureLevel VkPhysicalDevice::GetFeatureLevel() const
 {
     bool supportsLevel12_2 =
         // Vulkan 1.3 features that correspond to FL 12_2 requirements
@@ -84,7 +102,7 @@ FeatureLevel VkFeatureChecker::GetFeatureLevel() const
     }
 }
 
-ResourceBindingTier VkFeatureChecker::GetResourceBindingTier() const
+ResourceBindingTier VkPhysicalDevice::GetResourceBindingTier() const
 {
     // Determine resource binding tier based on device limits
     const ::vk::PhysicalDeviceLimits& limits = deviceProperties.limits;
@@ -112,7 +130,7 @@ ResourceBindingTier VkFeatureChecker::GetResourceBindingTier() const
     }
 }
 
-ShaderModel VkFeatureChecker::GetShaderModel() const
+ShaderModel VkPhysicalDevice::GetShaderModel() const
 {
     // Map Vulkan version to feature level
     uint32_t majorVersion = VK_API_VERSION_MAJOR(deviceProperties.apiVersion);
@@ -166,12 +184,12 @@ ShaderModel VkFeatureChecker::GetShaderModel() const
     return maxShaderModel;
 }
 
-u32 VkFeatureChecker::GetMaxLocalConstantsByteSize() const
+u32 VkPhysicalDevice::GetMaxLocalConstantsByteSize() const
 {
     return deviceProperties.limits.maxPushConstantsSize;
 }
 
-std::string_view VkFeatureChecker::GetMaxSupportedSpirVVersion() const
+std::string_view VkPhysicalDevice::GetMaxSupportedSpirVVersion() const
 {
     // Based on Vulkan API version
     if (deviceProperties.apiVersion >= VK_API_VERSION_1_3)
@@ -189,7 +207,7 @@ std::string_view VkFeatureChecker::GetMaxSupportedSpirVVersion() const
     return "spirv_1_0";
 }
 
-std::string_view VkFeatureChecker::GetMaxSupportedVulkanVersion() const
+std::string_view VkPhysicalDevice::GetMaxSupportedVulkanVersion() const
 {
     if (deviceProperties.apiVersion >= VK_API_VERSION_1_3)
     {
@@ -206,7 +224,7 @@ std::string_view VkFeatureChecker::GetMaxSupportedVulkanVersion() const
     return "vulkan1.0";
 }
 
-bool VkFeatureChecker::SupportsMinimalRequirements() const
+bool VkPhysicalDevice::SupportsMinimalRequirements() const
 {
     bool supportsBindless = descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing &&
                             descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind &&
@@ -226,9 +244,9 @@ bool VkFeatureChecker::SupportsMinimalRequirements() const
     return true;
 }
 
-bool VkFeatureChecker::FormatSupportsLinearFiltering(TextureFormat format, bool isSRGB) const
+bool VkPhysicalDevice::FormatSupportsLinearFiltering(TextureFormat format, bool isSRGB) const
 {
-    ::vk::FormatProperties formatProperties = physDevice.getFormatProperties(TextureFormatToVulkan(format, isSRGB));
+    ::vk::FormatProperties formatProperties = physicalDevice.getFormatProperties(TextureFormatToVulkan(format, isSRGB));
     return !!(formatProperties.optimalTilingFeatures & ::vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
 }
 

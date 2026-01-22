@@ -21,6 +21,8 @@ class VkFence;
 class VkTimestampQueryPool;
 class VkScopedGPUEvent;
 class VkAccelerationStructure;
+class VkFeatureChecker;
+class VkPhysicalDevice;
 
 } // namespace vex::vk
 
@@ -46,5 +48,7 @@ using RHIFence = vk::VkFence;
 using RHIScopedGPUEvent = vk::VkScopedGPUEvent;
 using RHITimestampQueryPool = vk::VkTimestampQueryPool;
 using RHIAccelerationStructure = vk::VkAccelerationStructure;
+using RHIFeatureChecker = vk::VkFeatureChecker;
+using RHIPhysicalDevice = vk::VkPhysicalDevice;
 
 } // namespace vex

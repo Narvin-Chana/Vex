@@ -4,11 +4,10 @@
 #include <optional>
 
 #include <Vex/RHIImpl/RHIFence.h>
+#include <Vex/Utility/UniqueHandle.h>
 
 #include <RHI/RHI.h>
 #include <RHI/RHIFwd.h>
-
-#include <DX12/DX12FeatureChecker.h>
 
 namespace vex
 {
@@ -28,8 +27,9 @@ public:
     DX12RHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation);
     ~DX12RHI();
 
-    virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() override;
-    virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) override;
+    static std::vector<UniqueHandle<RHIPhysicalDevice>> EnumeratePhysicalDevices();
+
+    virtual void Init() override;
 
     virtual RHISwapChain CreateSwapChain(SwapChainDesc& desc, const PlatformWindow& platformWindow) override;
 

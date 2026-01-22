@@ -15,6 +15,7 @@
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandPool.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
+#include <Vex/RHIImpl/RHIPhysicalDevice.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
@@ -29,7 +30,7 @@ namespace vex
 class TextureReadbackContext;
 
 class CommandContext;
-struct PhysicalDevice;
+struct RHIPhysicalDeviceBase;
 struct Texture;
 struct TextureSampler;
 struct TextureBinding;
@@ -52,6 +53,9 @@ struct GraphicsCreateDesc
     bool enableGPUBasedValidation = VEX_DEBUG;
 
     ShaderCompilerSettings shaderCompilerSettings;
+
+    // This specifies the device to use when desired. If null the "best" device according to Vex will be picked
+    std::optional<PhysicalDeviceInfo> specifiedDevice;
 };
 
 class Graphics
@@ -179,6 +183,9 @@ public:
 
     // Returns Query or status if query is not yet ready
     [[nodiscard]] std::expected<Query, QueryStatus> GetTimestampValue(QueryHandle handle);
+
+    // Returns the Vex supported physical devices
+    static std::vector<PhysicalDeviceInfo> GetSupportedDevices();
 
 private:
     void PrepareCommandContextForSubmission(CommandContext& ctx);

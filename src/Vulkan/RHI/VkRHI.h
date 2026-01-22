@@ -2,13 +2,13 @@
 
 #include <utility>
 
-#include <Vex/Utility/MaybeUninitialized.h>
 #include <Vex/Utility/NonNullPtr.h>
-#include <Vex/RHIImpl/RHIFence.h>
+#include <Vex/Utility/UniqueHandle.h>
 
 #include <RHI/RHI.h>
 #include <RHI/RHIFwd.h>
 
+#include <Vulkan/RHI/VkFence.h>
 #include <Vulkan/VkCommandQueue.h>
 #include <Vulkan/VkGPUContext.h>
 #include <Vulkan/VkHeaders.h>
@@ -31,8 +31,8 @@ public:
     VkRHI& operator=(VkRHI&&) = default;
     ~VkRHI();
 
-    virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() override;
-    virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) override;
+    static std::vector<UniqueHandle<RHIPhysicalDevice>> EnumeratePhysicalDevices();
+    virtual void Init() override;
 
     virtual RHISwapChain CreateSwapChain(SwapChainDesc& desc, const PlatformWindow& platformWindow) override;
 
@@ -54,10 +54,7 @@ public:
 
     virtual RHIAccelerationStructure CreateAS(const ASDesc& desc) override;
 
-    ::vk::Instance GetNativeInstance()
-    {
-        return *instance;
-    }
+    ::vk::Instance GetNativeInstance();
     ::vk::Device GetNativeDevice()
     {
         return *device;
@@ -98,6 +95,11 @@ private:
     // VkRHI's defaulted move constructor). Would require using NonNullPtr in VkGPUContext, which causes changes in a
     // lot of places.
     UniqueHandle<VkGPUContext> ctx;
+
+    struct DispatchRHILifetime
+    {
+        ~DispatchRHILifetime();
+    } dispatch;
 
     ::vk::UniqueInstance instance;
     ::vk::UniqueSurfaceKHR surface;

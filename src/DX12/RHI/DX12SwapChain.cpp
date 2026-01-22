@@ -1,6 +1,7 @@
 #include "DX12SwapChain.h"
 
 #include <Vex/Logger.h>
+#include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHITexture.h>
@@ -8,7 +9,6 @@
 #include <Vex/Utility/Formattable.h>
 
 #include <DX12/DX12Formats.h>
-#include <DX12/DX12PhysicalDevice.h>
 #include <DX12/DXGIFactory.h>
 #include <DX12/HRChecker.h>
 
@@ -207,13 +207,8 @@ DXGI_OUTPUT_DESC1 DX12SwapChain::GetBestOutputDesc() const
 
     // IsCurrent returns false when the monitor's color state has changed (eg: unplugging monitor, changing OS HDR
     // setting).
-    if (!DXGIFactory::dxgiFactory->IsCurrent())
-    {
-        // Recreate the factory.
-        DXGIFactory::InitializeDXGIFactory();
-    }
+    DXGIFactory::InitializeDXGIFactory();
 
-    DX12PhysicalDevice& physDevice = static_cast<DX12PhysicalDevice&>(*GPhysicalDevice);
     ComPtr<IDXGIAdapter4> adapter4;
 
     ComPtr<IDXGIAdapter1> adapter;
@@ -226,7 +221,7 @@ DXGI_OUTPUT_DESC1 DX12SwapChain::GetBestOutputDesc() const
 
         // Find the same adapter (match by LUID or device ID).
         DXGI_ADAPTER_DESC1 cachedDesc;
-        physDevice.adapter->GetDesc1(&cachedDesc);
+        GPhysicalDevice->adapter->GetDesc1(&cachedDesc);
 
         if (desc.AdapterLuid.LowPart == cachedDesc.AdapterLuid.LowPart &&
             desc.AdapterLuid.HighPart == cachedDesc.AdapterLuid.HighPart)
@@ -240,12 +235,12 @@ DXGI_OUTPUT_DESC1 DX12SwapChain::GetBestOutputDesc() const
     // If we didn't find it via enumeration, fall back to the cached adapter.
     if (!adapter4)
     {
-        adapter4 = physDevice.adapter;
+        adapter4 = GPhysicalDevice->adapter;
     }
     // Otherwise, update the adapter physical device's adapter with its new version.
     else
     {
-        static_cast<DX12PhysicalDevice&>(*GPhysicalDevice).adapter = adapter4;
+        GPhysicalDevice->adapter = adapter4;
     }
 
     auto ComputeIntersectionArea = [](i32 ax1, i32 ay1, i32 ax2, i32 ay2, i32 bx1, i32 by1, i32 bx2, i32 by2) -> i32
