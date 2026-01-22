@@ -1,7 +1,6 @@
 #include "DXCImpl.h"
 
 #include <algorithm>
-#include <string_view>
 
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
@@ -11,10 +10,6 @@
 #include <Vex/Shaders/ShaderEnvironment.h>
 #include <Vex/Shaders/ShaderKey.h>
 #include <Vex/Utility/SHA1.h>
-
-#if VEX_VULKAN
-#include <Vulkan/VkFeatureChecker.h>
-#endif
 
 namespace vex
 {
@@ -28,10 +23,8 @@ static constexpr std::array HLSL202xFlags{
 
 static std::wstring GetTargetFromShaderType(ShaderType type)
 {
-    FeatureChecker* featureChecker = GPhysicalDevice->featureChecker.get();
-
     std::wstring highestSupportedShaderModel =
-        StringToWString(std::string(magic_enum::enum_name(featureChecker->GetShaderModel())));
+        StringToWString(std::string(magic_enum::enum_name(GPhysicalDevice->GetShaderModel())));
 
     using enum ShaderType;
 
@@ -128,8 +121,7 @@ std::vector<std::wstring> BuildDefaultArgumentList(const ShaderCompilerSettings&
     }
 
 #if VEX_VULKAN
-    std::string_view vulkanVersion =
-        reinterpret_cast<vk::VkFeatureChecker&>(*GPhysicalDevice->featureChecker).GetMaxSupportedVulkanVersion();
+    std::string_view vulkanVersion = GPhysicalDevice->GetMaxSupportedVulkanVersion();
     std::wstring vulkanVersionFlag = std::format(L"-fspv-target-env={}", StringToWString(std::string(vulkanVersion)));
     args.emplace_back(L"-spirv");
     args.emplace_back(L"-fvk-bind-resource-heap");

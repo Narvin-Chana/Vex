@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string>
+
+#include <Vex/Formats.h>
 #include <Vex/Types.h>
 
 namespace vex
@@ -51,11 +54,29 @@ enum class ShaderModel : u8
     SM_6_9,
 };
 
-enum class TextureFormat : u8;
-class FeatureChecker
+struct PhysicalDeviceInfo
 {
-public:
-    virtual ~FeatureChecker() = default;
+    std::string deviceName;
+    double dedicatedVideoMemoryMB;
+
+    bool operator==(const PhysicalDeviceInfo& other) const
+    {
+        return other.deviceName == deviceName;
+    }
+};
+
+struct RHIPhysicalDeviceBase
+{
+    // Criteria used to select the best device for the underlying RHI.
+    bool operator>(const RHIPhysicalDeviceBase& other) const;
+
+#if !VEX_SHIPPING
+    void DumpPhysicalDeviceInfo();
+#endif
+
+    PhysicalDeviceInfo info;
+
+    virtual ~RHIPhysicalDeviceBase() = default;
     virtual bool IsFeatureSupported(Feature feature) const = 0;
     virtual FeatureLevel GetFeatureLevel() const = 0;
     virtual ResourceBindingTier GetResourceBindingTier() const = 0;

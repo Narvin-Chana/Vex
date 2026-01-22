@@ -1,10 +1,7 @@
 #pragma once
 
-#include <Vex/Types.h>
-
 #include <RHI/RHIResourceLayout.h>
 
-#include <DX12/DX12FeatureChecker.h>
 #include <DX12/DX12Headers.h>
 
 namespace vex::dx12

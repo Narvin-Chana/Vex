@@ -30,4 +30,19 @@ TEST(GraphicsTests, CreateGraphicsDebugLayerWithoutGPUValidation)
     } };
 }
 
+TEST(GraphicsTests, PhysicalDeviceSelection_SecondDevice)
+{
+    std::vector<PhysicalDeviceInfo> devices = Graphics::GetSupportedDevices();
+
+    Graphics{ GraphicsCreateDesc{ .useSwapChain = false,
+                                  .enableGPUDebugLayer = true,
+                                  .enableGPUBasedValidation = false,
+                                  .specifiedDevice = devices.back() } };
+
+    Graphics{ GraphicsCreateDesc{ .useSwapChain = false,
+                                  .enableGPUDebugLayer = true,
+                                  .enableGPUBasedValidation = false,
+                                  .specifiedDevice = devices.front() } };
+}
+
 } // namespace vex
