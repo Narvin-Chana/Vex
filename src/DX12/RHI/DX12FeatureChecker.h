@@ -1,14 +1,12 @@
 #pragma once
 
-#include <string>
-
-#include <Vex/FeatureChecker.h>
+#include <RHI/RHIFeatureChecker.h>
 
 #include <DX12/DX12Headers.h>
 
 namespace vex::dx12
 {
-class DX12FeatureChecker : public vex::FeatureChecker
+class DX12FeatureChecker : public RHIFeatureCheckerBase
 {
 public:
     DX12FeatureChecker(const ComPtr<ID3D12Device>& device);
@@ -29,7 +27,6 @@ public:
         D3D12_RESOURCE_BINDING_TIER resourceBindingTier);
     static ShaderModel ConvertDX12ShaderModelToShaderModel(D3D_SHADER_MODEL shaderModel);
 
-private:
     ComPtr<ID3D12Device> device;
 
     // Cached feature support data (to avoid requerying the device).

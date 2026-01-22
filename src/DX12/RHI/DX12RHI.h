@@ -8,8 +8,6 @@
 #include <RHI/RHI.h>
 #include <RHI/RHIFwd.h>
 
-#include <DX12/DX12FeatureChecker.h>
-
 namespace vex
 {
 struct PlatformWindowHandle;
@@ -28,8 +26,9 @@ public:
     DX12RHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation);
     ~DX12RHI();
 
-    virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() override;
-    virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) override;
+    static std::vector<RHIPhysicalDevice*> EnumeratePhysicalDevices();
+
+    virtual void Init(const RHIPhysicalDevice* physicalDevice) override;
 
     virtual RHISwapChain CreateSwapChain(SwapChainDesc& desc, const PlatformWindow& platformWindow) override;
 

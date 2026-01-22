@@ -6,19 +6,21 @@
 
 #include <Vex.h>
 #include <Vex/CommandContext.h>
-#include <Vex/FeatureChecker.h>
 #include <Vex/Logger.h>
-#include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHICommandPool.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
+#include <Vex/RHIImpl/RHIFeatureChecker.h>
+#include <Vex/RHIImpl/RHIPhysicalDevice.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Visitor.h>
+
+#include <RHI/RHIPhysicalDevice.h>
 
 namespace vex
 {
@@ -47,21 +49,30 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
     }
     VEX_LOG(Info, "Running Vex in {}", vexTargetName);
 
-    auto physicalDevices = rhi.EnumeratePhysicalDevices();
-    if (physicalDevices.empty())
-    {
-        VEX_LOG(Fatal, "The underlying graphics API was unable to find atleast one physical device. Most likely due to not having Vex required features (see Vex documentation for required features)");
-    }
-
-    // Obtain the best physical device.
-    std::sort(physicalDevices.begin(), physicalDevices.end(), [](const auto& l, const auto& r) { return *l > *r; });
-
     if (GPhysicalDevice)
     {
         VEX_LOG(Fatal, "Cannot launch multiple instances of Vex...");
     }
 
-    GPhysicalDevice = std::move(physicalDevices[0]);
+    if (!desc.specifiedDevice)
+    {
+        std::vector<RHIPhysicalDevice*> physicalDevices = EnumeratePhysicalDevices();
+        if (physicalDevices.empty())
+        {
+            VEX_LOG(Fatal,
+                    "The underlying graphics API was unable to find atleast one physical device. Most likely due to "
+                    "not having Vex required features (see Vex documentation for required features)");
+        }
+
+        // Obtain the best physical device.
+        std::sort(physicalDevices.begin(), physicalDevices.end(), [](const auto& l, const auto& r) { return *l > *r; });
+
+        GPhysicalDevice = physicalDevices[0];
+    }
+    else
+    {
+        GPhysicalDevice = desc.specifiedDevice;
+    }
 
 #if !VEX_SHIPPING
     GPhysicalDevice->DumpPhysicalDeviceInfo();
@@ -523,6 +534,11 @@ std::expected<Query, QueryStatus> Graphics::GetTimestampValue(QueryHandle handle
 {
     VEX_CHECK(handle != vex::GInvalidQueryHandle, "Query handle must be valid when getting timestamp value");
     return queryPool->GetQueryData(handle);
+}
+
+std::vector<RHIPhysicalDevice*> Graphics::EnumeratePhysicalDevices()
+{
+    return RHI::EnumeratePhysicalDevices();
 }
 
 void Graphics::RecompileChangedShaders()

@@ -5,15 +5,11 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include <Vex/Logger.h>
-#include <Vex/PhysicalDevice.h>
 #include <Vex/Platform/Platform.h>
+#include <Vex/RHIImpl/RHIPhysicalDevice.h>
 #include <Vex/Shaders/Shader.h>
 #include <Vex/Shaders/ShaderCompilerSettings.h>
 #include <Vex/Shaders/ShaderEnvironment.h>
-
-#if VEX_VULKAN
-#include <Vulkan/VkFeatureChecker.h>
-#endif
 
 namespace vex
 {
@@ -356,9 +352,9 @@ Slang::ComPtr<slang::ISession> SlangCompilerImpl::CreateSession(const Shader& sh
     sessionDesc.preprocessorMacroCount = slangDefines.size();
 
     // Configure target for both DX12 and Vulkan
-    FeatureChecker* featureChecker = GPhysicalDevice->featureChecker.get();
 #if VEX_DX12
-    std::string highestSupportedShaderModel = std::string(magic_enum::enum_name(featureChecker->GetShaderModel()));
+    std::string highestSupportedShaderModel =
+        std::string(magic_enum::enum_name(GPhysicalDevice->featureChecker->GetShaderModel()));
     // s and m must be lower-case (eg: SM_6_6 -> sm_6_6).
     highestSupportedShaderModel[0] = std::tolower(highestSupportedShaderModel[0]);
     highestSupportedShaderModel[1] = std::tolower(highestSupportedShaderModel[1]);
@@ -366,8 +362,8 @@ Slang::ComPtr<slang::ISession> SlangCompilerImpl::CreateSession(const Shader& sh
     targetDesc.profile = globalSession->findProfile(highestSupportedShaderModel.c_str());
 #elif VEX_VULKAN
     targetDesc.format = SLANG_SPIRV;
-    targetDesc.profile = globalSession->findProfile(
-        reinterpret_cast<vk::VkFeatureChecker*>(featureChecker)->GetMaxSupportedSpirVVersion().data());
+    targetDesc.profile =
+        globalSession->findProfile(GPhysicalDevice->featureChecker->GetMaxSupportedSpirVVersion().data());
 
     // Required for DescriptorHandle<T> to work.
     SlangCapabilityID rtCapability = globalSession->findCapability("spvRayTracingKHR");

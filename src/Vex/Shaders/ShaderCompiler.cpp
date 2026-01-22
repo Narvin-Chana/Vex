@@ -5,8 +5,8 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include <Vex/Logger.h>
-#include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHI.h>
+#include <Vex/RHIImpl/RHIPhysicalDevice.h>
 #include <Vex/Shaders/CompilerBase.h>
 #include <Vex/Shaders/Shader.h>
 #include <Vex/Shaders/ShaderEnvironment.h>
@@ -206,8 +206,8 @@ std::pair<bool, std::size_t> ShaderCompiler::IsShaderStale(const Shader& shader)
     // bool isShaderStale = shader.hash != *newHash;
     // return { isShaderStale, *newHash };
 
-    // TODO(https://trello.com/c/UquJz7ow): figure out a better way to determine which shaders are due for recompilation...
-    // For now we recompile ALL shaders upon request.
+    // TODO(https://trello.com/c/UquJz7ow): figure out a better way to determine which shaders are due for
+    // recompilation... For now we recompile ALL shaders upon request.
     return { true, 0 };
 }
 
@@ -244,8 +244,9 @@ void ShaderCompiler::MarkAllStaleShadersDirty()
     u32 numStaleShaders = 0;
     for (auto& [key, shader] : shaderCache)
     {
-        // TODO(https://trello.com/c/UquJz7ow): figure out a better way to determine which shaders are due for recompilation...
-        // if (auto [isShaderStale, newShaderHash] = IsShaderStale(shader); isShaderStale || shader.isErrored)
+        // TODO(https://trello.com/c/UquJz7ow): figure out a better way to determine which shaders are due for
+        // recompilation... if (auto [isShaderStale, newShaderHash] = IsShaderStale(shader); isShaderStale ||
+        // shader.isErrored)
         {
             // shader.hash = newShaderHash;
             shader.MarkDirty();

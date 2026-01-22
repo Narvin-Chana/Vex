@@ -1,7 +1,5 @@
 #include "VkPhysicalDevice.h"
 
-#include <Vulkan/VkFeatureChecker.h>
-
 namespace vex::vk
 {
 
@@ -10,7 +8,7 @@ VkPhysicalDevice::VkPhysicalDevice(const ::vk::PhysicalDevice& dev)
 {
     deviceName = dev.getProperties().deviceName.data();
     dedicatedVideoMemoryMB = GetDeviceVRAMSize(dev);
-    featureChecker = MakeUnique<VkFeatureChecker>(dev);
+    featureChecker.emplace(dev);
 }
 
 double VkPhysicalDevice::GetDeviceVRAMSize(const ::vk::PhysicalDevice& physicalDevice)

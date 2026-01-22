@@ -1,4 +1,4 @@
-#include "PhysicalDevice.h"
+#include "RHIPhysicalDevice.h"
 
 #include <utility>
 
@@ -6,12 +6,13 @@
 
 #include <Vex/Logger.h>
 #include <Vex/Utility/Formattable.h>
+#include <Vex/RHIImpl/RHIFeatureChecker.h>
 
 namespace vex
 {
 
 #if !VEX_SHIPPING
-void PhysicalDevice::DumpPhysicalDeviceInfo()
+void RHIPhysicalDeviceBase::DumpPhysicalDeviceInfo()
 {
     VEX_LOG(
         Info,
@@ -34,7 +35,7 @@ void PhysicalDevice::DumpPhysicalDeviceInfo()
 }
 #endif
 
-bool PhysicalDevice::operator>(const PhysicalDevice& other) const
+bool RHIPhysicalDeviceBase::operator>(const RHIPhysicalDeviceBase& other) const
 {
     if (!featureChecker || !other.featureChecker)
     {

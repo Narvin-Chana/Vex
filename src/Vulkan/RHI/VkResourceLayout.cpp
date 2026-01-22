@@ -1,14 +1,11 @@
 #include "VkResourceLayout.h"
 
 #include <Vex/Platform/Debug.h>
-#include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
-
-#include <RHI/RHIDescriptorPool.h>
+#include <Vex/RHIImpl/RHIPhysicalDevice.h>
 
 #include <Vulkan/RHI/VkDescriptorPool.h>
 #include <Vulkan/VkErrorHandler.h>
-#include <Vulkan/VkFeatureChecker.h>
 #include <Vulkan/VkGPUContext.h>
 #include <Vulkan/VkSamplers.h>
 

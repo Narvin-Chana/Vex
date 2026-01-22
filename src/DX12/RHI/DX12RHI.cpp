@@ -9,6 +9,7 @@
 #include <Vex/RHIImpl/RHICommandPool.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
 #include <Vex/RHIImpl/RHIFence.h>
+#include <Vex/RHIImpl/RHIPhysicalDevice.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
@@ -19,12 +20,13 @@
 #include <Vex/Synchronization.h>
 
 #include <DX12/DX12Debug.h>
-#include <DX12/DX12PhysicalDevice.h>
 #include <DX12/DXGIFactory.h>
 #include <DX12/HRChecker.h>
 
 namespace vex::dx12
 {
+
+static std::vector<UniqueHandle<RHIPhysicalDevice>> GCachedPhysicalDevices{};
 
 namespace DX12RHI_Internal
 {
@@ -57,48 +59,80 @@ DX12RHI::DX12RHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLa
 
 DX12RHI::~DX12RHI()
 {
+    GCachedPhysicalDevices.clear();
+
     // Must be done before removing the message callback.
     liveObjectsReporter.reset();
 
     CleanupDebugMessageCallback(device);
 }
 
-std::vector<UniqueHandle<PhysicalDevice>> DX12RHI::EnumeratePhysicalDevices()
+std::vector<RHIPhysicalDevice*> DX12RHI::EnumeratePhysicalDevices()
 {
-    std::vector<UniqueHandle<PhysicalDevice>> physicalDevices;
+    DXGIFactory::InitializeDXGIFactory();
 
     u32 adapterIndex = 0;
     ComPtr<IDXGIAdapter4> adapter;
 
-    while (DXGIFactory::dxgiFactory->EnumAdapterByGpuPreference(adapterIndex,
+    std::vector<RHIPhysicalDevice*> physicalDevices;
+
+    while (DXGIFactory::dxgiFactory->EnumAdapterByGpuPreference(adapterIndex++,
                                                                 DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
                                                                 IID_PPV_ARGS(&adapter)) != DXGI_ERROR_NOT_FOUND)
     {
+        auto it = std::find_if(GCachedPhysicalDevices.begin(),
+                               GCachedPhysicalDevices.end(),
+                               [&](const UniqueHandle<RHIPhysicalDevice>& physicalDevice)
+                               {
+                                   DXGI_ADAPTER_DESC3 cacheDesc;
+                                   physicalDevice->adapter->GetDesc3(&cacheDesc);
+
+                                   DXGI_ADAPTER_DESC3 newDesc;
+                                   adapter->GetDesc3(&newDesc);
+
+                                   return cacheDesc.AdapterLuid.HighPart == newDesc.AdapterLuid.HighPart &&
+                                          cacheDesc.AdapterLuid.LowPart == newDesc.AdapterLuid.LowPart;
+                               });
+
+        if (it != GCachedPhysicalDevices.end())
+        {
+            // Recreate feature check (and device) if device is errored
+            if (FAILED((*it)->featureChecker->device->GetDeviceRemovedReason()))
+            {
+                (*it)->featureChecker.reset();
+
+                ComPtr<ID3D12Device> device;
+                chk << D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&device));
+                (*it)->featureChecker.emplace(device);
+            }
+
+            physicalDevices.push_back(it->get());
+            continue;
+        }
+
         ComPtr<ID3D12Device> device;
-        if (SUCCEEDED(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&device))) && device)
+        if (SUCCEEDED(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&device))))
         {
             // Make sure we can cast the device to our chosen dx12 device type.
             ComPtr<DX12Device> minVersionDevice;
             device.As(&minVersionDevice);
 
             UniqueHandle<DX12PhysicalDevice> physicalDevice = MakeUnique<DX12PhysicalDevice>(adapter, minVersionDevice);
-
             if (minVersionDevice && physicalDevice->featureChecker->SupportsMinimalRequirements())
             {
-                physicalDevices.push_back(std::move(physicalDevice));
+                physicalDevices.push_back(physicalDevice.get());
+                GCachedPhysicalDevices.push_back(std::move(physicalDevice));
             }
         }
-
-        adapterIndex++;
     }
 
     return physicalDevices;
 }
 
-void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
+void DX12RHI::Init(const RHIPhysicalDevice* physicalDevice)
 {
     device = DXGIFactory::CreateDeviceStrict(
-        static_cast<DX12PhysicalDevice*>(physicalDevice.get())->adapter.Get(),
+        physicalDevice->adapter.Get(),
         DX12FeatureChecker::ConvertFeatureLevelToDX12FeatureLevel(physicalDevice->featureChecker->GetFeatureLevel()));
     VEX_ASSERT(device.Get(), "D3D12 device creation must succeed");
 
@@ -221,7 +255,6 @@ bool DX12RHI::IsTokenComplete(const SyncToken& syncToken) const
 
 void DX12RHI::WaitForTokenOnGPU(QueueType waitingQueue, const SyncToken& waitFor)
 {
-    auto& waitingFence = (*fences)[waitingQueue];
     auto& signalingFence = (*fences)[waitFor.queueType];
 
     // GPU-side wait: waitingQueue waits for waitFor.value on signalingQueue

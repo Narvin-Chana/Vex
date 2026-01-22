@@ -1,19 +1,14 @@
 #include "DXCImpl.h"
 
 #include <algorithm>
-#include <string_view>
 
 #include <Vex/Logger.h>
-#include <Vex/PhysicalDevice.h>
+#include <Vex/RHIImpl/RHIPhysicalDevice.h>
 #include <Vex/Shaders/DXCImplReflection.h>
 #include <Vex/Shaders/Shader.h>
 #include <Vex/Shaders/ShaderCompilerSettings.h>
 #include <Vex/Shaders/ShaderEnvironment.h>
 #include <Vex/Shaders/ShaderKey.h>
-
-#if VEX_VULKAN
-#include <Vulkan/VkFeatureChecker.h>
-#endif
 
 namespace vex
 {
@@ -27,10 +22,8 @@ static constexpr std::array HLSL202xFlags{
 
 static std::wstring GetTargetFromShaderType(ShaderType type)
 {
-    FeatureChecker* featureChecker = GPhysicalDevice->featureChecker.get();
-
     std::wstring highestSupportedShaderModel =
-        StringToWString(std::string(magic_enum::enum_name(featureChecker->GetShaderModel())));
+        StringToWString(std::string(magic_enum::enum_name(GPhysicalDevice->featureChecker->GetShaderModel())));
 
     using enum ShaderType;
 

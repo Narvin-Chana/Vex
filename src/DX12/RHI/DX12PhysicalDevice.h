@@ -1,14 +1,15 @@
 #pragma once
 
-#include <Vex/PhysicalDevice.h>
+#include <RHI/RHIPhysicalDevice.h>
 
 #include <DX12/DX12Headers.h>
 
 namespace vex::dx12
 {
 
-struct DX12PhysicalDevice : public PhysicalDevice
+class DX12PhysicalDevice : public RHIPhysicalDeviceBase
 {
+public:
     DX12PhysicalDevice(ComPtr<IDXGIAdapter4> adapter, const ComPtr<ID3D12Device>& device);
     ~DX12PhysicalDevice() = default;
 
