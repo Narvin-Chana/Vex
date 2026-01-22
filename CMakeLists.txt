@@ -192,6 +192,8 @@ add_library(Vex STATIC
     "src/Vex/Shaders/DXCImplReflection.cpp"
     "src/Vex/Shaders/ShaderEnvironment.h"
     "src/Vex/Shaders/CompilerBase.h"
+    "src/Vex/Shaders/RayTracingShaders.h"
+    "src/Vex/Shaders/RayTracingShaders.cpp"
     # Vex Built-In Shaders
     "src/Vex/BuiltInShaders/MipGeneration.h"
     # Vex API
@@ -224,8 +226,6 @@ add_library(Vex STATIC
     "src/Vex/GraphicsPipeline.h"
     "src/Vex/DrawHelpers.h"
     "src/Vex/ResourceBindingUtils.cpp"
-    "src/Vex/RayTracing.h"
-    "src/Vex/RayTracing.cpp"
     "src/Vex/Synchronization.h"
     "src/Vex/ResourceCopy.h"
     "src/Vex/ResourceCopy.cpp"

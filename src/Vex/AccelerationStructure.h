@@ -12,6 +12,12 @@
 namespace vex
 {
 
+struct AABB
+{
+    float minX, minY, minZ;
+    float maxX, maxY, maxZ;
+};
+
 struct ASHandle : Handle64<ASHandle>
 {
 };
@@ -21,7 +27,18 @@ static constexpr ASHandle GInvalidASHandle;
 enum class ASType : u8
 {
     BottomLevel, // BLAS, represents the different geometry.
-    TopLevel,    // TLAS, represents instances (with transforms) for a specific geometry.
+    TopLevel,    // TLAS, represents instances (with transforms) for specific BLAS.
+};
+
+enum class ASGeometryType : u8
+{
+    // Geometry is defined as vertex buffers/index buffers.
+    Triangles,
+    // Geometry is defined as an Axis-Aligned Bounding Box.
+    // !! Requires an Intersection shader in your ray tracing pipeline !!
+    // The SBT hit group for AABB instances must include an Intersection shader, otherwise ray tracing will fail at
+    // dispatch time.
+    AABBs,
 };
 
 // clang-format off
@@ -74,17 +91,25 @@ struct AccelerationStructure
 
 struct BLASGeometryDesc
 {
+    // For Triangles:
     // Geometry vertices.
     BufferBinding vertexBufferBinding;
     // Optional index buffer for the geometry.
     std::optional<BufferBinding> indexBufferBinding;
     // Optional 3x4 transform matrix to apply to vertices before building the BLAS.
     std::optional<std::array<float, 3 * 4>> transform;
+
+    // For AABBs:
+    // Buffer containing D3D12_RAYTRACING_AABB or VkAabbPositionsKHR
+    std::vector<AABB> aabbs;
+
     ASGeometry::Flags flags = ASGeometry::Opaque;
 };
 
 struct BLASBuildDesc
 {
+    ASGeometryType type = ASGeometryType::Triangles;
+
     // Geometry to include in this BLAS.
     // Typically you'd have only one geometry per BLAS (one mesh or a mesh and its connected parts, eg: a car with its
     // wheels).
@@ -101,7 +126,7 @@ struct TLASInstanceDesc
         1, 0, 0, 0, 
         0, 1, 0, 0,
         0, 0, 1, 0,
-        // clang-format onn
+        // clang-format on
     };
 
     // Custom InstanceID for user usage in RT shaders.
