@@ -593,10 +593,8 @@ TEST_P(ASAABBTest, CreateAABBTraceShader)
              },
              // Allow for primary rays only (no recursion).
              .maxRecursionDepth = 1,
-             // We use a payload of 1 floats (so 4 bytes).
-             .maxPayloadByteSize = 4,
-             // We use the built-in hlsl attributes (so 8 bytes).
-             .maxAttributeByteSize = 8,
+             .maxPayloadByteSize = sizeof(float),
+             .maxAttributeByteSize = sizeof(float) * 2,
         },
         ConstantBinding(data),
         {
