@@ -136,7 +136,7 @@ struct TLASInstanceDesc
     // Shader Binding Table (SBT) offset.
     u32 instanceContributionToHitGroupIndex = 0;
     // Flags for the instance.
-    ASInstance::Flags instanceFlags = ASInstance::None;
+    ASInstance::Flags instanceFlags = ASInstance::ForceOpaque;
 
     // Handle to this instance's corresponding BLAS.
     AccelerationStructure blas;

@@ -863,6 +863,7 @@ void DX12CommandList::BuildBLAS(RHIAccelerationStructure& as, RHIBuffer& scratch
     // Force last sync to BuildRaytracingAccelerationStructure, since BuildRaytracingAccelerationStructure touches the
     // resource.
     as.GetRHIBuffer().SetLastSync(RHIBarrierSync::BuildAccelerationStructure);
+    as.GetRHIBuffer().SetLastAccess(RHIBarrierAccess::AccelerationStructureWrite);
 }
 
 void DX12CommandList::BuildTLAS(RHIAccelerationStructure& as,
@@ -911,6 +912,7 @@ void DX12CommandList::BuildTLAS(RHIAccelerationStructure& as,
     // Force last sync to BuildRaytracingAccelerationStructure, since BuildRaytracingAccelerationStructure touches the
     // resource.
     as.GetRHIBuffer().SetLastSync(RHIBarrierSync::BuildAccelerationStructure);
+    as.GetRHIBuffer().SetLastAccess(RHIBarrierAccess::AccelerationStructureWrite);
 }
 
 RHIScopedGPUEvent DX12CommandList::CreateScopedMarker(const char* label, std::array<float, 3> labelColor)

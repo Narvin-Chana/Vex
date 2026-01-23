@@ -503,8 +503,23 @@ TEST_F(AccelerationStructureTest, CreateMultiAABBAndTLAS)
     graphics.DestroyAccelerationStructure(tlas);
 }
 
-TEST_F(AccelerationStructureTest, CreateAABBTraceShader)
+struct ASAABBTestData
 {
+    AABB aabb;
+    float expectedResult;
+    const char* testName;
+};
+
+struct ASAABBTest
+    : public AccelerationStructureTest
+    , public testing::WithParamInterface<ASAABBTestData>
+{
+};
+
+TEST_P(ASAABBTest, CreateAABBTraceShader)
+{
+    const auto& testData = GetParam();
+
     auto blas = graphics.CreateAccelerationStructure(
         ASDesc{ .name = "AABB_BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
     auto tlas = graphics.CreateAccelerationStructure(
@@ -516,12 +531,14 @@ TEST_F(AccelerationStructureTest, CreateAABBTraceShader)
                   { .type = ASGeometryType::AABBs,
                     .geometry = {
                         BLASGeometryDesc{
-                            .aabbs = { AABB{ 0, 0, 0.2f, 1, 1, 1 } },
+                            .aabbs = { testData.aabb },
                             .flags = ASGeometry::Opaque,
                         },
                     } });
     TLASInstanceDesc instanceDesc{ .blas = blas };
     ctx.BuildTLAS(tlas, { .instances = { instanceDesc } });
+
+    ctx.Barrier(blas, RHIBarrierSync::AllCommands, RHIBarrierAccess::ShaderRead);
     ctx.Barrier(tlas, RHIBarrierSync::AllCommands, RHIBarrierAccess::ShaderRead);
 
     Buffer out = graphics.CreateBuffer(BufferDesc::CreateGenericBufferDesc("DataOut", 4, true));
@@ -552,7 +569,7 @@ TEST_F(AccelerationStructureTest, CreateAABBTraceShader)
              {
                  ShaderKey{
                      .path = shaderPath,
-                     .entryPoint = "Miss",
+                     .entryPoint = "MissMain",
                      .type = ShaderType::RayMissShader,
                  }
              },
@@ -587,17 +604,30 @@ TEST_F(AccelerationStructureTest, CreateAABBTraceShader)
         }
     );
 
-    ctx.Barrier(out, RHIBarrierSync::AllCommands, RHIBarrierAccess::CopySource);
+    ctx.BarrierBinding({ .buffer = out, .usage = BufferBindingUsage::RWStructuredBuffer });
 
     BufferReadbackContext readback = ctx.EnqueueDataReadback(out);
 
     graphics.WaitForTokenOnCPU(graphics.Submit(ctx));
 
-    float f = -10;
+    float f;
     readback.ReadData(std::as_writable_bytes(std::span<float>(&f, 1)));
 
-    EXPECT_FLOAT_EQ(f, 1);
+    EXPECT_FLOAT_EQ(f, testData.expectedResult);
 
     graphics.DestroyAccelerationStructure(blas);
     graphics.DestroyBuffer(out);
 }
+
+INSTANTIATE_TEST_SUITE_P(ASAABBTestSuite,
+                         ASAABBTest,
+                         testing::Values(ASAABBTestData{ .aabb = AABB{ 0, 0, 1, 1, 1, 2 },
+                                                         .expectedResult = 1,
+                                                         .testName = "Has_Intersection_RayOriginOutsideAABB" },
+                                         ASAABBTestData{ .aabb = AABB{ 0, 0, -1, 1, 1, 1 },
+                                                         .expectedResult = 1,
+                                                         .testName = "Has_Intersection_RayOriginInsideAABB" },
+                                         ASAABBTestData{ .aabb = AABB{ 1, 1, 1, 2, 2, 2 },
+                                                         .expectedResult = -1,
+                                                         .testName = "No_Intersection" }),
+                         [](const testing::TestParamInfo<ASAABBTestData>& info) { return info.param.testName; });

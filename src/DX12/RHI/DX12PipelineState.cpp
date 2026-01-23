@@ -137,7 +137,7 @@ static void PrintStateObjectDesc(const D3D12_STATE_OBJECT_DESC* desc)
         wstr << L"|--------------------------------------------------------------------\n";
     }
     wstr << L"\n";
-    VEX_LOG(Info, "Desc: {}", WStringToString(wstr.str()));
+    VEX_LOG(Warning, "Desc: {}", WStringToString(wstr.str()));
 }
 
 } // namespace DX12GraphicsPipeline_Internal
@@ -439,17 +439,20 @@ void DX12RayTracingPipelineState::GenerateIdentifiers(const RayTracingShaderColl
 
     rayGenerationIdentifier = stateObjectProperties->GetShaderIdentifier(
         StringToWString(shaderCollection.rayGenerationShader->key.entryPoint).c_str());
+    VEX_ASSERT(rayGenerationIdentifier != nullptr, "Unable to use null RTPSO shader identifier...");
 
     for (NonNullPtr<Shader> missShader : shaderCollection.rayMissShaders)
     {
         void* identifier =
             stateObjectProperties->GetShaderIdentifier(StringToWString(missShader->key.entryPoint).c_str());
+        VEX_ASSERT(identifier != nullptr, "Unable to use null RTPSO shader identifier...");
         rayMissIdentifiers.push_back(identifier);
     }
 
     for (const auto& hitGroupData : shaderCollection.hitGroupShaders)
     {
         void* identifier = stateObjectProperties->GetShaderIdentifier(StringToWString(hitGroupData.name).c_str());
+        VEX_ASSERT(identifier != nullptr, "Unable to use null RTPSO shader identifier...");
         hitGroupIdentifiers.push_back(identifier);
     }
 
@@ -457,6 +460,7 @@ void DX12RayTracingPipelineState::GenerateIdentifiers(const RayTracingShaderColl
     {
         void* identifier =
             stateObjectProperties->GetShaderIdentifier(StringToWString(callableShader->key.entryPoint).c_str());
+        VEX_ASSERT(identifier != nullptr, "Unable to use null RTPSO shader identifier...");
         rayCallableIdentifiers.push_back(identifier);
     }
 }

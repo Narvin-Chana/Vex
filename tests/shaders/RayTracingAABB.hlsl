@@ -8,7 +8,7 @@ struct UniformStruct
 
 VEX_UNIFORMS(UniformStruct, Uniforms);
 
-static const RWStructuredBuffer<float> Output = GetBindlessResource(Uniforms.outputHandle);
+static RWStructuredBuffer<float> Output = GetBindlessResource(Uniforms.outputHandle);
 static RaytracingAccelerationStructure AccelerationStructure = GetBindlessResource(Uniforms.accelerationStructureHandle);
 
 struct HitAttributes
@@ -51,22 +51,16 @@ void RayGenMain()
 }
 
 [shader("miss")]
-void Miss(inout RayPayload payload)
+void MissMain(inout RayPayload payload)
 {
-    payload.res = 2;
+    payload.res = -1;
 }
 
 [shader("intersection")]
 void IntersectMain()
 {
-    // Simple test: always report a hit at a fixed distance
-    // If this runs, it means the AABB system is working
-    float tHit = 1;
-    
-    HitAttributes attr;
-    attr.dummy = 0;
-    
-    // Report the hit - this will trigger the closest hit shader
+    float tHit = 0.8f;
+    HitAttributes attr = (HitAttributes) 0;
     ReportHit(tHit, 0, attr);
 }
 
