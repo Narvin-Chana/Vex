@@ -1049,7 +1049,8 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
         ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(*graphics,
                                                                  drawBindings.renderTargets,
                                                                  drawBindings.depthStencil,
-                                                                 pendingTextureBarriers);
+                                                                 pendingTextureBarriers,
+                                                                 drawDesc.depthStencilState);
 
     auto graphicsPSOKey = CommandContext_Internal::GetGraphicsPSOKeyFromDrawDesc(drawDesc, drawResources);
 

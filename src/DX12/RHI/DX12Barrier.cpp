@@ -83,12 +83,12 @@ D3D12_BARRIER_ACCESS RHIBarrierAccessToDX12(RHIBarrierAccess barrierAccess)
     case RenderTargetWrite:
         // D3D12 doesn't distinguish between RT read/write.
         return D3D12_BARRIER_ACCESS_RENDER_TARGET;
-    case DepthStencil:
-        return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
     case DepthStencilRead:
         return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ;
     case DepthStencilWrite:
         return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
+    case DepthStencilReadWrite:
+        return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ | D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
     case CopySource:
         return D3D12_BARRIER_ACCESS_COPY_SOURCE;
     case CopyDest:
@@ -123,10 +123,10 @@ D3D12_BARRIER_LAYOUT RHITextureLayoutToDX12(RHITextureLayout textureLayout)
         return D3D12_BARRIER_LAYOUT_COMMON;
     case RenderTarget:
         return D3D12_BARRIER_LAYOUT_RENDER_TARGET;
-    case DepthStencilWrite:
-        return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE;
     case DepthStencilRead:
         return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_READ;
+    case DepthStencilWrite:
+        return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE;
     case ShaderResource:
         return D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
     case UnorderedAccess:

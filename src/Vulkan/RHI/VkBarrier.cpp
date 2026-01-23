@@ -34,7 +34,7 @@ namespace vex::vk
         return eLateFragmentTests;
     case Depth:
     case DepthStencil:
-        return eEarlyFragmentTests;
+        return eEarlyFragmentTests | eLateFragmentTests;
     case ComputeShader:
         return eComputeShader;
     case Copy:
@@ -84,12 +84,12 @@ namespace vex::vk
         return eColorAttachmentRead;
     case RenderTargetWrite:
         return eColorAttachmentWrite;
-    case DepthStencil:
-        return eDepthStencilAttachmentRead | eDepthStencilAttachmentWrite;
     case DepthStencilRead:
         return eDepthStencilAttachmentRead;
     case DepthStencilWrite:
         return eDepthStencilAttachmentWrite;
+    case DepthStencilReadWrite:
+        return eDepthStencilAttachmentRead | eDepthStencilAttachmentWrite;
     case CopySource:
         return eTransferRead;
     case CopyDest:
@@ -121,10 +121,10 @@ namespace vex::vk
         return eGeneral;
     case RenderTarget:
         return eColorAttachmentOptimal;
-    case DepthStencilWrite:
-        return eDepthStencilAttachmentOptimal;
     case DepthStencilRead:
         return eDepthStencilReadOnlyOptimal;
+    case DepthStencilWrite:
+        return eDepthStencilAttachmentOptimal;
     case ShaderResource:
         return eShaderReadOnlyOptimal;
     case UnorderedAccess:

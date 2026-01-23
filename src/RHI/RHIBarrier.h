@@ -52,9 +52,9 @@ enum class RHIBarrierAccess : u8
     RenderTarget,
     RenderTargetRead,
     RenderTargetWrite,
-    DepthStencil,
     DepthStencilRead,
     DepthStencilWrite,
+    DepthStencilReadWrite,
     CopySource,
     CopyDest,
     HostRead,
@@ -71,8 +71,8 @@ enum class RHITextureLayout : u8
     Undefined,
     Common,            // General purpose (maps to VK_GENERAL, D3D12_COMMON)
     RenderTarget,      // Color render target
-    DepthStencilWrite, // Depth/stencil for writing
     DepthStencilRead,  // Depth/stencil read-only
+    DepthStencilWrite, // Depth/stencil for writing
     ShaderResource,    // Shader read access
     UnorderedAccess,   // Storage/UAV access
     CopySource,        // Copy source

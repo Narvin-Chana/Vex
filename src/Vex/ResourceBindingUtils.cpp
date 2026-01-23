@@ -85,10 +85,12 @@ void ResourceBindingUtils::CollectRHIResources(Graphics& graphics,
     }
 }
 
-RHIDrawResources ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(Graphics& graphics,
-                                                                          Span<const TextureBinding> renderTargets,
-                                                                          std::optional<TextureBinding> depthStencil,
-                                                                          std::vector<RHITextureBarrier>& barriers)
+RHIDrawResources ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(
+    Graphics& graphics,
+    Span<const TextureBinding> renderTargets,
+    std::optional<TextureBinding> depthStencil,
+    std::vector<RHITextureBarrier>& barriers,
+    std::optional<DepthStencilState> depthStencilState)
 {
     RHIDrawResources drawResources;
     drawResources.renderTargets.reserve(renderTargets.size());
@@ -113,17 +115,39 @@ RHIDrawResources ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(Graphi
     {
         auto& texture = graphics.GetRHITexture(depthStencil->texture.handle);
 
-        // TODO: This deduces depth and/or stencil from the texture's format, ideally we'd pass this info along in
-        // the binding somehow.
-        bool supportsStencil = FormatUtil::IsDepthAndStencilFormat(texture.GetDesc().format);
+        const bool supportsStencil = FormatUtil::IsDepthAndStencilFormat(texture.GetDesc().format);
+        const bool useStencil =
+            depthStencilState ? (depthStencilState->stencilTestEnabled && supportsStencil) : supportsStencil;
+
+        // Start with the most restrictive access.
+        RHIBarrierAccess depthAccess = RHIBarrierAccess::DepthStencilReadWrite;
+        RHITextureLayout depthLayout = RHITextureLayout::DepthStencilWrite;
+        if (depthStencilState)
+        {
+            if (depthStencilState->depthWriteEnabled)
+            {
+                if (depthStencilState->depthTestEnabled)
+                {
+                    depthAccess = RHIBarrierAccess::DepthStencilReadWrite;
+                }
+                else
+                {
+                    depthAccess = RHIBarrierAccess::DepthStencilWrite;
+                }
+            }
+            else
+            {
+                depthAccess = RHIBarrierAccess::DepthStencilRead;
+                depthLayout = RHITextureLayout::DepthStencilRead;
+            }
+        }
 
         barriers.push_back(RHITextureBarrier{
             texture,
             depthStencil->subresource,
             supportsStencil ? RHIBarrierSync::DepthStencil : RHIBarrierSync::Depth,
-            // TODO: What about if we want to do DepthRead? Would require a flag in the binding!
-            RHIBarrierAccess::DepthStencil,
-            RHITextureLayout::DepthStencilWrite,
+            depthAccess,
+            depthLayout,
         });
         drawResources.depthStencil = RHITextureBinding{ .binding = *depthStencil, .texture = texture };
     }
