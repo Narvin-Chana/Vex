@@ -188,6 +188,7 @@ void CommandContext::ClearTexture(const TextureBinding& binding,
 
     RHITexture& texture = graphics->GetRHITexture(binding.texture.handle);
 
+    FlushBarriers();
     cmdList->ClearTexture({ binding, NonNullPtr(texture) },
                           // This is a safe cast, textures can only contain one of the two usages (RT/DS).
                           static_cast<TextureUsage::Type>(binding.texture.desc.usage &

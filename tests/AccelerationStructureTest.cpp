@@ -4,6 +4,9 @@
 
 using namespace vex;
 
+// Disabled for vulkan since RayTracing is not yet implemented.
+#if VEX_DX12
+
 struct AccelerationStructureTest : VexTest
 {
     using Vertex = std::array<float, 3>;
@@ -435,3 +438,5 @@ INSTANTIATE_TEST_SUITE_P(TLASFlagPermutationTest,
                          TLASFlagTest,
                          testing::ValuesIn(GenerateTestCasesForTLASFlagTest()),
                          [](const ::testing::TestParamInfo<TLASFlagTestData>& info) { return info.param.ToString(); });
+
+#endif

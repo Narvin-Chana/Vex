@@ -151,7 +151,7 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(RHIBuffer& buffer,
     const u32 subresourceIndex = D3D12CalcSubresource(
         desc.textureRegion.subresource.startMip,
         texture.GetDesc().type == TextureType::Texture3D ? 0 : desc.textureRegion.subresource.startSlice,
-        desc.textureRegion.subresource.GetStartPlane(),
+        desc.textureRegion.subresource.GetStartPlane(texture.GetDesc()),
         texture.GetDesc().mips,
         texture.GetDesc().GetSliceCount());
 
@@ -160,9 +160,9 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(RHIBuffer& buffer,
     bufferLoc.SubresourceIndex = subresourceIndex;
     bufferLoc.PlacedFootprint.Offset = desc.bufferRegion.offset;
 
-    bufferLoc.PlacedFootprint.Footprint.Format =
-        TextureFormatToDXGI(TextureUtil::GetCopyFormat(format, desc.textureRegion.subresource.GetSingleAspect()),
-                            false);
+    bufferLoc.PlacedFootprint.Footprint.Format = TextureFormatToDXGI(
+        TextureUtil::GetCopyFormat(format, desc.textureRegion.subresource.GetSingleAspect(texture.GetDesc())),
+        false);
     bufferLoc.PlacedFootprint.Footprint.Width = std::max(width, 1u);
     bufferLoc.PlacedFootprint.Footprint.Height = std::max(height, 1u);
     bufferLoc.PlacedFootprint.Footprint.Depth = std::max(depth, 1u);
@@ -470,7 +470,7 @@ void DX12CommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers,
                 remapToCommon = true;
             }
 
-            if (dx12Barrier.AccessAfter & D3D12_BARRIER_ACCESS_NO_ACCESS)
+            if (dx12Barrier.AccessAfter == D3D12_BARRIER_ACCESS_NO_ACCESS)
             {
                 dx12Barrier.SyncAfter = D3D12_BARRIER_SYNC_NONE;
             }
@@ -482,8 +482,10 @@ void DX12CommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers,
             dx12Barrier.Subresources.FirstArraySlice = textureBarrier.subresource.startSlice;
             dx12Barrier.Subresources.NumArraySlices =
                 textureBarrier.subresource.GetSliceCount(textureBarrier.texture->GetDesc());
-            dx12Barrier.Subresources.FirstPlane = textureBarrier.subresource.GetStartPlane();
-            dx12Barrier.Subresources.NumPlanes = textureBarrier.subresource.GetPlaneCount();
+            dx12Barrier.Subresources.FirstPlane =
+                textureBarrier.subresource.GetStartPlane(textureBarrier.texture->GetDesc());
+            dx12Barrier.Subresources.NumPlanes =
+                textureBarrier.subresource.GetPlaneCount(textureBarrier.texture->GetDesc());
             dx12Barrier.Flags = D3D12_TEXTURE_BARRIER_FLAG_NONE;
             dx12TextureBarriers.push_back(std::move(dx12Barrier));
 
@@ -524,7 +526,7 @@ void DX12CommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers,
                         remapToCommon = true;
                     }
 
-                    if (dx12Barrier.AccessAfter & D3D12_BARRIER_ACCESS_NO_ACCESS)
+                    if (dx12Barrier.AccessAfter == D3D12_BARRIER_ACCESS_NO_ACCESS)
                     {
                         dx12Barrier.SyncAfter = D3D12_BARRIER_SYNC_NONE;
                     }

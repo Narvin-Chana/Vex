@@ -17,20 +17,20 @@ D3D12_BARRIER_SYNC RHIBarrierSyncToDX12(RHIBarrierSync barrierSync)
         return D3D12_BARRIER_SYNC_NONE;
     case VertexInput:
         return D3D12_BARRIER_SYNC_INDEX_INPUT;
-        return D3D12_BARRIER_SYNC_VERTEX_SHADING;
     case VertexShader:
     case TessellationControl:
     case TessellationEvaluation:
         // D3D12 doesn't have separate tessellation stages
     case GeometryShader:
-        // Geometry shader is part of vertex shading in D3D12
+        // Geometry shader is part of vertex shading in DX12
         return D3D12_BARRIER_SYNC_VERTEX_SHADING;
     case PixelShader:
         return D3D12_BARRIER_SYNC_PIXEL_SHADING;
     case EarlyFragment:
     case LateFragment:
-        // Early/Late Z is part of depth/stencil
-    case Depth:
+        // Early/Late Z is part of pixel shading and/or depth/stencil in DX12
+        // Since we don't know which is used/unused, we just apply both.
+        return D3D12_BARRIER_SYNC_PIXEL_SHADING | D3D12_BARRIER_SYNC_DEPTH_STENCIL;
     case DepthStencil:
         return D3D12_BARRIER_SYNC_DEPTH_STENCIL;
     case ComputeShader:
@@ -44,8 +44,6 @@ D3D12_BARRIER_SYNC RHIBarrierSyncToDX12(RHIBarrierSync barrierSync)
         return D3D12_BARRIER_SYNC_RENDER_TARGET;
     case DrawIndirect:
         return D3D12_BARRIER_SYNC_EXECUTE_INDIRECT;
-    case Host:
-        return D3D12_BARRIER_SYNC_NONE; // Host operations don't sync with GPU in D3D12
     case RayTracing:
         return D3D12_BARRIER_SYNC_RAYTRACING;
     case BuildAccelerationStructure:
@@ -79,9 +77,6 @@ D3D12_BARRIER_ACCESS RHIBarrierAccessToDX12(RHIBarrierAccess barrierAccess)
     case ShaderReadWrite:
         return D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
     case RenderTarget:
-    case RenderTargetRead:
-    case RenderTargetWrite:
-        // D3D12 doesn't distinguish between RT read/write.
         return D3D12_BARRIER_ACCESS_RENDER_TARGET;
     case DepthStencilRead:
         return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ;
@@ -93,18 +88,10 @@ D3D12_BARRIER_ACCESS RHIBarrierAccessToDX12(RHIBarrierAccess barrierAccess)
         return D3D12_BARRIER_ACCESS_COPY_SOURCE;
     case CopyDest:
         return D3D12_BARRIER_ACCESS_COPY_DEST;
-    case HostRead:
-    case HostWrite:
-        // Host access doesn't have direct D3D12 equivalent
-        return D3D12_BARRIER_ACCESS_NO_ACCESS;
     case AccelerationStructureRead:
         return D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ;
     case AccelerationStructureWrite:
         return D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
-    case MemoryRead:
-    case MemoryWrite:
-        // Generic memory read/write
-        return D3D12_BARRIER_ACCESS_COMMON;
     default:
         VEX_LOG(Fatal, "Unsupported RHIBarrierAccess type.");
         std::unreachable();

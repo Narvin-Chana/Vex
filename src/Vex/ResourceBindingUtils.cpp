@@ -115,10 +115,6 @@ RHIDrawResources ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(
     {
         auto& texture = graphics.GetRHITexture(depthStencil->texture.handle);
 
-        const bool supportsStencil = FormatUtil::IsDepthAndStencilFormat(texture.GetDesc().format);
-        const bool useStencil =
-            depthStencilState ? (depthStencilState->stencilTestEnabled && supportsStencil) : supportsStencil;
-
         // Start with the most restrictive access.
         RHIBarrierAccess depthAccess = RHIBarrierAccess::DepthStencilReadWrite;
         RHITextureLayout depthLayout = RHITextureLayout::DepthStencilWrite;
@@ -145,7 +141,7 @@ RHIDrawResources ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(
         barriers.push_back(RHITextureBarrier{
             texture,
             depthStencil->subresource,
-            supportsStencil ? RHIBarrierSync::DepthStencil : RHIBarrierSync::Depth,
+            RHIBarrierSync::DepthStencil,
             depthAccess,
             depthLayout,
         });
