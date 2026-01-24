@@ -26,8 +26,6 @@
 namespace vex::dx12
 {
 
-static std::vector<UniqueHandle<RHIPhysicalDevice>> GCachedPhysicalDevices{};
-
 namespace DX12RHI_Internal
 {
 
@@ -59,8 +57,6 @@ DX12RHI::DX12RHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLa
 
 DX12RHI::~DX12RHI()
 {
-    GCachedPhysicalDevices.clear();
-
     // Must be done before removing the message callback.
     liveObjectsReporter.reset();
 
