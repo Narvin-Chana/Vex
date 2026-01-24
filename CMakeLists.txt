@@ -233,6 +233,7 @@ add_library(Vex STATIC
     "src/Vex/ResourceReadbackContext.cpp"
     "src/Vex/ResourceReadbackContext.h"
     "src/Vex/AccelerationStructure.h"
+    "src/Vex/PhysicalDevice.h"
 )
 
 if(WIN32)

@@ -5,8 +5,8 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include <Vex/Logger.h>
-#include <Vex/Utility/Formattable.h>
 #include <Vex/RHIImpl/RHIFeatureChecker.h>
+#include <Vex/Utility/Formattable.h>
 
 namespace vex
 {
@@ -24,8 +24,8 @@ void RHIPhysicalDeviceBase::DumpPhysicalDeviceInfo()
         "\t\tMesh Shaders: {}\n"
         "\t\tRayTracing: {}\n"
         "\t\tBindlessResources: {}",
-        deviceName,
-        dedicatedVideoMemoryMB,
+        info.deviceName,
+        info.dedicatedVideoMemoryMB,
         featureChecker->GetFeatureLevel(),
         featureChecker->GetResourceBindingTier(),
         featureChecker->GetShaderModel(),
@@ -60,7 +60,7 @@ bool RHIPhysicalDeviceBase::operator>(const RHIPhysicalDeviceBase& other) const
                std::to_underlying(other.featureChecker->GetShaderModel());
     }
 
-    return dedicatedVideoMemoryMB > other.dedicatedVideoMemoryMB;
+    return info.dedicatedVideoMemoryMB > other.info.dedicatedVideoMemoryMB;
 }
 
 } // namespace vex

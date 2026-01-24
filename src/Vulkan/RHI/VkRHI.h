@@ -31,7 +31,7 @@ public:
     VkRHI& operator=(VkRHI&&) = default;
     ~VkRHI();
 
-    static std::vector<RHIPhysicalDevice*> EnumeratePhysicalDevices();
+    static std::vector<UniqueHandle<RHIPhysicalDevice>> EnumeratePhysicalDevices();
     virtual void Init(const RHIPhysicalDevice* physicalDevice) override;
 
     virtual RHISwapChain CreateSwapChain(SwapChainDesc& desc, const PlatformWindow& platformWindow) override;
@@ -96,11 +96,12 @@ private:
     // lot of places.
     UniqueHandle<VkGPUContext> ctx;
 
-    struct VkInstanceDeleter
+    struct DispatchRHILifetime
     {
-        ~VkInstanceDeleter();
-    } instanceDeleter;
+        ~DispatchRHILifetime();
+    } dispatch;
 
+    ::vk::UniqueInstance instance;
     ::vk::UniqueSurfaceKHR surface;
     ::vk::UniqueDevice device;
     ::vk::PhysicalDevice physDevice;

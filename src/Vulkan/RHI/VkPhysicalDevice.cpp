@@ -6,8 +6,8 @@ namespace vex::vk
 VkPhysicalDevice::VkPhysicalDevice(const ::vk::PhysicalDevice& dev)
     : physicalDevice(dev)
 {
-    deviceName = dev.getProperties().deviceName.data();
-    dedicatedVideoMemoryMB = GetDeviceVRAMSize(dev);
+    info.deviceName = dev.getProperties().deviceName.data();
+    info.dedicatedVideoMemoryMB = GetDeviceVRAMSize(dev);
     featureChecker.emplace(dev);
 }
 

@@ -55,7 +55,7 @@ struct GraphicsCreateDesc
     ShaderCompilerSettings shaderCompilerSettings;
 
     // This specifies the device to use when desired. If null the "best" device according to Vex will be picked
-    RHIPhysicalDevice* specifiedDevice = nullptr;
+    std::optional<PhysicalDeviceInfo> specifiedDevice;
 };
 
 class Graphics
@@ -191,7 +191,7 @@ public:
     [[nodiscard]] std::expected<Query, QueryStatus> GetTimestampValue(QueryHandle handle);
 
     // Returns the Vex supported physical devices
-    static std::vector<RHIPhysicalDevice*> EnumeratePhysicalDevices();
+    static std::vector<PhysicalDeviceInfo> GetSupportedDevices();
 
 private:
     void PrepareCommandContextForSubmission(CommandContext& ctx);

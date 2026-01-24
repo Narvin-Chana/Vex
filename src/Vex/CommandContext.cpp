@@ -1,7 +1,6 @@
 #include "CommandContext.h"
 
 #include <algorithm>
-#include <cmath>
 #include <variant>
 
 #include <Vex/AccelerationStructure.h>
@@ -10,11 +9,11 @@
 #include <Vex/Graphics.h>
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
+#include <Vex/PhysicalDevice.h>
 #include <Vex/Platform/Debug.h>
 #include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
-#include <Vex/RHIImpl/RHIPhysicalDevice.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
@@ -24,7 +23,6 @@
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Hash.h>
 #include <Vex/Utility/Validation.h>
-#include <Vex/Utility/Visitor.h>
 
 #include <RHI/RHIBarrier.h>
 #include <RHI/RHIBindings.h>

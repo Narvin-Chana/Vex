@@ -3,7 +3,7 @@
 #include <algorithm>
 
 #include <Vex/Logger.h>
-#include <Vex/RHIImpl/RHIPhysicalDevice.h>
+#include <Vex/PhysicalDevice.h>
 #include <Vex/Shaders/DXCImplReflection.h>
 #include <Vex/Shaders/Shader.h>
 #include <Vex/Shaders/ShaderCompilerSettings.h>
@@ -138,8 +138,7 @@ std::expected<ShaderCompilationResult, std::string> DXCCompilerImpl::CompileShad
     }
 
 #if VEX_VULKAN
-    std::string_view vulkanVersion =
-        reinterpret_cast<vk::VkFeatureChecker&>(*GPhysicalDevice->featureChecker).GetMaxSupportedVulkanVersion();
+    std::string_view vulkanVersion = GPhysicalDevice->featureChecker->GetMaxSupportedVulkanVersion();
     std::wstring vulkanVersionFlag = std::format(L"-fspv-target-env={}", StringToWString(std::string(vulkanVersion)));
     args.emplace_back(L"-spirv");
     args.emplace_back(L"-fvk-bind-resource-heap");

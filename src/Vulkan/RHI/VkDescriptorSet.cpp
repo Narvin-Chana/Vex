@@ -1,11 +1,11 @@
 ﻿#include "VkDescriptorSet.h"
 
+#include <Vex/PhysicalDevice.h>
 #include <Vex/Utility/Formattable.h>
 #include <Vex/Utility/Validation.h>
 
 #include <RHI/RHIDescriptorPool.h>
 
-#include <Vulkan/RHI/VkPhysicalDevice.h>
 #include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkGPUContext.h>

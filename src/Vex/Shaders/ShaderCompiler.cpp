@@ -5,8 +5,7 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include <Vex/Logger.h>
-#include <Vex/RHIImpl/RHI.h>
-#include <Vex/RHIImpl/RHIPhysicalDevice.h>
+#include <Vex/PhysicalDevice.h>
 #include <Vex/Shaders/CompilerBase.h>
 #include <Vex/Shaders/Shader.h>
 #include <Vex/Shaders/ShaderEnvironment.h>

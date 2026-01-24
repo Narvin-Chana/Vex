@@ -4,6 +4,7 @@
 #include <optional>
 
 #include <Vex/RHIImpl/RHIFence.h>
+#include <Vex/Utility/UniqueHandle.h>
 
 #include <RHI/RHI.h>
 #include <RHI/RHIFwd.h>
@@ -26,7 +27,7 @@ public:
     DX12RHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation);
     ~DX12RHI();
 
-    static std::vector<RHIPhysicalDevice*> EnumeratePhysicalDevices();
+    static std::vector<UniqueHandle<RHIPhysicalDevice>> EnumeratePhysicalDevices();
 
     virtual void Init(const RHIPhysicalDevice* physicalDevice) override;
 

@@ -1,9 +1,9 @@
 #include "DX12SwapChain.h"
 
 #include <Vex/Logger.h>
+#include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHICommandList.h>
-#include <Vex/RHIImpl/RHIPhysicalDevice.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/Synchronization.h>
 #include <Vex/Utility/Formattable.h>

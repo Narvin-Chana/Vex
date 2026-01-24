@@ -32,7 +32,7 @@ TEST(GraphicsTests, CreateGraphicsDebugLayerWithoutGPUValidation)
 
 TEST(GraphicsTests, PhysicalDeviceSelection_SecondDevice)
 {
-    std::vector<RHIPhysicalDevice*> devices = Graphics::EnumeratePhysicalDevices();
+    std::vector<PhysicalDeviceInfo> devices = Graphics::GetSupportedDevices();
 
     Graphics{ GraphicsCreateDesc{ .useSwapChain = false,
                                   .enableGPUDebugLayer = true,

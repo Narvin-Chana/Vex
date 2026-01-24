@@ -4,6 +4,7 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/Logger.h>
+#include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
 #include <Vex/RHIImpl/RHIPhysicalDevice.h>

@@ -32,40 +32,49 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 namespace vex::vk
 {
 
-::vk::UniqueInstance GInstance;
-
-// This will return either the RHI instance or a stub instance for physical device queries if RHI is not initialized
-::vk::Instance GetGlobalVkInstance()
+struct DispatcherLifetime
 {
-    if (!GInstance)
+    ::vk::Instance rhiInstance;
+    ::vk::UniqueInstance tmpInstance;
+
+    DispatcherLifetime()
     {
         VULKAN_HPP_DEFAULT_DISPATCHER = {};
         VULKAN_HPP_DEFAULT_DISPATCHER.init();
-        GInstance = VEX_VK_CHECK <<= ::vk::createInstanceUnique({});
-        VULKAN_HPP_DEFAULT_DISPATCHER.init(*GInstance);
+        tmpInstance = VEX_VK_CHECK <<= ::vk::createInstanceUnique({});
+        VULKAN_HPP_DEFAULT_DISPATCHER.init(*tmpInstance);
     }
-    return *GInstance;
-}
 
-// Should be redone properly. NC: ?? Should it?
-static ::vk::PhysicalDeviceProperties GetHighestApiVersionDevice()
-{
-    // Create temporary instance to check device properties
-
-    auto devices = VEX_VK_CHECK <<= GetGlobalVkInstance().enumeratePhysicalDevices();
-
-    ::vk::PhysicalDeviceProperties bestDevice{};
-    for (auto dev : devices)
+    ::vk::Instance GetInstance()
     {
-        auto prop = dev.getProperties();
-        if (prop.apiVersion > bestDevice.apiVersion)
+        if (rhiInstance)
         {
-            bestDevice = prop;
+            return rhiInstance;
         }
+
+        if (!tmpInstance)
+        {
+            tmpInstance = VEX_VK_CHECK <<= ::vk::createInstanceUnique({});
+            VULKAN_HPP_DEFAULT_DISPATCHER.init(*tmpInstance);
+        }
+
+        return *tmpInstance;
     }
 
-    return bestDevice;
-}
+    void SetInstance(::vk::Instance instance)
+    {
+        VULKAN_HPP_DEFAULT_DISPATCHER.init(instance);
+        rhiInstance = instance;
+        tmpInstance.reset();
+    }
+
+    void SetDevice(::vk::Device device)
+    {
+        VULKAN_HPP_DEFAULT_DISPATCHER.init(device);
+    }
+};
+
+static DispatcherLifetime GDispatcherLifetime{};
 
 VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer, bool enableGPUBasedValidation)
 {
@@ -75,7 +84,7 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
         .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
         .pEngineName = "No Engine",
         .engineVersion = VK_MAKE_VERSION(1, 0, 0),
-        .apiVersion = GetHighestApiVersionDevice().apiVersion,
+        .apiVersion = VK_MAKE_VERSION(1, 3, 0),
     };
 
     ::vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo;
@@ -136,11 +145,8 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
         VEX_LOG(Info, "\t{}", instanceExtension);
     }
 
-    GInstance.release();
-    VULKAN_HPP_DEFAULT_DISPATCHER = {};
-    VULKAN_HPP_DEFAULT_DISPATCHER.init();
-    GInstance = VEX_VK_CHECK <<= ::vk::createInstanceUnique(instanceCI);
-    VULKAN_HPP_DEFAULT_DISPATCHER.init(*GInstance);
+    instance = VEX_VK_CHECK <<= ::vk::createInstanceUnique(instanceCI);
+    GDispatcherLifetime.SetInstance(*instance);
 
     // Only activate setting debug names if the debug layer is active. Otherwise Vulkan will error out.
     GEnableDebugName = enableGPUDebugLayer;
@@ -164,7 +170,7 @@ void VkRHI::InitWindow(const PlatformWindowHandle& platformWindowHandle)
                     .hinstance = GetModuleHandle(nullptr),
                     .hwnd = windowHandle.window,
                 };
-                surface = VEX_VK_CHECK <<= GInstance->createWin32SurfaceKHRUnique(createInfo);
+                surface = VEX_VK_CHECK <<= instance->createWin32SurfaceKHRUnique(createInfo);
             },
 #elif defined(__linux__)
             [this](const PlatformWindowHandle::X11Handle& windowHandle)
@@ -188,14 +194,13 @@ void VkRHI::InitWindow(const PlatformWindowHandle& platformWindowHandle)
         platformWindowHandle.handle);
 }
 
-static std::vector<UniqueHandle<VkPhysicalDevice>> GCachedPhysicalDevices;
-
-std::vector<RHIPhysicalDevice*> VkRHI::EnumeratePhysicalDevices()
+std::vector<UniqueHandle<RHIPhysicalDevice>> VkRHI::EnumeratePhysicalDevices()
 {
-    std::vector<RHIPhysicalDevice*> physicalDevices;
+    std::vector<UniqueHandle<RHIPhysicalDevice>> physicalDevices;
 
-    std::vector<::vk::PhysicalDevice> vkPhysicalDevices = VEX_VK_CHECK <<=
-        GetGlobalVkInstance().enumeratePhysicalDevices();
+    ::vk::Instance instance = GDispatcherLifetime.GetInstance();
+
+    std::vector<::vk::PhysicalDevice> vkPhysicalDevices = VEX_VK_CHECK <<= instance.enumeratePhysicalDevices();
     if (vkPhysicalDevices.empty())
     {
         VEX_LOG(Fatal, "No physical devices compatible with Vulkan were found!");
@@ -204,24 +209,10 @@ std::vector<RHIPhysicalDevice*> VkRHI::EnumeratePhysicalDevices()
     physicalDevices.reserve(vkPhysicalDevices.size());
     for (const ::vk::PhysicalDevice& dev : vkPhysicalDevices)
     {
-        auto it =
-            std::find_if(GCachedPhysicalDevices.begin(),
-                         GCachedPhysicalDevices.end(),
-                         [&](const UniqueHandle<VkPhysicalDevice>& device) { return device->physicalDevice == dev; });
-
-        if (it != GCachedPhysicalDevices.end())
-        {
-            (*it)->~VkPhysicalDevice();
-            new (it->get()) VkPhysicalDevice(dev);
-            physicalDevices.push_back(it->get());
-            continue;
-        }
-
         UniqueHandle<VkPhysicalDevice> newDevice = MakeUnique<VkPhysicalDevice>(dev);
         if (newDevice->featureChecker->SupportsMinimalRequirements())
         {
-            physicalDevices.push_back(newDevice.get());
-            GCachedPhysicalDevices.push_back(std::move(newDevice));
+            physicalDevices.push_back(std::move(newDevice));
         }
     }
 
@@ -349,8 +340,7 @@ void VkRHI::Init(const RHIPhysicalDevice* vexPhysicalDevice)
                                              .pEnabledFeatures = &physDeviceFeatures };
 
     device = VEX_VK_CHECK <<= physDevice.createDeviceUnique(deviceCreateInfo);
-
-    VULKAN_HPP_DEFAULT_DISPATCHER.init(*device);
+    GDispatcherLifetime.SetDevice(*device);
 
     if (graphicsQueueFamily != -1)
     {
@@ -459,7 +449,7 @@ RHIAccelerationStructure VkRHI::CreateAS(const ASDesc& desc)
 
 ::vk::Instance VkRHI::GetNativeInstance()
 {
-    return *GInstance;
+    return *instance;
 }
 
 void VkRHI::WaitForTokenOnCPU(const SyncToken& syncToken)
@@ -528,10 +518,9 @@ SyncToken VkRHI::SubmitToQueue(QueueType queueType,
     return SyncToken{ queueType, signalValue };
 }
 
-VkRHI::VkInstanceDeleter::~VkInstanceDeleter()
+VkRHI::DispatchRHILifetime::~DispatchRHILifetime()
 {
-    GCachedPhysicalDevices.clear();
-    GInstance.reset();
+    GDispatcherLifetime.SetInstance(nullptr);
 }
 
 std::vector<SyncToken> VkRHI::Submit(Span<const NonNullPtr<RHICommandList>> commandLists,

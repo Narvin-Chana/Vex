@@ -67,49 +67,18 @@ DX12RHI::~DX12RHI()
     CleanupDebugMessageCallback(device);
 }
 
-std::vector<RHIPhysicalDevice*> DX12RHI::EnumeratePhysicalDevices()
+std::vector<UniqueHandle<RHIPhysicalDevice>> DX12RHI::EnumeratePhysicalDevices()
 {
     DXGIFactory::InitializeDXGIFactory();
 
     u32 adapterIndex = 0;
     ComPtr<IDXGIAdapter4> adapter;
 
-    std::vector<RHIPhysicalDevice*> physicalDevices;
-
+    std::vector<UniqueHandle<RHIPhysicalDevice>> physicalDevices;
     while (DXGIFactory::dxgiFactory->EnumAdapterByGpuPreference(adapterIndex++,
                                                                 DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
                                                                 IID_PPV_ARGS(&adapter)) != DXGI_ERROR_NOT_FOUND)
     {
-        auto it = std::find_if(GCachedPhysicalDevices.begin(),
-                               GCachedPhysicalDevices.end(),
-                               [&](const UniqueHandle<RHIPhysicalDevice>& physicalDevice)
-                               {
-                                   DXGI_ADAPTER_DESC3 cacheDesc;
-                                   physicalDevice->adapter->GetDesc3(&cacheDesc);
-
-                                   DXGI_ADAPTER_DESC3 newDesc;
-                                   adapter->GetDesc3(&newDesc);
-
-                                   return cacheDesc.AdapterLuid.HighPart == newDesc.AdapterLuid.HighPart &&
-                                          cacheDesc.AdapterLuid.LowPart == newDesc.AdapterLuid.LowPart;
-                               });
-
-        if (it != GCachedPhysicalDevices.end())
-        {
-            // Recreate feature check (and device) if device is errored
-            if (FAILED((*it)->featureChecker->device->GetDeviceRemovedReason()))
-            {
-                (*it)->featureChecker.reset();
-
-                ComPtr<ID3D12Device> device;
-                chk << D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&device));
-                (*it)->featureChecker.emplace(device);
-            }
-
-            physicalDevices.push_back(it->get());
-            continue;
-        }
-
         ComPtr<ID3D12Device> device;
         if (SUCCEEDED(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&device))))
         {
@@ -120,8 +89,7 @@ std::vector<RHIPhysicalDevice*> DX12RHI::EnumeratePhysicalDevices()
             UniqueHandle<DX12PhysicalDevice> physicalDevice = MakeUnique<DX12PhysicalDevice>(adapter, minVersionDevice);
             if (minVersionDevice && physicalDevice->featureChecker->SupportsMinimalRequirements())
             {
-                physicalDevices.push_back(physicalDevice.get());
-                GCachedPhysicalDevices.push_back(std::move(physicalDevice));
+                physicalDevices.push_back(std::move(physicalDevice));
             }
         }
     }

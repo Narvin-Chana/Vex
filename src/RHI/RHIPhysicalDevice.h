@@ -1,7 +1,5 @@
 #pragma once
 
-#include <string>
-
 #include <Vex/RHIImpl/RHIFeatureChecker.h>
 #include <Vex/Utility/MaybeUninitialized.h>
 
@@ -9,6 +7,17 @@
 
 namespace vex
 {
+
+struct PhysicalDeviceInfo
+{
+    std::string deviceName;
+    double dedicatedVideoMemoryMB;
+
+    bool operator==(const PhysicalDeviceInfo& other) const
+    {
+        return other.deviceName == deviceName;
+    }
+};
 
 struct RHIPhysicalDeviceBase
 {
@@ -19,11 +28,8 @@ struct RHIPhysicalDeviceBase
     void DumpPhysicalDeviceInfo();
 #endif
 
-    std::string deviceName;
-    double dedicatedVideoMemoryMB;
+    PhysicalDeviceInfo info;
     MaybeUninitialized<RHIFeatureChecker> featureChecker;
 };
-
-inline RHIPhysicalDevice* GPhysicalDevice = nullptr;
 
 } // namespace vex
