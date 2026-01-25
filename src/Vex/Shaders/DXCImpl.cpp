@@ -186,71 +186,6 @@ std::vector<std::pair<std::wstring, std::wstring>> BuildDefineList(const ShaderK
     return defineWStrings;
 }
 
-std::expected<ComPtr<IDxcResult>, std::string> CompileShader(
-    const ComPtr<IDxcUtils>& utils,
-    const ComPtr<IDxcCompiler3>& compiler,
-    const ComPtr<IDxcIncludeHandler>& includeHandler,
-    const ShaderKey& key,
-    const std::vector<std::wstring>& args,
-    const std::vector<std::pair<std::wstring, std::wstring>>& defines,
-    const DxcBuffer& shaderSource)
-{
-    std::wstring entryPoint;
-    // RT Shaders are compiled differently to other shader types, the entry point should be null.
-    if (!IsRayTracingShader(key.type))
-    {
-        entryPoint = StringToWString(key.entryPoint);
-    }
-
-    std::vector<LPCWSTR> wstrArgs;
-    std::transform(args.begin(),
-                   args.end(),
-                   std::back_inserter(wstrArgs),
-                   [](const std::wstring& str) { return str.data(); });
-
-    // Convert to DxcDefine type.
-    std::vector<DxcDefine> dxcDefines;
-    dxcDefines.reserve(defines.size());
-    std::ranges::transform(defines,
-                           std::back_inserter(dxcDefines),
-                           [](const std::pair<std::wstring, std::wstring>& d)
-                           { return DxcDefine{ .Name = d.first.c_str(), .Value = d.second.c_str() }; });
-
-    ComPtr<IDxcCompilerArgs> compilerArgs;
-    if (HRESULT hr = utils->BuildArguments(key.path.wstring().c_str(),
-                                           entryPoint.empty() ? nullptr : entryPoint.c_str(),
-                                           GetTargetFromShaderType(key.type).c_str(),
-                                           wstrArgs.data(),
-                                           static_cast<u32>(args.size()),
-                                           dxcDefines.data(),
-                                           static_cast<u32>(dxcDefines.size()),
-                                           &compilerArgs);
-        FAILED(hr))
-    {
-        return std::unexpected(
-            std::format("Failed to build shader compilation arguments from file: {}", key.path.string()));
-    }
-
-    ComPtr<IDxcResult> shaderCompilationResults;
-    HRESULT compilationHR = compiler->Compile(&shaderSource,
-                                              compilerArgs->GetArguments(),
-                                              compilerArgs->GetCount(),
-                                              includeHandler.operator->(),
-                                              IID_PPV_ARGS(&shaderCompilationResults));
-    ComPtr<IDxcBlobUtf8> errors = nullptr;
-    if (HRESULT hrError = shaderCompilationResults->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
-        FAILED(hrError) || FAILED(compilationHR))
-    {
-        return std::unexpected("Failed to compile shader due to unknown reasons, the DXC compilation error "
-                               "was unable to be obtained.");
-    }
-    if (errors != nullptr && errors->GetStringLength() != 0)
-    {
-        return std::unexpected(std::format("{}", errors->GetStringPointer()));
-    }
-    return shaderCompilationResults;
-}
-
 } // namespace DXCImpl_Internal
 
 DXCCompilerImpl::DXCCompilerImpl(std::vector<std::filesystem::path> includeDirectories)
@@ -296,13 +231,7 @@ std::expected<SHA1HashDigest, std::string> DXCCompilerImpl::GetShaderCodeHash(
                 std::vector<std::pair<std::wstring, std::wstring>> dxcDefines =
                     DXCImpl_Internal::BuildDefineList(shader.key, shaderEnv);
 
-                return DXCImpl_Internal::CompileShader(utils,
-                                                       compiler,
-                                                       defaultIncludeHandler,
-                                                       shader.key,
-                                                       args,
-                                                       dxcDefines,
-                                                       shaderSource)
+                return CompileShader(shader.key, args, dxcDefines, shaderSource)
                     .and_then(DXCImpl_Internal::HashCompiledShader);
             });
 }
@@ -325,13 +254,7 @@ std::expected<ShaderCompilationResult, std::string> DXCCompilerImpl::CompileShad
                 std::vector<std::pair<std::wstring, std::wstring>> dxcDefines =
                     DXCImpl_Internal::BuildDefineList(shader.key, shaderEnv);
 
-                return DXCImpl_Internal::CompileShader(utils,
-                                                       compiler,
-                                                       defaultIncludeHandler,
-                                                       shader.key,
-                                                       args,
-                                                       dxcDefines,
-                                                       shaderSource)
+                return CompileShader(shader.key, args, dxcDefines, shaderSource)
                     .and_then(
                         [&](const ComPtr<IDxcResult>& shaderCompilationResults)
                             -> std::expected<ShaderCompilationResult, std::string>
@@ -366,6 +289,69 @@ std::expected<ShaderCompilationResult, std::string> DXCCompilerImpl::CompileShad
                             return ShaderCompilationResult{ {}, finalShaderBlob, reflection };
                         });
             });
+}
+
+std::expected<ComPtr<IDxcResult>, std::string> DXCCompilerImpl::CompileShader(
+    const ShaderKey& key,
+    const std::vector<std::wstring>& args,
+    const std::vector<std::pair<std::wstring, std::wstring>>& defines,
+    const DxcBuffer& shaderSource) const
+{
+    std::wstring entryPoint;
+    // RT Shaders are compiled differently to other shader types, the entry point should be null.
+    if (!IsRayTracingShader(key.type))
+    {
+        entryPoint = StringToWString(key.entryPoint);
+    }
+
+    std::vector<LPCWSTR> wstrArgs;
+    std::transform(args.begin(),
+                   args.end(),
+                   std::back_inserter(wstrArgs),
+                   [](const std::wstring& str) { return str.data(); });
+
+    // Convert to DxcDefine type.
+    std::vector<DxcDefine> dxcDefines;
+    dxcDefines.reserve(defines.size());
+    std::ranges::transform(defines,
+                           std::back_inserter(dxcDefines),
+                           [](const std::pair<std::wstring, std::wstring>& d)
+                           { return DxcDefine{ .Name = d.first.c_str(), .Value = d.second.c_str() }; });
+
+    ComPtr<IDxcCompilerArgs> compilerArgs;
+    if (HRESULT hr = utils->BuildArguments(key.path.wstring().c_str(),
+                                           entryPoint.empty() ? nullptr : entryPoint.c_str(),
+                                           DXCImpl_Internal::GetTargetFromShaderType(key.type).c_str(),
+                                           wstrArgs.data(),
+                                           static_cast<u32>(args.size()),
+                                           dxcDefines.data(),
+                                           static_cast<u32>(dxcDefines.size()),
+                                           &compilerArgs);
+        FAILED(hr))
+    {
+        return std::unexpected(
+            std::format("Failed to build shader compilation arguments from file: {}", key.path.string()));
+    }
+
+    ComPtr<IDxcResult> shaderCompilationResults;
+    (void)compiler->Compile(&shaderSource,
+                            compilerArgs->GetArguments(),
+                            compilerArgs->GetCount(),
+                            defaultIncludeHandler.operator->(),
+                            IID_PPV_ARGS(&shaderCompilationResults));
+
+    ComPtr<IDxcBlobUtf8> errors = nullptr;
+    if (HRESULT hrError = shaderCompilationResults->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
+        FAILED(hrError))
+    {
+        return std::unexpected("Failed to compile shader due to unknown reasons, the DXC compilation error "
+                               "was unable to be obtained.");
+    }
+    if (errors != nullptr && errors->GetStringLength() != 0)
+    {
+        return std::unexpected(std::format("{}", errors->GetStringPointer()));
+    }
+    return shaderCompilationResults;
 }
 
 } // namespace vex

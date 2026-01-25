@@ -55,7 +55,7 @@ struct ShaderCompiler
 
 private:
     std::expected<void, std::string> CompileShader(CompilerBase* Compiler, Shader& shader);
-    std::expected<CompilerBase*, std::string> GetCompiler(const ShaderKey& key);
+    std::expected<NonNullPtr<CompilerBase>, std::string> GetCompiler(const ShaderKey& key);
 
     bool IsShaderStale(const Shader& shader) const;
     static ShaderEnvironment CreateShaderEnvironment();

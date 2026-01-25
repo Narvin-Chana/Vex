@@ -248,7 +248,7 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(CompilerBase* com
             });
 }
 
-std::expected<CompilerBase*, std::string> ShaderCompiler::GetCompiler(const ShaderKey& key)
+std::expected<NonNullPtr<CompilerBase>, std::string> ShaderCompiler::GetCompiler(const ShaderKey& key)
 {
     switch (key.compiler)
     {
@@ -256,14 +256,14 @@ std::expected<CompilerBase*, std::string> ShaderCompiler::GetCompiler(const Shad
 #if VEX_SLANG
         // Default is DXC, unless VEX_SLANG and the shader file has .slang extension.
         if (key.path.extension() == ".slang")
-            return &slangCompilerImpl;
+            return NonNullPtr<CompilerBase>{ &slangCompilerImpl };
         // Intentionnal fallthrough...
 #endif
     case ShaderCompilerBackend::DXC:
-        return &dxcCompilerImpl;
+        return NonNullPtr<CompilerBase>{ &dxcCompilerImpl };
 #if VEX_SLANG
     case ShaderCompilerBackend::Slang:
-        return &slangCompilerImpl;
+        return NonNullPtr<CompilerBase>{ &slangCompilerImpl };
 #endif
     }
     return std::unexpected("Invalid shader compiler backend.");

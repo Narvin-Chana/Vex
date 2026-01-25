@@ -96,11 +96,7 @@ VEX_FORMATTABLE(
     "ShaderKey(\n\tKey Hash: \"{}\"\n\t{}: \"{}\"\n\tEntry Point: \"{}\"\n\tType: {}\n\tDefines: {}\n\tCompiler: {})",
     std::hash<vex::ShaderKey>{}(obj),
     !obj.path.empty() ? "Path" : "Source code",
-    !obj.path.empty()
-        ? obj.path.string()
-        : (obj.sourceCode.size() <= 500
-               ? obj.sourceCode
-               : obj.sourceCode.substr(0, 500).append("\"\n\t... rest is cutoff due to shader source being too long!")),
+    !obj.path.empty() ? obj.path.string() : "SOURCE STRING",
     obj.entryPoint,
     std::string(magic_enum::enum_name(obj.type)),
     obj.defines,

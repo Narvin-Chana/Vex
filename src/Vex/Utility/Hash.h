@@ -5,6 +5,8 @@
 
 #include <magic_enum/magic_enum.hpp>
 
+#include <Vex/Types.h>
+
 namespace vex
 {
 
@@ -23,7 +25,7 @@ constexpr auto PurifyHashValue(const T& obj) -> auto
     }
 }
 
-using SHA1HashDigest = std::array<uint32_t, 5>;
+using SHA1HashDigest = std::array<u32, 5>;
 
 inline std::string HashToString(const SHA1HashDigest& hash)
 {

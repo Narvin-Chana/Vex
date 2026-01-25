@@ -12,9 +12,10 @@
 
 namespace vex
 {
+struct ShaderKey;
 template <class T>
 using ComPtr = Microsoft::WRL::ComPtr<T>;
-}
+} // namespace vex
 
 #elif defined(__linux__)
 #define __EMULATE_UUID 1
@@ -52,6 +53,12 @@ struct DXCCompilerImpl : public CompilerBase
 
 private:
     void FillInIncludeDirectories(std::vector<LPCWSTR>& args, std::vector<std::wstring>& wStrings) const;
+
+    std::expected<ComPtr<IDxcResult>, std::string> CompileShader(
+        const ShaderKey& key,
+        const std::vector<std::wstring>& args,
+        const std::vector<std::pair<std::wstring, std::wstring>>& defines,
+        const DxcBuffer& shaderSource) const;
 
     ComPtr<IDxcCompiler3> compiler;
     ComPtr<IDxcUtils> utils;

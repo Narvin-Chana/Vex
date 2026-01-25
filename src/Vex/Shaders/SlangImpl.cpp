@@ -49,33 +49,34 @@ SHA1HashDigest GetProgramHash(slang::IComponentType* linkedProgram)
     return hash;
 }
 
-std::expected<slang::IModule*, std::string> LoadModule(slang::ISession* session, const ShaderKey& shaderKey)
+std::expected<NonNullPtr<slang::IModule>, std::string> LoadModule(Slang::ComPtr<slang::ISession> session,
+                                                                  const ShaderKey& shaderKey)
 {
     Slang::ComPtr<ISlangBlob> diagnostics;
 
-    slang::IModule* module = nullptr;
+    slang::IModule* slangModule = nullptr;
     if (!shaderKey.path.empty())
     {
         // loadModule compiles the shader with the passed-in name (searches in the IFileSystem).
-        module = session->loadModule(shaderKey.path.string().c_str(), diagnostics.writeRef());
+        slangModule = session->loadModule(shaderKey.path.string().c_str(), diagnostics.writeRef());
     }
     else
     {
         // Used for identifying the shader inside the session.
         // Should be unique per compilation session, which is why we give it a slightly convoluted name.
         constexpr const char* moduleName = "VEX_InlineShaderModule";
-        module = session->loadModuleFromSourceString(moduleName,
-                                                     nullptr,
-                                                     shaderKey.sourceCode.c_str(),
-                                                     diagnostics.writeRef());
+        slangModule = session->loadModuleFromSourceString(moduleName,
+                                                          nullptr,
+                                                          shaderKey.sourceCode.c_str(),
+                                                          diagnostics.writeRef());
     }
 
-    if (!module || diagnostics)
+    if (!slangModule || diagnostics)
     {
         return std::unexpected(
             std::format("Unable to loadModule: {}", static_cast<const char*>(diagnostics->getBufferPointer())));
     }
-    return module;
+    return NonNullPtr{ slangModule };
 }
 
 std::expected<Slang::ComPtr<slang::IEntryPoint>, std::string> FindEntryPoint(slang::IModule* module,
@@ -103,9 +104,10 @@ std::expected<Slang::ComPtr<slang::IComponentType>, std::string> LinkProgram(
     return linkedProgram;
 }
 
-std::expected<Slang::ComPtr<slang::IComponentType>, std::string> GetShaderProgram(slang::ISession* session,
-                                                                                  slang::IModule* module,
-                                                                                  slang::IEntryPoint* entryPoint)
+std::expected<Slang::ComPtr<slang::IComponentType>, std::string> GetShaderProgram(
+    const Slang::ComPtr<slang::ISession>& session,
+    const NonNullPtr<slang::IModule> module,
+    const Slang::ComPtr<slang::IEntryPoint>& entryPoint)
 {
     std::array<slang::IComponentType*, 2> components = { module, entryPoint };
     Slang::ComPtr<slang::IComponentType> program;
@@ -117,15 +119,15 @@ std::expected<Slang::ComPtr<slang::IComponentType>, std::string> GetShaderProgra
     return program;
 }
 
-std::expected<Slang::ComPtr<slang::IComponentType>, std::string> GetLinkedShader(slang::ISession* session,
-                                                                                 const ShaderKey& shaderKey)
+std::expected<Slang::ComPtr<slang::IComponentType>, std::string> GetLinkedShader(
+    const Slang::ComPtr<slang::ISession>& session, const ShaderKey& shaderKey)
 {
     return LoadModule(session, shaderKey)
         .and_then(
-            [&](slang::IModule* module)
+            [&](const NonNullPtr<slang::IModule>& module)
             {
                 return FindEntryPoint(module, shaderKey.entryPoint)
-                    .and_then([&](slang::IEntryPoint* entryPoint)
+                    .and_then([&](const Slang::ComPtr<slang::IEntryPoint>& entryPoint)
                               { return GetShaderProgram(session, module, entryPoint); });
             })
         .and_then(&LinkProgram);
