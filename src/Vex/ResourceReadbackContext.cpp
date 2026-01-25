@@ -19,10 +19,8 @@ TextureReadbackContext::TextureReadbackContext(const Buffer& buffer,
 void BufferReadbackContext::ReadData(Span<byte> outData)
 {
     RHIBuffer& rhiBuffer = backend->GetRHIBuffer(buffer.handle);
-
-    Span<const byte> bufferData = rhiBuffer.Map();
+    Span<const byte> bufferData = rhiBuffer.GetMappedData();
     std::copy(bufferData.begin(), bufferData.begin() + outData.size(), outData.begin());
-    rhiBuffer.Unmap();
 }
 
 u64 BufferReadbackContext::GetDataByteSize() const
@@ -89,9 +87,8 @@ void TextureReadbackContext::ReadData(Span<byte> outData) const
 {
     RHIBuffer& rhiBuffer = backend->GetRHIBuffer(buffer.handle);
 
-    Span<const byte> bufferData = rhiBuffer.Map();
+    Span<const byte> bufferData = rhiBuffer.GetMappedData();
     TextureCopyUtil::ReadTextureDataAligned(textureDesc, textureRegions, bufferData, outData);
-    rhiBuffer.Unmap();
 }
 
 u64 TextureReadbackContext::GetDataByteSize() const

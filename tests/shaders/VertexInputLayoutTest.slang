@@ -14,7 +14,7 @@ struct VSInput
 };
 
 [shader("vertex")]
-VSOutput VSMain(VSInput input, uniform uint test)
+VSOutput VSMain(VSInput input)
 {
     VSOutput vs;
     vs.position = float4(input.position, input.uv.x);

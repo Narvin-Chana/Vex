@@ -75,11 +75,22 @@ VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, VkAllocator& allocator, const B
     ::vk::MemoryPropertyFlags memPropFlags = AllocatorUtils::GetMemoryPropsFromLocality(desc.memoryLocality);
     memory = VEX_VK_CHECK <<= ctx->device.allocateMemoryUnique(
         { .allocationSize = reqs.size,
-          .memoryTypeIndex = AllocatorUtils::GetBestSuitedMemoryTypeIndex(ctx->physDevice, reqs.memoryTypeBits, memPropFlags) });
+          .memoryTypeIndex =
+              AllocatorUtils::GetBestSuitedMemoryTypeIndex(ctx->physDevice, reqs.memoryTypeBits, memPropFlags) });
 
     SetDebugName(ctx->device, *memory, std::format("Memory: {}", desc.name).c_str());
     VEX_VK_CHECK << ctx->device.bindBufferMemory(*buffer, *memory, 0);
 #endif
+
+    if (IsMappable())
+    {
+#if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
+        mappedData = allocator.GetMappedDataFromAllocation(allocation);
+#else
+        void* ptr = VEX_VK_CHECK <<= ctx->device.mapMemory(*memory, 0, VK_WHOLE_SIZE);
+        mappedData = { static_cast<byte*>(ptr), desc.byteSize };
+#endif
+    }
 
     SetDebugName(ctx->device, *buffer, std::format("Buffer: {}", desc.name).c_str());
 }
@@ -100,25 +111,6 @@ void VkBuffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
 ::vk::Buffer VkBuffer::GetNativeBuffer()
 {
     return *buffer;
-}
-
-Span<byte> VkBuffer::Map()
-{
-#if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
-    return allocator->MapAllocation(allocation);
-#else
-    void* ptr = VEX_VK_CHECK <<= ctx->device.mapMemory(*memory, 0, VK_WHOLE_SIZE);
-    return { static_cast<byte*>(ptr), desc.byteSize };
-#endif
-}
-
-void VkBuffer::Unmap()
-{
-#if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
-    allocator->UnmapAllocation(allocation);
-#else
-    ctx->device.unmapMemory(*memory);
-#endif
 }
 
 } // namespace vex::vk

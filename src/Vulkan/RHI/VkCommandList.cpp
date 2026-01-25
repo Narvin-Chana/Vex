@@ -119,13 +119,14 @@ static std::pair<::vk::ImageLayout, std::vector<::vk::BufferImageCopy>> GetBuffe
     for (const auto& [bufferRegion, textureRegion] : descriptions)
     {
         float pixelByteSize = TextureUtil::GetPixelByteSizeFromFormat(
-            TextureUtil::GetCopyFormat(texture.GetDesc().format, textureRegion.subresource.GetSingleAspect()));
+            TextureUtil::GetCopyFormat(texture.GetDesc().format,
+                                       textureRegion.subresource.GetSingleAspect(texture.GetDesc())));
 
         u32 alignedRowPitch = static_cast<u32>(AlignUp<u64>(
             textureRegion.extent.GetWidth(texture.GetDesc(), textureRegion.subresource.startMip) * pixelByteSize,
             TextureUtil::RowPitchAlignment));
 
-        TextureAspect::Type aspect = textureRegion.subresource.GetSingleAspect();
+        TextureAspect::Type aspect = textureRegion.subresource.GetSingleAspect(texture.GetDesc());
 
         u32 startLayer = textureRegion.subresource.startSlice;
         u32 layerCount = textureRegion.subresource.GetSliceCount(texture.GetDesc());
@@ -309,6 +310,13 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
                                           RHITextureLayout::CopyDest };
         Barrier({}, { &textureBarrier, 1 });
 
+        TextureSubresource subresourceClone = binding.binding.subresource;
+        subresourceClone.aspect = aspect;
+        const ::vk::ImageLayout layout =
+            RHITextureLayoutToVulkan(binding.texture->GetLastLayoutForSubresource(subresourceClone));
+        VEX_ASSERT(layout != ::vk::ImageLayout::eUndefined,
+                   "Invalid texture layout used for clear operation (eUndefined is not a valid layout)!");
+
         if (usage == TextureUsage::DepthStencil &&
             clearValue.clearAspect & (TextureAspect::Depth | TextureAspect::Stencil))
         {
@@ -316,22 +324,12 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
                 .depth = clearValue.depth,
                 .stencil = clearValue.stencil,
             };
-            commandBuffer->clearDepthStencilImage(
-                binding.texture->GetResource(),
-                RHITextureLayoutToVulkan(binding.texture->GetLastLayoutForSubresource(binding.binding.subresource)),
-                &clearVal,
-                1,
-                &ranges);
+            commandBuffer->clearDepthStencilImage(binding.texture->GetResource(), layout, &clearVal, 1, &ranges);
         }
         else
         {
             ::vk::ClearColorValue clearVal{ .float32 = clearValue.color };
-            commandBuffer->clearColorImage(
-                binding.texture->GetResource(),
-                RHITextureLayoutToVulkan(binding.texture->GetLastLayoutForSubresource(binding.binding.subresource)),
-                &clearVal,
-                1,
-                &ranges);
+            commandBuffer->clearColorImage(binding.texture->GetResource(), layout, &clearVal, 1, &ranges);
         }
     }
     else
@@ -371,8 +369,8 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
             textureBarrier.emplace(binding.texture,
                                    TextureSubresource{ .aspect = aspect },
                                    RHIBarrierSync::DepthStencil,
-                                   RHIBarrierAccess::DepthStencilRead,
-                                   RHITextureLayout::DepthStencilRead);
+                                   RHIBarrierAccess::DepthStencilReadWrite,
+                                   RHITextureLayout::DepthStencilWrite);
         }
         else
         {

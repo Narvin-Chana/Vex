@@ -4,6 +4,9 @@
 
 using namespace vex;
 
+// Disabled for vulkan since RayTracing is not yet implemented.
+#if VEX_DX12
+
 struct AccelerationStructureTest : VexTest
 {
     using Vertex = std::array<float, 3>;
@@ -15,13 +18,12 @@ struct AccelerationStructureTest : VexTest
     {
         auto ctx = graphics.CreateCommandContext(QueueType::Compute);
 
-        const vex::BufferDesc vbDesc =
-            vex::BufferDesc::CreateVertexBufferDesc("RT Triangle Vertex Buffer", sizeof(Vertex) * TriangleVerts.size());
+        const BufferDesc vbDesc =
+            BufferDesc::CreateVertexBufferDesc("RT Triangle Vertex Buffer", sizeof(Vertex) * TriangleVerts.size());
         triangleVertexBuffer = graphics.CreateBuffer(vbDesc);
 
-        const vex::BufferDesc ibDesc =
-            vex::BufferDesc::CreateIndexBufferDesc("RT Triangle Index Buffer",
-                                                   sizeof(vex::u32) * TriangleIndices.size());
+        const BufferDesc ibDesc =
+            BufferDesc::CreateIndexBufferDesc("RT Triangle Index Buffer", sizeof(u32) * TriangleIndices.size());
         triangleIndexBuffer = graphics.CreateBuffer(ibDesc);
 
         ctx.EnqueueDataUpload(triangleVertexBuffer, std::as_bytes(std::span(TriangleVerts)));
@@ -48,7 +50,7 @@ private:
         Vertex{ Offset, -Offset, DepthValue },
         Vertex{ -Offset, -Offset, DepthValue },
     };
-    static constexpr std::array<vex::u32, 3> TriangleIndices{ 0, 1, 2 };
+    static constexpr std::array<u32, 3> TriangleIndices{ 0, 1, 2 };
 };
 
 ///////////////////////////
@@ -62,10 +64,10 @@ TEST_F(AccelerationStructureTest, CreateSimpleTriangleBLAS_Vertex)
 
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
     ctx.BuildBLAS(blas,
-                  { .geometry = { vex::BLASGeometryDesc{
-                        .vertexBufferBinding = { .buffer = triangleVertexBuffer, .strideByteSize = static_cast<vex::u32>(sizeof(Vertex)), },
+                  { .geometry = { BLASGeometryDesc{
+                        .vertexBufferBinding = { .buffer = triangleVertexBuffer, .strideByteSize = static_cast<u32>(sizeof(Vertex)), },
                         .transform = std::nullopt,
-                        .flags = vex::ASGeometry::Opaque,
+                        .flags = ASGeometry::Opaque,
                     } } });
     graphics.Submit(ctx);
     graphics.DestroyAccelerationStructure(blas);
@@ -78,11 +80,11 @@ TEST_F(AccelerationStructureTest, CreateSimpleTriangleBLAS_VertexAndIndex)
 
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
     ctx.BuildBLAS(blas,
-                  { .geometry = { vex::BLASGeometryDesc{
+                  { .geometry = { BLASGeometryDesc{
                         .vertexBufferBinding = { .buffer = triangleVertexBuffer, .strideByteSize = static_cast<u32>(sizeof(Vertex)), },
-                        .indexBufferBinding = vex::BufferBinding{ .buffer = triangleIndexBuffer, .strideByteSize = static_cast<u32>(sizeof(u32)), },
+                        .indexBufferBinding = BufferBinding{ .buffer = triangleIndexBuffer, .strideByteSize = static_cast<u32>(sizeof(u32)), },
                         .transform = std::nullopt,
-                        .flags = vex::ASGeometry::Opaque,
+                        .flags = ASGeometry::Opaque,
                     } } });
     graphics.Submit(ctx);
     graphics.DestroyAccelerationStructure(blas);
@@ -95,26 +97,26 @@ TEST_F(AccelerationStructureTest, CreateMultipleTriangleBLAS_VertexAndIndex_Tran
 
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
     ctx.BuildBLAS(blas1,
-                  { .geometry = { vex::BLASGeometryDesc{
+                  { .geometry = { BLASGeometryDesc{
                         .vertexBufferBinding = { .buffer = triangleVertexBuffer, .strideByteSize = static_cast<u32>(sizeof(Vertex)), },
-                        .indexBufferBinding = vex::BufferBinding{ .buffer = triangleIndexBuffer, .strideByteSize = static_cast<u32>(sizeof(u32)), },
+                        .indexBufferBinding = BufferBinding{ .buffer = triangleIndexBuffer, .strideByteSize = static_cast<u32>(sizeof(u32)), },
                         .transform = {{ 
                                 1, 0, 0, 1,
                                 0, 1, 0, 5,
                                 0, 0, 1, -10,
                         }},
-                        .flags = vex::ASGeometry::Opaque,
+                        .flags = ASGeometry::Opaque,
                     } } });
     ctx.BuildBLAS(blas2,
-                  { .geometry = { vex::BLASGeometryDesc{
+                  { .geometry = { BLASGeometryDesc{
                         .vertexBufferBinding = { .buffer = triangleVertexBuffer, .strideByteSize = static_cast<u32>(sizeof(Vertex)), },
-                        .indexBufferBinding = vex::BufferBinding{ .buffer = triangleIndexBuffer, .strideByteSize = static_cast<u32>(sizeof(u32)), },
+                        .indexBufferBinding = BufferBinding{ .buffer = triangleIndexBuffer, .strideByteSize = static_cast<u32>(sizeof(u32)), },
                         .transform = {{ 
                                 1, 0, 0, 10,
                                 0, 1, 0, -5,
                                 0, 0, 1, 1,
                         }},
-                        .flags = vex::ASGeometry::Opaque,
+                        .flags = ASGeometry::Opaque,
                     } } });
     graphics.Submit(ctx);
     graphics.DestroyAccelerationStructure(blas1);
@@ -205,9 +207,9 @@ TEST_P(BLASFlagTest, BLASFlagPermutations)
 
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
     ctx.BuildBLAS(blas,
-                  { .geometry = { vex::BLASGeometryDesc{
+                  { .geometry = { BLASGeometryDesc{
                         .vertexBufferBinding = { .buffer = triangleVertexBuffer, .strideByteSize = static_cast<u32>(sizeof(Vertex)), },
-                        .indexBufferBinding = vex::BufferBinding{ .buffer = triangleIndexBuffer, .strideByteSize = static_cast<u32>(sizeof(u32)), },
+                        .indexBufferBinding = BufferBinding{ .buffer = triangleIndexBuffer, .strideByteSize = static_cast<u32>(sizeof(u32)), },
                         .transform = std::nullopt,
                         .flags = testData.geometryFlags,
                     } } });
@@ -236,11 +238,11 @@ struct TLASAccelerationStructureTest : public AccelerationStructureTest
 
         auto ctx = graphics.CreateCommandContext(QueueType::Compute);
         ctx.BuildBLAS(triangleBLAS,
-                  { .geometry = { vex::BLASGeometryDesc{
+                  { .geometry = { BLASGeometryDesc{
                         .vertexBufferBinding = { .buffer = triangleVertexBuffer, .strideByteSize = static_cast<u32>(sizeof(Vertex)), },
-                        .indexBufferBinding = vex::BufferBinding{ .buffer = triangleIndexBuffer, .strideByteSize = static_cast<u32>(sizeof(u32)), },
+                        .indexBufferBinding = BufferBinding{ .buffer = triangleIndexBuffer, .strideByteSize = static_cast<u32>(sizeof(u32)), },
                         .transform = std::nullopt,
-                        .flags = vex::ASGeometry::Opaque,
+                        .flags = ASGeometry::Opaque,
                     } } });
         graphics.Submit(ctx);
     }
@@ -259,7 +261,7 @@ TEST_F(TLASAccelerationStructureTest, CreateSimpleTriangleTLAS_Instance)
 
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
 
-    vex::TLASInstanceDesc instanceDesc{
+    TLASInstanceDesc instanceDesc{
         .transform = {
             1.0f, 0.0f, 0.0f, -0.3f,
             0.0f, 1.0f, 0.0f, 0.0f,
@@ -279,8 +281,8 @@ TEST_F(TLASAccelerationStructureTest, CreateSimpleTriangleTLAS_2Instances_Instan
         ASDesc{ .name = "TLAS", .type = ASType::TopLevel, .buildFlags = ASBuild::None });
 
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
-    std::array<vex::TLASInstanceDesc, 2> instances{
-        vex::TLASInstanceDesc{
+    std::array<TLASInstanceDesc, 2> instances{
+        TLASInstanceDesc{
             .transform = {
                 1.0f, 0.0f, 0.0f, -0.3f,
                 0.0f, 1.0f, 0.0f, 0.0f,
@@ -291,7 +293,7 @@ TEST_F(TLASAccelerationStructureTest, CreateSimpleTriangleTLAS_2Instances_Instan
             .instanceContributionToHitGroupIndex = 3,
             .blas = triangleBLAS,
         },
-        vex::TLASInstanceDesc{
+        TLASInstanceDesc{
             .transform = {
                 1.0f, 0.0f, 0.0f, 0.3f,
                 0.0f, 1.0f, 0.0f, 0.0f,
@@ -422,7 +424,7 @@ TEST_P(TLASFlagTest, TLASFlagPermutations)
         ASDesc{ .name = "TLAS", .type = ASType::TopLevel, .buildFlags = testData.buildFlags });
 
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
-    vex::TLASInstanceDesc instanceDesc{
+    TLASInstanceDesc instanceDesc{
         .instanceFlags = testData.instanceFlags,
         .blas = triangleBLAS,
     };
@@ -435,3 +437,200 @@ INSTANTIATE_TEST_SUITE_P(TLASFlagPermutationTest,
                          TLASFlagTest,
                          testing::ValuesIn(GenerateTestCasesForTLASFlagTest()),
                          [](const ::testing::TestParamInfo<TLASFlagTestData>& info) { return info.param.ToString(); });
+
+///////////////////////////
+// AABB AS Tests
+///////////////////////////
+
+TEST_F(AccelerationStructureTest, CreateSimpleAABBBLAS)
+{
+    auto blas = graphics.CreateAccelerationStructure(
+        ASDesc{ .name = "AABB_BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
+
+    auto ctx = graphics.CreateCommandContext(QueueType::Compute);
+    // Build BLAS with single AABB.
+    ctx.BuildBLAS(blas,
+                  { .type = ASGeometryType::AABBs,
+                    .geometry = {
+                        BLASGeometryDesc{
+                            .aabbs = { AABB{ 0, 0, 0, 1, 1, 1 } },
+                            .flags = ASGeometry::Opaque,
+                        },
+                    } });
+    graphics.Submit(ctx);
+    graphics.DestroyAccelerationStructure(blas);
+}
+
+TEST_F(AccelerationStructureTest, CreateMultiAABBBLAS)
+{
+    auto blas = graphics.CreateAccelerationStructure(
+        ASDesc{ .name = "AABB_BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
+
+    auto ctx = graphics.CreateCommandContext(QueueType::Compute);
+    // Build BLAS with multiple AABBs.
+    ctx.BuildBLAS(blas,
+                  { .type = ASGeometryType::AABBs,
+                    .geometry = {
+                        BLASGeometryDesc{
+                            .aabbs = { AABB{ 0, 0, 0, 1, 1, 0.5f }, AABB{ 0, 0, 0.5f, 1, 1, 1 }, },
+                            .flags = ASGeometry::Opaque,
+                        },
+                    } });
+    graphics.Submit(ctx);
+    graphics.DestroyAccelerationStructure(blas);
+}
+
+TEST_F(AccelerationStructureTest, CreateMultiAABBAndTLAS)
+{
+    auto blas = graphics.CreateAccelerationStructure(
+        ASDesc{ .name = "AABB_BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
+    auto tlas = graphics.CreateAccelerationStructure(
+        ASDesc{ .name = "AABB_TLAS", .type = ASType::TopLevel, .buildFlags = ASBuild::None });
+
+    auto ctx = graphics.CreateCommandContext(QueueType::Compute);
+    // Build BLAS with multiple AABBs.
+    ctx.BuildBLAS(blas,
+                  { .type = ASGeometryType::AABBs,
+                    .geometry = {
+                        BLASGeometryDesc{
+                            .aabbs = { AABB{ 0, 0, 0, 1, 1, 0.5f }, AABB{ 0, 0, 0.5f, 1, 1, 1 }, },
+                            .flags = ASGeometry::Opaque,
+                        },
+                    } });
+    TLASInstanceDesc instanceDesc{
+        .blas = blas,
+    };
+    ctx.BuildTLAS(tlas, { .instances = { instanceDesc } });
+    graphics.Submit(ctx);
+    graphics.DestroyAccelerationStructure(blas);
+    graphics.DestroyAccelerationStructure(tlas);
+}
+
+struct ASAABBTestData
+{
+    AABB aabb;
+    float expectedResult;
+    const char* testName;
+};
+
+struct ASAABBTest
+    : public AccelerationStructureTest
+    , public testing::WithParamInterface<ASAABBTestData>
+{
+};
+
+TEST_P(ASAABBTest, CreateAABBTraceShader)
+{
+    const auto& testData = GetParam();
+
+    auto blas = graphics.CreateAccelerationStructure(
+        ASDesc{ .name = "AABB_BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
+    auto tlas = graphics.CreateAccelerationStructure(
+        ASDesc{ .name = "AABB_TLAS", .type = ASType::TopLevel, .buildFlags = ASBuild::None });
+
+    auto ctx = graphics.CreateCommandContext(QueueType::Compute);
+    // Build BLAS with multiple AABBs.
+    ctx.BuildBLAS(blas,
+                  { .type = ASGeometryType::AABBs,
+                    .geometry = {
+                        BLASGeometryDesc{
+                            .aabbs = { testData.aabb },
+                            .flags = ASGeometry::Opaque,
+                        },
+                    } });
+    TLASInstanceDesc instanceDesc{ .blas = blas };
+    ctx.BuildTLAS(tlas, { .instances = { instanceDesc } });
+
+    ctx.Barrier(blas, RHIBarrierSync::AllCommands, RHIBarrierAccess::ShaderRead);
+    ctx.Barrier(tlas, RHIBarrierSync::AllCommands, RHIBarrierAccess::ShaderRead);
+
+    Buffer out = graphics.CreateBuffer(BufferDesc::CreateGenericBufferDesc("DataOut", 4, true));
+
+    struct Data
+    {
+        BindlessHandle outputHandle;
+        BindlessHandle tlasHandle;
+    } data{
+        .outputHandle = graphics.GetBindlessHandle(BufferBinding{
+            .buffer = out,
+            .usage = BufferBindingUsage::RWStructuredBuffer,
+            .strideByteSize = 4,
+        }),
+        .tlasHandle = graphics.GetBindlessHandle(tlas),
+    };
+
+    const auto shaderPath = VexRootPath / "tests/shaders/RayTracingAABB.hlsl";
+
+    ctx.TraceRays(
+        RayTracingPassDesc{
+            .rayGenerationShader = ShaderKey{
+                 .path = shaderPath,
+                 .entryPoint = "RayGenMain",
+                 .type = ShaderType::RayGenerationShader,
+             },
+             .rayMissShaders =
+             {
+                 ShaderKey{
+                     .path = shaderPath,
+                     .entryPoint = "MissMain",
+                     .type = ShaderType::RayMissShader,
+                 }
+             },
+             .hitGroups =
+             {
+                 HitGroup{
+                     .name = "Test_RayTracing_AABB_HitGroup",
+                     .rayClosestHitShader = 
+                     {
+                         .path = shaderPath,
+                         .entryPoint = "ClosestHitMain",
+                         .type = ShaderType::RayClosestHitShader,
+                     },
+                     .rayIntersectionShader =
+                     ShaderKey{
+                          .path = shaderPath,
+                          .entryPoint = "IntersectMain",
+                          .type = ShaderType::RayIntersectionShader,
+                     },
+                 }
+             },
+             // Allow for primary rays only (no recursion).
+             .maxRecursionDepth = 1,
+             .maxPayloadByteSize = sizeof(float),
+             .maxAttributeByteSize = sizeof(float) * 2,
+        },
+        ConstantBinding(data),
+        {
+            1, 1, 1
+        }
+    );
+
+    ctx.BarrierBinding({ .buffer = out, .usage = BufferBindingUsage::RWStructuredBuffer });
+
+    BufferReadbackContext readback = ctx.EnqueueDataReadback(out);
+
+    graphics.WaitForTokenOnCPU(graphics.Submit(ctx));
+
+    float f;
+    readback.ReadData(std::as_writable_bytes(std::span<float>(&f, 1)));
+
+    EXPECT_FLOAT_EQ(f, testData.expectedResult);
+
+    graphics.DestroyAccelerationStructure(blas);
+    graphics.DestroyBuffer(out);
+}
+
+INSTANTIATE_TEST_SUITE_P(ASAABBTestSuite,
+                         ASAABBTest,
+                         testing::Values(ASAABBTestData{ .aabb = AABB{ 0, 0, 1, 1, 1, 2 },
+                                                         .expectedResult = 1,
+                                                         .testName = "Has_Intersection_RayOriginOutsideAABB" },
+                                         ASAABBTestData{ .aabb = AABB{ 0, 0, -1, 1, 1, 1 },
+                                                         .expectedResult = 1,
+                                                         .testName = "Has_Intersection_RayOriginInsideAABB" },
+                                         ASAABBTestData{ .aabb = AABB{ 1, 1, 1, 2, 2, 2 },
+                                                         .expectedResult = -1,
+                                                         .testName = "No_Intersection" }),
+                         [](const testing::TestParamInfo<ASAABBTestData>& info) { return info.param.testName; });
+
+#endif

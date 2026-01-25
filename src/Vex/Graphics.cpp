@@ -253,7 +253,7 @@ AccelerationStructure Graphics::CreateAccelerationStructure(const ASDesc& desc)
     };
 }
 
-ResourceMappedMemory Graphics::MapResource(const Buffer& buffer)
+MappedMemory Graphics::MapResource(const Buffer& buffer)
 {
     RHIBuffer& rhiBuffer = GetRHIBuffer(buffer.handle);
 

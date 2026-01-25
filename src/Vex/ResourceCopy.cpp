@@ -33,7 +33,7 @@ void ReadTextureDataAligned(const TextureDesc& desc,
     for (const auto& region : textureRegions)
     {
         const u32 bytesPerPixel = static_cast<u32>(TextureUtil::GetPixelByteSizeFromFormat(
-            TextureUtil::GetCopyFormat(desc.format, region.subresource.GetSingleAspect())));
+            TextureUtil::GetCopyFormat(desc.format, region.subresource.GetSingleAspect(desc))));
 
         for (u16 mip = region.subresource.startMip;
              mip < region.subresource.startMip + region.subresource.GetMipCount(desc);

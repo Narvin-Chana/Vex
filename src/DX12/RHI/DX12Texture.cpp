@@ -89,7 +89,7 @@ static D3D12_DEPTH_STENCIL_VIEW_DESC CreateDepthStencilViewDesc(const DX12Textur
 static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const DX12TextureView& view)
 {
     D3D12_SHADER_RESOURCE_VIEW_DESC desc{
-        .Format = GetDX12FormatForShaderResourceViewFormat(view.format, view.subresource.GetSingleAspect()),
+        .Format = GetDX12FormatForShaderResourceViewFormat(view.format, view.subresource.GetSingleAspect(*view.desc)),
         .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
     };
 
@@ -97,23 +97,21 @@ static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const DX12Te
     {
     case TextureViewType::Texture2D:
         desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-        // All mips
         desc.Texture2D = {
             .MostDetailedMip = view.subresource.startMip,
             .MipLevels = view.subresource.mipCount,
-            .PlaneSlice = view.subresource.GetSingleAspect() == TextureAspect::Stencil ? 1u : 0u,
+            .PlaneSlice = view.subresource.GetSingleAspect(*view.desc) == TextureAspect::Stencil ? 1u : 0u,
             .ResourceMinLODClamp = 0,
         };
         break;
     case TextureViewType::Texture2DArray:
         desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-        // All mips and all slices
         desc.Texture2DArray = {
             .MostDetailedMip = view.subresource.startMip,
             .MipLevels = view.subresource.mipCount,
             .FirstArraySlice = view.subresource.startSlice,
             .ArraySize = view.subresource.sliceCount,
-            .PlaneSlice = view.subresource.GetSingleAspect() == TextureAspect::Stencil ? 1u : 0u,
+            .PlaneSlice = view.subresource.GetSingleAspect(*view.desc) == TextureAspect::Stencil ? 1u : 0u,
             .ResourceMinLODClamp = 0,
         };
         break;
@@ -459,7 +457,8 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(const DX12Textu
 }
 
 DX12TextureView::DX12TextureView(const TextureBinding& binding)
-    : usage{ binding.usage != TextureBindingUsage::None ? static_cast<TextureUsage::Type>(binding.usage)
+    : desc{binding.texture.desc}
+    , usage{ binding.usage != TextureBindingUsage::None ? static_cast<TextureUsage::Type>(binding.usage)
                                                         : TextureUsage::None }
     , dimension{ TextureUtil::GetTextureViewType(binding) }
     , format{ TextureFormatToDXGI(binding.texture.desc.format, binding.isSRGB) }

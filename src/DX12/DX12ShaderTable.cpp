@@ -31,7 +31,7 @@ DX12ShaderTable::DX12ShaderTable(ComPtr<DX12Device>& device,
     u64 alignedRecordStride = AlignUp<u64>(recordStride, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
     shaderTableStride = alignedRecordStride;
 
-    Span<byte> mappedData = buffer.Map();
+    Span<byte> mappedData = buffer.GetMappedData();
 
     // Write each shader identifier.
     for (u64 i = 0; i < shaderIdentifiers.size(); ++i)
@@ -47,8 +47,6 @@ DX12ShaderTable::DX12ShaderTable(ComPtr<DX12Device>& device,
             memset(mappedData.data() + offset + shaderIdentifierSize, 0, alignedRecordStride - shaderIdentifierSize);
         }
     }
-
-    buffer.Unmap();
 }
 
 D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE DX12ShaderTable::GetVirtualAddressRangeAndStride() const

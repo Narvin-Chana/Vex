@@ -19,8 +19,8 @@
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITexture.h>
-#include <Vex/RayTracing.h>
 #include <Vex/ResourceBindingUtils.h>
+#include <Vex/Shaders/RayTracingShaders.h>
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Hash.h>
 #include <Vex/Utility/Validation.h>
@@ -188,6 +188,7 @@ void CommandContext::ClearTexture(const TextureBinding& binding,
 
     RHITexture& texture = graphics->GetRHITexture(binding.texture.handle);
 
+    FlushBarriers();
     cmdList->ClearTexture({ binding, NonNullPtr(texture) },
                           // This is a safe cast, textures can only contain one of the two usages (RT/DS).
                           static_cast<TextureUsage::Type>(binding.texture.desc.usage &
@@ -667,7 +668,7 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, Span<const byte> da
     if (buffer.desc.memoryLocality == ResourceMemoryLocality::CPUWrite)
     {
         RHIBuffer& rhiDestBuffer = graphics->GetRHIBuffer(buffer.handle);
-        ResourceMappedMemory(rhiDestBuffer).WriteData(data, region.offset);
+        MappedMemory(rhiDestBuffer).WriteData(data, region.offset);
         return;
     }
 
@@ -677,7 +678,7 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, Span<const byte> da
     Buffer stagingBuffer = CreateTemporaryStagingBuffer(buffer.desc.name, region.GetByteSize(buffer.desc));
 
     RHIBuffer& rhiStagingBuffer = graphics->GetRHIBuffer(stagingBuffer.handle);
-    ResourceMappedMemory(rhiStagingBuffer).WriteData({ data.begin(), data.begin() + region.GetByteSize(buffer.desc) });
+    MappedMemory(rhiStagingBuffer).WriteData({ data.begin(), data.begin() + region.GetByteSize(buffer.desc) });
 
     Copy(stagingBuffer,
          buffer,
@@ -712,9 +713,8 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
 
     // The staging buffer has to respect the alignment that which Vex uses for uploads.
     // We suppose however that user data is tightly packed.
-    Span<byte> stagingBufferData = rhiStagingBuffer.Map();
+    Span<byte> stagingBufferData = rhiStagingBuffer.GetMappedData();
     TextureCopyUtil::WriteTextureDataAligned(texture.desc, textureRegions, packedData, stagingBufferData);
-    rhiStagingBuffer.Unmap();
 
     if (textureRegions.empty())
     {
@@ -780,73 +780,127 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
     std::vector<RHIBLASGeometryDesc> rhiBLASGeometryDescs;
     rhiBLASGeometryDescs.reserve(desc.geometry.size());
 
-    // Upload all the transforms into one GPU/ staging buffer.
-    std::vector<std::array<float, 3 * 4>> transformsToUpload;
-    // Conservative allocation.
-    transformsToUpload.reserve(desc.geometry.size());
-    for (const BLASGeometryDesc& blasGeometry : desc.geometry)
+    if (desc.type == ASGeometryType::Triangles)
     {
-        if (blasGeometry.transform.has_value())
+        // Upload all the transforms into one GPU/ staging buffer.
+        std::vector<std::array<float, 3 * 4>> transformsToUpload;
+        // Conservative allocation.
+        transformsToUpload.reserve(desc.geometry.size());
+        for (const BLASGeometryDesc& blasGeometry : desc.geometry)
         {
-            transformsToUpload.push_back(*blasGeometry.transform);
+            if (blasGeometry.transform.has_value())
+            {
+                transformsToUpload.push_back(*blasGeometry.transform);
+            }
         }
-    }
 
-    static constexpr u64 TransformMatrixSize = sizeof(float) * 3 * 4;
+        static constexpr u64 TransformMatrixSize = sizeof(float) * 3 * 4;
 
-    // Upload transform data.
-    Buffer transformBuffer;
-    if (!transformsToUpload.empty())
-    {
-        transformBuffer = CreateTemporaryStagingBuffer(
-            graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name +
-                "_build_blas_transforms",
-            transformsToUpload.size() * TransformMatrixSize);
+        // Upload transform data.
+        Buffer transformBuffer;
+        if (!transformsToUpload.empty())
+        {
+            transformBuffer = CreateTemporaryStagingBuffer(
+                graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name +
+                    "_build_blas_transforms",
+                transformsToUpload.size() * TransformMatrixSize);
 
-        ResourceMappedMemory mappedMemory = graphics->MapResource(transformBuffer);
+        MappedMemory mappedMemory = graphics->MapResource(transformBuffer);
         mappedMemory.WriteData(std::as_bytes(std::span<std::array<float, 3 * 4>>(transformsToUpload)));
         Barrier(transformBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderRead);
     }
 
-    u32 transformIndex = 0;
-    for (const BLASGeometryDesc& blasGeometry : desc.geometry)
-    {
-        RHIBLASGeometryDesc rhiBLASGeometry{
-            .vertexBufferBinding =
-                RHIBufferBinding(blasGeometry.vertexBufferBinding,
-                                 graphics->GetRHIBuffer(blasGeometry.vertexBufferBinding.buffer.handle)),
-        };
-        Barrier(blasGeometry.vertexBufferBinding.buffer,
-                RHIBarrierSync::BuildAccelerationStructure,
-                RHIBarrierAccess::ShaderRead);
-
-        if (blasGeometry.indexBufferBinding.has_value())
+        u32 transformIndex = 0;
+        for (const BLASGeometryDesc& blasGeometry : desc.geometry)
         {
-            rhiBLASGeometry.indexBufferBinding =
-                RHIBufferBinding(*blasGeometry.indexBufferBinding,
-                                 graphics->GetRHIBuffer(blasGeometry.indexBufferBinding->buffer.handle));
-            Barrier(blasGeometry.indexBufferBinding->buffer,
+            RHIBLASGeometryDesc rhiBLASGeometry{
+                .vertexBufferBinding =
+                    RHIBufferBinding(blasGeometry.vertexBufferBinding,
+                                     graphics->GetRHIBuffer(blasGeometry.vertexBufferBinding.buffer.handle)),
+                .flags = blasGeometry.flags,
+            };
+            Barrier(blasGeometry.vertexBufferBinding.buffer,
                     RHIBarrierSync::BuildAccelerationStructure,
                     RHIBarrierAccess::ShaderRead);
-        }
 
-        if (blasGeometry.transform.has_value())
+            if (blasGeometry.indexBufferBinding.has_value())
+            {
+                rhiBLASGeometry.indexBufferBinding =
+                    RHIBufferBinding(*blasGeometry.indexBufferBinding,
+                                     graphics->GetRHIBuffer(blasGeometry.indexBufferBinding->buffer.handle));
+                Barrier(blasGeometry.indexBufferBinding->buffer,
+                        RHIBarrierSync::BuildAccelerationStructure,
+                        RHIBarrierAccess::ShaderRead);
+            }
+
+            if (blasGeometry.transform.has_value())
+            {
+                rhiBLASGeometry.transform = RHIBufferBinding{
+                    .binding = { .buffer = transformBuffer,
+                                 .offsetByteSize = TransformMatrixSize * transformIndex,
+                                 .rangeByteSize = TransformMatrixSize },
+                    .buffer = graphics->GetRHIBuffer(transformBuffer.handle),
+                };
+                ++transformIndex;
+            }
+
+            rhiBLASGeometryDescs.push_back(std::move(rhiBLASGeometry));
+        }
+    }
+    else if (desc.type == ASGeometryType::AABBs)
+    {
+        // Upload all the AABBs into one GPU/ staging buffer.
+        std::vector<AABB> aabbsToUpload;
+        // Conservative allocation.
+        aabbsToUpload.reserve(desc.geometry.size());
+        for (const BLASGeometryDesc& blasGeometry : desc.geometry)
         {
-            rhiBLASGeometry.transform = RHIBufferBinding{
-                .binding = { .buffer = transformBuffer,
-                             .offsetByteSize = TransformMatrixSize * transformIndex,
-                             .rangeByteSize = TransformMatrixSize },
-                .buffer = graphics->GetRHIBuffer(transformBuffer.handle),
-            };
-            ++transformIndex;
+            for (const AABB& aabb : blasGeometry.aabbs)
+            {
+                aabbsToUpload.push_back(aabb);
+            }
         }
 
-        rhiBLASGeometryDescs.push_back(std::move(rhiBLASGeometry));
+        // Upload AABB data.
+        Buffer aabbBuffer;
+        if (!aabbsToUpload.empty())
+        {
+            aabbBuffer = CreateTemporaryStagingBuffer(
+                graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_blas_aabb",
+                aabbsToUpload.size() * sizeof(AABB));
+
+            MappedMemory mappedMemory = graphics->MapResource(aabbBuffer);
+            mappedMemory.WriteData(std::as_bytes(std::span(aabbsToUpload)));
+            Barrier(aabbBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderRead);
+        }
+
+        u32 aabbIndex = 0;
+        for (const BLASGeometryDesc& blasGeometry : desc.geometry)
+        {
+            RHIBLASGeometryDesc rhiBLASGeometry{
+                .aabbBufferBinding =
+                    RHIBufferBinding{
+                        .binding = { .buffer = aabbBuffer,
+                                     .strideByteSize = static_cast<u32>(sizeof(AABB)),
+                                     .offsetByteSize = sizeof(AABB) * aabbIndex,
+                                     .rangeByteSize = sizeof(AABB) * blasGeometry.aabbs.size() },
+                        .buffer = graphics->GetRHIBuffer(aabbBuffer.handle),
+                    },
+                .flags = blasGeometry.flags,
+            };
+            aabbIndex += blasGeometry.aabbs.size();
+            rhiBLASGeometryDescs.push_back(std::move(rhiBLASGeometry));
+        }
+    }
+    else
+    {
+        VEX_CHECK(false, "Invalid geometry type passed for BLAS building...You must use either AABB or triangles.");
     }
 
     const RHIAccelerationStructureBuildInfo& buildInfo =
         graphics->GetRHIAccelerationStructure(accelerationStructure.handle)
-            .SetupBLASBuild(*graphics->allocator, RHIBLASBuildDesc{ .geometry = rhiBLASGeometryDescs });
+            .SetupBLASBuild(*graphics->allocator,
+                            RHIBLASBuildDesc{ .type = desc.type, .geometry = rhiBLASGeometryDescs });
     Barrier(accelerationStructure,
             RHIBarrierSync::BuildAccelerationStructure,
             RHIBarrierAccess::AccelerationStructureWrite);
@@ -1049,7 +1103,8 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
         ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(*graphics,
                                                                  drawBindings.renderTargets,
                                                                  drawBindings.depthStencil,
-                                                                 pendingTextureBarriers);
+                                                                 pendingTextureBarriers,
+                                                                 drawDesc.depthStencilState);
 
     auto graphicsPSOKey = CommandContext_Internal::GetGraphicsPSOKeyFromDrawDesc(drawDesc, drawResources);
 

@@ -54,7 +54,9 @@ BEGIN_VEX_ENUM_FLAGS(TextureAspect, u8)
     None = 0, // Invalid in most cases
     Color = 1 << 0,
     Depth = 1 << 1,
-    Stencil = 1 << 2
+    Stencil = 1 << 2,
+    // All will use all appropriate aspects. Needed for default initialized subresources (color is not valid for depth/stencil and vice versa).
+    All = Color | Depth | Stencil,
 END_VEX_ENUM_FLAGS();
 
 // clang-format on
@@ -216,15 +218,15 @@ struct TextureSubresource
     u32 startSlice = 0;
     u32 sliceCount = GTextureAllSlices;
     // Refers to the slice in DX12 and the aspect mask in Vulkan
-    TextureAspect::Flags aspect = TextureAspect::Color;
+    TextureAspect::Flags aspect = TextureAspect::All;
 
     bool IsFullResource(const TextureDesc& desc) const;
 
     u16 GetMipCount(const TextureDesc& desc) const;
     u32 GetSliceCount(const TextureDesc& desc) const;
-    u32 GetStartPlane() const;
-    u32 GetPlaneCount() const;
-    TextureAspect::Type GetSingleAspect() const;
+    u32 GetStartPlane(const TextureDesc& desc) const;
+    u32 GetPlaneCount(const TextureDesc& desc) const;
+    TextureAspect::Type GetSingleAspect(const TextureDesc& desc) const;
     static TextureAspect::Flags GetDefaultAspect(const TextureDesc& desc);
 
     constexpr bool operator==(const TextureSubresource&) const = default;
