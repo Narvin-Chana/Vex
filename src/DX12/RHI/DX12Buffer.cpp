@@ -27,7 +27,8 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
     {
         // Constant buffers need to be aligned to 256.
         forcedAlignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
-        // Force size to 256 alignment, in order to avoid issues later on when creating CBVs (CBVs must be 256 bytes aligned).
+        // Force size to 256 alignment, in order to avoid issues later on when creating CBVs (CBVs must be 256 bytes
+        // aligned).
         size = AlignUp<u64>(size, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
     }
 
@@ -40,7 +41,6 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
     {
         bufferDesc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
     }
-
 
     if (desc.usage & BufferUsage::AccelerationStructure)
     {
@@ -93,37 +93,22 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
                                             IID_PPV_ARGS(&buffer));
 #endif
 
+    if (IsMappable())
+    {
+        void* ptr = nullptr;
+        D3D12_RANGE range{
+            .Begin = 0,
+            .End = desc.byteSize,
+        };
+        chk << buffer->Map(0, &range, &ptr);
+        mappedData = std::span<byte>{ static_cast<byte*>(ptr), range.End };
+        // The buffer will remain mapped until destruction, where DX12 cleanup will automatically unmap.
+        // Meaning we don't have to ever call Unmap.
+    }
+
 #if !VEX_SHIPPING
     chk << buffer->SetName(StringToWString(std::format("Buffer: {}", desc.name)).data());
 #endif
-}
-
-Span<byte> DX12Buffer::Map()
-{
-    void* ptr = nullptr;
-    D3D12_RANGE range{
-        .Begin = 0,
-        .End = desc.byteSize,
-    };
-    chk << buffer->Map(0, &range, &ptr);
-    return { static_cast<byte*>(ptr), desc.byteSize };
-}
-
-void DX12Buffer::Unmap()
-{
-    // CPURead mapped buffers have no real purpose in being "unmapped" as they are always available.
-    // TODO(https://trello.com/c/lsqpXupB): We have to eventually rework mapping to be done on creation instead of when
-    // needed, but until then we early return to avoid validation layer warnings.
-    if (desc.memoryLocality == ResourceMemoryLocality::CPURead)
-    {
-        return;
-    }
-
-    D3D12_RANGE range{
-        .Begin = 0,
-        .End = desc.byteSize,
-    };
-    buffer->Unmap(0, &range);
 }
 
 D3D12_VERTEX_BUFFER_VIEW DX12Buffer::GetVertexBufferView(const BufferBinding& binding) const

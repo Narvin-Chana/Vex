@@ -30,9 +30,6 @@ public:
                                 const BufferViewDesc& desc) override;
     ::vk::Buffer GetNativeBuffer();
 
-    virtual Span<byte> Map() override;
-    virtual void Unmap() override;
-
 private:
     NonNullPtr<VkGPUContext> ctx;
 

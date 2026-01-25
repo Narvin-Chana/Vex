@@ -49,6 +49,20 @@ u32 GetBestSuitedMemoryTypeIndex(::vk::PhysicalDevice device, u32 typeFilter, ::
     return 0;
 }
 
+bool IsMemoryTypeIndexMappable(::vk::PhysicalDevice device, u32 memoryTypeIndex)
+{
+    ::vk::PhysicalDeviceMemoryProperties memProperties = device.getMemoryProperties();
+
+    if (memoryTypeIndex >= memProperties.memoryTypeCount)
+    {
+        VEX_LOG(Fatal, "Invalid memory type index: {}", memoryTypeIndex);
+        return false;
+    }
+
+    return static_cast<bool>(memProperties.memoryTypes[memoryTypeIndex].propertyFlags &
+                             ::vk::MemoryPropertyFlagBits::eHostVisible);
+}
+
 } // namespace AllocatorUtils
 
 VkAllocator::VkAllocator(NonNullPtr<VkGPUContext> ctx)
@@ -63,21 +77,11 @@ VkAllocator::~VkAllocator()
     for (u32 i = 0; i < pageInfos.size(); ++i)
     {
         for (auto& [_, value] : memoryPagesByType[i])
-            ctx->device.freeMemory(value);
+        {
+            ctx->device.freeMemory(value.first);
+        }
     }
     memoryPagesByType.clear();
-}
-
-Span<byte> VkAllocator::MapAllocation(const Allocation& alloc)
-{
-    ::vk::DeviceMemory memory = GetMemoryFromAllocation(alloc);
-    void* ptr = VEX_VK_CHECK <<= ctx->device.mapMemory(memory, alloc.memoryRange.offset, alloc.memoryRange.size);
-    return { static_cast<byte*>(ptr), alloc.memoryRange.size };
-}
-
-void VkAllocator::UnmapAllocation(const Allocation& alloc)
-{
-    ctx->device.unmapMemory(GetMemoryFromAllocation(alloc));
 }
 
 std::pair<::vk::DeviceMemory, Allocation> VkAllocator::AllocateResource(ResourceMemoryLocality memLocality,
@@ -88,7 +92,7 @@ std::pair<::vk::DeviceMemory, Allocation> VkAllocator::AllocateResource(Resource
         AllocatorUtils::GetBestSuitedMemoryTypeIndex(ctx->physDevice, memoryRequs.memoryTypeBits, memPropFlags);
 
     Allocation alloc = Allocate(memoryRequs.size, memoryRequs.alignment, memoryTypeIndex);
-    ::vk::DeviceMemory memory = memoryPagesByType[memoryTypeIndex].at(alloc.pageHandle);
+    ::vk::DeviceMemory memory = memoryPagesByType[memoryTypeIndex].at(alloc.pageHandle).first;
     return { memory, alloc };
 }
 
@@ -99,7 +103,13 @@ void VkAllocator::FreeResource(const Allocation& alloc)
 
 ::vk::DeviceMemory VkAllocator::GetMemoryFromAllocation(const Allocation& allocation)
 {
-    return memoryPagesByType[allocation.memoryTypeIndex].at(allocation.pageHandle);
+    return memoryPagesByType[allocation.memoryTypeIndex].at(allocation.pageHandle).first;
+}
+
+Span<byte> VkAllocator::GetMappedDataFromAllocation(const Allocation& allocation)
+{
+    Span<byte> fullRange = memoryPagesByType[allocation.memoryTypeIndex].at(allocation.pageHandle).second;
+    return { fullRange.data() + allocation.memoryRange.offset, allocation.memoryRange.size };
 }
 
 void VkAllocator::OnPageAllocated(PageHandle handle, u32 memoryTypeIndex)
@@ -110,17 +120,24 @@ void VkAllocator::OnPageAllocated(PageHandle handle, u32 memoryTypeIndex)
     ::vk::DeviceMemory allocatedMemory = VEX_VK_CHECK <<=
         ctx->device.allocateMemory({ .allocationSize = pageByteSize, .memoryTypeIndex = memoryTypeIndex });
 
+    void* ptr = nullptr;
+    if (AllocatorUtils::IsMemoryTypeIndexMappable(ctx->physDevice, memoryTypeIndex))
+    {
+        ptr = VEX_VK_CHECK <<= ctx->device.mapMemory(allocatedMemory, 0, VK_WHOLE_SIZE);
+    }
+
     SetDebugName(
         ctx->device,
         allocatedMemory,
         std::format("Allocated Memory Page (type: {}, handle: {})", memoryTypeIndex, handle.GetIndex()).c_str());
 
-    heapList.insert_or_assign(handle, allocatedMemory);
+    heapList.insert_or_assign(handle,
+                              std::make_pair(allocatedMemory, Span<byte>(static_cast<byte*>(ptr), pageByteSize)));
 }
 
 void VkAllocator::OnPageFreed(PageHandle handle, u32 memoryTypeIndex)
 {
-    ctx->device.freeMemory(memoryPagesByType[memoryTypeIndex].at(handle));
+    ctx->device.freeMemory(memoryPagesByType[memoryTypeIndex].at(handle).first);
     memoryPagesByType[memoryTypeIndex].erase(handle);
 }
 

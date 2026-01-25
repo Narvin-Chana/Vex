@@ -668,7 +668,7 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, Span<const byte> da
     if (buffer.desc.memoryLocality == ResourceMemoryLocality::CPUWrite)
     {
         RHIBuffer& rhiDestBuffer = graphics->GetRHIBuffer(buffer.handle);
-        ResourceMappedMemory(rhiDestBuffer).WriteData(data, region.offset);
+        MappedMemory(rhiDestBuffer).WriteData(data, region.offset);
         return;
     }
 
@@ -678,7 +678,7 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, Span<const byte> da
     Buffer stagingBuffer = CreateTemporaryStagingBuffer(buffer.desc.name, region.GetByteSize(buffer.desc));
 
     RHIBuffer& rhiStagingBuffer = graphics->GetRHIBuffer(stagingBuffer.handle);
-    ResourceMappedMemory(rhiStagingBuffer).WriteData({ data.begin(), data.begin() + region.GetByteSize(buffer.desc) });
+    MappedMemory(rhiStagingBuffer).WriteData({ data.begin(), data.begin() + region.GetByteSize(buffer.desc) });
 
     Copy(stagingBuffer,
          buffer,
@@ -713,9 +713,8 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
 
     // The staging buffer has to respect the alignment that which Vex uses for uploads.
     // We suppose however that user data is tightly packed.
-    Span<byte> stagingBufferData = rhiStagingBuffer.Map();
+    Span<byte> stagingBufferData = rhiStagingBuffer.GetMappedData();
     TextureCopyUtil::WriteTextureDataAligned(texture.desc, textureRegions, packedData, stagingBufferData);
-    rhiStagingBuffer.Unmap();
 
     if (textureRegions.empty())
     {
@@ -806,10 +805,10 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
                     "_build_blas_transforms",
                 transformsToUpload.size() * TransformMatrixSize);
 
-            ResourceMappedMemory mappedMemory = graphics->MapResource(transformBuffer);
-            mappedMemory.WriteData(std::as_bytes(std::span<std::array<float, 3 * 4>>(transformsToUpload)));
-            Barrier(transformBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderRead);
-        }
+        MappedMemory mappedMemory = graphics->MapResource(transformBuffer);
+        mappedMemory.WriteData(std::as_bytes(std::span<std::array<float, 3 * 4>>(transformsToUpload)));
+        Barrier(transformBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderRead);
+    }
 
         u32 transformIndex = 0;
         for (const BLASGeometryDesc& blasGeometry : desc.geometry)
@@ -870,7 +869,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
                 graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_blas_aabb",
                 aabbsToUpload.size() * sizeof(AABB));
 
-            ResourceMappedMemory mappedMemory = graphics->MapResource(aabbBuffer);
+            MappedMemory mappedMemory = graphics->MapResource(aabbBuffer);
             mappedMemory.WriteData(std::as_bytes(std::span(aabbsToUpload)));
             Barrier(aabbBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderRead);
         }
