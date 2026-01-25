@@ -106,9 +106,9 @@ CD3DX12_RASTERIZER_DESC GetDX12RasterizerStateFromRasterizerState(const Rasteriz
     desc.FrontCounterClockwise = (rasterizerState.winding == Winding::CounterClockwise);
 
     // Depth bias
-    desc.DepthBias = static_cast<INT>(rasterizerState.depthBiasConstantFactor);
-    desc.DepthBiasClamp = rasterizerState.depthBiasClamp;
-    desc.SlopeScaledDepthBias = rasterizerState.depthBiasSlopeFactor;
+    desc.DepthBias = rasterizerState.depthBiasEnabled ? static_cast<INT>(rasterizerState.depthBiasConstantFactor) : 0;
+    desc.DepthBiasClamp = rasterizerState.depthBiasEnabled ? rasterizerState.depthBiasClamp : 0;
+    desc.SlopeScaledDepthBias = rasterizerState.depthBiasEnabled ? rasterizerState.depthBiasSlopeFactor : 0;
     desc.DepthClipEnable = !rasterizerState.depthClampEnabled; // Inverted logic
 
     // Note: DX12 doesn't have direct equivalents for rasterizerDiscardEnabled and lineWidth, we ignore them.
