@@ -12,7 +12,6 @@
 
 namespace vex
 {
-struct ShaderKey;
 template <class T>
 using ComPtr = Microsoft::WRL::ComPtr<T>;
 } // namespace vex
@@ -34,7 +33,7 @@ using ComPtr = CComPtr<T>;
 
 namespace vex
 {
-
+struct ShaderKey;
 struct ShaderDefine;
 
 struct DXCCompilerImpl : public CompilerBase
