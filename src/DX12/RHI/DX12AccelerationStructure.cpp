@@ -1,5 +1,7 @@
 #include "DX12AccelerationStructure.h"
 
+#include <Vex/Utility/ByteUtils.h>
+
 #include <DX12/RHI/DX12Buffer.h>
 
 namespace vex::dx12
@@ -89,39 +91,69 @@ void DX12AccelerationStructure::InitRayTracingGeometryDesc(const RHIBLASBuildDes
     for (const RHIBLASGeometryDesc& rhiGeometryDesc : desc.geometry)
     {
         D3D12_RAYTRACING_GEOMETRY_DESC geometryDesc{};
-        geometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
         geometryDesc.Flags = ASGeometryFlagsToDX12GeometryFlags(rhiGeometryDesc.flags);
-        const D3D12_VERTEX_BUFFER_VIEW vbView = rhiGeometryDesc.vertexBufferBinding.buffer->GetVertexBufferView(
-            rhiGeometryDesc.vertexBufferBinding.binding);
-        geometryDesc.Triangles.VertexBuffer = {
-            .StartAddress = vbView.BufferLocation,
-            .StrideInBytes = vbView.StrideInBytes,
-        };
-        geometryDesc.Triangles.VertexCount = vbView.SizeInBytes / vbView.StrideInBytes;
-        geometryDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
-        // TODO(https://trello.com/c/srGndUSP): Handle other vertex formats, this should be cross-referenced with Vulkan
-        // to make sure only formats supported by both APIs are accepted.
-        VEX_ASSERT(vbView.StrideInBytes == sizeof(float) * 3,
-                   "Vex currently does not support Vertices with a larger stride than 12 bytes.");
 
-        if (rhiGeometryDesc.indexBufferBinding.has_value())
+        if (desc.type == ASGeometryType::Triangles)
         {
-            const D3D12_INDEX_BUFFER_VIEW ibView = rhiGeometryDesc.indexBufferBinding->buffer->GetIndexBufferView(
-                rhiGeometryDesc.indexBufferBinding->binding);
-            geometryDesc.Triangles.IndexBuffer = ibView.BufferLocation;
-            geometryDesc.Triangles.IndexCount =
-                ibView.SizeInBytes / *rhiGeometryDesc.indexBufferBinding->binding.strideByteSize;
-            geometryDesc.Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
+            geometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+
+            const D3D12_VERTEX_BUFFER_VIEW vbView = rhiGeometryDesc.vertexBufferBinding->buffer->GetVertexBufferView(
+                rhiGeometryDesc.vertexBufferBinding->binding);
+            geometryDesc.Triangles.VertexBuffer = {
+                .StartAddress = vbView.BufferLocation,
+                .StrideInBytes = vbView.StrideInBytes,
+            };
+            geometryDesc.Triangles.VertexCount = vbView.SizeInBytes / vbView.StrideInBytes;
+            geometryDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+            // TODO(https://trello.com/c/srGndUSP): Handle other vertex formats, this should be cross-referenced
+            // with Vulkan to make sure only formats supported by both APIs are accepted.
+            VEX_ASSERT(vbView.StrideInBytes == sizeof(float) * 3,
+                       "Vex currently does not support Vertices with a larger stride than 12 bytes.");
+
+            if (rhiGeometryDesc.indexBufferBinding.has_value())
+            {
+                const D3D12_INDEX_BUFFER_VIEW ibView = rhiGeometryDesc.indexBufferBinding->buffer->GetIndexBufferView(
+                    rhiGeometryDesc.indexBufferBinding->binding);
+                geometryDesc.Triangles.IndexBuffer = ibView.BufferLocation;
+                geometryDesc.Triangles.IndexCount =
+                    ibView.SizeInBytes / *rhiGeometryDesc.indexBufferBinding->binding.strideByteSize;
+                geometryDesc.Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
+            }
+            else
+            {
+                geometryDesc.Triangles.IndexFormat = DXGI_FORMAT_UNKNOWN;
+            }
+
+            if (rhiGeometryDesc.transform.has_value())
+            {
+                geometryDesc.Triangles.Transform3x4 = rhiGeometryDesc.transform->buffer->GetGPUVirtualAddress() +
+                                                      rhiGeometryDesc.transform->binding.offsetByteSize.value_or(0);
+            }
+        }
+        else if (desc.type == ASGeometryType::AABBs)
+        {
+            const RHIBufferBinding& aabbBinding = *rhiGeometryDesc.aabbBufferBinding;
+            const u32 aabbCount = *aabbBinding.binding.rangeByteSize / *aabbBinding.binding.strideByteSize;
+            VEX_ASSERT(aabbCount > 0, "AABB geometry must have atleast one AABB.");
+            VEX_ASSERT(aabbBinding.binding.strideByteSize.value_or(sizeof(D3D12_RAYTRACING_AABB)) ==
+                           sizeof(D3D12_RAYTRACING_AABB),
+                       "AABB stride must be 24 bytes (6 floats: MinX, MinY, MinZ, MaxX, MaxY, MaxZ)");
+            D3D12_GPU_VIRTUAL_ADDRESS virtualAddress =
+                aabbBinding.buffer->GetGPUVirtualAddress() + aabbBinding.binding.offsetByteSize.value_or(0);
+            VEX_ASSERT(IsAligned<u64>(virtualAddress, D3D12_RAYTRACING_AABB_BYTE_ALIGNMENT),
+                       "Virtual address for aabb buffer must be aligned to D3D12_RAYTRACING_AABB_BYTE_ALIGNMENT.");
+            geometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS;
+            geometryDesc.AABBs = {
+                .AABBCount = aabbCount,
+                .AABBs = {
+                    .StartAddress = virtualAddress,
+                    .StrideInBytes = sizeof(D3D12_RAYTRACING_AABB),
+                },
+            };
         }
         else
         {
-            geometryDesc.Triangles.IndexFormat = DXGI_FORMAT_UNKNOWN;
-        }
-
-        if (rhiGeometryDesc.transform.has_value())
-        {
-            geometryDesc.Triangles.Transform3x4 = rhiGeometryDesc.transform->buffer->GetGPUVirtualAddress() +
-                                                  rhiGeometryDesc.transform->binding.offsetByteSize.value_or(0);
+            VEX_ASSERT(false, "Unsupported BLAS geometry type.");
         }
 
         geometryDescs.push_back(std::move(geometryDesc));

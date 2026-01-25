@@ -16,9 +16,14 @@ namespace vex
 // RHI version of BLASGeometryDesc
 struct RHIBLASGeometryDesc
 {
-    RHIBufferBinding vertexBufferBinding;
+    // For Triangles:
+    std::optional<RHIBufferBinding> vertexBufferBinding;
     std::optional<RHIBufferBinding> indexBufferBinding;
     std::optional<RHIBufferBinding> transform;
+
+    // For AABBs:
+    // Buffer containing D3D12_RAYTRACING_AABB or VkAabbPositionsKHR
+    std::optional<RHIBufferBinding> aabbBufferBinding;
 
     ASGeometry::Flags flags = ASGeometry::None;
 };
@@ -26,6 +31,7 @@ struct RHIBLASGeometryDesc
 // RHI version of BLASBuildDesc
 struct RHIBLASBuildDesc
 {
+    ASGeometryType type = ASGeometryType::Triangles;
     Span<const RHIBLASGeometryDesc> geometry;
 };
 
