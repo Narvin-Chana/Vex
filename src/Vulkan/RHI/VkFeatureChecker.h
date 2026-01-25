@@ -1,6 +1,7 @@
 #pragma once
 
-#include <Vex/FeatureChecker.h>
+#include <RHI/RHIFeatureChecker.h>
+
 #include <Vex/Formats.h>
 
 #include <Vulkan/VkHeaders.h>
@@ -12,10 +13,9 @@ class PhysicalDevice;
 
 namespace vex::vk
 {
-class VkFeatureChecker : public vex::FeatureChecker
+class VkFeatureChecker : public RHIFeatureCheckerBase
 {
 public:
-    VkFeatureChecker() = default;
     VkFeatureChecker(const ::vk::PhysicalDevice& physicalDevice);
     virtual ~VkFeatureChecker() override;
     virtual bool IsFeatureSupported(Feature feature) const override;
@@ -28,8 +28,6 @@ public:
     std::string_view GetMaxSupportedSpirVVersion() const;
     std::string_view GetMaxSupportedVulkanVersion() const;
     bool SupportsMinimalRequirements() const override;
-
-    bool DoesTextureFormatSupportLinearFiltering(TextureFormat format);
 
 private:
     ::vk::PhysicalDeviceProperties deviceProperties;

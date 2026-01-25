@@ -1,14 +1,15 @@
 #pragma once
 
-#include <Vex/PhysicalDevice.h>
+#include <RHI/RHIPhysicalDevice.h>
 
 #include <Vulkan/VkHeaders.h>
 
 namespace vex::vk
 {
 
-struct VkPhysicalDevice : public PhysicalDevice
+class VkPhysicalDevice : public RHIPhysicalDeviceBase
 {
+public:
     VkPhysicalDevice(const ::vk::PhysicalDevice& dev);
     ~VkPhysicalDevice() = default;
 

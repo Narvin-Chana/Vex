@@ -1,16 +1,14 @@
 #include "VkPhysicalDevice.h"
 
-#include <Vulkan/VkFeatureChecker.h>
-
 namespace vex::vk
 {
 
 VkPhysicalDevice::VkPhysicalDevice(const ::vk::PhysicalDevice& dev)
     : physicalDevice(dev)
 {
-    deviceName = dev.getProperties().deviceName.data();
-    dedicatedVideoMemoryMB = GetDeviceVRAMSize(dev);
-    featureChecker = MakeUnique<VkFeatureChecker>(dev);
+    info.deviceName = dev.getProperties().deviceName.data();
+    info.dedicatedVideoMemoryMB = GetDeviceVRAMSize(dev);
+    featureChecker.emplace(dev);
 }
 
 double VkPhysicalDevice::GetDeviceVRAMSize(const ::vk::PhysicalDevice& physicalDevice)

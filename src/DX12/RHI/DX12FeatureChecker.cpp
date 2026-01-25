@@ -7,7 +7,6 @@
 
 #include <DX12/DX12Formats.h>
 #include <DX12/DX12Headers.h>
-#include <DX12/DXGIFactory.h>
 #include <DX12/HRChecker.h>
 
 namespace vex::dx12

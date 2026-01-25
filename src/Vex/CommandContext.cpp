@@ -1,7 +1,6 @@
 #include "CommandContext.h"
 
 #include <algorithm>
-#include <cmath>
 #include <variant>
 
 #include <Vex/AccelerationStructure.h>
@@ -24,7 +23,6 @@
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Hash.h>
 #include <Vex/Utility/Validation.h>
-#include <Vex/Utility/Visitor.h>
 
 #include <RHI/RHIBarrier.h>
 #include <RHI/RHIBindings.h>

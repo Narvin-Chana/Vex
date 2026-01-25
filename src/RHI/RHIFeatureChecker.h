@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Vex/Types.h>
-#include <Vex/Utility/UniqueHandle.h>
 
 namespace vex
 {
@@ -54,10 +53,10 @@ enum class ShaderModel : u8
 };
 
 enum class TextureFormat : u8;
-class FeatureChecker
+class RHIFeatureCheckerBase
 {
 public:
-    virtual ~FeatureChecker() = default;
+    virtual ~RHIFeatureCheckerBase() = default;
     virtual bool IsFeatureSupported(Feature feature) const = 0;
     virtual FeatureLevel GetFeatureLevel() const = 0;
     virtual ResourceBindingTier GetResourceBindingTier() const = 0;

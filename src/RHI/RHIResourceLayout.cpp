@@ -7,10 +7,8 @@
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHI.h>
+#include <Vex/RHIImpl/RHIPhysicalDevice.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
-#include <Vex/RHIImpl/RHITexture.h>
-
-#include <RHI/RHIBindings.h>
 
 namespace vex
 {
