@@ -21,13 +21,11 @@ enum class RHIBarrierSync : u8
     PixelShader,
     EarlyFragment,
     LateFragment,
-    Depth,
     DepthStencil,
     ComputeShader,
     Copy,
     RenderTarget,
     DrawIndirect,
-    Host,
     // Synchronize for raytracing GPU execution.
     RayTracing,
     // Synchronize for building an acceleration structure.
@@ -50,19 +48,13 @@ enum class RHIBarrierAccess : u8
     ShaderRead,
     ShaderReadWrite,
     RenderTarget,
-    RenderTargetRead,
-    RenderTargetWrite,
-    DepthStencil,
     DepthStencilRead,
     DepthStencilWrite,
+    DepthStencilReadWrite,
     CopySource,
     CopyDest,
-    HostRead,
-    HostWrite,
     AccelerationStructureRead,
     AccelerationStructureWrite,
-    MemoryRead,
-    MemoryWrite,
 };
 
 // Maps to VkImageLayout and D3D12_BARRIER_LAYOUT
@@ -71,8 +63,8 @@ enum class RHITextureLayout : u8
     Undefined,
     Common,            // General purpose (maps to VK_GENERAL, D3D12_COMMON)
     RenderTarget,      // Color render target
-    DepthStencilWrite, // Depth/stencil for writing
     DepthStencilRead,  // Depth/stencil read-only
+    DepthStencilWrite, // Depth/stencil for writing
     ShaderResource,    // Shader read access
     UnorderedAccess,   // Storage/UAV access
     CopySource,        // Copy source

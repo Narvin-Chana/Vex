@@ -246,7 +246,7 @@ u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, Span<const Texture
     for (const TextureRegion& region : uploadRegions)
     {
         const float pixelByteSize =
-            GetPixelByteSizeFromFormat(GetCopyFormat(desc.format, region.subresource.GetSingleAspect()));
+            GetPixelByteSizeFromFormat(GetCopyFormat(desc.format, region.subresource.GetSingleAspect(desc)));
 
         const u32 sliceCount = region.subresource.GetSliceCount(desc);
 
@@ -295,8 +295,8 @@ void ForEachSubresourceIndices(const TextureSubresource& subresource,
         for (u32 slice = subresource.startSlice; slice < subresource.startSlice + subresource.GetSliceCount(desc);
              ++slice)
         {
-            for (u32 plane = subresource.GetStartPlane();
-                 plane < subresource.GetStartPlane() + subresource.GetPlaneCount();
+            for (u32 plane = subresource.GetStartPlane(desc);
+                 plane < subresource.GetStartPlane(desc) + subresource.GetPlaneCount(desc);
                  ++plane)
             {
                 func(mip, slice, plane);
@@ -561,8 +561,13 @@ u32 TextureSubresource::GetSliceCount(const TextureDesc& desc) const
     return sliceCount == GTextureAllSlices ? (desc.GetSliceCount() - startSlice) : sliceCount;
 }
 
-u32 TextureSubresource::GetStartPlane() const
+u32 TextureSubresource::GetStartPlane(const TextureDesc& desc) const
 {
+    if (aspect == TextureAspect::All)
+    {
+        return 0;
+    }
+
     if (aspect & TextureAspect::Color || aspect & TextureAspect::Depth)
     {
         return 0;
@@ -570,8 +575,13 @@ u32 TextureSubresource::GetStartPlane() const
     return aspect & TextureAspect::Stencil ? 1 : 0;
 }
 
-u32 TextureSubresource::GetPlaneCount() const
+u32 TextureSubresource::GetPlaneCount(const TextureDesc& desc) const
 {
+    if (aspect == TextureAspect::All)
+    {
+        return FormatUtil::GetPlaneCount(desc.format);
+    }
+
     u32 count = 0;
     if (aspect & TextureAspect::Stencil)
     {
@@ -585,8 +595,12 @@ u32 TextureSubresource::GetPlaneCount() const
     return count;
 }
 
-TextureAspect::Type TextureSubresource::GetSingleAspect() const
+TextureAspect::Type TextureSubresource::GetSingleAspect(const TextureDesc& desc) const
 {
+    if (aspect == TextureAspect::All)
+    {
+        return static_cast<TextureAspect::Type>(GetDefaultAspect(desc));
+    }
     VEX_ASSERT((aspect & (aspect - 1)) == 0, "Tried to get single aspect when multiple where flagged");
     return static_cast<TextureAspect::Type>(aspect);
 }
@@ -604,7 +618,7 @@ bool TextureSubresource::IsFullResource(const TextureDesc& desc) const
 {
     return startMip == 0 && (mipCount == GTextureAllMips || mipCount == desc.mips) &&
            startSlice == 0 && (sliceCount == GTextureAllSlices || sliceCount == desc.depthOrSliceCount) &&
-           desc.GetPlaneCount() == GetPlaneCount();
+           desc.GetPlaneCount() == GetPlaneCount(desc);
 }
 
 std::tuple<u32, u32, u32> TextureRegion::GetExtents(const TextureDesc& desc, u16 mip) const

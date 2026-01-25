@@ -466,7 +466,7 @@ struct ScalarBlockLayoutTests : public VexTestParam<ShaderCompilerBackend>
     };
 };
 
-TEST_P(ScalarBlockLayoutTests, ComputeMisaligneData)
+TEST_P(ScalarBlockLayoutTests, ComputeMisalignedData)
 {
     CommandContext ctx = graphics.CreateCommandContext(QueueType::Compute);
 

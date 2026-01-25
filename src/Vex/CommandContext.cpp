@@ -188,6 +188,7 @@ void CommandContext::ClearTexture(const TextureBinding& binding,
 
     RHITexture& texture = graphics->GetRHITexture(binding.texture.handle);
 
+    FlushBarriers();
     cmdList->ClearTexture({ binding, NonNullPtr(texture) },
                           // This is a safe cast, textures can only contain one of the two usages (RT/DS).
                           static_cast<TextureUsage::Type>(binding.texture.desc.usage &
@@ -1103,7 +1104,8 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
         ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(*graphics,
                                                                  drawBindings.renderTargets,
                                                                  drawBindings.depthStencil,
-                                                                 pendingTextureBarriers);
+                                                                 pendingTextureBarriers,
+                                                                 drawDesc.depthStencilState);
 
     auto graphicsPSOKey = CommandContext_Internal::GetGraphicsPSOKeyFromDrawDesc(drawDesc, drawResources);
 

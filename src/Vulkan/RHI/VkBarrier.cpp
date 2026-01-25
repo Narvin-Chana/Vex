@@ -32,9 +32,8 @@ namespace vex::vk
         return eEarlyFragmentTests;
     case LateFragment:
         return eLateFragmentTests;
-    case Depth:
     case DepthStencil:
-        return eEarlyFragmentTests;
+        return eFragmentShader | eEarlyFragmentTests | eLateFragmentTests;
     case ComputeShader:
         return eComputeShader;
     case Copy:
@@ -43,8 +42,10 @@ namespace vex::vk
         return eColorAttachmentOutput;
     case DrawIndirect:
         return eDrawIndirect;
-    case Host:
-        return eHost;
+    case RayTracing:
+        return eRayTracingShaderKHR;
+    case BuildAccelerationStructure:
+        return eAccelerationStructureBuildKHR;
     case AllGraphics:
         return eAllGraphics;
     case AllCommands:
@@ -77,31 +78,23 @@ namespace vex::vk
     case ShaderRead:
         return eShaderRead;
     case ShaderReadWrite:
-        return eShaderWrite;
+        return eShaderRead | eShaderWrite;
     case RenderTarget:
         return eColorAttachmentRead | eColorAttachmentWrite;
-    case RenderTargetRead:
-        return eColorAttachmentRead;
-    case RenderTargetWrite:
-        return eColorAttachmentWrite;
-    case DepthStencil:
-        return eDepthStencilAttachmentRead | eDepthStencilAttachmentWrite;
     case DepthStencilRead:
         return eDepthStencilAttachmentRead;
     case DepthStencilWrite:
         return eDepthStencilAttachmentWrite;
+    case DepthStencilReadWrite:
+        return eDepthStencilAttachmentRead | eDepthStencilAttachmentWrite;
     case CopySource:
         return eTransferRead;
     case CopyDest:
         return eTransferWrite;
-    case HostRead:
-        return eHostRead;
-    case HostWrite:
-        return eHostWrite;
-    case MemoryRead:
-        return eMemoryRead;
-    case MemoryWrite:
-        return eMemoryWrite;
+    case AccelerationStructureRead:
+        return eAccelerationStructureReadKHR;
+    case AccelerationStructureWrite:
+        return eAccelerationStructureWriteKHR;
     default:
         VEX_LOG(Fatal, "Unsupported RHIBarrierAccess type.");
         std::unreachable();
@@ -121,10 +114,10 @@ namespace vex::vk
         return eGeneral;
     case RenderTarget:
         return eColorAttachmentOptimal;
-    case DepthStencilWrite:
-        return eDepthStencilAttachmentOptimal;
     case DepthStencilRead:
         return eDepthStencilReadOnlyOptimal;
+    case DepthStencilWrite:
+        return eDepthStencilAttachmentOptimal;
     case ShaderResource:
         return eShaderReadOnlyOptimal;
     case UnorderedAccess:

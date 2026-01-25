@@ -4,6 +4,9 @@
 
 using namespace vex;
 
+// Disabled for vulkan since RayTracing is not yet implemented.
+#if VEX_DX12
+
 struct AccelerationStructureTest : VexTest
 {
     using Vertex = std::array<float, 3>;
@@ -629,3 +632,5 @@ INSTANTIATE_TEST_SUITE_P(ASAABBTestSuite,
                                                          .expectedResult = -1,
                                                          .testName = "No_Intersection" }),
                          [](const testing::TestParamInfo<ASAABBTestData>& info) { return info.param.testName; });
+
+#endif

@@ -220,7 +220,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
         .viewType = TextureTypeToVulkan(view.viewType),
         .format = view.format,
         .subresourceRange = {
-            .aspectMask = VkTextureUtil::BindingAspectToVkAspectFlags(binding.subresource.GetSingleAspect()),
+            .aspectMask = VkTextureUtil::BindingAspectToVkAspectFlags(binding.subresource.GetSingleAspect(binding.texture.desc)),
             .baseMipLevel = view.subresource.startMip,
             .levelCount = view.subresource.GetMipCount(binding.texture.desc),
             .baseArrayLayer = view.subresource.startSlice,
