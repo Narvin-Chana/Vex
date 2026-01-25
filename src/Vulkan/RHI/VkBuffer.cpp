@@ -113,23 +113,4 @@ void VkBuffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
     return *buffer;
 }
 
-// Span<byte> VkBuffer::Map()
-//{
-// #if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
-//     return allocator->MapAllocation(allocation);
-// #else
-//     void* ptr = VEX_VK_CHECK <<= ctx->device.mapMemory(*memory, 0, VK_WHOLE_SIZE);
-//     return { static_cast<byte*>(ptr), desc.byteSize };
-// #endif
-// }
-//
-// void VkBuffer::Unmap()
-//{
-// #if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
-//     allocator->UnmapAllocation(allocation);
-// #else
-//     ctx->device.unmapMemory(*memory);
-// #endif
-// }
-
 } // namespace vex::vk
