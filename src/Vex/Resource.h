@@ -5,6 +5,8 @@
 #include <Vex/Utility/Concepts.h>
 #include <Vex/Utility/Handle.h>
 
+#include <RHI/RHIFwd.h>
+
 #ifndef VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
 #define VEX_USE_CUSTOM_ALLOCATOR_BUFFERS 1
 #endif
@@ -33,30 +35,21 @@ struct BindlessHandle : Handle32<BindlessHandle>
 
 static constexpr BindlessHandle GInvalidBindlessHandle;
 
-struct MappableResourceInterface
-{
-    virtual Span<byte> Map() = 0;
-    virtual void Unmap() = 0;
-    virtual ~MappableResourceInterface() = default;
-};
-
-class ResourceMappedMemory
+class MappedMemory
 {
 public:
-    ResourceMappedMemory() = delete;
-    ResourceMappedMemory(const ResourceMappedMemory&) = delete;
-    ResourceMappedMemory& operator=(const ResourceMappedMemory&) = delete;
+    MappedMemory(RHIBuffer& buffer);
 
-    ResourceMappedMemory(ResourceMappedMemory&&);
-    ResourceMappedMemory& operator=(ResourceMappedMemory&&);
+    MappedMemory() = delete;
+    MappedMemory(const MappedMemory&) = delete;
+    MappedMemory& operator=(const MappedMemory&) = delete;
 
-    ResourceMappedMemory(MappableResourceInterface& resource);
+    MappedMemory(MappedMemory&&) = default;
+    MappedMemory& operator=(MappedMemory&&) = default;
+    ~MappedMemory() = default;
 
-    ~ResourceMappedMemory();
     void WriteData(Span<const byte> inData);
-    void WriteData(Span<byte> inData);
     void WriteData(Span<const byte> inData, u32 offset);
-    void WriteData(Span<byte> inData, u32 offset);
     void ReadData(u32 offset, Span<byte> outData);
     void ReadData(Span<byte> outData);
 
@@ -64,6 +57,7 @@ public:
         requires(not IsContainer<T>)
     void WriteData(const T& inData);
     template <class T>
+        requires(not IsContainer<T>)
     void ReadData(T& outData);
 
     [[nodiscard]] Span<byte> GetMappedRange()
@@ -78,22 +72,19 @@ public:
 
 private:
     Span<byte> mappedData;
-
-    MappableResourceInterface& resource;
-
-    bool isMapped = false;
 };
 
 template <class T>
     requires(not IsContainer<T>)
-void ResourceMappedMemory::WriteData(const T& inData)
+void MappedMemory::WriteData(const T& inData)
 {
     const byte* dataPtr = reinterpret_cast<const byte*>(&inData);
     WriteData({ dataPtr, sizeof(T) });
 }
 
 template <class T>
-void ResourceMappedMemory::ReadData(T& outData)
+    requires(not IsContainer<T>)
+void MappedMemory::ReadData(T& outData)
 {
     byte* dataPtr = reinterpret_cast<byte*>(&outData);
     ReadData({ dataPtr, sizeof(T) });

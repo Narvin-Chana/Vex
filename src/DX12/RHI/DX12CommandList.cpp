@@ -876,7 +876,7 @@ void DX12CommandList::BuildTLAS(RHIAccelerationStructure& as,
     VEX_ASSERT(as.GetDesc().type == ASType::TopLevel, "Invalid Acceleration Structure type...");
     // Upload required info into the upload buffer.
     {
-        ResourceMappedMemory map{ uploadBuffer };
+        MappedMemory map{ uploadBuffer };
         D3D12_RAYTRACING_INSTANCE_DESC* instanceDescs =
             reinterpret_cast<D3D12_RAYTRACING_INSTANCE_DESC*>(map.GetMappedRange().data());
         for (u32 instance = 0; instance < desc.instanceDescs.size(); ++instance)

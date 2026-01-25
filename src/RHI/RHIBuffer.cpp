@@ -12,6 +12,12 @@ RHIBufferBase::RHIBufferBase(RHIAllocator& allocator)
 {
 }
 
+bool RHIBufferBase::IsMappable() const
+{
+    return desc.memoryLocality == ResourceMemoryLocality::CPURead ||
+           desc.memoryLocality == ResourceMemoryLocality::CPUWrite;
+}
+
 BindlessHandle RHIBufferBase::GetOrCreateBindlessView(const BufferBinding& binding, RHIDescriptorPool& descriptorPool)
 {
     BufferViewDesc bufferView = GetViewDescFromBinding(binding);

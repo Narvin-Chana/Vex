@@ -3,68 +3,34 @@
 #include <utility>
 
 #include <Vex/Platform/Debug.h>
+#include <Vex/RHIImpl/RHIBuffer.h>
 
 namespace vex
 {
 
-ResourceMappedMemory::ResourceMappedMemory(ResourceMappedMemory&& other)
-    : mappedData{ other.mappedData }
-    , resource{ other.resource }
-    , isMapped{ std::exchange(other.isMapped, false) }
+MappedMemory::MappedMemory(RHIBuffer& buffer)
+    : mappedData{ buffer.GetMappedData() }
 {
 }
 
-ResourceMappedMemory& ResourceMappedMemory::operator=(ResourceMappedMemory&& other)
-{
-    resource = other.resource;
-    mappedData = other.mappedData;
-    isMapped = std::exchange(other.isMapped, false);
-    return *this;
-}
-
-ResourceMappedMemory::ResourceMappedMemory(MappableResourceInterface& resource)
-    : resource{ resource }
-    , isMapped{ true }
-{
-    mappedData = resource.Map();
-}
-
-ResourceMappedMemory::~ResourceMappedMemory()
-{
-    if (isMapped)
-    {
-        resource.Unmap();
-    }
-}
-
-void ResourceMappedMemory::WriteData(Span<const byte> inData)
+void MappedMemory::WriteData(Span<const byte> inData)
 {
     WriteData(inData, 0);
 }
 
-void ResourceMappedMemory::WriteData(Span<byte> inData)
-{
-    WriteData(Span<const byte>{ inData.begin(), inData.end() }, 0);
-}
-
-void ResourceMappedMemory::WriteData(Span<const byte> inData, u32 offset)
+void MappedMemory::WriteData(Span<const byte> inData, u32 offset)
 {
     VEX_ASSERT(mappedData.size() - offset >= inData.size());
     std::copy(inData.begin(), inData.end(), mappedData.begin() + offset);
 }
 
-void ResourceMappedMemory::WriteData(Span<byte> inData, u32 offset)
-{
-    WriteData(Span<const byte>{ inData.begin(), inData.end() }, offset);
-}
-
-void ResourceMappedMemory::ReadData(u32 offset, Span<byte> outData)
+void MappedMemory::ReadData(u32 offset, Span<byte> outData)
 {
     VEX_ASSERT(mappedData.size() - offset >= outData.size());
     std::copy(mappedData.begin() + offset, mappedData.end(), outData.begin() + offset);
 }
 
-void ResourceMappedMemory::ReadData(Span<byte> outData)
+void MappedMemory::ReadData(Span<byte> outData)
 {
     ReadData(0, outData);
 }

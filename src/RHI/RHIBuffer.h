@@ -1,11 +1,10 @@
 #pragma once
 
 #include <Vex/Buffer.h>
-#include <Vex/Utility/Hash.h>
 #include <Vex/MemoryAllocation.h>
-#include <Vex/Utility/NonNullPtr.h>
-#include <Vex/Resource.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/Hash.h>
+#include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIBarrier.h>
 #include <RHI/RHIFwd.h>
@@ -44,7 +43,7 @@ VEX_MAKE_HASHABLE(vex::BufferViewDesc,
 namespace vex
 {
 
-class RHIBufferBase : public MappableResourceInterface
+class RHIBufferBase
 {
 public:
     RHIBufferBase(RHIAllocator& allocator);
@@ -53,6 +52,16 @@ public:
     RHIBufferBase(RHIBufferBase&&) = default;
     RHIBufferBase& operator=(RHIBufferBase&&) = default;
     ~RHIBufferBase() = default;
+
+    bool IsMappable() const;
+    Span<byte> GetMappedData() const
+    {
+        if (!IsMappable())
+        {
+            VEX_LOG(Warning, "Attempting to access mapped data on an non-mappable buffer...");
+        }
+        return mappedData;
+    }
 
     virtual BindlessHandle GetOrCreateBindlessView(const BufferBinding& binding, RHIDescriptorPool& descriptorPool);
     void FreeBindlessHandles(RHIDescriptorPool& descriptorPool);
@@ -101,6 +110,8 @@ protected:
 
     NonNullPtr<RHIAllocator> allocator;
     Allocation allocation;
+
+    std::span<byte> mappedData;
 
     std::unordered_map<BufferViewDesc, BindlessHandle> viewCache;
 };

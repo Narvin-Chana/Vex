@@ -126,7 +126,7 @@ void RHITimestampQueryPoolBase::UpdateSyncTokens(SyncToken token, Span<const Que
 
 void RHITimestampQueryPoolBase::ResolveQueries()
 {
-    const ResourceMappedMemory mem{ timestampBuffer };
+    const MappedMemory mem{ timestampBuffer };
     std::span mappedRange = { reinterpret_cast<const u64*>(mem.GetMappedRange().data()), MaxInFlightTimestampCount };
 
     for (auto it = inFlightQueries.begin(); it != inFlightQueries.end(); ++it)

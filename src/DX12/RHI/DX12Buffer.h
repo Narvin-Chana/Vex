@@ -19,13 +19,9 @@ class DX12Buffer final : public RHIBufferBase
 {
 public:
     DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, const BufferDesc& desc);
-
     virtual void AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
                                         BindlessHandle handle,
                                         const BufferViewDesc& viewDesc) override;
-
-    virtual Span<byte> Map() override;
-    virtual void Unmap() override;
 
     ID3D12Resource* GetRawBuffer()
     {
