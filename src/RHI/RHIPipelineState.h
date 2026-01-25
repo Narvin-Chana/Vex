@@ -1,11 +1,11 @@
 #pragma once
 
 #include <Vex/GraphicsPipeline.h>
-#include <Vex/Utility/Hash.h>
-#include <Vex/RayTracing.h>
+#include <Vex/Shaders/RayTracingShaders.h>
 #include <Vex/Shaders/Shader.h>
 #include <Vex/Shaders/ShaderKey.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/Hash.h>
 
 #include <RHI/RHIFwd.h>
 
