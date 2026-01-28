@@ -20,11 +20,6 @@ bool Shader::IsValid() const
     return !res.compiledCode.empty();
 }
 
-bool Shader::NeedsRecompile() const
-{
-    return isDirty && !isErrored;
-}
-
 const ShaderReflection* Shader::GetReflection() const
 {
     return res.reflection ? &*res.reflection : nullptr;
@@ -32,7 +27,7 @@ const ShaderReflection* Shader::GetReflection() const
 
 void Shader::MarkDirty()
 {
-    isDirty = true;
+    needsRecompile = true;
 }
 
 } // namespace vex

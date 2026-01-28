@@ -45,11 +45,12 @@ ShaderCompiler::ShaderCompiler(const ShaderCompilerSettings& compilerSettings)
     // Force disable shader debugging in shipping.
     this->compilerSettings.enableShaderDebugging = false;
 #endif
+    globalShaderEnv = CreateShaderEnvironment();
 }
 
 ShaderCompiler::~ShaderCompiler() = default;
 
-ShaderEnvironment ShaderCompiler::CreateShaderEnvironment(ShaderCompilerBackend compiler)
+ShaderEnvironment ShaderCompiler::CreateShaderEnvironment()
 {
     ShaderEnvironment env;
     env.defines.emplace_back("VEX_DEBUG", std::to_string(VEX_DEBUG));
@@ -64,98 +65,18 @@ ShaderEnvironment ShaderCompiler::CreateShaderEnvironment(ShaderCompilerBackend 
 
 std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader)
 {
-    if (!GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::BindlessResources))
-    {
-        VEX_LOG(Fatal, "Vex requires BindlessResources in order to bind global resources.");
-    }
-
-    ShaderCompilerBackend shaderCompilerToUse = ShaderCompilerBackend::Auto;
-
-    std::expected<ShaderCompilationResult, std::string> res = std::unexpected("Invalid shader compiler backend.");
-    // Identify which shader compiler to use.
-    switch (shader.key.compiler)
-    {
-    case ShaderCompilerBackend::Auto:
-#if VEX_SLANG
-        // Default is DXC, unless VEX_SLANG and the shader file has .slang extension.
-        if (shader.key.path.extension() == ".slang")
-        {
-            shaderCompilerToUse = ShaderCompilerBackend::Slang;
-            break;
-        }
-        // Voluntary fallthrough:
-#endif
-    case ShaderCompilerBackend::DXC:
-        shaderCompilerToUse = ShaderCompilerBackend::DXC;
-        break;
-#if VEX_SLANG
-    case ShaderCompilerBackend::Slang:
-        shaderCompilerToUse = ShaderCompilerBackend::Slang;
-        break;
-#endif
-    }
-
-    // Setup compilation environment.
-    ShaderEnvironment env = CreateShaderEnvironment(shaderCompilerToUse);
-
-    // Compile the shader.
-    if (shaderCompilerToUse == ShaderCompilerBackend::DXC)
-    {
-        res = dxcCompilerImpl.CompileShader(shader, env, compilerSettings);
-    }
-#if VEX_SLANG
-    else if (shaderCompilerToUse == ShaderCompilerBackend::Slang)
-    {
-        res = slangCompilerImpl.CompileShader(shader, env, compilerSettings);
-    }
-#endif
-
-    if (!res.has_value())
-    {
-        return std::unexpected(res.error());
-    }
-
-    // Outputs raw bytecode if we ever need to figure out a difficult shader issue (for spirv can use spirv-dis
-    // to read raw .spv file, similar tools like RenderDoc work for dxil).
-    if (compilerSettings.dumpShaderOutputBytecode)
-    {
-        std::vector<byte>& shaderBytecode = res->compiledCode;
-
-        std::filesystem::path outputPath =
-            std::filesystem::current_path() / "VexOutput_SHADER_BYTECODE" / shader.key.path.filename();
-#if VEX_VULKAN
-        outputPath.replace_extension(".spv"); // or ".spirv"
-#elif VEX_DX12
-        outputPath.replace_extension(".dxil");
-#endif
-        if (!std::filesystem::exists(outputPath.parent_path()))
-        {
-            std::filesystem::create_directories(outputPath.parent_path());
-        }
-        std::ofstream file(outputPath, std::ios::binary);
-        if (file.is_open())
-        {
-            file.write(reinterpret_cast<const char*>(shaderBytecode.data()), shaderBytecode.size());
-            file.close();
-            VEX_LOG(Info, "Shader bytecode written to: {}", outputPath.string());
-        }
-        else
-        {
-            VEX_LOG(Error, "Failed to write shader bytecode to: {}", outputPath.string());
-        }
-    }
-
-    // Store shader bytecode blob inside the Shader.
-    shader.res = std::move(*res);
-
-    shader.version++;
-    shader.isDirty = false;
-
-    return {};
+    return GetCompiler(shader.key).and_then([&](CompilerBase* compiler) { return CompileShader(compiler, shader); });
 }
 
 NonNullPtr<Shader> ShaderCompiler::GetShader(const ShaderKey& key)
 {
+    if (!key.path.empty() && !key.sourceCode.empty())
+    {
+        VEX_LOG(Warning,
+                "Shader {} has both a shader filepath and shader source string. Using the filepath for compilation...",
+                key);
+    }
+
     Shader* shaderPtr;
     if (auto el = shaderCache.find(key); el != shaderCache.end())
     {
@@ -168,47 +89,53 @@ NonNullPtr<Shader> ShaderCompiler::GetShader(const ShaderKey& key)
         shaderPtr = &shaderCache.find(key)->second;
     }
 
-    if (shaderPtr->NeedsRecompile())
+    if (shaderPtr->needsRecompile)
     {
-        auto result = CompileShader(*shaderPtr);
-        if (!result.has_value())
+        shaderPtr->needsRecompile = false;
+        std::expected<void, std::string> res = GetCompiler(key).and_then(
+            [&](CompilerBase* compiler)
+            {
+                return compiler->GetShaderCodeHash(*shaderPtr, globalShaderEnv, compilerSettings)
+                    .and_then(
+                        [&](const SHA1HashDigest& digest) -> std::expected<void, std::string>
+                        {
+                            if (digest != shaderPtr->res.sourceHash)
+                            {
+                                return CompileShader(compiler, *shaderPtr)
+                                    .and_then(
+                                        [&]() -> std::expected<void, std::string>
+                                        {
+                                            shaderPtr->res.sourceHash = digest;
+                                            return {};
+                                        });
+                            }
+                            return {};
+                        });
+            });
+
+        if (!res.has_value())
         {
             if (compilerSettings.enableShaderDebugging)
             {
                 shaderPtr->isErrored = true;
-                compilationErrors.emplace_back(key, result.error());
+                compilationErrors.emplace_back(key, res.error());
             }
             // If we're not in a debugShaders context, a non-compiling shader is fatal.
             VEX_LOG(compilerSettings.enableShaderDebugging ? Error : Fatal,
                     "Failed to compile shader:\n\t- {}:\n\t- Reason: {}",
                     key,
-                    result.error());
+                    res.error());
         }
     }
 
     return NonNullPtr(shaderPtr);
 }
 
-std::pair<bool, std::size_t> ShaderCompiler::IsShaderStale(const Shader& shader) const
+bool ShaderCompiler::IsShaderStale(const Shader& shader) const
 {
-    // if (!std::filesystem::exists(shader.key.path))
-    //{
-    //     VEX_LOG(Fatal, "Unable to parse a shader file which no longer exists: {}.", shader.key);
-    //     return { false, shader.hash };
-    // }
-
-    // std::optional<std::size_t> newHash = compilerImpl->GetShaderHash(shader);
-    // if (!newHash)
-    //{
-    //     return { false, shader.hash };
-    // }
-
-    // bool isShaderStale = shader.hash != *newHash;
-    // return { isShaderStale, *newHash };
-
-    // TODO(https://trello.com/c/UquJz7ow): figure out a better way to determine which shaders are due for recompilation...
-    // For now we recompile ALL shaders upon request.
-    return { true, 0 };
+    // TODO(https://trello.com/c/UquJz7ow): figure out a better way to determine which shaders are due for recompilation
+    // For now all shaders are considered stale when asked
+    return true;
 }
 
 void ShaderCompiler::MarkShaderDirty(const ShaderKey& key)
@@ -242,12 +169,10 @@ void ShaderCompiler::MarkAllShadersDirty()
 void ShaderCompiler::MarkAllStaleShadersDirty()
 {
     u32 numStaleShaders = 0;
-    for (auto& [key, shader] : shaderCache)
+    for (auto& [_, shader] : shaderCache)
     {
-        // TODO(https://trello.com/c/UquJz7ow): figure out a better way to determine which shaders are due for recompilation...
-        // if (auto [isShaderStale, newShaderHash] = IsShaderStale(shader); isShaderStale || shader.isErrored)
+        if (auto isShaderStale = IsShaderStale(shader); isShaderStale || shader.isErrored)
         {
-            // shader.hash = newShaderHash;
             shader.MarkDirty();
             shader.isErrored = false;
             numStaleShaders++;
@@ -277,6 +202,71 @@ void ShaderCompiler::FlushCompilationErrors()
         }
         compilationErrors.clear();
     }
+}
+
+std::expected<void, std::string> ShaderCompiler::CompileShader(CompilerBase* compiler, Shader& shader)
+{
+    return compiler->CompileShader(shader, globalShaderEnv, compilerSettings)
+        .and_then(
+            [&](ShaderCompilationResult result) -> std::expected<void, std::string>
+            {
+                // Outputs raw bytecode if we ever need to figure out a difficult shader issue (for spirv can use
+                // spirv-dis to read raw .spv file, similar tools like RenderDoc work for dxil).
+                if (compilerSettings.dumpShaderOutputBytecode)
+                {
+                    const std::vector<byte>& shaderBytecode = result.compiledCode;
+
+                    std::filesystem::path outputPath =
+                        std::filesystem::current_path() / "VexOutput_SHADER_BYTECODE" / shader.key.path.filename();
+#if VEX_VULKAN
+                    outputPath.replace_extension(".spv"); // or ".spirv"
+#elif VEX_DX12
+                    outputPath.replace_extension(".dxil");
+#endif
+                    if (!std::filesystem::exists(outputPath.parent_path()))
+                    {
+                        std::filesystem::create_directories(outputPath.parent_path());
+                    }
+                    std::ofstream file(outputPath, std::ios::binary);
+                    if (file.is_open())
+                    {
+                        file.write(reinterpret_cast<const char*>(shaderBytecode.data()), shaderBytecode.size());
+                        file.close();
+                        VEX_LOG(Info, "Shader bytecode written to: {}", outputPath.string());
+                    }
+                    else
+                    {
+                        VEX_LOG(Error, "Failed to write shader bytecode to: {}", outputPath.string());
+                    }
+                }
+
+                // Store shader bytecode blob inside the Shader.
+                shader.res = std::move(result);
+                shader.version++;
+
+                return {};
+            });
+}
+
+std::expected<NonNullPtr<CompilerBase>, std::string> ShaderCompiler::GetCompiler(const ShaderKey& key)
+{
+    switch (key.compiler)
+    {
+    case ShaderCompilerBackend::Auto:
+#if VEX_SLANG
+        // Default is DXC, unless VEX_SLANG and the shader file has .slang extension.
+        if (key.path.extension() == ".slang")
+            return NonNullPtr<CompilerBase>{ &slangCompilerImpl };
+        // Intentionnal fallthrough...
+#endif
+    case ShaderCompilerBackend::DXC:
+        return NonNullPtr<CompilerBase>{ &dxcCompilerImpl };
+#if VEX_SLANG
+    case ShaderCompilerBackend::Slang:
+        return NonNullPtr<CompilerBase>{ &slangCompilerImpl };
+#endif
+    }
+    return std::unexpected("Invalid shader compiler backend.");
 }
 
 } // namespace vex
