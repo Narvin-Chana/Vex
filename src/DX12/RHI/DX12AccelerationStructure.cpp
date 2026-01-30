@@ -107,8 +107,18 @@ void DX12AccelerationStructure::InitRayTracingGeometryDesc(const RHIBLASBuildDes
             geometryDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
             // TODO(https://trello.com/c/srGndUSP): Handle other vertex formats, this should be cross-referenced
             // with Vulkan to make sure only formats supported by both APIs are accepted.
-            VEX_ASSERT(vbView.StrideInBytes == sizeof(float) * 3,
-                       "Vex currently does not support Vertices with a larger stride than 12 bytes.");
+            if (vbView.StrideInBytes > sizeof(float) * 3)
+            {
+                VEX_LOG(
+                    Warning,
+                    "Vex currently does not support acceleration structure geometry whose vertices have a format "
+                    "different to 12 bytes (RGB32). Your vertex buffer binding has a different stride than this, this "
+                    "is ok as long as the user is aware that elements outside the first 12 bytes will be ignored.");
+            }
+
+            VEX_ASSERT(vbView.StrideInBytes < sizeof(float) * 3,
+                       "Vex currently does not support acceleration structure geometry whose vertices have a stride "
+                       "smaller than 12 bytes.");
 
             if (rhiGeometryDesc.indexBufferBinding.has_value())
             {

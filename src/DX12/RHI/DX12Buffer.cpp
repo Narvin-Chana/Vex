@@ -115,7 +115,7 @@ D3D12_VERTEX_BUFFER_VIEW DX12Buffer::GetVertexBufferView(const BufferBinding& bi
 {
     return D3D12_VERTEX_BUFFER_VIEW{
         .BufferLocation = GetGPUVirtualAddress() + binding.offsetByteSize.value_or(0),
-        .SizeInBytes = static_cast<u32>(desc.byteSize),
+        .SizeInBytes = static_cast<u32>(binding.rangeByteSize.value_or(desc.byteSize)),
         .StrideInBytes = *binding.strideByteSize,
     };
 }
@@ -137,7 +137,7 @@ D3D12_INDEX_BUFFER_VIEW DX12Buffer::GetIndexBufferView(const BufferBinding& bind
     }
     return D3D12_INDEX_BUFFER_VIEW{
         .BufferLocation = GetGPUVirtualAddress() + binding.offsetByteSize.value_or(0),
-        .SizeInBytes = static_cast<u32>(desc.byteSize),
+        .SizeInBytes = static_cast<u32>(binding.rangeByteSize.value_or(desc.byteSize)),
         .Format = format,
     };
 }
