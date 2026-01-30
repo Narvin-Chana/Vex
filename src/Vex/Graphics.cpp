@@ -50,7 +50,9 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
     auto physicalDevices = rhi.EnumeratePhysicalDevices();
     if (physicalDevices.empty())
     {
-        VEX_LOG(Fatal, "The underlying graphics API was unable to find atleast one physical device. Most likely due to not having Vex required features (see Vex documentation for required features)");
+        VEX_LOG(Fatal,
+                "The underlying graphics API was unable to find atleast one physical device. Most likely due to not "
+                "having Vex required features (see Vex documentation for required features)");
     }
 
     // Obtain the best physical device.
@@ -321,7 +323,7 @@ std::vector<BindlessHandle> Graphics::GetBindlessHandles(Span<const ResourceBind
     return handles;
 }
 
-SyncToken Graphics::Submit(CommandContext& ctx, std::span<SyncToken> dependencies)
+SyncToken Graphics::Submit(CommandContext& ctx, Span<SyncToken> dependencies)
 {
     PrepareCommandContextForSubmission(ctx);
 
@@ -343,8 +345,7 @@ SyncToken Graphics::Submit(CommandContext& ctx, std::span<SyncToken> dependencie
     return syncTokens[0];
 }
 
-std::vector<SyncToken> Graphics::Submit(std::span<const NonNullPtr<CommandContext>> ctxSpan,
-                                        std::span<SyncToken> dependencies)
+std::vector<SyncToken> Graphics::Submit(Span<const NonNullPtr<CommandContext>> ctxSpan, Span<SyncToken> dependencies)
 {
     VEX_CHECK(!ctxSpan.empty(), "You must submit at least one command context...");
 
@@ -376,12 +377,6 @@ std::vector<SyncToken> Graphics::Submit(std::span<const NonNullPtr<CommandContex
     CleanupResources();
 
     return syncTokens;
-}
-
-std::vector<SyncToken> Graphics::Submit(std::initializer_list<const NonNullPtr<CommandContext>> ctxs,
-                                        std::span<SyncToken> dependencies)
-{
-    return Submit(std::span(ctxs), dependencies);
 }
 
 void Graphics::FlushGPU()
@@ -458,6 +453,11 @@ Texture Graphics::GetCurrentPresentTexture()
         VEX_LOG(Fatal, "Your backend was created without swapchain support. Backbuffers were not created.");
     }
     return presentTextures[currentFrameIndex];
+}
+
+bool Graphics::IsRayTracingSupported() const
+{
+    return GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing);
 }
 
 bool Graphics::IsTokenComplete(const SyncToken& token) const

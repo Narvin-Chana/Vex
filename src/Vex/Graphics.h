@@ -118,20 +118,11 @@ public:
 
     // Allows you to submit the command context to the GPU, receiving a SyncToken which can be optionally used to track
     // work completion.
-    SyncToken Submit(CommandContext& ctx, std::span<SyncToken> dependencies = {});
+    SyncToken Submit(CommandContext& ctx, Span<SyncToken> dependencies = {});
 
     // Allows you to submit the command contexts to the GPU, receiving a SyncToken which can be optionally used to track
     // work completion.
-    // TODO(https://trello.com/c/gKJUXMD0): This is a bit annoying, std::spans in C++23 are not creatable from an
-    // initializer list, forcing us to have a helper function. I believe this was added in C++26. In the meantime, we
-    // should use a custom span that can be created from an initializer list.
-    std::vector<SyncToken> Submit(std::span<const NonNullPtr<CommandContext>> ctxSpan,
-                                  std::span<SyncToken> dependencies = {});
-
-    // Allows you to submit the command contexts to the GPU, receiving a SyncToken which can be optionally used to track
-    // work completion.
-    std::vector<SyncToken> Submit(std::initializer_list<const NonNullPtr<CommandContext>> ctxs,
-                                  std::span<SyncToken> dependencies = {});
+    std::vector<SyncToken> Submit(Span<const NonNullPtr<CommandContext>> ctxSpan, Span<SyncToken> dependencies = {});
 
     // Has the passed-in sync token been executed on the GPU yet?
     [[nodiscard]] bool IsTokenComplete(const SyncToken& token) const;
@@ -173,6 +164,9 @@ public:
     // Obtains the current present texture handle. If the swapchain is enabled, Vex uses a present texture which is
     // copied to the backbuffer when presenting.
     [[nodiscard]] Texture GetCurrentPresentTexture();
+
+    // Determines if the current RHI supports raytracing.
+    [[nodiscard]] bool IsRayTracingSupported() const;
 
     // Recompiles all shader which have changed since the last compilation. Useful for shader development and
     // hot-reloading. You generally want to avoid calling this too often if your application has many shaders.

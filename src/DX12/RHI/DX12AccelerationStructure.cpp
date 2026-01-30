@@ -116,7 +116,7 @@ void DX12AccelerationStructure::InitRayTracingGeometryDesc(const RHIBLASBuildDes
                     "is ok as long as the user is aware that elements outside the first 12 bytes will be ignored.");
             }
 
-            VEX_ASSERT(vbView.StrideInBytes < sizeof(float) * 3,
+            VEX_ASSERT(vbView.StrideInBytes >= sizeof(float) * 3,
                        "Vex currently does not support acceleration structure geometry whose vertices have a stride "
                        "smaller than 12 bytes.");
 
