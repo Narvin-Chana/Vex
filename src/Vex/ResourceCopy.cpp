@@ -52,7 +52,7 @@ void ReadTextureDataAligned(const TextureDesc& desc,
             for (u32 slice = 0; slice < sliceCount; slice++)
             {
                 // Copy each depth slice (for 3D textures).
-                for (u32 depthSlice = 0; depthSlice < mipDepth; ++depthSlice)
+                for (u32 depthSlice = 0; depthSlice < desc.GetSliceCount(); ++depthSlice)
                 {
                     // Copy each row one-by-one with alignment.
                     for (u32 row = 0; row < mipHeight; ++row)
@@ -108,7 +108,7 @@ void WriteTextureDataAligned(const TextureDesc& desc,
             for (u32 slice = 0; slice < sliceCount; slice++)
             {
                 // Copy each depth slice (for 3D textures).
-                for (u32 depthSlice = 0; depthSlice < mipDepth; ++depthSlice)
+                for (u32 depthSlice = 0; depthSlice < desc.GetSliceCount(); ++depthSlice)
                 {
                     // Copy each row one-by-one with alignment.
                     for (u32 row = 0; row < mipHeight; ++row)

@@ -173,7 +173,7 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, RHIAllocator& allocator, Text
     CreateImage(allocator);
 }
 
-::vk::Image VkTexture::GetResource()
+::vk::Image VkTexture::GetRawTexture()
 {
     ::vk::Image returnVal;
     std::visit(
@@ -216,7 +216,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
 
     const ::vk::ImageViewCreateInfo viewCreate{
         .pNext = &viewUsageInfo, 
-        .image = GetResource(),
+        .image = GetRawTexture(),
         .viewType = TextureTypeToVulkan(view.viewType),
         .format = view.format,
         .subresourceRange = {
@@ -273,7 +273,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
 
     const ::vk::ImageViewCreateInfo viewCreate{ 
         .pNext = &viewUsageInfo, 
-        .image = GetResource(),
+        .image = GetRawTexture(),
         .viewType = TextureTypeToVulkan(view.viewType),
         .format = view.format,
         .subresourceRange = {

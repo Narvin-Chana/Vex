@@ -23,7 +23,9 @@ namespace DXCImpl_Internal
 {
 
 static constexpr std::array HLSL202xFlags{
-    L"-HV 202x", L"-Wconversion", L"-Wdouble-promotion", L"-Whlsl-legacy-literal"
+    L"-HV 202x",
+    L"-Wconversion",
+    L"-Wdouble-promotion",
 };
 
 static std::wstring GetTargetFromShaderType(ShaderType type)

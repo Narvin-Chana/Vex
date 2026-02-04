@@ -324,12 +324,12 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
                 .depth = clearValue.depth,
                 .stencil = clearValue.stencil,
             };
-            commandBuffer->clearDepthStencilImage(binding.texture->GetResource(), layout, &clearVal, 1, &ranges);
+            commandBuffer->clearDepthStencilImage(binding.texture->GetRawTexture(), layout, &clearVal, 1, &ranges);
         }
         else
         {
             ::vk::ClearColorValue clearVal{ .float32 = clearValue.color };
-            commandBuffer->clearColorImage(binding.texture->GetResource(), layout, &clearVal, 1, &ranges);
+            commandBuffer->clearColorImage(binding.texture->GetRawTexture(), layout, &clearVal, 1, &ranges);
         }
     }
     else
@@ -442,7 +442,7 @@ void VkCommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers, Span<co
             vkBarrier.newLayout = RHITextureLayoutToVulkan(textureBarrier.dstLayout);
             vkBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             vkBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            vkBarrier.image = textureBarrier.texture->GetResource();
+            vkBarrier.image = textureBarrier.texture->GetRawTexture();
             vkBarrier.subresourceRange = { .aspectMask = VkTextureUtil::GetFormatAspectFlags(desc.format),
                                            .baseMipLevel = 0,
                                            .levelCount = desc.mips,
@@ -488,7 +488,7 @@ void VkCommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers, Span<co
                     vkBarrier.newLayout = RHITextureLayoutToVulkan(textureBarrier.dstLayout);
                     vkBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
                     vkBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                    vkBarrier.image = textureBarrier.texture->GetResource();
+                    vkBarrier.image = textureBarrier.texture->GetRawTexture();
                     vkBarrier.subresourceRange = { .aspectMask = VkTextureUtil::AspectFlagFromPlaneIndex(
                                                        textureBarrier.texture->GetDesc().format,
                                                        plane),
@@ -741,9 +741,9 @@ void VkCommandList::GenerateMips(RHITexture& texture, const TextureSubresource& 
                                              mipHeight > 1 ? mipHeight / 2 : 1,
                                              mipDepth > 1 ? mipDepth / 2 : 1 };
 
-        commandBuffer->blitImage(texture.GetResource(),
+        commandBuffer->blitImage(texture.GetRawTexture(),
                                  ::vk::ImageLayout::eTransferSrcOptimal,
-                                 texture.GetResource(),
+                                 texture.GetRawTexture(),
                                  ::vk::ImageLayout::eTransferDstOptimal,
                                  blit,
                                  ::vk::Filter::eLinear);
@@ -840,9 +840,9 @@ void VkCommandList::Copy(RHITexture& src, RHITexture& dst, Span<const TextureCop
             } });
     }
 
-    commandBuffer->copyImage(src.GetResource(),
+    commandBuffer->copyImage(src.GetRawTexture(),
                              ::vk::ImageLayout::eTransferSrcOptimal,
-                             dst.GetResource(),
+                             dst.GetRawTexture(),
                              ::vk::ImageLayout::eTransferDstOptimal,
                              static_cast<u32>(copyRegions.size()),
                              copyRegions.data());
@@ -862,7 +862,7 @@ void VkCommandList::Copy(RHIBuffer& src, RHITexture& dst, Span<const BufferTextu
         CommandList_Internal::GetBufferImageCopyFromBufferToImageDescriptions(dst, copyDescriptions);
 
     commandBuffer->copyBufferToImage(src.GetNativeBuffer(),
-                                     dst.GetResource(),
+                                     dst.GetRawTexture(),
                                      layout,
                                      static_cast<u32>(regions.size()),
                                      regions.data());
@@ -873,7 +873,7 @@ void VkCommandList::Copy(RHITexture& src, RHIBuffer& dst, Span<const BufferTextu
     auto [layout, regions] =
         CommandList_Internal::GetBufferImageCopyFromBufferToImageDescriptions(src, copyDescriptions);
 
-    commandBuffer->copyImageToBuffer(src.GetResource(),
+    commandBuffer->copyImageToBuffer(src.GetRawTexture(),
                                      layout,
                                      dst.GetNativeBuffer(),
                                      static_cast<u32>(regions.size()),
