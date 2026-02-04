@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <span>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -37,6 +38,14 @@ struct FreeListAllocator
         IndexT idx = freeIndices.back();
         freeIndices.pop_back();
         return idx;
+    }
+    void DeallocateBatch(std::span<IndexT> indices)
+    {
+        if (!indices.empty())
+        {
+            freeIndices.append_range(indices);
+            std::sort(freeIndices.begin(), freeIndices.end(), std::greater{});
+        }
     }
     void Deallocate(IndexT index)
     {
@@ -123,6 +132,21 @@ public:
         values[idx].emplace(std::move(elem));
 
         return HandleT::CreateHandle(idx, generations[idx]);
+    }
+
+    void FreeElementBatch(std::span<HandleT> elements)
+    {
+        std::vector<IndexT> indices;
+        indices.reserve(elements.size());
+        for (HandleT handle : elements)
+        {
+            IndexT idx = handle.GetIndex();
+            VEX_ASSERT(values[idx].has_value(), "Error: trying to free an element which does not exist.");
+            values[idx].reset();
+            generations[idx]++;
+            indices.push_back(idx);
+        }
+        allocator.DeallocateBatch(indices);
     }
 
     // Removes an element and destroys it.
