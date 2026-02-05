@@ -132,8 +132,8 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(RHIBuffer& buffer,
                                                               RHITexture& texture,
                                                               const BufferTextureCopyDesc& desc)
 {
-    // VEX_CHECK(IsAligned<u64>(desc.bufferRegion.offset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
-    //           "Source offset should be aligned to 512 bytes!");
+    VEX_CHECK(IsAligned<u64>(desc.bufferRegion.offset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
+              "Source offset should be aligned to 512 bytes!");
 
     D3D12_TEXTURE_COPY_LOCATION bufferLoc = {};
     bufferLoc.pResource = buffer.GetRawBuffer();
