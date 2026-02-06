@@ -270,16 +270,28 @@ MappedMemory Graphics::MapResource(const Buffer& buffer)
 
 void Graphics::DestroyTexture(const Texture& texture)
 {
+    if (!texture.handle.IsValid())
+    {
+        return;
+    }
     resourceCleanup.CleanupResource(textureRegistry.ExtractElement(texture.handle));
 }
 
 void Graphics::DestroyBuffer(const Buffer& buffer)
 {
+    if (!buffer.handle.IsValid())
+    {
+        return;
+    }
     resourceCleanup.CleanupResource(bufferRegistry.ExtractElement(buffer.handle));
 }
 
 void Graphics::DestroyAccelerationStructure(const AccelerationStructure& accelerationStructure)
 {
+    if (!accelerationStructure.handle.IsValid())
+    {
+        return;
+    }
     VEX_CHECK(GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing),
               "Your GPU does not support ray tracing, unable to create an acceleration structure!");
     resourceCleanup.CleanupResource(accelerationStructureRegistry.ExtractElement(accelerationStructure.handle));
