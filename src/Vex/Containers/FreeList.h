@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include <Vex/Containers/Span.h>
 #include <Vex/Platform/Debug.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/MaybeUninitialized.h>
@@ -39,19 +40,22 @@ struct FreeListAllocator
         freeIndices.pop_back();
         return idx;
     }
-    void DeallocateBatch(std::span<IndexT> indices)
+
+    void DeallocateBatch(Span<IndexT> indices)
     {
         if (!indices.empty())
         {
-            freeIndices.append_range(indices);
+            freeIndices.insert(freeIndices.end(), indices.begin(), indices.end());
             std::sort(freeIndices.begin(), freeIndices.end(), std::greater{});
         }
     }
+
     void Deallocate(IndexT index)
     {
         freeIndices.push_back(index);
         std::sort(freeIndices.begin(), freeIndices.end(), std::greater{});
     }
+
     void Resize(IndexT newSize)
     {
         if (newSize == size)
