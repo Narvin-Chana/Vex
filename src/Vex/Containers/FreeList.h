@@ -1,10 +1,12 @@
 #pragma once
 
 #include <algorithm>
+#include <span>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
+#include <Vex/Containers/Span.h>
 #include <Vex/Platform/Debug.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/MaybeUninitialized.h>
@@ -38,11 +40,22 @@ struct FreeListAllocator
         freeIndices.pop_back();
         return idx;
     }
+
+    void DeallocateBatch(Span<IndexT> indices)
+    {
+        if (!indices.empty())
+        {
+            freeIndices.insert(freeIndices.end(), indices.begin(), indices.end());
+            std::sort(freeIndices.begin(), freeIndices.end(), std::greater{});
+        }
+    }
+
     void Deallocate(IndexT index)
     {
         freeIndices.push_back(index);
         std::sort(freeIndices.begin(), freeIndices.end(), std::greater{});
     }
+
     void Resize(IndexT newSize)
     {
         if (newSize == size)
@@ -123,6 +136,21 @@ public:
         values[idx].emplace(std::move(elem));
 
         return HandleT::CreateHandle(idx, generations[idx]);
+    }
+
+    void FreeElementBatch(Span<HandleT> elements)
+    {
+        std::vector<IndexT> indices;
+        indices.reserve(elements.size());
+        for (HandleT handle : elements)
+        {
+            IndexT idx = handle.GetIndex();
+            VEX_ASSERT(values[idx].has_value(), "Error: trying to free an element which does not exist.");
+            values[idx].reset();
+            generations[idx]++;
+            indices.push_back(idx);
+        }
+        allocator.DeallocateBatch(indices);
     }
 
     // Removes an element and destroys it.

@@ -263,6 +263,7 @@ namespace TextureUtil
 
 static constexpr u64 RowPitchAlignment = 256;
 static constexpr u64 MipAlignment = 512;
+static constexpr u64 SliceAlignment = 512;
 
 std::tuple<u32, u32, u32> GetMipSize(const TextureDesc& desc, u32 mip);
 TextureViewType GetTextureViewType(const TextureBinding& binding);

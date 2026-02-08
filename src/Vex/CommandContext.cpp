@@ -51,33 +51,40 @@ static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureReg
              mip < region.subresource.startMip + region.subresource.GetMipCount(desc);
              ++mip)
         {
-            const u32 mipWidth = region.extent.GetWidth(desc, mip);
-            const u32 mipHeight = region.extent.GetHeight(desc, mip);
-            const u32 mipDepth = region.extent.GetDepth(desc, mip);
+            for (u32 slice = region.subresource.startSlice;
+                 slice < region.subresource.startSlice + region.subresource.GetSliceCount(desc);
+                 slice++)
+            {
+                const u32 mipWidth = region.extent.GetWidth(desc, mip);
+                const u32 mipHeight = region.extent.GetHeight(desc, mip);
+                const u32 mipDepth = region.extent.GetDepth(desc, mip);
 
-            // Calculate the size of this region in the staging buffer.
-            const u32 alignedRowPitch = AlignUp<u32>(mipWidth * bytesPerPixel, TextureUtil::RowPitchAlignment);
-            const u64 regionStagingSize = static_cast<u64>(alignedRowPitch) * mipHeight * mipDepth;
+                // Calculate the size of this region in the staging buffer.
+                const u32 alignedRowPitch = AlignUp<u32>(mipWidth * bytesPerPixel, TextureUtil::RowPitchAlignment);
+                const u64 regionStagingSize = static_cast<u64>(alignedRowPitch) * mipHeight * mipDepth;
 
-            BufferTextureCopyDesc copyDesc{
-                .bufferRegion = { .offset = stagingBufferOffset, .byteSize = regionStagingSize, },
-                .textureRegion = {
-                    .subresource = {
-                        .startMip = mip,
-                        .mipCount = 1,
-                        .startSlice = region.subresource.startSlice,
-                        .sliceCount = region.subresource.GetSliceCount(desc),
-                        .aspect = region.subresource.aspect
+                BufferTextureCopyDesc copyDesc{
+                    .bufferRegion = { .offset = stagingBufferOffset, .byteSize = regionStagingSize, },
+                    .textureRegion = {
+                        .subresource = {
+                            .startMip = mip,
+                            .mipCount = 1,
+                            .startSlice = slice,
+                            .sliceCount = 1,
+                            .aspect = region.subresource.aspect
+                        },
+                        .offset = region.offset,
+                        .extent = region.extent,
                     },
-                    .offset = region.offset,
-                    .extent = region.extent,
-                },
-            };
+                };
 
-            copyDescs.push_back(std::move(copyDesc));
+                copyDescs.push_back(std::move(copyDesc));
+
+                stagingBufferOffset += AlignUp<u64>(regionStagingSize, TextureUtil::SliceAlignment);
+            }
 
             // Move to next aligned position in staging buffer.
-            stagingBufferOffset += AlignUp<u64>(regionStagingSize, TextureUtil::MipAlignment);
+            stagingBufferOffset = AlignUp<u64>(stagingBufferOffset, TextureUtil::MipAlignment);
         }
     }
 
@@ -805,10 +812,10 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
                     "_build_blas_transforms",
                 transformsToUpload.size() * TransformMatrixSize);
 
-        MappedMemory mappedMemory = graphics->MapResource(transformBuffer);
-        mappedMemory.WriteData(std::as_bytes(std::span<std::array<float, 3 * 4>>(transformsToUpload)));
-        Barrier(transformBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderRead);
-    }
+            MappedMemory mappedMemory = graphics->MapResource(transformBuffer);
+            mappedMemory.WriteData(std::as_bytes(std::span<std::array<float, 3 * 4>>(transformsToUpload)));
+            Barrier(transformBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderRead);
+        }
 
         u32 transformIndex = 0;
         for (const BLASGeometryDesc& blasGeometry : desc.geometry)

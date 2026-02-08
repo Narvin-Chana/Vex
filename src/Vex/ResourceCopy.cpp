@@ -19,6 +19,7 @@ void ValidateBufferTextureCopyDesc(const BufferDesc& srcDesc,
     TextureUtil::ValidateRegion(dstDesc, copyDesc.textureRegion);
 }
 
+// TODO(https://trello.com/c/FS9NITw6): Add support for texture region offsets
 void ReadTextureDataAligned(const TextureDesc& desc,
                             Span<const TextureRegion> textureRegions,
                             Span<const byte> alignedTextureData,
@@ -35,43 +36,49 @@ void ReadTextureDataAligned(const TextureDesc& desc,
         const u32 bytesPerPixel = static_cast<u32>(TextureUtil::GetPixelByteSizeFromFormat(
             TextureUtil::GetCopyFormat(desc.format, region.subresource.GetSingleAspect(desc))));
 
-        for (u16 mip = region.subresource.startMip;
-             mip < region.subresource.startMip + region.subresource.GetMipCount(desc);
-             ++mip)
+        for (u16 mip = 0; mip < region.subresource.GetMipCount(desc); ++mip)
         {
-            const u32 mipWidth = region.extent.GetWidth(desc, mip);
-            const u32 mipHeight = region.extent.GetHeight(desc, mip);
-            const u32 mipDepth = region.extent.GetDepth(desc, mip);
+            const u32 mipWidth = region.extent.GetWidth(desc, region.subresource.startMip + mip);
+            const u32 mipHeight = region.extent.GetHeight(desc, region.subresource.startMip + mip);
+            const u32 mipDepth = region.extent.GetDepth(desc, region.subresource.startMip + mip);
 
             const u32 packedRowPitch = mipWidth * bytesPerPixel;
             const u32 alignedRowPitch = AlignUp<u32>(packedRowPitch, TextureUtil::RowPitchAlignment);
             const u32 packedSlicePitch = packedRowPitch * mipHeight;
-            const u32 alignedSlicePitch = alignedRowPitch * mipHeight;
+            const u32 alignedSlicePitch = AlignUp<u32>(alignedRowPitch * mipHeight, TextureUtil::SliceAlignment);
 
-            // Copy each depth slice (for 3D textures).
-            for (u32 depthSlice = 0; depthSlice < mipDepth; ++depthSlice)
+            const u32 sliceCount = region.subresource.GetSliceCount(desc);
+
+            for (u32 slice = 0; slice < sliceCount; slice++)
             {
-                // Copy each row one-by-one with alignment.
-                for (u32 row = 0; row < mipHeight; ++row)
+                // Copy each depth slice (for 3D textures).
+                for (u32 depthSlice = 0; depthSlice < mipDepth; ++depthSlice)
                 {
-                    // From aligned to packed
-                    const byte* srcRow = srcData + srcOffset + depthSlice * alignedSlicePitch + row * alignedRowPitch;
-                    byte* dstRow = dstData + dstOffset + depthSlice * packedSlicePitch + row * packedRowPitch;
+                    // Copy each row one-by-one with alignment.
+                    for (u32 row = 0; row < mipHeight; ++row)
+                    {
+                        // From aligned to packed
+                        const byte* srcRow =
+                            srcData + srcOffset + (depthSlice + slice) * alignedSlicePitch + row * alignedRowPitch;
+                        byte* dstRow =
+                            dstData + dstOffset + (depthSlice + slice) * packedSlicePitch + row * packedRowPitch;
 
-                    std::memcpy(dstRow, srcRow, packedRowPitch);
+                        std::memcpy(dstRow, srcRow, packedRowPitch);
+                    }
                 }
             }
 
             // Move to next region in the packed source data.
-            u64 regionStagingSize = static_cast<u64>(alignedSlicePitch) * mipDepth;
-            srcOffset += AlignUp<u64>(regionStagingSize, TextureUtil::MipAlignment);
+            u64 alignedMipByteSize = static_cast<u64>(alignedSlicePitch) * (mipDepth * sliceCount);
+            srcOffset += AlignUp<u64>(alignedMipByteSize, TextureUtil::MipAlignment);
 
             // Move to next aligned position in staging buffer.
-            dstOffset += static_cast<u64>(packedSlicePitch) * mipDepth;
+            dstOffset += static_cast<u64>(packedSlicePitch) * (mipDepth * sliceCount);
         }
     }
 }
 
+// TODO(https://trello.com/c/FS9NITw6): Add support for texture region offsets
 void WriteTextureDataAligned(const TextureDesc& desc,
                              Span<const TextureRegion> textureRegions,
                              Span<const byte> packedData,
@@ -85,45 +92,49 @@ void WriteTextureDataAligned(const TextureDesc& desc,
 
     for (const TextureRegion& region : textureRegions)
     {
-        for (u16 mip = region.subresource.startMip;
-             mip < region.subresource.startMip + region.subresource.GetMipCount(desc);
-             ++mip)
+        for (u16 mip = 0; mip < region.subresource.GetMipCount(desc); ++mip)
         {
-            const u32 mipWidth = region.extent.GetWidth(desc, mip);
-            const u32 mipHeight = region.extent.GetHeight(desc, mip);
-            const u32 mipDepth = region.extent.GetDepth(desc, mip);
+            const u32 mipWidth = region.extent.GetWidth(desc, region.subresource.startMip + mip);
+            const u32 mipHeight = region.extent.GetHeight(desc, region.subresource.startMip + mip);
+            const u32 mipDepth = region.extent.GetDepth(desc, region.subresource.startMip + mip);
 
             const u32 packedRowPitch = mipWidth * bytesPerPixel;
             const u32 alignedRowPitch = AlignUp<u32>(packedRowPitch, TextureUtil::RowPitchAlignment);
             const u32 packedSlicePitch = packedRowPitch * mipHeight;
-            const u32 alignedSlicePitch = alignedRowPitch * mipHeight;
+            const u32 alignedSlicePitch = AlignUp<u32>(alignedRowPitch * mipHeight, TextureUtil::SliceAlignment);
 
-            // Copy each depth slice (for 3D textures).
-            for (u32 depthSlice = 0; depthSlice < mipDepth; ++depthSlice)
+            const u32 sliceCount = region.subresource.GetSliceCount(desc);
+
+            for (u32 slice = 0; slice < sliceCount; slice++)
             {
-                // Copy each row one-by-one with alignment.
-                for (u32 row = 0; row < mipHeight; ++row)
+                // Copy each depth slice (for 3D textures).
+                for (u32 depthSlice = 0; depthSlice < mipDepth; ++depthSlice)
                 {
-                    const byte* srcRow = srcData + srcOffset + depthSlice * packedSlicePitch + row * packedRowPitch;
-                    byte* dstRow = dstData + dstOffset + depthSlice * alignedSlicePitch + row * alignedRowPitch;
-
-                    std::memcpy(dstRow, srcRow, packedRowPitch);
-#if !VEX_SHIPPING
-                    // Zero out padding bytes for debugging purposes.
-                    if (alignedRowPitch > packedRowPitch)
+                    // Copy each row one-by-one with alignment.
+                    for (u32 row = 0; row < mipHeight; ++row)
                     {
-                        std::memset(dstRow + packedRowPitch, 0, alignedRowPitch - packedRowPitch);
-                    }
+                        const byte* srcRow =
+                            srcData + srcOffset + (depthSlice + slice) * packedSlicePitch + row * packedRowPitch;
+                        byte* dstRow =
+                            dstData + dstOffset + (depthSlice + slice) * alignedSlicePitch + row * alignedRowPitch;
+
+                        std::memcpy(dstRow, srcRow, packedRowPitch);
+#if !VEX_SHIPPING
+                        // Zero out padding bytes for debugging purposes.
+                        if (alignedRowPitch > packedRowPitch)
+                        {
+                            std::memset(dstRow + packedRowPitch, 0, alignedRowPitch - packedRowPitch);
+                        }
 #endif
+                    }
                 }
             }
-
             // Move to next region in the packed source data.
-            srcOffset += static_cast<u64>(packedSlicePitch) * mipDepth;
+            srcOffset += static_cast<u64>(packedSlicePitch) * (mipDepth * sliceCount);
 
             // Move to next aligned position in staging buffer.
-            u64 regionStagingSize = static_cast<u64>(alignedSlicePitch) * mipDepth;
-            dstOffset += AlignUp<u64>(regionStagingSize, TextureUtil::MipAlignment);
+            u64 alignedMipByteSize = static_cast<u64>(alignedSlicePitch) * (mipDepth * sliceCount);
+            dstOffset += AlignUp<u64>(alignedMipByteSize, TextureUtil::MipAlignment);
         }
     }
 }

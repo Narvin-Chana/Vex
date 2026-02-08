@@ -50,10 +50,7 @@ void RHITimestampQueryPoolBase::CleanupQueries()
         }
     }
 
-    for (const QueryHandle query : inFlightHandlesToFree)
-    {
-        inFlightQueries.FreeElement(query);
-    }
+    inFlightQueries.FreeElementBatch(inFlightHandlesToFree);
 
     std::vector<QueryHandle> handlesToCleanup;
     for (const auto& [handle, query] : resolvedQueries)
