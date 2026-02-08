@@ -138,7 +138,7 @@ public:
         return HandleT::CreateHandle(idx, generations[idx]);
     }
 
-    void FreeElementBatch(std::span<HandleT> elements)
+    void FreeElementBatch(Span<HandleT> elements)
     {
         std::vector<IndexT> indices;
         indices.reserve(elements.size());
