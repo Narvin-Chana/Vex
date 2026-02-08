@@ -149,16 +149,3 @@ function(setup_dx12_backend TARGET)
 
     message(STATUS "DirectX 12 backend configured successfully")
 endfunction()
-
-function(vex_setup_pix_events TARGET)
-    if (VEX_ENABLE_DX12)
-        set(PIX_EVENTS_DIR "${FETCHCONTENT_BASE_DIR}/PixEvents")
-
-        add_custom_command(TARGET ${TARGET} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${PIX_EVENTS_DIR}/bin/x64/WinPixEventRuntime.dll"
-            "$<TARGET_FILE_DIR:${TARGET}>/WinPixEventRuntime.dll"
-            COMMENT "Copying PixEvents DLLs to output directory : $<TARGET_FILE_DIR:${TARGET}>..."
-        )
-    endif()
-endfunction()

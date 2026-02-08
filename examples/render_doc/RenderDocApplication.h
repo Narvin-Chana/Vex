@@ -5,6 +5,7 @@
 struct RenderDocApplication : public ExampleApplication
 {
     RenderDocApplication();
+    ~RenderDocApplication();
     void Run();
 
 protected:
