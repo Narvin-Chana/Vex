@@ -21,16 +21,14 @@ void RHIPhysicalDeviceBase::DumpPhysicalDeviceInfo()
         "\tShader model: {}\n"
         "\tAdvanced Features:\n"
         "\t\tMesh Shaders: {}\n"
-        "\t\tRayTracing: {}\n"
-        "\t\tBindlessResources: {}",
+        "\t\tRayTracing: {}\n",
         info.deviceName,
         info.dedicatedVideoMemoryMB,
         GetFeatureLevel(),
         GetResourceBindingTier(),
         GetShaderModel(),
         IsFeatureSupported(Feature::MeshShader),
-        IsFeatureSupported(Feature::RayTracing),
-        IsFeatureSupported(Feature::BindlessResources));
+        IsFeatureSupported(Feature::RayTracing));
 }
 #endif
 
