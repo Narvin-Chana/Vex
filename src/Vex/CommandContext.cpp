@@ -1,7 +1,6 @@
 #include "CommandContext.h"
 
 #include <algorithm>
-#include <cmath>
 #include <variant>
 
 #include <Vex/AccelerationStructure.h>
@@ -24,7 +23,6 @@
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Hash.h>
 #include <Vex/Utility/Validation.h>
-#include <Vex/Utility/Visitor.h>
 
 #include <RHI/RHIBarrier.h>
 #include <RHI/RHIBindings.h>
@@ -307,7 +305,7 @@ void CommandContext::TraceRays(const RayTracingPassDesc& rayTracingPassDescripti
                                ConstantBinding constants,
                                std::array<u32, 3> widthHeightDepth)
 {
-    VEX_CHECK(GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing),
+    VEX_CHECK(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing),
               "Your GPU does not support ray tracing, unable to dispatch rays!");
     RayTracingPassDesc::ValidateShaderTypes(rayTracingPassDescription);
 
@@ -350,7 +348,7 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
     u16 lastDestMip = sourceMip + textureBinding.subresource.GetMipCount(texture.desc) - 1;
 
     const bool apiFormatSupportsLinearFiltering =
-        GPhysicalDevice->featureChecker->FormatSupportsLinearFiltering(texture.desc.format, textureBinding.isSRGB);
+        GPhysicalDevice->FormatSupportsLinearFiltering(texture.desc.format, textureBinding.isSRGB);
     const bool textureFormatSupportsMipGeneration = FormatUtil::SupportsMipGeneration(texture.desc.format);
     VEX_CHECK(textureFormatSupportsMipGeneration && apiFormatSupportsLinearFiltering,
               "The texture's format must be a valid format for mip generation. Only uncompressed floating point / "
@@ -361,8 +359,8 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
 
     // Built-in mip generation is leveraged if supported (and if we're using a graphics command queue).
     // If we want to perform SRGB mip generation, we must do it manually.
-    if (GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::MipGeneration) &&
-        cmdList->GetType() == QueueType::Graphics && !textureBinding.isSRGB)
+    if (GPhysicalDevice->IsFeatureSupported(Feature::MipGeneration) && cmdList->GetType() == QueueType::Graphics &&
+        !textureBinding.isSRGB)
     {
         cmdList->GenerateMips(graphics->GetRHITexture(texture.handle), textureBinding.subresource);
         return;
@@ -771,7 +769,7 @@ TextureReadbackContext CommandContext::EnqueueDataReadback(const Texture& srcTex
 
 void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructure, const BLASBuildDesc& desc)
 {
-    VEX_CHECK(GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing),
+    VEX_CHECK(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing),
               "Your GPU does not support ray tracing, unable to build BLAS!");
     VEX_CHECK(accelerationStructure.desc.type == ASType::BottomLevel,
               "BuildBLAS only accepts bottom level acceleration structures...");
@@ -921,7 +919,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
 
 void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructure, const TLASBuildDesc& desc)
 {
-    VEX_CHECK(GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing),
+    VEX_CHECK(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing),
               "Your GPU does not support ray tracing, unable to build TLAS!");
     VEX_CHECK(accelerationStructure.desc.type == ASType::TopLevel,
               "BuildTLAS only accepts top level acceleration structures...");

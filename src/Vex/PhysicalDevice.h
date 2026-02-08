@@ -1,28 +1,13 @@
-#pragma once
+﻿#pragma once
 
-#include <string>
-
-#include <Vex/FeatureChecker.h>
-#include <Vex/Types.h>
+#include <Vex/RHIImpl/RHIPhysicalDevice.h>
 #include <Vex/Utility/UniqueHandle.h>
+
+#include <RHI/RHIFwd.h>
 
 namespace vex
 {
 
-struct PhysicalDevice
-{
-    // Criteria used to select the best device for the underlying RHI.
-    bool operator>(const PhysicalDevice& other) const;
-
-#if !VEX_SHIPPING
-    void DumpPhysicalDeviceInfo();
-#endif
-
-    std::string deviceName;
-    double dedicatedVideoMemoryMB;
-    UniqueHandle<FeatureChecker> featureChecker;
-};
-
-inline UniqueHandle<PhysicalDevice> GPhysicalDevice = nullptr;
+inline UniqueHandle<RHIPhysicalDevice> GPhysicalDevice = nullptr;
 
 } // namespace vex

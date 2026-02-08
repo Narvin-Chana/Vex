@@ -7,11 +7,11 @@
 #include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
+#include <Vex/RHIImpl/RHIPhysicalDevice.h>
 #include <Vex/Utility/WString.h>
 
 #include <RHI/RHIDescriptorPool.h>
 
-#include <DX12/DX12FeatureChecker.h>
 #include <DX12/DX12Formats.h>
 #include <DX12/HRChecker.h>
 
@@ -269,15 +269,18 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
         texDesc.Format = GetTypelessFormatForSRGBCompatibleDX12Format(texDesc.Format);
     }
 
-    if (VEX_USE_CUSTOM_ALLOCATOR_TEXTURES &&
-        reinterpret_cast<DX12FeatureChecker*>(GPhysicalDevice->featureChecker.get())->SupportsTightAlignment())
+    if (VEX_USE_CUSTOM_ALLOCATOR_TEXTURES && GPhysicalDevice->SupportsTightAlignment())
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
     }
 
 #if VEX_USE_CUSTOM_ALLOCATOR_TEXTURES
-    allocation =
-        allocator.AllocateResource(texture, texDesc, desc.memoryLocality, 0, D3D12_BARRIER_LAYOUT_UNDEFINED, clearValue);
+    allocation = allocator.AllocateResource(texture,
+                                            texDesc,
+                                            desc.memoryLocality,
+                                            0,
+                                            D3D12_BARRIER_LAYOUT_UNDEFINED,
+                                            clearValue);
 #else
     chk << device->CreateCommittedResource3(&heapProps,
                                             D3D12_HEAP_FLAG_NONE,

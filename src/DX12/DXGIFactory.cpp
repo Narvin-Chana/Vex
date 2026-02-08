@@ -11,6 +11,9 @@ ComPtr<IDXGIFactory7> DXGIFactory::dxgiFactory;
 
 void DXGIFactory::InitializeDXGIFactory()
 {
+    if (dxgiFactory && dxgiFactory->IsCurrent())
+        return;
+
     chk << CreateDXGIFactory2(0, IID_PPV_ARGS(&dxgiFactory));
 }
 
