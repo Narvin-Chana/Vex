@@ -16,6 +16,11 @@ PixEventsApplication::PixEventsApplication()
     SetupShaderErrorHandling();
 }
 
+PixEventsApplication::~PixEventsApplication()
+{
+    PIX::Teardown();
+}
+
 void PixEventsApplication::Run()
 {
     static bool hasCaptured = false;

@@ -80,7 +80,7 @@ static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureReg
 
                 copyDescs.push_back(std::move(copyDesc));
 
-                stagingBufferOffset += AlignUp<u64>(regionStagingSize, TextureUtil::MipAlignment);
+                stagingBufferOffset += AlignUp<u64>(regionStagingSize, TextureUtil::SliceAlignment);
             }
 
             // Move to next aligned position in staging buffer.

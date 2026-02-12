@@ -17,6 +17,11 @@ RenderDocApplication::RenderDocApplication()
     SetupShaderErrorHandling();
 }
 
+RenderDocApplication::~RenderDocApplication()
+{
+    RenderDoc::Teardown();
+}
+
 void RenderDocApplication::Run()
 {
     static bool hasCaptured = false;

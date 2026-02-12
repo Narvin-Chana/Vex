@@ -5,6 +5,7 @@
 
 #include <Vex/Buffer.h>
 #include <Vex/Containers/Span.h>
+#include <Vex/Platform/Debug.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/Concepts.h>
@@ -24,10 +25,14 @@ struct ConstantBinding
     constexpr explicit ConstantBinding(const void* data, Span<const byte>::size_type size)
         : data{ reinterpret_cast<const byte*>(data), size }
     {
+        VEX_ASSERT(
+            size <= MaxTheoreticalLocalConstantsByteSize,
+            "Size cannot surpass the max theoretical limit for local constants as defined by your graphics api.");
     }
 
     // Construct from vex::Span.
     template <typename T>
+        requires(sizeof(T) <= MaxTheoreticalLocalConstantsByteSize)
     explicit ConstantBinding(Span<T> data)
         : data(std::as_bytes(data))
     {
@@ -35,6 +40,7 @@ struct ConstantBinding
 
     // Construct from std::span.
     template <typename T>
+        requires(sizeof(T) <= MaxTheoreticalLocalConstantsByteSize)
     explicit ConstantBinding(std::span<T> data)
         : data(std::as_bytes(data))
     {

@@ -5,6 +5,7 @@
 struct PixEventsApplication : public ExampleApplication
 {
     PixEventsApplication();
+    ~PixEventsApplication();
     void Run();
 
 protected:

@@ -898,6 +898,11 @@ void DX12CommandList::BuildTLAS(RHIAccelerationStructure& as,
         }
     }
 
+    // Make sure the upload buffer is done uploading.
+    Barrier(
+        { RHIBufferBarrier{ uploadBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderRead } },
+        {});
+
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {};
     buildDesc.Inputs = D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS{
         .Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
