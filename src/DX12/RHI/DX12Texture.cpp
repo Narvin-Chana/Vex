@@ -15,10 +15,6 @@
 #include <DX12/DX12Formats.h>
 #include <DX12/HRChecker.h>
 
-#ifndef VEX_USE_CUSTOM_ALLOCATOR_TEXTURES
-#define VEX_USE_CUSTOM_ALLOCATOR_TEXTURES 1
-#endif
-
 namespace vex::dx12
 {
 
