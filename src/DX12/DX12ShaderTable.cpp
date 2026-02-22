@@ -1,18 +1,15 @@
 #include "DX12ShaderTable.h"
 
-#include <Vex/Utility/ByteUtils.h>
 #include <Vex/Platform/Debug.h>
+#include <Vex/Utility/ByteUtils.h>
 
 namespace vex::dx12
 {
 
 DX12ShaderTable::DX12ShaderTable(ComPtr<DX12Device>& device,
+                                 std::string_view name,
                                  RHIAllocator& allocator,
-                                 const BufferDesc& desc,
-                                 Span<void*> shaderIdentifiers,
-                                 u64 shaderIdentifierSize,
-                                 u64 recordStride)
-    : buffer(device, allocator, desc)
+                                 Span<void*> shaderIdentifiers)
 {
     if (shaderIdentifiers.empty())
     {
@@ -20,52 +17,62 @@ DX12ShaderTable::DX12ShaderTable(ComPtr<DX12Device>& device,
         return;
     }
 
-    if (desc.memoryLocality != ResourceMemoryLocality::CPUWrite)
-    {
-        VEX_LOG(Fatal, "Cannot create a shader table with a non-CPUWrite buffer.");
-        return;
-    }
+    // We can directly use the identifier size as shader record size.
+    // This is incorrect IF you use local root signatures in RT shader tables, which Vex does not support due to
+    // cross-compatibility with Vulkan.
+    static constexpr u32 ShaderRecordSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
 
     // Ensures proper alignment - shader records must be aligned to D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT (32
     // bytes)
-    u64 alignedRecordStride = AlignUp<u64>(recordStride, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
-    shaderTableStride = alignedRecordStride;
+    static constexpr u64 AlignedRecordStride =
+        AlignUp<u64>(ShaderRecordSize, std::max(D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT));
+    recordStride = AlignedRecordStride;
 
-    Span<byte> mappedData = buffer.GetMappedData();
+    BufferDesc desc = BufferDesc::CreateStagingBufferDesc(std::string(name),
+                                                          recordStride * shaderIdentifiers.size(),
+                                                          BufferUsage::GenericBuffer | BufferUsage::ShaderTable);
+    buffer = RHIBuffer(device, allocator, std::move(desc));
+
+    Span<byte> mappedData = buffer->GetMappedData();
 
     // Write each shader identifier.
     for (u64 i = 0; i < shaderIdentifiers.size(); ++i)
     {
-        u64 offset = i * alignedRecordStride;
+        u64 offset = i * recordStride;
 
         // Copy the shader identifier.
-        memcpy(mappedData.data() + offset, shaderIdentifiers[i], shaderIdentifierSize);
+        memcpy(mappedData.data() + offset, shaderIdentifiers[i], D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
         // Zero out any padding.
-        if (alignedRecordStride > shaderIdentifierSize)
+        if (recordStride > D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES)
         {
-            memset(mappedData.data() + offset + shaderIdentifierSize, 0, alignedRecordStride - shaderIdentifierSize);
+            memset(mappedData.data() + offset + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
+                   0,
+                   recordStride - D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
         }
     }
 }
 
-D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE DX12ShaderTable::GetVirtualAddressRangeAndStride() const
+D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE DX12ShaderTable::GetVirtualAddressRangeAndStride(u32 offset) const
 {
-    VEX_ASSERT(shaderTableStride != 0,
+    VEX_ASSERT(recordStride != 0,
                "Cannot obtain D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE from a zero-stride ShaderTable.");
 
     return D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE{
-        .StartAddress = buffer.GetGPUVirtualAddress(),
-        .SizeInBytes = buffer.GetDesc().byteSize,
-        .StrideInBytes = shaderTableStride,
+        .StartAddress = buffer->GetGPUVirtualAddress() + offset * recordStride,
+        .SizeInBytes = buffer->GetDesc().byteSize - offset * recordStride,
+        .StrideInBytes = recordStride,
     };
 }
 
-D3D12_GPU_VIRTUAL_ADDRESS_RANGE DX12ShaderTable::GetVirtualAddressRange() const
+D3D12_GPU_VIRTUAL_ADDRESS_RANGE DX12ShaderTable::GetVirtualAddressRange(u32 offset) const
 {
+    VEX_ASSERT(recordStride != 0,
+               "Cannot obtain D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE from a zero-stride ShaderTable.");
+
     return D3D12_GPU_VIRTUAL_ADDRESS_RANGE{
-        .StartAddress = buffer.GetGPUVirtualAddress(),
-        .SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
+        .StartAddress = buffer->GetGPUVirtualAddress() + offset * recordStride,
+        .SizeInBytes = recordStride,
     };
 }
 

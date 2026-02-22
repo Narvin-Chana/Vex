@@ -1,7 +1,10 @@
 #pragma once
 
+#include <string_view>
+
 #include <Vex/Containers/Span.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
+#include <Vex/Utility/MaybeUninitialized.h>
 
 namespace vex::dx12
 {
@@ -9,17 +12,15 @@ namespace vex::dx12
 struct DX12ShaderTable
 {
     DX12ShaderTable(ComPtr<DX12Device>& device,
+                    std::string_view name,
                     RHIAllocator& allocator,
-                    const BufferDesc& desc,
-                    Span<void*> shaderIdentifiers,
-                    u64 shaderIdentifierSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
-                    u64 recordStride = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+                    Span<void*> shaderIdentifiers);
 
-    D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE GetVirtualAddressRangeAndStride() const;
-    D3D12_GPU_VIRTUAL_ADDRESS_RANGE GetVirtualAddressRange() const;
+    D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE GetVirtualAddressRangeAndStride(u32 offset) const;
+    D3D12_GPU_VIRTUAL_ADDRESS_RANGE GetVirtualAddressRange(u32 offset) const;
 
-    RHIBuffer buffer;
-    u32 shaderTableStride = 0;
+    MaybeUninitialized<RHIBuffer> buffer;
+    u32 recordStride = 0;
 };
 
 } // namespace vex::dx12

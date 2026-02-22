@@ -69,7 +69,7 @@ public:
     u32 computeShaderVersion = 0;
 };
 
-using RayTracingPipelineStateKey = RayTracingPassDesc;
+using RayTracingPipelineStateKey = RayTracingCollection;
 
 class RHIRayTracingPipelineStateInterface
 {
@@ -88,7 +88,7 @@ public:
 
     Key key;
     u32 rootSignatureVersion = 0;
-    u32 rayGenerationShaderVersion = 0;
+    std::vector<u32> rayGenerationShaderVersions;
     std::vector<u32> rayMissShaderVersions;
     struct HitGroupVersions
     {

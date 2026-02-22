@@ -683,7 +683,7 @@ void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount)
     commandBuffer->dispatch(groupCount[0], groupCount[1], groupCount[2]);
 }
 
-void VkCommandList::TraceRays(const std::array<u32, 3>& widthHeightDepth,
+void VkCommandList::TraceRays(const TraceRaysDesc& rayTracingArgs,
                               const RHIRayTracingPipelineState& rayTracingPipelineState)
 {
     VEX_NOT_YET_IMPLEMENTED();

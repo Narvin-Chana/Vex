@@ -713,17 +713,17 @@ void DX12CommandList::Dispatch(const std::array<u32, 3>& groupCount)
     }
 }
 
-void DX12CommandList::TraceRays(const std::array<u32, 3>& widthHeightDepth,
+void DX12CommandList::TraceRays(const TraceRaysDesc& rayTracingArgs,
                                 const RHIRayTracingPipelineState& rayTracingPipelineState)
 {
     // Attach shader record and tables.
     D3D12_DISPATCH_RAYS_DESC rayDesc{
-        .Width = widthHeightDepth[0],
-        .Height = widthHeightDepth[1],
-        .Depth = widthHeightDepth[2],
+        .Width = rayTracingArgs.width,
+        .Height = rayTracingArgs.height,
+        .Depth = rayTracingArgs.depth,
     };
 
-    rayTracingPipelineState.PrepareDispatchRays(rayDesc);
+    rayTracingPipelineState.PrepareDispatchRays(rayDesc, rayTracingArgs);
 
     switch (type)
     {

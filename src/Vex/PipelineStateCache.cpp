@@ -19,10 +19,18 @@ static bool IsShaderCollectionStale(const RayTracingShaderCollection& shaderColl
     static auto IsShaderVersionStale = [](const NonNullPtr<Shader> shader, u32 psVersion) -> bool
     { return shader->version > psVersion; };
 
-    // Ray generation shader version check.
-    if (IsShaderVersionStale(shaderCollection.rayGenerationShader, rtPSO.rayGenerationShaderVersion))
+    // Ray generation shaders version check.
+    if (shaderCollection.rayGenerationShaders.size() != rtPSO.rayGenerationShaderVersions.size())
     {
         return true;
+    }
+    for (std::size_t i = 0; const NonNullPtr<Shader>& rayGenerationShader : shaderCollection.rayGenerationShaders)
+    {
+        if (IsShaderVersionStale(rayGenerationShader, rtPSO.rayGenerationShaderVersions[i]))
+        {
+            return true;
+        }
+        i++;
     }
 
     // Ray miss shaders version check.
@@ -213,14 +221,20 @@ std::optional<RayTracingShaderCollection> PipelineStateCache::GetRayTracingShade
     static auto ValidateShaderType = [](ShaderType expectedType, const ShaderKey& shaderKey)
     { VEX_CHECK(shaderKey.type == expectedType, "Invalid ShaderType for {}: {}", expectedType, shaderKey.type); };
 
-    ValidateShaderType(ShaderType::RayGenerationShader, key.rayGenerationShader);
-    const NonNullPtr<Shader> rayGenerationShader = shaderCompiler.GetShader(key.rayGenerationShader);
-    if (!rayGenerationShader->IsValid())
+    RayTracingShaderCollection collection;
+
+    collection.rayGenerationShaders.reserve(key.rayGenerationShaders.size());
+    for (const ShaderKey& key : key.rayGenerationShaders)
     {
-        VEX_LOG(Error, "Unable to obtain valid rayGenerationShader: {}", key.rayGenerationShader);
-        return std::nullopt;
+        ValidateShaderType(ShaderType::RayGenerationShader, key);
+        const NonNullPtr<Shader> rayGenerationShader = shaderCompiler.GetShader(key);
+        if (!rayGenerationShader->IsValid())
+        {
+            VEX_LOG(Error, "Unable to obtain valid rayGenerationShader: {}", key);
+            return std::nullopt;
+        }
+        collection.rayGenerationShaders.push_back(rayGenerationShader);
     }
-    RayTracingShaderCollection collection = RayTracingShaderCollection(rayGenerationShader);
 
     collection.rayMissShaders.reserve(key.rayMissShaders.size());
     for (const ShaderKey& key : key.rayMissShaders)

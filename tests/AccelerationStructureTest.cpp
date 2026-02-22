@@ -4,10 +4,7 @@
 
 using namespace vex;
 
-// Disabled for vulkan since RayTracing is not yet implemented.
-#if VEX_DX12
-
-struct AccelerationStructureTest : VexTest
+struct AccelerationStructureTest : RTVexTest
 {
     using Vertex = std::array<float, 3>;
 
@@ -16,6 +13,8 @@ struct AccelerationStructureTest : VexTest
 
     void SetUp() override
     {
+        RTVexTest::SetUp();
+
         auto ctx = graphics.CreateCommandContext(QueueType::Compute);
 
         const BufferDesc vbDesc =
@@ -30,15 +29,13 @@ struct AccelerationStructureTest : VexTest
         ctx.EnqueueDataUpload(triangleIndexBuffer, std::as_bytes(std::span(TriangleIndices)));
 
         graphics.Submit(ctx);
-
-        VexTest::SetUp();
     }
 
     void TearDown() override
     {
-        VexTest::TearDown();
         graphics.DestroyBuffer(triangleVertexBuffer);
         graphics.DestroyBuffer(triangleIndexBuffer);
+        RTVexTest::TearDown();
     }
 
 private:
@@ -562,12 +559,15 @@ TEST_P(ASAABBTest, CreateAABBTraceShader)
     const auto shaderPath = VexRootPath / "tests/shaders/RayTracingAABB.hlsl";
 
     ctx.TraceRays(
-        RayTracingPassDesc{
-            .rayGenerationShader = ShaderKey{
-                 .path = shaderPath,
-                 .entryPoint = "RayGenMain",
-                 .type = ShaderType::RayGenerationShader,
-             },
+        RayTracingCollection{
+            .rayGenerationShaders = 
+            {
+                ShaderKey{
+                    .path = shaderPath,
+                    .entryPoint = "RayGenMain",
+                    .type = ShaderType::RayGenerationShader,
+                 }, 
+            },
              .rayMissShaders =
              {
                  ShaderKey{
@@ -632,5 +632,3 @@ INSTANTIATE_TEST_SUITE_P(ASAABBTestSuite,
                                                          .expectedResult = -1,
                                                          .testName = "No_Intersection" }),
                          [](const testing::TestParamInfo<ASAABBTestData>& info) { return info.param.testName; });
-
-#endif

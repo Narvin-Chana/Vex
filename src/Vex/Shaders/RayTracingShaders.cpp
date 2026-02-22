@@ -12,11 +12,14 @@
 namespace vex
 {
 
-void RayTracingPassDesc::ValidateShaderTypes(const RayTracingPassDesc& desc)
+void RayTracingCollection::ValidateShaderTypes(const RayTracingCollection& desc)
 {
-    if (desc.rayGenerationShader.type != ShaderType::RayGenerationShader)
+    for (const auto& rayGen : desc.rayGenerationShaders)
     {
-        VEX_INVALID_RT_SHADER_TYPE(RayGenerationShader, desc.rayGenerationShader.type);
+        if (rayGen.type != ShaderType::RayGenerationShader)
+        {
+            VEX_INVALID_RT_SHADER_TYPE(RayGenerationShader, rayGen.type);
+        }
     }
 
     for (const auto& rayMiss : desc.rayMissShaders)

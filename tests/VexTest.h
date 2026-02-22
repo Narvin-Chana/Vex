@@ -64,6 +64,19 @@ struct VexTest : testing::Test
     }
 };
 
+// Raytracing-specific version which will skip RT-tests if not supported on the current device.
+struct RTVexTest : VexTest
+{
+    void SetUp() override
+    {
+        if (!graphics.IsRayTracingSupported())
+        {
+            GTEST_SKIP() << "Raytracing is not supported, skipping RT-related tests.";
+        }
+        VexTest::SetUp();
+    }
+};
+
 const auto ShaderCompilerBackendValues = testing::Values(ShaderCompilerBackend::DXC, ShaderCompilerBackend::Slang);
 
 inline std::string_view GetShaderExtension(ShaderCompilerBackend backend)

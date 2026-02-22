@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <vector>
 
 #include <Vex/Utility/Hash.h>
 #include <Vex/Utility/MaybeUninitialized.h>
@@ -72,7 +73,7 @@ public:
                          RHIAllocator& allocator) override;
     virtual void Cleanup(ResourceCleanup& resourceCleanup) override;
 
-    void PrepareDispatchRays(D3D12_DISPATCH_RAYS_DESC& dispatchRaysDesc) const;
+    void PrepareDispatchRays(D3D12_DISPATCH_RAYS_DESC& dispatchRaysDesc, const TraceRaysDesc& rayTracingArgs) const;
 
     ComPtr<ID3D12StateObject> stateObject;
 
@@ -81,12 +82,9 @@ private:
     void CreateShaderTables(ResourceCleanup& resourceCleanup, RHIAllocator& allocator);
     void UpdateVersions(const RayTracingShaderCollection& shaderCollection, RHIResourceLayout& resourceLayout);
 
-    static constexpr u32 ShaderIdentifierSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-    static constexpr u32 ShaderTableAlignment = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
-
     ComPtr<DX12Device> device;
 
-    void* rayGenerationIdentifier = nullptr;
+    std::vector<void*> rayGenerationIdentifiers;
     std::vector<void*> rayMissIdentifiers;
     std::vector<void*> hitGroupIdentifiers;
     std::vector<void*> rayCallableIdentifiers;

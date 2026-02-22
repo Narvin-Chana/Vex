@@ -273,13 +273,16 @@ void DX12RayTracingPipelineState::Compile(const RayTracingShaderCollection& shad
 {
     CD3DX12_STATE_OBJECT_DESC raytracingPipeline{ D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE };
 
-    // Ray generation shader
-    CD3DX12_DXIL_LIBRARY_SUBOBJECT* rayGenerationLib =
-        raytracingPipeline.CreateSubobject<CD3DX12_DXIL_LIBRARY_SUBOBJECT>();
-    D3D12_SHADER_BYTECODE rayGenBC = CD3DX12_SHADER_BYTECODE{ shaderCollection.rayGenerationShader->GetBlob().data(),
-                                                              shaderCollection.rayGenerationShader->GetBlob().size() };
-    rayGenerationLib->SetDXILLibrary(&rayGenBC);
-    rayGenerationLib->DefineExport(StringToWString(shaderCollection.rayGenerationShader->key.entryPoint).c_str());
+    // Ray generation shaders
+    for (NonNullPtr<Shader> rayGenShaders : shaderCollection.rayGenerationShaders)
+    {
+        CD3DX12_DXIL_LIBRARY_SUBOBJECT* rayGenerationLib =
+            raytracingPipeline.CreateSubobject<CD3DX12_DXIL_LIBRARY_SUBOBJECT>();
+        D3D12_SHADER_BYTECODE rayGenBC =
+            CD3DX12_SHADER_BYTECODE{ rayGenShaders->GetBlob().data(), rayGenShaders->GetBlob().size() };
+        rayGenerationLib->SetDXILLibrary(&rayGenBC);
+        rayGenerationLib->DefineExport(StringToWString(rayGenShaders->key.entryPoint).c_str());
+    }
 
     // Ray miss shaders
     for (NonNullPtr<Shader> missShader : shaderCollection.rayMissShaders)
@@ -345,6 +348,7 @@ void DX12RayTracingPipelineState::Compile(const RayTracingShaderCollection& shad
         }
     }
 
+    // Ray callable shaders
     for (NonNullPtr<Shader> callableShader : shaderCollection.rayCallableShaders)
     {
         CD3DX12_DXIL_LIBRARY_SUBOBJECT* callableLib =
@@ -391,9 +395,10 @@ void DX12RayTracingPipelineState::Compile(const RayTracingShaderCollection& shad
 
 void DX12RayTracingPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
 {
-    if (!(stateObject && rayGenerationShaderTable && rayMissShaderTable && hitGroupShaderTable &&
+    if (!(stateObject || rayGenerationShaderTable || rayMissShaderTable || hitGroupShaderTable ||
           rayCallableShaderTable))
     {
+        // We have nothing to cleanup!
         return;
     }
 
@@ -406,29 +411,32 @@ void DX12RayTracingPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
     std::swap(cleanupPSO->rayMissShaderTable, rayMissShaderTable);
     std::swap(cleanupPSO->hitGroupShaderTable, hitGroupShaderTable);
     std::swap(cleanupPSO->rayCallableShaderTable, rayCallableShaderTable);
+    // Send to resource cleanup.
     resourceCleanup.CleanupResource(std::move(cleanupPSO));
 }
 
-void DX12RayTracingPipelineState::PrepareDispatchRays(D3D12_DISPATCH_RAYS_DESC& dispatchRaysDesc) const
+void DX12RayTracingPipelineState::PrepareDispatchRays(D3D12_DISPATCH_RAYS_DESC& dispatchRaysDesc,
+                                                      const TraceRaysDesc& rayTracingArgs) const
 {
     if (rayGenerationShaderTable)
     {
-        dispatchRaysDesc.RayGenerationShaderRecord = rayGenerationShaderTable->GetVirtualAddressRange();
+        dispatchRaysDesc.RayGenerationShaderRecord =
+            rayGenerationShaderTable->GetVirtualAddressRange(rayTracingArgs.rayGenShaderIndex);
     }
-
     if (rayMissShaderTable)
     {
-        dispatchRaysDesc.MissShaderTable = rayMissShaderTable->GetVirtualAddressRangeAndStride();
+        dispatchRaysDesc.MissShaderTable =
+            rayMissShaderTable->GetVirtualAddressRangeAndStride(rayTracingArgs.rayMissShaderIndex);
     }
-
     if (hitGroupShaderTable)
     {
-        dispatchRaysDesc.HitGroupTable = hitGroupShaderTable->GetVirtualAddressRangeAndStride();
+        dispatchRaysDesc.HitGroupTable =
+            hitGroupShaderTable->GetVirtualAddressRangeAndStride(rayTracingArgs.hitGroupShaderIndex);
     }
-
     if (rayCallableShaderTable)
     {
-        dispatchRaysDesc.CallableShaderTable = rayCallableShaderTable->GetVirtualAddressRangeAndStride();
+        dispatchRaysDesc.CallableShaderTable =
+            rayCallableShaderTable->GetVirtualAddressRangeAndStride(rayTracingArgs.rayCallableShaderIndex);
     }
 }
 
@@ -437,9 +445,13 @@ void DX12RayTracingPipelineState::GenerateIdentifiers(const RayTracingShaderColl
     ComPtr<ID3D12StateObjectProperties> stateObjectProperties;
     chk << stateObject->QueryInterface(IID_PPV_ARGS(&stateObjectProperties));
 
-    rayGenerationIdentifier = stateObjectProperties->GetShaderIdentifier(
-        StringToWString(shaderCollection.rayGenerationShader->key.entryPoint).c_str());
-    VEX_ASSERT(rayGenerationIdentifier != nullptr, "Unable to use null RTPSO shader identifier...");
+    for (NonNullPtr<Shader> rayGenShader : shaderCollection.rayGenerationShaders)
+    {
+        void* identifier =
+            stateObjectProperties->GetShaderIdentifier(StringToWString(rayGenShader->key.entryPoint).c_str());
+        VEX_ASSERT(identifier != nullptr, "Unable to use null RTPSO shader identifier...");
+        rayGenerationIdentifiers.push_back(identifier);
+    }
 
     for (NonNullPtr<Shader> missShader : shaderCollection.rayMissShaders)
     {
@@ -484,42 +496,22 @@ void DX12RayTracingPipelineState::CreateShaderTables(ResourceCleanup& resourceCl
         resourceCleanup.CleanupResource(std::move(rayCallableShaderTable->buffer));
     }
 
-    BufferDesc shaderTableDescription{
-        .usage = BufferUsage::GenericBuffer,
-        .memoryLocality = ResourceMemoryLocality::CPUWrite,
-    };
-
-    shaderTableDescription.name = "RayGenerationShaderTable";
-    shaderTableDescription.byteSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-    rayGenerationShaderTable =
-        DX12ShaderTable(device, allocator, shaderTableDescription, { &rayGenerationIdentifier, 1 });
+    // Ray-gen is the only mandatory stage.
+    rayGenerationShaderTable = DX12ShaderTable(device, "RayGenerationShaderTable", allocator, rayGenerationIdentifiers);
 
     if (!rayMissIdentifiers.empty())
     {
-        shaderTableDescription.name = "RayMissShadersTable";
-        shaderTableDescription.byteSize =
-            AlignUp(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT) *
-            rayMissIdentifiers.size();
-        rayMissShaderTable = DX12ShaderTable(device, allocator, shaderTableDescription, rayMissIdentifiers);
+        rayMissShaderTable = DX12ShaderTable(device, "RayMissShadersTable", allocator, rayMissIdentifiers);
     }
 
     if (!hitGroupIdentifiers.empty())
     {
-        shaderTableDescription.name = "HitGroupShadersTable";
-        shaderTableDescription.byteSize =
-            AlignUp(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT) *
-            hitGroupIdentifiers.size();
-        hitGroupShaderTable = DX12ShaderTable(device, allocator, shaderTableDescription, hitGroupIdentifiers);
+        hitGroupShaderTable = DX12ShaderTable(device, "HitGroupShadersTable", allocator, hitGroupIdentifiers);
     }
 
     if (!rayCallableIdentifiers.empty())
     {
-        shaderTableDescription.name = "RayCallableShadersTable";
-        shaderTableDescription.byteSize =
-            AlignUp(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT) *
-            rayCallableIdentifiers.size();
-
-        rayCallableShaderTable = DX12ShaderTable(device, allocator, shaderTableDescription, rayCallableIdentifiers);
+        rayCallableShaderTable = DX12ShaderTable(device, "RayCallableShadersTable", allocator, rayCallableIdentifiers);
     }
 }
 
@@ -527,7 +519,13 @@ void DX12RayTracingPipelineState::UpdateVersions(const RayTracingShaderCollectio
                                                  RHIResourceLayout& resourceLayout)
 {
     rootSignatureVersion = resourceLayout.version;
-    rayGenerationShaderVersion = shaderCollection.rayGenerationShader->version;
+
+    rayGenerationShaderVersions.resize(shaderCollection.rayGenerationShaders.size());
+    for (u32 i = 0; i < shaderCollection.rayGenerationShaders.size(); ++i)
+    {
+        rayGenerationShaderVersions[i] = shaderCollection.rayGenerationShaders[i]->version;
+    }
+
     rayMissShaderVersions.resize(shaderCollection.rayMissShaders.size());
     for (u32 i = 0; i < shaderCollection.rayMissShaders.size(); ++i)
     {

@@ -25,6 +25,7 @@ struct RHITextureBinding;
 struct InputAssembly;
 struct RHIBLASBuildDesc;
 struct RHITLASBuildDesc;
+struct TraceRaysDesc;
 
 enum class RHICommandListState : u8
 {
@@ -79,7 +80,7 @@ public:
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount) = 0;
 
-    virtual void TraceRays(const std::array<u32, 3>& widthHeightDepth,
+    virtual void TraceRays(const TraceRaysDesc& rayTracingArgs,
                            const RHIRayTracingPipelineState& rayTracingPipelineState) = 0;
 
     virtual void GenerateMips(RHITexture& texture, const TextureSubresource& subresource) = 0;
