@@ -508,6 +508,11 @@ struct ASAABBTestData
     AABB aabb;
     float expectedResult;
     const char* testName;
+    enum Type
+    {
+        HLSL,
+        SLANG,
+    } type;
 };
 
 struct ASAABBTest
@@ -556,7 +561,15 @@ TEST_P(ASAABBTest, CreateAABBTraceShader)
         .tlasHandle = graphics.GetBindlessHandle(tlas),
     };
 
-    const auto shaderPath = VexRootPath / "tests/shaders/RayTracingAABB.hlsl";
+    auto shaderPath = VexRootPath;
+    if (testData.type == ASAABBTestData::HLSL)
+    {
+        shaderPath /= "tests/shaders/RayTracingAABB.hlsl";
+    }
+    else if (testData.type == ASAABBTestData::SLANG)
+    {
+        shaderPath /= "tests/shaders/RayTracingAABB.slang";
+    }
 
     ctx.TraceRays(
         RayTracingCollection{
@@ -622,13 +635,41 @@ TEST_P(ASAABBTest, CreateAABBTraceShader)
 
 INSTANTIATE_TEST_SUITE_P(ASAABBTestSuite,
                          ASAABBTest,
-                         testing::Values(ASAABBTestData{ .aabb = AABB{ 0, 0, 1, 1, 1, 2 },
-                                                         .expectedResult = 1,
-                                                         .testName = "Has_Intersection_RayOriginOutsideAABB" },
-                                         ASAABBTestData{ .aabb = AABB{ 0, 0, -1, 1, 1, 1 },
-                                                         .expectedResult = 1,
-                                                         .testName = "Has_Intersection_RayOriginInsideAABB" },
-                                         ASAABBTestData{ .aabb = AABB{ 1, 1, 1, 2, 2, 2 },
-                                                         .expectedResult = -1,
-                                                         .testName = "No_Intersection" }),
+                         testing::Values(
+                             ASAABBTestData{
+                                 .aabb = AABB{ 0, 0, 1, 1, 1, 2 },
+                                 .expectedResult = 1,
+                                 .testName = "Has_Intersection_RayOriginOutsideAABB_HLSL",
+                                 .type = ASAABBTestData::HLSL,
+                             },
+                             ASAABBTestData{
+                                 .aabb = AABB{ 0, 0, -1, 1, 1, 1 },
+                                 .expectedResult = 1,
+                                 .testName = "Has_Intersection_RayOriginInsideAABB_HLSL",
+                                 .type = ASAABBTestData::HLSL,
+                             },
+                             ASAABBTestData{
+                                 .aabb = AABB{ 1, 1, 1, 2, 2, 2 },
+                                 .expectedResult = -1,
+                                 .testName = "No_Intersection_HLSL",
+                                 .type = ASAABBTestData::HLSL,
+                             },
+                             ASAABBTestData{
+                                 .aabb = AABB{ 0, 0, 1, 1, 1, 2 },
+                                 .expectedResult = 1,
+                                 .testName = "Has_Intersection_RayOriginOutsideAABB_SLANG",
+                                 .type = ASAABBTestData::SLANG,
+                             },
+                             ASAABBTestData{
+                                 .aabb = AABB{ 0, 0, -1, 1, 1, 1 },
+                                 .expectedResult = 1,
+                                 .testName = "Has_Intersection_RayOriginInsideAABB_SLANG",
+                                 .type = ASAABBTestData::SLANG,
+                             },
+                             ASAABBTestData{
+                                 .aabb = AABB{ 1, 1, 1, 2, 2, 2 },
+                                 .expectedResult = -1,
+                                 .testName = "No_Intersection_SLANG",
+                                 .type = ASAABBTestData::SLANG,
+                             }),
                          [](const testing::TestParamInfo<ASAABBTestData>& info) { return info.param.testName; });
