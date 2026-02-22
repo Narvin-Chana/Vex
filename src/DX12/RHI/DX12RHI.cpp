@@ -126,7 +126,7 @@ void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
                                        .NodeMask = 0 };
         chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetNativeQueue(QueueType::Compute)));
 #if !VEX_SHIPPING
-        GetNativeQueue(QueueType::Graphics)->SetName(L"CommandQueue: Compute");
+        GetNativeQueue(QueueType::Compute)->SetName(L"CommandQueue: Compute");
 #endif
     }
 
@@ -137,7 +137,7 @@ void DX12RHI::Init(const UniqueHandle<PhysicalDevice>& physicalDevice)
                                        .NodeMask = 0 };
         chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetNativeQueue(QueueType::Copy)));
 #if !VEX_SHIPPING
-        GetNativeQueue(QueueType::Graphics)->SetName(L"CommandQueue: Copy");
+        GetNativeQueue(QueueType::Copy)->SetName(L"CommandQueue: Copy");
 #endif
     }
 
