@@ -40,6 +40,7 @@ if(WIN32)
         "${slang_SOURCE_DIR}/bin/slang-llvm.dll"
         "${slang_SOURCE_DIR}/bin/slang-rt.dll"
         "${slang_SOURCE_DIR}/bin/slang.dll"
+        "${slang_SOURCE_DIR}/bin/slang-compiler.dll"
     )
 elseif(LINUX)
     set(DXC_STATIC_LIB "")
