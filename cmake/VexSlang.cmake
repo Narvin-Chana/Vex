@@ -7,11 +7,13 @@ if(NOT VEX_ENABLE_SLANG)
     return()
 endif()
 
+set(SLANG_VERSION "2026.3.1")
+
 # Choose URLs based on platform
 if(WIN32)
-    set(SLANG_RELEASE_URL "https://github.com/shader-slang/slang/releases/download/v2025.14.3/slang-2025.14.3-windows-x86_64.zip")
+    set(SLANG_RELEASE_URL "https://github.com/shader-slang/slang/releases/download/v${SLANG_VERSION}/slang-${SLANG_VERSION}-windows-x86_64.zip")
 elseif(LINUX)
-    set(SLANG_RELEASE_URL "https://github.com/shader-slang/slang/releases/download/v2025.14.3/slang-2025.14.3-linux-x86_64.tar.gz")
+    set(SLANG_RELEASE_URL "https://github.com/shader-slang/slang/releases/download/v${SLANG_VERSION}/slang-${SLANG_VERSION}-linux-x86_64.tar.gz")
 else()
     message(FATAL_ERROR "Unsupported platform for Slang binaries")
 endif()
@@ -26,7 +28,7 @@ FetchContent_MakeAvailable(slang)
 # Create imported target for slang
 set(SLANG_INCLUDE_DIR "${slang_SOURCE_DIR}/include")
 if(WIN32)
-    set(SLANG_STATIC_LIBS 
+    set(SLANG_STATIC_LIBS
         "${slang_SOURCE_DIR}/lib/gfx.lib"
         "${slang_SOURCE_DIR}/lib/slang-rt.lib"
         "${slang_SOURCE_DIR}/lib/slang.lib"
@@ -38,13 +40,14 @@ if(WIN32)
         "${slang_SOURCE_DIR}/bin/slang-llvm.dll"
         "${slang_SOURCE_DIR}/bin/slang-rt.dll"
         "${slang_SOURCE_DIR}/bin/slang.dll"
+        "${slang_SOURCE_DIR}/bin/slang-compiler.dll"
     )
 elseif(LINUX)
     set(DXC_STATIC_LIB "")
     set(SLANG_RUNTIME_LIBS
         "${slang_SOURCE_DIR}/lib/libgfx.so"
-        "${slang_SOURCE_DIR}/lib/libslang-glsl-module.so"
-        "${slang_SOURCE_DIR}/lib/libslang-glslang.so"
+        "${slang_SOURCE_DIR}/lib/libslang-glsl-module-${SLANG_VERSION}.so"
+        "${slang_SOURCE_DIR}/lib/libslang-glslang-${SLANG_VERSION}.so"
         "${slang_SOURCE_DIR}/lib/libslang-llvm.so"
         "${slang_SOURCE_DIR}/lib/libslang-rt.so"
         "${slang_SOURCE_DIR}/lib/libslang.so"
