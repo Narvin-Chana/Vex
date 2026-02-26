@@ -28,7 +28,7 @@ struct Texture;
 struct Buffer;
 struct TextureClearValue;
 struct DrawDesc;
-struct RayTracingPassDesc;
+struct RayTracingCollection;
 
 class CommandContext
 {
@@ -86,9 +86,9 @@ public:
     void DispatchIndirect();
 
     // Dispatches a ray tracing pass.
-    void TraceRays(const RayTracingPassDesc& rayTracingPassDescription,
+    void TraceRays(const RayTracingCollection& rayTracingCollection,
                    ConstantBinding constants,
-                   std::array<u32, 3> widthHeightDepth);
+                   const TraceRaysDesc& rayTracingArgs);
 
     // Fills in all lower resolution mips with downsampled version of the source mip.
     void GenerateMips(const TextureBinding& textureBinding);
@@ -168,11 +168,11 @@ public:
 
     // Builds a Bottom Level Acceleration Structure for Hardware Ray Tracing, by uploading the passed in Geometry.
     void BuildBLAS(const AccelerationStructure& accelerationStructure, const BLASBuildDesc& desc);
-    //void BuildBLAS(Span<std::pair<const AccelerationStructure&, const BLASBuildDesc&>> blasToBuild);
+    // void BuildBLAS(Span<std::pair<const AccelerationStructure&, const BLASBuildDesc&>> blasToBuild);
 
     // Builds a Top Level Acceleration Structure for Hardware Ray Tracing, by uploading the passed in Instances.
     void BuildTLAS(const AccelerationStructure& accelerationStructure, const TLASBuildDesc& desc);
-    //void BuildTLAS(Span<std::pair<const AccelerationStructure&, const TLASBuildDesc&>> tlasToBuild);
+    // void BuildTLAS(Span<std::pair<const AccelerationStructure&, const TLASBuildDesc&>> tlasToBuild);
 
     // ---------------------------------------------------------------------------------------------------------------
     // Barrier Operations

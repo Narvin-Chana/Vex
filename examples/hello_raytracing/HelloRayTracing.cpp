@@ -104,15 +104,18 @@ HelloRayTracing::HelloRayTracing()
     graphics->DestroyBuffer(indexBuffer);
 }
 
-// Creates a ray tracing pass desc, used to specify the various shaders and RT-related properties for RT shader
-// invocations.
-static vex::RayTracingPassDesc CreateRTPassDesc(const std::filesystem::path& shaderPath)
+// Creates a ray tracing collection, used to specify the various shaders and RT-related properties for RT shader
+// invocations. Typically applications will have one of these with all the possible shaders for each material type.
+static vex::RayTracingCollection CreateRTCollection(const std::filesystem::path& shaderPath)
 {
-    return vex::RayTracingPassDesc{
-        .rayGenerationShader = vex::ShaderKey{
-             .path = shaderPath,
-             .entryPoint = "RayGenMain",
-             .type = vex::ShaderType::RayGenerationShader,
+    return vex::RayTracingCollection{
+        .rayGenerationShaders = 
+        { 
+            vex::ShaderKey{
+                .path = shaderPath,
+                .entryPoint = "RayGenMain",
+                .type = vex::ShaderType::RayGenerationShader,
+            },
          },
          .rayMissShaders =
          {
@@ -175,7 +178,7 @@ void HelloRayTracing::Run()
 
             static const std::filesystem::path HLSLShaderPath =
                 ExamplesDir / "hello_raytracing" / "HelloRayTracingShader.hlsl";
-            static const vex::RayTracingPassDesc HLSLRayTracingPassDesc = CreateRTPassDesc(HLSLShaderPath);
+            static const vex::RayTracingCollection HLSLRayTracingPassDesc = CreateRTCollection(HLSLShaderPath);
             ctx.TraceRays(HLSLRayTracingPassDesc,
                           vex::ConstantBinding(data),
                           { static_cast<vex::u32>(width), static_cast<vex::u32>(height), 1 } // One ray per pixel.
@@ -184,7 +187,7 @@ void HelloRayTracing::Run()
 #if VEX_SLANG
             static const std::filesystem::path SlangShaderPath =
                 ExamplesDir / "hello_raytracing" / "HelloRayTracingShader.slang";
-            static const vex::RayTracingPassDesc SlangRayTracingPassDesc = CreateRTPassDesc(SlangShaderPath);
+            static const vex::RayTracingCollection SlangRayTracingPassDesc = CreateRTCollection(SlangShaderPath);
             ctx.TraceRays(SlangRayTracingPassDesc,
                           vex::ConstantBinding(data),
                           { static_cast<vex::u32>(width), static_cast<vex::u32>(height), 1 } // One ray per pixel.

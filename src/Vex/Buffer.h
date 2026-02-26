@@ -14,7 +14,7 @@ namespace vex
 // clang-format off
 
 // Determines how the buffer can be used.
-BEGIN_VEX_ENUM_FLAGS(BufferUsage, u8)
+BEGIN_VEX_ENUM_FLAGS(BufferUsage, u16)
     None                            = 0,      // Buffers that will never be bound anywhere. Mostly used for staging buffers.
     GenericBuffer                   = 1 << 0, // Buffers that can be read from shaders (SRV).
     UniformBuffer                   = 1 << 1, // Buffers with specific alignment constraints uniformly read across waves (CBV).
@@ -24,6 +24,7 @@ BEGIN_VEX_ENUM_FLAGS(BufferUsage, u8)
     IndirectArgs                    = 1 << 5, // Buffers used as parameters for an indirect dispatch.
     AccelerationStructure           = 1 << 6, // Buffers used as a HWRT Acceleration Structure, these also implicitly require the ReadWriteBuffer usage.
     ScratchBuffer                   = 1 << 7, // Buffers used as a scratch buffer for building HWRT Acceleration Structures, these also implicitly require the ReadWriteBuffer usage.
+    ShaderTable                     = 1 << 8, // Buffers used as a ShaderTable for HWRT shaders.
 END_VEX_ENUM_FLAGS();
 
 // clang-format on

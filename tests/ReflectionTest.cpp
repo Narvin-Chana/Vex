@@ -221,7 +221,7 @@ struct ComputeShaderReflectionTest : VexPerShaderCompilerTestParam<ComputeShader
 {
 };
 
-TEST_P(ComputeShaderReflectionTest, ComputShaderReflection)
+TEST_P(ComputeShaderReflectionTest, ComputeShaderReflection)
 {
     ShaderCompiler compiler{};
 

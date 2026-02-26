@@ -310,16 +310,16 @@ void CommandContext::DispatchIndirect()
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-void CommandContext::TraceRays(const RayTracingPassDesc& rayTracingPassDescription,
+void CommandContext::TraceRays(const RayTracingCollection& rayTracingCollection,
                                ConstantBinding constants,
-                               std::array<u32, 3> widthHeightDepth)
+                               const TraceRaysDesc& rayTracingArgs)
 {
     VEX_CHECK(GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing),
               "Your GPU does not support ray tracing, unable to dispatch rays!");
-    RayTracingPassDesc::ValidateShaderTypes(rayTracingPassDescription);
+    RayTracingCollection::ValidateShaderTypes(rayTracingCollection);
 
     const RHIRayTracingPipelineState* pipelineState =
-        graphics->psCache->GetRayTracingPipelineState(rayTracingPassDescription, *graphics->allocator);
+        graphics->psCache->GetRayTracingPipelineState(rayTracingCollection, *graphics->allocator);
     if (!pipelineState)
     {
         VEX_LOG(Error, "PSO cache returned an invalid pipeline state, unable to continue dispatch...");
@@ -338,7 +338,7 @@ void CommandContext::TraceRays(const RayTracingPassDesc& rayTracingPassDescripti
 
     FlushBarriers();
 
-    cmdList->TraceRays(widthHeightDepth, *pipelineState);
+    cmdList->TraceRays(rayTracingArgs, *pipelineState);
 }
 
 void CommandContext::GenerateMips(const TextureBinding& textureBinding)

@@ -4,10 +4,7 @@
 
 using namespace vex;
 
-// Disabled for vulkan since RayTracing is not yet implemented.
-#if VEX_DX12
-
-struct AccelerationStructureTest : VexTest
+struct AccelerationStructureTest : RTVexTest
 {
     using Vertex = std::array<float, 3>;
 
@@ -16,6 +13,8 @@ struct AccelerationStructureTest : VexTest
 
     void SetUp() override
     {
+        RTVexTest::SetUp();
+
         auto ctx = graphics.CreateCommandContext(QueueType::Compute);
 
         const BufferDesc vbDesc =
@@ -30,15 +29,13 @@ struct AccelerationStructureTest : VexTest
         ctx.EnqueueDataUpload(triangleIndexBuffer, std::as_bytes(std::span(TriangleIndices)));
 
         graphics.Submit(ctx);
-
-        VexTest::SetUp();
     }
 
     void TearDown() override
     {
-        VexTest::TearDown();
         graphics.DestroyBuffer(triangleVertexBuffer);
         graphics.DestroyBuffer(triangleIndexBuffer);
+        RTVexTest::TearDown();
     }
 
 private:
@@ -511,6 +508,11 @@ struct ASAABBTestData
     AABB aabb;
     float expectedResult;
     const char* testName;
+    enum Type
+    {
+        HLSL,
+        SLANG,
+    } type;
 };
 
 struct ASAABBTest
@@ -559,15 +561,26 @@ TEST_P(ASAABBTest, CreateAABBTraceShader)
         .tlasHandle = graphics.GetBindlessHandle(tlas),
     };
 
-    const auto shaderPath = VexRootPath / "tests/shaders/RayTracingAABB.hlsl";
+    auto shaderPath = VexRootPath;
+    if (testData.type == ASAABBTestData::HLSL)
+    {
+        shaderPath /= "tests/shaders/RayTracingAABB.hlsl";
+    }
+    else if (testData.type == ASAABBTestData::SLANG)
+    {
+        shaderPath /= "tests/shaders/RayTracingAABB.slang";
+    }
 
     ctx.TraceRays(
-        RayTracingPassDesc{
-            .rayGenerationShader = ShaderKey{
-                 .path = shaderPath,
-                 .entryPoint = "RayGenMain",
-                 .type = ShaderType::RayGenerationShader,
-             },
+        RayTracingCollection{
+            .rayGenerationShaders = 
+            {
+                ShaderKey{
+                    .path = shaderPath,
+                    .entryPoint = "RayGenMain",
+                    .type = ShaderType::RayGenerationShader,
+                 }, 
+            },
              .rayMissShaders =
              {
                  ShaderKey{
@@ -622,15 +635,41 @@ TEST_P(ASAABBTest, CreateAABBTraceShader)
 
 INSTANTIATE_TEST_SUITE_P(ASAABBTestSuite,
                          ASAABBTest,
-                         testing::Values(ASAABBTestData{ .aabb = AABB{ 0, 0, 1, 1, 1, 2 },
-                                                         .expectedResult = 1,
-                                                         .testName = "Has_Intersection_RayOriginOutsideAABB" },
-                                         ASAABBTestData{ .aabb = AABB{ 0, 0, -1, 1, 1, 1 },
-                                                         .expectedResult = 1,
-                                                         .testName = "Has_Intersection_RayOriginInsideAABB" },
-                                         ASAABBTestData{ .aabb = AABB{ 1, 1, 1, 2, 2, 2 },
-                                                         .expectedResult = -1,
-                                                         .testName = "No_Intersection" }),
+                         testing::Values(
+                             ASAABBTestData{
+                                 .aabb = AABB{ 0, 0, 1, 1, 1, 2 },
+                                 .expectedResult = 1,
+                                 .testName = "Has_Intersection_RayOriginOutsideAABB_HLSL",
+                                 .type = ASAABBTestData::HLSL,
+                             },
+                             ASAABBTestData{
+                                 .aabb = AABB{ 0, 0, -1, 1, 1, 1 },
+                                 .expectedResult = 1,
+                                 .testName = "Has_Intersection_RayOriginInsideAABB_HLSL",
+                                 .type = ASAABBTestData::HLSL,
+                             },
+                             ASAABBTestData{
+                                 .aabb = AABB{ 1, 1, 1, 2, 2, 2 },
+                                 .expectedResult = -1,
+                                 .testName = "No_Intersection_HLSL",
+                                 .type = ASAABBTestData::HLSL,
+                             },
+                             ASAABBTestData{
+                                 .aabb = AABB{ 0, 0, 1, 1, 1, 2 },
+                                 .expectedResult = 1,
+                                 .testName = "Has_Intersection_RayOriginOutsideAABB_SLANG",
+                                 .type = ASAABBTestData::SLANG,
+                             },
+                             ASAABBTestData{
+                                 .aabb = AABB{ 0, 0, -1, 1, 1, 1 },
+                                 .expectedResult = 1,
+                                 .testName = "Has_Intersection_RayOriginInsideAABB_SLANG",
+                                 .type = ASAABBTestData::SLANG,
+                             },
+                             ASAABBTestData{
+                                 .aabb = AABB{ 1, 1, 1, 2, 2, 2 },
+                                 .expectedResult = -1,
+                                 .testName = "No_Intersection_SLANG",
+                                 .type = ASAABBTestData::SLANG,
+                             }),
                          [](const testing::TestParamInfo<ASAABBTestData>& info) { return info.param.testName; });
-
-#endif
