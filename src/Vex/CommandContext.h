@@ -1,22 +1,24 @@
 #pragma once
 
 #include <optional>
+#include <unordered_map>
+#include <vector>
 
-#include <Vex/Containers/ResourceCleanup.h>
+#include <Vex/BuildAccelerationStructure.h>
 #include <Vex/Containers/Span.h>
+#include <Vex/ResourceCopy.h>
 #include <Vex/ResourceReadbackContext.h>
 #include <Vex/ScopedGPUEvent.h>
 #include <Vex/Shaders/ShaderKey.h>
-#include <Vex/Synchronization.h>
+#include <Vex/TextureStateMap.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/NonNullPtr.h>
 
+#include <RHI/RHIBarrier.h>
 #include <RHI/RHIBindings.h>
-#include <RHI/RHIBuffer.h>
-#include <RHI/RHICommandList.h>
 #include <RHI/RHIFwd.h>
 #include <RHI/RHIPipelineState.h>
-#include <RHI/RHITexture.h>
+#include <RHI/RHITimestampQueryPool.h>
 
 namespace vex
 {
@@ -52,12 +54,13 @@ public:
     // Clears a texture, by default will use the texture's ClearColor.
     void ClearTexture(const TextureBinding& binding,
                       std::optional<TextureClearValue> textureClearValue = std::nullopt,
-                      std::span<TextureClearRect> clearRects = {});
+                      Span<TextureClearRect> clearRects = {});
 
     // Performs a draw call.
     void Draw(const DrawDesc& drawDesc,
               const DrawResourceBinding& drawBindings,
               ConstantBinding constants,
+              Span<const ResourceBinding> trackedResources,
               u32 vertexCount,
               u32 instanceCount = 1,
               u32 vertexOffset = 0,
@@ -67,6 +70,7 @@ public:
     void DrawIndexed(const DrawDesc& drawDesc,
                      const DrawResourceBinding& drawBindings,
                      ConstantBinding constants,
+                     Span<const ResourceBinding> trackedResources,
                      u32 indexCount,
                      u32 instanceCount = 1,
                      u32 indexOffset = 0,
@@ -80,7 +84,10 @@ public:
     void DrawIndexedIndirect();
 
     // Dispatches a compute shader.
-    void Dispatch(const ShaderKey& shader, ConstantBinding constants, std::array<u32, 3> groupCount);
+    void Dispatch(const ShaderKey& shader,
+                  ConstantBinding constants,
+                  Span<const ResourceBinding> trackedResources,
+                  std::array<u32, 3> groupCount);
 
     // Not yet implemented
     void DispatchIndirect();
@@ -88,6 +95,7 @@ public:
     // Dispatches a ray tracing pass.
     void TraceRays(const RayTracingCollection& rayTracingCollection,
                    ConstantBinding constants,
+                   Span<const ResourceBinding> trackedResources,
                    const TraceRaysDesc& rayTracingArgs);
 
     // Fills in all lower resolution mips with downsampled version of the source mip.
@@ -168,38 +176,13 @@ public:
 
     // Builds a Bottom Level Acceleration Structure for Hardware Ray Tracing, by uploading the passed in Geometry.
     void BuildBLAS(const AccelerationStructure& accelerationStructure, const BLASBuildDesc& desc);
+    // TODO(https://trello.com/c/LUYWkd2L): add batched tlas / blas build
     // void BuildBLAS(Span<std::pair<const AccelerationStructure&, const BLASBuildDesc&>> blasToBuild);
 
     // Builds a Top Level Acceleration Structure for Hardware Ray Tracing, by uploading the passed in Instances.
     void BuildTLAS(const AccelerationStructure& accelerationStructure, const TLASBuildDesc& desc);
+    // TODO(https://trello.com/c/LUYWkd2L): add batched tlas / blas build
     // void BuildTLAS(Span<std::pair<const AccelerationStructure&, const TLASBuildDesc&>> tlasToBuild);
-
-    // ---------------------------------------------------------------------------------------------------------------
-    // Barrier Operations
-    // ---------------------------------------------------------------------------------------------------------------
-    // Vex's barrier philosophy is that they should only be applied when you have Write-After-Write (WAW) or
-    // Read-After-Write (RAW) situations. If you read from a resource multiple times, then you should avoid applying
-    // superfluous barriers to it.
-
-    // Will apply a barrier to the passed in texture binding.
-    void BarrierBinding(const TextureBinding& textureBinding);
-
-    // Will apply a barrier to the passed in buffer binding.
-    void BarrierBinding(const BufferBinding& bufferBinding);
-
-    // Will apply a barrier to the passed in bindings.
-    void BarrierBindings(Span<const ResourceBinding> resourceBindings);
-    // Will apply a barrier to the passed in texture.
-    void Barrier(const Texture& texture,
-                 RHIBarrierSync newSync,
-                 RHIBarrierAccess newAccess,
-                 RHITextureLayout newLayout);
-
-    // Will apply a barrier to the passed in buffer.
-    void Barrier(const Buffer& buffer, RHIBarrierSync newSync, RHIBarrierAccess newAccess);
-
-    // Will apply a barrier to the passed in acceleration structure's buffer.
-    void Barrier(const AccelerationStructure& as, RHIBarrierSync newSync, RHIBarrierAccess newAccess);
 
     // ---------------------------------------------------------------------------------------------------------------
 
@@ -207,29 +190,45 @@ public:
     // lambda to be executed in a draw scope.
     void ExecuteInDrawContext(Span<const TextureBinding> renderTargets,
                               std::optional<const TextureBinding> depthStencil,
+                              Span<const ResourceBinding> trackedResources,
                               const std::function<void()>& callback);
 
     QueryHandle BeginTimestampQuery();
     void EndTimestampQuery(QueryHandle handle);
 
     // Returns an object which will scope a set of commands to label them for a external debug tool such as RenderDoc or
-    // Pix
+    // Pix.
     ScopedGPUEvent CreateScopedGPUEvent(const char* markerLabel, std::array<float, 3> color = { 1, 1, 1 });
 
     // ---------------------------------------------------------------------------------------------------------------
     // Advanced Operations, should be used with care!
     // ---------------------------------------------------------------------------------------------------------------
 
+    // ---------------------------------------------------------------------------------------------------------------
+    // Manual synchronization is typically unnecessary as long as you use the "tracked resources" provided by
+    // Draw/Dispatch/TraceRays. In the cases it is necessary we still expose it here.
+
+    void Transition(const Buffer& buffer, RHIBarrierAccess access);
+    void Transition(const Texture& texture, RHIBarrierAccess access, const TextureSubresource& subresource = {});
+    void Transition(const AccelerationStructure& as, RHIBarrierAccess access);
+
+    // ---------------------------------------------------------------------------------------------------------------
+
     // Returns the RHI command list associated with this context allowing for access to the native
     // CommandList/CommandContext (you should avoid using this unless you know what you are doing).
     RHICommandList& GetRHICommandList();
 
-    // Flushes all pending barriers. Vex automatically batches barrier submissions just before GPU operations (eg:
-    // Draw/Dispatch). This means that you shouldn't call this function in most situations. This remains exposed for
-    // when you have custom RHI code which can create GPU operations.
-    void FlushBarriers();
-
 private:
+    void FlushBarriers();
+    void EnqueueTextureBarrier(const Texture& texture,
+                               const TextureSubresource& subresource,
+                               RHIBarrierSync dstSync,
+                               RHIBarrierAccess dstAccess,
+                               RHITextureLayout dstLayout);
+    void EnqueueGlobalBarrier(const RHIGlobalBarrier& globalBarrier);
+
+    void InferResourceBarriers(RHIBarrierSync syncStage, Span<const ResourceBinding> resources);
+
     // Creates a temporary staging buffer that will be destroyed once the command context is done executing.
     // Buffer creation invalidates pointers to existing RHI buffers.
     Buffer CreateTemporaryStagingBuffer(const std::string& name,
@@ -242,18 +241,18 @@ private:
 
     std::optional<RHIDrawResources> PrepareDrawCall(const DrawDesc& drawDesc,
                                                     const DrawResourceBinding& drawBindings,
-                                                    ConstantBinding constants);
+                                                    ConstantBinding constants,
+                                                    Span<const ResourceBinding> trackedResources);
     void CheckViewportAndScissor() const;
 
-    [[nodiscard]] std::vector<RHIBufferBarrier> SetVertexBuffers(u32 vertexBuffersFirstSlot,
-                                                                 Span<const BufferBinding> vertexBuffers);
-    [[nodiscard]] std::optional<RHIBufferBarrier> SetIndexBuffer(std::optional<BufferBinding> indexBuffer);
-
-    void EnqueueBarriers(Span<const RHITextureBarrier> barriers);
-    void EnqueueBarriers(Span<const RHIBufferBarrier> barriers);
+    void SetVertexBuffers(u32 vertexBuffersFirstSlot, Span<const BufferBinding> vertexBuffers);
+    void SetIndexBuffer(BufferBinding indexBuffer);
 
     NonNullPtr<Graphics> graphics;
     NonNullPtr<RHICommandList> cmdList;
+
+    // TODO(https://trello.com/c/UmVOreIj): Have one per queue and add queue transfer functionality for resources!
+    std::unordered_map<TextureHandle, TextureStateMap> textureStates;
 
     // Temporary resources (eg: staging resources) that will be marked for destruction once this command list is
     // submitted.
@@ -266,8 +265,11 @@ private:
     std::optional<ComputePipelineStateKey> cachedComputePSOKey;
     std::optional<InputAssembly> cachedInputAssembly;
 
+    // TODO(https://trello.com/c/D9yX2VIS): RHIBuffer/RHITextures stored in here could be invalidated if the global RHI
+    // freelists are resized in between barrier Enqueue and Flush!
     std::vector<RHIBufferBarrier> pendingBufferBarriers;
     std::vector<RHITextureBarrier> pendingTextureBarriers;
+    std::vector<RHIGlobalBarrier> pendingGlobalBarriers;
 
     bool hasInitializedViewport = false;
     bool hasInitializedScissor = false;

@@ -275,6 +275,7 @@ void ValidateTextureDescription(const TextureDesc& desc);
 float GetPixelByteSizeFromFormat(TextureFormat format);
 
 u32 TextureAspectToPlaneIndex(TextureAspect::Type aspect);
+TextureAspect::Flags PlaneStartCountToTextureAspect(TextureFormat format, u32 startPlane, u32 planeCount);
 
 u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions);
 u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions);
@@ -283,12 +284,13 @@ bool IsBindingUsageCompatibleWithUsage(TextureUsage::Flags usages, TextureBindin
 
 void ForEachSubresourceIndices(const TextureSubresource& subresource,
                                const TextureDesc& desc,
-                               std::function<void(u32 mip, u32 slice, u32 plane)> func);
+                               std::function<void(u16 mip, u32 slice, u32 plane)> func);
 
 void ValidateSubresource(const TextureDesc& desc, const TextureSubresource& subresource);
 void ValidateRegion(const TextureDesc& desc, const TextureRegion& region);
 void ValidateCopyDesc(const TextureDesc& srcDesc, const TextureDesc& dstDesc, const TextureCopyDesc& copyDesc);
 void ValidateCompatibleTextureDescs(const TextureDesc& srcDesc, const TextureDesc& dstDesc);
+
 
 } // namespace TextureUtil
 

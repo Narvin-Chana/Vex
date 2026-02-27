@@ -58,7 +58,7 @@ D3D12_BARRIER_SYNC RHIBarrierSyncToDX12(RHIBarrierSync barrierSync)
     }
 }
 
-D3D12_BARRIER_ACCESS RHIBarrierAccessToDX12(RHIBarrierAccess barrierAccess)
+D3D12_BARRIER_ACCESS RHIBarrierAccessToDX12(RHIBarrierAccess barrierAccess, QueueType queueType)
 {
     using enum RHIBarrierAccess;
 
@@ -92,6 +92,20 @@ D3D12_BARRIER_ACCESS RHIBarrierAccessToDX12(RHIBarrierAccess barrierAccess)
         return D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ;
     case AccelerationStructureWrite:
         return D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
+    case MemoryRead:
+        return D3D12_BARRIER_ACCESS_COMMON;
+    case MemoryWrite:
+    {
+        // OR of all the possible states which could cause writes (only the ones which do not require layout transfer).
+        auto validAccess = D3D12_BARRIER_ACCESS_COPY_DEST;
+        if (queueType != QueueType::Copy)
+        {
+            // Remove invalid states for copy queue.
+            validAccess |=
+                D3D12_BARRIER_ACCESS_UNORDERED_ACCESS | D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
+        }
+        return validAccess;
+    }
     default:
         VEX_LOG(Fatal, "Unsupported RHIBarrierAccess type.");
         std::unreachable();
@@ -116,7 +130,7 @@ D3D12_BARRIER_LAYOUT RHITextureLayoutToDX12(RHITextureLayout textureLayout)
         return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE;
     case ShaderResource:
         return D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
-    case UnorderedAccess:
+    case ShaderReadWrite:
         return D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS;
     case CopySource:
         return D3D12_BARRIER_LAYOUT_COPY_SOURCE;

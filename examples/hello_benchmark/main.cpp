@@ -31,9 +31,6 @@ int main()
         .strideByteSize = static_cast<vex::u32>(sizeof(float)),
     };
     vex::BindlessHandle passHandle = graphics.GetBindlessHandle(resultBufferBinding);
-    
-    // Apply a barrier to allow for the resource to be written-to.
-    ctx.BarrierBinding(resultBufferBinding);
 
     for (auto i = 0; i < N; ++i)
     {
@@ -47,10 +44,8 @@ int main()
                 .type = vex::ShaderType::ComputeShader,
             },
             vex::ConstantBinding{ passHandle },
+            { resultBufferBinding },
             std::array{ M / 8, 1u, 1u });
-
-        // Apply a barrier to flush the write we just performed.
-        ctx.BarrierBinding(resultBufferBinding);
 
         ctx.EndTimestampQuery(dispatchQueries[i]);
     }

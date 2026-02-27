@@ -108,11 +108,24 @@ void RHITimestampQueryPoolBase::FetchQueriesTimestamps(RHICommandList& cmdList, 
 
     for (const auto& range : ranges)
     {
-        cmdList.BufferBarrier(timestampBuffer, RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest);
+        cmdList.EmitBarriers({ RHIBufferBarrier{ timestampBuffer,
+                                                 RHIBarrierSync::Copy,
+                                                 RHIBarrierSync::Copy,
+                                                 RHIBarrierAccess::CopySource,
+                                                 RHIBarrierAccess::CopyDest } },
+                             {},
+                             {});
         cmdList.ResolveTimestampQueries(range.begin * 2, range.count * 2);
-        cmdList.BufferBarrier(timestampBuffer, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource);
+        cmdList.EmitBarriers({ RHIBufferBarrier{ timestampBuffer,
+                                                 RHIBarrierSync::Copy,
+                                                 RHIBarrierSync::Copy,
+                                                 RHIBarrierAccess::CopyDest,
+                                                 RHIBarrierAccess::CopySource } },
+                             {},
+                             {});
     }
 }
+
 void RHITimestampQueryPoolBase::UpdateSyncTokens(SyncToken token, Span<const QueryHandle> queries)
 {
     for (QueryHandle query : queries)

@@ -22,8 +22,9 @@
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
 #include <Vex/Synchronization.h>
-#include <Vex/Types.h>
 #include <Vex/Texture.h>
+#include <Vex/Types.h>
+#include <Vex/Utility/Validation.h>
 #include <Vex/Utility/Visitor.h>
 
 #include <RHI/RHICommandList.h>

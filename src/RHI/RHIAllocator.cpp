@@ -24,8 +24,6 @@ std::optional<MemoryRange> MemoryPageInfo::Allocate(u64 size, u64 alignment)
     allocatedRanges.emplace_back(range.value());
 
     // Keep allocated ranges sorted for easier traversal.
-    // TODO(https://trello.com/c/6zFzIeVc): investigate whether a quicksort code snippet exists online, to avoid having
-    // to include <algorithm> just for it. All current uses of <algorithm> in Vex are only for sorting purposes.
     std::sort(allocatedRanges.begin(), allocatedRanges.end(), std::less<MemoryRange>{});
 
     return range.value();

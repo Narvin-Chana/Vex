@@ -106,6 +106,7 @@ TEST_P(ReflectionTestFull, CompleteGraphicsPSOTest)
                         .indexBuffer = indexBufferBinding,
                     },
                     {},
+                    {},
                     1);
 
     graphics.Submit(ctx);

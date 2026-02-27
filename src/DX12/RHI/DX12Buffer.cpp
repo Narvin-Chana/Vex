@@ -47,7 +47,7 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
         VEX_ASSERT(desc.usage & BufferUsage::ReadWriteBuffer,
                    "Acceleration Structure usage requires the ReadWriteBuffer usage flag.");
         VEX_ASSERT(bufferDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-                   "Acceleration Structure buffer usage flag also requires the UnorderedAccess flag!");
+                   "Acceleration Structure buffer usage flag also requires the ShaderReadWrite flag!");
 
         // RT acceleration structures have a higher alignment requirement, for some reason GetResourceAllocationInfo3,
         // does not return the correct alignment.

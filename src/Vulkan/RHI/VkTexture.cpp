@@ -231,18 +231,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
     ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx->device.createImageViewUnique(viewCreate);
     const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
 
-    ::vk::ImageLayout viewLayout;
-    switch (binding.usage)
-    {
-    case TextureBindingUsage::ShaderRead:
-        viewLayout = ::vk::ImageLayout::eShaderReadOnlyOptimal;
-        break;
-    case TextureBindingUsage::ShaderReadWrite:
-        viewLayout = ::vk::ImageLayout::eGeneral;
-        break;
-    default:
-        VEX_LOG(Fatal, "Unsupported binding usage for texture {}.", binding.texture.desc.name);
-    }
+    ::vk::ImageLayout viewLayout = ::vk::ImageLayout::eGeneral;
 
     descriptorPool.GetBindlessSet().UpdateDescriptor(
         handle,

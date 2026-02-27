@@ -3,11 +3,12 @@
 #include <optional>
 
 #include <Vex/AccelerationStructure.h>
+#include <Vex/BuildAccelerationStructure.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/Utility/MaybeUninitialized.h>
+#include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIBindings.h>
-#include <RHI/RHIBuffer.h>
 #include <RHI/RHIFwd.h>
 
 namespace vex

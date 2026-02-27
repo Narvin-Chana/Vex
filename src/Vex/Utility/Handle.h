@@ -45,6 +45,10 @@ struct Handle
     {
         return value >> IndexBitSize;
     }
+    constexpr operator ValueType() const
+    {
+        return value;
+    }
     constexpr bool operator==(Handle other) const
     {
         return value == other.value;

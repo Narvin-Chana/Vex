@@ -1,7 +1,6 @@
 #pragma once
 
 #include <array>
-#include <utility>
 #include <vector>
 
 #include <Vex/Containers/Span.h>
@@ -9,11 +8,10 @@
 #include <Vex/ResourceCopy.h>
 #include <Vex/Synchronization.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIBarrier.h>
-#include <RHI/RHIBuffer.h>
 #include <RHI/RHIFwd.h>
-#include <RHI/RHITexture.h>
 #include <RHI/RHITimestampQueryPool.h>
 
 namespace vex
@@ -60,12 +58,11 @@ public:
     virtual void ClearTexture(const RHITextureBinding& binding,
                               TextureUsage::Type usage,
                               const TextureClearValue& clearValue,
-                              std::span<TextureClearRect> clearRects) = 0;
+                              Span<const TextureClearRect> clearRects) = 0;
 
-    void BufferBarrier(RHIBuffer& buffer, RHIBarrierSync sync, RHIBarrierAccess access);
-    void TextureBarrier(RHITexture& texture, RHIBarrierSync sync, RHIBarrierAccess access, RHITextureLayout layout);
-    virtual void Barrier(Span<const RHIBufferBarrier> bufferBarriers,
-                         Span<const RHITextureBarrier> textureBarriers) = 0;
+    virtual void EmitBarriers(Span<const RHIBufferBarrier> bufferBarriers,
+                              Span<const RHITextureBarrier> textureBarriers,
+                              Span<const RHIGlobalBarrier> globalBarriers) = 0;
 
     // Need to be called before and after all draw commands with the same DrawBinding
     virtual void BeginRendering(const RHIDrawResources& resources) = 0;

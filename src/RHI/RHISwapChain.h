@@ -80,6 +80,7 @@ public:
     virtual void RecreateSwapChain(u32 width, u32 height) = 0;
     // Determines if the swapchain is valid or if it needs to be recreated.
     virtual bool NeedsRecreation() const = 0;
+    virtual bool CanRecreate() = 0;
 
     virtual TextureDesc GetBackBufferTextureDescription() const = 0;
 

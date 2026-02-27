@@ -82,8 +82,6 @@ int main()
         },
     };
     std::vector<vex::BindlessHandle> handles = graphics.GetBindlessHandles(bindings);
-    // Apply a barrier so that our textures are able to be sampled/written-to in the compute shader.
-    ctx.BarrierBindings(bindings);
 
     ctx.Dispatch(
         vex::ShaderKey{
@@ -92,6 +90,7 @@ int main()
             .type = vex::ShaderType::ComputeShader,
         },
         vex::ConstantBinding{ std::span{ handles } },
+        bindings,
         std::array{
             (srcImg.width + 7u) / 8u,
             (srcImg.height + 7u) / 8u,
