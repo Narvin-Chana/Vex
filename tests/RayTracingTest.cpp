@@ -25,6 +25,10 @@ struct RTTestFixture : public RTVexTest
     void SetUp() override
     {
         RTVexTest::SetUp();
+        if (IsSkipped())
+        {
+            return;
+        }
 
         triangleBLAS = graphics.CreateAccelerationStructure(
             ASDesc{ .name = "Triangle BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });

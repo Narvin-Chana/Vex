@@ -95,7 +95,7 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
     {
         BindlessHandle inputBuffer;
         BindlessHandle outputBuffer;
-        uint32_t numElements{};
+        u32 numElements{};
     };
 
     Uniform uniforms{ handles[0],
