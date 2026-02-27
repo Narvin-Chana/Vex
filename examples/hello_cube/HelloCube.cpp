@@ -22,7 +22,7 @@ HelloCubeApplication::HelloCubeApplication()
         .platformWindow = { .windowHandle = GetPlatformWindowHandle(), .width = DefaultWidth, .height = DefaultHeight },
         .useSwapChain = true,
         .enableGPUDebugLayer = !VEX_SHIPPING,
-        .enableGPUBasedValidation = VEX_DEBUG });
+        .enableGPUBasedValidation = !VEX_SHIPPING });
     SetupShaderErrorHandling();
 
     // Depth texture
