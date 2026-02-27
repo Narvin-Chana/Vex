@@ -117,8 +117,11 @@ void VkAllocator::OnPageAllocated(PageHandle handle, u32 memoryTypeIndex)
     auto& heapList = memoryPagesByType[memoryTypeIndex];
     u64 pageByteSize = pageInfos[memoryTypeIndex][handle].GetByteSize();
 
-    ::vk::DeviceMemory allocatedMemory = VEX_VK_CHECK <<=
-        ctx->device.allocateMemory({ .allocationSize = pageByteSize, .memoryTypeIndex = memoryTypeIndex });
+    ::vk::MemoryAllocateFlagsInfo allocInfo;
+    allocInfo.flags = ::vk::MemoryAllocateFlagBits::eDeviceAddress;
+
+    ::vk::DeviceMemory allocatedMemory = VEX_VK_CHECK <<= ctx->device.allocateMemory(
+        { .pNext = &allocInfo, .allocationSize = pageByteSize, .memoryTypeIndex = memoryTypeIndex });
 
     void* ptr = nullptr;
     if (AllocatorUtils::IsMemoryTypeIndexMappable(ctx->physDevice, memoryTypeIndex))

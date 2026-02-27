@@ -1,5 +1,13 @@
 import Vex;
 
+struct UniformStruct
+{
+    uint outputHandle;
+    uint accelerationStructureHandle;
+};
+
+[vk::push_constant] uniform UniformStruct Uniforms;
+
 struct HitAttributes
 {
     float2 dummy;
@@ -11,12 +19,10 @@ struct [raypayload] RayPayload
 };
 
 [shader("raygeneration")]
-void RayGenMain(
-    uniform uint outputHandle,
-    uniform uint accelerationStructureHandle)
+void RayGenMain()
 {
-    let Output = GetBindlessResource<RWStructuredBuffer<float>>(outputHandle);
-    let AccelerationStructure = GetBindlessResource<RaytracingAccelerationStructure>(accelerationStructureHandle);
+    let Output = GetBindlessResource<RWStructuredBuffer<float>>(Uniforms.outputHandle);
+    let AccelerationStructure = GetBindlessResource<RaytracingAccelerationStructure>(Uniforms.accelerationStructureHandle);
 
     RayDesc ray;
     ray.Direction = float3(0, 0, 1);
@@ -42,18 +48,13 @@ void RayGenMain(
 }
 
 [shader("miss")]
-void MissMain(
-    uniform uint outputHandle,
-    uniform uint accelerationStructureHandle,
-    inout RayPayload payload)
+void MissMain(inout RayPayload payload)
 {
     payload.res = -1;
 }
 
 [shader("intersection")]
-void IntersectMain(
-    uniform uint outputHandle,
-    uniform uint accelerationStructureHandle)
+void IntersectMain()
 {
     float tHit = 0.8f;
     HitAttributes attr = (HitAttributes) 0;
@@ -61,11 +62,7 @@ void IntersectMain(
 }
 
 [shader("closesthit")]
-void ClosestHitMain(
-    uniform uint outputHandle,
-    uniform uint accelerationStructureHandle,
-    inout RayPayload payload,
-    in HitAttributes attr)
+void ClosestHitMain(inout RayPayload payload, in HitAttributes attr)
 {
     payload.res = 1;
 }

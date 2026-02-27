@@ -8,9 +8,6 @@ struct UniformStruct
 
 VEX_UNIFORMS(UniformStruct, Uniforms);
 
-static RWStructuredBuffer<float> Output = GetBindlessResource(Uniforms.outputHandle);
-static RaytracingAccelerationStructure AccelerationStructure = GetBindlessResource(Uniforms.accelerationStructureHandle);
-
 struct HitAttributes
 {
     float2 dummy;
@@ -24,9 +21,9 @@ struct [raypayload] RayPayload
 [shader("raygeneration")]
 void RayGenMain()
 {
-    uint2 launchIndex = DispatchRaysIndex().xy;
-    uint2 launchDimensions = DispatchRaysDimensions().xy;
-    
+    RWStructuredBuffer<float> Output = GetBindlessResource(Uniforms.outputHandle);
+    RaytracingAccelerationStructure AccelerationStructure = GetBindlessResource(Uniforms.accelerationStructureHandle);
+
     RayDesc ray;
     ray.Direction = float3(0, 0, 1);
     ray.Origin = float3(0.5f, 0.5f, 0);

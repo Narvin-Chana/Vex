@@ -908,6 +908,21 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
         u32 transformIndex = 0;
         for (const BLASGeometryDesc& blasGeometry : desc.geometry)
         {
+            // TODO(https://trello.com/c/srGndUSP): Handle other vertex formats, this should be cross-referenced
+            // with Vulkan to make sure only formats supported by both APIs are accepted.
+            if (*blasGeometry.vertexBufferBinding.strideByteSize > sizeof(float) * 3)
+            {
+                VEX_LOG(
+                    Warning,
+                    "Vex currently does not support acceleration structure geometry whose vertices have a format "
+                    "different to 12 bytes (RGB32). Your vertex buffer binding has a different stride than this, this "
+                    "is ok as long as the user is aware that elements outside the first 12 bytes will be ignored.");
+            }
+
+            VEX_ASSERT(*blasGeometry.vertexBufferBinding.strideByteSize >= sizeof(float) * 3,
+                       "Vex currently does not support acceleration structure geometry whose vertices have a stride "
+                       "smaller than 12 bytes.");
+
             RHIBLASGeometryDesc rhiBLASGeometry{
                 .vertexBufferBinding =
                     RHIBufferBinding(blasGeometry.vertexBufferBinding,
@@ -917,6 +932,8 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
 
             if (blasGeometry.indexBufferBinding.has_value())
             {
+                VEX_CHECK(blasGeometry.indexBufferBinding->strideByteSize == sizeof(u32),
+                          "Vex only supports 32bit index types")
                 rhiBLASGeometry.indexBufferBinding =
                     RHIBufferBinding(*blasGeometry.indexBufferBinding,
                                      graphics->GetRHIBuffer(blasGeometry.indexBufferBinding->buffer.handle));
@@ -924,7 +941,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
 
             if (blasGeometry.transform.has_value())
             {
-                rhiBLASGeometry.transform = RHIBufferBinding{
+                rhiBLASGeometry.transformBufferBinding = RHIBufferBinding{
                     .binding = { .buffer = transformBuffer,
                                  .offsetByteSize = TransformMatrixSize * transformIndex,
                                  .rangeByteSize = TransformMatrixSize },
@@ -996,13 +1013,13 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
     const RHIAccelerationStructureBuildInfo& buildInfo =
         graphics->GetRHIAccelerationStructure(accelerationStructure.handle)
             .SetupBLASBuild(*graphics->allocator,
-                            RHIBLASBuildDesc{ .type = desc.type, .geometry = rhiBLASGeometryDescs });
+                            RHIBLASBuildDesc{ .type = desc.type, .geometries = rhiBLASGeometryDescs });
 
     BufferDesc scratchBufferDesc{
         .name =
             graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_blas_scratch",
         .byteSize = buildInfo.scratchByteSize,
-        .usage = BufferUsage::Scratch,
+        .usage = BufferUsage::AccelerationStructure | BufferUsage::Scratch,
     };
     Buffer scratchBuffer = CreateTemporaryBuffer(scratchBufferDesc);
 
@@ -1035,29 +1052,41 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
         .dstAccess = RHIBarrierAccess::AccelerationStructureRead,
     });
 
-    const RHITLASBuildDesc rhiTLASDesc{
-        .instanceDescs = desc.instances,
+    RHITLASBuildDesc rhiTLASDesc{
+        .instances = desc.instances,
         .perInstanceBLAS = perInstanceBLAS,
     };
 
-    const RHIAccelerationStructureBuildInfo& buildInfo =
-        graphics->GetRHIAccelerationStructure(accelerationStructure.handle)
-            .SetupTLASBuild(*graphics->allocator, rhiTLASDesc);
+    RHIAccelerationStructure& accelStruct = graphics->GetRHIAccelerationStructure(accelerationStructure.handle);
+    std::vector<std::byte> instanceData = accelStruct.GetInstanceBufferData(rhiTLASDesc);
+
+    BufferDesc instancesBufferDesc{
+        .name = accelStruct.GetDesc().name + "_build_tlas_instances",
+        .byteSize = instanceData.size(),
+        .usage = BufferUsage::AccelerationStructure | BufferUsage::ReadWriteBuffer,
+    };
+    Buffer instanceBuffer = CreateTemporaryBuffer(instancesBufferDesc);
+    RHIBuffer& rhiInstanceBuffer = graphics->GetRHIBuffer(instanceBuffer.handle);
+    EnqueueDataUpload(instanceBuffer, instanceData);
+
+    BufferBinding binding =
+        BufferBinding::CreateStructuredBuffer(instanceBuffer, accelStruct.GetInstanceBufferStride());
+    rhiTLASDesc.instancesBinding = RHIBufferBinding{ binding, rhiInstanceBuffer };
+
+    const RHIAccelerationStructureBuildInfo& buildInfo = accelStruct.SetupTLASBuild(*graphics->allocator, rhiTLASDesc);
     BufferDesc scratchBufferDesc{
-        .name =
-            graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_tlas_scratch",
+        .name = accelStruct.GetDesc().name + "_build_tlas_scratch",
         .byteSize = buildInfo.scratchByteSize,
-        .usage = BufferUsage::Scratch,
+        .usage = BufferUsage::AccelerationStructure | BufferUsage::Scratch,
     };
     Buffer scratchBuffer = CreateTemporaryBuffer(scratchBufferDesc);
-    Buffer uploadBuffer = CreateTemporaryStagingBuffer(
-        graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_tlas",
-        *buildInfo.uploadBufferByteSize);
+    Barrier(scratchBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::AccelerationStructureWrite);
+    Barrier(instanceBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderRead);
 
     FlushBarriers();
-    cmdList->BuildTLAS(graphics->GetRHIAccelerationStructure(accelerationStructure.handle),
+    cmdList->BuildTLAS(accelStruct,
                        graphics->GetRHIBuffer(scratchBuffer.handle),
-                       graphics->GetRHIBuffer(uploadBuffer.handle),
+                       graphics->GetRHIBuffer(instanceBuffer.handle),
                        rhiTLASDesc);
 }
 

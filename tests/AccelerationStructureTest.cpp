@@ -606,8 +606,8 @@ TEST_P(ASAABBTest, CreateAABBTraceShader)
                          .entryPoint = "ClosestHitMain",
                          .type = ShaderType::RayClosestHitShader,
                      },
-                     .rayIntersectionShader =
-                     ShaderKey{
+                     .rayIntersectionShader = ShaderKey
+                     {
                           .path = shaderPath,
                           .entryPoint = "IntersectMain",
                           .type = ShaderType::RayIntersectionShader,
@@ -622,7 +622,7 @@ TEST_P(ASAABBTest, CreateAABBTraceShader)
         ConstantBinding(data),
         {binding},
         {
-            1, 1, 1
+            100, 100, 1
         }
     );
 

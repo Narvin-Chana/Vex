@@ -16,7 +16,8 @@ namespace vex::vk
 static ::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDesc& desc)
 {
     using enum ::vk::BufferUsageFlagBits;
-    ::vk::BufferUsageFlags flags = eTransferSrc;
+    // TODO: Figure out implication of eAccelerationStructureBuildInputReadOnlyKHR needed when uploading to AS
+    ::vk::BufferUsageFlags flags = eTransferSrc | eShaderDeviceAddress | eAccelerationStructureBuildInputReadOnlyKHR;
     if (desc.usage & BufferUsage::ShaderReadUniform)
     {
         flags |= eUniformBuffer;
@@ -41,6 +42,10 @@ static ::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDesc& desc)
     {
         flags |= eAccelerationStructureStorageKHR;
     }
+    if (desc.usage & BufferUsage::ShaderTable)
+    {
+        flags |= eShaderBindingTableKHR;
+    }
     return flags;
 }
 
@@ -56,7 +61,7 @@ VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, VkAllocator& allocator, const B
         // Needs to get its data from somewhere. Will therefore always need a transfer dest usage
         bufferUsage |= ::vk::BufferUsageFlagBits::eTransferDst;
     }
-    
+
     const bool needsConcurrent = ctx->queueFamilyIndices.size() > 1;
     buffer = VEX_VK_CHECK <<= ctx->device.createBufferUnique(::vk::BufferCreateInfo{
         .size = desc.byteSize,
@@ -113,6 +118,12 @@ void VkBuffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
 ::vk::Buffer VkBuffer::GetNativeBuffer()
 {
     return *buffer;
+}
+
+::vk::DeviceAddress VkBuffer::GetDeviceAddress() const
+{
+    ::vk::BufferDeviceAddressInfo info{ .buffer = *buffer };
+    return VEX_VK_CHECK <<= ctx->device.getBufferAddress(info);
 }
 
 } // namespace vex::vk

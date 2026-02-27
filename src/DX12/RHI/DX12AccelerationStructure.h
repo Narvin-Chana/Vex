@@ -24,6 +24,9 @@ public:
     virtual const RHIAccelerationStructureBuildInfo& SetupTLASBuild(RHIAllocator& allocator,
                                                                     const RHITLASBuildDesc& desc) override;
 
+    virtual std::vector<std::byte> GetInstanceBufferData(const RHITLASBuildDesc& desc) override;
+    virtual u32 GetInstanceBufferStride() override;
+
 private:
     void InitRayTracingGeometryDesc(const RHIBLASBuildDesc& desc);
 

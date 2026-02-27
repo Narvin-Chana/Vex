@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include <Vex/ResourceCleanup.h>
+#include <Vex/PhysicalDevice.h>
 
 #include <Vulkan/RHI/VkAccelerationStructure.h>
 #include <Vulkan/RHI/VkBuffer.h>
@@ -11,6 +12,10 @@
 #include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkFormats.h>
+#include <Vex/Utility/ByteUtils.h>
+// These are necessary for ResourceCleanup
+#include <Vulkan/RHI/VkBuffer.h>
+#include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkGraphicsPipeline.h>
 
 namespace vex::vk
@@ -260,27 +265,185 @@ std::unique_ptr<RHIComputePipelineState> VkComputePipelineState::Cleanup()
     return cleanupPSO;
 }
 
-VkRayTracingPipelineState::VkRayTracingPipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache)
+VkRayTracingPipelineState::VkRayTracingPipelineState(const Key& key,
+                                                     NonNullPtr<VkGPUContext> ctx,
+                                                     ::vk::PipelineCache PSOCache)
     : RHIRayTracingPipelineStateBase(key)
+    , ctx{ ctx }
+    , PSOCache{ PSOCache }
 {
-    VEX_NOT_YET_IMPLEMENTED();
 }
 
 std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
     const RayTracingShaderCollection& shaderCollection, RHIResourceLayout& resourceLayout, RHIAllocator& allocator)
 {
-    VEX_NOT_YET_IMPLEMENTED();
-    return {};
+    auto createShaderModule = [&](const Shader& s)
+    {
+        Span<const byte> shaderCode = s.GetBlob();
+        ::vk::ShaderModuleCreateInfo shaderModulecreateInfo{
+            .codeSize = shaderCode.size(),
+            .pCode = reinterpret_cast<const u32*>(&shaderCode[0]),
+        };
+
+        return VEX_VK_CHECK <<= ctx->device.createShaderModuleUnique(shaderModulecreateInfo);
+    };
+
+    std::vector<::vk::UniqueShaderModule> modules;
+    std::vector<::vk::PipelineShaderStageCreateInfo> stages;
+    std::vector<::vk::RayTracingShaderGroupCreateInfoKHR> groups;
+
+    using VkShaderGroupCreateInfo = ::vk::RayTracingShaderGroupCreateInfoKHR;
+    auto registerShaderStage = [&](const std::vector<NonNullPtr<Shader>>& shaders,
+                                   ::vk::ShaderStageFlagBits type,
+                                   ::vk::RayTracingShaderGroupTypeKHR groupType,
+                                   uint32_t VkShaderGroupCreateInfo::* p)
+    {
+        for (u32 i = 0; i < shaders.size(); ++i)
+        {
+            modules.push_back(createShaderModule(*shaders[i]));
+
+            ::vk::RayTracingShaderGroupCreateInfoKHR group{
+                .type = groupType,
+            };
+            group.*p = stages.size();
+            groups.push_back(group);
+
+            stages.push_back({ .stage = type, .module = *modules.back(), .pName = shaders[i]->key.entryPoint.c_str() });
+        }
+    };
+
+    registerShaderStage(shaderCollection.rayGenerationShaders,
+                        ::vk::ShaderStageFlagBits::eRaygenKHR,
+                        ::vk::RayTracingShaderGroupTypeKHR::eGeneral,
+                        &::vk::RayTracingShaderGroupCreateInfoKHR::generalShader);
+    registerShaderStage(shaderCollection.rayCallableShaders,
+                        ::vk::ShaderStageFlagBits::eCallableKHR,
+                        ::vk::RayTracingShaderGroupTypeKHR::eGeneral,
+                        &::vk::RayTracingShaderGroupCreateInfoKHR::generalShader);
+    registerShaderStage(shaderCollection.rayMissShaders,
+                        ::vk::ShaderStageFlagBits::eMissKHR,
+                        ::vk::RayTracingShaderGroupTypeKHR::eGeneral,
+                        &::vk::RayTracingShaderGroupCreateInfoKHR::generalShader);
+
+    for (const auto& group : shaderCollection.hitGroupShaders)
+    {
+        auto groupType = ::vk::RayTracingShaderGroupTypeKHR::eTrianglesHitGroup;
+
+        u32 closesHitIndex = ::vk::ShaderUnusedKHR, anyHitIndex = ::vk::ShaderUnusedKHR,
+            intersectionIndex = ::vk::ShaderUnusedKHR;
+
+        closesHitIndex = modules.size();
+        modules.push_back(createShaderModule(*group.rayClosestHitShader));
+        stages.push_back({ .stage = ::vk::ShaderStageFlagBits::eClosestHitKHR,
+                           .module = *modules.back(),
+                           .pName = group.rayClosestHitShader->key.entryPoint.c_str() });
+
+        if (group.rayAnyHitShader)
+        {
+            anyHitIndex = modules.size();
+            modules.push_back(createShaderModule(**group.rayAnyHitShader));
+            stages.push_back({ .stage = ::vk::ShaderStageFlagBits::eAnyHitKHR,
+                               .module = *modules.back(),
+                               .pName = (*group.rayAnyHitShader)->key.entryPoint.c_str() });
+        }
+
+        if (group.rayIntersectionShader)
+        {
+            // the presence of an intersection shader requires procedural hit group for custom intersection logic
+            groupType = ::vk::RayTracingShaderGroupTypeKHR::eProceduralHitGroup;
+            intersectionIndex = modules.size();
+            modules.push_back(createShaderModule(**group.rayIntersectionShader));
+            stages.push_back({ .stage = ::vk::ShaderStageFlagBits::eIntersectionKHR,
+                               .module = *modules.back(),
+                               .pName = (*group.rayIntersectionShader)->key.entryPoint.c_str() });
+        }
+
+        groups.push_back(::vk::RayTracingShaderGroupCreateInfoKHR{ .type = groupType,
+                                                                   .closestHitShader = closesHitIndex,
+                                                                   .anyHitShader = anyHitIndex,
+                                                                   .intersectionShader = intersectionIndex });
+    }
+
+    ::vk::RayTracingPipelineCreateInfoKHR rtPSOCI{
+        .stageCount = static_cast<u32>(stages.size()),
+        .pStages = stages.data(),
+        .groupCount = static_cast<u32>(groups.size()),
+        .pGroups = groups.data(),
+        .maxPipelineRayRecursionDepth = key.maxRecursionDepth,
+        .layout = *resourceLayout.pipelineLayout,
+    };
+    rtPipeline = VEX_VK_CHECK <<= ctx->device.createRayTracingPipelineKHRUnique({}, PSOCache, rtPSOCI);
+
+    auto ASProperties =
+        GPhysicalDevice->physicalDevice
+            .getProperties2<::vk::PhysicalDeviceProperties2, ::vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>()
+            .get<::vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>();
+
+    u32 handleSize = ASProperties.shaderGroupHandleSize;
+
+    std::vector<std::byte> groupHandles;
+    u32 handlesSize = handleSize * groups.size();
+    groupHandles.resize(handlesSize);
+    // Buffer containing all handles for groups in pipeline
+    VEX_VK_CHECK << ctx->device.getRayTracingShaderGroupHandlesKHR(*rtPipeline,
+                                                                   0,
+                                                                   groups.size(),
+                                                                   handlesSize,
+                                                                   groupHandles.data());
+
+    // 0: raygen, 1: raymiss, 2: group (closest hit, any hit and intersect), 3: callable
+    std::array<std::vector<void*>, 4> handlesPerShaderType;
+    for (int i = 0; i < stages.size(); ++i)
+    {
+        void* handlePtr = groupHandles.data() + i * handleSize;
+        switch (stages[i].stage)
+        {
+        case ::vk::ShaderStageFlagBits::eRaygenKHR:
+            handlesPerShaderType[0].push_back(handlePtr);
+            break;
+        case ::vk::ShaderStageFlagBits::eMissKHR:
+            handlesPerShaderType[1].push_back(handlePtr);
+            break;
+        case ::vk::ShaderStageFlagBits::eClosestHitKHR:
+        case ::vk::ShaderStageFlagBits::eAnyHitKHR:
+        case ::vk::ShaderStageFlagBits::eIntersectionKHR:
+            handlesPerShaderType[2].push_back(handlePtr);
+            break;
+        case ::vk::ShaderStageFlagBits::eCallableKHR:
+            handlesPerShaderType[3].push_back(handlePtr);
+            break;
+        default:
+            VEX_ASSERT(false, "This should never be reached");
+        }
+    }
+
+    rayGenTable = VkShaderTable(ctx, allocator, "Ray Gen shader Table", handlesPerShaderType[0]);
+
+    if (!handlesPerShaderType[1].empty())
+    {
+        rayMissTable = VkShaderTable(ctx, allocator, "Ray Miss shader Table", handlesPerShaderType[1]);
+    }
+
+    if (!handlesPerShaderType[2].empty())
+    {
+        groupHitTable = VkShaderTable(ctx, allocator, "Group Hit shader Table", handlesPerShaderType[2]);
+    }
+
+    if (!handlesPerShaderType[3].empty())
+    {
+        rayCallableTable = VkShaderTable(ctx, allocator, "Ray Callable shader Table", handlesPerShaderType[3]);
+    }
 }
 
 std::unique_ptr<RHIRayTracingPipelineState> VkRayTracingPipelineState::Cleanup()
 {
-    // Don't cleanup if RTPSO is null.
-    if (!!1)
+    if (!rtPipeline)
     {
         return nullptr;
     }
-    VEX_NOT_YET_IMPLEMENTED();
+    auto cleanupPSO = MakeUnique<VkRayTracingPipelineState>(key, ctx, PSOCache);
+    std::swap(cleanupPSO->rtPipeline, rtPipeline);
+    resourceCleanup.CleanupResource(std::move(cleanupPSO));
 }
 
 } // namespace vex::vk
