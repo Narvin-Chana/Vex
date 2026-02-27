@@ -66,7 +66,7 @@ bool VkPhysicalDevice::IsFeatureSupported(Feature feature) const
         return meshShaderFeatures.meshShader && meshShaderFeatures.taskShader;
     case Feature::RayTracing:
         // Vulkan RHI currently does not support ray tracing.
-        return false && rayTracingFeatures.rayTracingPipeline;
+        return rayTracingFeatures.rayTracingPipeline;
     case Feature::MipGeneration:
         // Vk can use vkCmdBlitImage to generate mips.
         return true;

@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIAllocator.h>
 #include <RHI/RHIBuffer.h>
@@ -29,6 +29,7 @@ public:
                                 BindlessHandle handle,
                                 const BufferViewDesc& desc) override;
     ::vk::Buffer GetNativeBuffer();
+    ::vk::DeviceAddress GetDeviceAddress();
 
 private:
     NonNullPtr<VkGPUContext> ctx;

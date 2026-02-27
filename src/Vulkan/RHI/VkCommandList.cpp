@@ -11,6 +11,7 @@
 #include <RHI/RHIBindings.h>
 #include <RHI/RHIPhysicalDevice.h>
 
+#include <Vulkan/RHI/VkAccelerationStructure.h>
 #include <Vulkan/RHI/VkBarrier.h>
 #include <Vulkan/RHI/VkBuffer.h>
 #include <Vulkan/RHI/VkDescriptorPool.h>
@@ -797,7 +798,18 @@ void VkCommandList::ResolveTimestampQueries(u32 firstQuery, u32 queryCount)
 
 void VkCommandList::BuildBLAS(RHIAccelerationStructure& as, RHIBuffer& scratchBuffer)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    ::vk::AccelerationStructureBuildGeometryInfoKHR asBuildInfo{
+        .type = ::vk::AccelerationStructureTypeKHR::eBottomLevel,
+        .flags = ASBuildFlagsToVkASBuildFlags(as.GetDesc().buildFlags),
+        .mode = ::vk::BuildAccelerationStructureModeKHR::eBuild,
+        .geometryCount = static_cast<u32>(as.geometries.size()),
+        .pGeometries = as.geometries.data(),
+    };
+
+    asBuildInfo.dstAccelerationStructure = *as.vkAccelerationStructure;
+    asBuildInfo.scratchData.deviceAddress = scratchBuffer.GetDeviceAddress();
+
+    commandBuffer->buildAccelerationStructuresKHR({ asBuildInfo }, { as.ranges.data() });
 }
 
 void VkCommandList::BuildTLAS(RHIAccelerationStructure& as,
@@ -805,7 +817,18 @@ void VkCommandList::BuildTLAS(RHIAccelerationStructure& as,
                               RHIBuffer& uploadBuffer,
                               const RHITLASBuildDesc& desc)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    ::vk::AccelerationStructureBuildGeometryInfoKHR asBuildInfo{
+        .type = ::vk::AccelerationStructureTypeKHR::eTopLevel,
+        .flags = ASBuildFlagsToVkASBuildFlags(as.GetDesc().buildFlags),
+        .mode = ::vk::BuildAccelerationStructureModeKHR::eBuild,
+        .geometryCount = static_cast<u32>(as.geometries.size()),
+        .pGeometries = as.geometries.data(),
+    };
+
+    asBuildInfo.dstAccelerationStructure = *as.vkAccelerationStructure;
+    asBuildInfo.scratchData.deviceAddress = scratchBuffer.GetDeviceAddress();
+
+    commandBuffer->buildAccelerationStructuresKHR({ asBuildInfo }, { as.ranges.data() });
 }
 
 void VkCommandList::Copy(RHITexture& src, RHITexture& dst, Span<const TextureCopyDesc> textureCopyDescriptions)
