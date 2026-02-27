@@ -1,7 +1,7 @@
 ﻿#include "VkDescriptorSet.h"
 
-#include <Vex/Utility/Formattable.h>
 #include <Vex/PhysicalDevice.h>
+#include <Vex/Utility/Formattable.h>
 #include <Vex/Utility/Validation.h>
 
 #include <RHI/RHIDescriptorPool.h>
@@ -183,7 +183,7 @@ VkBindlessDescriptorSet::VkBindlessDescriptorSet(NonNullPtr<VkGPUContext> ctx,
     using enum ::vk::DescriptorType;
     std::vector descriptorTypes{ eSampler,       eSampledImage, eStorageImage, eUniformTexelBuffer, eStorageTexelBuffer,
                                  eUniformBuffer, eStorageBuffer };
-    if (GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing))
+    if (GPhysicalDevice->IsFeatureSupported(Feature::RayTracing))
     {
         descriptorTypes.push_back(eAccelerationStructureKHR);
     }

@@ -2,17 +2,15 @@
 
 #include <unordered_map>
 
-#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/Shaders/ShaderCompiler.h>
+#include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIFwd.h>
 
 namespace vex
 {
-
-class FeatureChecker;
 
 class PipelineStateCache
 {

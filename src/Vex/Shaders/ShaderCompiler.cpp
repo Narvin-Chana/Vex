@@ -6,7 +6,6 @@
 
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
-#include <Vex/RHIImpl/RHI.h>
 #include <Vex/Shaders/CompilerBase.h>
 #include <Vex/Shaders/Shader.h>
 #include <Vex/Shaders/ShaderEnvironment.h>
@@ -56,8 +55,7 @@ ShaderEnvironment ShaderCompiler::CreateShaderEnvironment()
     env.defines.emplace_back("VEX_DEBUG", std::to_string(VEX_DEBUG));
     env.defines.emplace_back("VEX_DEVELOPMENT", std::to_string(VEX_DEVELOPMENT));
     env.defines.emplace_back("VEX_SHIPPING", std::to_string(VEX_SHIPPING));
-    env.defines.emplace_back("VEX_RAYTRACING",
-                             GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing) ? "1" : "0");
+    env.defines.emplace_back("VEX_RAYTRACING", std::to_string(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing)));
     env.defines.emplace_back("VEX_VULKAN", std::to_string(VEX_VULKAN));
     env.defines.emplace_back("VEX_DX12", std::to_string(VEX_DX12));
     return env;

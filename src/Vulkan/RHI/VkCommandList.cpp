@@ -5,11 +5,11 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/DrawHelpers.h>
-#include <Vex/PhysicalDevice.h>
 #include <Vex/Utility/Algorithms.h>
 #include <Vex/Utility/ByteUtils.h>
 
 #include <RHI/RHIBindings.h>
+#include <RHI/RHIPhysicalDevice.h>
 
 #include <Vulkan/RHI/VkBarrier.h>
 #include <Vulkan/RHI/VkBuffer.h>
@@ -20,7 +20,6 @@
 #include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/RHI/VkTimestampQueryPool.h>
 #include <Vulkan/VkErrorHandler.h>
-#include <Vulkan/VkFeatureChecker.h>
 #include <Vulkan/VkFormats.h>
 #include <Vulkan/VkGPUContext.h>
 #include <Vulkan/VkGraphicsPipeline.h>

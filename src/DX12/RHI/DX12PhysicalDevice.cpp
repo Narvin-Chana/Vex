@@ -1,13 +1,10 @@
-#include "DX12FeatureChecker.h"
-
-#include <magic_enum/magic_enum.hpp>
+#include "DX12PhysicalDevice.h"
 
 #include <Vex/Logger.h>
 #include <Vex/Utility/Formattable.h>
+#include <Vex/Utility/WString.h>
 
 #include <DX12/DX12Formats.h>
-#include <DX12/DX12Headers.h>
-#include <DX12/DXGIFactory.h>
 #include <DX12/HRChecker.h>
 
 namespace vex::dx12
@@ -18,15 +15,19 @@ static constexpr D3D12_RAYTRACING_TIER GMinimumRayTracingTier = D3D12_RAYTRACING
 static constexpr D3D12_MESH_SHADER_TIER GMinimumMeshShaderTier = D3D12_MESH_SHADER_TIER_1;
 static constexpr D3D_FEATURE_LEVEL GMinimumFeatureLevel = D3D_FEATURE_LEVEL_12_1;
 
-DX12FeatureChecker::DX12FeatureChecker(const ComPtr<ID3D12Device>& device)
-    : device{ device }
+DX12PhysicalDevice::DX12PhysicalDevice(ComPtr<IDXGIAdapter4> adapter, const ComPtr<ID3D12Device>& device)
+    : adapter(std::move(adapter))
+    , device{ device }
 {
+    DXGI_ADAPTER_DESC3 desc;
+    this->adapter->GetDesc3(&desc);
+
+    info.deviceName = WStringToString(desc.Description);
+    info.dedicatedVideoMemoryMB = static_cast<double>(desc.DedicatedVideoMemory) / (1024.0 * 1024.0);
     chk << featureSupport.Init(device.Get());
 }
 
-DX12FeatureChecker::~DX12FeatureChecker() = default;
-
-bool DX12FeatureChecker::IsFeatureSupported(Feature feature) const
+bool DX12PhysicalDevice::IsFeatureSupported(Feature feature) const
 {
     switch (feature)
     {
@@ -49,28 +50,28 @@ bool DX12FeatureChecker::IsFeatureSupported(Feature feature) const
     }
 }
 
-FeatureLevel DX12FeatureChecker::GetFeatureLevel() const
+FeatureLevel DX12PhysicalDevice::GetFeatureLevel() const
 {
     return ConvertDX12FeatureLevelToFeatureLevel(featureSupport.MaxSupportedFeatureLevel());
 }
 
-ResourceBindingTier DX12FeatureChecker::GetResourceBindingTier() const
+ResourceBindingTier DX12PhysicalDevice::GetResourceBindingTier() const
 {
     return ConvertDX12ResourceBindingTierToResourceBindingTier(featureSupport.ResourceBindingTier());
 }
 
-ShaderModel DX12FeatureChecker::GetShaderModel() const
+ShaderModel DX12PhysicalDevice::GetShaderModel() const
 {
     return ConvertDX12ShaderModelToShaderModel(featureSupport.HighestShaderModel());
 }
 
-u32 DX12FeatureChecker::GetMaxLocalConstantsByteSize() const
+u32 DX12PhysicalDevice::GetMaxLocalConstantsByteSize() const
 {
     // 64 DWORDS is the hard-coded DX12 limit for root signatures.
     return 64 * sizeof(DWORD);
 }
 
-bool DX12FeatureChecker::FormatSupportsLinearFiltering(TextureFormat format, bool isSRGB) const
+bool DX12PhysicalDevice::FormatSupportsLinearFiltering(TextureFormat format, bool isSRGB) const
 {
     D3D12_FEATURE_DATA_FORMAT_SUPPORT formatSupport{ .Format = TextureFormatToDXGI(format, isSRGB) };
     chk << device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &formatSupport, sizeof(formatSupport));
@@ -79,12 +80,12 @@ bool DX12FeatureChecker::FormatSupportsLinearFiltering(TextureFormat format, boo
     return supportsLinearFiltering;
 }
 
-bool DX12FeatureChecker::SupportsTightAlignment() const
+bool DX12PhysicalDevice::SupportsTightAlignment() const
 {
     return featureSupport.TightAlignmentSupportTier() > D3D12_TIGHT_ALIGNMENT_TIER_NOT_SUPPORTED;
 }
 
-bool DX12FeatureChecker::SupportsMinimalRequirements() const
+bool DX12PhysicalDevice::SupportsMinimalRequirements() const
 {
     // Vex requires a minimum feature level of 12_1.
     if (featureSupport.MaxSupportedFeatureLevel() < GMinimumFeatureLevel)
@@ -107,7 +108,7 @@ bool DX12FeatureChecker::SupportsMinimalRequirements() const
     return true;
 }
 
-FeatureLevel DX12FeatureChecker::ConvertDX12FeatureLevelToFeatureLevel(D3D_FEATURE_LEVEL featureLevel)
+FeatureLevel DX12PhysicalDevice::ConvertDX12FeatureLevelToFeatureLevel(D3D_FEATURE_LEVEL featureLevel)
 {
     switch (featureLevel)
     {
@@ -125,7 +126,7 @@ FeatureLevel DX12FeatureChecker::ConvertDX12FeatureLevelToFeatureLevel(D3D_FEATU
     std::unreachable();
 }
 
-D3D_FEATURE_LEVEL DX12FeatureChecker::ConvertFeatureLevelToDX12FeatureLevel(FeatureLevel featureLevel)
+D3D_FEATURE_LEVEL DX12PhysicalDevice::ConvertFeatureLevelToDX12FeatureLevel(FeatureLevel featureLevel)
 {
     switch (featureLevel)
     {
@@ -141,7 +142,7 @@ D3D_FEATURE_LEVEL DX12FeatureChecker::ConvertFeatureLevelToDX12FeatureLevel(Feat
     std::unreachable();
 }
 
-ResourceBindingTier DX12FeatureChecker::ConvertDX12ResourceBindingTierToResourceBindingTier(
+ResourceBindingTier DX12PhysicalDevice::ConvertDX12ResourceBindingTierToResourceBindingTier(
     D3D12_RESOURCE_BINDING_TIER resourceBindingTier)
 {
     switch (resourceBindingTier)
@@ -154,7 +155,7 @@ ResourceBindingTier DX12FeatureChecker::ConvertDX12ResourceBindingTierToResource
     std::unreachable();
 }
 
-ShaderModel DX12FeatureChecker::ConvertDX12ShaderModelToShaderModel(D3D_SHADER_MODEL shaderModel)
+ShaderModel DX12PhysicalDevice::ConvertDX12ShaderModelToShaderModel(D3D_SHADER_MODEL shaderModel)
 {
     using enum ShaderModel;
     switch (shaderModel)

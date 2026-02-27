@@ -1,14 +1,11 @@
 #include "VkResourceLayout.h"
 
-#include <Vex/Platform/Debug.h>
 #include <Vex/PhysicalDevice.h>
+#include <Vex/Platform/Debug.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
-
-#include <RHI/RHIDescriptorPool.h>
 
 #include <Vulkan/RHI/VkDescriptorPool.h>
 #include <Vulkan/VkErrorHandler.h>
-#include <Vulkan/VkFeatureChecker.h>
 #include <Vulkan/VkGPUContext.h>
 #include <Vulkan/VkSamplers.h>
 
@@ -39,7 +36,7 @@ const VkDescriptorSet& VkResourceLayout::GetSamplerDescriptor()
     ::vk::PushConstantRange range{ .stageFlags =
                                        ::vk::ShaderStageFlagBits::eAllGraphics | ::vk::ShaderStageFlagBits::eCompute,
                                    .offset = 0,
-                                   .size = GPhysicalDevice->featureChecker->GetMaxLocalConstantsByteSize() };
+                                   .size = GPhysicalDevice->GetMaxLocalConstantsByteSize() };
 
     std::array layouts = { *samplerSet->descriptorLayout, *descriptorPool->GetBindlessSet().descriptorLayout };
     ::vk::PipelineLayoutCreateInfo createInfo{ .setLayoutCount = static_cast<u32>(layouts.size()),

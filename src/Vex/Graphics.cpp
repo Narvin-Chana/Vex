@@ -6,19 +6,19 @@
 
 #include <Vex.h>
 #include <Vex/CommandContext.h>
-#include <Vex/FeatureChecker.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHICommandPool.h>
-#include <Vex/RHIImpl/RHIDescriptorPool.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Visitor.h>
+
+#include <RHI/RHIPhysicalDevice.h>
 
 namespace vex
 {
@@ -47,30 +47,52 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
     }
     VEX_LOG(Info, "Running Vex in {}", vexTargetName);
 
-    auto physicalDevices = rhi.EnumeratePhysicalDevices();
-    if (physicalDevices.empty())
-    {
-        VEX_LOG(Fatal,
-                "The underlying graphics API was unable to find atleast one physical device. Most likely due to not "
-                "having Vex required features (see Vex documentation for required features)");
-    }
-
-    // Obtain the best physical device.
-    std::sort(physicalDevices.begin(), physicalDevices.end(), [](const auto& l, const auto& r) { return *l > *r; });
-
     if (GPhysicalDevice)
     {
         VEX_LOG(Fatal, "Cannot launch multiple instances of Vex...");
     }
 
-    GPhysicalDevice = std::move(physicalDevices[0]);
+    std::vector<UniqueHandle<RHIPhysicalDevice>> physicalDevices = RHI::EnumeratePhysicalDevices();
+    if (physicalDevices.empty())
+    {
+        VEX_LOG(Fatal,
+                "The underlying graphics API was unable to find atleast one physical device. Most likely due to "
+                "not "
+                "having Vex required features (see Vex documentation for required features)");
+    }
+
+    if (desc.specifiedDevice)
+    {
+        auto it = std::find_if(physicalDevices.begin(),
+                               physicalDevices.end(),
+                               [&](const UniqueHandle<RHIPhysicalDevice>& device)
+                               { return device->info == *desc.specifiedDevice; });
+        if (it != physicalDevices.end())
+        {
+            GPhysicalDevice = std::move(*it);
+        }
+        else
+        {
+            VEX_LOG(Fatal,
+                    "Provided device to graphics was not found internally. The device specified should be valid when "
+                    "creating the Graphics.")
+        }
+    }
+
+    if (!GPhysicalDevice)
+    {
+        // Obtain the best physical device.
+        std::sort(physicalDevices.begin(), physicalDevices.end(), [](const auto& l, const auto& r) { return *l > *r; });
+
+        GPhysicalDevice = std::move(physicalDevices[0]);
+    }
 
 #if !VEX_SHIPPING
     GPhysicalDevice->DumpPhysicalDeviceInfo();
 #endif
 
     // Initializes RHI which includes creating logical device and swapchain.
-    rhi.Init(GPhysicalDevice);
+    rhi.Init();
 
     VEX_LOG(Info,
             "Created graphics backend with width {} and height {}.",
@@ -247,7 +269,7 @@ Buffer Graphics::CreateBuffer(BufferDesc desc, ResourceLifetime lifetime)
 
 AccelerationStructure Graphics::CreateAccelerationStructure(const ASDesc& desc)
 {
-    VEX_CHECK(GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing),
+    VEX_CHECK(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing),
               "Your GPU does not support ray tracing, unable to create an acceleration structure!");
     return {
         .handle = accelerationStructureRegistry.AllocateElement(std::move(rhi.CreateAS(desc))),
@@ -292,7 +314,7 @@ void Graphics::DestroyAccelerationStructure(const AccelerationStructure& acceler
     {
         return;
     }
-    VEX_CHECK(GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing),
+    VEX_CHECK(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing),
               "Your GPU does not support ray tracing, unable to create an acceleration structure!");
     resourceCleanup.CleanupResource(accelerationStructureRegistry.ExtractElement(accelerationStructure.handle));
 }
@@ -469,7 +491,7 @@ Texture Graphics::GetCurrentPresentTexture()
 
 bool Graphics::IsRayTracingSupported() const
 {
-    return GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing);
+    return GPhysicalDevice->IsFeatureSupported(Feature::RayTracing);
 }
 
 bool Graphics::IsTokenComplete(const SyncToken& token) const
@@ -535,6 +557,18 @@ std::expected<Query, QueryStatus> Graphics::GetTimestampValue(QueryHandle handle
 {
     VEX_CHECK(handle != vex::GInvalidQueryHandle, "Query handle must be valid when getting timestamp value");
     return queryPool->GetQueryData(handle);
+}
+
+std::vector<PhysicalDeviceInfo> Graphics::GetSupportedDevices()
+{
+    std::vector<UniqueHandle<RHIPhysicalDevice>> devices = RHI::EnumeratePhysicalDevices();
+
+    std::vector<PhysicalDeviceInfo> infos(devices.size());
+    std::transform(devices.begin(),
+                   devices.end(),
+                   infos.begin(),
+                   [](const UniqueHandle<RHIPhysicalDevice>& device) { return device->info; });
+    return infos;
 }
 
 void Graphics::RecompileChangedShaders()

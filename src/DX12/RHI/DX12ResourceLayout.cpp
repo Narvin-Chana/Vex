@@ -32,7 +32,7 @@ ComPtr<ID3D12RootSignature>& DX12ResourceLayout::GetRootSignature()
 
 void DX12ResourceLayout::CompileRootSignature()
 {
-    u32 rootSignatureDWORDCount = GPhysicalDevice->featureChecker->GetMaxLocalConstantsByteSize() / sizeof(DWORD);
+    u32 rootSignatureDWORDCount = GPhysicalDevice->GetMaxLocalConstantsByteSize() / sizeof(DWORD);
 
     std::vector<CD3DX12_ROOT_PARAMETER> rootParameters;
     CD3DX12_ROOT_PARAMETER rootConstants{};

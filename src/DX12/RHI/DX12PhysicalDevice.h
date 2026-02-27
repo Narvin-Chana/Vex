@@ -1,18 +1,27 @@
 #pragma once
 
-#include <string>
+#include <Vex/Formats.h>
+#include <Vex/Types.h>
 
-#include <Vex/FeatureChecker.h>
+#include <RHI/RHIPhysicalDevice.h>
 
 #include <DX12/DX12Headers.h>
 
 namespace vex::dx12
 {
-class DX12FeatureChecker : public vex::FeatureChecker
+
+class DX12PhysicalDevice final : public RHIPhysicalDeviceBase
 {
 public:
-    DX12FeatureChecker(const ComPtr<ID3D12Device>& device);
-    virtual ~DX12FeatureChecker();
+    DX12PhysicalDevice(ComPtr<IDXGIAdapter4> adapter, const ComPtr<ID3D12Device>& device);
+    ~DX12PhysicalDevice() = default;
+
+    DX12PhysicalDevice(const DX12PhysicalDevice&) = delete;
+    DX12PhysicalDevice& operator=(const DX12PhysicalDevice&) = delete;
+
+    DX12PhysicalDevice(DX12PhysicalDevice&&) = default;
+    DX12PhysicalDevice& operator=(DX12PhysicalDevice&&) = default;
+
     virtual bool IsFeatureSupported(Feature feature) const override;
     virtual FeatureLevel GetFeatureLevel() const override;
     virtual ResourceBindingTier GetResourceBindingTier() const override;
@@ -29,10 +38,11 @@ public:
         D3D12_RESOURCE_BINDING_TIER resourceBindingTier);
     static ShaderModel ConvertDX12ShaderModelToShaderModel(D3D_SHADER_MODEL shaderModel);
 
-private:
+    ComPtr<IDXGIAdapter4> adapter;
     ComPtr<ID3D12Device> device;
 
     // Cached feature support data (to avoid requerying the device).
     CD3DX12FeatureSupport featureSupport;
 };
+
 } // namespace vex::dx12
