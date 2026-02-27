@@ -874,40 +874,12 @@ void DX12CommandList::BuildTLAS(RHIAccelerationStructure& as,
                                 const RHITLASBuildDesc& desc)
 {
     VEX_ASSERT(as.GetDesc().type == ASType::TopLevel, "Invalid Acceleration Structure type...");
-    // Upload required info into the upload buffer.
-    {
-        MappedMemory map{ uploadBuffer };
-        D3D12_RAYTRACING_INSTANCE_DESC* instanceDescs =
-            reinterpret_cast<D3D12_RAYTRACING_INSTANCE_DESC*>(map.GetMappedRange().data());
-        for (u32 instance = 0; instance < desc.instanceDescs.size(); ++instance)
-        {
-            const TLASInstanceDesc& tlasDesc = desc.instanceDescs[instance];
-            *instanceDescs = D3D12_RAYTRACING_INSTANCE_DESC{
-                .InstanceID = tlasDesc.instanceID,
-                .InstanceMask = tlasDesc.instanceMask,
-                .InstanceContributionToHitGroupIndex = tlasDesc.instanceContributionToHitGroupIndex,
-                .Flags = ASInstanceFlagsToDX12InstanceFlags(tlasDesc.instanceFlags),
-                .AccelerationStructure = desc.perInstanceBLAS[instance]->GetRHIBuffer().GetGPUVirtualAddress(),
-            };
-
-            std::memcpy(reinterpret_cast<float*>(instanceDescs->Transform),
-                        tlasDesc.transform.data(),
-                        tlasDesc.transform.size() * sizeof(float));
-
-            ++instanceDescs;
-        }
-    }
-
-    // Make sure the upload buffer is done uploading.
-    Barrier(
-        { RHIBufferBarrier{ uploadBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderRead } },
-        {});
 
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {};
     buildDesc.Inputs = D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS{
         .Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
         .Flags = ASBuildFlagsToDX12ASBuildFlags(as.GetDesc().buildFlags),
-        .NumDescs = static_cast<u32>(desc.instanceDescs.size()),
+        .NumDescs = static_cast<u32>(desc.instances.size()),
         .DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
         .InstanceDescs = uploadBuffer.GetGPUVirtualAddress(),
     };

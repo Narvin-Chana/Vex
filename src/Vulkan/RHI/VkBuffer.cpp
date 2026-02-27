@@ -16,7 +16,8 @@ namespace vex::vk
 static ::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDesc& desc)
 {
     using enum ::vk::BufferUsageFlagBits;
-    ::vk::BufferUsageFlags flags = eTransferSrc;
+    // TODO: Figure out implication of eAccelerationStructureBuildInputReadOnlyKHR needed when uploading to AS
+    ::vk::BufferUsageFlags flags = eTransferSrc | eShaderDeviceAddress | eAccelerationStructureBuildInputReadOnlyKHR;
     if (desc.usage & BufferUsage::UniformBuffer)
     {
         flags |= eUniformBuffer;
@@ -111,6 +112,12 @@ void VkBuffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
 ::vk::Buffer VkBuffer::GetNativeBuffer()
 {
     return *buffer;
+}
+
+::vk::DeviceAddress VkBuffer::GetDeviceAddress()
+{
+    ::vk::BufferDeviceAddressInfo info{ .buffer = *buffer };
+    return VEX_VK_CHECK <<= ctx->device.getBufferAddress(info);
 }
 
 } // namespace vex::vk

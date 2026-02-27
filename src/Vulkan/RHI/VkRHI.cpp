@@ -269,11 +269,16 @@ void VkRHI::Init()
     std::vector extensions = GetDefaultDeviceExtensions();
 
     std::optional<::vk::PhysicalDeviceAccelerationStructureFeaturesKHR> featuresAccelerationStructure;
+    std::optional<::vk::PhysicalDeviceRayTracingPipelineFeaturesKHR> featuresRayTracingPipeline;
     if (GPhysicalDevice->IsFeatureSupported(Feature::RayTracing))
     {
         extensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
         extensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+        extensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+        featuresRayTracingPipeline = { .rayTracingPipeline = true };
+
         featuresAccelerationStructure = {
+            .pNext = &*featuresRayTracingPipeline,
             .accelerationStructure = true,
             .descriptorBindingAccelerationStructureUpdateAfterBind = true,
         };
@@ -443,9 +448,7 @@ RHITimestampQueryPool VkRHI::CreateTimestampQueryPool(RHIAllocator& allocator)
 
 RHIAccelerationStructure VkRHI::CreateAS(const ASDesc& desc)
 {
-    // TODO(https://trello.com/c/rLevCOvT): Implement vulkan AS upload/creation.
-    VEX_NOT_YET_IMPLEMENTED();
-    return VkAccelerationStructure(desc);
+    return { GetGPUContext(), desc };
 }
 
 ::vk::Instance VkRHI::GetNativeInstance()
