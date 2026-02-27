@@ -27,7 +27,6 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(::vk::DebugUtilsMessageSeverityFlag
                                              const ::vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData,
                                              void* pUserData)
 {
-    // TODO(https://trello.com/c/OnAJiNGP): This callback is not being called for errors
     LogLevel logLevel = GetLogLevelFromMessageSeverity(messageSeverity);
     if (logLevel >= LogLevel::Warning)
     {

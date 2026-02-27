@@ -1,14 +1,17 @@
 ﻿#pragma once
 
+#include <string_view>
 #include <vector>
+
+namespace vk
+{
+struct ExtensionProperties;
+}
 
 namespace vex::vk
 {
 
-std::vector<const char*> GetRequiredInstanceExtensions(bool enableGPUDebugLayer);
-std::vector<const char*> GetDefaultDeviceExtensions();
-
-std::vector<const char*> GetDefaultValidationLayers(bool enableGPUBasedValidation);
-std::vector<const char*> FilterSupportedValidationLayers(const std::vector<const char*>& layers);
+bool SupportsExtension(const std::vector<::vk::ExtensionProperties>& extensionProperties,
+                       std::string_view extensionName);
 
 } // namespace vex::vk

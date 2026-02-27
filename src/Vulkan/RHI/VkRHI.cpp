@@ -18,8 +18,8 @@
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
-#include <Vex/Shaders/ShaderEnvironment.h>
 #include <Vex/Synchronization.h>
+#include <Vex/Types.h>
 #include <Vex/Utility/Visitor.h>
 
 #include <Vulkan/VkCommandQueue.h>
@@ -83,76 +83,116 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
     ::vk::ApplicationInfo appInfo{
         .pApplicationName = "Vex Vulkan App",
         .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
-        .pEngineName = "No Engine",
+        .pEngineName = "Vex Vulkan App",
         .engineVersion = VK_MAKE_VERSION(1, 0, 0),
-        .apiVersion = VK_MAKE_VERSION(1, 3, 0),
+        .apiVersion = VK_API_VERSION_1_3,
     };
 
-    ::vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo;
-    ::vk::ValidationFeaturesEXT validationFeatures;
-    std::vector<::vk::ValidationFeatureEnableEXT> enables;
-
+    std::vector<const char*> layers;
     if (enableGPUBasedValidation)
     {
-        // Enable all validation layer features.
-        enables = {
-            ::vk::ValidationFeatureEnableEXT::eGpuAssisted,
-            ::vk::ValidationFeatureEnableEXT::eGpuAssistedReserveBindingSlot,
-            ::vk::ValidationFeatureEnableEXT::eDebugPrintf,
-            ::vk::ValidationFeatureEnableEXT::eSynchronizationValidation,
-        };
-        validationFeatures = {
-            .enabledValidationFeatureCount = static_cast<u32>(enables.size()),
-            .pEnabledValidationFeatures = enables.data(),
-        };
+        layers.push_back("VK_LAYER_KHRONOS_validation");
+        layers.push_back("VK_LAYER_KHRONOS_synchronization2");
     }
+
+    // Enumerate available extensions
+    u32 extensionPropertiesCount;
+    VEX_VK_CHECK << ::vk::enumerateInstanceExtensionProperties(nullptr, &extensionPropertiesCount, nullptr);
+    std::vector<::vk::ExtensionProperties> extensionProperties(extensionPropertiesCount);
+    VEX_VK_CHECK << ::vk::enumerateInstanceExtensionProperties(nullptr,
+                                                               &extensionPropertiesCount,
+                                                               extensionProperties.data());
+
+#define VEX_VK_ADD_EXTENSION_CHECKED(extensionName)                                                                    \
+    VEX_CHECK(SupportsExtension(extensionProperties, extensionName),                                                   \
+              "Cannot create vk instance, unsupported extension: {}",                                                  \
+              extensionName);                                                                                          \
+    extensions.push_back(extensionName)
+
+    // Enable extensions depending on what we require
+    std::vector<const char*> extensions;
+
+    const bool hasValidWindowHandle = !std::holds_alternative<std::monostate>(windowHandle.handle);
+    // Some extensions are only needed if we have a valid window hande.
+    if (hasValidWindowHandle)
+    {
+        // Required for any windowed application
+        VEX_VK_ADD_EXTENSION_CHECKED(VK_KHR_SURFACE_EXTENSION_NAME);
+
+        // Required for HDR swapchain handling
+        VEX_VK_ADD_EXTENSION_CHECKED(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+
+        // Platform-specific surface extensions
+#if defined(_WIN32)
+        VEX_VK_ADD_EXTENSION_CHECKED(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+#elif defined(__linux__)
+#if defined(VK_USE_PLATFORM_XLIB_KHR)
+        VEX_VK_ADD_EXTENSION_CHECKED(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
+#endif
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+        VEX_VK_ADD_EXTENSION_CHECKED(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
+#endif
+#endif
+    }
+
+    if (enableGPUDebugLayer)
+    {
+        // Required for both resource debug names and debug message callbacks
+        VEX_VK_ADD_EXTENSION_CHECKED(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    }
+
+#undef VEX_VK_ADD_EXTENSION_CHECKED
+
+    ::vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo;
     if (enableGPUDebugLayer)
     {
         // Enable custom message callback.
         using Severity = ::vk::DebugUtilsMessageSeverityFlagBitsEXT;
         using MessageType = ::vk::DebugUtilsMessageTypeFlagBitsEXT;
-        debugCreateInfo.pNext = enableGPUBasedValidation ? &validationFeatures : nullptr;
-        debugCreateInfo.messageSeverity = Severity::eVerbose | Severity::eWarning | Severity::eError;
+        debugCreateInfo.messageSeverity = Severity::eVerbose | Severity::eInfo | Severity::eWarning | Severity::eError;
         debugCreateInfo.messageType = MessageType::eGeneral | MessageType::eValidation | MessageType::ePerformance;
         debugCreateInfo.pfnUserCallback = debugCallback;
     }
 
-    std::vector<const char*> requiredInstanceExtensions = GetRequiredInstanceExtensions(enableGPUDebugLayer);
-
-    std::vector<const char*> validationLayers = GetDefaultValidationLayers(enableGPUBasedValidation);
-    validationLayers = FilterSupportedValidationLayers(validationLayers);
+    ::vk::ValidationFeaturesEXT validationFeatures;
+    static constexpr std::array enables = {
+        ::vk::ValidationFeatureEnableEXT::eGpuAssisted,
+        ::vk::ValidationFeatureEnableEXT::eSynchronizationValidation,
+    };
+    if (enableGPUBasedValidation)
+    {
+        validationFeatures.setEnabledValidationFeatures(enables);
+    }
+    validationFeatures.pNext = &debugCreateInfo;
 
     ::vk::InstanceCreateInfo instanceCI{
-        .sType = ::vk::StructureType::eInstanceCreateInfo,
-        .pNext = enableGPUDebugLayer ? static_cast<void*>(&debugCreateInfo)
-                                     : (enableGPUBasedValidation ? static_cast<void*>(&validationFeatures) : nullptr),
-        .flags = {},
+        .pNext = &validationFeatures,
         .pApplicationInfo = &appInfo,
-        .enabledLayerCount = static_cast<u32>(validationLayers.size()),
-        .ppEnabledLayerNames = validationLayers.data(),
-        .enabledExtensionCount = static_cast<u32>(requiredInstanceExtensions.size()),
-        .ppEnabledExtensionNames = requiredInstanceExtensions.data(),
+        .enabledLayerCount = static_cast<u32>(layers.size()),
+        .ppEnabledLayerNames = layers.data(),
+        .enabledExtensionCount = static_cast<u32>(extensions.size()),
+        .ppEnabledExtensionNames = extensions.data(),
     };
 
-    VEX_LOG(Info, "Create VK instances with layers:");
-    for (auto validationLayer : validationLayers)
+    instance = VEX_VK_CHECK <<= ::vk::createInstanceUnique(instanceCI);
+
+    VEX_LOG(Info, "Created VK instance with layers:");
+    for (auto validationLayer : layers)
     {
         VEX_LOG(Info, "\t{}", validationLayer);
     }
 
-    VEX_LOG(Info, "Create VK instances with extensions:");
-    for (auto instanceExtension : requiredInstanceExtensions)
+    VEX_LOG(Info, "Created VK instance with extensions:");
+    for (auto instanceExtension : extensions)
     {
         VEX_LOG(Info, "\t{}", instanceExtension);
     }
-
-    instance = VEX_VK_CHECK <<= ::vk::createInstanceUnique(instanceCI);
     GDispatcherLifetime.SetInstance(*instance);
 
     // Only activate setting debug names if the debug layer is active. Otherwise Vulkan will error out.
     GEnableDebugName = enableGPUDebugLayer;
 
-    if (!std::holds_alternative<std::monostate>(windowHandle.handle))
+    if (hasValidWindowHandle)
     {
         InitWindow(windowHandle);
     }
@@ -256,7 +296,7 @@ void VkRHI::Init()
 
     float queuePriority = 1.0f;
     std::vector<::vk::DeviceQueueCreateInfo> queueCreateInfos;
-    for (uint32_t queueFamily : uniqueQueueFamilies)
+    for (u32 queueFamily : uniqueQueueFamilies)
     {
         ::vk::DeviceQueueCreateInfo queueCreateInfo{
             .queueFamilyIndex = queueFamily,
@@ -266,26 +306,54 @@ void VkRHI::Init()
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
-    std::vector extensions = GetDefaultDeviceExtensions();
+    // Enumerate available extensions
+    u32 extensionPropertiesCount;
+    VEX_VK_CHECK << physDevice.enumerateDeviceExtensionProperties(nullptr, &extensionPropertiesCount, nullptr);
+    std::vector<::vk::ExtensionProperties> extensionProperties(extensionPropertiesCount);
+    VEX_VK_CHECK << physDevice.enumerateDeviceExtensionProperties(nullptr,
+                                                                  &extensionPropertiesCount,
+                                                                  extensionProperties.data());
 
-    std::optional<::vk::PhysicalDeviceAccelerationStructureFeaturesKHR> featuresAccelerationStructure;
+    std::vector<const char*> extensions;
+
+#define VEX_VK_ADD_EXTENSION_CHECKED(extensionName)                                                                    \
+    VEX_CHECK(SupportsExtension(extensionProperties, extensionName),                                                   \
+              "Cannot create vk device, unsupported extension: {}",                                                    \
+              extensionName);                                                                                          \
+    extensions.push_back(extensionName)
+
+    if (surface)
+    {
+        VEX_VK_ADD_EXTENSION_CHECKED(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+    }
+
+    VEX_VK_ADD_EXTENSION_CHECKED(VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME);
+    VEX_VK_ADD_EXTENSION_CHECKED(VK_KHR_ROBUSTNESS_2_EXTENSION_NAME);
+    VEX_VK_ADD_EXTENSION_CHECKED(VK_GOOGLE_USER_TYPE_EXTENSION_NAME);
+    VEX_VK_ADD_EXTENSION_CHECKED(VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME);
+    VEX_VK_ADD_EXTENSION_CHECKED(VK_KHR_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME);
+    VEX_VK_ADD_EXTENSION_CHECKED(VK_GOOGLE_HLSL_FUNCTIONALITY1_EXTENSION_NAME);
+    VEX_VK_ADD_EXTENSION_CHECKED(VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME);
+
     if (GPhysicalDevice->IsFeatureSupported(Feature::RayTracing))
     {
-        extensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
-        extensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
-        featuresAccelerationStructure = {
-            .accelerationStructure = true,
-            .descriptorBindingAccelerationStructureUpdateAfterBind = true,
-        };
+        VEX_VK_ADD_EXTENSION_CHECKED(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+        VEX_VK_ADD_EXTENSION_CHECKED(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
     }
+
+#undef VEX_VK_ADD_EXTENSION_CHECKED
+
+    // TODO(https://trello.com/c/rLevCOvT): vulkan ray tracing add required features
+    ::vk::PhysicalDeviceAccelerationStructureFeaturesKHR featuresAccelerationStructure;
+
+    ::vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR featuresUnifiedImageLayouts;
+    featuresUnifiedImageLayouts.pNext = &featuresAccelerationStructure;
+    featuresUnifiedImageLayouts.unifiedImageLayouts = true;
 
     // Allows for mutable descriptors
     ::vk::PhysicalDeviceMutableDescriptorTypeFeaturesEXT featuresMutableDescriptors;
+    featuresMutableDescriptors.pNext = &featuresUnifiedImageLayouts;
     featuresMutableDescriptors.mutableDescriptorType = true;
-    if (featuresAccelerationStructure.has_value())
-    {
-        featuresMutableDescriptors.pNext = &featuresAccelerationStructure.value();
-    }
 
     // Allows for the use of SV_Barycentrics in shaders.
     ::vk::PhysicalDeviceFragmentShaderBarycentricFeaturesKHR featuresFragmentShaderBarycentric;
@@ -298,9 +366,12 @@ void VkRHI::Init()
     featuresComputeShaderDerivatives.computeDerivativeGroupQuads = true;
     featuresComputeShaderDerivatives.computeDerivativeGroupLinear = false;
 
-    // Allows for null descriptors
-    ::vk::PhysicalDeviceRobustness2FeaturesEXT featuresRobustness;
+    // Allows for null descriptors, robust access makes out of bounds accesses in shaders deterministic (return 0).
+    // This better matches dx12 behavior.
+    ::vk::PhysicalDeviceRobustness2FeaturesKHR featuresRobustness;
     featuresRobustness.pNext = &featuresComputeShaderDerivatives;
+    featuresRobustness.robustBufferAccess2 = true;
+    featuresRobustness.robustImageAccess2 = true;
     featuresRobustness.nullDescriptor = true;
 
     ::vk::PhysicalDeviceVulkan13Features features13;
@@ -328,15 +399,21 @@ void VkRHI::Init()
     features12.scalarBlockLayout = true;
     features12.separateDepthStencilLayouts = true;
 
+    ::vk::PhysicalDeviceVulkan11Features features11;
+    features11.pNext = &features12;
+    // Compatibility built-in shader variables for DX12: BaseInstance, BaseVertex and DrawIndex.
+    // Required for certain HLSL/Slang SV_ intrinsics to work.
+    features11.shaderDrawParameters = true;
+
     auto physDeviceFeatures = physDevice.getFeatures();
     // Geometry shader being enabled forces SV_PrimitiveID to also be enabled!
     // Without this, the semantic doesn't work in pixel shaders.
     physDeviceFeatures.geometryShader = true;
 
-    ::vk::DeviceCreateInfo deviceCreateInfo{ .pNext = &features12,
-                                             .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
+    ::vk::DeviceCreateInfo deviceCreateInfo{ .pNext = &features11,
+                                             .queueCreateInfoCount = static_cast<u32>(queueCreateInfos.size()),
                                              .pQueueCreateInfos = queueCreateInfos.data(),
-                                             .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+                                             .enabledExtensionCount = static_cast<u32>(extensions.size()),
                                              .ppEnabledExtensionNames = extensions.data(),
                                              .pEnabledFeatures = &physDeviceFeatures };
 

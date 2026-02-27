@@ -1,6 +1,7 @@
 #pragma once
 
-#include <Vex/Types.h>
+#include <filesystem>
+#include <vector>
 
 namespace vex
 {
@@ -11,8 +12,8 @@ struct ShaderCompilerSettings
     std::vector<std::filesystem::path> shaderIncludeDirectories;
 
     // Determines if shaders should be compiled with debug symbols and without optimization. Defaults to true in debug
-    // builds.
-    bool enableShaderDebugging = !VEX_DEVELOPMENT;
+    // and development builds.
+    bool enableShaderDebugging = !VEX_SHIPPING;
 
     // Determines whether HLSL 202x features should be enabled (only useful when using DXC).
     bool enableHLSL202xFeatures = true;

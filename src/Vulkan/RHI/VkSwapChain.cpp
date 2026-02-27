@@ -52,7 +52,7 @@ static ::vk::PresentModeKHR GetBestPresentMode(const VkSwapChainSupportDetails& 
 
 static ::vk::Extent2D GetBestSwapExtent(const VkSwapChainSupportDetails& details, u32 width, u32 height)
 {
-    if (details.capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
+    if (details.capabilities.currentExtent.width != std::numeric_limits<u32>::max())
         return details.capabilities.currentExtent;
 
     ::vk::Extent2D actualExtent = { width, height };

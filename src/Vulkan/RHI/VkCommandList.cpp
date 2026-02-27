@@ -545,7 +545,7 @@ void VkCommandList::Barrier(Span<const RHIBufferBarrier> bufferBarriers, Span<co
 
 void VkCommandList::BeginRendering(const RHIDrawResources& resources)
 {
-    ::vk::Rect2D maxArea{ { 0, 0 }, { std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max() } };
+    ::vk::Rect2D maxArea{ { 0, 0 }, { std::numeric_limits<u32>::max(), std::numeric_limits<u32>::max() } };
     for (auto& renderTargets : resources.renderTargets)
     {
         maxArea.extent.width = std::min(renderTargets.texture->GetDesc().width, maxArea.extent.width);
@@ -586,7 +586,7 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
         .renderArea = maxArea,
         .layerCount = 1,
         .viewMask = 0,
-        .colorAttachmentCount = static_cast<uint32_t>(colorAttachmentsInfo.size()),
+        .colorAttachmentCount = static_cast<u32>(colorAttachmentsInfo.size()),
         .pColorAttachments = colorAttachmentsInfo.data(),
         .pDepthAttachment = depthInfo ? &*depthInfo : nullptr,
         .pStencilAttachment =
