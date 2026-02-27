@@ -36,7 +36,7 @@ public:
     virtual void Compile(const Shader& vertexShader,
                          const Shader& pixelShader,
                          RHIResourceLayout& resourceLayout) override;
-    virtual void Cleanup(ResourceCleanup& resourceCleanup) override;
+    virtual std::unique_ptr<RHIGraphicsPipelineState> Cleanup() override;
 
     // Verifies that the key does not contain fields with non-default values for features which DX12 does not support.
     // Clears the unused fields which allows for changes to these fields to not impact the hash of the structure.
@@ -48,13 +48,13 @@ private:
     ComPtr<DX12Device> device;
 };
 
-class DX12ComputePipelineState final : public RHIComputePipelineStateInterface
+class DX12ComputePipelineState final : public RHIComputePipelineStateBase
 {
 public:
     DX12ComputePipelineState(const ComPtr<DX12Device>& device, const Key& key);
 
     virtual void Compile(const Shader& computeShader, RHIResourceLayout& resourceLayout) override;
-    virtual void Cleanup(ResourceCleanup& resourceCleanup) override;
+    virtual std::unique_ptr<RHIComputePipelineState> Cleanup() override;
 
     ComPtr<ID3D12PipelineState> computePSO;
 
@@ -62,16 +62,15 @@ private:
     ComPtr<DX12Device> device;
 };
 
-class DX12RayTracingPipelineState final : public RHIRayTracingPipelineStateInterface
+class DX12RayTracingPipelineState final : public RHIRayTracingPipelineStateBase
 {
 public:
     DX12RayTracingPipelineState(const ComPtr<DX12Device>& device, const Key& key);
 
-    virtual void Compile(const RayTracingShaderCollection& shaderCollection,
+    virtual std::vector<MaybeUninitialized<RHIBuffer>> Compile(const RayTracingShaderCollection& shaderCollection,
                          RHIResourceLayout& resourceLayout,
-                         ResourceCleanup& resourceCleanup,
                          RHIAllocator& allocator) override;
-    virtual void Cleanup(ResourceCleanup& resourceCleanup) override;
+    virtual std::unique_ptr<RHIRayTracingPipelineState> Cleanup() override;
 
     void PrepareDispatchRays(D3D12_DISPATCH_RAYS_DESC& dispatchRaysDesc, const TraceRaysDesc& rayTracingArgs) const;
 
@@ -79,7 +78,7 @@ public:
 
 private:
     void GenerateIdentifiers(const RayTracingShaderCollection& shaderCollection);
-    void CreateShaderTables(ResourceCleanup& resourceCleanup, RHIAllocator& allocator);
+    std::vector<MaybeUninitialized<RHIBuffer>> CreateShaderTables(RHIAllocator& allocator);
     void UpdateVersions(const RayTracingShaderCollection& shaderCollection, RHIResourceLayout& resourceLayout);
 
     ComPtr<DX12Device> device;

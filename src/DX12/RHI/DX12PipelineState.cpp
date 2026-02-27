@@ -1,12 +1,12 @@
 #include "DX12PipelineState.h"
 
-#include <Vex/Containers/ResourceCleanup.h>
+#include <Vex/ResourceCleanup.h>
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
 #include <Vex/RHIImpl/RHIAccelerationStructure.h>
-#include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
+#include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/Shaders/Shader.h>
 
 #include <DX12/DX12Formats.h>
@@ -193,16 +193,16 @@ void DX12GraphicsPipelineState::Compile(const Shader& vertexShader,
 #endif
 }
 
-void DX12GraphicsPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
+std::unique_ptr<RHIGraphicsPipelineState> DX12GraphicsPipelineState::Cleanup()
 {
     if (!graphicsPSO)
     {
-        return;
+        return nullptr;
     }
     // Simple swap and move
     auto cleanupPSO = std::make_unique<DX12GraphicsPipelineState>(device, key);
     std::swap(cleanupPSO->graphicsPSO, graphicsPSO);
-    resourceCleanup.CleanupResource(std::move(cleanupPSO));
+    return cleanupPSO;
 }
 
 void DX12GraphicsPipelineState::ClearUnsupportedKeyFields(Key& key)
@@ -222,7 +222,7 @@ void DX12GraphicsPipelineState::ClearUnsupportedKeyFields(Key& key)
 }
 
 DX12ComputePipelineState::DX12ComputePipelineState(const ComPtr<DX12Device>& device, const Key& key)
-    : RHIComputePipelineStateInterface(key)
+    : RHIComputePipelineStateBase(key)
     , device(device)
 {
 }
@@ -247,28 +247,28 @@ void DX12ComputePipelineState::Compile(const Shader& computeShader, RHIResourceL
 #endif
 }
 
-void DX12ComputePipelineState::Cleanup(ResourceCleanup& resourceCleanup)
+std::unique_ptr<RHIComputePipelineState> DX12ComputePipelineState::Cleanup()
 {
     if (!computePSO)
     {
-        return;
+        return nullptr;
     }
     // Simple swap and move
     auto cleanupPSO = std::make_unique<DX12ComputePipelineState>(device, key);
     std::swap(cleanupPSO->computePSO, computePSO);
-    resourceCleanup.CleanupResource(std::move(cleanupPSO));
+    return cleanupPSO;
 }
 
 DX12RayTracingPipelineState::DX12RayTracingPipelineState(const ComPtr<DX12Device>& device, const Key& key)
-    : RHIRayTracingPipelineStateInterface(key)
+    : RHIRayTracingPipelineStateBase(key)
     , device(device)
 {
 }
 
-void DX12RayTracingPipelineState::Compile(const RayTracingShaderCollection& shaderCollection,
-                                          RHIResourceLayout& resourceLayout,
-                                          ResourceCleanup& resourceCleanup,
-                                          RHIAllocator& allocator)
+std::vector<MaybeUninitialized<RHIBuffer>> DX12RayTracingPipelineState::Compile(
+    const RayTracingShaderCollection& shaderCollection,
+                                                            RHIResourceLayout& resourceLayout,
+                                                            RHIAllocator& allocator)
 {
     CD3DX12_STATE_OBJECT_DESC raytracingPipeline{ D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE };
 
@@ -387,18 +387,20 @@ void DX12RayTracingPipelineState::Compile(const RayTracingShaderCollection& shad
 
     GenerateIdentifiers(shaderCollection);
 
-    CreateShaderTables(resourceCleanup, allocator);
+    auto oldShaderTables = CreateShaderTables(allocator);
 
     UpdateVersions(shaderCollection, resourceLayout);
+
+    return oldShaderTables;
 }
 
-void DX12RayTracingPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
+std::unique_ptr<RHIRayTracingPipelineState> DX12RayTracingPipelineState::Cleanup()
 {
     if (!(stateObject || rayGenerationShaderTable || rayMissShaderTable || hitGroupShaderTable ||
           rayCallableShaderTable))
     {
         // We have nothing to cleanup!
-        return;
+        return nullptr;
     }
 
     // Simple swap and move
@@ -410,8 +412,8 @@ void DX12RayTracingPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
     std::swap(cleanupPSO->rayMissShaderTable, rayMissShaderTable);
     std::swap(cleanupPSO->hitGroupShaderTable, hitGroupShaderTable);
     std::swap(cleanupPSO->rayCallableShaderTable, rayCallableShaderTable);
-    // Send to resource cleanup.
-    resourceCleanup.CleanupResource(std::move(cleanupPSO));
+
+    return cleanupPSO;
 }
 
 void DX12RayTracingPipelineState::PrepareDispatchRays(D3D12_DISPATCH_RAYS_DESC& dispatchRaysDesc,
@@ -476,23 +478,24 @@ void DX12RayTracingPipelineState::GenerateIdentifiers(const RayTracingShaderColl
     }
 }
 
-void DX12RayTracingPipelineState::CreateShaderTables(ResourceCleanup& resourceCleanup, RHIAllocator& allocator)
+std::vector<MaybeUninitialized<RHIBuffer>> DX12RayTracingPipelineState::CreateShaderTables(RHIAllocator& allocator)
 {
+    std::vector<MaybeUninitialized<RHIBuffer>> oldBuffers;
     if (rayGenerationShaderTable.has_value())
     {
-        resourceCleanup.CleanupResource(std::move(rayGenerationShaderTable->buffer));
+        oldBuffers.push_back(std::move(rayGenerationShaderTable->buffer));
     }
     if (rayMissShaderTable.has_value())
     {
-        resourceCleanup.CleanupResource(std::move(rayMissShaderTable->buffer));
+        oldBuffers.push_back(std::move(rayMissShaderTable->buffer));
     }
     if (hitGroupShaderTable.has_value())
     {
-        resourceCleanup.CleanupResource(std::move(hitGroupShaderTable->buffer));
+        oldBuffers.push_back(std::move(hitGroupShaderTable->buffer));
     }
     if (rayCallableShaderTable.has_value())
     {
-        resourceCleanup.CleanupResource(std::move(rayCallableShaderTable->buffer));
+        oldBuffers.push_back(std::move(rayCallableShaderTable->buffer));
     }
 
     // Ray-gen is the only mandatory stage.
@@ -512,6 +515,8 @@ void DX12RayTracingPipelineState::CreateShaderTables(ResourceCleanup& resourceCl
     {
         rayCallableShaderTable = DX12ShaderTable(device, "RayCallableShadersTable", allocator, rayCallableIdentifiers);
     }
+
+    return oldBuffers;
 }
 
 void DX12RayTracingPipelineState::UpdateVersions(const RayTracingShaderCollection& shaderCollection,

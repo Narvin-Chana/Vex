@@ -247,8 +247,8 @@ std::vector<SyncToken> DX12RHI::Submit(Span<const NonNullPtr<RHICommandList>> co
     std::array<std::vector<NonNullPtr<RHICommandList>>, QueueTypes::Count> commandListsPerQueue;
     for (NonNullPtr<RHICommandList> cmdList : commandLists)
     {
-        rawCommandListsPerQueue[cmdList->GetType()].push_back(cmdList->GetNativeCommandList().Get());
-        commandListsPerQueue[cmdList->GetType()].push_back(cmdList);
+        rawCommandListsPerQueue[cmdList->GetQueue()].push_back(cmdList->GetNativeCommandList().Get());
+        commandListsPerQueue[cmdList->GetQueue()].push_back(cmdList);
     }
 
     std::vector<SyncToken> syncTokens;
@@ -274,7 +274,7 @@ std::vector<SyncToken> DX12RHI::Submit(Span<const NonNullPtr<RHICommandList>> co
 
         for (auto& cmdList : commandLists)
         {
-            if (cmdList->GetType() == i)
+            if (cmdList->GetQueue() == i)
             {
                 cmdList->UpdateTimestampQueryTokens(submitToken);
             }

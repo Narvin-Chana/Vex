@@ -23,6 +23,7 @@ int main()
             .type = vex::ShaderType::ComputeShader,
         },
         {},
+        {},
         std::array{
             (width + 7u) / 8u,
             (height + 7u) / 8u,

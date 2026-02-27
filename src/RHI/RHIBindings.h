@@ -1,11 +1,11 @@
 #pragma once
 
 #include <optional>
+#include <vector>
 
 #include <Vex/Bindings.h>
 #include <Vex/Buffer.h>
 #include <Vex/Utility/NonNullPtr.h>
-#include <Vex/Texture.h>
 
 #include <RHI/RHIFwd.h>
 

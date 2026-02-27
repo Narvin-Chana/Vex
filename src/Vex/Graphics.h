@@ -2,11 +2,13 @@
 
 #include <memory>
 #include <optional>
+#include <shared_mutex>
+#include <unordered_map>
 #include <vector>
 
 #include <Vex/AccelerationStructure.h>
 #include <Vex/Containers/FreeList.h>
-#include <Vex/Containers/ResourceCleanup.h>
+#include <Vex/ResourceCleanup.h>
 #include <Vex/Containers/Span.h>
 #include <Vex/PipelineStateCache.h>
 #include <Vex/Platform/PlatformWindow.h>
@@ -19,6 +21,7 @@
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
 #include <Vex/Synchronization.h>
+#include <Vex/TextureStateMap.h>
 #include <Vex/Utility/MaybeUninitialized.h>
 #include <Vex/Utility/NonNullPtr.h>
 
@@ -27,7 +30,6 @@
 namespace vex
 {
 class TextureReadbackContext;
-
 class CommandContext;
 struct RHIPhysicalDeviceBase;
 struct Texture;
@@ -35,6 +37,8 @@ struct TextureSampler;
 struct TextureBinding;
 struct BufferBinding;
 struct ResourceBinding;
+
+using CPUCallback = std::move_only_function<void()>;
 
 struct GraphicsCreateDesc
 {
@@ -44,7 +48,7 @@ struct GraphicsCreateDesc
     SwapChainDesc swapChainDesc;
 
     // Clear value to use for present textures.
-    TextureClearValue presentTextureClearValue = { .clearAspect = TextureAspect::Color, .color = { 0, 0, 0, 0 } };
+    TextureClearValue presentTextureClearValue{ .color = { 0, 0, 0, 0 } };
 
     // Enables the GPU debug layer.
     bool enableGPUDebugLayer = !VEX_SHIPPING;
@@ -121,11 +125,15 @@ public:
 
     // Allows you to submit the command context to the GPU, receiving a SyncToken which can be optionally used to track
     // work completion.
-    SyncToken Submit(CommandContext& ctx, Span<SyncToken> dependencies = {});
+    SyncToken Submit(CommandContext& ctx, Span<const SyncToken> dependencies = {});
 
     // Allows you to submit the command contexts to the GPU, receiving a SyncToken which can be optionally used to track
     // work completion.
-    std::vector<SyncToken> Submit(Span<const NonNullPtr<CommandContext>> ctxSpan, Span<SyncToken> dependencies = {});
+    std::vector<SyncToken> Submit(Span<CommandContext> commandContexts, Span<const SyncToken> dependencies = {});
+
+    void EnqueueCPUWork(CPUCallback&& callback, Span<const SyncToken> tokens);
+    void ExecuteCPUWork();
+    void FlushCPUWork();
 
     // Has the passed-in sync token been executed on the GPU yet?
     [[nodiscard]] bool IsTokenComplete(const SyncToken& token) const;
@@ -187,8 +195,11 @@ public:
     static std::vector<PhysicalDeviceInfo> GetSupportedDevices();
 
 private:
+    std::optional<SyncToken> FlushPendingInitializations();
     void PrepareCommandContextForSubmission(CommandContext& ctx);
     void CleanupResources();
+
+    void ScheduleCPUCallback(CPUCallback&& callback, Span<const SyncToken> tokens);
 
     PipelineStateCache& GetPipelineStateCache();
 
@@ -210,11 +221,9 @@ private:
 
     RHI rhi;
 
-    ResourceCleanup resourceCleanup;
-
-    // =================================================
-    //  RHI RESOURCES (should be destroyed before rhi and order matters)
-    // =================================================
+    // =========================================================================
+    //  RHI RESOURCES (should be destroyed before rhi and their order matters)
+    // =========================================================================
 
     MaybeUninitialized<RHICommandPool> commandPool;
 
@@ -234,10 +243,21 @@ private:
     FreeList<std::unique_ptr<RHIBuffer>, BufferHandle> bufferRegistry;
     FreeList<std::unique_ptr<RHIAccelerationStructure>, ASHandle> accelerationStructureRegistry;
 
+    std::vector<Texture> pendingInitializations;
+
     std::vector<Texture> presentTextures;
     std::vector<SyncToken> presentTokens;
 
     u32 builtInLinearSamplerSlot = ~0;
+
+    TextureStateMap backBufferState;
+
+    struct PendingCPUWork
+    {
+        CPUCallback callback;
+        std::vector<SyncToken> tokens;
+    };
+    std::vector<PendingCPUWork> pendingCPUWork;
 
     static constexpr u32 DefaultRegistrySize = 1024;
 

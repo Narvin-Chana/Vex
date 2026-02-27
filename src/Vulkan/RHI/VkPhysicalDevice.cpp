@@ -70,6 +70,9 @@ bool VkPhysicalDevice::IsFeatureSupported(Feature feature) const
     case Feature::MipGeneration:
         // Vk can use vkCmdBlitImage to generate mips.
         return true;
+    case Feature::NativeTextureClear:
+        // Vk can use a native texture clear operation which does not require RT/DS access.
+        return true;
     default:
         return false;
     }
@@ -248,6 +251,12 @@ bool VkPhysicalDevice::FormatSupportsLinearFiltering(TextureFormat format, bool 
 {
     ::vk::FormatProperties formatProperties = physicalDevice.getFormatProperties(TextureFormatToVulkan(format, isSRGB));
     return !!(formatProperties.optimalTilingFeatures & ::vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
+}
+
+bool VkPhysicalDevice::PresentResetsBackBufferToUndefined() const
+{
+    // Vk swapchain present will reset the backbuffer to the undefined state.
+    return true;
 }
 
 } // namespace vex::vk

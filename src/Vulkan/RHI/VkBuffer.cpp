@@ -56,17 +56,19 @@ VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, VkAllocator& allocator, const B
         // Needs to get its data from somewhere. Will therefore always need a transfer dest usage
         bufferUsage |= ::vk::BufferUsageFlagBits::eTransferDst;
     }
-
-    buffer = VEX_VK_CHECK <<=
-        ctx->device.createBufferUnique({ .size = desc.byteSize,
-                                         .usage = bufferUsage,
-                                         .sharingMode = ::vk::SharingMode::eExclusive,
-                                         .queueFamilyIndexCount = 1,
-                                         .pQueueFamilyIndices = &ctx->graphicsPresentQueue.family });
+    
+    const bool needsConcurrent = ctx->queueFamilyIndices.size() > 1;
+    buffer = VEX_VK_CHECK <<= ctx->device.createBufferUnique(::vk::BufferCreateInfo{
+        .size = desc.byteSize,
+        .usage = bufferUsage,
+        .sharingMode = needsConcurrent ? ::vk::SharingMode::eConcurrent : ::vk::SharingMode::eExclusive,
+        .queueFamilyIndexCount = needsConcurrent ? static_cast<u32>(ctx->queueFamilyIndices.size()) : 0,
+        .pQueueFamilyIndices = needsConcurrent ? ctx->queueFamilyIndices.data() : nullptr,
+    });
 
     const ::vk::MemoryRequirements reqs = ctx->device.getBufferMemoryRequirements(*buffer);
 
-#if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
+#if VEX_USE_CUSTOM_RESOURCE_ALLOCATOR
     auto [memory, newAllocation] = allocator.AllocateResource(desc.memoryLocality, reqs);
     allocation = newAllocation;
     VEX_VK_CHECK << ctx->device.bindBufferMemory(*buffer, memory, allocation.memoryRange.offset);
@@ -84,7 +86,7 @@ VkBuffer::VkBuffer(NonNullPtr<VkGPUContext> ctx, VkAllocator& allocator, const B
 
     if (IsMappable())
     {
-#if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
+#if VEX_USE_CUSTOM_RESOURCE_ALLOCATOR
         mappedData = allocator.GetMappedDataFromAllocation(allocation);
 #else
         void* ptr = VEX_VK_CHECK <<= ctx->device.mapMemory(*memory, 0, VK_WHOLE_SIZE);

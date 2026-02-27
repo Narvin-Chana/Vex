@@ -54,18 +54,12 @@ void HelloTriangleGraphicsApplication::Run()
                 .usage = vex::BufferBindingUsage::ConstantBuffer,
                 .strideByteSize = static_cast<vex::u32>(sizeof(float) * 4),
             };
-            // Add a barrier since we'll want to read our color buffer in the shader passes.
-            ctx.BarrierBinding(colorBufferBinding);
 
             ctx.SetScissor(0, 0, width, height);
 
             // Clear backbuffer.
-            vex::TextureClearValue clearValue{ .clearAspect = vex::TextureAspect::Color, .color = { 1, 0.5f, 1, 1 } };
-            ctx.ClearTexture(
-                vex::TextureBinding{
-                    .texture = graphics->GetCurrentPresentTexture(),
-                },
-                clearValue);
+            vex::TextureClearValue clearValue{ .color = { 1, 0.5f, 1, 1 } };
+            ctx.ClearTexture(vex::TextureBinding{ .texture = graphics->GetCurrentPresentTexture() }, clearValue);
 
             // Setup our draw call's description.
             vex::DrawDesc hlslDrawDesc{
@@ -112,7 +106,11 @@ void HelloTriangleGraphicsApplication::Run()
             };
 
             ctx.SetViewport(0, 0, width / 2.0f, height);
-            ctx.Draw(hlslDrawDesc, { .renderTargets = renderTargets }, vex::ConstantBinding(lc), 3);
+            ctx.Draw(hlslDrawDesc,
+                     { .renderTargets = renderTargets },
+                     vex::ConstantBinding(lc),
+                     { colorBufferBinding },
+                     3);
             ctx.SetViewport(width / 2.0f, 0, width / 2.0f, height);
             ctx.Draw(
 #if VEX_SLANG
@@ -122,6 +120,7 @@ void HelloTriangleGraphicsApplication::Run()
 #endif
                 { .renderTargets = renderTargets },
                 vex::ConstantBinding(lc),
+                { colorBufferBinding },
                 3);
         }
         graphics->Submit(ctx);

@@ -3,6 +3,7 @@
 #include <optional>
 #include <variant>
 
+#include <Vex/AccelerationStructure.h>
 #include <Vex/Buffer.h>
 #include <Vex/Containers/Span.h>
 #include <Vex/Platform/Debug.h>
@@ -127,14 +128,27 @@ struct TextureBinding
     bool textureCubeAsTexture2DArray = false;
 };
 
+struct ASBinding
+{
+    AccelerationStructure accelerationStructure;
+};
+
 struct ResourceBinding
 {
     ResourceBinding(const TextureBinding& binding)
-        : binding{ binding } {};
+        : binding{ binding }
+    {
+    }
     ResourceBinding(const BufferBinding& binding)
-        : binding{ binding } {};
+        : binding{ binding }
+    {
+    }
+    ResourceBinding(const ASBinding& binding)
+        : binding{ binding }
+    {
+    }
 
-    std::variant<TextureBinding, BufferBinding> binding;
+    std::variant<TextureBinding, BufferBinding, ASBinding> binding;
 
     [[nodiscard]] bool IsTexture() const
     {
@@ -152,6 +166,15 @@ struct ResourceBinding
     [[nodiscard]] const BufferBinding& GetBufferBinding() const
     {
         return std::get<BufferBinding>(binding);
+    }
+
+    [[nodiscard]] bool IsAS() const
+    {
+        return std::holds_alternative<ASBinding>(binding);
+    }
+    [[nodiscard]] const ASBinding& GetASBinding() const
+    {
+        return std::get<ASBinding>(binding);
     }
 };
 

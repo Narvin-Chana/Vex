@@ -33,11 +33,7 @@ HelloCubeApplication::HelloCubeApplication()
         .width = static_cast<vex::u32>(width),
         .height = static_cast<vex::u32>(height),
         .usage = vex::TextureUsage::DepthStencil,
-        .clearValue =
-            vex::TextureClearValue{
-                .clearAspect = vex::TextureAspect::Depth,
-                .depth = 0,
-            },
+        .clearValue = vex::TextureClearValue{ .depth = 0 },
     });
 
     // Vertex buffer
@@ -124,13 +120,6 @@ HelloCubeApplication::HelloCubeApplication()
         // SRGB-aware downscale!
         ctx.GenerateMips({ .texture = uvGuideTexture, .isSRGB = true });
 
-        // The texture will now only be used as a read-only shader resource. In Vex we recommend only applying barriers
-        // in Write-After-Write and Read-After-Write situations as to reduce the total amount of barriers.
-        ctx.Barrier(uvGuideTexture,
-                    vex::RHIBarrierSync::AllCommands,
-                    vex::RHIBarrierAccess::ShaderRead,
-                    vex::RHITextureLayout::ShaderResource);
-
         graphics->Submit(ctx);
 
         stbi_image_free(imageData);
@@ -160,8 +149,7 @@ void HelloCubeApplication::Run()
             ctx.SetViewport(0, 0, width, height);
 
             // Clear backbuffer.
-            vex::TextureClearValue clearValue{ .clearAspect = vex::TextureAspect::Color,
-                                               .color = { 0.2f, 0.2f, 0.2f, 1 } };
+            vex::TextureClearValue clearValue{ .color = { 0.2f, 0.2f, 0.2f, 1 } };
             ctx.ClearTexture(
                 vex::TextureBinding{
                     .texture = graphics->GetCurrentPresentTexture(),
@@ -264,6 +252,7 @@ void HelloCubeApplication::Run()
                                     .indexBuffer = indexBufferBinding,
                                 },
                                 vex::ConstantBinding(UniformData{ static_cast<float>(currentTime), uvGuideHandle }),
+                                {},
                                 IndexCount);
             }
 
@@ -278,6 +267,7 @@ void HelloCubeApplication::Run()
                                     .indexBuffer = indexBufferBinding,
                                 },
                                 vex::ConstantBinding(UniformData{ static_cast<float>(currentTime), uvGuideHandle }),
+                                {},
                                 IndexCount);
             }
 #endif
@@ -307,11 +297,7 @@ void HelloCubeApplication::OnResize(GLFWwindow* window, uint32_t width, uint32_t
         .width = static_cast<vex::u32>(width),
         .height = static_cast<vex::u32>(height),
         .usage = vex::TextureUsage::DepthStencil,
-        .clearValue =
-            vex::TextureClearValue{
-                .clearAspect = vex::TextureAspect::Depth,
-                .depth = 0,
-            },
+        .clearValue = vex::TextureClearValue{ .depth = 0 },
     });
 }
 

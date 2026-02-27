@@ -1,11 +1,16 @@
 ﻿#pragma once
-#include <Vex/Containers/Span.h>
 
-#include <Vex/Graphics.h>
+#include <Vex/Buffer.h>
+#include <Vex/Containers/Span.h>
+#include <Vex/Texture.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/NonNullPtr.h>
 
 namespace vex
 {
+
+class Graphics;
+
 class BufferReadbackContext
 {
 public:
@@ -13,14 +18,14 @@ public:
     BufferReadbackContext(BufferReadbackContext&& other);
     BufferReadbackContext& operator=(BufferReadbackContext&& other);
 
-    void ReadData(Span<vex::byte> outData);
+    void ReadData(Span<byte> outData);
     [[nodiscard]] u64 GetDataByteSize() const;
 
 private:
-    BufferReadbackContext(const Buffer& buffer, vex::Graphics& backend);
+    BufferReadbackContext(const Buffer& buffer, Graphics& graphics);
 
     Buffer buffer;
-    NonNullPtr<Graphics> backend;
+    NonNullPtr<Graphics> graphics;
     friend class CommandContext;
 };
 
@@ -46,7 +51,7 @@ private:
     TextureReadbackContext(const Buffer& buffer,
                            Span<const TextureRegion> textureRegions,
                            const TextureDesc& textureDesc,
-                           Graphics& backend);
+                           Graphics& graphics);
 
     // Buffer contains readback data from the GPU.
     // This data is aligned according to Vex internal alignment
@@ -54,7 +59,7 @@ private:
     std::vector<TextureRegion> textureRegions;
     TextureDesc textureDesc;
 
-    NonNullPtr<Graphics> backend;
+    NonNullPtr<Graphics> graphics;
     friend class CommandContext;
 };
 } // namespace vex

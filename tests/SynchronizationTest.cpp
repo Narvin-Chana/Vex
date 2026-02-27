@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <random>
 #include <span>
+#include <vector>
 
 #include <gtest/gtest.h>
 #include <magic_enum/magic_enum.hpp>
@@ -39,7 +40,11 @@ TEST_F(SynchronizationTest, ImmediateSubmissionBatched)
     CommandContext ctx1 = graphics.CreateCommandContext(QueueType::Graphics);
     CommandContext ctx2 = graphics.CreateCommandContext(QueueType::Compute);
     CommandContext ctx3 = graphics.CreateCommandContext(QueueType::Copy);
-    graphics.Submit({ ctx1, ctx2, ctx3 });
+    std::vector<CommandContext> submissions;
+    submissions.push_back(std::move(ctx1));
+    submissions.push_back(std::move(ctx2));
+    submissions.push_back(std::move(ctx3));
+    graphics.Submit(submissions);
 }
 
 TEST_F(SynchronizationTest, CrossQueueDependecy)
@@ -56,8 +61,7 @@ TEST_F(SynchronizationTest, CrossQueueDependecy)
 
     // Submit work on graphics queue that depends on compute
     {
-        CommandContext graphicsCtx =
-            graphics.CreateCommandContext(QueueType::Graphics);
+        CommandContext graphicsCtx = graphics.CreateCommandContext(QueueType::Graphics);
         graphicsTokens = graphics.Submit(graphicsCtx, { &tokens, 1 });
         VEX_LOG(Info,
                 "Submitted graphics work dependent on compute, token: {}/{}",
@@ -147,10 +151,7 @@ TEST_F(SynchronizationTest, HeavyResouceCreationAndUsage)
     for (int i = 0; i < std::min(5, static_cast<int>(allTokens.size())); ++i)
     {
         int tokenIdx = std::uniform_int_distribution<>(0, allTokens.size() - static_cast<std::size_t>(1))(gen);
-        VEX_LOG(Info,
-                "Waiting for token {}/{}",
-                allTokens[tokenIdx].queueType,
-                allTokens[tokenIdx].value);
+        VEX_LOG(Info, "Waiting for token {}/{}", allTokens[tokenIdx].queueType, allTokens[tokenIdx].value);
         graphics.WaitForTokenOnCPU(allTokens[tokenIdx]);
         VEX_LOG(Info, "Token completed!");
     }
@@ -241,7 +242,7 @@ TEST_F(SynchronizationTest, ResourceUploadTorture)
     texDesc.width = 256;
     texDesc.height = 256;
     texDesc.format = TextureFormat::RGBA8_UNORM;
-    texDesc.usage = TextureUsage::ShaderRead;
+    texDesc.usage = TextureUsage::ShaderRead | TextureUsage::RenderTarget;
     auto targetTexture = graphics.CreateTexture(texDesc);
 
     std::vector<SyncToken> uploadTokens;
@@ -306,8 +307,6 @@ TEST_F(SynchronizationTest, FinalStressTest)
 
     for (int i = 0; i < 30; ++i)
     {
-        QueueType queueType = static_cast<QueueType>(i % 3);
-
         // Random dependencies
         std::span<SyncToken> deps;
         if (allTokens.size() > 5)
@@ -317,6 +316,7 @@ TEST_F(SynchronizationTest, FinalStressTest)
         }
 
         {
+            QueueType queueType = static_cast<QueueType>(i % 3);
             CommandContext ctx = graphics.CreateCommandContext(queueType);
 
             // Random operations

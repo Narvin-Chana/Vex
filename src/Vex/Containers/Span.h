@@ -1,6 +1,7 @@
 #pragma once
 
 #include <span>
+#include <type_traits>
 
 namespace vex
 {

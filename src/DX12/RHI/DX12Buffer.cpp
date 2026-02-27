@@ -34,7 +34,7 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
                                                                        (desc.usage & BufferUsage::ReadWriteBuffer)
                                                                            ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
                                                                            : D3D12_RESOURCE_FLAG_NONE);
-    if (VEX_USE_CUSTOM_ALLOCATOR_BUFFERS && GPhysicalDevice->SupportsTightAlignment())
+    if (VEX_USE_CUSTOM_RESOURCE_ALLOCATOR && GPhysicalDevice->SupportsTightAlignment())
     {
         bufferDesc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
     }
@@ -47,7 +47,7 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
         VEX_ASSERT(desc.usage & BufferUsage::ReadWriteBuffer,
                    "Acceleration Structure usage requires the ReadWriteBuffer usage flag.");
         VEX_ASSERT(bufferDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-                   "Acceleration Structure buffer usage flag also requires the UnorderedAccess flag!");
+                   "Acceleration Structure buffer usage flag also requires the ShaderReadWrite flag!");
 
         // RT acceleration structures have a higher alignment requirement, for some reason GetResourceAllocationInfo3,
         // does not return the correct alignment.
@@ -82,7 +82,7 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
         heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
     }
 
-#if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
+#if VEX_USE_CUSTOM_RESOURCE_ALLOCATOR
     allocation = allocator.AllocateResource(buffer, bufferDesc, desc.memoryLocality, forcedAlignment);
 #else
     chk << device->CreateCommittedResource3(&heapProps,

@@ -108,6 +108,9 @@ static void ValidateVertexInputLayoutOnShader(const Shader& shader, const Vertex
     if (!reflection)
         return;
 
+    // TODO(https://trello.com/c/C9bfFI8s): Fix issue with shader validation reflection crashing when the shader has
+    // optimized-out SV_ parameters (eg: unused vertex channels)
+
     //    VEX_CHECK(reflection->inputs.size() == inputLayout.attributes.size(),
     //              "Error validating shader {}: Incoherent vertex input layout: size doesnt match shader",
     //              shader.key);
@@ -130,10 +133,8 @@ static void ValidateVertexInputLayoutOnShader(const Shader& shader, const Vertex
 
 PipelineStateCache::PipelineStateCache(RHI* rhi,
                                        RHIDescriptorPool& descriptorPool,
-                                       ResourceCleanup* resourceCleanup,
                                        const ShaderCompilerSettings& compilerSettings)
     : rhi(rhi)
-    , resourceCleanup(resourceCleanup)
     , shaderCompiler(compilerSettings)
     , resourceLayout(rhi->CreateResourceLayout(descriptorPool))
 {
@@ -146,7 +147,8 @@ RHIResourceLayout& PipelineStateCache::GetResourceLayout()
     return *resourceLayout;
 }
 
-const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(const RHIGraphicsPipelineState::Key& key)
+const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
+    const RHIGraphicsPipelineState::Key& key, std::unique_ptr<RHIGraphicsPipelineState>& oldPSO)
 {
     VEX_CHECK(key.vertexShader.type == ShaderType::VertexShader,
               "Invalid ShaderType for vertex shader: {}",
@@ -176,15 +178,16 @@ const RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(con
     pipelineStateStale |= resourceLayout->version > ps.rootSignatureVersion;
     if (pipelineStateStale)
     {
-        // Avoids PSO being destroyed while frame is in flight.
-        ps.Cleanup(*resourceCleanup);
+        // Avoid PSO being destroyed while frame is in flight.
+        oldPSO = ps.Cleanup();
         ps.Compile(*vertexShader, *pixelShader, *resourceLayout);
     }
 
     return &ps;
 }
 
-const RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const RHIComputePipelineState::Key& key)
+const RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(
+    const RHIComputePipelineState::Key& key, std::unique_ptr<RHIComputePipelineState>& oldPSO)
 {
     VEX_CHECK(key.computeShader.type == ShaderType::ComputeShader,
               "Invalid ShaderType for compute shader: {}",
@@ -208,7 +211,7 @@ const RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const
     if (pipelineStateStale)
     {
         // Avoids PSO being destroyed while frame is in flight.
-        ps.Cleanup(*resourceCleanup);
+        oldPSO = ps.Cleanup();
         ps.Compile(*computeShader, *resourceLayout);
     }
 
@@ -308,7 +311,10 @@ std::optional<RayTracingShaderCollection> PipelineStateCache::GetRayTracingShade
 }
 
 const RHIRayTracingPipelineState* PipelineStateCache::GetRayTracingPipelineState(
-    const RHIRayTracingPipelineState::Key& key, RHIAllocator& allocator)
+    const RHIRayTracingPipelineState::Key& key,
+    RHIAllocator& allocator,
+    std::unique_ptr<RHIRayTracingPipelineState>& oldPSO,
+    std::vector<MaybeUninitialized<RHIBuffer>>& oldBuffers)
 {
     const auto it = rayTracingPSCache.find(key);
     RHIRayTracingPipelineState& ps =
@@ -329,8 +335,8 @@ const RHIRayTracingPipelineState* PipelineStateCache::GetRayTracingPipelineState
     if (pipelineStateStale)
     {
         // Avoids PSO being destroyed while frame is in flight.
-        ps.Cleanup(*resourceCleanup);
-        ps.Compile(std::move(*rtShaderCollection), *resourceLayout, *resourceCleanup, allocator);
+        oldPSO = ps.Cleanup();
+        oldBuffers = ps.Compile(std::move(*rtShaderCollection), *resourceLayout, allocator);
     }
 
     return &ps;

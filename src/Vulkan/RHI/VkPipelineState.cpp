@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-#include <Vex/Containers/ResourceCleanup.h>
+#include <Vex/ResourceCleanup.h>
 
 #include <Vulkan/RHI/VkAccelerationStructure.h>
 #include <Vulkan/RHI/VkBuffer.h>
@@ -203,19 +203,19 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
     SetDebugName(device, *graphicsPipeline, std::format("GraphicsPSO: {}", key).c_str());
 }
 
-void VkGraphicsPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
+std::unique_ptr<RHIGraphicsPipelineState> VkGraphicsPipelineState::Cleanup()
 {
     if (!graphicsPipeline)
     {
-        return;
+        return nullptr;
     }
     auto cleanupPSO = std::make_unique<VkGraphicsPipelineState>(key, device, PSOCache);
     std::swap(cleanupPSO->graphicsPipeline, graphicsPipeline);
-    resourceCleanup.CleanupResource(std::move(cleanupPSO));
+    return cleanupPSO;
 }
 
 VkComputePipelineState::VkComputePipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache)
-    : RHIComputePipelineStateInterface(key)
+    : RHIComputePipelineStateBase(key)
     , device{ device }
     , PSOCache{ PSOCache }
 {
@@ -249,37 +249,36 @@ void VkComputePipelineState::Compile(const Shader& computeShader, RHIResourceLay
     SetDebugName(device, *computePipeline, std::format("ComputePSO: {}", key).c_str());
 }
 
-void VkComputePipelineState::Cleanup(ResourceCleanup& resourceCleanup)
+std::unique_ptr<RHIComputePipelineState> VkComputePipelineState::Cleanup()
 {
     if (!computePipeline)
     {
-        return;
+        return nullptr;
     }
     auto cleanupPSO = std::make_unique<VkComputePipelineState>(key, device, PSOCache);
     std::swap(cleanupPSO->computePipeline, computePipeline);
-    resourceCleanup.CleanupResource(std::move(cleanupPSO));
+    return cleanupPSO;
 }
 
 VkRayTracingPipelineState::VkRayTracingPipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache)
-    : RHIRayTracingPipelineStateInterface(key)
+    : RHIRayTracingPipelineStateBase(key)
 {
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-void VkRayTracingPipelineState::Compile(const RayTracingShaderCollection& shaderCollection,
-                                        RHIResourceLayout& resourceLayout,
-                                        ResourceCleanup& resourceCleanup,
-                                        RHIAllocator& allocator)
+std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
+    const RayTracingShaderCollection& shaderCollection, RHIResourceLayout& resourceLayout, RHIAllocator& allocator)
 {
     VEX_NOT_YET_IMPLEMENTED();
+    return {};
 }
 
-void VkRayTracingPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
+std::unique_ptr<RHIRayTracingPipelineState> VkRayTracingPipelineState::Cleanup()
 {
     // Don't cleanup if RTPSO is null.
     if (!!1)
     {
-        return;
+        return nullptr;
     }
     VEX_NOT_YET_IMPLEMENTED();
 }

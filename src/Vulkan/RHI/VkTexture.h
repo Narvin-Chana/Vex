@@ -99,8 +99,7 @@ private:
 
     bool isBackBuffer;
     std::variant<::vk::Image, ::vk::UniqueImage> image;
-
-#if !VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
+#if !VEX_USE_CUSTOM_RESOURCE_ALLOCATOR
     // Only valid if type == UniqueImage.
     ::vk::UniqueDeviceMemory memory;
 #endif

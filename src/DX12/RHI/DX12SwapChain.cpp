@@ -77,6 +77,12 @@ bool DX12SwapChain::NeedsRecreation() const
         (!desc->useHDRIfSupported && IsHDREnabled());
 }
 
+bool DX12SwapChain::CanRecreate()
+{
+    // We can always recreate the DX12 swapchain.
+    return true;
+}
+
 void DX12SwapChain::RecreateSwapChain(u32 width, u32 height)
 {
     currentColorSpace = GetValidColorSpace(desc->preferredColorSpace);

@@ -15,7 +15,8 @@ struct VkGPUContext
     ::vk::SurfaceKHR surface;
 
     VkCommandQueue& graphicsPresentQueue;
-    VkFence& graphicsPresentFence;
+
+    std::vector<u32> queueFamilyIndices;
 };
 
 } // namespace vex::vk

@@ -63,7 +63,7 @@ BufferViewDesc RHIBufferBase::GetViewDescFromBinding(const BufferBinding& bindin
 
 void RHIBufferBase::FreeAllocation(RHIAllocator& allocator)
 {
-#if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
+#if VEX_USE_CUSTOM_RESOURCE_ALLOCATOR
     allocator.FreeResource(allocation);
 #endif
 }

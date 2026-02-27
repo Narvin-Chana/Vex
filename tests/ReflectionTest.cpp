@@ -31,10 +31,11 @@ TEST_P(ReflectionTestFull, CompleteGraphicsPSOTest)
                                                                                     1,
                                                                                     TextureUsage::RenderTarget));
 
-    TextureClearValue clearValue{ .clearAspect = TextureAspect::Color, .color = { 0.2f, 0.2f, 0.2f, 1 } };
+    TextureClearValue clearValue{ .color = { 0.2f, 0.2f, 0.2f, 1 } };
     ctx.ClearTexture(
         TextureBinding{
             .texture = renderTexture,
+            .subresource = { .aspect = TextureAspect::Color, },
         },
         clearValue);
 
@@ -105,6 +106,7 @@ TEST_P(ReflectionTestFull, CompleteGraphicsPSOTest)
                         .vertexBuffers = { &vertexBufferBinding, 1 },
                         .indexBuffer = indexBufferBinding,
                     },
+                    {},
                     {},
                     1);
 

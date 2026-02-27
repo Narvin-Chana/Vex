@@ -1,5 +1,7 @@
 #include "DX12Texture.h"
 
+#include <optional>
+
 #include <magic_enum/magic_enum.hpp>
 
 #include <Vex/Bindings.h>
@@ -14,10 +16,6 @@
 
 #include <DX12/DX12Formats.h>
 #include <DX12/HRChecker.h>
-
-#ifndef VEX_USE_CUSTOM_ALLOCATOR_TEXTURES
-#define VEX_USE_CUSTOM_ALLOCATOR_TEXTURES 1
-#endif
 
 namespace vex::dx12
 {
@@ -223,11 +221,14 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
         break;
     }
 
+    bool useFastTextureClear = false;
+
     if (desc.usage & TextureUsage::RenderTarget)
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
         rtvHeap = DX12DescriptorHeap<DX12HeapType::RTV>(device, InitialViewCountPerRTVHeap, desc.name);
         rtvHeapAllocator = FreeListAllocator(InitialViewCountPerRTVHeap);
+        useFastTextureClear = true;
     }
     if (desc.usage & TextureUsage::ShaderReadWrite)
     {
@@ -243,18 +244,15 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
         dsvHeap = DX12DescriptorHeap<DX12HeapType::DSV>(device, InitialViewCountPerDSVHeap, desc.name);
         dsvHeapAllocator = FreeListAllocator(InitialViewCountPerDSVHeap);
+        useFastTextureClear = true;
     }
+
+    D3D12_CLEAR_VALUE clearValue{};
+    clearValue.Format = texDesc.Format;
+    std::memcpy(clearValue.Color, desc.clearValue.color.data(), sizeof(float) * 4);
+    clearValue.DepthStencil = { .Depth = desc.clearValue.depth, .Stencil = desc.clearValue.stencil };
 
     static const D3D12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-
-    std::optional<D3D12_CLEAR_VALUE> clearValue;
-    if (desc.clearValue.clearAspect != TextureAspect::None)
-    {
-        clearValue = D3D12_CLEAR_VALUE();
-        clearValue->Format = texDesc.Format;
-        std::memcpy(clearValue->Color, desc.clearValue.color.data(), sizeof(float) * 4);
-        clearValue->DepthStencil = { .Depth = desc.clearValue.depth, .Stencil = desc.clearValue.stencil };
-    }
 
     // In order to allow for a depth stencil texture to be read as an SRV, it must have the equivalent typeless format
     // (converted to the equivalent typed/D_ format for the actual view).
@@ -269,24 +267,25 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
         texDesc.Format = GetTypelessFormatForSRGBCompatibleDX12Format(texDesc.Format);
     }
 
-    if (VEX_USE_CUSTOM_ALLOCATOR_TEXTURES && GPhysicalDevice->SupportsTightAlignment())
+    if (VEX_USE_CUSTOM_RESOURCE_ALLOCATOR && GPhysicalDevice->SupportsTightAlignment())
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
     }
 
-#if VEX_USE_CUSTOM_ALLOCATOR_TEXTURES
-    allocation = allocator.AllocateResource(texture,
-                                            texDesc,
-                                            desc.memoryLocality,
-                                            0,
-                                            D3D12_BARRIER_LAYOUT_UNDEFINED,
-                                            clearValue);
+#if VEX_USE_CUSTOM_RESOURCE_ALLOCATOR
+    allocation =
+        allocator.AllocateResource(texture,
+                                   texDesc,
+                                   desc.memoryLocality,
+                                   0,
+                                   D3D12_BARRIER_LAYOUT_UNDEFINED,
+                                   useFastTextureClear ? std::optional<D3D12_CLEAR_VALUE>(clearValue) : std::nullopt);
 #else
     chk << device->CreateCommittedResource3(&heapProps,
                                             D3D12_HEAP_FLAG_NONE,
                                             &texDesc,
                                             D3D12_BARRIER_LAYOUT_UNDEFINED,
-                                            clearValue.has_value() ? &clearValue.value() : nullptr,
+                                            useFastTextureClear ? &clearValue : nullptr,
                                             nullptr,
                                             0,
                                             nullptr,
@@ -420,8 +419,8 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(const DX12Textu
 {
     using namespace Texture_Internal;
 
-    bool isRTVView = (view.usage == TextureUsage::RenderTarget) && (desc.usage & TextureUsage::RenderTarget);
-    bool isDSVView = (view.usage == TextureUsage::DepthStencil) && (desc.usage & TextureUsage::DepthStencil);
+    const bool isRTVView = (view.usage == TextureUsage::RenderTarget) && (desc.usage & TextureUsage::RenderTarget);
+    const bool isDSVView = (view.usage == TextureUsage::DepthStencil) && (desc.usage & TextureUsage::DepthStencil);
     VEX_ASSERT(isRTVView || isDSVView,
                "Texture view requested must be for an RTV or DSV AND the underlying texture must support this usage.");
 
@@ -460,7 +459,7 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(const DX12Textu
 }
 
 DX12TextureView::DX12TextureView(const TextureBinding& binding)
-    : desc{binding.texture.desc}
+    : desc{ binding.texture.desc }
     , usage{ binding.usage != TextureBindingUsage::None ? static_cast<TextureUsage::Type>(binding.usage)
                                                         : TextureUsage::None }
     , dimension{ TextureUtil::GetTextureViewType(binding) }

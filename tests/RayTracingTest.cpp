@@ -69,12 +69,6 @@ struct RTTestFixture : public RTVexTest
         };
         ctx.BuildTLAS(triangleTLAS, { .instances = { instanceDesc } });
 
-        ctx.BarrierBinding(BufferBinding{
-            .buffer = outputBuffer,
-            .usage = BufferBindingUsage::RWStructuredBuffer,
-            .strideByteSize = static_cast<u32>(sizeof(float) * 3),
-        });
-        ctx.Barrier(triangleTLAS, RHIBarrierSync::AllCommands, RHIBarrierAccess::AccelerationStructureRead);
         data.tlas = graphics.GetBindlessHandle(triangleTLAS);
         data.output = graphics.GetBindlessHandle(BufferBinding{
             .buffer = outputBuffer,
@@ -155,6 +149,7 @@ TEST_P(RTShaderTest, CompilePipeline_SingleRayGen_SingleMiss_SingleHitGroup)
             .maxAttributeByteSize = 8,
         },
         ConstantBinding(data),
+        {},
         { 1, 1, 1 }
     );
 
@@ -187,6 +182,7 @@ TEST_P(RTShaderTest, CompilePipeline_MultipleRayGen)
             .maxAttributeByteSize = 8,
         },
         ConstantBinding(data),
+        {},
         // Select RayGenBasicMain (index 1). It only uses miss 0 and hit group 0,
         // both of which are present in the collection above.
         TraceRaysDesc{ .width = 1, .height = 1, .depth = 1, .rayGenShaderIndex = 1 }
@@ -225,6 +221,7 @@ TEST_P(RTShaderTest, CompilePipeline_MultipleMissShaders)
             .maxAttributeByteSize = 8,
         },
         ConstantBinding(data),
+        {},
         { 1, 1, 1 }
     );
 
@@ -260,6 +257,7 @@ TEST_P(RTShaderTest, CompilePipeline_MultipleHitGroups)
             .maxAttributeByteSize = 8,
         },
         ConstantBinding(data),
+        {},
         { 1, 1, 1 }
     );
 
@@ -291,6 +289,7 @@ TEST_P(RTShaderTest, CompilePipeline_HitGroup_WithAnyHit)
             .maxAttributeByteSize = 8,
         },
         ConstantBinding(data),
+        {},
         { 1, 1, 1 }
     );
 
@@ -327,6 +326,7 @@ TEST_P(RTShaderTest, CompilePipeline_WithCallableShaders)
             .maxAttributeByteSize = 8,
         },
         ConstantBinding(data),
+        {},
         { 1, 1, 1 }
     );
 
@@ -353,6 +353,7 @@ TEST_P(RTShaderTest, CompilePipeline_WithCallableShaders)
             .maxAttributeByteSize = 8,
         },
         ConstantBinding(data),
+        {},
         { 1, 1, 1 }
     );
 
@@ -398,11 +399,13 @@ TEST_P(RTShaderTest, SBT_SelectDifferentRayGenShaders)
     // Dispatch selecting RayGenMain (index 0).
     ctx.TraceRays(collection,
                   ConstantBinding(data),
+                  {},
                   TraceRaysDesc{ .width = 1, .height = 1, .depth = 1, .rayGenShaderIndex = 0 });
 
     // Dispatch selecting RayGenMainAlt (index 1).
     ctx.TraceRays(collection,
                   ConstantBinding(data),
+                  {},
                   TraceRaysDesc{ .width = 1, .height = 1, .depth = 1, .rayGenShaderIndex = 1 });
 
     graphics.Submit(ctx);
@@ -439,6 +442,7 @@ TEST_P(RTShaderTest, SBT_SelectDifferentMissShaders)
             .maxAttributeByteSize = 8,
         },
         ConstantBinding(data),
+        {},
         TraceRaysDesc{ .width = 1, .height = 1, .depth = 1 }
     );
 
@@ -474,6 +478,7 @@ TEST_P(RTShaderTest, SBT_SelectDifferentHitGroups)
             .maxAttributeByteSize = 8,
         },
         ConstantBinding(data),
+        {},
         TraceRaysDesc{ .width = 1, .height = 1, .depth = 1 }
     );
 
@@ -508,6 +513,7 @@ TEST_P(RTShaderTest, CompilePipeline_VariousRecursionDepths)
             .maxAttributeByteSize = 8,
         },
         ConstantBinding(data),
+        {},
         { 1, 1, 1 }
     );
 
@@ -531,6 +537,7 @@ TEST_P(RTShaderTest, CompilePipeline_VariousRecursionDepths)
             .maxAttributeByteSize = 8,
         },
         ConstantBinding(data),
+        {},
         { 1, 1, 1 }
     );
 
@@ -561,6 +568,7 @@ TEST_P(RTShaderTest, CompilePipeline_VariousPayloadSizes)
             .maxAttributeByteSize = 8,
         },
         ConstantBinding(data),
+        {},
         { 1, 1, 1 }
     );
 
@@ -583,6 +591,7 @@ TEST_P(RTShaderTest, CompilePipeline_VariousPayloadSizes)
             .maxAttributeByteSize = 8,
         },
         ConstantBinding(data),
+        {},
         { 1, 1, 1 }
     );
 

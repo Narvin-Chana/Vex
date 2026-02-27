@@ -12,13 +12,12 @@
 namespace vex
 {
 
+class Graphics;
+
 class PipelineStateCache
 {
 public:
-    PipelineStateCache(RHI* rhi,
-                       RHIDescriptorPool& descriptorPool,
-                       ResourceCleanup* resourceCleanup,
-                       const ShaderCompilerSettings& compilerSettings);
+    PipelineStateCache(RHI* rhi, RHIDescriptorPool& descriptorPool, const ShaderCompilerSettings& compilerSettings);
     ~PipelineStateCache();
 
     PipelineStateCache(PipelineStateCache&&) = default;
@@ -26,10 +25,15 @@ public:
 
     RHIResourceLayout& GetResourceLayout();
 
-    const RHIGraphicsPipelineState* GetGraphicsPipelineState(const RHIGraphicsPipelineState::Key& key);
-    const RHIComputePipelineState* GetComputePipelineState(const RHIComputePipelineState::Key& key);
-    const RHIRayTracingPipelineState* GetRayTracingPipelineState(const RHIRayTracingPipelineState::Key& key,
-                                                                 RHIAllocator& allocator);
+    const RHIGraphicsPipelineState* GetGraphicsPipelineState(const RHIGraphicsPipelineState::Key& key,
+                                                             std::unique_ptr<RHIGraphicsPipelineState>& oldPSO);
+    const RHIComputePipelineState* GetComputePipelineState(const RHIComputePipelineState::Key& key,
+                                                           std::unique_ptr<RHIComputePipelineState>& oldPSO);
+    const RHIRayTracingPipelineState* GetRayTracingPipelineState(
+        const RHIRayTracingPipelineState::Key& key,
+        RHIAllocator& allocator,
+        std::unique_ptr<RHIRayTracingPipelineState>& oldPSO,
+        std::vector<MaybeUninitialized<RHIBuffer>>& oldBuffers);
 
     ShaderCompiler& GetShaderCompiler();
 
@@ -37,11 +41,7 @@ private:
     // Converts a RayTracingPSOKey into the mirrored version of itself which contains all required shaders.
     std::optional<RayTracingShaderCollection> GetRayTracingShaderCollection(const RHIRayTracingPipelineState::Key& key);
 
-    // Can't use NonNullPtr, as this field can potentially be empty during the time it takes for the RHI to be
-    // initialized.
     RHI* rhi;
-
-    ResourceCleanup* resourceCleanup;
 
     ShaderCompiler shaderCompiler;
     MaybeUninitialized<RHIResourceLayout> resourceLayout;

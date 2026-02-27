@@ -93,8 +93,6 @@ void HelloTriangleApplication::Run()
 
             // Draw the first pass, first with an HLSL shader, then with a Slang shader (if available).
             {
-                ctx.BarrierBindings(pass1Bindings);
-
                 {
                     VEX_GPU_SCOPED_EVENT_COL(ctx, "HLSL Triangle", 1, 0, 1)
                     ctx.Dispatch(
@@ -104,6 +102,7 @@ void HelloTriangleApplication::Run()
                             .type = vex::ShaderType::ComputeShader,
                         },
                         vex::ConstantBinding(std::span(pass1Handles)),
+                        { pass1Bindings },
                         {
                             (width + 7u) / 8u,
                             (height + 7u) / 8u,
@@ -121,6 +120,7 @@ void HelloTriangleApplication::Run()
                             .type = vex::ShaderType::ComputeShader,
                         },
                         vex::ConstantBinding(std::span(pass1Handles)),
+                        { pass1Bindings },
                         {
                             (width + 7u) / 8u,
                             (height + 7u) / 8u,
@@ -132,8 +132,6 @@ void HelloTriangleApplication::Run()
 
             // Draw the second pass, first with an HLSL shader, then with a Slang shader (if available).
             {
-                ctx.BarrierBindings(pass2Bindings);
-
                 ctx.Dispatch(
                     {
                         .path = ExamplesDir / "hello_triangle" / "HelloTriangleShader2.cs.hlsl",
@@ -141,6 +139,7 @@ void HelloTriangleApplication::Run()
                         .type = vex::ShaderType::ComputeShader,
                     },
                     vex::ConstantBinding(std::span(pass2Handles)),
+                    { pass2Bindings },
                     {
                         (width + 7u) / 8u,
                         (height + 7u) / 8u,
@@ -155,6 +154,7 @@ void HelloTriangleApplication::Run()
                         .type = vex::ShaderType::ComputeShader,
                     },
                     vex::ConstantBinding(std::span(pass2Handles)),
+                    { pass2Bindings },
                     {
                         (width + 7u) / 8u,
                         (height + 7u) / 8u,

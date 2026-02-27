@@ -32,7 +32,7 @@ bool FormatUtil::HasSRGBEquivalent(TextureFormat format)
     }
 }
 
-bool FormatUtil::IsDepthOrStencilFormat(TextureFormat format)
+bool FormatUtil::IsDepthOrDepthStencilFormat(TextureFormat format)
 {
     return IsDepthOnlyFormat(format) || IsDepthAndStencilFormat(format);
 }
@@ -208,7 +208,7 @@ bool FormatUtil::SupportsMipGeneration(TextureFormat format)
     VEX_ASSERT(format != UNKNOWN, "Unknown is an invalid texture format!");
 
     // Depth-stencil textures are unsupported for mip generation.
-    if (IsDepthOrStencilFormat(format))
+    if (IsDepthOrDepthStencilFormat(format))
     {
         return false;
     }

@@ -95,6 +95,10 @@ namespace vex::vk
         return eAccelerationStructureReadKHR;
     case AccelerationStructureWrite:
         return eAccelerationStructureWriteKHR;
+    case MemoryRead:
+        return eMemoryRead;
+    case MemoryWrite:
+        return eMemoryWrite;
     default:
         VEX_LOG(Fatal, "Unsupported RHIBarrierAccess type.");
         std::unreachable();
@@ -110,26 +114,11 @@ namespace vex::vk
     {
     case Undefined:
         return eUndefined;
-    case Common:
-        return eGeneral;
-    case RenderTarget:
-        return eColorAttachmentOptimal;
-    case DepthStencilRead:
-        return eDepthStencilReadOnlyOptimal;
-    case DepthStencilWrite:
-        return eDepthStencilAttachmentOptimal;
-    case ShaderResource:
-        return eShaderReadOnlyOptimal;
-    case UnorderedAccess:
-        return eGeneral; // UAV/Storage requires general layout in Vulkan
-    case CopySource:
-        return eTransferSrcOptimal;
-    case CopyDest:
-        return eTransferDstOptimal;
     case Present:
         return ePresentSrcKHR;
     default:
-        return eUndefined;
+        // With UnifiedImageLayouts we can use general *almost* everywhere.
+        return eGeneral;
     }
 }
 
