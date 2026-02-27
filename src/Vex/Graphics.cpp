@@ -491,7 +491,7 @@ Texture Graphics::GetCurrentPresentTexture()
 
 bool Graphics::IsRayTracingSupported() const
 {
-    return GPhysicalDevice->featureChecker->IsFeatureSupported(Feature::RayTracing);
+    return GPhysicalDevice->IsFeatureSupported(Feature::RayTracing);
 }
 
 bool Graphics::IsTokenComplete(const SyncToken& token) const
