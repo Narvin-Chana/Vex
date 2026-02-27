@@ -160,6 +160,11 @@ inline void Image(vex::Graphics& gfx,
                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) });
     }
     registeredTexture = GVulkanInfo.imageCache[img];
+#elif VEX_DX12
+    vex::TextureBinding binding{ texture, vex::TextureBindingUsage::ShaderRead };
+    vex::BindlessHandle handle = gfx.GetBindlessHandle(binding);
+    CD3DX12_GPU_DESCRIPTOR_HANDLE descriptorHandle = accessor.GetDescriptorPool().GetGPUDescriptor(handle);
+    registeredTexture = descriptorHandle.ptr;
 #endif
     Image(registeredTexture, image_size, uv0, uv1);
 }
