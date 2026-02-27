@@ -68,7 +68,7 @@ public:
     // Creates a new image from the description
     VkTexture(NonNullPtr<VkGPUContext> ctx, RHIAllocator& allocator, TextureDesc&& desc);
 
-    [[nodiscard]] ::vk::Image GetResource();
+    [[nodiscard]] ::vk::Image GetRawTexture();
 
     [[nodiscard]] bool IsBackBufferTexture() const
     {

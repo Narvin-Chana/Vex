@@ -265,6 +265,16 @@ struct RHIAccessor
     {
         return *graphics->descriptorPool;
     };
+
+    RHITexture& GetTexture(const vex::Texture& texture) const
+    {
+        return graphics->GetRHITexture(texture.handle);
+    }
+
+    RHIResourceLayout& GetResourceLayout() const
+    {
+        return graphics->psCache->GetResourceLayout();
+    }
     // Add getters if needed...
 private:
     Graphics* graphics;
