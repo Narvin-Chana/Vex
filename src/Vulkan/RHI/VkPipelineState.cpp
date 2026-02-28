@@ -262,8 +262,9 @@ void VkComputePipelineState::Cleanup(ResourceCleanup& resourceCleanup)
 
 VkRayTracingPipelineState::VkRayTracingPipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache)
     : RHIRayTracingPipelineStateInterface(key)
+    , device{ device }
+    , PSOCache{ PSOCache }
 {
-    VEX_NOT_YET_IMPLEMENTED();
 }
 
 void VkRayTracingPipelineState::Compile(const RayTracingShaderCollection& shaderCollection,
@@ -271,17 +272,61 @@ void VkRayTracingPipelineState::Compile(const RayTracingShaderCollection& shader
                                         ResourceCleanup& resourceCleanup,
                                         RHIAllocator& allocator)
 {
+    auto createShaderModule = [&](const Shader& s)
+    {
+        Span<const byte> shaderCode = s.GetBlob();
+        ::vk::ShaderModuleCreateInfo shaderModulecreateInfo{
+            .codeSize = shaderCode.size(),
+            .pCode = reinterpret_cast<const u32*>(&shaderCode[0]),
+        };
+
+        return VEX_VK_CHECK <<= device.createShaderModuleUnique(shaderModulecreateInfo);
+    };
+
+    std::vector<::vk::UniqueShaderModule> modules;
+    std::vector<::vk::PipelineShaderStageCreateInfo> stages;
+
+    auto registerShaderStage = [&](const std::vector<NonNullPtr<Shader>>& shaders, ::vk::ShaderStageFlagBits type)
+    {
+        for (u32 i = 0; i < shaders.size(); ++i)
+        {
+            modules.push_back(createShaderModule(*shaderCollection.rayGenerationShaders[i]));
+            stages.push_back({ .stage = type,
+                               .module = *modules.back(),
+                               .pName = shaderCollection.rayGenerationShaders[i]->key.entryPoint.c_str() });
+        }
+    };
+
+    registerShaderStage(shaderCollection.rayGenerationShaders, ::vk::ShaderStageFlagBits::eRaygenKHR);
+    registerShaderStage(shaderCollection.rayCallableShaders, ::vk::ShaderStageFlagBits::eCallableKHR);
+    registerShaderStage(shaderCollection.rayMissShaders, ::vk::ShaderStageFlagBits::eMissKHR);
+
+    for (const auto& group : shaderCollection.hitGroupShaders)
+    {
+        registerShaderStage({ group.rayClosestHitShader }, ::vk::ShaderStageFlagBits::eClosestHitKHR);
+        if (group.rayAnyHitShader)
+        {
+            registerShaderStage({ *group.rayAnyHitShader }, ::vk::ShaderStageFlagBits::eAnyHitKHR);
+        }
+
+        if (group.rayIntersectionShader)
+        {
+            registerShaderStage({ *group.rayIntersectionShader }, ::vk::ShaderStageFlagBits::eIntersectionKHR);
+        }
+    }
+
     VEX_NOT_YET_IMPLEMENTED();
 }
 
 void VkRayTracingPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
 {
-    // Don't cleanup if RTPSO is null.
-    if (!!1)
+    if (!rtPipeline)
     {
         return;
     }
-    VEX_NOT_YET_IMPLEMENTED();
+    auto cleanupPSO = MakeUnique<VkRayTracingPipelineState>(key, device, PSOCache);
+    std::swap(cleanupPSO->rtPipeline, rtPipeline);
+    resourceCleanup.CleanupResource(std::move(cleanupPSO));
 }
 
 } // namespace vex::vk

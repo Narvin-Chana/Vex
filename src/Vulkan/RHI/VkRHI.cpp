@@ -270,15 +270,19 @@ void VkRHI::Init()
 
     std::optional<::vk::PhysicalDeviceAccelerationStructureFeaturesKHR> featuresAccelerationStructure;
     std::optional<::vk::PhysicalDeviceRayTracingPipelineFeaturesKHR> featuresRayTracingPipeline;
+    std::optional<::vk::PhysicalDeviceRayQueryFeaturesKHR> featuresRayQuery;
     if (GPhysicalDevice->IsFeatureSupported(Feature::RayTracing))
     {
         extensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
         extensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
         extensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+        extensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
         featuresRayTracingPipeline = { .rayTracingPipeline = true };
 
+        featuresRayQuery = { .pNext = &*featuresRayTracingPipeline, .rayQuery = true };
+
         featuresAccelerationStructure = {
-            .pNext = &*featuresRayTracingPipeline,
+            .pNext = &*featuresRayQuery,
             .accelerationStructure = true,
             .descriptorBindingAccelerationStructureUpdateAfterBind = true,
         };
