@@ -285,36 +285,74 @@ void VkRayTracingPipelineState::Compile(const RayTracingShaderCollection& shader
 
     std::vector<::vk::UniqueShaderModule> modules;
     std::vector<::vk::PipelineShaderStageCreateInfo> stages;
+    std::vector<::vk::RayTracingShaderGroupCreateInfoKHR> groups;
 
-    auto registerShaderStage = [&](const std::vector<NonNullPtr<Shader>>& shaders, ::vk::ShaderStageFlagBits type)
+    using T = ::vk::RayTracingShaderGroupCreateInfoKHR;
+
+    auto registerShaderStage = [&](const std::vector<NonNullPtr<Shader>>& shaders,
+                                   ::vk::ShaderStageFlagBits type,
+                                   ::vk::RayTracingShaderGroupTypeKHR groupType,
+                                   uint32_t T::* p)
     {
         for (u32 i = 0; i < shaders.size(); ++i)
         {
-            modules.push_back(createShaderModule(*shaderCollection.rayGenerationShaders[i]));
-            stages.push_back({ .stage = type,
-                               .module = *modules.back(),
-                               .pName = shaderCollection.rayGenerationShaders[i]->key.entryPoint.c_str() });
+            modules.push_back(createShaderModule(*shaders[i]));
+
+            ::vk::RayTracingShaderGroupCreateInfoKHR group{
+                .type = groupType,
+            };
+            group.*p = stages.size();
+            groups.push_back(group);
+
+            stages.push_back({ .stage = type, .module = *modules.back(), .pName = shaders[i]->key.entryPoint.c_str() });
         }
     };
 
-    registerShaderStage(shaderCollection.rayGenerationShaders, ::vk::ShaderStageFlagBits::eRaygenKHR);
-    registerShaderStage(shaderCollection.rayCallableShaders, ::vk::ShaderStageFlagBits::eCallableKHR);
-    registerShaderStage(shaderCollection.rayMissShaders, ::vk::ShaderStageFlagBits::eMissKHR);
+    registerShaderStage(shaderCollection.rayGenerationShaders,
+                        ::vk::ShaderStageFlagBits::eRaygenKHR,
+                        ::vk::RayTracingShaderGroupTypeKHR::eGeneral,
+                        &::vk::RayTracingShaderGroupCreateInfoKHR::generalShader);
+    registerShaderStage(shaderCollection.rayCallableShaders,
+                        ::vk::ShaderStageFlagBits::eCallableKHR,
+                        ::vk::RayTracingShaderGroupTypeKHR::eGeneral,
+                        &::vk::RayTracingShaderGroupCreateInfoKHR::generalShader);
+    registerShaderStage(shaderCollection.rayMissShaders,
+                        ::vk::ShaderStageFlagBits::eMissKHR,
+                        ::vk::RayTracingShaderGroupTypeKHR::eGeneral,
+                        &::vk::RayTracingShaderGroupCreateInfoKHR::generalShader);
 
     for (const auto& group : shaderCollection.hitGroupShaders)
     {
-        registerShaderStage({ group.rayClosestHitShader }, ::vk::ShaderStageFlagBits::eClosestHitKHR);
+        registerShaderStage({ group.rayClosestHitShader },
+                            ::vk::ShaderStageFlagBits::eClosestHitKHR,
+                            ::vk::RayTracingShaderGroupTypeKHR::eTrianglesHitGroup,
+                            &::vk::RayTracingShaderGroupCreateInfoKHR::closestHitShader);
         if (group.rayAnyHitShader)
         {
-            registerShaderStage({ *group.rayAnyHitShader }, ::vk::ShaderStageFlagBits::eAnyHitKHR);
+            registerShaderStage({ *group.rayAnyHitShader },
+                                ::vk::ShaderStageFlagBits::eAnyHitKHR,
+                                ::vk::RayTracingShaderGroupTypeKHR::eGeneral,
+                                &::vk::RayTracingShaderGroupCreateInfoKHR::anyHitShader);
         }
 
         if (group.rayIntersectionShader)
         {
-            registerShaderStage({ *group.rayIntersectionShader }, ::vk::ShaderStageFlagBits::eIntersectionKHR);
+            registerShaderStage({ *group.rayIntersectionShader },
+                                ::vk::ShaderStageFlagBits::eIntersectionKHR,
+                                ::vk::RayTracingShaderGroupTypeKHR::eGeneral,
+                                &::vk::RayTracingShaderGroupCreateInfoKHR::intersectionShader);
         }
     }
 
+    ::vk::RayTracingPipelineCreateInfoKHR rtPSOCI{
+        .stageCount = static_cast<u32>(stages.size()),
+        .pStages = stages.data(),
+        .groupCount = static_cast<u32>(groups.size()),
+        .pGroups = groups.data(),
+        .maxPipelineRayRecursionDepth = 10,
+        .layout = *resourceLayout.pipelineLayout,
+    };
+    rtPipeline = VEX_VK_CHECK <<= device.createRayTracingPipelineKHRUnique({}, PSOCache, rtPSOCI);
     VEX_NOT_YET_IMPLEMENTED();
 }
 
