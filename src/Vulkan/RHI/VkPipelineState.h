@@ -68,6 +68,12 @@ public:
                          ResourceCleanup& resourceCleanup,
                          RHIAllocator& allocator) override;
     virtual void Cleanup(ResourceCleanup& resourceCleanup) override;
+
+    ::vk::UniquePipeline rtPipeline;
+
+private:
+    ::vk::Device device;
+    ::vk::PipelineCache PSOCache;
 };
 
 } // namespace vex::vk
