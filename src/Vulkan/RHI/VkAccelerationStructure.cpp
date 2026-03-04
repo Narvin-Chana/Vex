@@ -174,14 +174,13 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupTLASBuild
         .geometryType = ::vk::GeometryTypeKHR::eInstances,
         .geometry = {
             .instances = {
-                .arrayOfPointers = false,
                 .data = { desc.instancesBinding->buffer->GetDeviceAddress() }
             },
         },
     });
     geometryCount.push_back(1);
     ranges.push_back({
-        .primitiveCount = 1,
+        .primitiveCount = static_cast<u32>(desc.instances.size()),
         .primitiveOffset = 0,
         .firstVertex = 0,
         .transformOffset = 0,
