@@ -10,7 +10,6 @@
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Validation.h>
 
-#include <DX12/DX12FeatureChecker.h>
 #include <DX12/RHI/DX12DescriptorPool.h>
 
 namespace vex::dx12
@@ -36,8 +35,7 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
                                                                        (desc.usage & BufferUsage::ReadWriteBuffer)
                                                                            ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
                                                                            : D3D12_RESOURCE_FLAG_NONE);
-    if (VEX_USE_CUSTOM_ALLOCATOR_BUFFERS &&
-        static_cast<DX12FeatureChecker*>(GPhysicalDevice->featureChecker.get())->SupportsTightAlignment())
+    if (VEX_USE_CUSTOM_ALLOCATOR_BUFFERS && GPhysicalDevice->SupportsTightAlignment())
     {
         bufferDesc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
     }

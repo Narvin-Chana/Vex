@@ -1,12 +1,11 @@
 #pragma once
 
-#include <Vex/Containers/Span.h>
 #include <vector>
 
-#include <Vex/Utility/NonNullPtr.h>
+#include <Vex/Containers/Span.h>
 #include <Vex/QueueType.h>
 #include <Vex/Types.h>
-#include <Vex/Utility/UniqueHandle.h>
+#include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIFwd.h>
 
@@ -15,7 +14,6 @@ namespace vex
 
 struct BufferDesc;
 struct TextureDesc;
-struct PhysicalDevice;
 struct GraphicsPipelineStateKey;
 struct ComputePipelineStateKey;
 struct RayTracingCollection;
@@ -29,8 +27,7 @@ struct ASDesc;
 
 struct RHIBase
 {
-    virtual std::vector<UniqueHandle<PhysicalDevice>> EnumeratePhysicalDevices() = 0;
-    virtual void Init(const UniqueHandle<PhysicalDevice>& physicalDevice) = 0;
+    virtual void Init() = 0;
 
     virtual RHISwapChain CreateSwapChain(SwapChainDesc& desc, const PlatformWindow& platformWindow) = 0;
 

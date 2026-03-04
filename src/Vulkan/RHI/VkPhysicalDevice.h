@@ -1,23 +1,31 @@
 #pragma once
 
-#include <Vex/FeatureChecker.h>
 #include <Vex/Formats.h>
+#include <Vex/Types.h>
+
+#include <RHI/RHIPhysicalDevice.h>
 
 #include <Vulkan/VkHeaders.h>
 
-namespace vk
-{
-class PhysicalDevice;
-}
-
 namespace vex::vk
 {
-class VkFeatureChecker : public vex::FeatureChecker
+
+class VkPhysicalDevice final : public RHIPhysicalDeviceBase
 {
 public:
-    VkFeatureChecker() = default;
-    VkFeatureChecker(const ::vk::PhysicalDevice& physicalDevice);
-    virtual ~VkFeatureChecker() override;
+    VkPhysicalDevice(const ::vk::PhysicalDevice& dev);
+    ~VkPhysicalDevice() = default;
+
+    VkPhysicalDevice(const VkPhysicalDevice&) = delete;
+    VkPhysicalDevice& operator=(const VkPhysicalDevice&) = delete;
+
+    VkPhysicalDevice(VkPhysicalDevice&&) = default;
+    VkPhysicalDevice& operator=(VkPhysicalDevice&&) = default;
+
+    static double GetDeviceVRAMSize(const ::vk::PhysicalDevice& physicalDevice);
+
+    ::vk::PhysicalDevice physicalDevice;
+
     virtual bool IsFeatureSupported(Feature feature) const override;
     virtual FeatureLevel GetFeatureLevel() const override;
     virtual ResourceBindingTier GetResourceBindingTier() const override;
@@ -29,8 +37,6 @@ public:
     std::string_view GetMaxSupportedVulkanVersion() const;
     bool SupportsMinimalRequirements() const override;
 
-    bool DoesTextureFormatSupportLinearFiltering(TextureFormat format);
-
 private:
     ::vk::PhysicalDeviceProperties deviceProperties;
     ::vk::PhysicalDeviceFeatures deviceFeatures;
@@ -39,7 +45,6 @@ private:
     ::vk::PhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures;
     ::vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingFeatures;
     ::vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures;
-
-    ::vk::PhysicalDevice physDevice;
 };
+
 } // namespace vex::vk
