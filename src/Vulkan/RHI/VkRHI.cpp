@@ -417,7 +417,7 @@ RHIComputePipelineState VkRHI::CreateComputePipelineState(const ComputePipelineS
 
 RHIRayTracingPipelineState VkRHI::CreateRayTracingPipelineState(const RayTracingPipelineStateKey& key)
 {
-    return { key, *device, *PSOCache };
+    return { key, GetGPUContext(), *PSOCache };
 }
 
 RHIResourceLayout VkRHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool)

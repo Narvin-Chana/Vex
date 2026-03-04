@@ -1,7 +1,11 @@
 #pragma once
 
+#include <Vex/Utility/MaybeUninitialized.h>
+
 #include <RHI/RHIPipelineState.h>
 
+#include <Vulkan/RHI/VkShaderTable.h>
+#include <Vulkan/VkGPUContext.h>
 #include <Vulkan/VkHeaders.h>
 
 namespace vex::vk
@@ -60,7 +64,7 @@ private:
 class VkRayTracingPipelineState final : public RHIRayTracingPipelineStateInterface
 {
 public:
-    VkRayTracingPipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache);
+    VkRayTracingPipelineState(const Key& key, NonNullPtr<VkGPUContext> ctx, ::vk::PipelineCache PSOCache);
     VkRayTracingPipelineState(VkRayTracingPipelineState&&) = default;
     VkRayTracingPipelineState& operator=(VkRayTracingPipelineState&&) = default;
     virtual void Compile(const RayTracingShaderCollection& shaderCollection,
@@ -71,8 +75,13 @@ public:
 
     ::vk::UniquePipeline rtPipeline;
 
+    MaybeUninitialized<VkShaderTable> rayGenTable;
+    MaybeUninitialized<VkShaderTable> rayMissTable;
+    MaybeUninitialized<VkShaderTable> groupHitTable;
+    MaybeUninitialized<VkShaderTable> rayCallableTable;
+
 private:
-    ::vk::Device device;
+    NonNullPtr<VkGPUContext> ctx;
     ::vk::PipelineCache PSOCache;
 };
 

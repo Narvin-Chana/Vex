@@ -42,6 +42,10 @@ static ::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDesc& desc)
     {
         flags |= eAccelerationStructureStorageKHR;
     }
+    if (desc.usage & BufferUsage::ShaderTable)
+    {
+        flags |= eShaderBindingTableKHR;
+    }
     return flags;
 }
 
@@ -114,7 +118,7 @@ void VkBuffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
     return *buffer;
 }
 
-::vk::DeviceAddress VkBuffer::GetDeviceAddress()
+::vk::DeviceAddress VkBuffer::GetDeviceAddress() const
 {
     ::vk::BufferDeviceAddressInfo info{ .buffer = *buffer };
     return VEX_VK_CHECK <<= ctx->device.getBufferAddress(info);

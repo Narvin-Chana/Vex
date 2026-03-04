@@ -29,7 +29,7 @@ public:
                                 BindlessHandle handle,
                                 const BufferViewDesc& desc) override;
     ::vk::Buffer GetNativeBuffer();
-    ::vk::DeviceAddress GetDeviceAddress();
+    ::vk::DeviceAddress GetDeviceAddress() const;
 
 private:
     NonNullPtr<VkGPUContext> ctx;

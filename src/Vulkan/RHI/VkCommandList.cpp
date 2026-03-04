@@ -226,7 +226,7 @@ void VkCommandList::SetPipelineState(const RHIComputePipelineState& computePipel
 
 void VkCommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTracingPipelineState)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    commandBuffer->bindPipeline(::vk::PipelineBindPoint::eRayTracingKHR, *rayTracingPipelineState.rtPipeline);
 }
 
 void VkCommandList::SetLayout(RHIResourceLayout& layout)
@@ -239,7 +239,8 @@ void VkCommandList::SetLayout(RHIResourceLayout& layout)
 
     // Stage flags must be the same as the push constant ranges defined in the layout
     commandBuffer->pushConstants(*layout.pipelineLayout,
-                                 ::vk::ShaderStageFlagBits::eAllGraphics | ::vk::ShaderStageFlagBits::eCompute,
+                                 ::vk::ShaderStageFlagBits::eAllGraphics | ::vk::ShaderStageFlagBits::eCompute |
+                                     ::vk::ShaderStageFlagBits::eRaygenKHR,
                                  0,
                                  localConstantsData.size(),
                                  localConstantsData.data());
@@ -261,6 +262,13 @@ void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIReso
                                           nullptr);
     case QueueTypes::Compute:
         commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eCompute,
+                                          *resourceLayout.pipelineLayout,
+                                          0,
+                                          descriptorSets.size(),
+                                          descriptorSets.data(),
+                                          0,
+                                          nullptr);
+        commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eRayTracingKHR,
                                           *resourceLayout.pipelineLayout,
                                           0,
                                           descriptorSets.size(),
@@ -686,7 +694,28 @@ void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount)
 void VkCommandList::TraceRays(const TraceRaysDesc& rayTracingArgs,
                               const RHIRayTracingPipelineState& rayTracingPipelineState)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    ::vk::StridedDeviceAddressRegionKHR rayGenAddress{}, rayMissAddress{}, hitGroupAddress{}, callableAddress{};
+
+    if (rayTracingPipelineState.rayGenTable)
+        rayGenAddress = rayTracingPipelineState.rayGenTable->GetDeviceRegion(rayTracingArgs.rayGenShaderIndex);
+
+    if (rayTracingPipelineState.rayMissTable)
+        rayMissAddress = rayTracingPipelineState.rayMissTable->GetDeviceRegion(rayTracingArgs.rayMissShaderIndex);
+
+    if (rayTracingPipelineState.groupHitTable)
+        hitGroupAddress = rayTracingPipelineState.groupHitTable->GetDeviceRegion(rayTracingArgs.hitGroupShaderIndex);
+
+    if (rayTracingPipelineState.rayCallableTable)
+        callableAddress =
+            rayTracingPipelineState.rayCallableTable->GetDeviceRegion(rayTracingArgs.rayCallableShaderIndex);
+
+    commandBuffer->traceRaysKHR(rayGenAddress,
+                                rayMissAddress,
+                                hitGroupAddress,
+                                callableAddress,
+                                rayTracingArgs.width,
+                                rayTracingArgs.height,
+                                rayTracingArgs.depth);
 }
 
 void VkCommandList::GenerateMips(RHITexture& texture, const TextureSubresource& subresource)

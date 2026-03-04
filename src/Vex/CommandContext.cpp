@@ -931,10 +931,10 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
         .name =
             graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_blas_scratch",
         .byteSize = buildInfo.scratchByteSize,
-        .usage = BufferUsage::ScratchBuffer | BufferUsage::ReadWriteBuffer,
+        .usage = BufferUsage::AccelerationStructure | BufferUsage::ScratchBuffer | BufferUsage::ReadWriteBuffer,
     };
     Buffer scratchBuffer = CreateTemporaryBuffer(scratchBufferDesc);
-    Barrier(scratchBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderReadWrite);
+    Barrier(scratchBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::AccelerationStructureWrite);
 
     FlushBarriers();
     cmdList->BuildBLAS(graphics->GetRHIAccelerationStructure(accelerationStructure.handle),
@@ -971,10 +971,14 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
     RHIAccelerationStructure& accelStruct = graphics->GetRHIAccelerationStructure(accelerationStructure.handle);
     std::vector<std::byte> instanceData = accelStruct.GetInstanceBufferData(rhiTLASDesc);
 
-    Buffer instanceBuffer =
-        CreateTemporaryStagingBuffer(accelStruct.GetDesc().name + "_build_tlas", instanceData.size());
+    BufferDesc instancesBufferDesc{
+        .name = accelStruct.GetDesc().name + "_build_tlas_instances",
+        .byteSize = instanceData.size(),
+        .usage = BufferUsage::AccelerationStructure | BufferUsage::ReadWriteBuffer,
+    };
+    Buffer instanceBuffer = CreateTemporaryBuffer(instancesBufferDesc);
     RHIBuffer& rhiInstanceBuffer = graphics->GetRHIBuffer(instanceBuffer.handle);
-    MappedMemory{ rhiInstanceBuffer }.WriteData(instanceData);
+    EnqueueDataUpload(instanceBuffer, instanceData);
 
     BufferBinding binding =
         BufferBinding::CreateStructuredBuffer(instanceBuffer, accelStruct.GetInstanceBufferStride());
@@ -984,10 +988,10 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
     BufferDesc scratchBufferDesc{
         .name = accelStruct.GetDesc().name + "_build_tlas_scratch",
         .byteSize = buildInfo.scratchByteSize,
-        .usage = BufferUsage::ScratchBuffer | BufferUsage::ReadWriteBuffer,
+        .usage = BufferUsage::AccelerationStructure | BufferUsage::ScratchBuffer | BufferUsage::ReadWriteBuffer,
     };
     Buffer scratchBuffer = CreateTemporaryBuffer(scratchBufferDesc);
-    Barrier(scratchBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderReadWrite);
+    Barrier(scratchBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::AccelerationStructureWrite);
     Barrier(instanceBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderRead);
 
     FlushBarriers();
