@@ -17,6 +17,10 @@ VkDescriptorPool::VkDescriptorPool(NonNullPtr<VkGPUContext> ctx)
                          ::vk::DescriptorPoolSize{
                              .type = ::vk::DescriptorType::eSampler,
                              .descriptorCount = GDefaultDescriptorPoolSize,
+                         },
+                         ::vk::DescriptorPoolSize{
+                             .type = ::vk::DescriptorType::eCombinedImageSampler,
+                             .descriptorCount = GDefaultDescriptorPoolSize,
                          } };
 
     ::vk::DescriptorPoolCreateInfo descriptorPoolInfo{
