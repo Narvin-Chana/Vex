@@ -123,6 +123,8 @@ struct TextureBinding
     bool isSRGB = false;
     // Subresource of the texture, defaults to all mips and all slices (so the entirety of the resource).
     TextureSubresource subresource;
+    // Force view type of TextureCube to Texture2DArray (or Texture2D if only one slice in subresource)
+    bool textureCubeAsTexture2DArray = false;
 };
 
 struct ResourceBinding

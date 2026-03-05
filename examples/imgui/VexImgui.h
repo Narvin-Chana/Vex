@@ -18,37 +18,41 @@
 
 struct ImGui_ImplVex_InitInfo
 {
-    vex::NonNullPtr<vex::RHI> rhi;
-    vex::NonNullPtr<vex::RHIDescriptorPool> descriptorPool;
+    vex::NonNullPtr<vex::Graphics> graphics;
     vex::FrameBuffering buffering;
     vex::TextureFormat swapchainFormat;
     vex::TextureFormat depthStencilFormat = vex::TextureFormat::UNKNOWN;
 };
 
-#if VEX_VULKAN
-struct ImGui_ImplVex_VulkanInfo
+struct ImGui_ImplVex_Context
 {
+    vex::Graphics* graphics = nullptr;
+#if VEX_VULKAN
     ::vk::UniqueSampler linearSampler;
     std::unordered_map<VkImageView, ImTextureID> imageCache;
-};
-inline ImGui_ImplVex_VulkanInfo GVulkanInfo;
 #endif
+};
+inline ImGui_ImplVex_Context GImGuiVexContext;
 
 inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
 {
 #if VEX_VULKAN
-    ImGui_ImplVulkan_InitInfo initInfo{};
-    initInfo.Device = data.rhi->GetNativeDevice();
-    initInfo.Instance = data.rhi->GetNativeInstance();
-    initInfo.PhysicalDevice = data.rhi->GetNativePhysicalDevice();
+    const vex::RHIAccessor accessor{ *data.graphics };
+    const vex::NonNullPtr rhi = accessor.GetRHI();
+    const vex::NonNullPtr descriptorPool = accessor.GetDescriptorPool();
 
-    const auto& commandQueue = data.rhi->GetCommandQueue(vex::QueueType::Graphics);
+    ImGui_ImplVulkan_InitInfo initInfo{};
+    initInfo.Device = rhi->GetNativeDevice();
+    initInfo.Instance = rhi->GetNativeInstance();
+    initInfo.PhysicalDevice = rhi->GetNativePhysicalDevice();
+
+    const auto& commandQueue = rhi->GetCommandQueue(vex::QueueType::Graphics);
     initInfo.Queue = commandQueue.queue;
     initInfo.QueueFamily = commandQueue.family;
     initInfo.ImageCount = std::to_underlying(data.buffering);
     initInfo.MinImageCount = initInfo.ImageCount;
-    initInfo.DescriptorPool = data.descriptorPool->GetNativeDescriptorPool();
-    initInfo.PipelineCache = data.rhi->GetNativePSOCache();
+    initInfo.DescriptorPool = descriptorPool->GetNativeDescriptorPool();
+    initInfo.PipelineCache = rhi->GetNativePSOCache();
 
     initInfo.UseDynamicRendering = true;
     ::vk::Format colorAttachmentFormat = vex::vk::TextureFormatToVulkan(data.swapchainFormat, false);
@@ -71,7 +75,8 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
                                        .minLod = -1000,
                                        .maxLod = 1000 };
 
-    GVulkanInfo.linearSampler = vex::vk::VEX_VK_CHECK <<= data.rhi->GetNativeDevice().createSamplerUnique(samplerCI);
+    GImGuiVexContext.graphics = data.graphics;
+    GImGuiVexContext.linearSampler = vex::vk::VEX_VK_CHECK <<= rhi->GetNativeDevice().createSamplerUnique(samplerCI);
 #elif VEX_DX12
     static struct DescriptorHelper
     {
@@ -112,7 +117,7 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
 inline void ImGui_ImplVex_Shutdown()
 {
 #if VEX_VULKAN
-    GVulkanInfo = {};
+    GImGuiVexContext = {};
     ImGui_ImplVulkan_Shutdown();
 #elif VEX_DX12
     ImGui_ImplDX12_Shutdown();
@@ -140,33 +145,41 @@ inline void ImGui_ImplVex_NewFrame()
 namespace ImGui
 {
 
-inline void Image(vex::Graphics& gfx,
-                  const vex::Texture& texture,
+inline void Image(const vex::TextureBinding& binding,
                   const ImVec2& image_size,
                   const ImVec2& uv0 = ImVec2(0, 0),
                   const ImVec2& uv1 = ImVec2(1, 1))
 {
-    vex::RHIAccessor accessor{ gfx };
-    VEX_ASSERT(texture.handle != vex::GInvalidTextureHandle);
+    VEX_CHECK(GImGuiVexContext.graphics, "ImGui_ImplVex_Init must be called prior to this");
+    VEX_CHECK(binding.texture.handle != vex::GInvalidTextureHandle, "Vex Imgui: Texture handle need to be valid to draw");
+
+    vex::RHIAccessor accessor{ *GImGuiVexContext.graphics };
     ImTextureID registeredTexture;
 #if VEX_VULKAN
-    ::vk::ImageView img = accessor.GetTexture(texture).GetOrCreateImageView({ texture }, vex::TextureUsage::ShaderRead);
-    if (!GVulkanInfo.imageCache.contains(img))
+    ::vk::ImageView img = accessor.GetTexture(binding.texture).GetOrCreateImageView(binding, vex::TextureUsage::ShaderRead);
+    if (!GImGuiVexContext.imageCache.contains(img))
     {
-        GVulkanInfo.imageCache.insert(
+        GImGuiVexContext.imageCache.insert(
             { img,
-              (ImTextureID)ImGui_ImplVulkan_AddTexture(*GVulkanInfo.linearSampler,
+              (ImTextureID)ImGui_ImplVulkan_AddTexture(*GImGuiVexContext.linearSampler,
                                                        img,
                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) });
     }
-    registeredTexture = GVulkanInfo.imageCache[img];
+    registeredTexture = GImGuiVexContext.imageCache[img];
 #elif VEX_DX12
-    vex::TextureBinding binding{ texture, vex::TextureBindingUsage::ShaderRead };
     vex::BindlessHandle handle = gfx.GetBindlessHandle(binding);
     CD3DX12_GPU_DESCRIPTOR_HANDLE descriptorHandle = accessor.GetDescriptorPool().GetGPUDescriptor(handle);
     registeredTexture = descriptorHandle.ptr;
 #endif
     Image(registeredTexture, image_size, uv0, uv1);
+}
+
+inline void Image(const vex::Texture& texture,
+                  const ImVec2& image_size,
+                  const ImVec2& uv0 = ImVec2(0, 0),
+                  const ImVec2& uv1 = ImVec2(1, 1))
+{
+    Image(vex::TextureBinding{ .texture = texture, .usage = vex::TextureBindingUsage::ShaderRead }, image_size, uv0, uv1);
 }
 
 } // namespace ImGui

@@ -23,11 +23,17 @@ std::tuple<u32, u32, u32> GetMipSize(const TextureDesc& desc, u32 mip)
 
 TextureViewType GetTextureViewType(const TextureBinding& binding)
 {
-    switch (binding.texture.desc.type)
+    TextureType type = binding.texture.desc.type;
+    if (binding.textureCubeAsTexture2DArray && type == TextureType::TextureCube)
+    {
+        type = TextureType::Texture2D;
+    }
+
+    switch (type)
     {
     case TextureType::Texture2D:
-        return (binding.texture.desc.depthOrSliceCount > 1) ? TextureViewType::Texture2DArray
-                                                            : TextureViewType::Texture2D;
+        return (binding.subresource.GetSliceCount(binding.texture.desc) > 1) ? TextureViewType::Texture2DArray
+                                                                             : TextureViewType::Texture2D;
     case TextureType::TextureCube:
         return (binding.texture.desc.depthOrSliceCount > 1) ? TextureViewType::TextureCubeArray
                                                             : TextureViewType::TextureCube;
