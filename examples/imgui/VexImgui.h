@@ -36,11 +36,10 @@ inline ImGui_ImplVex_Context GImGuiVexContext;
 
 inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
 {
-#if VEX_VULKAN
     const vex::RHIAccessor accessor{ *data.graphics };
-    const vex::NonNullPtr rhi = accessor.GetRHI();
-    const vex::NonNullPtr descriptorPool = accessor.GetDescriptorPool();
-
+    vex::NonNullPtr rhi = accessor.GetRHI();
+    vex::NonNullPtr descriptorPool = accessor.GetDescriptorPool();
+#if VEX_VULKAN
     ImGui_ImplVulkan_InitInfo initInfo{};
     initInfo.Device = rhi->GetNativeDevice();
     initInfo.Instance = rhi->GetNativeInstance();
@@ -82,11 +81,11 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
     {
         std::unordered_map<size_t, vex::BindlessHandle> descriptorsMap;
         vex::RHIDescriptorPool& descriptorPool;
-    } helper{ .descriptorPool = *data.descriptorPool };
+    } helper{ .descriptorPool = *descriptorPool };
 
     ImGui_ImplDX12_InitInfo initInfo;
-    initInfo.Device = data.rhi->GetNativeDevice().Get();
-    initInfo.CommandQueue = data.rhi->GetNativeQueue(vex::QueueType::Graphics).Get();
+    initInfo.Device = rhi->GetNativeDevice().Get();
+    initInfo.CommandQueue = rhi->GetNativeQueue(vex::QueueType::Graphics).Get();
     initInfo.NumFramesInFlight = std::to_underlying(data.buffering);
     initInfo.RTVFormat = vex::dx12::TextureFormatToDXGI(data.swapchainFormat, false);
     initInfo.DSVFormat = vex::dx12::TextureFormatToDXGI(data.depthStencilFormat, false);
@@ -167,7 +166,7 @@ inline void Image(const vex::TextureBinding& binding,
     }
     registeredTexture = GImGuiVexContext.imageCache[img];
 #elif VEX_DX12
-    vex::BindlessHandle handle = gfx.GetBindlessHandle(binding);
+    vex::BindlessHandle handle = GImGuiVexContext.graphics->GetBindlessHandle(binding);
     CD3DX12_GPU_DESCRIPTOR_HANDLE descriptorHandle = accessor.GetDescriptorPool().GetGPUDescriptor(handle);
     registeredTexture = descriptorHandle.ptr;
 #endif

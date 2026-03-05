@@ -26,10 +26,8 @@ ImGuiApplication::ImGuiApplication()
 
     ImGui_ImplGlfw_InitForOther(window, true);
 
-    vex::RHIAccessor accessor{ *graphics };
     ImGui_ImplVex_InitInfo initInfo{
-        .rhi = vex::NonNullPtr(accessor.GetRHI()),
-        .descriptorPool = vex::NonNullPtr(accessor.GetDescriptorPool()),
+        .graphics = vex::NonNullPtr{ graphics.get() },
         .buffering = FrameBuffering,
         .swapchainFormat = SwapchainFormat,
     };
@@ -71,7 +69,7 @@ void ImGuiApplication::RenderImGui()
 
     if (ImGui::Begin("Last Frame"))
     {
-        ImGui::Image(*graphics, lastFrameTexture, ImVec2(100, 100));
+        ImGui::Image(lastFrameTexture, ImVec2(100, 100));
     }
     ImGui::End();
 
