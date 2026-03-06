@@ -39,6 +39,8 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
     const vex::RHIAccessor accessor{ *data.graphics };
     vex::NonNullPtr rhi = accessor.GetRHI();
     vex::NonNullPtr descriptorPool = accessor.GetDescriptorPool();
+
+    GImGuiVexContext.graphics = data.graphics;
 #if VEX_VULKAN
     ImGui_ImplVulkan_InitInfo initInfo{};
     initInfo.Device = rhi->GetNativeDevice();
@@ -56,7 +58,7 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
     initInfo.UseDynamicRendering = true;
     ::vk::Format colorAttachmentFormat = vex::vk::TextureFormatToVulkan(data.swapchainFormat, false);
     ::vk::Format depthStencilFormat = vex::vk::TextureFormatToVulkan(data.depthStencilFormat, false);
-    initInfo.PipelineRenderingCreateInfo =
+    initInfo.PipelineInfoMain.PipelineRenderingCreateInfo =
         ::vk::PipelineRenderingCreateInfo{ .colorAttachmentCount = 1,
                                            .pColorAttachmentFormats = &colorAttachmentFormat,
                                            .depthAttachmentFormat = depthStencilFormat,
@@ -74,7 +76,6 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
                                        .minLod = -1000,
                                        .maxLod = 1000 };
 
-    GImGuiVexContext.graphics = data.graphics;
     GImGuiVexContext.linearSampler = vex::vk::VEX_VK_CHECK <<= rhi->GetNativeDevice().createSamplerUnique(samplerCI);
 #elif VEX_DX12
     static struct DescriptorHelper
@@ -150,12 +151,14 @@ inline void Image(const vex::TextureBinding& binding,
                   const ImVec2& uv1 = ImVec2(1, 1))
 {
     VEX_CHECK(GImGuiVexContext.graphics, "ImGui_ImplVex_Init must be called prior to this");
-    VEX_CHECK(binding.texture.handle != vex::GInvalidTextureHandle, "Vex Imgui: Texture handle need to be valid to draw");
+    VEX_CHECK(binding.texture.handle != vex::GInvalidTextureHandle,
+              "Vex Imgui: Texture handle need to be valid to draw");
 
     vex::RHIAccessor accessor{ *GImGuiVexContext.graphics };
     ImTextureID registeredTexture;
 #if VEX_VULKAN
-    ::vk::ImageView img = accessor.GetTexture(binding.texture).GetOrCreateImageView(binding, vex::TextureUsage::ShaderRead);
+    ::vk::ImageView img =
+        accessor.GetTexture(binding.texture).GetOrCreateImageView(binding, vex::TextureUsage::ShaderRead);
     if (!GImGuiVexContext.imageCache.contains(img))
     {
         GImGuiVexContext.imageCache.insert(
@@ -178,7 +181,10 @@ inline void Image(const vex::Texture& texture,
                   const ImVec2& uv0 = ImVec2(0, 0),
                   const ImVec2& uv1 = ImVec2(1, 1))
 {
-    Image(vex::TextureBinding{ .texture = texture, .usage = vex::TextureBindingUsage::ShaderRead }, image_size, uv0, uv1);
+    Image(vex::TextureBinding{ .texture = texture, .usage = vex::TextureBindingUsage::ShaderRead },
+          image_size,
+          uv0,
+          uv1);
 }
 
 } // namespace ImGui
