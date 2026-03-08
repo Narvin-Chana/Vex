@@ -91,6 +91,16 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
     ranges.reserve(desc.geometries.size());
     geometryCount.reserve(desc.geometries.size());
 
+    auto bindingToOffsetCount = [](const std::optional<RHIBufferBinding>& binding,
+                                   u32 fallbackStride) -> std::pair<u32, u32> // offset, count
+    {
+        if (!binding)
+            return {};
+
+        return { static_cast<u32>(*binding->binding.offsetByteSize / fallbackStride),
+                 static_cast<u32>(*binding->binding.rangeByteSize / fallbackStride) };
+    };
+
     for (const RHIBLASGeometryDesc& geom : desc.geometries)
     {
         ::vk::AccelerationStructureGeometryKHR geometry{};
@@ -100,7 +110,9 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
             VEX_ASSERT(geom.vertexBufferBinding->binding.strideByteSize);
             VEX_ASSERT(geom.indexBufferBinding);
 
-            auto indexCount = *geom.indexBufferBinding->binding.rangeByteSize / sizeof(u32);
+            auto [firstVertex, vertexCount] = bindingToOffsetCount(geom.vertexBufferBinding, sizeof(float) * 3);
+            auto [firstIndex, indexCount] = bindingToOffsetCount(geom.indexBufferBinding, sizeof(u32));
+
             u32 triangleCount = indexCount / 3;
             geometryCount.push_back(triangleCount);
 
@@ -112,8 +124,8 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
                     .triangles = {
                         .vertexFormat = ::vk::Format::eR32G32B32Sfloat,
                         .vertexData = { geom.vertexBufferBinding->buffer->GetDeviceAddress() },
-                        .vertexStride = *vertexBufferBinding.strideByteSize,
-                        .maxVertex = static_cast<u32>(*vertexBufferBinding.rangeByteSize / static_cast<u64>(*vertexBufferBinding.strideByteSize)) - 1,
+                        .vertexStride = sizeof(float) * 3,
+                        .maxVertex = vertexCount - 1,
                         .indexType = ::vk::IndexType::eUint32,
                         .indexData = { geom.indexBufferBinding->buffer->GetDeviceAddress() },
                         .transformData = { geom.transformBufferBinding ? geom.transformBufferBinding->buffer->GetDeviceAddress() : ::vk::DeviceAddress{} },
@@ -123,9 +135,9 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
 
             ranges.push_back(::vk::AccelerationStructureBuildRangeInfoKHR{
                 .primitiveCount = triangleCount,
-                .primitiveOffset = 0,
+                .primitiveOffset = static_cast<u32>(geom.indexBufferBinding->binding.offsetByteSize.value_or(0)),
                 .firstVertex = 0,
-                .transformOffset = 0,
+                .transformOffset = static_cast<u32>(geom.transformBufferBinding->binding.offsetByteSize.value_or(0)),
             });
         }
         else if (desc.type == ASGeometryType::AABBs)
@@ -142,12 +154,12 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
                 },
             };
 
-            geometryCount.push_back(1);
+            auto [firstAabb, aabbCount] = bindingToOffsetCount(geom.aabbBufferBinding, sizeof(float) * 6);
+
+            geometryCount.push_back(aabbCount);
             ranges.push_back(::vk::AccelerationStructureBuildRangeInfoKHR{
-                .primitiveCount = 1,
-                .primitiveOffset = 0,
-                .firstVertex = 0,
-                .transformOffset = 0,
+                .primitiveCount = aabbCount,
+                .primitiveOffset = static_cast<u32>(geom.aabbBufferBinding->binding.offsetByteSize.value_or(0)),
             });
         }
 
@@ -183,8 +195,6 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupTLASBuild
     ranges.push_back({
         .primitiveCount = primitiveCount,
         .primitiveOffset = 0,
-        .firstVertex = 0,
-        .transformOffset = 0,
     });
     geometryCount.push_back(primitiveCount);
 
