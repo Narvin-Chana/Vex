@@ -137,7 +137,10 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
                 .primitiveCount = triangleCount,
                 .primitiveOffset = static_cast<u32>(geom.indexBufferBinding->binding.offsetByteSize.value_or(0)),
                 .firstVertex = 0,
-                .transformOffset = static_cast<u32>(geom.transformBufferBinding->binding.offsetByteSize.value_or(0)),
+                .transformOffset =
+                    geom.transformBufferBinding
+                        ? static_cast<u32>(geom.transformBufferBinding->binding.offsetByteSize.value_or(0))
+                        : 0,
             });
         }
         else if (desc.type == ASGeometryType::AABBs)
