@@ -178,13 +178,15 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupTLASBuild
             },
         },
     });
-    geometryCount.push_back(1);
+
+    auto primitiveCount = static_cast<u32>(desc.instances.size());
     ranges.push_back({
-        .primitiveCount = static_cast<u32>(desc.instances.size()),
+        .primitiveCount = primitiveCount,
         .primitiveOffset = 0,
         .firstVertex = 0,
         .transformOffset = 0,
     });
+    geometryCount.push_back(primitiveCount);
 
     BuildAccelerationStructure(::vk::AccelerationStructureTypeKHR::eTopLevel, allocator);
 
