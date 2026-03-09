@@ -4,7 +4,9 @@
 #include <variant>
 #include <vector>
 
+#include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/Synchronization.h>
+#include <Vex/Utility/MaybeUninitialized.h>
 #include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIFwd.h>
@@ -17,6 +19,8 @@ class ResourceCleanup
 public:
     using CleanupVariant = std::variant<std::unique_ptr<RHITexture>,
                                         std::unique_ptr<RHIBuffer>,
+                                        // Required for internal RHI allocation cleanup.
+                                        MaybeUninitialized<RHIBuffer>,
                                         std::unique_ptr<RHIAccelerationStructure>,
                                         std::unique_ptr<RHIGraphicsPipelineState>,
                                         std::unique_ptr<RHIComputePipelineState>,

@@ -2,10 +2,10 @@
 
 #include <magic_enum/magic_enum.hpp>
 
-#include <Vex/Platform/Debug.h>
 #include <Vex/Logger.h>
-#include <Vex/Utility/WString.h>
+#include <Vex/Platform/Debug.h>
 #include <Vex/RHIImpl/RHI.h>
+#include <Vex/Utility/WString.h>
 
 #include <DX12/HRChecker.h>
 

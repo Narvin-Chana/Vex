@@ -3,16 +3,15 @@
 #include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
-#include <Vex/Platform/Platform.h>
-#include <Vex/RHIImpl/RHIBuffer.h>
+#include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RHIImpl/RHITexture.h>
+#include <Vex/RHIImpl/RHIPipelineState.h>
+#include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/Shaders/Shader.h>
-#include <Vex/Utility/ByteUtils.h>
 
 #include <DX12/DX12Formats.h>
 #include <DX12/DX12GraphicsPipeline.h>
 #include <DX12/HRChecker.h>
-#include <DX12/RHI/DX12ResourceLayout.h>
 
 namespace vex::dx12
 {

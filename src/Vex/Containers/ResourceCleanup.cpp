@@ -2,7 +2,6 @@
 
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHIAccelerationStructure.h>
-#include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/RHIImpl/RHITexture.h>
 
@@ -44,6 +43,7 @@ void ResourceCleanup::FlushResources(RHIDescriptorPool& descriptorPool, RHIAlloc
                               using T = std::remove_cvref_t<decltype(val)>;
                               if constexpr (std::is_same_v<std::unique_ptr<RHITexture>, T> or
                                             std::is_same_v<std::unique_ptr<RHIBuffer>, T> or
+                                            std::is_same_v<MaybeUninitialized<RHIBuffer>, T> or
                                             std::is_same_v<std::unique_ptr<RHIAccelerationStructure>, T>)
                               {
                                   val->FreeBindlessHandles(descriptorPool);
