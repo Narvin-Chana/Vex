@@ -8,6 +8,7 @@
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHI.h>
+#include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>

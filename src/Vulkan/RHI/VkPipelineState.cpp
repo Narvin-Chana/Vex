@@ -4,13 +4,13 @@
 
 #include <Vex/Containers/ResourceCleanup.h>
 
+#include <Vulkan/RHI/VkAccelerationStructure.h>
+#include <Vulkan/RHI/VkBuffer.h>
 #include <Vulkan/RHI/VkResourceLayout.h>
+#include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkFormats.h>
-// These are necessary for ResourceCleanup
-#include <Vulkan/RHI/VkBuffer.h>
-#include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkGraphicsPipeline.h>
 
 namespace vex::vk

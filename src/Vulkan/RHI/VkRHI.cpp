@@ -2,11 +2,14 @@
 
 #include <set>
 #include <utility>
+#include <variant>
 
-#include <Vex/CommandContext.h>
+#include <Vex/AccelerationStructure.h>
+#include <Vex/Buffer.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/Platform/PlatformWindow.h>
+#include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
@@ -18,10 +21,16 @@
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
-#include <Vex/Shaders/ShaderEnvironment.h>
 #include <Vex/Synchronization.h>
+#include <Vex/Texture.h>
 #include <Vex/Utility/Visitor.h>
 
+#include <RHI/RHICommandList.h>
+#include <RHI/RHIPhysicalDevice.h>
+#include <RHI/RHIPipelineState.h>
+#include <RHI/RHISwapChain.h>
+
+#include <Vulkan/RHI/VkPhysicalDevice.h>
 #include <Vulkan/VkCommandQueue.h>
 #include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
@@ -617,10 +626,10 @@ NonNullPtr<VkGPUContext> VkRHI::GetGPUContext()
     if (!ctx)
     {
         ctx = std::make_unique<VkGPUContext>(*device,
-                                       physDevice,
-                                       *surface,
-                                       queues[QueueType::Graphics],
-                                       (*fences)[QueueType::Graphics]);
+                                             physDevice,
+                                             *surface,
+                                             queues[QueueType::Graphics],
+                                             (*fences)[QueueType::Graphics]);
     }
     return NonNullPtr(*ctx);
 }

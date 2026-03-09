@@ -1,7 +1,10 @@
 #include "ResourceCleanup.h"
 
 #include <Vex/RHIImpl/RHI.h>
+#include <Vex/RHIImpl/RHIAccelerationStructure.h>
+#include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
+#include <Vex/RHIImpl/RHITexture.h>
 
 namespace vex
 {
