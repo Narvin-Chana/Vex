@@ -1,5 +1,7 @@
 #include "ResourceCleanup.h"
 
+#include <type_traits>
+
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
