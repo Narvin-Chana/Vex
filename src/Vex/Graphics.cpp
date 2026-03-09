@@ -1,23 +1,23 @@
 #include "Graphics.h"
 
+#include <array>
+#include <functional>
 #include <utility>
 
-#include <magic_enum/magic_enum.hpp>
-
-#include <Vex.h>
 #include <Vex/CommandContext.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHI.h>
-#include <Vex/RHIImpl/RHIAccelerationStructure.h>
+#include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
-#include <Vex/RHIImpl/RHICommandPool.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
-#include <Vex/RHIImpl/RHISwapChain.h>
-#include <Vex/RHIImpl/RHITimestampQueryPool.h>
+#include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Visitor.h>
 
+#include <RHI/RHIAccelerationStructure.h>
+#include <RHI/RHIBarrier.h>
+#include <RHI/RHIBuffer.h>
 #include <RHI/RHIPhysicalDevice.h>
 
 namespace vex
@@ -52,7 +52,7 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
         VEX_LOG(Fatal, "Cannot launch multiple instances of Vex...");
     }
 
-    std::vector<UniqueHandle<RHIPhysicalDevice>> physicalDevices = RHI::EnumeratePhysicalDevices();
+    std::vector<std::unique_ptr<RHIPhysicalDevice>> physicalDevices = RHI::EnumeratePhysicalDevices();
     if (physicalDevices.empty())
     {
         VEX_LOG(Fatal,
@@ -65,7 +65,7 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
     {
         auto it = std::find_if(physicalDevices.begin(),
                                physicalDevices.end(),
-                               [&](const UniqueHandle<RHIPhysicalDevice>& device)
+                               [&](const std::unique_ptr<RHIPhysicalDevice>& device)
                                { return device->info == *desc.specifiedDevice; });
         if (it != physicalDevices.end())
         {
@@ -246,7 +246,8 @@ Texture Graphics::CreateTexture(TextureDesc desc, ResourceLifetime lifetime)
         VEX_NOT_YET_IMPLEMENTED();
     }
 
-    return Texture{ .handle = textureRegistry.AllocateElement(std::move(rhi.CreateTexture(*allocator, desc))),
+    return Texture{ .handle = textureRegistry.AllocateElement(
+                        std::make_unique<RHITexture>(rhi.CreateTexture(*allocator, desc))),
                     .desc = std::move(desc) };
 }
 
@@ -263,7 +264,8 @@ Buffer Graphics::CreateBuffer(BufferDesc desc, ResourceLifetime lifetime)
         VEX_NOT_YET_IMPLEMENTED();
     }
 
-    return Buffer{ .handle = bufferRegistry.AllocateElement(std::move(rhi.CreateBuffer(*allocator, desc))),
+    return Buffer{ .handle =
+                       bufferRegistry.AllocateElement(std::make_unique<RHIBuffer>(rhi.CreateBuffer(*allocator, desc))),
                    .desc = std::move(desc) };
 }
 
@@ -272,7 +274,8 @@ AccelerationStructure Graphics::CreateAccelerationStructure(const ASDesc& desc)
     VEX_CHECK(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing),
               "Your GPU does not support ray tracing, unable to create an acceleration structure!");
     return {
-        .handle = accelerationStructureRegistry.AllocateElement(std::move(rhi.CreateAS(desc))),
+        .handle = accelerationStructureRegistry.AllocateElement(
+            std::make_unique<RHIAccelerationStructure>(rhi.CreateAS(desc))),
         .desc = desc,
     };
 }
@@ -296,7 +299,7 @@ void Graphics::DestroyTexture(const Texture& texture)
     {
         return;
     }
-    resourceCleanup.CleanupResource(textureRegistry.ExtractElement(texture.handle));
+    resourceCleanup.CleanupResource(*textureRegistry.ExtractElement(texture.handle));
 }
 
 void Graphics::DestroyBuffer(const Buffer& buffer)
@@ -305,7 +308,7 @@ void Graphics::DestroyBuffer(const Buffer& buffer)
     {
         return;
     }
-    resourceCleanup.CleanupResource(bufferRegistry.ExtractElement(buffer.handle));
+    resourceCleanup.CleanupResource(*bufferRegistry.ExtractElement(buffer.handle));
 }
 
 void Graphics::DestroyAccelerationStructure(const AccelerationStructure& accelerationStructure)
@@ -316,7 +319,7 @@ void Graphics::DestroyAccelerationStructure(const AccelerationStructure& acceler
     }
     VEX_CHECK(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing),
               "Your GPU does not support ray tracing, unable to create an acceleration structure!");
-    resourceCleanup.CleanupResource(accelerationStructureRegistry.ExtractElement(accelerationStructure.handle));
+    resourceCleanup.CleanupResource(*accelerationStructureRegistry.ExtractElement(accelerationStructure.handle));
 }
 
 BindlessHandle Graphics::GetBindlessHandle(const TextureBinding& bindlessResource)
@@ -561,13 +564,13 @@ std::expected<Query, QueryStatus> Graphics::GetTimestampValue(QueryHandle handle
 
 std::vector<PhysicalDeviceInfo> Graphics::GetSupportedDevices()
 {
-    std::vector<UniqueHandle<RHIPhysicalDevice>> devices = RHI::EnumeratePhysicalDevices();
+    std::vector<std::unique_ptr<RHIPhysicalDevice>> devices = RHI::EnumeratePhysicalDevices();
 
     std::vector<PhysicalDeviceInfo> infos(devices.size());
     std::transform(devices.begin(),
                    devices.end(),
                    infos.begin(),
-                   [](const UniqueHandle<RHIPhysicalDevice>& device) { return device->info; });
+                   [](const std::unique_ptr<RHIPhysicalDevice>& device) { return device->info; });
     return infos;
 }
 
@@ -590,17 +593,17 @@ PipelineStateCache& Graphics::GetPipelineStateCache()
 
 RHITexture& Graphics::GetRHITexture(TextureHandle textureHandle)
 {
-    return textureRegistry[textureHandle];
+    return *textureRegistry[textureHandle];
 }
 
 RHIBuffer& Graphics::GetRHIBuffer(BufferHandle bufferHandle)
 {
-    return bufferRegistry[bufferHandle];
+    return *bufferRegistry[bufferHandle];
 }
 
 RHIAccelerationStructure& Graphics::GetRHIAccelerationStructure(ASHandle asHandle)
 {
-    return accelerationStructureRegistry[asHandle];
+    return *accelerationStructureRegistry[asHandle];
 }
 
 void Graphics::RecreatePresentTextures()

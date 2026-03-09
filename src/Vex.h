@@ -9,7 +9,7 @@
 #include <Vex/TextureSampler.h>
 #include <Vex/Utility/Formattable.h>
 #include <Vex/Utility/NonNullPtr.h>
-#include <Vex/Utility/UniqueHandle.h>
+
 
 namespace vex
 {

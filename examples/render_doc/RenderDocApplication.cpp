@@ -9,7 +9,7 @@ RenderDocApplication::RenderDocApplication()
     // Graphics debuggers have to be initialized before graphics device creation.
     RenderDoc::Setup();
 
-    graphics = vex::MakeUnique<vex::Graphics>(vex::GraphicsCreateDesc{
+    graphics = std::make_unique<vex::Graphics>(vex::GraphicsCreateDesc{
         .platformWindow = { .windowHandle = GetPlatformWindowHandle(), .width = DefaultWidth, .height = DefaultHeight },
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });

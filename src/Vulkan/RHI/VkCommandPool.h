@@ -2,7 +2,7 @@
 
 #include <Vex/QueueType.h>
 #include <Vex/Utility/NonNullPtr.h>
-#include <Vex/Utility/UniqueHandle.h>
+
 
 #include <RHI/RHICommandPool.h>
 

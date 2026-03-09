@@ -64,14 +64,14 @@ DX12RHI::~DX12RHI()
     CleanupDebugMessageCallback(device);
 }
 
-std::vector<UniqueHandle<RHIPhysicalDevice>> DX12RHI::EnumeratePhysicalDevices()
+std::vector<std::unique_ptr<RHIPhysicalDevice>> DX12RHI::EnumeratePhysicalDevices()
 {
     DXGIFactory::InitializeDXGIFactory();
 
     u32 adapterIndex = 0;
     ComPtr<IDXGIAdapter4> adapter;
 
-    std::vector<UniqueHandle<RHIPhysicalDevice>> physicalDevices;
+    std::vector<std::unique_ptr<RHIPhysicalDevice>> physicalDevices;
     while (DXGIFactory::dxgiFactory->EnumAdapterByGpuPreference(adapterIndex++,
                                                                 DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
                                                                 IID_PPV_ARGS(&adapter)) != DXGI_ERROR_NOT_FOUND)
@@ -83,7 +83,7 @@ std::vector<UniqueHandle<RHIPhysicalDevice>> DX12RHI::EnumeratePhysicalDevices()
             ComPtr<DX12Device> minVersionDevice;
             device.As(&minVersionDevice);
 
-            UniqueHandle<DX12PhysicalDevice> physicalDevice = MakeUnique<DX12PhysicalDevice>(adapter, minVersionDevice);
+            std::unique_ptr<DX12PhysicalDevice> physicalDevice = std::make_unique<DX12PhysicalDevice>(adapter, minVersionDevice);
             if (minVersionDevice && physicalDevice->SupportsMinimalRequirements())
             {
                 physicalDevices.push_back(std::move(physicalDevice));

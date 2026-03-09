@@ -195,9 +195,9 @@ void VkRHI::InitWindow(const PlatformWindowHandle& platformWindowHandle)
         platformWindowHandle.handle);
 }
 
-std::vector<UniqueHandle<RHIPhysicalDevice>> VkRHI::EnumeratePhysicalDevices()
+std::vector<std::unique_ptr<RHIPhysicalDevice>> VkRHI::EnumeratePhysicalDevices()
 {
-    std::vector<UniqueHandle<RHIPhysicalDevice>> physicalDevices;
+    std::vector<std::unique_ptr<RHIPhysicalDevice>> physicalDevices;
 
     ::vk::Instance instance = GDispatcherLifetime.GetInstance();
 
@@ -210,7 +210,7 @@ std::vector<UniqueHandle<RHIPhysicalDevice>> VkRHI::EnumeratePhysicalDevices()
     physicalDevices.reserve(vkPhysicalDevices.size());
     for (const ::vk::PhysicalDevice& dev : vkPhysicalDevices)
     {
-        UniqueHandle<VkPhysicalDevice> newDevice = MakeUnique<VkPhysicalDevice>(dev);
+        std::unique_ptr<VkPhysicalDevice> newDevice = std::make_unique<VkPhysicalDevice>(dev);
         if (newDevice->SupportsMinimalRequirements())
         {
             physicalDevices.push_back(std::move(newDevice));
@@ -616,7 +616,7 @@ NonNullPtr<VkGPUContext> VkRHI::GetGPUContext()
 {
     if (!ctx)
     {
-        ctx = MakeUnique<VkGPUContext>(*device,
+        ctx = std::make_unique<VkGPUContext>(*device,
                                        physDevice,
                                        *surface,
                                        queues[QueueType::Graphics],

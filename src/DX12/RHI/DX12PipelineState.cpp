@@ -201,7 +201,7 @@ void DX12GraphicsPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
         return;
     }
     // Simple swap and move
-    auto cleanupPSO = MakeUnique<DX12GraphicsPipelineState>(device, key);
+    auto cleanupPSO = std::make_unique<DX12GraphicsPipelineState>(device, key);
     std::swap(cleanupPSO->graphicsPSO, graphicsPSO);
     resourceCleanup.CleanupResource(std::move(cleanupPSO));
 }
@@ -255,7 +255,7 @@ void DX12ComputePipelineState::Cleanup(ResourceCleanup& resourceCleanup)
         return;
     }
     // Simple swap and move
-    auto cleanupPSO = MakeUnique<DX12ComputePipelineState>(device, key);
+    auto cleanupPSO = std::make_unique<DX12ComputePipelineState>(device, key);
     std::swap(cleanupPSO->computePSO, computePSO);
     resourceCleanup.CleanupResource(std::move(cleanupPSO));
 }
@@ -403,7 +403,7 @@ void DX12RayTracingPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
     }
 
     // Simple swap and move
-    auto cleanupPSO = MakeUnique<DX12RayTracingPipelineState>(device, key);
+    auto cleanupPSO = std::make_unique<DX12RayTracingPipelineState>(device, key);
     // State object
     std::swap(cleanupPSO->stateObject, stateObject);
     // Shader tables

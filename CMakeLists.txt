@@ -163,7 +163,7 @@ add_library(Vex STATIC
     "src/Vex/RHIImpl/RHIAccelerationStructure.h"
     "src/Vex/RHIImpl/RHIPhysicalDevice.h"
     # Vex Utilities
-    "src/Vex/Utility/UniqueHandle.h" 
+     
     "src/Vex/Utility/Concepts.h"
     "src/Vex/Utility/EnumFlags.h"
     "src/Vex/Utility/Handle.h"

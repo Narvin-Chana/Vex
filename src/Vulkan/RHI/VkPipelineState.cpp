@@ -209,7 +209,7 @@ void VkGraphicsPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
     {
         return;
     }
-    auto cleanupPSO = MakeUnique<VkGraphicsPipelineState>(key, device, PSOCache);
+    auto cleanupPSO = std::make_unique<VkGraphicsPipelineState>(key, device, PSOCache);
     std::swap(cleanupPSO->graphicsPipeline, graphicsPipeline);
     resourceCleanup.CleanupResource(std::move(cleanupPSO));
 }
@@ -255,7 +255,7 @@ void VkComputePipelineState::Cleanup(ResourceCleanup& resourceCleanup)
     {
         return;
     }
-    auto cleanupPSO = MakeUnique<VkComputePipelineState>(key, device, PSOCache);
+    auto cleanupPSO = std::make_unique<VkComputePipelineState>(key, device, PSOCache);
     std::swap(cleanupPSO->computePipeline, computePipeline);
     resourceCleanup.CleanupResource(std::move(cleanupPSO));
 }
