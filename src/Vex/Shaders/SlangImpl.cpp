@@ -393,11 +393,6 @@ std::expected<Slang::ComPtr<slang::ISession>, std::string> SlangCompilerImpl::Cr
                                      slang::CompilerOptionValue{ .intValue0 = SLANG_DEBUG_INFO_LEVEL_MAXIMAL });
     }
 
-    if (compilerSettings.enableHLSL202xFeatures)
-    {
-        // Ignored, Slang already natively includes most HLSL 202x features.
-    }
-
     // Add shader environment and shader key defines.
     std::vector<slang::PreprocessorMacroDesc> slangDefines;
     slangDefines.reserve(shaderEnv.defines.size() + key.defines.size());

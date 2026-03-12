@@ -17,12 +17,6 @@ namespace vex
 namespace DXCImpl_Internal
 {
 
-static constexpr std::array HLSL202xFlags{
-    L"-HV 202x",
-    L"-Wconversion",
-    L"-Wdouble-promotion",
-};
-
 static std::wstring GetTargetFromShaderType(ShaderType type)
 {
     std::wstring highestSupportedShaderModel =
@@ -110,7 +104,11 @@ std::expected<SHA1HashDigest, std::string> HashCompiledShader(const ComPtr<IDxcR
 std::vector<std::wstring> BuildDefaultArgumentList(const ShaderCompilerSettings& compilerSettings,
                                                    const std::vector<std::filesystem::path>& includeDirectories)
 {
-    std::vector<std::wstring> args;
+    std::vector<std::wstring> args{
+        L"-HV 202x",
+        L"-Wconversion",
+        L"-Wdouble-promotion",
+    };
     if (compilerSettings.enableShaderDebugging)
     {
         args.insert(args.end(),
@@ -141,11 +139,6 @@ std::vector<std::wstring> BuildDefaultArgumentList(const ShaderCompilerSettings&
 #if VEX_DX12
     args.emplace_back(L"-Qstrip_reflect");
 #endif
-
-    if (compilerSettings.enableHLSL202xFeatures)
-    {
-        args.insert(args.end(), HLSL202xFlags.begin(), HLSL202xFlags.end());
-    }
 
     std::vector<std::wstring> wStringPaths;
     wStringPaths.reserve(includeDirectories.size() + 1);
