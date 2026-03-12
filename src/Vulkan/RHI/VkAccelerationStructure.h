@@ -24,8 +24,6 @@ public:
 
     ::vk::UniqueAccelerationStructureKHR vkAccelerationStructure;
 
-    MaybeUninitialized<RHIBuffer> instanceBuffer;
-
     ::vk::DeviceAddress GetNativeAddress();
 
     void BuildAccelerationStructure(::vk::AccelerationStructureTypeKHR type, RHIAllocator& allocator);
