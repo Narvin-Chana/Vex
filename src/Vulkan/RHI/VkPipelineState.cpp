@@ -327,25 +327,41 @@ void VkRayTracingPipelineState::Compile(const RayTracingShaderCollection& shader
 
     for (const auto& group : shaderCollection.hitGroupShaders)
     {
-        registerShaderStage({ group.rayClosestHitShader },
-                            ::vk::ShaderStageFlagBits::eClosestHitKHR,
-                            ::vk::RayTracingShaderGroupTypeKHR::eTrianglesHitGroup,
-                            &::vk::RayTracingShaderGroupCreateInfoKHR::closestHitShader);
+        auto groupType = ::vk::RayTracingShaderGroupTypeKHR::eTrianglesHitGroup;
+
+        u32 closesHitIndex = ::vk::ShaderUnusedKHR, anyHitIndex = ::vk::ShaderUnusedKHR,
+            intersectionIndex = ::vk::ShaderUnusedKHR;
+
+        closesHitIndex = modules.size();
+        modules.push_back(createShaderModule(*group.rayClosestHitShader));
+        stages.push_back({ .stage = ::vk::ShaderStageFlagBits::eClosestHitKHR,
+                           .module = *modules.back(),
+                           .pName = group.rayClosestHitShader->key.entryPoint.c_str() });
+
         if (group.rayAnyHitShader)
         {
-            registerShaderStage({ *group.rayAnyHitShader },
-                                ::vk::ShaderStageFlagBits::eAnyHitKHR,
-                                ::vk::RayTracingShaderGroupTypeKHR::eGeneral,
-                                &::vk::RayTracingShaderGroupCreateInfoKHR::anyHitShader);
+            anyHitIndex = modules.size();
+            modules.push_back(createShaderModule(**group.rayAnyHitShader));
+            stages.push_back({ .stage = ::vk::ShaderStageFlagBits::eAnyHitKHR,
+                               .module = *modules.back(),
+                               .pName = (*group.rayAnyHitShader)->key.entryPoint.c_str() });
         }
 
         if (group.rayIntersectionShader)
         {
-            registerShaderStage({ *group.rayIntersectionShader },
-                                ::vk::ShaderStageFlagBits::eIntersectionKHR,
-                                ::vk::RayTracingShaderGroupTypeKHR::eGeneral,
-                                &::vk::RayTracingShaderGroupCreateInfoKHR::intersectionShader);
+            // the presence of an intersection shader requires procedural hit group for custom intersection logic
+            groupType = ::vk::RayTracingShaderGroupTypeKHR::eProceduralHitGroup;
+            intersectionIndex = modules.size();
+            modules.push_back(createShaderModule(**group.rayIntersectionShader));
+            stages.push_back({ .stage = ::vk::ShaderStageFlagBits::eIntersectionKHR,
+                               .module = *modules.back(),
+                               .pName = (*group.rayIntersectionShader)->key.entryPoint.c_str() });
         }
+
+        groups.push_back(::vk::RayTracingShaderGroupCreateInfoKHR{ .type = groupType,
+                                                                   .closestHitShader = closesHitIndex,
+                                                                   .anyHitShader = anyHitIndex,
+                                                                   .intersectionShader = intersectionIndex });
     }
 
     ::vk::RayTracingPipelineCreateInfoKHR rtPSOCI{
@@ -353,7 +369,7 @@ void VkRayTracingPipelineState::Compile(const RayTracingShaderCollection& shader
         .pStages = stages.data(),
         .groupCount = static_cast<u32>(groups.size()),
         .pGroups = groups.data(),
-        .maxPipelineRayRecursionDepth = 10,
+        .maxPipelineRayRecursionDepth = key.maxRecursionDepth,
         .layout = *resourceLayout.pipelineLayout,
     };
     rtPipeline = VEX_VK_CHECK <<= ctx->device.createRayTracingPipelineKHRUnique({}, PSOCache, rtPSOCI);

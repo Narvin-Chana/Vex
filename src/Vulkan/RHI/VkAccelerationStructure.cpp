@@ -97,8 +97,9 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
         if (!binding)
             return {};
 
-        return { static_cast<u32>(*binding->binding.offsetByteSize / fallbackStride),
-                 static_cast<u32>(*binding->binding.rangeByteSize / fallbackStride) };
+        return { static_cast<u32>(binding->binding.offsetByteSize.value_or(0) / fallbackStride),
+                 static_cast<u32>(binding->binding.rangeByteSize.value_or(binding->buffer->GetDesc().byteSize) /
+                                  fallbackStride) };
     };
 
     for (const RHIBLASGeometryDesc& geom : desc.geometries)
@@ -108,12 +109,17 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
         {
             VEX_ASSERT(geom.vertexBufferBinding);
             VEX_ASSERT(geom.vertexBufferBinding->binding.strideByteSize);
-            VEX_ASSERT(geom.indexBufferBinding);
 
-            auto [firstVertex, vertexCount] = bindingToOffsetCount(geom.vertexBufferBinding, sizeof(float) * 3);
-            auto [firstIndex, indexCount] = bindingToOffsetCount(geom.indexBufferBinding, sizeof(u32));
+            static constexpr u32 vertexByteStride = sizeof(float) * 3;
 
-            u32 triangleCount = indexCount / 3;
+            auto [firstVertex, vertexCount] = bindingToOffsetCount(geom.vertexBufferBinding, vertexByteStride);
+
+            u32 triangleCount = vertexCount / 3;
+            if (geom.indexBufferBinding)
+            {
+                triangleCount = bindingToOffsetCount(geom.indexBufferBinding, sizeof(u32)).second;
+            }
+
             geometryCount.push_back(triangleCount);
 
             BufferBinding vertexBufferBinding = geom.vertexBufferBinding->binding;
@@ -126,8 +132,8 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
                         .vertexData = { geom.vertexBufferBinding->buffer->GetDeviceAddress() },
                         .vertexStride = sizeof(float) * 3,
                         .maxVertex = vertexCount - 1,
-                        .indexType = ::vk::IndexType::eUint32,
-                        .indexData = { geom.indexBufferBinding->buffer->GetDeviceAddress() },
+                        .indexType = geom.indexBufferBinding ? ::vk::IndexType::eUint32 : ::vk::IndexType::eNoneKHR,
+                        .indexData = { geom.indexBufferBinding ? geom.indexBufferBinding->buffer->GetDeviceAddress() : ::vk::DeviceAddress{} },
                         .transformData = { geom.transformBufferBinding ? geom.transformBufferBinding->buffer->GetDeviceAddress() : ::vk::DeviceAddress{} },
                     },
                 },
@@ -135,7 +141,9 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
 
             ranges.push_back(::vk::AccelerationStructureBuildRangeInfoKHR{
                 .primitiveCount = triangleCount,
-                .primitiveOffset = static_cast<u32>(geom.indexBufferBinding->binding.offsetByteSize.value_or(0)),
+                .primitiveOffset = static_cast<u32>(geom.indexBufferBinding
+                                                        ? geom.indexBufferBinding->binding.offsetByteSize.value_or(0)
+                                                        : firstVertex * vertexByteStride),
                 .firstVertex = 0,
                 .transformOffset =
                     geom.transformBufferBinding
@@ -145,7 +153,7 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
         }
         else if (desc.type == ASGeometryType::AABBs)
         {
-            VEX_ASSERT(geom.vertexBufferBinding);
+            VEX_ASSERT(geom.aabbBufferBinding);
 
             geometry = ::vk::AccelerationStructureGeometryKHR{
                 .geometryType = ::vk::GeometryTypeKHR::eAabbs,

@@ -55,7 +55,8 @@ ShaderEnvironment ShaderCompiler::CreateShaderEnvironment()
     env.defines.emplace_back("VEX_DEBUG", std::to_string(VEX_DEBUG));
     env.defines.emplace_back("VEX_DEVELOPMENT", std::to_string(VEX_DEVELOPMENT));
     env.defines.emplace_back("VEX_SHIPPING", std::to_string(VEX_SHIPPING));
-    env.defines.emplace_back("VEX_RAYTRACING", std::to_string(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing)));
+    env.defines.emplace_back("VEX_RAYTRACING",
+                             std::to_string(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing)));
     env.defines.emplace_back("VEX_VULKAN", std::to_string(VEX_VULKAN));
     env.defines.emplace_back("VEX_DX12", std::to_string(VEX_DX12));
     return env;
@@ -214,8 +215,11 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(CompilerBase* com
                 {
                     const std::vector<byte>& shaderBytecode = result.compiledCode;
 
+                    std::string filename = shader.key.path.stem().string() + "_" +
+                                           std::string(magic_enum::enum_name(shader.key.type)) + "_" +
+                                           shader.key.entryPoint;
                     std::filesystem::path outputPath =
-                        std::filesystem::current_path() / "VexOutput_SHADER_BYTECODE" / shader.key.path.filename();
+                        std::filesystem::current_path() / "VexOutput_SHADER_BYTECODE" / filename;
 #if VEX_VULKAN
                     outputPath.replace_extension(".spv"); // or ".spirv"
 #elif VEX_DX12
