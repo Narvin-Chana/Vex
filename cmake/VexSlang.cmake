@@ -44,14 +44,8 @@ if(WIN32)
     )
 elseif(LINUX)
     set(DXC_STATIC_LIB "")
-    set(SLANG_RUNTIME_LIBS
-        "${slang_SOURCE_DIR}/lib/libgfx.so"
-        "${slang_SOURCE_DIR}/lib/libslang-glsl-module-${SLANG_VERSION}.so"
-        "${slang_SOURCE_DIR}/lib/libslang-glslang-${SLANG_VERSION}.so"
-        "${slang_SOURCE_DIR}/lib/libslang-llvm.so"
-        "${slang_SOURCE_DIR}/lib/libslang-rt.so"
-        "${slang_SOURCE_DIR}/lib/libslang.so"
-    )
+    file(GLOB SLANG_RUNTIME_LIBS ${slang_SOURCE_DIR}/lib/*.so*)
+
 endif()
 
 if(NOT TARGET slang::slang)
