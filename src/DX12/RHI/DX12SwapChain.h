@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Vex/QueueType.h>
-#include <Vex/Utility/UniqueHandle.h>
+
 #include <Vex/Platform/PlatformWindow.h>
 
 #include <RHI/RHIFwd.h>

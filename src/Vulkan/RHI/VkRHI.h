@@ -3,7 +3,7 @@
 #include <utility>
 
 #include <Vex/Utility/NonNullPtr.h>
-#include <Vex/Utility/UniqueHandle.h>
+
 
 #include <RHI/RHI.h>
 #include <RHI/RHIFwd.h>
@@ -31,7 +31,7 @@ public:
     VkRHI& operator=(VkRHI&&) = default;
     ~VkRHI();
 
-    static std::vector<UniqueHandle<RHIPhysicalDevice>> EnumeratePhysicalDevices();
+    static std::vector<std::unique_ptr<RHIPhysicalDevice>> EnumeratePhysicalDevices();
     virtual void Init() override;
 
     virtual RHISwapChain CreateSwapChain(SwapChainDesc& desc, const PlatformWindow& platformWindow) override;
@@ -94,7 +94,7 @@ private:
     // TODO: Can't use maybe uninitialized since VkGPUContext has deleted move constructor (which in effect removes
     // VkRHI's defaulted move constructor). Would require using NonNullPtr in VkGPUContext, which causes changes in a
     // lot of places.
-    UniqueHandle<VkGPUContext> ctx;
+    std::unique_ptr<VkGPUContext> ctx;
 
     struct DispatchRHILifetime
     {

@@ -39,5 +39,5 @@ protected:
     int32_t width, height;
 
     GLFWwindow* window;
-    vex::UniqueHandle<vex::Graphics> graphics;
+    std::unique_ptr<vex::Graphics> graphics;
 };

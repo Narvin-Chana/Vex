@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -12,12 +13,10 @@
 #include <Vex/QueueType.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
-#include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandPool.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
 #include <Vex/RHIImpl/RHIPhysicalDevice.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
-#include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
 #include <Vex/Synchronization.h>
 #include <Vex/Utility/MaybeUninitialized.h>
@@ -231,9 +230,9 @@ private:
     MaybeUninitialized<RHITimestampQueryPool> queryPool;
 
     // Converts from the Handle to the actual underlying RHI resource.
-    FreeList<RHITexture, TextureHandle> textureRegistry;
-    FreeList<RHIBuffer, BufferHandle> bufferRegistry;
-    FreeList<RHIAccelerationStructure, ASHandle> accelerationStructureRegistry;
+    FreeList<std::unique_ptr<RHITexture>, TextureHandle> textureRegistry;
+    FreeList<std::unique_ptr<RHIBuffer>, BufferHandle> bufferRegistry;
+    FreeList<std::unique_ptr<RHIAccelerationStructure>, ASHandle> accelerationStructureRegistry;
 
     std::vector<Texture> presentTextures;
     std::vector<SyncToken> presentTokens;

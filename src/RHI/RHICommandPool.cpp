@@ -52,7 +52,7 @@ void RHICommandPoolBase::ReclaimCommandLists()
     }
 }
 
-std::vector<UniqueHandle<RHICommandList>>& RHICommandPoolBase::GetCommandLists(QueueType queueType)
+std::vector<std::unique_ptr<RHICommandList>>& RHICommandPoolBase::GetCommandLists(QueueType queueType)
 {
     return commandListsPerQueue[queueType];
 }
