@@ -7,7 +7,7 @@ if(NOT VEX_ENABLE_SLANG)
     return()
 endif()
 
-set(SLANG_VERSION "2026.3.1")
+set(SLANG_VERSION "2026.4.2")
 
 # Choose URLs based on platform
 if(WIN32)
