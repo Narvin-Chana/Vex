@@ -4,13 +4,13 @@
 
 #include <Vex/Containers/ResourceCleanup.h>
 
+#include <Vulkan/RHI/VkAccelerationStructure.h>
+#include <Vulkan/RHI/VkBuffer.h>
 #include <Vulkan/RHI/VkResourceLayout.h>
+#include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkFormats.h>
-// These are necessary for ResourceCleanup
-#include <Vulkan/RHI/VkBuffer.h>
-#include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkGraphicsPipeline.h>
 
 namespace vex::vk
@@ -150,7 +150,7 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
                                  ::vk::DynamicState::ePrimitiveRestartEnable };
 
     ::vk::PipelineDynamicStateCreateInfo dynamicStateInfo{
-        .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
+        .dynamicStateCount = static_cast<u32>(dynamicStates.size()),
         .pDynamicStates = dynamicStates.data(),
     };
 
@@ -209,7 +209,7 @@ void VkGraphicsPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
     {
         return;
     }
-    auto cleanupPSO = MakeUnique<VkGraphicsPipelineState>(key, device, PSOCache);
+    auto cleanupPSO = std::make_unique<VkGraphicsPipelineState>(key, device, PSOCache);
     std::swap(cleanupPSO->graphicsPipeline, graphicsPipeline);
     resourceCleanup.CleanupResource(std::move(cleanupPSO));
 }
@@ -255,7 +255,7 @@ void VkComputePipelineState::Cleanup(ResourceCleanup& resourceCleanup)
     {
         return;
     }
-    auto cleanupPSO = MakeUnique<VkComputePipelineState>(key, device, PSOCache);
+    auto cleanupPSO = std::make_unique<VkComputePipelineState>(key, device, PSOCache);
     std::swap(cleanupPSO->computePipeline, computePipeline);
     resourceCleanup.CleanupResource(std::move(cleanupPSO));
 }

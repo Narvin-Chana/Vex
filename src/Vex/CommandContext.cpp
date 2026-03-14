@@ -679,7 +679,6 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, Span<const byte> da
 
     BufferUtil::ValidateBufferRegion(buffer.desc, region);
 
-    // Buffer creation invalidates pointers to existing RHI buffers.
     Buffer stagingBuffer = CreateTemporaryStagingBuffer(buffer.desc.name, region.GetByteSize(buffer.desc));
 
     RHIBuffer& rhiStagingBuffer = graphics->GetRHIBuffer(stagingBuffer.handle);

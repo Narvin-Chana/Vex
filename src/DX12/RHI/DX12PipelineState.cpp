@@ -3,16 +3,15 @@
 #include <Vex/Containers/ResourceCleanup.h>
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
-#include <Vex/Platform/Platform.h>
-#include <Vex/RHIImpl/RHIBuffer.h>
+#include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RHIImpl/RHITexture.h>
+#include <Vex/RHIImpl/RHIPipelineState.h>
+#include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/Shaders/Shader.h>
-#include <Vex/Utility/ByteUtils.h>
 
 #include <DX12/DX12Formats.h>
 #include <DX12/DX12GraphicsPipeline.h>
 #include <DX12/HRChecker.h>
-#include <DX12/RHI/DX12ResourceLayout.h>
 
 namespace vex::dx12
 {
@@ -201,7 +200,7 @@ void DX12GraphicsPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
         return;
     }
     // Simple swap and move
-    auto cleanupPSO = MakeUnique<DX12GraphicsPipelineState>(device, key);
+    auto cleanupPSO = std::make_unique<DX12GraphicsPipelineState>(device, key);
     std::swap(cleanupPSO->graphicsPSO, graphicsPSO);
     resourceCleanup.CleanupResource(std::move(cleanupPSO));
 }
@@ -255,7 +254,7 @@ void DX12ComputePipelineState::Cleanup(ResourceCleanup& resourceCleanup)
         return;
     }
     // Simple swap and move
-    auto cleanupPSO = MakeUnique<DX12ComputePipelineState>(device, key);
+    auto cleanupPSO = std::make_unique<DX12ComputePipelineState>(device, key);
     std::swap(cleanupPSO->computePSO, computePSO);
     resourceCleanup.CleanupResource(std::move(cleanupPSO));
 }
@@ -403,7 +402,7 @@ void DX12RayTracingPipelineState::Cleanup(ResourceCleanup& resourceCleanup)
     }
 
     // Simple swap and move
-    auto cleanupPSO = MakeUnique<DX12RayTracingPipelineState>(device, key);
+    auto cleanupPSO = std::make_unique<DX12RayTracingPipelineState>(device, key);
     // State object
     std::swap(cleanupPSO->stateObject, stateObject);
     // Shader tables

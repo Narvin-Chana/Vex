@@ -42,7 +42,7 @@ NonNullPtr<RHICommandList> VkCommandPool::GetOrCreateCommandList(QueueType queue
     auto& commandLists = GetCommandLists(queueType);
     if (auto res = std::find_if(commandLists.begin(),
                                 commandLists.end(),
-                                [](const UniqueHandle<VkCommandList>& cmdList)
+                                [](const std::unique_ptr<VkCommandList>& cmdList)
                                 { return cmdList->GetState() == RHICommandListState::Available; });
         res != commandLists.end())
     {
@@ -58,7 +58,7 @@ NonNullPtr<RHICommandList> VkCommandPool::GetOrCreateCommandList(QueueType queue
         });
         ::vk::UniqueCommandBuffer newBuffer = std::move(allocatedBuffers[0]);
 
-        commandLists.push_back(MakeUnique<VkCommandList>(ctx, std::move(newBuffer), queueType));
+        commandLists.push_back(std::make_unique<VkCommandList>(ctx, std::move(newBuffer), queueType));
         cmdListPtr = commandLists.back().get();
         VEX_LOG(Verbose, "Created new commandlist for queue {}", magic_enum::enum_name(queueType));
     }

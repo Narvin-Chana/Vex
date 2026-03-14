@@ -13,7 +13,7 @@ static constexpr vex::u32 FloatRGBANumChannels = 4;
 HDRApplication::HDRApplication()
     : ExampleApplication("HDRApplication", hdrWidth * 1.5f, hdrHeight * 1.5f, false)
 {
-    graphics = vex::MakeUnique<vex::Graphics>(vex::GraphicsCreateDesc{
+    graphics = std::make_unique<vex::Graphics>(vex::GraphicsCreateDesc{
         .platformWindow = { .windowHandle = GetPlatformWindowHandle(),
                             .width = static_cast<vex::u32>(width),
                             .height = static_cast<vex::u32>(height) },

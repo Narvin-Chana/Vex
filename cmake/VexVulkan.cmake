@@ -3,22 +3,18 @@
 function(setup_vulkan_backend TARGET)
     message(STATUS "Setting up Vulkan backend...")
 
-    # Fetch Vulkan-Hpp dependency
-    message(STATUS "Fetching VulkanHpp...")
-    FetchContent_Declare(
-        VulkanHpp
-        GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Hpp.git
-        GIT_TAG        v1.4.323
-    )
-    FetchContent_MakeAvailable(VulkanHpp)
+    # Fetch VulkanSDK dependency (includes Vulkan-HPP).
+    # If you change this version, you should also update the version used in "cmake-multi-platform.yml".
+    # 1.4.321 is the minimum version required due to the use of VK_KHR_unified_image_layouts which was added in that version.
+    find_package(Vulkan 1.4.321 REQUIRED)
 
     # Fetch SPIRV-Reflect dependency
     message(STATUS "Fetching SPIRV-Reflect...")
     FetchContent_Declare(
             spirv_reflect
-            SOURCE_SUBDIR  "<invalid path>" # this forces FetchContent to pull but not configure the dependency
+            SOURCE_SUBDIR "<invalid path>" # this forces FetchContent to pull but not configure the dependency
             GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Reflect.git
-            GIT_TAG        vulkan-sdk-1.4.321.0
+            GIT_TAG vulkan-sdk-1.4.321.0
     )
     FetchContent_MakeAvailable(spirv_reflect)
 

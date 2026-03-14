@@ -7,7 +7,7 @@
 
 #include <Vex/Utility/NonNullPtr.h>
 #include <Vex/Synchronization.h>
-#include <Vex/Utility/UniqueHandle.h>
+
 
 #include <RHI/RHIFwd.h>
 
@@ -26,10 +26,10 @@ public:
     void ReclaimCommandLists();
 
 protected:
-    std::vector<UniqueHandle<RHICommandList>>& GetCommandLists(QueueType queueType);
+    std::vector<std::unique_ptr<RHICommandList>>& GetCommandLists(QueueType queueType);
 
     NonNullPtr<RHI> rhi;
-    std::array<std::vector<UniqueHandle<RHICommandList>>, QueueTypes::Count> commandListsPerQueue;
+    std::array<std::vector<std::unique_ptr<RHICommandList>>, QueueTypes::Count> commandListsPerQueue;
 };
 
 } // namespace vex

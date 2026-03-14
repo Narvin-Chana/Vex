@@ -7,7 +7,7 @@
 ImGuiApplication::ImGuiApplication()
     : ExampleApplication("ImGuiApplication")
 {
-    graphics = vex::MakeUnique<vex::Graphics>(vex::GraphicsCreateDesc{
+    graphics = std::make_unique<vex::Graphics>(vex::GraphicsCreateDesc{
         .platformWindow = { .windowHandle = GetPlatformWindowHandle(), .width = DefaultWidth, .height = DefaultHeight },
         .useSwapChain = true,
         .swapChainDesc = { .frameBuffering = FrameBuffering },

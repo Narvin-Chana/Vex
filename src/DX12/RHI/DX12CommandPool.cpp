@@ -2,10 +2,10 @@
 
 #include <magic_enum/magic_enum.hpp>
 
-#include <Vex/Platform/Debug.h>
 #include <Vex/Logger.h>
-#include <Vex/Utility/WString.h>
+#include <Vex/Platform/Debug.h>
 #include <Vex/RHIImpl/RHI.h>
+#include <Vex/Utility/WString.h>
 
 #include <DX12/HRChecker.h>
 
@@ -25,7 +25,7 @@ NonNullPtr<RHICommandList> DX12CommandPool::GetOrCreateCommandList(QueueType que
     auto& pool = GetCommandLists(queueType);
     if (auto res = std::find_if(pool.begin(),
                                 pool.end(),
-                                [](const UniqueHandle<DX12CommandList>& cmdList)
+                                [](const std::unique_ptr<DX12CommandList>& cmdList)
                                 { return cmdList->GetState() == RHICommandListState::Available; });
         res != pool.end())
     {
@@ -35,7 +35,7 @@ NonNullPtr<RHICommandList> DX12CommandPool::GetOrCreateCommandList(QueueType que
     else
     {
         // No more available command lists, create and return a new one.
-        pool.push_back(MakeUnique<DX12CommandList>(device, queueType));
+        pool.push_back(std::make_unique<DX12CommandList>(device, queueType));
         cmdListPtr = pool.back().get();
 #if !VEX_SHIPPING
         chk << cmdListPtr->GetNativeCommandList()->SetName(

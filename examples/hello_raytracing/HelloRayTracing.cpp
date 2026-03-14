@@ -8,7 +8,7 @@
 HelloRayTracing::HelloRayTracing()
     : ExampleApplication("HelloRayTracing")
 {
-    graphics = vex::MakeUnique<vex::Graphics>(vex::GraphicsCreateDesc{
+    graphics = std::make_unique<vex::Graphics>(vex::GraphicsCreateDesc{
         .platformWindow = { .windowHandle = GetPlatformWindowHandle(), .width = DefaultWidth, .height = DefaultHeight },
         .useSwapChain = true,
         .enableGPUDebugLayer = !VEX_SHIPPING,
