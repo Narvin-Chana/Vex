@@ -2,6 +2,7 @@
 
 #include <Vex.h>
 #include <Vex/RHIImpl/RHICommandList.h>
+#include <Vex/RHIImpl/RHITexture.h>
 
 #if VEX_VULKAN
 #include <Vulkan/VkErrorHandler.h>
