@@ -30,7 +30,7 @@ Any C++23 compatible compiler. We can affirm support for at least the following 
 - Clang 20.1.8
 - GCC 14+
 
-**CMak**e: 3.27+
+**CMake**: 3.27+
 
 **Git** (for using CMake's FetchContent)
 
