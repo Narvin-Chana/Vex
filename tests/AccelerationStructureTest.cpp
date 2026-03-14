@@ -14,6 +14,10 @@ struct AccelerationStructureTest : RTVexTest
     void SetUp() override
     {
         RTVexTest::SetUp();
+        if (IsSkipped())
+        {
+            return;
+        }
 
         auto ctx = graphics.CreateCommandContext(QueueType::Compute);
 
@@ -230,6 +234,10 @@ struct TLASAccelerationStructureTest : public AccelerationStructureTest
     void SetUp() override
     {
         AccelerationStructureTest::SetUp();
+        if (IsSkipped())
+        {
+            return;
+        }
         triangleBLAS = graphics.CreateAccelerationStructure(
             ASDesc{ .name = "Triangle BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
 
