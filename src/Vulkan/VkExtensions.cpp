@@ -1,111 +1,22 @@
 ﻿#include "VkExtensions.h"
 
-#include <unordered_set>
-
-#include <vulkan/vulkan_core.h>
-
-#include <Vex/Logger.h>
-#include <Vex/Platform/PlatformWindow.h>
-
 #include <Vulkan/VkHeaders.h>
 
 namespace vex::vk
 {
 
-std::vector<const char*> GetRequiredInstanceExtensions(bool enableGPUDebugLayer)
+bool SupportsExtension(const std::vector<::vk::ExtensionProperties>& extensionProperties,
+                       std::string_view extensionName)
 {
-    std::vector<const char*> extensions;
-
-    // Required for any windowed application
-    extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-
-    // Add validation/debug layer
-    if (enableGPUDebugLayer)
+    for (const ::vk::ExtensionProperties& extensionProperty : extensionProperties)
     {
-        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    }
-
-    // Required for HDR handling
-    extensions.push_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
-
-    // Platform-specific surface extensions
-#if defined(_WIN32)
-    extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-#elif defined(__linux__)
-#if defined(VK_USE_PLATFORM_XLIB_KHR)
-    extensions.push_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
-#endif
-#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    extensions.push_back(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
-#endif
-#endif
-
-    return extensions;
-}
-
-std::vector<const char*> GetDefaultValidationLayers(bool enableGPUBasedValidation)
-{
-    std::vector<const char*> validationLayers;
-
-    if (enableGPUBasedValidation)
-    {
-        validationLayers.push_back("VK_LAYER_KHRONOS_validation");
-        validationLayers.push_back("VK_LAYER_KHRONOS_synchronization2");
-    }
-
-    return validationLayers;
-}
-
-std::vector<const char*> GetDefaultDeviceExtensions()
-{
-    return { VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-             VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
-             VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
-             VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
-             VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME,
-             VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
-             VK_GOOGLE_USER_TYPE_EXTENSION_NAME,
-             VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,
-             VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME,
-             VK_KHR_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME,
-             VK_GOOGLE_HLSL_FUNCTIONALITY1_EXTENSION_NAME };
-}
-
-std::vector<const char*> FilterSupportedValidationLayers(const std::vector<const char*>& layers)
-{
-    uint32_t layerCount{};
-    assert(::vk::enumerateInstanceLayerProperties(&layerCount, nullptr) == ::vk::Result::eSuccess);
-
-    std::vector<::vk::LayerProperties> availableLayers(layerCount);
-    assert(::vk::enumerateInstanceLayerProperties(&layerCount, availableLayers.data()) == ::vk::Result::eSuccess);
-
-    std::unordered_set<std::string_view> availableLayerSet;
-    for (const auto& prop : availableLayers)
-    {
-        availableLayerSet.insert(prop.layerName);
-    }
-
-    std::vector<const char*> supportedLayers;
-    std::vector<const char*> unsupportedLayers;
-    supportedLayers.reserve(layers.size());
-    for (const char* layer : layers)
-    {
-        if (availableLayerSet.contains(layer))
+        if (std::string_view(extensionProperty.extensionName) == extensionName)
         {
-            supportedLayers.push_back(layer);
-        }
-        else
-        {
-            unsupportedLayers.push_back(layer);
+            return true;
         }
     }
 
-    for (const auto& layer : unsupportedLayers)
-    {
-        VEX_LOG(Warning, "Layer \"{}\" not supported", layer);
-    }
-
-    return supportedLayers;
+    return false;
 }
 
 } // namespace vex::vk

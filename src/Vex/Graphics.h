@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <optional>
+#include <unordered_map>
 #include <vector>
 
 #include <Vex/AccelerationStructure.h>
@@ -19,6 +20,7 @@
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
 #include <Vex/Synchronization.h>
+#include <Vex/TextureStateMap.h>
 #include <Vex/Utility/MaybeUninitialized.h>
 #include <Vex/Utility/NonNullPtr.h>
 
@@ -238,6 +240,9 @@ private:
     std::vector<SyncToken> presentTokens;
 
     u32 builtInLinearSamplerSlot = ~0;
+
+    TextureStateMap backBufferState;
+    std::array<std::unordered_map<TextureHandle, TextureStateMap>, QueueTypes::Count> textureStatesPerQueue;
 
     static constexpr u32 DefaultRegistrySize = 1024;
 

@@ -6,6 +6,7 @@
 #include <Vex/Graphics.h>
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
+#include <Vex/Utility/Validation.h>
 #include <Vex/TextureSampler.h>
 #include <Vex/Utility/Formattable.h>
 #include <Vex/Utility/NonNullPtr.h>

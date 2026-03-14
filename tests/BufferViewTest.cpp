@@ -85,7 +85,7 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
 
     ctx.EnqueueDataUpload(dataBuffer, std::as_bytes(std::span{ data }));
 
-    ResourceBinding bindings[]{
+    std::array<ResourceBinding, 2> bindings{
         binding,
         BufferBinding::CreateRWStructuredBuffer(resultBuffer, DataSize),
     };
@@ -95,7 +95,7 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
     {
         BindlessHandle inputBuffer;
         BindlessHandle outputBuffer;
-        uint32_t numElements{};
+        u32 numElements{};
     };
 
     Uniform uniforms{ handles[0],
@@ -103,8 +103,6 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
                       usage == BufferBindingUsage::ConstantBuffer
                           ? 1
                           : GetParam().elementCount.value_or(ElementCount - testData.firstElement.value_or(0)) };
-
-    ctx.BarrierBindings(bindings);
 
     ShaderKey key = {
         .path = VexRootPath / "tests/shaders/BufferView.cs.hlsl",
@@ -120,6 +118,7 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
 
     ctx.Dispatch(key,
                  ConstantBinding(std::span{ &uniforms, 1 }),
+                 bindings,
                  {
                      1u,
                      1u,
@@ -128,10 +127,9 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
 
     key.path = VexRootPath / "tests/shaders/BufferView.cs.slang";
 
-    ctx.BarrierBindings(bindings);
-
     ctx.Dispatch(key,
                  ConstantBinding(std::span{ &uniforms, 1 }),
+                 bindings,
                  {
                      1u,
                      1u,

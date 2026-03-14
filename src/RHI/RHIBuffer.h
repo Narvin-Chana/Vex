@@ -77,24 +77,6 @@ public:
         return allocation;
     }
 
-    [[nodiscard]] RHIBarrierSync GetLastSync() const
-    {
-        return lastSync;
-    }
-    void SetLastSync(RHIBarrierSync sync)
-    {
-        lastSync = sync;
-    }
-
-    [[nodiscard]] RHIBarrierAccess GetLastAccess() const
-    {
-        return lastAccess;
-    }
-    void SetLastAccess(RHIBarrierAccess access)
-    {
-        lastAccess = access;
-    }
-
 protected:
     explicit RHIBufferBase(RHIAllocator& allocator, const BufferDesc& desc);
 
@@ -105,8 +87,6 @@ protected:
     BufferViewDesc GetViewDescFromBinding(const BufferBinding& binding);
 
     BufferDesc desc;
-    RHIBarrierSync lastSync = RHIBarrierSync::None;
-    RHIBarrierAccess lastAccess = RHIBarrierAccess::NoAccess;
 
     NonNullPtr<RHIAllocator> allocator;
     Allocation allocation;

@@ -206,6 +206,19 @@ u32 TextureAspectToPlaneIndex(TextureAspect::Type aspect)
     return 0;
 }
 
+TextureAspect::Flags PlaneStartCountToTextureAspect(TextureFormat format, u32 startPlane, u32 planeCount)
+{
+    if (planeCount == 1 && FormatUtil::IsDepthAndStencilFormat(format))
+    {
+        if (startPlane == 0)
+            return TextureAspect::Depth;
+        if (startPlane == 1)
+            return TextureAspect::Stencil;
+    }
+
+    return TextureAspect::All;
+}
+
 u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions)
 {
     const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
@@ -288,7 +301,7 @@ bool IsBindingUsageCompatibleWithUsage(TextureUsage::Flags usages, TextureBindin
 
 void ForEachSubresourceIndices(const TextureSubresource& subresource,
                                const TextureDesc& desc,
-                               std::function<void(u32 mip, u32 slice, u32 plane)> func)
+                               std::function<void(u16 mip, u32 slice, u32 plane)> func)
 {
     for (u16 mip = subresource.startMip; mip < subresource.startMip + subresource.GetMipCount(desc); ++mip)
     {

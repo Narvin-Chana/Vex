@@ -420,8 +420,8 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(const DX12Textu
 {
     using namespace Texture_Internal;
 
-    bool isRTVView = (view.usage == TextureUsage::RenderTarget) && (desc.usage & TextureUsage::RenderTarget);
-    bool isDSVView = (view.usage == TextureUsage::DepthStencil) && (desc.usage & TextureUsage::DepthStencil);
+    const bool isRTVView = (view.usage == TextureUsage::RenderTarget) && (desc.usage & TextureUsage::RenderTarget);
+    const bool isDSVView = (view.usage == TextureUsage::DepthStencil) && (desc.usage & TextureUsage::DepthStencil);
     VEX_ASSERT(isRTVView || isDSVView,
                "Texture view requested must be for an RTV or DSV AND the underlying texture must support this usage.");
 

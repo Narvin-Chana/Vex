@@ -150,7 +150,7 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
                                  ::vk::DynamicState::ePrimitiveRestartEnable };
 
     ::vk::PipelineDynamicStateCreateInfo dynamicStateInfo{
-        .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
+        .dynamicStateCount = static_cast<u32>(dynamicStates.size()),
         .pDynamicStates = dynamicStates.data(),
     };
 

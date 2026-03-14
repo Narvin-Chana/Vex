@@ -131,7 +131,6 @@ add_library(Vex STATIC
     "src/RHI/RHIResourceLayout.cpp"
     "src/RHI/RHIBindings.h"
     "src/RHI/RHIBarrier.h"
-    "src/RHI/RHIBarrier.cpp"
     "src/RHI/RHIResourceLayout.h"
     "src/RHI/RHIDescriptorPool.h"
     "src/RHI/RHIDescriptorPool.cpp"
@@ -233,8 +232,11 @@ add_library(Vex STATIC
     "src/Vex/ResourceReadbackContext.h"
     "src/Vex/AccelerationStructure.h"
     "src/Vex/PhysicalDevice.h"
+    "src/Vex/TextureStateMap.h"
+    "src/Vex/TextureStateMap.cpp"
     "src/Vex/Utility/SHA1.h"
     "src/Vex/Utility/SHA1.cpp"
+    "src/Vex/BuildAccelerationStructure.h"
 )
 
 if(WIN32)

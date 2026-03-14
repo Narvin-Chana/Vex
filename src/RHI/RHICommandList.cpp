@@ -3,8 +3,6 @@
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
-#include <Vex/Utility/ByteUtils.h>
-#include <Vex/Utility/Validation.h>
 
 namespace vex
 {
@@ -36,25 +34,9 @@ void RHICommandListBase::Close()
     isOpen = false;
 }
 
-void RHICommandListBase::BufferBarrier(RHIBuffer& buffer, RHIBarrierSync sync, RHIBarrierAccess access)
-{
-    RHIBufferBarrier barrier{ buffer, sync, access };
-    Barrier({ &barrier, 1 }, {});
-}
-
-void RHICommandListBase::TextureBarrier(RHITexture& texture,
-                                        RHIBarrierSync sync,
-                                        RHIBarrierAccess access,
-                                        RHITextureLayout layout)
-{
-    RHITextureBarrier barrier{ texture, TextureSubresource{}, sync, access, layout };
-    Barrier({}, { &barrier, 1 });
-}
-
 void RHICommandListBase::Copy(RHITexture& src, RHITexture& dst)
 {
-    TextureCopyDesc copyDesc;
-    Copy(src, dst, std::span(&copyDesc, 1));
+    Copy(src, dst, { TextureCopyDesc{} });
 }
 
 void RHICommandListBase::Copy(RHIBuffer& src, RHIBuffer& dst)

@@ -31,6 +31,7 @@ public:
     virtual TextureDesc GetBackBufferTextureDescription() const override;
 
     virtual bool NeedsRecreation() const override;
+    virtual bool CanRecreate() override;
 
     virtual ColorSpace GetValidColorSpace(ColorSpace preferredColorSpace) const override;
 

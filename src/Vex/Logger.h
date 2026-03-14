@@ -12,6 +12,8 @@
 #include <Vex/Platform/Debug.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/EnumFlags.h>
+// Keep this include, allows for implicit conversion of enums to enum string.
+#include <Vex/Utility/Formattable.h>
 
 namespace vex
 {

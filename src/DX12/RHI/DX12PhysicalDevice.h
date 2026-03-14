@@ -28,6 +28,7 @@ public:
     virtual ShaderModel GetShaderModel() const override;
     virtual u32 GetMaxLocalConstantsByteSize() const override;
     virtual bool FormatSupportsLinearFiltering(TextureFormat format, bool isSRGB) const override;
+    virtual bool PresentResetsBackBufferToUndefined() const override;
 
     bool SupportsTightAlignment() const;
     bool SupportsMinimalRequirements() const override;

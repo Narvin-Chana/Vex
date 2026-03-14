@@ -13,6 +13,7 @@ enum class Feature : u8
     MeshShader,
     RayTracing,
     MipGeneration,
+    NativeTextureClear,
     // Additional features go here...
 };
 
@@ -83,6 +84,7 @@ struct RHIPhysicalDeviceBase
     virtual ShaderModel GetShaderModel() const = 0;
     virtual u32 GetMaxLocalConstantsByteSize() const = 0;
     virtual bool FormatSupportsLinearFiltering(TextureFormat format, bool isSRGB) const = 0;
+    virtual bool PresentResetsBackBufferToUndefined() const = 0;
 
     virtual bool SupportsMinimalRequirements() const = 0;
 };

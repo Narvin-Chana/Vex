@@ -62,17 +62,17 @@ void ImGuiApplication::RenderImGui()
     // It does not touch the graphics API at all.
     ImGui::Render();
 
-    // Render ImGui to the backbuffer.
+    // Render ImGui to the present texture.
     vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
 
-    vex::TextureBinding backBufferBinding = { .texture = graphics->GetCurrentPresentTexture() };
+    vex::TextureBinding presentBinding = { .texture = graphics->GetCurrentPresentTexture() };
     vex::TextureClearValue clearValue{ .clearAspect = vex::TextureAspect::Color, .color = { 0, 0, 0, 0 } };
-    ctx.ClearTexture(backBufferBinding, clearValue);
+    ctx.ClearTexture(presentBinding, clearValue);
 
     // ImGui renders to the texture that is currently set as render target. In this case we want to render
-    // directly to the backbuffer. For this we use the ExecuteInDrawContext function, which will take care of
+    // directly to the present texture. For this we use the ExecuteInDrawContext function, which will take care of
     // binding the render targets/depth stencil and then execute the passed in callback.
-    ctx.ExecuteInDrawContext({ &backBufferBinding, 1 }, std::nullopt, [&ctx]() { ImGui_ImplVex_RenderDrawData(ctx); });
+    ctx.ExecuteInDrawContext({ &presentBinding, 1 }, std::nullopt, {}, [&ctx]() { ImGui_ImplVex_RenderDrawData(ctx); });
 
     // Submit our command context.
     graphics->Submit(ctx);

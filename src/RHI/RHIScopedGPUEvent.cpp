@@ -1,7 +1,7 @@
 #include "RHIScopedGPUEvent.h"
 
-#include <Vex/Platform/Debug.h>
 #include <Vex/RHIImpl/RHICommandList.h>
+#include <Vex/Utility/Validation.h>
 
 namespace vex
 {

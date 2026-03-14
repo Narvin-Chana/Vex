@@ -37,12 +37,6 @@ HDRApplication::HDRApplication()
                           std::span<const vex::byte>{ reinterpret_cast<vex::byte*>(hdrData),
                                                       hdrWidth * hdrHeight * FloatRGBANumChannels * sizeof(float) });
 
-    // Now keep the texture in a shader read state.
-    ctx.Barrier(hdrTexture,
-                vex::RHIBarrierSync::AllCommands,
-                vex::RHIBarrierAccess::ShaderRead,
-                vex::RHITextureLayout::ShaderResource);
-
     graphics->Submit(ctx);
 
     std::array samplers{
@@ -90,14 +84,22 @@ void HDRApplication::Run()
                 vex::BindlessHandle hdrTextureHandle;
             } data{ .hdrTextureHandle = graphics->GetBindlessHandle(shaderRead) };
 
-            ctx.Draw(drawDesc, { .renderTargets = { &renderTarget, 1 } }, vex::ConstantBinding{ data }, 3);
+            ctx.Draw(drawDesc,
+                     { .renderTargets = { &renderTarget, 1 } },
+                     vex::ConstantBinding{ data },
+                     { shaderRead },
+                     3);
 
             drawDesc.pixelShader.defines.emplace_back(
                 "COLOR_SPACE",
                 std::to_string(std::to_underlying(graphics->GetCurrentHDRColorSpace()) + 1));
 
             ctx.SetViewport(texWidth, 0, texWidth, texHeight);
-            ctx.Draw(drawDesc, { .renderTargets = { &renderTarget, 1 } }, vex::ConstantBinding{ data }, 3);
+            ctx.Draw(drawDesc,
+                     { .renderTargets = { &renderTarget, 1 } },
+                     vex::ConstantBinding{ data },
+                     { shaderRead },
+                     3);
 
 #if VEX_SLANG
             drawDesc.vertexShader.path = ExamplesDir / "hdr" / "HDR.slang";
@@ -106,14 +108,22 @@ void HDRApplication::Run()
             drawDesc.pixelShader.defines = {};
 
             ctx.SetViewport(0, texHeight, texWidth, texHeight);
-            ctx.Draw(drawDesc, { .renderTargets = { &renderTarget, 1 } }, vex::ConstantBinding{ data }, 3);
+            ctx.Draw(drawDesc,
+                     { .renderTargets = { &renderTarget, 1 } },
+                     vex::ConstantBinding{ data },
+                     { shaderRead },
+                     3);
 
             drawDesc.pixelShader.defines.emplace_back(
                 "COLOR_SPACE",
                 std::to_string(std::to_underlying(graphics->GetCurrentHDRColorSpace()) + 1));
 
             ctx.SetViewport(texWidth, texHeight, texWidth, texHeight);
-            ctx.Draw(drawDesc, { .renderTargets = { &renderTarget, 1 } }, vex::ConstantBinding{ data }, 3);
+            ctx.Draw(drawDesc,
+                     { .renderTargets = { &renderTarget, 1 } },
+                     vex::ConstantBinding{ data },
+                     { shaderRead },
+                     3);
 #endif
 
             graphics->Submit(ctx);

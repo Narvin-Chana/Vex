@@ -304,9 +304,10 @@ TEST_F(SynchronizationTest, FinalStressTest)
     // Chaotic submission pattern
     std::mt19937 gen(123498351);
 
+    // Previously we used a random queue type, this is unsafe, as Vex does not currently support transfering resource states from one queue to another.
+    QueueType queueType = QueueType::Graphics; // static_cast<QueueType>(i % 3);
     for (int i = 0; i < 30; ++i)
     {
-        QueueType queueType = static_cast<QueueType>(i % 3);
 
         // Random dependencies
         std::span<SyncToken> deps;

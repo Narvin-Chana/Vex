@@ -33,7 +33,7 @@ VkPhysicalDevice::VkPhysicalDevice(const ::vk::PhysicalDevice& dev)
     rayTracingFeatures2.setPNext(&rayTracingFeatures);
     physicalDevice.getFeatures2(&rayTracingFeatures2);
 
-    // Get ray tracing features
+    // Get descriptor indexing features
     ::vk::PhysicalDeviceFeatures2 descriptorIndexingFeatures2;
     descriptorIndexingFeatures2.setPNext(&descriptorIndexingFeatures);
     physicalDevice.getFeatures2(&descriptorIndexingFeatures2);
@@ -44,7 +44,7 @@ double VkPhysicalDevice::GetDeviceVRAMSize(const ::vk::PhysicalDevice& physicalD
     ::vk::PhysicalDeviceMemoryProperties memoryProperties = physicalDevice.getMemoryProperties();
 
     double totalDeviceLocalMemoryMB = 0;
-    for (uint32_t i = 0; i < memoryProperties.memoryHeapCount; ++i)
+    for (u32 i = 0; i < memoryProperties.memoryHeapCount; ++i)
     {
         if (memoryProperties.memoryHeaps[i].flags & ::vk::MemoryHeapFlagBits::eDeviceLocal)
         {
@@ -69,6 +69,9 @@ bool VkPhysicalDevice::IsFeatureSupported(Feature feature) const
         return false && rayTracingFeatures.rayTracingPipeline;
     case Feature::MipGeneration:
         // Vk can use vkCmdBlitImage to generate mips.
+        return true;
+    case Feature::NativeTextureClear:
+        // Vk can use a native texture clear operation which does not require RT/DS access.
         return true;
     default:
         return false;
@@ -133,8 +136,8 @@ ResourceBindingTier VkPhysicalDevice::GetResourceBindingTier() const
 ShaderModel VkPhysicalDevice::GetShaderModel() const
 {
     // Map Vulkan version to feature level
-    uint32_t majorVersion = VK_API_VERSION_MAJOR(deviceProperties.apiVersion);
-    uint32_t minorVersion = VK_API_VERSION_MINOR(deviceProperties.apiVersion);
+    u32 majorVersion = VK_API_VERSION_MAJOR(deviceProperties.apiVersion);
+    u32 minorVersion = VK_API_VERSION_MINOR(deviceProperties.apiVersion);
 
     // Start with base level based on Vulkan version
     ShaderModel maxShaderModel = ShaderModel::SM_6_0;
@@ -248,6 +251,12 @@ bool VkPhysicalDevice::FormatSupportsLinearFiltering(TextureFormat format, bool 
 {
     ::vk::FormatProperties formatProperties = physicalDevice.getFormatProperties(TextureFormatToVulkan(format, isSRGB));
     return !!(formatProperties.optimalTilingFeatures & ::vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
+}
+
+bool VkPhysicalDevice::PresentResetsBackBufferToUndefined() const
+{
+    // Vk swapchain present will reset the backbuffer to the undefined state.
+    return true;
 }
 
 } // namespace vex::vk

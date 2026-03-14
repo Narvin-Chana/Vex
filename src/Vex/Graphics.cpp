@@ -14,12 +14,14 @@
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/Utility/ByteUtils.h>
+#include <Vex/Utility/Validation.h>
 #include <Vex/Utility/Visitor.h>
 
 #include <RHI/RHIAccelerationStructure.h>
 #include <RHI/RHIBarrier.h>
 #include <RHI/RHIBuffer.h>
 #include <RHI/RHIPhysicalDevice.h>
+#include <RHI/RHIScopedGPUEvent.h>
 
 namespace vex
 {
@@ -155,38 +157,73 @@ void Graphics::Present(bool isFullscreenMode)
         NonNullPtr<RHICommandList> cmdList = commandPool->GetOrCreateCommandList(QueueType::Graphics);
         cmdList->Open();
 
+        auto& presentTextureState = textureStatesPerQueue[QueueType::Graphics][GetCurrentPresentTexture().handle];
+        const auto [srcSync, srcAccess, srcLayout] =
+            presentTextureState.Get(presentTexture.GetDesc(), TextureSubresource{});
+        const auto [bbSrcSync, bbSrcAccess, bbSrcLayout] =
+            backBufferState.Get(backBuffer->GetDesc(), TextureSubresource{});
+
         std::array barriers = {
             RHITextureBarrier{
-                presentTexture,
-                TextureSubresource{},
-                RHIBarrierSync::Copy,
-                RHIBarrierAccess::CopySource,
-                RHITextureLayout::CopySource,
+                .texture = presentTexture,
+                .subresource = TextureSubresource{},
+                .srcSync = srcSync,
+                .dstSync = RHIBarrierSync::Copy,
+                .srcAccess = srcAccess,
+                .dstAccess = RHIBarrierAccess::CopySource,
+                .srcLayout = srcLayout,
+                .dstLayout = RHITextureLayout::CopySource,
             },
             RHITextureBarrier{
-                *backBuffer,
-                TextureSubresource{},
-                RHIBarrierSync::Copy,
-                RHIBarrierAccess::CopyDest,
-                RHITextureLayout::CopyDest,
+                .texture = *backBuffer,
+                .subresource = TextureSubresource{},
+                .srcSync = bbSrcSync,
+                .dstSync = RHIBarrierSync::Copy,
+                .srcAccess = bbSrcAccess,
+                .dstAccess = RHIBarrierAccess::CopyDest,
+                .srcLayout = bbSrcLayout,
+                .dstLayout = RHITextureLayout::CopyDest,
             },
         };
-        cmdList->Barrier({}, barriers);
+        cmdList->EmitBarriers({}, barriers, {});
         cmdList->Copy(presentTexture, *backBuffer);
-        cmdList->TextureBarrier(*backBuffer,
-                                RHIBarrierSync::AllGraphics,
-                                RHIBarrierAccess::NoAccess,
-                                RHITextureLayout::Present);
+        RHITextureBarrier presentBarrier{
+            .texture = *backBuffer,
+            .subresource = {},
+            .srcSync = RHIBarrierSync::Copy,
+            .dstSync = RHIBarrierSync::AllGraphics,
+            .srcAccess = RHIBarrierAccess::CopyDest,
+            .dstAccess = RHIBarrierAccess::NoAccess,
+            .srcLayout = RHITextureLayout::CopyDest,
+            .dstLayout = RHITextureLayout::Present,
+        };
+        cmdList->EmitBarriers({}, { &presentBarrier, 1 }, {});
         cmdList->Close();
 
         presentTokens[currentFrameIndex] = swapChain->Present(currentFrameIndex, rhi, cmdList, isFullscreenMode);
         commandPool->OnCommandListsSubmitted({ &cmdList, 1 }, { &presentTokens[currentFrameIndex], 1 });
+
+        // Certain swapchains reset the state of the backbuffer to Undefined after presenting.
+        if (GPhysicalDevice->PresentResetsBackBufferToUndefined())
+        {
+            backBufferState.SetUniform(
+                { RHIBarrierSync::None, RHIBarrierAccess::NoAccess, RHITextureLayout::Undefined });
+        }
+        else
+        {
+            backBufferState.SetUniform(
+                { RHIBarrierSync::AllGraphics, RHIBarrierAccess::NoAccess, RHITextureLayout::Present });
+        }
+        presentTextureState.Set(
+            GetCurrentPresentTexture().desc,
+            {},
+            RHITextureState{ RHIBarrierSync::Copy, RHIBarrierAccess::CopySource, RHITextureLayout::CopySource });
     }
 
     currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(desc.swapChainDesc.frameBuffering);
 
     // If our swapchain is stale, we must recreate it.
-    if (swapChain->NeedsRecreation())
+    if (swapChain->NeedsRecreation() && swapChain->CanRecreate())
     {
         VEX_LOG(Warning,
                 "Swapchain is stale meaning it must be recreated. This can occur when changes occur with the "
@@ -213,6 +250,15 @@ void Graphics::PrepareCommandContextForSubmission(CommandContext& ctx)
 
     // Flush barriers before submitting.
     ctx.FlushBarriers();
+
+    // Absorb the command context's texture states into this queue's main texture states.
+    // We merge in this direction to make the ctx's states override the ones already in the main texture states.
+    ctx.textureStates.merge(textureStatesPerQueue[ctx.GetRHICommandList().GetType()]);
+    textureStatesPerQueue[ctx.GetRHICommandList().GetType()] = std::move(ctx.textureStates);
+    // !This means only one command context per queue should be open at a time to avoid sync issues!
+    // TODO(https://trello.com/c/UmVOreIj): We could validate this? Do we want to? Solution would be to instead
+    // implement more rigid per-queue synchronization in Vex.
+
     // We want to close a command list asap, to allow for driver optimizations.
     ctx.cmdList->Close();
 }
@@ -355,7 +401,9 @@ std::vector<BindlessHandle> Graphics::GetBindlessHandles(Span<const ResourceBind
         std::visit(Visitor{ [&handles, this](const BufferBinding& bufferBinding)
                             { handles.emplace_back(GetBindlessHandle(bufferBinding)); },
                             [&handles, this](const TextureBinding& texBinding)
-                            { handles.emplace_back(GetBindlessHandle(texBinding)); } },
+                            { handles.emplace_back(GetBindlessHandle(texBinding)); },
+                            [&handles, this](const ASBinding& asBinding)
+                            { handles.emplace_back(GetBindlessHandle(asBinding.accelerationStructure)); } },
                    binding.binding);
     }
     return handles;

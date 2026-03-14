@@ -2,6 +2,7 @@
 
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
+#include <Vex/Logger.h>
 #include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIFwd.h>
@@ -55,6 +56,11 @@ enum class RHIBarrierAccess : u8
     CopyDest,
     AccelerationStructureRead,
     AccelerationStructureWrite,
+
+    // All "read" states.
+    MemoryRead,
+    // All "write" states.
+    MemoryWrite,
 };
 
 // Maps to VkImageLayout and D3D12_BARRIER_LAYOUT
@@ -66,39 +72,71 @@ enum class RHITextureLayout : u8
     DepthStencilRead,  // Depth/stencil read-only
     DepthStencilWrite, // Depth/stencil for writing
     ShaderResource,    // Shader read access
-    UnorderedAccess,   // Storage/UAV access
+    ShaderReadWrite,   // Storage/UAV access
     CopySource,        // Copy source
     CopyDest,          // Copy destination
     Present,           // Presentation
 };
 
-struct RHIBufferBarrier
+struct RHIGlobalBarrier
 {
-    RHIBufferBarrier(NonNullPtr<RHIBuffer> buffer, RHIBarrierSync dstSync, RHIBarrierAccess dstAccess);
-
-    NonNullPtr<RHIBuffer> buffer;
-
+    RHIBarrierSync srcSync;
     RHIBarrierSync dstSync;
+
+    RHIBarrierAccess srcAccess;
     RHIBarrierAccess dstAccess;
 };
 
 struct RHITextureBarrier
 {
-    RHITextureBarrier(NonNullPtr<RHITexture> texture,
-                      TextureSubresource subresource,
-                      RHIBarrierSync dstSync,
-                      RHIBarrierAccess dstAccess,
-                      RHITextureLayout dstLayout);
-
     NonNullPtr<RHITexture> texture;
-
-    // Allows for applying a barrier to a specific texture subresource.
-    // By default the barrier will be applied to the entire resource.
     TextureSubresource subresource;
 
+    RHIBarrierSync srcSync;
     RHIBarrierSync dstSync;
+
+    RHIBarrierAccess srcAccess;
     RHIBarrierAccess dstAccess;
+
+    RHITextureLayout srcLayout;
     RHITextureLayout dstLayout;
 };
+
+struct RHIBufferBarrier
+{
+    NonNullPtr<RHIBuffer> buffer;
+
+    RHIBarrierSync srcSync;
+    RHIBarrierSync dstSync;
+
+    RHIBarrierAccess srcAccess;
+    RHIBarrierAccess dstAccess;
+};
+
+// Layout can be interpreted from certain access values.
+inline RHITextureLayout RHIAccessToRHILayout(RHIBarrierAccess access)
+{
+    switch (access)
+    {
+    case RHIBarrierAccess::ShaderRead:
+        return RHITextureLayout::ShaderResource;
+    case RHIBarrierAccess::ShaderReadWrite:
+        return RHITextureLayout::ShaderReadWrite;
+    case RHIBarrierAccess::RenderTarget:
+        return RHITextureLayout::RenderTarget;
+    case RHIBarrierAccess::DepthStencilRead:
+        return RHITextureLayout::DepthStencilRead;
+    case RHIBarrierAccess::DepthStencilWrite:
+    case RHIBarrierAccess::DepthStencilReadWrite:
+        return RHITextureLayout::DepthStencilWrite;
+    case RHIBarrierAccess::CopySource:
+        return RHITextureLayout::CopySource;
+    case RHIBarrierAccess::CopyDest:
+        return RHITextureLayout::CopyDest;
+    default:
+        VEX_LOG(Fatal, "Cannot deduce the texture layout from your provided access: {}", access);
+        std::unreachable();
+    }
+}
 
 } // namespace vex

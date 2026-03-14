@@ -124,13 +124,6 @@ HelloCubeApplication::HelloCubeApplication()
         // SRGB-aware downscale!
         ctx.GenerateMips({ .texture = uvGuideTexture, .isSRGB = true });
 
-        // The texture will now only be used as a read-only shader resource. In Vex we recommend only applying barriers
-        // in Write-After-Write and Read-After-Write situations as to reduce the total amount of barriers.
-        ctx.Barrier(uvGuideTexture,
-                    vex::RHIBarrierSync::AllCommands,
-                    vex::RHIBarrierAccess::ShaderRead,
-                    vex::RHITextureLayout::ShaderResource);
-
         graphics->Submit(ctx);
 
         stbi_image_free(imageData);
@@ -264,6 +257,7 @@ void HelloCubeApplication::Run()
                                     .indexBuffer = indexBufferBinding,
                                 },
                                 vex::ConstantBinding(UniformData{ static_cast<float>(currentTime), uvGuideHandle }),
+                                {},
                                 IndexCount);
             }
 
@@ -278,6 +272,7 @@ void HelloCubeApplication::Run()
                                     .indexBuffer = indexBufferBinding,
                                 },
                                 vex::ConstantBinding(UniformData{ static_cast<float>(currentTime), uvGuideHandle }),
+                                {},
                                 IndexCount);
             }
 #endif

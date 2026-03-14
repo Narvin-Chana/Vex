@@ -52,7 +52,7 @@ static ::vk::PresentModeKHR GetBestPresentMode(const VkSwapChainSupportDetails& 
 
 static ::vk::Extent2D GetBestSwapExtent(const VkSwapChainSupportDetails& details, u32 width, u32 height)
 {
-    if (details.capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
+    if (details.capabilities.currentExtent.width != std::numeric_limits<u32>::max())
         return details.capabilities.currentExtent;
 
     ::vk::Extent2D actualExtent = { width, height };
@@ -91,13 +91,14 @@ VkSwapChain::VkSwapChain(NonNullPtr<VkGPUContext> ctx, SwapChainDesc& desc, cons
         });
         return semaphore;
     };
-    // Requires including the heavy <algorithm>
+
     std::ranges::generate_n(std::back_inserter(presentSemaphore), requestedImageCount, BinarySemaphoreCreator);
     std::ranges::generate_n(std::back_inserter(backbufferAcquisition), requestedImageCount, BinarySemaphoreCreator);
 }
 
 void VkSwapChain::RecreateSwapChain(u32 width, u32 height)
 {
+    VEX_ASSERT(width != 0 && height != 0);
     supportDetails = GetSwapChainSupportDetails(ctx->physDevice, ctx->surface);
     currentColorSpace = GetValidColorSpace(desc->preferredColorSpace);
     surfaceFormat = GetBestSurfaceFormat(supportDetails);
@@ -119,16 +120,30 @@ void VkSwapChain::RecreateSwapChain(u32 width, u32 height)
                 currentColorSpace);
     }
 
+    if (supportDetails.capabilities.currentExtent.width == 0 || supportDetails.capabilities.currentExtent.height == 0)
+    {
+        return;
+    }
+
     InitSwapchainResource(width, height);
 }
 
 bool VkSwapChain::NeedsRecreation() const
 {
+    // Update support details.
     const ::vk::PresentModeKHR newPresentMode = GetBestPresentMode(supportDetails, desc->useVSync);
     const bool needsRecreationDueToVSync = newPresentMode != presentMode;
 
     return swapchainIsInErrorState || needsRecreationDueToVSync || !IsColorSpaceStillSupported(*desc) ||
            (!desc->useHDRIfSupported && IsHDREnabled());
+}
+
+bool VkSwapChain::CanRecreate()
+{
+    supportDetails = GetSwapChainSupportDetails(ctx->physDevice, ctx->surface);
+
+    return NeedsRecreation() && supportDetails.capabilities.currentExtent.width != 0 &&
+           supportDetails.capabilities.currentExtent.height != 0;
 }
 
 TextureDesc VkSwapChain::GetBackBufferTextureDescription() const

@@ -14,6 +14,10 @@ struct AccelerationStructureTest : RTVexTest
     void SetUp() override
     {
         RTVexTest::SetUp();
+        if (IsSkipped())
+        {
+            return;
+        }
 
         auto ctx = graphics.CreateCommandContext(QueueType::Compute);
 
@@ -230,6 +234,10 @@ struct TLASAccelerationStructureTest : public AccelerationStructureTest
     void SetUp() override
     {
         AccelerationStructureTest::SetUp();
+        if (IsSkipped())
+        {
+            return;
+        }
         triangleBLAS = graphics.CreateAccelerationStructure(
             ASDesc{ .name = "Triangle BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
 
@@ -543,21 +551,20 @@ TEST_P(ASAABBTest, CreateAABBTraceShader)
     TLASInstanceDesc instanceDesc{ .blas = blas };
     ctx.BuildTLAS(tlas, { .instances = { instanceDesc } });
 
-    ctx.Barrier(blas, RHIBarrierSync::AllCommands, RHIBarrierAccess::ShaderRead);
-    ctx.Barrier(tlas, RHIBarrierSync::AllCommands, RHIBarrierAccess::ShaderRead);
-
     Buffer out = graphics.CreateBuffer(BufferDesc::CreateGenericBufferDesc("DataOut", 4, true));
+
+    auto binding = BufferBinding{
+        .buffer = out,
+        .usage = BufferBindingUsage::RWStructuredBuffer,
+        .strideByteSize = 4,
+    };
 
     struct Data
     {
         BindlessHandle outputHandle;
         BindlessHandle tlasHandle;
     } data{
-        .outputHandle = graphics.GetBindlessHandle(BufferBinding{
-            .buffer = out,
-            .usage = BufferBindingUsage::RWStructuredBuffer,
-            .strideByteSize = 4,
-        }),
+        .outputHandle = graphics.GetBindlessHandle(binding),
         .tlasHandle = graphics.GetBindlessHandle(tlas),
     };
 
@@ -613,12 +620,11 @@ TEST_P(ASAABBTest, CreateAABBTraceShader)
              .maxAttributeByteSize = sizeof(float) * 2,
         },
         ConstantBinding(data),
+        {binding},
         {
             1, 1, 1
         }
     );
-
-    ctx.BarrierBinding({ .buffer = out, .usage = BufferBindingUsage::RWStructuredBuffer });
 
     BufferReadbackContext readback = ctx.EnqueueDataReadback(out);
 

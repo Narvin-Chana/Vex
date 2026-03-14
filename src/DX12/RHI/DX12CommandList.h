@@ -31,10 +31,11 @@ public:
     virtual void ClearTexture(const RHITextureBinding& binding,
                               TextureUsage::Type usage,
                               const TextureClearValue& clearValue,
-                              std::span<TextureClearRect> clearRects) override;
+                              Span<const TextureClearRect> clearRects) override;
 
-    virtual void Barrier(Span<const RHIBufferBarrier> bufferBarriers,
-                         Span<const RHITextureBarrier> textureBarriers) override;
+    virtual void EmitBarriers(Span<const RHIBufferBarrier> bufferBarriers,
+                              Span<const RHITextureBarrier> textureBarriers,
+                              Span<const RHIGlobalBarrier> globalBarriers) override;
 
     virtual void BeginRendering(const RHIDrawResources& resources) override;
     virtual void EndRendering() override;
