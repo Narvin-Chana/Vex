@@ -36,7 +36,7 @@ FetchContent_MakeAvailable(stb)
 FetchContent_Declare(
     imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
-    GIT_TAG v1.92.1
+    GIT_TAG v1.92.6
     GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(imgui)

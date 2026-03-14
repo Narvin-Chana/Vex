@@ -10,6 +10,8 @@ struct ImGuiApplication : public ExampleApplication
     void RenderImGui();
 
 protected:
+    vex::Texture lastFrameTexture;
+
     static constexpr auto FrameBuffering = vex::FrameBuffering::Triple;
     static constexpr auto SwapchainFormat = vex::TextureFormat::BGRA8_UNORM;
 

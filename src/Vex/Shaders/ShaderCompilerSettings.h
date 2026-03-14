@@ -15,9 +15,6 @@ struct ShaderCompilerSettings
     // and development builds.
     bool enableShaderDebugging = !VEX_SHIPPING;
 
-    // Determines whether HLSL 202x features should be enabled (only useful when using DXC).
-    bool enableHLSL202xFeatures = true;
-
     // Outputs the shader bytecode (spirv or DXIL) to a directory when a shader is compiled
     bool dumpShaderOutputBytecode = false;
 };
