@@ -2,13 +2,10 @@
 
 #include <memory>
 #include <optional>
-#include <shared_mutex>
-#include <unordered_map>
 #include <vector>
 
 #include <Vex/AccelerationStructure.h>
 #include <Vex/Containers/FreeList.h>
-#include <Vex/ResourceCleanup.h>
 #include <Vex/Containers/Span.h>
 #include <Vex/PipelineStateCache.h>
 #include <Vex/Platform/PlatformWindow.h>
@@ -20,6 +17,7 @@
 #include <Vex/RHIImpl/RHIPhysicalDevice.h>
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
+#include <Vex/ResourceCleanup.h>
 #include <Vex/Synchronization.h>
 #include <Vex/TextureStateMap.h>
 #include <Vex/Utility/MaybeUninitialized.h>

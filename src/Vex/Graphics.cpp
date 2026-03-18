@@ -2,11 +2,10 @@
 
 #include <array>
 #include <functional>
-#include <mutex>
+#include <thread>
 #include <utility>
 
 #include <Vex/CommandContext.h>
-#include <Vex/ResourceCleanup.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHI.h>
@@ -16,6 +15,7 @@
 #include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHITexture.h>
+#include <Vex/ResourceCleanup.h>
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Validation.h>
 #include <Vex/Utility/Visitor.h>

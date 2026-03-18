@@ -132,6 +132,10 @@ static void PrintStateObjectDesc(const D3D12_STATE_OBJECT_DESC* desc)
                  << (hitGroup->IntersectionShaderImport ? hitGroup->IntersectionShaderImport : L"[none]") << L"\n";
             break;
         }
+        default:
+        {
+            break;
+        }
         }
         wstr << L"|--------------------------------------------------------------------\n";
     }
