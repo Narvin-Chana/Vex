@@ -166,7 +166,7 @@ inline void Image(const vex::TextureBinding& binding,
             { img,
               (ImTextureID)ImGui_ImplVulkan_AddTexture(*GImGuiVexContext.linearSampler,
                                                        img,
-                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) });
+                                                       VK_IMAGE_LAYOUT_GENERAL) });
     }
     registeredTexture = GImGuiVexContext.imageCache[img];
 #elif VEX_DX12
