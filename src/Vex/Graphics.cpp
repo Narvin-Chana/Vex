@@ -261,6 +261,8 @@ CommandContext Graphics::CreateCommandContext(QueueType queueType)
 
 std::optional<SyncToken> Graphics::FlushPendingInitializations()
 {
+    // Remove all stale textures, eg: if a texture is created then deleted without having been used.
+    std::erase_if(pendingInitializations, [this](const Texture& tex) { return !textureRegistry.IsValid(tex.handle); });
     if (pendingInitializations.empty())
     {
         return std::nullopt;
@@ -270,6 +272,7 @@ std::optional<SyncToken> Graphics::FlushPendingInitializations()
     CommandContext ctx = CreateCommandContext(QueueType::Graphics);
     for (auto& texture : pendingInitializations)
     {
+
         RHITextureBarrier barrier{
             .texture = GetRHITexture(texture.handle),
             .subresource = TextureSubresource{},
@@ -293,8 +296,6 @@ std::optional<SyncToken> Graphics::FlushPendingInitializations()
                                                       .layout = RHITextureLayout::Undefined,
                                                   });
 
-            // TODO: aspect handling is erroneous here.
-            // See --gtest_filter=*ClearStencilImplicit*
             ctx.ClearTexture({ .texture = texture });
 
             // We still need to transition the texture to the default global state, just have to modify the src* values
@@ -815,6 +816,7 @@ void Graphics::RecreatePresentTextures()
 
     // Create new present textures.
     presentTextures.resize(std::to_underlying(desc.swapChainDesc.frameBuffering));
+
     presentTokens.clear();
     presentTokens.resize(std::to_underlying(desc.swapChainDesc.frameBuffering));
     for (u8 presentTextureIndex = 0; presentTextureIndex < std::to_underlying(desc.swapChainDesc.frameBuffering);
