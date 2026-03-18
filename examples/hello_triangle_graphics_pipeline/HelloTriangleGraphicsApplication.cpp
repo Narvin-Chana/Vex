@@ -125,7 +125,7 @@ void HelloTriangleGraphicsApplication::Run()
         }
         graphics->Submit(ctx);
 
-        graphics->Present(windowMode == Fullscreen);
+        graphics->Present();
     }
 }
 

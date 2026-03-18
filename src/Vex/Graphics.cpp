@@ -144,7 +144,7 @@ Graphics::~Graphics()
     GEnableGPUScopedEvents = false;
 }
 
-void Graphics::Present(bool isFullscreenMode)
+void Graphics::Present()
 {
     if (!desc.useSwapChain)
     {
@@ -219,7 +219,7 @@ void Graphics::Present(bool isFullscreenMode)
         cmdList->EmitBarriers({}, { backBufferBarrier, presentTextureBarrier }, {});
         cmdList->Close();
 
-        presentTokens[currentFrameIndex] = swapChain->Present(currentFrameIndex, rhi, cmdList, isFullscreenMode);
+        presentTokens[currentFrameIndex] = swapChain->Present(currentFrameIndex, rhi, cmdList);
         commandPool->OnCommandListsSubmitted({ &cmdList, 1 }, { &presentTokens[currentFrameIndex], 1 });
 
         // Certain swapchains reset the state of the backbuffer to Undefined after presenting.

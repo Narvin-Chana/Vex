@@ -87,7 +87,7 @@ public:
     virtual ColorSpace GetValidColorSpace(ColorSpace preferredColorSpace) const = 0;
 
     virtual std::optional<RHITexture> AcquireBackBuffer(u8 frameIndex) = 0;
-    virtual SyncToken Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandList> commandList, bool isFullscreen) = 0;
+    virtual SyncToken Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandList> commandList) = 0;
 
     bool IsHDREnabled() const
     {

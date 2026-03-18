@@ -75,7 +75,7 @@ public:
     // Presents the current presentTexture to the swapchain. Will stall if the GPU's next backbuffer is not yet ready
     // (depends on your FrameBuffering). If you use an HDR swapchain, this will apply HDR conversions, if necessary,
     // before copying the present texture to the swapChain.
-    void Present(bool isFullscreenMode);
+    void Present();
 
     // Create a CommandContext in which GPU commands can be recorded. The command context must later on be submitted to
     // the GPU by calling vex::Graphics::Submit().
@@ -129,10 +129,6 @@ public:
     // Allows you to submit the command contexts to the GPU, receiving a SyncToken which can be optionally used to track
     // work completion.
     std::vector<SyncToken> Submit(Span<CommandContext> commandContexts, Span<const SyncToken> dependencies = {});
-
-    void EnqueueCPUWork(CPUCallback&& callback, Span<const SyncToken> tokens);
-    void ExecuteCPUWork();
-    void FlushCPUWork();
 
     // Has the passed-in sync token been executed on the GPU yet?
     [[nodiscard]] bool IsTokenComplete(const SyncToken& token) const;
@@ -194,6 +190,10 @@ public:
     static std::vector<PhysicalDeviceInfo> GetSupportedDevices();
 
 private:
+    void EnqueueCPUWork(CPUCallback&& callback, Span<const SyncToken> tokens);
+    void ExecuteCPUWork();
+    void FlushCPUWork();
+
     std::optional<SyncToken> FlushPendingInitializations();
     void PrepareCommandContextForSubmission(CommandContext& ctx);
     void CleanupResources();

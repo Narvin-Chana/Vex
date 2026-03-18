@@ -238,7 +238,7 @@ std::optional<RHITexture> VkSwapChain::AcquireBackBuffer(u8 frameIndex)
     return RHITexture{ ctx, std::move(desc), backbufferImages[currentBackbufferId] };
 }
 
-SyncToken VkSwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandList> commandList, bool isFullscreen)
+SyncToken VkSwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandList> commandList)
 {
     ::vk::CommandBufferSubmitInfo cmdBufferSubmitInfo{ .commandBuffer = commandList->GetNativeCommandList() };
 

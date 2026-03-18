@@ -38,7 +38,7 @@ void PixEventsApplication::Run()
             hasCaptured = true;
         }
 
-        graphics->Present(windowMode == Fullscreen);
+        graphics->Present();
     }
 }
 

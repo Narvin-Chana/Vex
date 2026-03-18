@@ -167,11 +167,15 @@ std::optional<RHITexture> DX12SwapChain::AcquireBackBuffer(u8 frameIndex)
     return DX12Texture(device, std::format("BackBuffer_{}", backBufferIndex), backBuffer);
 }
 
-SyncToken DX12SwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandList> commandList, bool isFullscreen)
+SyncToken DX12SwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandList> commandList)
 {
     // Ignore the SyncToken of this function.
     // We instead return the sync token post-present.
     rhi.Submit({ &commandList, 1 }, {});
+
+    DXGI_SWAP_CHAIN_FULLSCREEN_DESC swapChainFullscreenDesc;
+    chk << swapChain->GetFullscreenDesc(&swapChainFullscreenDesc);
+    const bool isFullscreen = !swapChainFullscreenDesc.Windowed;
 
     chk << swapChain->Present(desc->useVSync, (!desc->useVSync && !isFullscreen) ? DXGI_PRESENT_ALLOW_TEARING : 0);
 

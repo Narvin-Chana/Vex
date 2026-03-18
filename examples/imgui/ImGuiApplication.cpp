@@ -55,7 +55,7 @@ void ImGuiApplication::Run()
 
         RenderImGui();
 
-        graphics->Present(windowMode == Fullscreen);
+        graphics->Present();
     }
 }
 void ImGuiApplication::RenderImGui()
