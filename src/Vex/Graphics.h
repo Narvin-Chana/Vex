@@ -38,7 +38,7 @@ struct TextureBinding;
 struct BufferBinding;
 struct ResourceBinding;
 
-#if __has_include(<expected>) && defined(__cpp_lib_move_only_function)
+#ifdef __cpp_lib_move_only_function
 using CPUCallback = std::move_only_function<void()>;
 #else
 // Fallback for environments with incomplete C++23 support
