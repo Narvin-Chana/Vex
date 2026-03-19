@@ -236,6 +236,10 @@ add_library(Vex STATIC
     "src/Vex/Utility/SHA1.h"
     "src/Vex/Utility/SHA1.cpp"
     "src/Vex/BuildAccelerationStructure.h"
+    "src/Vex/Utility/Functional/__functional_base.h"
+    "src/Vex/Utility/Functional/function.h"
+    "src/Vex/Utility/Functional/function_ref.h"
+    "src/Vex/Utility/Functional/move_only_function.h"
 )
 
 if(WIN32)
