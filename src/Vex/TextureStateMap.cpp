@@ -84,9 +84,9 @@ void TextureStateMap::DetectUniformity()
     }
 
     const RHITextureState firstState = perSubresourceState->front();
-    const bool allSame =
-        std::ranges::all_of(*perSubresourceState,
-                            [&firstState](const RHITextureState& state) { return state == firstState; });
+    const bool allSame = std::all_of(perSubresourceState->begin(),
+                                     perSubresourceState->end(),
+                                     [&firstState](const RHITextureState& state) { return state == firstState; });
 
     if (allSame)
     {
