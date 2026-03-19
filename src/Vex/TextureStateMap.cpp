@@ -1,5 +1,7 @@
 #include "TextureStateMap.h"
 
+#include <algorithm>
+
 #include <Vex/Platform/Debug.h>
 
 namespace vex
