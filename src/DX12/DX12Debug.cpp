@@ -93,9 +93,13 @@ void SetupDebugMessageCallback(const ComPtr<DX12Device>& device)
 
     // Filter out noise messages
     D3D12_INFO_QUEUE_FILTER filter = {};
-    D3D12_MESSAGE_ID denyIds[] = { D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
-                                   D3D12_MESSAGE_ID_MAP_INVALID_NULLRANGE,
-                                   D3D12_MESSAGE_ID_UNMAP_INVALID_NULLRANGE };
+    D3D12_MESSAGE_ID denyIds[] = {
+        D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
+        D3D12_MESSAGE_ID_MAP_INVALID_NULLRANGE,
+        D3D12_MESSAGE_ID_UNMAP_INVALID_NULLRANGE,
+        // TODO(https://trello.com/c/0Zu8I5kS): Fix D3D12_MESSAGE_ID_NON_OPTIMAL_BARRIER_ONLY_EXECUTE_COMMAND_LISTS warning by tracking when a command context ONLY emits barriers
+        D3D12_MESSAGE_ID_NON_OPTIMAL_BARRIER_ONLY_EXECUTE_COMMAND_LISTS,
+    };
 
     filter.DenyList.NumIDs = _countof(denyIds);
     filter.DenyList.pIDList = denyIds;

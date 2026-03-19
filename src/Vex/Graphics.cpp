@@ -328,6 +328,11 @@ void Graphics::PrepareCommandContextForSubmission(CommandContext& ctx)
     // Reset all touched textures to the universal default texture layout.
     for (auto& touchedTex : ctx.touchedTextures)
     {
+        if (!textureRegistry.IsValid(touchedTex.handle))
+        {
+            continue;
+        }
+
         ctx.EnqueueTextureBarrier(touchedTex,
                                   TextureSubresource{},
                                   RHIBarrierSync::None,
