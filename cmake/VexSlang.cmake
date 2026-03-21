@@ -22,11 +22,16 @@ message(STATUS "Fetching Slang...")
 FetchContent_Declare(
     slang
     URL ${SLANG_RELEASE_URL}
+    FIND_PACKAGE_ARGS ${SLANG_VERSION} GLOBAL
 )
 FetchContent_MakeAvailable(slang)
-#
-#set(slang_DIR "${slang_SOURCE_DIR}/cmake")
-#find_package(slang CONFIG REQUIRED)
+
+# print the contents of the slang directory for debugging
+file(GLOB SLANG_FILES "${slang_SOURCE_DIR}/*")
+message(STATUS "Slang files:\n${SLANG_FILES}")
+
+set(slang_DIR "${slang_SOURCE_DIR}/cmake")
+find_package(slang CONFIG REQUIRED)
 
 # Create imported target for slang
 set(SLANG_INCLUDE_DIR "${slang_SOURCE_DIR}/include")
