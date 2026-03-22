@@ -10,6 +10,7 @@
 #include <Vex/Shaders/ShaderEnvironment.h>
 #include <Vex/Shaders/ShaderKey.h>
 #include <Vex/Utility/SHA1.h>
+#include <Vex/Utility/WString.h>
 
 namespace vex
 {
@@ -173,6 +174,70 @@ std::vector<std::pair<std::wstring, std::wstring>> BuildDefineList(const ShaderK
     return defineWStrings;
 }
 
+class CustomDXCIncludeHandler : public IDxcIncludeHandler
+{
+public:
+    CustomDXCIncludeHandler(ComPtr<IDxcIncludeHandler> defaultHandler,
+                            ComPtr<IDxcUtils> utils,
+                            ShaderCompileContext* context)
+        : defaultHandler(defaultHandler)
+        , utils(utils)
+        , context(context)
+    {
+    }
+
+    HRESULT STDMETHODCALLTYPE LoadSource(LPCWSTR pFilename, IDxcBlob** ppIncludeSource) override
+    {
+        if (context && pFilename)
+        {
+            std::string filenameStr = WStringToString(pFilename);
+            std::ranges::replace(filenameStr, '\\', '/');
+
+            for (const auto& [vpath, vcode] : context->GetVirtualFiles())
+            {
+                if (filenameStr.ends_with(vpath))
+                {
+                    ComPtr<IDxcBlobEncoding> blob;
+                    utils->CreateBlob(vcode.data(), static_cast<UINT32>(vcode.size()), DXC_CP_UTF8, &blob);
+                    *ppIncludeSource = blob.Detach();
+                    return S_OK;
+                }
+            }
+        }
+        return defaultHandler->LoadSource(pFilename, ppIncludeSource);
+    }
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override
+    {
+        if (riid == __uuidof(IDxcIncludeHandler) || riid == __uuidof(IUnknown))
+        {
+            *ppvObject = this;
+            AddRef();
+            return S_OK;
+        }
+        return E_NOINTERFACE;
+    }
+    ULONG STDMETHODCALLTYPE AddRef() override
+    {
+        return ++refCount;
+    }
+    ULONG STDMETHODCALLTYPE Release() override
+    {
+        ULONG count = --refCount;
+        if (count == 0)
+        {
+            delete this;
+        }
+        return count;
+    }
+
+private:
+    std::atomic<ULONG> refCount = 1;
+    ComPtr<IDxcIncludeHandler> defaultHandler;
+    ComPtr<IDxcUtils> utils;
+    ShaderCompileContext* context;
+};
+
 } // namespace DXCImpl_Internal
 
 DXCCompilerImpl::DXCCompilerImpl(std::vector<std::filesystem::path> includeDirectories)
@@ -198,8 +263,18 @@ DXCCompilerImpl::DXCCompilerImpl(std::vector<std::filesystem::path> includeDirec
 
 DXCCompilerImpl::~DXCCompilerImpl() = default;
 
+std::unique_ptr<ICompilerContextImpl> DXCCompilerImpl::CreateContext(const ShaderEnvironment& env,
+                                                                     const ShaderCompilerSettings& compilerSettings,
+                                                                     ShaderCompileContext* context) const
+{
+    return nullptr;
+}
+
 std::expected<SHA1HashDigest, std::string> DXCCompilerImpl::GetShaderCodeHash(
-    const Shader& shader, const ShaderEnvironment& shaderEnv, const ShaderCompilerSettings& compilerSettings)
+    const Shader& shader,
+    const ShaderEnvironment& shaderEnv,
+    const ShaderCompilerSettings& compilerSettings,
+    ShaderCompileContext* context)
 {
     return DXCImpl_Internal::LoadShaderSource(utils, shader.key)
         .and_then(
@@ -218,13 +293,16 @@ std::expected<SHA1HashDigest, std::string> DXCCompilerImpl::GetShaderCodeHash(
                 std::vector<std::pair<std::wstring, std::wstring>> dxcDefines =
                     DXCImpl_Internal::BuildDefineList(shader.key, shaderEnv);
 
-                return CompileShader(shader.key, args, dxcDefines, shaderSource)
+                return CompileShader(shader.key, args, dxcDefines, shaderSource, context)
                     .and_then(DXCImpl_Internal::HashCompiledShader);
             });
 }
 
 std::expected<ShaderCompilationResult, std::string> DXCCompilerImpl::CompileShader(
-    const Shader& shader, const ShaderEnvironment& shaderEnv, const ShaderCompilerSettings& compilerSettings) const
+    const Shader& shader,
+    const ShaderEnvironment& shaderEnv,
+    const ShaderCompilerSettings& compilerSettings,
+    ShaderCompileContext* context) const
 {
     return DXCImpl_Internal::LoadShaderSource(utils, shader.key)
         .and_then(
@@ -241,7 +319,7 @@ std::expected<ShaderCompilationResult, std::string> DXCCompilerImpl::CompileShad
                 std::vector<std::pair<std::wstring, std::wstring>> dxcDefines =
                     DXCImpl_Internal::BuildDefineList(shader.key, shaderEnv);
 
-                return CompileShader(shader.key, args, dxcDefines, shaderSource)
+                return CompileShader(shader.key, args, dxcDefines, shaderSource, context)
                     .and_then(
                         [&](const ComPtr<IDxcResult>& shaderCompilationResults)
                             -> std::expected<ShaderCompilationResult, std::string>
@@ -282,7 +360,8 @@ std::expected<ComPtr<IDxcResult>, std::string> DXCCompilerImpl::CompileShader(
     const ShaderKey& key,
     const std::vector<std::wstring>& args,
     const std::vector<std::pair<std::wstring, std::wstring>>& defines,
-    const DxcBuffer& shaderSource) const
+    const DxcBuffer& shaderSource,
+    ShaderCompileContext* context) const
 {
     std::wstring entryPoint;
     // RT Shaders are compiled differently to other shader types, the entry point should be null.
@@ -320,11 +399,21 @@ std::expected<ComPtr<IDxcResult>, std::string> DXCCompilerImpl::CompileShader(
             std::format("Failed to build shader compilation arguments from file: {}", key.path.string()));
     }
 
+    ComPtr<IDxcIncludeHandler> includeHandler;
+    if (context && !context->GetVirtualFiles().empty())
+    {
+        includeHandler = new DXCImpl_Internal::CustomDXCIncludeHandler(defaultIncludeHandler, utils, context);
+    }
+    else
+    {
+        includeHandler = defaultIncludeHandler;
+    }
+
     ComPtr<IDxcResult> shaderCompilationResults;
     (void)compiler->Compile(&shaderSource,
                             compilerArgs->GetArguments(),
                             compilerArgs->GetCount(),
-                            defaultIncludeHandler.operator->(),
+                            includeHandler.Get(),
                             IID_PPV_ARGS(&shaderCompilationResults));
 
     ComPtr<IDxcBlobUtf8> errors = nullptr;

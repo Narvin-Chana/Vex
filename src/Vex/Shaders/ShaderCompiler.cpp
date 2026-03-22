@@ -49,13 +49,24 @@ ShaderCompiler::ShaderCompiler(const ShaderCompilerSettings& compilerSettings)
 
 ShaderCompiler::~ShaderCompiler() = default;
 
+std::shared_ptr<ShaderCompileContext> ShaderCompiler::CreateCompileContext()
+{
+    auto context = std::make_shared<ShaderCompileContext>();
+#if VEX_SLANG
+    // Creates the base slang compilation context (persistent ISession).
+    context->SetImpl(slangCompilerImpl.CreateContext(globalShaderEnv, compilerSettings, context.get()));
+#endif
+    return context;
+}
+
 ShaderEnvironment ShaderCompiler::CreateShaderEnvironment()
 {
     ShaderEnvironment env;
     env.defines.emplace_back("VEX_DEBUG", std::to_string(VEX_DEBUG));
     env.defines.emplace_back("VEX_DEVELOPMENT", std::to_string(VEX_DEVELOPMENT));
     env.defines.emplace_back("VEX_SHIPPING", std::to_string(VEX_SHIPPING));
-    env.defines.emplace_back("VEX_RAYTRACING", std::to_string(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing)));
+    env.defines.emplace_back("VEX_RAYTRACING",
+                             std::to_string(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing)));
     env.defines.emplace_back("VEX_VULKAN", std::to_string(VEX_VULKAN));
     env.defines.emplace_back("VEX_DX12", std::to_string(VEX_DX12));
     return env;
@@ -93,7 +104,8 @@ NonNullPtr<Shader> ShaderCompiler::GetShader(const ShaderKey& key)
         std::expected<void, std::string> res = GetCompiler(key).and_then(
             [&](CompilerBase* compiler)
             {
-                return compiler->GetShaderCodeHash(*shaderPtr, globalShaderEnv, compilerSettings)
+                return compiler
+                    ->GetShaderCodeHash(*shaderPtr, globalShaderEnv, compilerSettings, key.compileContext.get())
                     .and_then(
                         [&](const SHA1HashDigest& digest) -> std::expected<void, std::string>
                         {
@@ -204,7 +216,7 @@ void ShaderCompiler::FlushCompilationErrors()
 
 std::expected<void, std::string> ShaderCompiler::CompileShader(CompilerBase* compiler, Shader& shader)
 {
-    return compiler->CompileShader(shader, globalShaderEnv, compilerSettings)
+    return compiler->CompileShader(shader, globalShaderEnv, compilerSettings, shader.key.compileContext.get())
         .and_then(
             [&](ShaderCompilationResult result) -> std::expected<void, std::string>
             {

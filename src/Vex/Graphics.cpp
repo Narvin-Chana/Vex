@@ -546,6 +546,11 @@ void Graphics::SetShaderCompilationErrorsCallback(std::function<ShaderCompileErr
     }
 }
 
+std::shared_ptr<ShaderCompileContext> Graphics::CreateShaderCompileContext()
+{
+    return psCache->GetShaderCompiler().CreateCompileContext();
+}
+
 void Graphics::SetSamplers(Span<const TextureSampler> newSamplers)
 {
     // TODO(https://trello.com/c/T1DY4QOT): This is not the cleanest, we need a linear sampler for the mip generation

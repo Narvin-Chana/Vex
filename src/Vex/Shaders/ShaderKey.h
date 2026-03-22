@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -13,6 +14,8 @@
 
 namespace vex
 {
+
+class ShaderCompileContext;
 
 enum class ShaderType : u8
 {
@@ -66,6 +69,9 @@ struct ShaderKey
     std::vector<ShaderDefine> defines;
     // Determines which compilation backend to use in the shader compiler.
     ShaderCompilerBackend compiler = ShaderCompilerBackend::Auto;
+
+    std::shared_ptr<ShaderCompileContext> compileContext;
+
     bool operator==(const ShaderKey& other) const = default;
 };
 
@@ -85,19 +91,21 @@ VEX_MAKE_HASHABLE(vex::ShaderKey,
     VEX_HASH_COMBINE(seed, obj.type);
     VEX_HASH_COMBINE_CONTAINER(seed, obj.defines);
     VEX_HASH_COMBINE(seed, obj.compiler);
+    VEX_HASH_COMBINE(seed, obj.compileContext);
 );
 
 // clang-format on
 
 VEX_FORMATTABLE(vex::ShaderDefine, "ShaderDefine(\"{}\", \"{}\")", obj.name, obj.value);
 
-VEX_FORMATTABLE(
-    vex::ShaderKey,
-    "ShaderKey(\n\tKey Hash: \"{}\"\n\t{}: \"{}\"\n\tEntry Point: \"{}\"\n\tType: {}\n\tDefines: {}\n\tCompiler: {})",
-    std::hash<vex::ShaderKey>{}(obj),
-    !obj.path.empty() ? "Path" : "Source code",
-    !obj.path.empty() ? obj.path.string() : "SOURCE STRING",
-    obj.entryPoint,
-    std::string(magic_enum::enum_name(obj.type)),
-    obj.defines,
-    std::string(magic_enum::enum_name(obj.compiler)));
+VEX_FORMATTABLE(vex::ShaderKey,
+                "ShaderKey(\n\tKey Hash: \"{}\"\n\t{}: \"{}\"\n\tEntry Point: \"{}\"\n\tType: {}\n\tDefines: "
+                "{}\n\tCompiler: {}\n\tContext: {})",
+                std::hash<vex::ShaderKey>{}(obj),
+                !obj.path.empty() ? "Path" : "Source code",
+                !obj.path.empty() ? obj.path.string() : "SOURCE STRING",
+                obj.entryPoint,
+                std::string(magic_enum::enum_name(obj.type)),
+                obj.defines,
+                std::string(magic_enum::enum_name(obj.compiler)),
+                static_cast<void*>(obj.compileContext.get()));

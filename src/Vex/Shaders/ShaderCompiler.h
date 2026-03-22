@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <Vex/Shaders/DXCImpl.h>
+#include <Vex/Shaders/ShaderCompileContext.h>
 #include <Vex/Shaders/ShaderCompilerSettings.h>
 #include <Vex/Shaders/ShaderEnvironment.h>
 #include <Vex/Shaders/ShaderKey.h>
@@ -52,6 +53,8 @@ struct ShaderCompiler
 
     void SetCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback);
     void FlushCompilationErrors();
+
+    std::shared_ptr<ShaderCompileContext> CreateCompileContext();
 
 private:
     std::expected<void, std::string> CompileShader(CompilerBase* Compiler, Shader& shader);

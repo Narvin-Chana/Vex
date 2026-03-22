@@ -178,6 +178,8 @@ public:
     void RecompileAllShaders();
     void SetShaderCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback);
 
+    [[nodiscard]] std::shared_ptr<ShaderCompileContext> CreateShaderCompileContext();
+
     void SetSamplers(Span<const TextureSampler> newSamplers);
 
     // Returns Query or status if query is not yet ready

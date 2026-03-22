@@ -41,14 +41,20 @@ struct DXCCompilerImpl : public CompilerBase
     DXCCompilerImpl(std::vector<std::filesystem::path> includeDirectories = {});
     virtual ~DXCCompilerImpl() override;
 
+    virtual std::unique_ptr<ICompilerContextImpl> CreateContext(const ShaderEnvironment& env,
+                                                                const ShaderCompilerSettings& compilerSettings,
+                                                                ShaderCompileContext* context = nullptr) const override;
+
     virtual std::expected<SHA1HashDigest, std::string> GetShaderCodeHash(
         const Shader& shader,
         const ShaderEnvironment& shaderEnv,
-        const ShaderCompilerSettings& compilerSettings) override;
+        const ShaderCompilerSettings& compilerSettings,
+        ShaderCompileContext* context = nullptr) override;
     virtual std::expected<ShaderCompilationResult, std::string> CompileShader(
         const Shader& shader,
         const ShaderEnvironment& shaderEnv,
-        const ShaderCompilerSettings& compilerSettings) const override;
+        const ShaderCompilerSettings& compilerSettings,
+        ShaderCompileContext* context = nullptr) const override;
 
 private:
     void FillInIncludeDirectories(std::vector<LPCWSTR>& args, std::vector<std::wstring>& wStrings) const;
@@ -57,7 +63,8 @@ private:
         const ShaderKey& key,
         const std::vector<std::wstring>& args,
         const std::vector<std::pair<std::wstring, std::wstring>>& defines,
-        const DxcBuffer& shaderSource) const;
+        const DxcBuffer& shaderSource,
+        ShaderCompileContext* context) const;
 
     ComPtr<IDxcCompiler3> compiler;
     ComPtr<IDxcUtils> utils;

@@ -2,11 +2,13 @@
 
 #include <expected>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <Vex/Formats.h>
+#include <Vex/Shaders/ShaderCompileContext.h>
 #include <Vex/Types.h>
 
 namespace vex
@@ -48,12 +50,22 @@ struct CompilerBase
     }
     virtual ~CompilerBase() = default;
 
-    virtual std::expected<SHA1HashDigest, std::string> GetShaderCodeHash(
-        const Shader& shader, const ShaderEnvironment& shaderEnv, const ShaderCompilerSettings& compilerSettings) = 0;
+    virtual std::unique_ptr<ICompilerContextImpl> CreateContext(const ShaderEnvironment& env,
+                                                                const ShaderCompilerSettings& compilerSettings,
+                                                                ShaderCompileContext* context = nullptr) const
+    {
+        return nullptr;
+    }
+
+    virtual std::expected<SHA1HashDigest, std::string> GetShaderCodeHash(const Shader& shader,
+                                                                         const ShaderEnvironment& shaderEnv,
+                                                                         const ShaderCompilerSettings& compilerSettings,
+                                                                         ShaderCompileContext* context = nullptr) = 0;
     virtual std::expected<ShaderCompilationResult, std::string> CompileShader(
         const Shader& shader,
         const ShaderEnvironment& shaderEnv,
-        const ShaderCompilerSettings& compilerSettings) const = 0;
+        const ShaderCompilerSettings& compilerSettings,
+        ShaderCompileContext* context = nullptr) const = 0;
 
 protected:
     std::vector<std::filesystem::path> includeDirectories;
