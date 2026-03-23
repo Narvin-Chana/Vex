@@ -66,14 +66,13 @@ struct ShaderCompileContextCompilerTest : VexTest
 TEST_F(ShaderCompileContextCompilerTest, DXC_InlineSource_NoInclude_Compiles)
 {
     ShaderCompiler compiler{};
-    auto ctx = compiler.GetCompileContext();
+    auto& ctx = compiler.GetCompileContext();
 
     Shader shader{ ShaderKey{
         .sourceCode = kHlslMinimalCompute,
         .entryPoint = "CSMain",
         .type = ShaderType::ComputeShader,
         .compiler = ShaderCompilerBackend::DXC,
-        .compileContext = ctx,
     } };
 
     auto result = compiler.CompileShader(shader);
@@ -83,15 +82,14 @@ TEST_F(ShaderCompileContextCompilerTest, DXC_InlineSource_NoInclude_Compiles)
 TEST_F(ShaderCompileContextCompilerTest, DXC_InlineSource_VirtualInclude_Compiles)
 {
     ShaderCompiler compiler{};
-    auto ctx = compiler.GetCompileContext();
-    ctx->AddVirtualFile("VirtualHelper.hlsli", kHlslVirtualHelper);
+    auto& ctx = compiler.GetCompileContext();
+    ctx.AddVirtualFile("VirtualHelper.hlsli", kHlslVirtualHelper);
 
     Shader shader{ ShaderKey{
         .sourceCode = kHlslMainWithVirtualInclude,
         .entryPoint = "CSMain",
         .type = ShaderType::ComputeShader,
-        .compiler = ShaderCompilerBackend::DXC,
-        .compileContext = ctx,
+        .compiler = ShaderCompilerBackend::DXC
     } };
 
     auto result = compiler.CompileShader(shader);
@@ -102,14 +100,13 @@ TEST_F(ShaderCompileContextCompilerTest, DXC_InlineSource_MissingInclude_Fails)
 {
     // No VFS entry — should fail to compile.
     ShaderCompiler compiler{};
-    auto ctx = compiler.GetCompileContext();
+    auto& ctx = compiler.GetCompileContext();
 
     Shader shader{ ShaderKey{
         .sourceCode = kHlslMainWithVirtualInclude,
         .entryPoint = "CSMain",
         .type = ShaderType::ComputeShader,
-        .compiler = ShaderCompilerBackend::DXC,
-        .compileContext = ctx,
+        .compiler = ShaderCompilerBackend::DXC
     } };
 
     auto result = compiler.CompileShader(shader);
@@ -121,14 +118,13 @@ TEST_F(ShaderCompileContextCompilerTest, DXC_InlineSource_MissingInclude_Fails)
 TEST_F(ShaderCompileContextCompilerTest, Slang_InlineSource_NoInclude_Compiles)
 {
     ShaderCompiler compiler{};
-    auto ctx = compiler.GetCompileContext();
+    auto& ctx = compiler.GetCompileContext();
 
     Shader shader{ ShaderKey{
         .sourceCode = kSlangMinimalCompute,
         .entryPoint = "CSMain",
         .type = ShaderType::ComputeShader,
-        .compiler = ShaderCompilerBackend::Slang,
-        .compileContext = ctx,
+        .compiler = ShaderCompilerBackend::Slang
     } };
 
     auto result = compiler.CompileShader(shader);
@@ -138,15 +134,14 @@ TEST_F(ShaderCompileContextCompilerTest, Slang_InlineSource_NoInclude_Compiles)
 TEST_F(ShaderCompileContextCompilerTest, Slang_InlineSource_VirtualInclude_Compiles)
 {
     ShaderCompiler compiler{};
-    auto ctx = compiler.GetCompileContext();
-    ctx->AddVirtualFile("VirtualHelper.slang", kSlangVirtualHelper);
+    auto& ctx = compiler.GetCompileContext();
+    ctx.AddVirtualFile("VirtualHelper.slang", kSlangVirtualHelper);
 
     Shader shader{ ShaderKey{
         .sourceCode = kSlangMainWithVirtualImport,
         .entryPoint = "CSMain",
         .type = ShaderType::ComputeShader,
-        .compiler = ShaderCompilerBackend::Slang,
-        .compileContext = ctx,
+        .compiler = ShaderCompilerBackend::Slang
     } };
 
     auto result = compiler.CompileShader(shader);
@@ -164,14 +159,14 @@ struct ShaderCompileContextGraphicsTest : VexTest
 
 TEST_F(ShaderCompileContextGraphicsTest, CreateShaderCompileContext_IsNotNull)
 {
-    auto ctx = graphics.GetShaderCompileContext();
-    EXPECT_NE(ctx, nullptr);
+    auto& ctx = graphics.GetShaderCompileContext();
+    EXPECT_NE(&ctx, nullptr);
 }
 
 TEST_F(ShaderCompileContextGraphicsTest, DXC_Dispatch_WithInlineSource_AndVirtualInclude)
 {
-    auto ctx = graphics.GetShaderCompileContext();
-    ctx->AddVirtualFile("VirtualHelper.hlsli", kHlslVirtualHelper);
+    auto& ctx = graphics.GetShaderCompileContext();
+    ctx.AddVirtualFile("VirtualHelper.hlsli", kHlslVirtualHelper);
 
     CommandContext cmdCtx = graphics.CreateCommandContext(QueueType::Compute);
     cmdCtx.Dispatch(
@@ -179,8 +174,7 @@ TEST_F(ShaderCompileContextGraphicsTest, DXC_Dispatch_WithInlineSource_AndVirtua
             .sourceCode = kHlslMainWithVirtualInclude,
             .entryPoint = "CSMain",
             .type = ShaderType::ComputeShader,
-            .compiler = ShaderCompilerBackend::DXC,
-            .compileContext = ctx,
+            .compiler = ShaderCompilerBackend::DXC
         },
         {},
         { 1, 1, 1 });
@@ -192,8 +186,8 @@ TEST_F(ShaderCompileContextGraphicsTest, DXC_Dispatch_WithInlineSource_AndVirtua
 #if VEX_SLANG
 TEST_F(ShaderCompileContextGraphicsTest, Slang_Dispatch_WithInlineSource_AndVirtualInclude)
 {
-    auto ctx = graphics.GetShaderCompileContext();
-    ctx->AddVirtualFile("VirtualHelper.slang", kSlangVirtualHelper);
+    auto& ctx = graphics.GetShaderCompileContext();
+    ctx.AddVirtualFile("VirtualHelper.slang", kSlangVirtualHelper);
 
     CommandContext cmdCtx = graphics.CreateCommandContext(QueueType::Compute);
     cmdCtx.Dispatch(
@@ -201,8 +195,7 @@ TEST_F(ShaderCompileContextGraphicsTest, Slang_Dispatch_WithInlineSource_AndVirt
             .sourceCode = kSlangMainWithVirtualImport,
             .entryPoint = "CSMain",
             .type = ShaderType::ComputeShader,
-            .compiler = ShaderCompilerBackend::Slang,
-            .compileContext = ctx,
+            .compiler = ShaderCompilerBackend::Slang
         },
         {},
         { 1, 1, 1 });
@@ -215,7 +208,7 @@ TEST_F(ShaderCompileContextGraphicsTest, Slang_SharedContext_CachesSessionAcross
 {
     // Both dispatches share the same context — verifies the persistent ISession path
     // is exercised and produces consistent output without crashing.
-    auto ctx = graphics.GetShaderCompileContext();
+    auto& ctx = graphics.GetShaderCompileContext();
 
     CommandContext cmdCtx1 = graphics.CreateCommandContext(QueueType::Compute);
     cmdCtx1.Dispatch(
@@ -223,8 +216,7 @@ TEST_F(ShaderCompileContextGraphicsTest, Slang_SharedContext_CachesSessionAcross
             .sourceCode = kSlangMinimalCompute,
             .entryPoint = "CSMain",
             .type = ShaderType::ComputeShader,
-            .compiler = ShaderCompilerBackend::Slang,
-            .compileContext = ctx,
+            .compiler = ShaderCompilerBackend::Slang
         },
         {},
         { 1, 1, 1 });
@@ -236,8 +228,7 @@ TEST_F(ShaderCompileContextGraphicsTest, Slang_SharedContext_CachesSessionAcross
             .sourceCode = kSlangMinimalCompute,
             .entryPoint = "CSMain",
             .type = ShaderType::ComputeShader,
-            .compiler = ShaderCompilerBackend::Slang,
-            .compileContext = ctx,
+            .compiler = ShaderCompilerBackend::Slang
         },
         {},
         { 1, 1, 1 });
