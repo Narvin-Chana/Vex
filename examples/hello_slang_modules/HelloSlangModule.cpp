@@ -74,17 +74,17 @@ int main()
     VEX_LOG(vex::Info, "");
     VEX_LOG(vex::Info, "[Step 1/3] Building AOT compile context...");
 
-    std::shared_ptr<vex::ShaderCompileContext> compileCtx = graphics.CreateShaderCompileContext();
+    vex::ShaderCompileContext& compileCtx = graphics.GetShaderCompileContext();
 
     // Register the "Pattern" module in the VFS.
     // When `import Pattern;` appears in any shader compiled with this
     // context, Slang finds it here — no .slang file on disk required.
-    compileCtx->AddVirtualFile("Pattern.slang", SlangModuleShaders::kPatternModuleSource);
+    compileCtx.AddVirtualFile("Pattern.slang", SlangModuleShaders::kPatternModuleSource);
 
     // Pre-warm: load disk modules into the persistent session now.
     // If we skipped this, they'd be compiled on first dispatch instead.
-    compileCtx->LoadSlangModule("MathUtils");
-    compileCtx->LoadSlangModule("Noise");
+    compileCtx.LoadSlangModule("MathUtils");
+    compileCtx.LoadSlangModule("Noise");
 
     VEX_LOG(vex::Info, "  Context ready. MathUtils + Noise pre-loaded.");
 
@@ -125,8 +125,7 @@ int main()
         .sourceCode = SlangModuleShaders::kMainShaderSource,
         .entryPoint = "CSMain",
         .type = vex::ShaderType::ComputeShader,
-        .compiler = vex::ShaderCompilerBackend::Slang,
-        .compileContext = compileCtx,
+        .compiler = vex::ShaderCompilerBackend::Slang
     };
 
     std::vector<float> cpuPixels(pixelCount);

@@ -546,9 +546,9 @@ void Graphics::SetShaderCompilationErrorsCallback(std::function<ShaderCompileErr
     }
 }
 
-std::shared_ptr<ShaderCompileContext> Graphics::CreateShaderCompileContext()
+ShaderCompileContext& Graphics::GetShaderCompileContext()
 {
-    return psCache->GetShaderCompiler().CreateCompileContext();
+    return psCache->GetShaderCompiler().GetCompileContext();
 }
 
 void Graphics::SetSamplers(Span<const TextureSampler> newSamplers)

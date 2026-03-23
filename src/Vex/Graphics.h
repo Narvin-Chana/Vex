@@ -178,7 +178,7 @@ public:
     void RecompileAllShaders();
     void SetShaderCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback);
 
-    [[nodiscard]] std::shared_ptr<ShaderCompileContext> CreateShaderCompileContext();
+    ShaderCompileContext& GetShaderCompileContext();
 
     void SetSamplers(Span<const TextureSampler> newSamplers);
 
