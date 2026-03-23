@@ -76,7 +76,7 @@ private:
     std::function<ShaderCompileErrorsCallback> errorsCallback = nullptr;
     std::vector<std::pair<ShaderKey, std::string>> compilationErrors;
 
-    std::unique_ptr<ShaderCompileContext> globalContext;
+    std::unique_ptr<ShaderCompileContext> shaderContext;
 };
 
 } // namespace vex

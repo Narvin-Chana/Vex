@@ -39,7 +39,7 @@ ShaderCompiler::ShaderCompiler(const ShaderCompilerSettings& compilerSettings)
 #if VEX_SLANG
     , slangCompilerImpl(compilerSettings.shaderIncludeDirectories)
 #endif
-    , globalContext(std::make_unique<ShaderCompileContext>())
+    , shaderContext(std::make_unique<ShaderCompileContext>())
 {
 #if VEX_SHIPPING
     // Force disable shader debugging in shipping.
@@ -50,7 +50,7 @@ ShaderCompiler::ShaderCompiler(const ShaderCompilerSettings& compilerSettings)
 
 #if VEX_SLANG
     // Creates the base slang compilation context (persistent ISession).
-    globalContext->SetImpl(slangCompilerImpl.CreateContext(globalShaderEnv, compilerSettings, globalContext.get()));
+    shaderContext->SetImpl(slangCompilerImpl.CreateContext(globalShaderEnv, compilerSettings, shaderContext.get()));
 #endif
 }
 
@@ -58,7 +58,7 @@ ShaderCompiler::~ShaderCompiler() = default;
 
 ShaderCompileContext& ShaderCompiler::GetCompileContext()
 {
-    return *globalContext;
+    return *shaderContext;
 }
 
 ShaderEnvironment ShaderCompiler::CreateShaderEnvironment()
@@ -107,7 +107,7 @@ NonNullPtr<Shader> ShaderCompiler::GetShader(const ShaderKey& key)
             [&](CompilerBase* compiler)
             {
                 return compiler
-                    ->GetShaderCodeHash(*shaderPtr, globalShaderEnv, compilerSettings, globalContext.get())
+                    ->GetShaderCodeHash(*shaderPtr, globalShaderEnv, compilerSettings, shaderContext.get())
                     .and_then(
                         [&](const SHA1HashDigest& digest) -> std::expected<void, std::string>
                         {
@@ -218,7 +218,7 @@ void ShaderCompiler::FlushCompilationErrors()
 
 std::expected<void, std::string> ShaderCompiler::CompileShader(CompilerBase* compiler, Shader& shader)
 {
-    return compiler->CompileShader(shader, globalShaderEnv, compilerSettings, globalContext.get())
+    return compiler->CompileShader(shader, globalShaderEnv, compilerSettings, shaderContext.get())
         .and_then(
             [&](ShaderCompilationResult result) -> std::expected<void, std::string>
             {
