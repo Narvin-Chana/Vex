@@ -200,6 +200,8 @@ private:
 
     void RecreatePresentTextures();
 
+    void LoadEmbeddedShaders();
+
     // Index of the current frame, possible values depends on buffering:
     //  {0} if single buffering
     //  {0, 1} if double buffering

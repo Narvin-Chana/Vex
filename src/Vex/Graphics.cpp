@@ -21,6 +21,8 @@
 #include <RHI/RHIBuffer.h>
 #include <RHI/RHIPhysicalDevice.h>
 
+#include "BuiltInShaders/MipGeneration.h"
+
 namespace vex
 {
 
@@ -121,6 +123,8 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
 
         RecreatePresentTextures();
     }
+
+    LoadEmbeddedShaders();
 }
 
 Graphics::~Graphics()
@@ -654,6 +658,12 @@ void Graphics::RecreatePresentTextures()
     }
 
     Submit(ctx);
+}
+
+void Graphics::LoadEmbeddedShaders()
+{
+    ShaderCompileContext& shaderCompileContext = psCache->GetShaderCompiler().GetCompileContext();
+    shaderCompileContext.AddVirtualFile("VexMipGeneration.hlsl", std::string{ MipGenerationSource });
 }
 
 } // namespace vex

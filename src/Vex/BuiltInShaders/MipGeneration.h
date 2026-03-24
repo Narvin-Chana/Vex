@@ -322,6 +322,7 @@ void MipGenerationCS(uint3 dtid : SV_DispatchThreadID, uint3 gtid : SV_GroupThre
 )SHADER";
 
 static const ShaderKey MipGenerationShaderKey{
+    .path = "VexMipGeneration.hlsl",
     .entryPoint = std::string(MipGenerationEntryPoint),
     .type = ShaderType::ComputeShader,
     .compiler = ShaderCompilerBackend::DXC,
