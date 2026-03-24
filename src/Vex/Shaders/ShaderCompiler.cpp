@@ -47,7 +47,6 @@ ShaderCompiler::ShaderCompiler(const ShaderCompilerSettings& compilerSettings)
 #endif
     globalShaderEnv = CreateShaderEnvironment();
 
-
 #if VEX_SLANG
     // Creates the base slang compilation context (persistent ISession).
     shaderContext->SetImpl(slangCompilerImpl.CreateContext(globalShaderEnv, compilerSettings, shaderContext.get()));
@@ -81,11 +80,10 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader)
 
 NonNullPtr<Shader> ShaderCompiler::GetShader(const ShaderKey& key)
 {
-    if (!key.path.empty())
+    if (key.path.empty())
     {
-        VEX_LOG(Warning,
-                "Shader {} has both a shader filepath and shader source string. Using the filepath for compilation...",
-                key);
+        VEX_LOG(Error,
+                "Attempting to get a shader with an empty path! This is likely a bug, as it will lead to nothing");
     }
 
     Shader* shaderPtr;
@@ -106,8 +104,7 @@ NonNullPtr<Shader> ShaderCompiler::GetShader(const ShaderKey& key)
         std::expected<void, std::string> res = GetCompiler(key).and_then(
             [&](CompilerBase* compiler)
             {
-                return compiler
-                    ->GetShaderCodeHash(*shaderPtr, globalShaderEnv, compilerSettings, shaderContext.get())
+                return compiler->GetShaderCodeHash(*shaderPtr, globalShaderEnv, compilerSettings, shaderContext.get())
                     .and_then(
                         [&](const SHA1HashDigest& digest) -> std::expected<void, std::string>
                         {

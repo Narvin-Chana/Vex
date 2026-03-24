@@ -1,6 +1,8 @@
 #pragma once
 
+#include <filesystem>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -35,7 +37,8 @@ public:
         return virtualFiles;
     }
 
-    const std::string& GetVirtualFile(const std::string& path);
+    std::optional<const std::string> GetVirtualFile(const std::string& path) const;
+    std::optional<const std::string> GetVirtualFile(const std::filesystem::path path) const;
 
     template <typename T>
     T* GetImpl() const

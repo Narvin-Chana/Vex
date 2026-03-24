@@ -81,11 +81,6 @@ int main()
     // context, Slang finds it here — no .slang file on disk required.
     compileCtx.AddVirtualFile("Pattern.slang", SlangModuleShaders::kPatternModuleSource);
 
-    // Pre-warm: load disk modules into the persistent session now.
-    // If we skipped this, they'd be compiled on first dispatch instead.
-    compileCtx.LoadSlangModule("MathUtils");
-    compileCtx.LoadSlangModule("Noise");
-
     VEX_LOG(vex::Info, "  Context ready. MathUtils + Noise pre-loaded.");
 
     // ----------------------------------------------------------------
@@ -120,13 +115,13 @@ int main()
     VEX_LOG(vex::Info, "");
     VEX_LOG(vex::Info, "[Step 3/3] Dispatching (3 frames)...");
 
+    compileCtx.AddVirtualFile("MainShader.slang", SlangModuleShaders::kMainShaderSource);
+
     // Reusable ShaderKey — points at the embedded main shader source.
-    vex::ShaderKey mainKey{
-        .sourceCode = SlangModuleShaders::kMainShaderSource,
-        .entryPoint = "CSMain",
-        .type = vex::ShaderType::ComputeShader,
-        .compiler = vex::ShaderCompilerBackend::Slang
-    };
+    vex::ShaderKey mainKey{ .path = "MainShader.slang",
+                            .entryPoint = "CSMain",
+                            .type = vex::ShaderType::ComputeShader,
+                            .compiler = vex::ShaderCompilerBackend::Slang };
 
     std::vector<float> cpuPixels(pixelCount);
 

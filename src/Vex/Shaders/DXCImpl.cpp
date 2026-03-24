@@ -57,26 +57,37 @@ static std::wstring GetTargetFromShaderType(ShaderType type)
 }
 
 std::expected<ComPtr<IDxcBlobEncoding>, std::string> LoadShaderSource(const ComPtr<IDxcUtils>& utils,
-                                                                      const ShaderKey& key)
+                                                                      const ShaderKey& key,
+                                                                      const ShaderCompileContext& context)
 {
     ComPtr<IDxcBlobEncoding> shaderBlob;
 
     if (!key.path.empty())
     {
-        std::wstring shaderPath = StringToWString(key.path.string());
-        if (HRESULT hr = utils->LoadFile(shaderPath.c_str(), nullptr, &shaderBlob); FAILED(hr))
+        if (std::filesystem::exists(key.path))
         {
-            return std::unexpected(
-                std::format("Failed to load shader from filesystem at path: {}.", key.path.string()));
+            std::wstring shaderPath = StringToWString(key.path.string());
+            if (HRESULT hr = utils->LoadFile(shaderPath.c_str(), nullptr, &shaderBlob); FAILED(hr))
+            {
+                return std::unexpected(
+                    std::format("Failed to load shader from filesystem at path: {}.", key.path.string()));
+            }
+        }
+        else if (auto content = context.GetVirtualFile(key.path); content.has_value())
+        {
+            // If the shader isn't found on disk, check the virtual files in the context (if applicable).
+            if (HRESULT hr =
+                    utils->CreateBlob(content->data(), static_cast<UINT32>(content->size()), DXC_CP_UTF8, &shaderBlob);
+                FAILED(hr))
+            {
+                return std::unexpected(
+                    std::format("Failed to load shader from virtual file with path: {}.", key.path.string()));
+            }
         }
     }
     else
     {
-        if (HRESULT hr = utils->CreateBlob(key.sourceCode.c_str(), key.sourceCode.size(), DXC_CP_ACP, &shaderBlob);
-            FAILED(hr))
-        {
-            return std::unexpected(std::format("Failed to create shader blob from source string: {}.", key.sourceCode));
-        }
+        return std::unexpected("ShaderKey must have a non-empty path to load shader source.");
     }
 
     return shaderBlob;
@@ -276,7 +287,7 @@ std::expected<SHA1HashDigest, std::string> DXCCompilerImpl::GetShaderCodeHash(
     const ShaderCompilerSettings& compilerSettings,
     ShaderCompileContext* context)
 {
-    return DXCImpl_Internal::LoadShaderSource(utils, shader.key)
+    return DXCImpl_Internal::LoadShaderSource(utils, shader.key, *context)
         .and_then(
             [&](const ComPtr<IDxcBlobEncoding>& shaderBlob)
             {
@@ -304,7 +315,7 @@ std::expected<ShaderCompilationResult, std::string> DXCCompilerImpl::CompileShad
     const ShaderCompilerSettings& compilerSettings,
     ShaderCompileContext* context) const
 {
-    return DXCImpl_Internal::LoadShaderSource(utils, shader.key)
+    return DXCImpl_Internal::LoadShaderSource(utils, shader.key, *context)
         .and_then(
             [&](const ComPtr<IDxcBlobEncoding>& shaderBlob)
             {
