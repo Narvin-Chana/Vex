@@ -11,13 +11,14 @@ void ShaderCompileContext::AddVirtualFile(const std::string& virtualPath, const 
     virtualFiles[virtualPath] = sourceCode;
 }
 
-bool ShaderCompileContext::LoadSlangModule(const std::string& moduleName)
+std::string ShaderCompileContext::GetVirtualFile(const std::string& path)
 {
-    if (opaqueImpl)
-    {
-        return opaqueImpl->LoadModule(moduleName);
-    }
-    return false;
+    auto it = virtualFiles.find(path);
+
+    if (it != virtualFiles.end())
+        return it->second;
+
+    return "";
 }
 
 } // namespace vex

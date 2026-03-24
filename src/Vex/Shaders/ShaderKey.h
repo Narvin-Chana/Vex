@@ -58,11 +58,7 @@ enum class ShaderCompilerBackend : u8
 
 struct ShaderKey
 {
-    // Vex accepts either a filepath, or the sourceCode directly.
-    // If both are filled in, we prefer the filepath.
-
     std::filesystem::path path;
-    std::string sourceCode;
 
     std::string entryPoint;
     ShaderType type;
@@ -84,7 +80,6 @@ VEX_MAKE_HASHABLE(vex::ShaderDefine,
 
 VEX_MAKE_HASHABLE(vex::ShaderKey, 
     VEX_HASH_COMBINE(seed, obj.path);
-    VEX_HASH_COMBINE(seed, obj.sourceCode);
     VEX_HASH_COMBINE(seed, obj.entryPoint);
     VEX_HASH_COMBINE(seed, obj.type);
     VEX_HASH_COMBINE_CONTAINER(seed, obj.defines);

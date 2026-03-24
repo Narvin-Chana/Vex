@@ -61,13 +61,7 @@ std::expected<NonNullPtr<slang::IModule>, std::string> LoadModule(Slang::ComPtr<
     }
     else
     {
-        // Used for identifying the shader inside the session.
-        // Should be unique per compilation session, which is why we give it a slightly convoluted name.
-        constexpr const char* moduleName = "VEX_InlineShaderModule";
-        slangModule = session->loadModuleFromSourceString(moduleName,
-                                                          nullptr,
-                                                          shaderKey.sourceCode.c_str(),
-                                                          diagnostics.writeRef());
+        return std::unexpected(std::format("Can't find the module in either fs"));
     }
 
     if (!slangModule || diagnostics)
@@ -650,15 +644,7 @@ std::expected<Slang::ComPtr<slang::ISession>, std::string> SlangCompilerImpl::Cr
 
 void SlangCompilerImpl::ValidateShaderForCompilation(const Shader& shader) const
 {
-    const bool useFilepath = !shader.key.path.empty();
-    if (useFilepath && !shader.key.sourceCode.empty())
-    {
-        VEX_LOG(Warning,
-                "Shader {} has both a shader filepath and shader source string. Using the filepath for compilation...",
-                shader.key);
-    }
-
-    if (useFilepath && shader.key.path.extension() != ".slang")
+    if ( shader.key.path.extension() != ".slang")
     {
         VEX_LOG(Fatal,
                 "Slang shaders must use a .slang file format, your extension: {}!",

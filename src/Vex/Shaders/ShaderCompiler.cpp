@@ -81,7 +81,7 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader)
 
 NonNullPtr<Shader> ShaderCompiler::GetShader(const ShaderKey& key)
 {
-    if (!key.path.empty() && !key.sourceCode.empty())
+    if (!key.path.empty())
     {
         VEX_LOG(Warning,
                 "Shader {} has both a shader filepath and shader source string. Using the filepath for compilation...",

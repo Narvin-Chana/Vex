@@ -30,15 +30,12 @@ public:
     // even if it does not exist on disk.
     void AddVirtualFile(const std::string& virtualPath, const std::string& sourceCode);
 
-    // Explicitly instructs Slang to load/compile a module by name.
-    // Useful for pre-compiling modules into the persistent session.
-    // Returns true if successfully loaded.
-    bool LoadSlangModule(const std::string& moduleName);
-
     [[nodiscard]] const std::unordered_map<std::string, std::string>& GetVirtualFiles() const
     {
         return virtualFiles;
     }
+
+    const std::string& GetVirtualFile(const std::string& path);
 
     template <typename T>
     T* GetImpl() const
