@@ -456,6 +456,10 @@ std::expected<SHA1HashDigest, std::string> SlangCompilerImpl::GetShaderCodeHash(
         context->GetImpl<SlangCompilerContextImpl>()->session)
     {
         session = context->GetImpl<SlangCompilerContextImpl>()->session;
+        if (shader.key.defines.size() > 0)
+        {
+            session = CreateSession(shader.key, shaderEnv, compilerSettings, context).value();
+        }
     }
     else
     {
@@ -483,7 +487,12 @@ std::expected<ShaderCompilationResult, std::string> SlangCompilerImpl::CompileSh
     if (context && context->GetImpl<SlangCompilerContextImpl>() &&
         context->GetImpl<SlangCompilerContextImpl>()->session)
     {
-        session = context->GetImpl<SlangCompilerContextImpl>()->session;
+        if (shader.key.defines.size() > 0)
+        {
+            session = CreateSession(shader.key, shaderEnv, compilerSettings, context).value();
+        }
+        else
+            session = context->GetImpl<SlangCompilerContextImpl>()->session;
     }
     else
     {
@@ -644,7 +653,7 @@ std::expected<Slang::ComPtr<slang::ISession>, std::string> SlangCompilerImpl::Cr
 
 void SlangCompilerImpl::ValidateShaderForCompilation(const Shader& shader) const
 {
-    if ( shader.key.path.extension() != ".slang")
+    if (shader.key.path.extension() != ".slang")
     {
         VEX_LOG(Fatal,
                 "Slang shaders must use a .slang file format, your extension: {}!",

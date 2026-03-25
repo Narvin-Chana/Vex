@@ -421,11 +421,15 @@ std::expected<ComPtr<IDxcResult>, std::string> DXCCompilerImpl::CompileShader(
     }
 
     ComPtr<IDxcResult> shaderCompilationResults;
-    (void)compiler->Compile(&shaderSource,
-                            compilerArgs->GetArguments(),
-                            compilerArgs->GetCount(),
-                            includeHandler.Get(),
-                            IID_PPV_ARGS(&shaderCompilationResults));
+    HRESULT res = compiler->Compile(&shaderSource,
+                                    compilerArgs->GetArguments(),
+                                    compilerArgs->GetCount(),
+#if defined(_WIN32)
+                                    includeHandler.Get(),
+#else
+                                    includeHandler,
+#endif
+                                    IID_PPV_ARGS(&shaderCompilationResults));
 
     ComPtr<IDxcBlobUtf8> errors = nullptr;
     if (HRESULT hrError = shaderCompilationResults->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
