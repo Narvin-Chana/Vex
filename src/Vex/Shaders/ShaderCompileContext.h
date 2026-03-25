@@ -15,6 +15,14 @@ struct ICompilerContextImpl
     virtual bool LoadModule(const std::string& moduleName) = 0;
 };
 
+struct ShaderCompiler;
+struct DXCCompilerImpl;
+
+#if VEX_SLANG
+struct SlangCompilerImpl;
+struct SlangCompilerContextImpl;
+#endif
+
 class ShaderCompileContext
 {
 public:
@@ -37,23 +45,18 @@ public:
         return virtualFiles;
     }
 
-    std::optional<const std::string> GetVirtualFile(const std::string& path) const;
-    std::optional<const std::string> GetVirtualFile(const std::filesystem::path path) const;
-
-    template <typename T>
-    T* GetImpl() const
-    {
-        return static_cast<T*>(opaqueImpl.get());
-    }
-
-    void SetImpl(std::unique_ptr<ICompilerContextImpl> impl)
-    {
-        opaqueImpl = std::move(impl);
-    }
+    std::optional<const std::string> GetVirtualFile(const std::filesystem::path& path) const;
 
 private:
     std::unordered_map<std::string, std::string> virtualFiles;
-    std::unique_ptr<ICompilerContextImpl> opaqueImpl;
+
+    friend ShaderCompiler;
+    friend DXCCompilerImpl;
+
+#if VEX_SLANG
+    friend SlangCompilerImpl;
+    std::unique_ptr<SlangCompilerContextImpl> slangImpl;
+#endif
 };
 
 } // namespace vex

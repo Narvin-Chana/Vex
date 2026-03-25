@@ -41,10 +41,6 @@ struct DXCCompilerImpl : public CompilerBase
     DXCCompilerImpl(std::vector<std::filesystem::path> includeDirectories = {});
     virtual ~DXCCompilerImpl() override;
 
-    virtual std::unique_ptr<ICompilerContextImpl> CreateContext(const ShaderEnvironment& env,
-                                                                const ShaderCompilerSettings& compilerSettings,
-                                                                ShaderCompileContext* context = nullptr) const override;
-
     virtual std::expected<SHA1HashDigest, std::string> GetShaderCodeHash(
         const Shader& shader,
         const ShaderEnvironment& shaderEnv,

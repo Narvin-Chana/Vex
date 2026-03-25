@@ -1,9 +1,19 @@
 #include "ShaderCompileContext.h"
 
+#if VEX_SLANG
+#include <Vex/Shaders/SlangImpl.h>
+#endif
+
 namespace vex
 {
 
-ShaderCompileContext::ShaderCompileContext() = default;
+ShaderCompileContext::ShaderCompileContext()
+#if VEX_SLANG
+: slangImpl(nullptr)
+#endif
+{
+};
+
 ShaderCompileContext::~ShaderCompileContext() = default;
 
 void ShaderCompileContext::AddVirtualFile(const std::string& virtualPath, const std::string& sourceCode)
@@ -11,19 +21,19 @@ void ShaderCompileContext::AddVirtualFile(const std::string& virtualPath, const 
     virtualFiles[virtualPath] = sourceCode;
 }
 
-std::optional<const std::string> ShaderCompileContext::GetVirtualFile(const std::string& path) const
+std::optional<const std::string> ShaderCompileContext::GetVirtualFile(const std::filesystem::path& path) const
 {
-    auto it = virtualFiles.find(path);
+    std::filesystem::path relPath = path;
+    if (path.is_absolute())
+    {
+        auto relPath = path.lexically_relative(std::filesystem::current_path());
+    }
+    auto it = virtualFiles.find(relPath.string());
 
     if (it != virtualFiles.end())
         return it->second;
 
-    return "";
-}
-
-std::optional<const std::string> ShaderCompileContext::GetVirtualFile(const std::filesystem::path path) const
-{
-    return GetVirtualFile(path.string());
+    return {};
 }
 
 } // namespace vex

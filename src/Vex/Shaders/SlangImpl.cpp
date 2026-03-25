@@ -324,6 +324,7 @@ struct StringBlob : public ISlangBlob
             delete this;
         return count;
     }
+
     // ISlangBlob
     virtual SLANG_NO_THROW void const* SLANG_MCALL getBufferPointer() override
     {
@@ -335,13 +336,13 @@ struct StringBlob : public ISlangBlob
     }
 };
 
-class CustomSlangFileSystem : public ISlangFileSystem
+class VirtualSlangFileSystem : public ISlangFileSystem
 {
 public:
-    ShaderCompileContext* context;
+    NonNullPtr<ShaderCompileContext> context;
     std::atomic<uint32_t> refCount = 1;
 
-    CustomSlangFileSystem(ShaderCompileContext* context)
+    VirtualSlangFileSystem(NonNullPtr<ShaderCompileContext> context)
         : context(context)
     {
     }
@@ -377,25 +378,24 @@ public:
 
     virtual SLANG_NO_THROW SlangResult SLANG_MCALL loadFile(char const* path, ISlangBlob** outBlob) override
     {
-        if (context)
+        if (const auto file = context->GetVirtualFile(path); file.has_value())
         {
-            auto& vfs = context->GetVirtualFiles();
-            auto it = vfs.find(path);
-            if (it != vfs.end())
-            {
-                *outBlob = new StringBlob(it->second);
-                return SLANG_OK;
-            }
+            *outBlob = new StringBlob(*file);
+            return SLANG_OK;
         }
-        std::ifstream file(path, std::ios::binary | std::ios::ate);
-        if (!file)
+
+        if (!std::filesystem::exists(path))
             return SLANG_E_NOT_FOUND;
-        std::streamsize size = file.tellg();
+
+        std::filesystem::path filePath = path;
+        std::streamsize size = std::filesystem::file_size(filePath);
+        std::ifstream file(filePath, std::ios::binary | std::ios::ate);
         file.seekg(0, std::ios::beg);
-        std::string buffer(size, '\0');
-        if (file.read(buffer.data(), size))
+
+        std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        if (!content.empty())
         {
-            *outBlob = new StringBlob(std::move(buffer));
+            *outBlob = new StringBlob(std::move(content));
             return SLANG_OK;
         }
         return SLANG_E_CANNOT_OPEN;
@@ -427,18 +427,21 @@ SlangCompilerImpl::SlangCompilerImpl(std::vector<std::filesystem::path> incDirs)
 
 SlangCompilerImpl::~SlangCompilerImpl() = default;
 
-std::unique_ptr<ICompilerContextImpl> SlangCompilerImpl::CreateContext(const ShaderEnvironment& env,
-                                                                       const ShaderCompilerSettings& compilerSettings,
-                                                                       ShaderCompileContext* context) const
+void SlangCompilerImpl::SetContextImpl(const ShaderEnvironment& env,
+                                       const ShaderCompilerSettings& compilerSettings,
+                                       NonNullPtr<ShaderCompileContext> newCompileContext,
+                                       ShaderCompileContext* originalContext)
 {
-    auto contextImpl = std::make_unique<SlangCompilerContextImpl>(env, compilerSettings);
+    std::unique_ptr<SlangCompilerContextImpl> contextImpl =
+        std::make_unique<SlangCompilerContextImpl>(env, compilerSettings);
     // Explicitly create an ISession for the context which will cache modules loaded into it
     ShaderKey dummyKey;
-    if (auto sessionExp = CreateSession(dummyKey, env, compilerSettings, context))
+    if (auto sessionExp = CreateSession(dummyKey, env, compilerSettings, newCompileContext))
     {
         contextImpl->session = sessionExp.value();
     }
-    return contextImpl;
+
+    newCompileContext->slangImpl = std::move(contextImpl);
 }
 
 std::expected<SHA1HashDigest, std::string> SlangCompilerImpl::GetShaderCodeHash(
@@ -450,14 +453,10 @@ std::expected<SHA1HashDigest, std::string> SlangCompilerImpl::GetShaderCodeHash(
     ValidateShaderForCompilation(shader);
 
     Slang::ComPtr<slang::ISession> session;
-    if (context->GetImpl<SlangCompilerContextImpl>() &&
-        context->GetImpl<SlangCompilerContextImpl>()->session)
+    VEX_ASSERT(context->slangImpl);
+    if ( context->slangImpl->session && shader.key.defines.size() == 0)
     {
-        session = context->GetImpl<SlangCompilerContextImpl>()->session;
-        if (shader.key.defines.size() > 0)
-        {
-            session = CreateSession(shader.key, shaderEnv, compilerSettings, context).value();
-        }
+        session = context->slangImpl->session;
     }
     else
     {
@@ -482,15 +481,10 @@ std::expected<ShaderCompilationResult, std::string> SlangCompilerImpl::CompileSh
     ValidateShaderForCompilation(shader);
 
     Slang::ComPtr<slang::ISession> session;
-    if (context && context->GetImpl<SlangCompilerContextImpl>() &&
-        context->GetImpl<SlangCompilerContextImpl>()->session)
+    VEX_ASSERT(context->slangImpl);
+    if (context->slangImpl->session && shader.key.defines.size() == 0)
     {
-        if (shader.key.defines.size() > 0)
-        {
-            session = CreateSession(shader.key, shaderEnv, compilerSettings, context).value();
-        }
-        else
-            session = context->GetImpl<SlangCompilerContextImpl>()->session;
+        session = context->slangImpl->session;
     }
     else
     {
@@ -555,12 +549,13 @@ std::expected<Slang::ComPtr<slang::ISession>, std::string> SlangCompilerImpl::Cr
     slang::SessionDesc sessionDesc = {};
     slang::TargetDesc targetDesc = {};
 
-    Slang::ComPtr<CustomSlangFileSystem> customFileSystem;
+    Slang::ComPtr<VirtualSlangFileSystem> customFileSystem;
     if (context)
     {
-        customFileSystem = new CustomSlangFileSystem(context);
+        customFileSystem = new VirtualSlangFileSystem(NonNullPtr(context));
         sessionDesc.fileSystem = customFileSystem;
     }
+
 
     // Add include directories
     std::vector<std::string> stringPaths;

@@ -35,9 +35,10 @@ struct SlangCompilerImpl : public CompilerBase
     SlangCompilerImpl(std::vector<std::filesystem::path> incDirs);
     virtual ~SlangCompilerImpl() override;
 
-    virtual std::unique_ptr<ICompilerContextImpl> CreateContext(const ShaderEnvironment& env,
-                                                                const ShaderCompilerSettings& compilerSettings,
-                                                                ShaderCompileContext* context) const override;
+    virtual void SetContextImpl(const ShaderEnvironment& env,
+                                const ShaderCompilerSettings& compilerSettings,
+                                NonNullPtr<ShaderCompileContext> newCompileContext,
+                                ShaderCompileContext* originalContext) override;
 
     virtual std::expected<SHA1HashDigest, std::string> GetShaderCodeHash(
         const Shader& shader,

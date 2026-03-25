@@ -58,7 +58,7 @@ static std::wstring GetTargetFromShaderType(ShaderType type)
 
 std::expected<ComPtr<IDxcBlobEncoding>, std::string> LoadShaderSource(const ComPtr<IDxcUtils>& utils,
                                                                       const ShaderKey& key,
-                                                                      const ShaderCompileContext& context)
+                                                                      NonNullPtr<ShaderCompileContext> context)
 {
     ComPtr<IDxcBlobEncoding> shaderBlob;
 
@@ -73,7 +73,7 @@ std::expected<ComPtr<IDxcBlobEncoding>, std::string> LoadShaderSource(const ComP
                     std::format("Failed to load shader from filesystem at path: {}.", key.path.string()));
             }
         }
-        else if (auto content = context.GetVirtualFile(key.path); content.has_value())
+        else if (auto content = context->GetVirtualFile(key.path); content.has_value())
         {
             // If the shader isn't found on disk, check the virtual files in the context (if applicable).
             if (HRESULT hr =
@@ -185,10 +185,10 @@ std::vector<std::pair<std::wstring, std::wstring>> BuildDefineList(const ShaderK
     return defineWStrings;
 }
 
-class CustomDXCIncludeHandler : public IDxcIncludeHandler
+class DXCVirtualIncludeHandler final : public IDxcIncludeHandler
 {
 public:
-    CustomDXCIncludeHandler(ComPtr<IDxcIncludeHandler> defaultHandler,
+    DXCVirtualIncludeHandler(ComPtr<IDxcIncludeHandler> defaultHandler,
                             ComPtr<IDxcUtils> utils,
                             ShaderCompileContext* context)
         : defaultHandler(defaultHandler)
@@ -206,7 +206,7 @@ public:
 
             for (const auto& [vpath, vcode] : context->GetVirtualFiles())
             {
-                if (filenameStr.ends_with(vpath))
+                if (filenameStr.contains(vpath))
                 {
                     ComPtr<IDxcBlobEncoding> blob;
                     utils->CreateBlob(vcode.data(), static_cast<UINT32>(vcode.size()), DXC_CP_UTF8, &blob);
@@ -274,20 +274,13 @@ DXCCompilerImpl::DXCCompilerImpl(std::vector<std::filesystem::path> includeDirec
 
 DXCCompilerImpl::~DXCCompilerImpl() = default;
 
-std::unique_ptr<ICompilerContextImpl> DXCCompilerImpl::CreateContext(const ShaderEnvironment& env,
-                                                                     const ShaderCompilerSettings& compilerSettings,
-                                                                     ShaderCompileContext* context) const
-{
-    return nullptr;
-}
-
 std::expected<SHA1HashDigest, std::string> DXCCompilerImpl::GetShaderCodeHash(
     const Shader& shader,
     const ShaderEnvironment& shaderEnv,
     const ShaderCompilerSettings& compilerSettings,
     NonNullPtr<ShaderCompileContext> context)
 {
-    return DXCImpl_Internal::LoadShaderSource(utils, shader.key, *context)
+    return DXCImpl_Internal::LoadShaderSource(utils, shader.key, context)
         .and_then(
             [&](const ComPtr<IDxcBlobEncoding>& shaderBlob)
             {
@@ -413,7 +406,7 @@ std::expected<ComPtr<IDxcResult>, std::string> DXCCompilerImpl::CompileShader(
     ComPtr<IDxcIncludeHandler> includeHandler;
     if (context && !context->GetVirtualFiles().empty())
     {
-        includeHandler = new DXCImpl_Internal::CustomDXCIncludeHandler(defaultIncludeHandler, utils, context);
+        includeHandler = new DXCImpl_Internal::DXCVirtualIncludeHandler(defaultIncludeHandler, utils, context);
     }
     else
     {
@@ -421,14 +414,10 @@ std::expected<ComPtr<IDxcResult>, std::string> DXCCompilerImpl::CompileShader(
     }
 
     ComPtr<IDxcResult> shaderCompilationResults;
-    HRESULT res = compiler->Compile(&shaderSource,
+    compiler->Compile(&shaderSource,
                                     compilerArgs->GetArguments(),
                                     compilerArgs->GetCount(),
-#if defined(_WIN32)
-                                    includeHandler.Get(),
-#else
-                                    includeHandler,
-#endif
+                                    includeHandler.operator->(),
                                     IID_PPV_ARGS(&shaderCompilationResults));
 
     ComPtr<IDxcBlobUtf8> errors = nullptr;

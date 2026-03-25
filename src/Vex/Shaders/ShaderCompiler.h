@@ -57,6 +57,8 @@ struct ShaderCompiler
     ShaderCompileContext& GetCompileContext();
 
 private:
+    ShaderCompileContext CreateCompileContext(ShaderCompileContext* originalContext = nullptr);
+
     std::expected<void, std::string> CompileShader(CompilerBase* Compiler, Shader& shader);
     std::expected<NonNullPtr<CompilerBase>, std::string> GetCompiler(const ShaderKey& key);
 
@@ -76,7 +78,7 @@ private:
     std::function<ShaderCompileErrorsCallback> errorsCallback = nullptr;
     std::vector<std::pair<ShaderKey, std::string>> compilationErrors;
 
-    std::unique_ptr<ShaderCompileContext> shaderContext;
+    ShaderCompileContext globalCompileContext;
 };
 
 } // namespace vex

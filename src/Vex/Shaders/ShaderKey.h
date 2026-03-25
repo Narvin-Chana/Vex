@@ -91,12 +91,12 @@ VEX_MAKE_HASHABLE(vex::ShaderKey,
 VEX_FORMATTABLE(vex::ShaderDefine, "ShaderDefine(\"{}\", \"{}\")", obj.name, obj.value);
 
 VEX_FORMATTABLE(vex::ShaderKey,
-                "ShaderKey(\n\tKey Hash: \"{}\"\n\t{}: \"{}\"\n\tEntry Point: \"{}\"\n\tType: {}\n\tDefines: "
-                "{}\n\tCompiler: {})",
-                std::hash<vex::ShaderKey>{}(obj),
-                !obj.path.empty() ? "Path" : "Source code",
-                !obj.path.empty() ? obj.path.string() : "SOURCE STRING",
-                obj.entryPoint,
-                std::string(magic_enum::enum_name(obj.type)),
-                obj.defines,
-                std::string(magic_enum::enum_name(obj.compiler)));
+    "ShaderKey(\n\tKey Hash: \"{}\"\n\t{}: \"{}\"\n\tEntry Point: \"{}\"\n\tType: {}\n\tDefines: "
+    "{}\n\tCompiler: {})",
+    std::hash<vex::ShaderKey>{}(obj),
+    !obj.path.empty() ? "Path" : "Source code",
+    !obj.path.empty() ? obj.path.string() : "SOURCE STRING",
+    obj.entryPoint,
+    std::string(magic_enum::enum_name(obj.type)),
+    obj.defines,
+    std::string(magic_enum::enum_name(obj.compiler)));

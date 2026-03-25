@@ -39,7 +39,7 @@ ShaderCompiler::ShaderCompiler(const ShaderCompilerSettings& compilerSettings)
 #if VEX_SLANG
     , slangCompilerImpl(compilerSettings.shaderIncludeDirectories)
 #endif
-    , shaderContext(std::make_unique<ShaderCompileContext>())
+, globalCompileContext(CreateCompileContext())
 {
 #if VEX_SHIPPING
     // Force disable shader debugging in shipping.
@@ -47,17 +47,28 @@ ShaderCompiler::ShaderCompiler(const ShaderCompilerSettings& compilerSettings)
 #endif
     globalShaderEnv = CreateShaderEnvironment();
 
-#if VEX_SLANG
-    // Creates the base slang compilation context (persistent ISession).
-    shaderContext->SetImpl(slangCompilerImpl.CreateContext(globalShaderEnv, compilerSettings, shaderContext.get()));
-#endif
+
 }
 
 ShaderCompiler::~ShaderCompiler() = default;
 
 ShaderCompileContext& ShaderCompiler::GetCompileContext()
 {
-    return *shaderContext;
+    return globalCompileContext;
+}
+
+ShaderCompileContext ShaderCompiler::CreateCompileContext(ShaderCompileContext* originalContext)
+{
+    ShaderCompileContext newContext;
+    if (originalContext)
+    {
+        newContext.virtualFiles = originalContext->virtualFiles;
+    }
+#if VEX_SLANG
+    slangCompilerImpl.SetContextImpl(globalShaderEnv, compilerSettings, globalCompileContext, originalContext);
+#endif
+
+    return newContext;
 }
 
 ShaderEnvironment ShaderCompiler::CreateShaderEnvironment()
@@ -66,8 +77,7 @@ ShaderEnvironment ShaderCompiler::CreateShaderEnvironment()
     env.defines.emplace_back("VEX_DEBUG", std::to_string(VEX_DEBUG));
     env.defines.emplace_back("VEX_DEVELOPMENT", std::to_string(VEX_DEVELOPMENT));
     env.defines.emplace_back("VEX_SHIPPING", std::to_string(VEX_SHIPPING));
-    env.defines.emplace_back("VEX_RAYTRACING",
-                             std::to_string(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing)));
+    env.defines.emplace_back("VEX_RAYTRACING", std::to_string(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing)));
     env.defines.emplace_back("VEX_VULKAN", std::to_string(VEX_VULKAN));
     env.defines.emplace_back("VEX_DX12", std::to_string(VEX_DX12));
     return env;
@@ -82,7 +92,7 @@ NonNullPtr<Shader> ShaderCompiler::GetShader(const ShaderKey& key)
 {
     if (key.path.empty())
     {
-        VEX_LOG(Error,
+        VEX_LOG(Fatal,
                 "Attempting to get a shader with an empty path! This is likely a bug, as it will lead to nothing");
     }
 
@@ -104,7 +114,7 @@ NonNullPtr<Shader> ShaderCompiler::GetShader(const ShaderKey& key)
         std::expected<void, std::string> res = GetCompiler(key).and_then(
             [&](CompilerBase* compiler)
             {
-                return compiler->GetShaderCodeHash(*shaderPtr, globalShaderEnv, compilerSettings, NonNullPtr(shaderContext.get()))
+                return compiler->GetShaderCodeHash(*shaderPtr, globalShaderEnv, compilerSettings, NonNullPtr(globalCompileContext))
                     .and_then(
                         [&](const SHA1HashDigest& digest) -> std::expected<void, std::string>
                         {
@@ -215,7 +225,7 @@ void ShaderCompiler::FlushCompilationErrors()
 
 std::expected<void, std::string> ShaderCompiler::CompileShader(CompilerBase* compiler, Shader& shader)
 {
-    return compiler->CompileShader(shader, globalShaderEnv, compilerSettings, shaderContext.get())
+    return compiler->CompileShader(shader, globalShaderEnv, compilerSettings, &globalCompileContext)
         .and_then(
             [&](ShaderCompilationResult result) -> std::expected<void, std::string>
             {

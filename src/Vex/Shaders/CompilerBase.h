@@ -52,12 +52,10 @@ struct CompilerBase
     }
     virtual ~CompilerBase() = default;
 
-    virtual std::unique_ptr<ICompilerContextImpl> CreateContext(const ShaderEnvironment& env,
-                                                                const ShaderCompilerSettings& compilerSettings,
-                                                                ShaderCompileContext* context) const
-    {
-        return nullptr;
-    }
+    virtual void SetContextImpl(const ShaderEnvironment& env,
+                                const ShaderCompilerSettings& compilerSettings,
+                                NonNullPtr<ShaderCompileContext> newCompileContext,
+                                ShaderCompileContext* originalContext) {}
 
     virtual std::expected<SHA1HashDigest, std::string> GetShaderCodeHash(const Shader& shader,
                                                                          const ShaderEnvironment& shaderEnv,
