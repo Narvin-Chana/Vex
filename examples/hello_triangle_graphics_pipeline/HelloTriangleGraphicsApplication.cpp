@@ -15,7 +15,7 @@ HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
     // Example of CPU accessible buffer
     colorBuffer = graphics->CreateBuffer({ .name = "Color Buffer",
                                            .byteSize = sizeof(float) * 4,
-                                           .usage = vex::BufferUsage::UniformBuffer,
+                                           .usage = vex::BufferUsage::ShaderReadUniform,
                                            .memoryLocality = vex::ResourceMemoryLocality::GPUOnly });
 
     // Working texture we'll fill in then copy to the backbuffer.
@@ -51,7 +51,7 @@ void HelloTriangleGraphicsApplication::Run()
             ctx.EnqueueDataUpload(colorBuffer, std::as_bytes(std::span(color)));
             vex::BufferBinding colorBufferBinding{
                 .buffer = colorBuffer,
-                .usage = vex::BufferBindingUsage::ConstantBuffer,
+                .usage = vex::BufferBindingUsage::UniformBuffer,
                 .strideByteSize = static_cast<vex::u32>(sizeof(float) * 4),
             };
 
@@ -59,7 +59,7 @@ void HelloTriangleGraphicsApplication::Run()
 
             // Clear backbuffer.
             vex::TextureClearValue clearValue{ .color = { 1, 0.5f, 1, 1 } };
-            ctx.ClearTexture(vex::TextureBinding{ .texture = graphics->GetCurrentPresentTexture() }, clearValue);
+            ctx.ClearTexture(graphics->GetCurrentPresentTexture(), clearValue);
 
             // Setup our draw call's description.
             vex::DrawDesc hlslDrawDesc{

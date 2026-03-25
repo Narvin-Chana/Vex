@@ -28,7 +28,7 @@ TEST_F(ClearTest, ClearRenderTargetDefaultAspect)
 
     CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
-    ctx.ClearTexture({ .texture = texture });
+    ctx.ClearTexture(texture);
 
     TextureReadbackContext readbackColorCtx =
         ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Color));
@@ -50,7 +50,7 @@ TEST_F(ClearTest, ClearRenderTargetImplicit)
 
     CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
-    ctx.ClearTexture({ .texture = texture, .subresource = { .aspect = TextureAspect::Color } });
+    ctx.ClearTexture(texture, std::nullopt, TextureSubresource{ .aspect = TextureAspect::Color });
 
     TextureReadbackContext readbackColorCtx =
         ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Color));
@@ -70,8 +70,11 @@ TEST_F(ClearTest, ClearRenderTargetExplicit)
 
     CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
-    ctx.ClearTexture({ .texture = texture, .subresource = {.aspect = TextureAspect::Color, } },
-                     TextureClearValue{ .color = { 1, 1, 1, 1 } });
+    ctx.ClearTexture(texture,
+                     TextureClearValue{ .color = { 1, 1, 1, 1 } },
+                     TextureSubresource{
+                         .aspect = TextureAspect::Color,
+                     });
 
     TextureReadbackContext readbackColorCtx =
         ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Color));
@@ -92,7 +95,7 @@ TEST_F(ClearTest, ClearDepthOnlyDefaultAspect)
 
     CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
-    ctx.ClearTexture({ .texture = texture });
+    ctx.ClearTexture(texture);
 
     TextureReadbackContext readbackDepthCtx =
         ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Depth));
@@ -113,7 +116,7 @@ TEST_F(ClearTest, ClearDepthOnlyImplicit)
 
     CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
-    ctx.ClearTexture({ .texture = texture, .subresource = { .aspect = TextureAspect::Depth } });
+    ctx.ClearTexture(texture, std::nullopt, TextureSubresource{ .aspect = TextureAspect::Depth });
 
     TextureReadbackContext readbackDepthCtx =
         ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Depth));
@@ -133,8 +136,9 @@ TEST_F(ClearTest, ClearDepthOnlyExpicit)
 
     CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
-    ctx.ClearTexture({ .texture = texture, .subresource = { .aspect = TextureAspect::Depth } },
-                     TextureClearValue{ .depth = 0.54f });
+    ctx.ClearTexture(texture,
+                     TextureClearValue{ .depth = 0.54f },
+                     TextureSubresource{ .aspect = TextureAspect::Depth });
 
     TextureReadbackContext readbackDepthCtx =
         ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Depth));
@@ -156,7 +160,7 @@ TEST_F(ClearTest, ClearDepthStencilDefaultAspect)
 
     CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
-    ctx.ClearTexture({ .texture = texture });
+    ctx.ClearTexture(texture);
 
     TextureReadbackContext readbackDepthCtx =
         ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Depth));
@@ -181,8 +185,9 @@ TEST_F(ClearTest, ClearDepthStencilImplicit)
 
     CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
-    ctx.ClearTexture(
-        { .texture = texture, .subresource = { .aspect = TextureAspect::Stencil | TextureAspect::Depth } });
+    ctx.ClearTexture(texture,
+                     std::nullopt,
+                     TextureSubresource{ .aspect = TextureAspect::Stencil | TextureAspect::Depth });
 
     TextureReadbackContext readbackDepthCtx =
         ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Depth));
@@ -206,8 +211,9 @@ TEST_F(ClearTest, ClearDepthStencilExplicit)
 
     CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
-    ctx.ClearTexture({ .texture = texture, .subresource = { .aspect = TextureAspect::Stencil | TextureAspect::Depth } },
-                     TextureClearValue{ .depth = 1.0f, .stencil = 0xEE });
+    ctx.ClearTexture(texture,
+                     TextureClearValue{ .depth = 1.0f, .stencil = 0xEE },
+                     TextureSubresource{ .aspect = TextureAspect::Stencil | TextureAspect::Depth });
 
     TextureReadbackContext readbackDepthCtx =
         ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Depth));
@@ -234,7 +240,7 @@ TEST_F(ClearTest, ClearStencilImplicit)
 
     CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
-    ctx.ClearTexture({ .texture = texture, .subresource = { .aspect = TextureAspect::Stencil } });
+    ctx.ClearTexture(texture, std::nullopt, TextureSubresource{ .aspect = TextureAspect::Stencil });
 
     TextureReadbackContext readbackStencilCtx =
         ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Stencil));
@@ -255,8 +261,9 @@ TEST_F(ClearTest, ClearStencilExplicit)
 
     CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
-    ctx.ClearTexture({ .texture = texture, .subresource = { .aspect = TextureAspect::Stencil } },
-                     TextureClearValue{ .stencil = 0xEE });
+    ctx.ClearTexture(texture,
+                     TextureClearValue{ .stencil = 0xEE },
+                     TextureSubresource{ .aspect = TextureAspect::Stencil });
 
     TextureReadbackContext readbackStencilCtx =
         ctx.EnqueueDataReadback(texture, TextureRegion::SingleMip(0, TextureAspect::Stencil));
@@ -283,8 +290,11 @@ TEST_F(ClearTest, ClearDepthOnlyRect)
     auto ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
     // Need to clear full texture first because a partial clear doesnt count as valid init
-    ctx.ClearTexture({ .texture = texture, .subresource = {.aspect = TextureAspect::Depth, } }, texture.desc.clearValue);
-    ctx.ClearTexture({ .texture = texture, .subresource = {.aspect = TextureAspect::Depth, } }, TextureClearValue{ .depth = 0.7f }, clearRects);
+    ctx.ClearTexture(texture, texture.desc.clearValue, TextureSubresource{ .aspect = TextureAspect::Depth });
+    ctx.ClearTexture(texture,
+                     TextureClearValue{ .depth = 0.7f },
+                     TextureSubresource{ .aspect = TextureAspect::Depth },
+                     clearRects);
 
     auto readbackTopLeftCtx = ctx.EnqueueDataReadback(texture,
                                                       TextureRegion{
@@ -332,9 +342,10 @@ TEST_F(ClearTest, ClearRenderTargetRect)
     auto ctx = graphics.CreateCommandContext(QueueType::Graphics);
 
     // Need to clear full texture first because a partial clear doesnt count as valid init
-    ctx.ClearTexture({ .texture = texture, .subresource = {.aspect = TextureAspect::Color, } }, texture.desc.clearValue);
-    ctx.ClearTexture({ .texture = texture, .subresource = {.aspect = TextureAspect::Color, } },
+    ctx.ClearTexture(texture, texture.desc.clearValue, TextureSubresource{ .aspect = TextureAspect::Color });
+    ctx.ClearTexture(texture,
                      TextureClearValue{ .color = { 1, 0, 1, 0 } },
+                     TextureSubresource{ .aspect = TextureAspect::Color },
                      clearRects);
 
     auto readbackTopLeftCtx = ctx.EnqueueDataReadback(texture,

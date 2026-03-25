@@ -58,7 +58,7 @@ void HDRApplication::Run()
             vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
 
             vex::TextureBinding renderTarget = { .texture = graphics->GetCurrentPresentTexture(), .isSRGB = false };
-            ctx.ClearTexture(renderTarget);
+            ctx.ClearTexture(graphics->GetCurrentPresentTexture());
 
             ctx.SetScissor(0, 0, width, height);
             ctx.SetViewport(0, 0, texWidth, texHeight);

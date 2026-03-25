@@ -32,12 +32,11 @@ TEST_P(ReflectionTestFull, CompleteGraphicsPSOTest)
                                                                                     TextureUsage::RenderTarget));
 
     TextureClearValue clearValue{ .color = { 0.2f, 0.2f, 0.2f, 1 } };
-    ctx.ClearTexture(
-        TextureBinding{
-            .texture = renderTexture,
-            .subresource = { .aspect = TextureAspect::Color, },
-        },
-        clearValue);
+    ctx.ClearTexture(renderTexture,
+                     clearValue,
+                     TextureSubresource{
+                         .aspect = TextureAspect::Color,
+                     });
 
     ctx.SetScissor(0, 0, 1, 1);
     ctx.SetViewport(0, 0, 1, 1);

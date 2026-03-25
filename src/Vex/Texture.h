@@ -45,8 +45,8 @@ enum class TextureViewType : u8
 enum class TextureBindingUsage : u8
 {
     None = 0,
-    ShaderRead = TextureUsage::ShaderRead,           // Equivalent to SRV in DX12.
-    ShaderReadWrite = TextureUsage::ShaderReadWrite, // Equivalent to UAV in DX12.
+    ShaderRead = TextureUsage::ShaderRead,           // Equivalent to SRV in DX12, used as Texture<type> in shaders.
+    ShaderReadWrite = TextureUsage::ShaderReadWrite, // Equivalent to UAV in DX12, used as RWTexture<type> in shaders.
 };
 
 // clang-format off
@@ -281,6 +281,7 @@ static constexpr u64 MipAlignment = 512;
 static constexpr u64 SliceAlignment = 512;
 
 std::tuple<u32, u32, u32> GetMipSize(const TextureDesc& desc, u32 mip);
+TextureViewType GetTextureViewType(const TextureDesc& desc, bool textureCubeAsTexture2DArray);
 TextureViewType GetTextureViewType(const TextureBinding& binding);
 // This provides the correct format on which the data should be interpreted when copying data from and to a texture.
 // This applies mostly to depth/stencil formats that are read separately from their original format. (It applies to any

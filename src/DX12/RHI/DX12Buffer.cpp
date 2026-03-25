@@ -21,7 +21,7 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
     u64 size = desc.byteSize;
     u64 forcedAlignment = 0;
 
-    if (desc.usage & BufferUsage::UniformBuffer)
+    if (desc.usage & BufferUsage::ShaderReadUniform)
     {
         // Constant buffers need to be aligned to 256.
         forcedAlignment = std::max<u64>(forcedAlignment, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
@@ -31,21 +31,16 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
     }
 
     CD3DX12_RESOURCE_DESC1 bufferDesc = CD3DX12_RESOURCE_DESC1::Buffer(size,
-                                                                       (desc.usage & BufferUsage::ReadWriteBuffer)
+                                                                       (desc.usage & BufferUsage::ShaderReadWrite)
                                                                            ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
                                                                            : D3D12_RESOURCE_FLAG_NONE);
-    if (VEX_USE_CUSTOM_RESOURCE_ALLOCATOR && GPhysicalDevice->SupportsTightAlignment())
-    {
-        bufferDesc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
-    }
-
     if (desc.usage & BufferUsage::AccelerationStructure)
     {
         bufferDesc.Flags |= D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE;
         // TODO(https://trello.com/c/rLevCOvT): Decide if this should be moved up into the Vex layer or not!
         // This depends on how Vulkan implements HWRT.
-        VEX_ASSERT(desc.usage & BufferUsage::ReadWriteBuffer,
-                   "Acceleration Structure usage requires the ReadWriteBuffer usage flag.");
+        VEX_ASSERT(desc.usage & BufferUsage::ShaderReadWrite,
+                   "Acceleration Structure usage requires the ShaderReadWrite usage flag.");
         VEX_ASSERT(bufferDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
                    "Acceleration Structure buffer usage flag also requires the ShaderReadWrite flag!");
 
@@ -54,7 +49,7 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
         forcedAlignment = std::max<u64>(forcedAlignment, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
     }
 
-    if (desc.usage & BufferUsage::ScratchBuffer)
+    if (desc.usage & BufferUsage::Scratch)
     {
         // RT scratch buffers have a higher alignment requirement, for some reason GetResourceAllocationInfo3,
         // does not return the correct alignment.
@@ -83,6 +78,12 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
     }
 
 #if VEX_USE_CUSTOM_RESOURCE_ALLOCATOR
+    // Use tight alignment if available to reduce alignment padding costs.
+    if (GPhysicalDevice->SupportsTightAlignment())
+    {
+        bufferDesc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
+    }
+
     allocation = allocator.AllocateResource(buffer, bufferDesc, desc.memoryLocality, forcedAlignment);
 #else
     chk << device->CreateCommittedResource3(&heapProps,
@@ -150,7 +151,7 @@ void DX12Buffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
                                         const BufferViewDesc& viewDesc)
 {
     BufferBindingUsage usage = viewDesc.usage;
-    const bool isCBV = usage == BufferBindingUsage::ConstantBuffer;
+    const bool isCBV = usage == BufferBindingUsage::UniformBuffer;
     const bool isSRV = usage == BufferBindingUsage::StructuredBuffer || usage == BufferBindingUsage::ByteAddressBuffer;
     const bool isUAV =
         usage == BufferBindingUsage::RWStructuredBuffer || usage == BufferBindingUsage::RWByteAddressBuffer;

@@ -86,7 +86,7 @@ u32 BufferViewDesc::GetElementStride() const
 
 u64 BufferViewDesc::GetFirstElement() const
 {
-    if (usage == BufferBindingUsage::ConstantBuffer)
+    if (usage == BufferBindingUsage::UniformBuffer)
     {
         return 0;
     }
@@ -95,7 +95,7 @@ u64 BufferViewDesc::GetFirstElement() const
 }
 u64 BufferViewDesc::GetElementCount() const
 {
-    if (usage == BufferBindingUsage::ConstantBuffer)
+    if (usage == BufferBindingUsage::UniformBuffer)
     {
         return 1;
     }

@@ -150,14 +150,10 @@ void HelloCubeApplication::Run()
 
             // Clear backbuffer.
             vex::TextureClearValue clearValue{ .color = { 0.2f, 0.2f, 0.2f, 1 } };
-            ctx.ClearTexture(
-                vex::TextureBinding{
-                    .texture = graphics->GetCurrentPresentTexture(),
-                },
-                clearValue);
+            ctx.ClearTexture(graphics->GetCurrentPresentTexture(), clearValue);
 
             // Clear depth texture.
-            ctx.ClearTexture({ .texture = depthTexture });
+            ctx.ClearTexture(depthTexture);
 
             vex::VertexInputLayout vertexLayout{
                 .attributes = {

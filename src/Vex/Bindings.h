@@ -76,7 +76,7 @@ struct BufferBinding
     std::optional<u32> strideByteSize;
 
     // Optional: The offset to apply when binding the buffer (in bytes).
-    // When using ConstantBuffer usage the offset must be a multiple of 256 bytes
+    // When using UniformBuffer usage the offset must be a multiple of 256 bytes
     // When using (RW)ByteAddressBuffer usage the offset must be a multiple of 16 bytes
     std::optional<u64> offsetByteSize;
 

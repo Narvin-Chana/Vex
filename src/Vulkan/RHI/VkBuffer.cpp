@@ -17,11 +17,11 @@ static ::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDesc& desc)
 {
     using enum ::vk::BufferUsageFlagBits;
     ::vk::BufferUsageFlags flags = eTransferSrc;
-    if (desc.usage & BufferUsage::UniformBuffer)
+    if (desc.usage & BufferUsage::ShaderReadUniform)
     {
         flags |= eUniformBuffer;
     }
-    if (desc.usage & (BufferUsage::ReadWriteBuffer | BufferUsage::GenericBuffer))
+    if (desc.usage & (BufferUsage::ShaderReadWrite | BufferUsage::ShaderRead))
     {
         flags |= eStorageBuffer;
     }
@@ -102,7 +102,7 @@ void VkBuffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
                                       const BufferViewDesc& viewDesc)
 {
     descriptorPool.GetBindlessSet().UpdateDescriptor(handle,
-                                                     desc.usage == BufferUsage::UniformBuffer
+                                                     desc.usage == BufferUsage::ShaderReadUniform
                                                          ? ::vk::DescriptorType::eUniformBuffer
                                                          : ::vk::DescriptorType::eStorageBuffer,
                                                      ::vk::DescriptorBufferInfo{ .buffer = *buffer,

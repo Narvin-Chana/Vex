@@ -28,13 +28,13 @@ HelloTriangleApplication::HelloTriangleApplication()
     // Example of CPU accessible buffer
     colorBuffer = graphics->CreateBuffer({ .name = "Color Buffer",
                                            .byteSize = sizeof(float) * 4,
-                                           .usage = vex::BufferUsage::UniformBuffer,
+                                           .usage = vex::BufferUsage::ShaderReadUniform,
                                            .memoryLocality = vex::ResourceMemoryLocality::GPUOnly });
 
     // Example of GPU only buffer
     commBuffer = graphics->CreateBuffer({ .name = "Comm Buffer",
                                           .byteSize = sizeof(float) * 4,
-                                          .usage = vex::BufferUsage::ReadWriteBuffer | vex::BufferUsage::GenericBuffer,
+                                          .usage = vex::BufferUsage::ShaderReadWrite | vex::BufferUsage::ShaderRead,
                                           .memoryLocality = vex::ResourceMemoryLocality::GPUOnly });
 }
 
@@ -58,7 +58,7 @@ void HelloTriangleApplication::Run()
             std::array<vex::ResourceBinding, 3> pass1Bindings{
                 vex::BufferBinding{
                     .buffer = colorBuffer,
-                    .usage = vex::BufferBindingUsage::ConstantBuffer,
+                    .usage = vex::BufferBindingUsage::UniformBuffer,
                 },
                 vex::BufferBinding{
                     .buffer = commBuffer,

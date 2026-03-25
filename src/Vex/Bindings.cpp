@@ -66,7 +66,7 @@ void ValidateBufferBinding(const BufferBinding& binding, BufferUsage::Flags vali
             buffer.desc.name);
     }
 
-    if (usage == BufferBindingUsage::ConstantBuffer)
+    if (usage == BufferBindingUsage::UniformBuffer)
     {
         VEX_CHECK(binding.offsetByteSize.value_or(0) % ConstantBufferBindingOffsetMultiple == 0,
                   "Invalid binding for resource \"{}\": "
@@ -229,7 +229,7 @@ BufferBinding BufferBinding::CreateConstantBuffer(const Buffer& buffer,
                                                   std::optional<u64> rangeByteSize)
 {
     return { .buffer = buffer,
-             .usage = BufferBindingUsage::ConstantBuffer,
+             .usage = BufferBindingUsage::UniformBuffer,
              .offsetByteSize = offsetByteSize,
              .rangeByteSize = rangeByteSize.value_or(buffer.desc.byteSize - offsetByteSize) };
 }

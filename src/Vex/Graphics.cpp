@@ -296,7 +296,7 @@ std::optional<SyncToken> Graphics::FlushPendingInitializations()
                                                       .layout = RHITextureLayout::Undefined,
                                                   });
 
-            ctx.ClearTexture({ .texture = texture });
+            ctx.ClearTexture(texture);
 
             // We still need to transition the texture to the default global state, just have to modify the src* values
             // since we just called ClearTexture.

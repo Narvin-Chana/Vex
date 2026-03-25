@@ -56,9 +56,10 @@ public:
     // Sets the viewport scissor.
     void SetScissor(i32 x, i32 y, u32 width, u32 height);
 
-    // Clears a texture, by default will use the texture's ClearColor.
-    void ClearTexture(const TextureBinding& binding,
+    // Clears a texture, by default will use the texture's ClearColor and clear the entire texture.
+    void ClearTexture(const Texture& texture,
                       std::optional<TextureClearValue> textureClearValue = std::nullopt,
+                      const TextureSubresource& subresource = {},
                       Span<TextureClearRect> clearRects = {});
 
     // Performs a draw call.

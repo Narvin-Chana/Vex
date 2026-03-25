@@ -84,10 +84,10 @@ static D3D12_DEPTH_STENCIL_VIEW_DESC CreateDepthStencilViewDesc(const DX12Textur
     return desc;
 }
 
-static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const DX12TextureView& view)
+static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const TextureDesc& textureDesc, const DX12TextureView& view)
 {
     D3D12_SHADER_RESOURCE_VIEW_DESC desc{
-        .Format = GetDX12FormatForShaderResourceViewFormat(view.format, view.subresource.GetSingleAspect(*view.desc)),
+        .Format = GetDX12FormatForShaderResourceViewFormat(view.format, view.subresource.GetSingleAspect(textureDesc)),
         .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
     };
 
@@ -98,7 +98,7 @@ static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const DX12Te
         desc.Texture2D = {
             .MostDetailedMip = view.subresource.startMip,
             .MipLevels = view.subresource.mipCount,
-            .PlaneSlice = view.subresource.GetSingleAspect(*view.desc) == TextureAspect::Stencil ? 1u : 0u,
+            .PlaneSlice = view.subresource.GetSingleAspect(textureDesc) == TextureAspect::Stencil ? 1u : 0u,
             .ResourceMinLODClamp = 0,
         };
         break;
@@ -109,7 +109,7 @@ static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const DX12Te
             .MipLevels = view.subresource.mipCount,
             .FirstArraySlice = view.subresource.startSlice,
             .ArraySize = view.subresource.sliceCount,
-            .PlaneSlice = view.subresource.GetSingleAspect(*view.desc) == TextureAspect::Stencil ? 1u : 0u,
+            .PlaneSlice = view.subresource.GetSingleAspect(textureDesc) == TextureAspect::Stencil ? 1u : 0u,
             .ResourceMinLODClamp = 0,
         };
         break;
@@ -380,7 +380,7 @@ BindlessHandle DX12Texture::GetOrCreateBindlessView(const TextureBinding& bindin
 
     if (isSRVView)
     {
-        auto desc = CreateShaderResourceViewDesc(view);
+        auto desc = CreateShaderResourceViewDesc(binding.texture.desc, view);
         auto cpuDescriptorHandle = descriptorPool.GetCPUDescriptor(handle);
         device->CreateShaderResourceView(texture.Get(), &desc, cpuDescriptorHandle);
     }
@@ -458,26 +458,46 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(const DX12Textu
     }
 }
 
-DX12TextureView::DX12TextureView(const TextureBinding& binding)
-    : desc{ binding.texture.desc }
-    , usage{ binding.usage != TextureBindingUsage::None ? static_cast<TextureUsage::Type>(binding.usage)
-                                                        : TextureUsage::None }
-    , dimension{ TextureUtil::GetTextureViewType(binding) }
-    , format{ TextureFormatToDXGI(binding.texture.desc.format, binding.isSRGB) }
-    , subresource{ binding.subresource }
+DX12TextureView::DX12TextureView(const TextureDesc& desc,
+                                 const TextureSubresource& inSubresource,
+                                 TextureUsage::Type usage,
+                                 TextureViewType dimension,
+                                 DXGI_FORMAT format)
+    : subresource{ inSubresource }
+    , usage{ usage }
+    , dimension{ dimension }
+    , format{ format }
 {
-    if (binding.usage == TextureBindingUsage::ShaderRead)
+    if (usage == TextureUsage::ShaderRead &&
+        (desc.usage & TextureUsage::DepthStencil && desc.usage & TextureUsage::ShaderRead))
     {
-        if (binding.texture.desc.usage & TextureUsage::DepthStencil &&
-            binding.texture.desc.usage & TextureUsage::ShaderRead)
-        {
-            format = GetTypelessFormatForDepthStencilCompatibleDX12Format(format);
-        }
+        format = GetTypelessFormatForDepthStencilCompatibleDX12Format(format);
     }
 
     // Resolve subresource (replacing MAX values with the actual value).
-    subresource.mipCount = subresource.GetMipCount(binding.texture.desc);
-    subresource.sliceCount = subresource.GetSliceCount(binding.texture.desc);
+    subresource.mipCount = inSubresource.GetMipCount(desc);
+    subresource.sliceCount = inSubresource.GetSliceCount(desc);
+}
+
+DX12TextureView::DX12TextureView(const TextureDesc& desc,
+                                 const TextureSubresource& subresource,
+                                 TextureUsage::Type usage)
+    : DX12TextureView(desc,
+                      subresource,
+                      usage,
+                      TextureUtil::GetTextureViewType(desc, false),
+                      TextureFormatToDXGI(desc.format, false))
+{
+}
+
+DX12TextureView::DX12TextureView(const TextureBinding& binding)
+    : DX12TextureView(binding.texture.desc,
+                      binding.subresource,
+                      binding.usage != TextureBindingUsage::None ? static_cast<TextureUsage::Type>(binding.usage)
+                                                                 : TextureUsage::None,
+                      TextureUtil::GetTextureViewType(binding),
+                      TextureFormatToDXGI(binding.texture.desc.format, binding.isSRGB))
+{
 }
 
 } // namespace vex::dx12

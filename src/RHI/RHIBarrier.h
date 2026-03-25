@@ -56,7 +56,6 @@ enum class RHIBarrierAccess : u8
     CopyDest,
     AccelerationStructureRead,
     AccelerationStructureWrite,
-
     // All "read" states.
     MemoryRead,
     // All "write" states.
@@ -67,15 +66,15 @@ enum class RHIBarrierAccess : u8
 enum class RHITextureLayout : u8
 {
     Undefined,
-    Common,            // General purpose (maps to VK_GENERAL, D3D12_COMMON)
-    RenderTarget,      // Color render target
-    DepthStencilRead,  // Depth/stencil read-only
-    DepthStencilWrite, // Depth/stencil for writing
-    ShaderResource,    // Shader read access
-    ShaderReadWrite,   // Storage/UAV access
-    CopySource,        // Copy source
-    CopyDest,          // Copy destination
-    Present,           // Presentation
+    Common,             // General purpose (maps to VK_GENERAL, D3D12_COMMON)
+    RenderTarget,       // Color render target
+    DepthStencilRead,   // Depth/stencil read-only
+    DepthStencilWrite,  // Depth/stencil for writing
+    ShaderRead,         // Shader read access
+    ShaderReadWrite,    // Storage/UAV access
+    CopySource,         // Copy source
+    CopyDest,           // Copy destination
+    Present,            // Presentation
 };
 
 struct RHIGlobalBarrier
@@ -119,7 +118,7 @@ inline RHITextureLayout RHIAccessToRHILayout(RHIBarrierAccess access)
     switch (access)
     {
     case RHIBarrierAccess::ShaderRead:
-        return RHITextureLayout::ShaderResource;
+        return RHITextureLayout::ShaderRead;
     case RHIBarrierAccess::ShaderReadWrite:
         return RHITextureLayout::ShaderReadWrite;
     case RHIBarrierAccess::RenderTarget:

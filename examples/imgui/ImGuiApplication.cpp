@@ -81,13 +81,12 @@ void ImGuiApplication::RenderImGui()
     vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
 
     vex::Texture presentTexture = graphics->GetCurrentPresentTexture();
-    vex::TextureBinding presentBinding = { .texture = presentTexture };
-
     ctx.Copy(presentTexture, lastFrameTexture);
 
     vex::TextureClearValue clearValue{ .color = { 0, 0, 0, 0 } };
-    ctx.ClearTexture(presentBinding, clearValue);
+    ctx.ClearTexture(presentTexture, clearValue);
 
+    vex::TextureBinding presentBinding = { .texture = presentTexture };
     // ImGui renders to the texture that is currently set as render target. In this case we want to render
     // directly to the present texture. For this we use the ExecuteInDrawContext function, which will take care of
     // binding the render targets/depth stencil and then execute the passed in callback.

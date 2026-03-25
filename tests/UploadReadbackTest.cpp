@@ -490,7 +490,7 @@ TEST_P(ScalarBlockLayoutTests, ComputeMisalignedData)
     Buffer resultBuffer =
         graphics.CreateBuffer(BufferDesc{ .name = "ResultBuffer",
                                           .byteSize = 3 * sizeof(float),
-                                          .usage = BufferUsage::GenericBuffer | BufferUsage::ReadWriteBuffer });
+                                          .usage = BufferUsage::ShaderRead | BufferUsage::ShaderReadWrite });
 
     ctx.EnqueueDataUpload(dataBuffer, std::as_bytes(std::span{ data }));
 

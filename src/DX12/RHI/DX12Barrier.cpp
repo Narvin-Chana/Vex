@@ -139,7 +139,7 @@ D3D12_BARRIER_LAYOUT RHITextureLayoutToDX12(RHITextureLayout textureLayout)
         return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_READ;
     case DepthStencilWrite:
         return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE;
-    case ShaderResource:
+    case ShaderRead:
         return D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
     case ShaderReadWrite:
         return D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS;

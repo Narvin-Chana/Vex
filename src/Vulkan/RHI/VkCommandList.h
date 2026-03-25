@@ -2,11 +2,11 @@
 
 #include <Vex/Utility/NonNullPtr.h>
 
+#include <RHI/RHIBarrier.h>
 #include <RHI/RHICommandList.h>
 #include <RHI/RHITimestampQueryPool.h>
 
 #include <Vulkan/VkHeaders.h>
-#include <RHI/RHIBarrier.h>
 
 namespace vex
 {
@@ -38,7 +38,8 @@ public:
     virtual void SetLayout(RHIResourceLayout& layout) override;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) override;
     virtual void SetInputAssembly(InputAssembly inputAssembly) override;
-    virtual void ClearTexture(const RHITextureBinding& binding,
+    virtual void ClearTexture(RHITexture& texture,
+                              const TextureSubresource& subresource,
                               TextureUsage::Type usage,
                               const TextureClearValue& clearValue,
                               Span<const TextureClearRect> clearRects) override;

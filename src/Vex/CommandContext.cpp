@@ -163,43 +163,47 @@ void CommandContext::SetScissor(i32 x, i32 y, u32 width, u32 height)
     hasInitializedScissor = true;
 }
 
-void CommandContext::ClearTexture(const TextureBinding& binding,
+void CommandContext::ClearTexture(const Texture& texture,
                                   std::optional<TextureClearValue> textureClearValue,
+                                  const TextureSubresource& subresource,
                                   Span<TextureClearRect> clearRects)
 {
     VEX_CHECK(
-        binding.texture.desc.usage & (TextureUsage::RenderTarget | TextureUsage::DepthStencil),
+        texture.desc.usage & (TextureUsage::RenderTarget | TextureUsage::DepthStencil),
         "ClearUsage not supported on this texture, it must be either usable as a render target or as a depth stencil!");
 
-    const bool isDepthStencil = binding.texture.desc.usage & TextureUsage::DepthStencil;
-    RHITexture& texture = graphics->GetRHITexture(binding.texture.handle);
+    TextureUtil::ValidateSubresource(texture.desc, subresource);
 
-    TextureClearValue clearValue = textureClearValue.value_or(binding.texture.desc.clearValue);
+    const bool isDepthStencil = texture.desc.usage & TextureUsage::DepthStencil;
+    RHITexture& rhiTexture = graphics->GetRHITexture(texture.handle);
+
+    TextureClearValue clearValue = textureClearValue.value_or(texture.desc.clearValue);
 
     if (GPhysicalDevice->IsFeatureSupported(Feature::NativeTextureClear) && clearRects.empty())
     {
-        EnqueueTextureBarrier(binding.texture,
-                              binding.subresource,
+        EnqueueTextureBarrier(texture,
+                              subresource,
                               RHIBarrierSync::Clear,
                               RHIBarrierAccess::CopyDest,
                               RHITextureLayout::CopyDest);
     }
     else
     {
-        EnqueueTextureBarrier(binding.texture,
-                              binding.subresource,
+        EnqueueTextureBarrier(texture,
+                              subresource,
                               isDepthStencil ? RHIBarrierSync::DepthStencil : RHIBarrierSync::RenderTarget,
                               isDepthStencil ? RHIBarrierAccess::DepthStencilReadWrite : RHIBarrierAccess::RenderTarget,
                               isDepthStencil ? RHITextureLayout::DepthStencilWrite : RHITextureLayout::RenderTarget);
     }
 
     FlushBarriers();
-    cmdList->ClearTexture(RHITextureBinding{ binding, NonNullPtr(texture) },
-                          // This is a safe cast, textures can only contain one of the two usages (RT/DS).
-                          static_cast<TextureUsage::Type>(binding.texture.desc.usage &
-                                                          (TextureUsage::RenderTarget | TextureUsage::DepthStencil)),
-                          std::move(clearValue),
-                          clearRects);
+    cmdList->ClearTexture(
+        rhiTexture,
+        subresource,
+        // This is a safe cast, textures can only contain one of the two usages (RT/DS).
+        static_cast<TextureUsage::Type>(texture.desc.usage & (TextureUsage::RenderTarget | TextureUsage::DepthStencil)),
+        std::move(clearValue),
+        clearRects);
 }
 
 void CommandContext::Draw(const DrawDesc& drawDesc,
@@ -473,7 +477,7 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
                           { .startMip = sourceMip, .mipCount = 1 },
                           RHIBarrierSync::ComputeShader,
                           RHIBarrierAccess::ShaderRead,
-                          RHITextureLayout::ShaderResource);
+                          RHITextureLayout::ShaderRead);
 
     EnqueueTextureBarrier(texture,
                           { .startMip = static_cast<u16>(sourceMip + 1), .mipCount = GTextureAllMips },
@@ -1015,7 +1019,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
         .name =
             graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_blas_scratch",
         .byteSize = buildInfo.scratchByteSize,
-        .usage = BufferUsage::ScratchBuffer | BufferUsage::ReadWriteBuffer,
+        .usage = BufferUsage::Scratch | BufferUsage::ShaderReadWrite,
     };
     Buffer scratchBuffer = CreateTemporaryBuffer(scratchBufferDesc);
 
@@ -1060,7 +1064,7 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
         .name =
             graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_tlas_scratch",
         .byteSize = buildInfo.scratchByteSize,
-        .usage = BufferUsage::ScratchBuffer | BufferUsage::ReadWriteBuffer,
+        .usage = BufferUsage::Scratch | BufferUsage::ShaderReadWrite,
     };
     Buffer scratchBuffer = CreateTemporaryBuffer(scratchBufferDesc);
     Buffer uploadBuffer = CreateTemporaryStagingBuffer(
@@ -1263,7 +1267,7 @@ void CommandContext::InferResourceBarriers(RHIBarrierSync syncStage, Span<const 
                          RHIBarrierAccess dstAccess;
                          switch (bufferBinding.usage)
                          {
-                         case ConstantBuffer:
+                         case UniformBuffer:
                              dstAccess = RHIBarrierAccess::UniformRead;
                              break;
                          case StructuredBuffer:
@@ -1296,7 +1300,7 @@ void CommandContext::InferResourceBarriers(RHIBarrierSync syncStage, Span<const 
                          {
                          case ShaderRead:
                              access = RHIBarrierAccess::ShaderRead;
-                             layout = RHITextureLayout::ShaderResource;
+                             layout = RHITextureLayout::ShaderRead;
                              break;
                          case ShaderReadWrite:
                              access = RHIBarrierAccess::ShaderReadWrite;

@@ -17,7 +17,7 @@ int main()
     vex::Buffer resultBuffer = graphics.CreateBuffer(
         vex::BufferDesc{ .name = "Result Buffer",
                          .byteSize = sizeof(float) * M,
-                         .usage = vex::BufferUsage::GenericBuffer | vex::BufferUsage::ReadWriteBuffer,
+                         .usage = vex::BufferUsage::ShaderRead | vex::BufferUsage::ShaderReadWrite,
                          .memoryLocality = vex::ResourceMemoryLocality::GPUOnly });
 
     // Begins a timestamp for the global command context

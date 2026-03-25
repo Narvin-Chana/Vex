@@ -30,7 +30,7 @@ DX12ShaderTable::DX12ShaderTable(ComPtr<DX12Device>& device,
 
     BufferDesc desc = BufferDesc::CreateStagingBufferDesc(std::string(name),
                                                           recordStride * shaderIdentifiers.size(),
-                                                          BufferUsage::GenericBuffer | BufferUsage::ShaderTable);
+                                                          BufferUsage::ShaderRead | BufferUsage::ShaderTable);
     buffer = RHIBuffer(device, allocator, std::move(desc));
 
     Span<byte> mappedData = buffer->GetMappedData();

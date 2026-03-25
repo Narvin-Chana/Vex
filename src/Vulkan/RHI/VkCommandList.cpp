@@ -185,18 +185,19 @@ void VkCommandList::SetInputAssembly(InputAssembly inputAssembly)
     commandBuffer->setPrimitiveTopology(GraphicsPiplineUtils::InputTopologyToVkTopology(inputAssembly.topology));
 }
 
-void VkCommandList::ClearTexture(const RHITextureBinding& binding,
+void VkCommandList::ClearTexture(RHITexture& texture,
+                                 const TextureSubresource& subresource,
                                  TextureUsage::Type usage,
                                  const TextureClearValue& clearValue,
                                  Span<const TextureClearRect> clearRects)
 {
-    const TextureAspect::Flags clearAspect = binding.binding.subresource.GetAspect(binding.texture->GetDesc());
+    const TextureAspect::Flags clearAspect = subresource.GetAspect(texture.GetDesc());
 
     ::vk::ImageSubresourceRange ranges{
-        .baseMipLevel = binding.binding.subresource.startMip,
-        .levelCount = binding.binding.subresource.GetMipCount(binding.texture->GetDesc()),
-        .baseArrayLayer = binding.binding.subresource.startSlice,
-        .layerCount = binding.binding.subresource.GetSliceCount(binding.texture->GetDesc()),
+        .baseMipLevel = subresource.startMip,
+        .levelCount = subresource.GetMipCount(texture.GetDesc()),
+        .baseArrayLayer = subresource.startSlice,
+        .layerCount = subresource.GetSliceCount(texture.GetDesc()),
     };
     ::vk::ImageAspectFlags aspect;
     if (clearAspect & TextureAspect::Color)
@@ -215,7 +216,7 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
                 .depth = clearValue.depth,
                 .stencil = clearValue.stencil,
             };
-            commandBuffer->clearDepthStencilImage(binding.texture->GetRawTexture(),
+            commandBuffer->clearDepthStencilImage(texture.GetRawTexture(),
                                                   ::vk::ImageLayout::eGeneral,
                                                   &clearVal,
                                                   1,
@@ -224,11 +225,7 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
         else
         {
             ::vk::ClearColorValue clearVal{ .float32 = clearValue.color };
-            commandBuffer->clearColorImage(binding.texture->GetRawTexture(),
-                                           ::vk::ImageLayout::eGeneral,
-                                           &clearVal,
-                                           1,
-                                           &ranges);
+            commandBuffer->clearColorImage(texture.GetRawTexture(), ::vk::ImageLayout::eGeneral, &clearVal, 1, &ranges);
         }
     }
     else
@@ -239,8 +236,8 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
         for (auto rect : clearRects)
         {
             rects.push_back({ .rect = ::vk::Rect2D{ .offset = { rect.offsetX, rect.offsetY },
-                                                    .extent = { rect.GetExtentX(binding.texture->GetDesc()),
-                                                                rect.GetExtentY(binding.texture->GetDesc()) } },
+                                                    .extent = { rect.GetExtentX(texture.GetDesc()),
+                                                                rect.GetExtentY(texture.GetDesc()) } },
                               .baseArrayLayer = ranges.baseArrayLayer,
                               .layerCount = ranges.layerCount });
         }
@@ -250,7 +247,10 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
 
         if (usage == TextureUsage::DepthStencil && clearAspect & (TextureAspect::Depth | TextureAspect::Stencil))
         {
-            resources.depthStencil = binding;
+            resources.depthStencil = RHITextureBinding{
+                .binding = { .texture = { .desc = texture.GetDesc() }, .isSRGB = false },
+                .texture = texture,
+            };
             clearAttachment.clearValue.depthStencil = ::vk::ClearDepthStencilValue{
                 .depth = clearValue.depth,
                 .stencil = clearValue.stencil,
@@ -258,7 +258,10 @@ void VkCommandList::ClearTexture(const RHITextureBinding& binding,
         }
         else
         {
-            resources.renderTargets.push_back(binding);
+            resources.renderTargets.push_back(RHITextureBinding{
+                .binding = { .texture = { .desc = texture.GetDesc() }, .isSRGB = false },
+                .texture = texture,
+            });
             clearAttachment.clearValue.color = ::vk::ClearColorValue{ .float32 = clearValue.color };
         }
 

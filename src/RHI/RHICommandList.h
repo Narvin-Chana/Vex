@@ -55,7 +55,8 @@ public:
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) = 0;
     virtual void SetInputAssembly(InputAssembly inputAssembly) = 0;
 
-    virtual void ClearTexture(const RHITextureBinding& binding,
+    virtual void ClearTexture(RHITexture& texture,
+                              const TextureSubresource& subresource,
                               TextureUsage::Type usage,
                               const TextureClearValue& clearValue,
                               Span<const TextureClearRect> clearRects) = 0;

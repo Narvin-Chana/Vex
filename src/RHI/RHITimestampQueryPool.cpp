@@ -71,7 +71,7 @@ RHITimestampQueryPoolBase::RHITimestampQueryPoolBase(RHI& rhi, RHIAllocator& all
     : timestampBuffer{ rhi.CreateBuffer(allocator,
                                         { .name = "TimestampQueryReadback",
                                           .byteSize = sizeof(u64) * MaxInFlightTimestampCount,
-                                          .usage = BufferUsage::GenericBuffer,
+                                          .usage = BufferUsage::ShaderRead,
                                           .memoryLocality = ResourceMemoryLocality::CPURead }) }
     , rhi{ rhi }
 {

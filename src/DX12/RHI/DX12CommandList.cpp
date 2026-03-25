@@ -230,14 +230,16 @@ void DX12CommandList::SetInputAssembly(InputAssembly inputAssembly)
     commandList->IASetPrimitiveTopology(GraphicsPipeline::GetDX12PrimitiveTopologyFromInputAssembly(inputAssembly));
 }
 
-void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
+void DX12CommandList::ClearTexture(RHITexture& texture,
+                                   const TextureSubresource& subresource,
                                    TextureUsage::Type usage,
                                    const TextureClearValue& clearValue,
                                    Span<const TextureClearRect> clearRects)
 {
-    DX12TextureView dxTextureView{ binding.binding };
-    const u32 maxMip =
-        dxTextureView.subresource.startMip + dxTextureView.subresource.GetMipCount(binding.texture->GetDesc());
+
+    DX12TextureView dxTextureView{ texture.GetDesc(), subresource, usage };
+
+    const u32 maxMip = dxTextureView.subresource.startMip + dxTextureView.subresource.GetMipCount(texture.GetDesc());
     // We'll be creating a RTV/DSV view per-mip.
     dxTextureView.subresource.mipCount = 1;
 
@@ -252,7 +254,7 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
                                  .bottom = clearRect.offsetY + static_cast<i32>(clearRect.extentY) });
     }
 
-    const TextureAspect::Flags clearAspect = binding.binding.subresource.GetAspect(binding.texture->GetDesc());
+    const TextureAspect::Flags clearAspect = subresource.GetAspect(texture.GetDesc());
 
     // Clearing in DX12 allows for multiple slices to be cleared, however you cannot clear multiple mips with one
     // call.
@@ -266,7 +268,7 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
             VEX_ASSERT(clearAspect & TextureAspect::Color,
                        "Clearing the color requires the TextureClear::ClearColor flag for texture: {}.",
                        desc.name);
-            commandList->ClearRenderTargetView(binding.texture->GetOrCreateRTVDSVView(dxTextureView),
+            commandList->ClearRenderTargetView(texture.GetOrCreateRTVDSVView(dxTextureView),
                                                clearValue.color.data(),
                                                dxClearRects.size(),
                                                !dxClearRects.empty() ? dxClearRects.data() : nullptr);
@@ -292,7 +294,7 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
                        "for texture: {}!",
                        binding.texture->GetDesc().name);
 
-            commandList->ClearDepthStencilView(binding.texture->GetOrCreateRTVDSVView(dxTextureView),
+            commandList->ClearDepthStencilView(texture.GetOrCreateRTVDSVView(dxTextureView),
                                                clearFlags,
                                                clearValue.depth,
                                                clearValue.stencil,
@@ -305,7 +307,7 @@ void DX12CommandList::ClearTexture(const RHITextureBinding& binding,
         VEX_LOG(Fatal,
                 "The usage of the passed binding \"{}\" doesn't support clearing. Make sure you specify "
                 "the correct usage.",
-                binding.texture->GetDesc().name);
+                texture.GetDesc().name);
     }
 }
 
@@ -317,7 +319,7 @@ void DX12CommandList::EmitBarriers(Span<const RHIBufferBarrier> bufferBarriers,
     dx12BufferBarriers.reserve(bufferBarriers.size());
     for (const auto& bb : bufferBarriers)
     {
-        const bool bufferAllowsUnorderedAccess = bb.buffer->GetDesc().usage & BufferUsage::ReadWriteBuffer;
+        const bool bufferAllowsUnorderedAccess = bb.buffer->GetDesc().usage & BufferUsage::ShaderReadWrite;
 
         D3D12_BUFFER_BARRIER dx12Barrier = {};
         dx12Barrier.SyncBefore = RHIBarrierSyncToDX12(bb.srcSync);
@@ -716,14 +718,6 @@ void DX12CommandList::BuildTLAS(RHIAccelerationStructure& as,
             ++instanceDescs;
         }
     }
-
-    // Make sure the upload buffer is done uploading.
-    EmitBarriers({},
-                 {},
-                 { RHIGlobalBarrier{ RHIBarrierSync::AllCommands,
-                                     RHIBarrierSync::BuildAccelerationStructure,
-                                     RHIBarrierAccess::NoAccess,
-                                     RHIBarrierAccess::ShaderRead } });
 
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {};
     buildDesc.Inputs = D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS{

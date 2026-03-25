@@ -100,7 +100,7 @@ TEST_F(SynchronizationTest, HeavyResouceCreationAndUsage)
         BufferDesc bufDesc{};
         bufDesc.name = std::format("Test3 Buf_{}", i);
         bufDesc.byteSize = 1024ull * 1024ull; // 1MB
-        bufDesc.usage = BufferUsage::GenericBuffer;
+        bufDesc.usage = BufferUsage::ShaderRead;
         bufDesc.memoryLocality = ResourceMemoryLocality::GPUOnly;
         buffers.push_back(graphics.CreateBuffer(bufDesc));
 
@@ -297,7 +297,7 @@ TEST_F(SynchronizationTest, FinalStressTest)
         BufferDesc bufDesc{};
         bufDesc.name = std::format("Test7 Buf_{}", i);
         bufDesc.byteSize = 64ull * 1024ull;
-        bufDesc.usage = BufferUsage::GenericBuffer;
+        bufDesc.usage = BufferUsage::ShaderRead;
         bufDesc.memoryLocality = ResourceMemoryLocality::GPUOnly;
         buffers.push_back(graphics.CreateBuffer(bufDesc));
     }

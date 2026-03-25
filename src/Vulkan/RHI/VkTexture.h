@@ -25,9 +25,9 @@ namespace VkTextureUtil
 
 } // namespace VkTextureUtil
 
-struct VkTextureViewDesc
+struct VkTextureView
 {
-    VkTextureViewDesc(const TextureBinding& binding);
+    VkTextureView(const TextureBinding& binding);
 
     TextureViewType viewType = TextureViewType::Texture2D;
     ::vk::Format format;
@@ -35,13 +35,13 @@ struct VkTextureViewDesc
 
     TextureSubresource subresource;
 
-    bool operator==(const VkTextureViewDesc&) const = default;
+    bool operator==(const VkTextureView&) const = default;
 };
 
 } // namespace vex::vk
 
 // clang-format off
-VEX_MAKE_HASHABLE(vex::vk::VkTextureViewDesc,
+VEX_MAKE_HASHABLE(vex::vk::VkTextureView,
     VEX_HASH_COMBINE(seed, obj.viewType);
     VEX_HASH_COMBINE(seed, obj.format);
     VEX_HASH_COMBINE(seed, obj.usage);
@@ -89,8 +89,8 @@ public:
         ::vk::UniqueImageView view;
     };
     // TODO: could potentially combine these?
-    std::unordered_map<VkTextureViewDesc, CacheEntry> bindlessCache;
-    std::unordered_map<VkTextureViewDesc, ::vk::UniqueImageView> viewCache;
+    std::unordered_map<VkTextureView, CacheEntry> bindlessCache;
+    std::unordered_map<VkTextureView, ::vk::UniqueImageView> viewCache;
 
 private:
     void CreateImage(RHIAllocator& allocator);
@@ -104,7 +104,7 @@ private:
     ::vk::UniqueDeviceMemory memory;
 #endif
 
-    std::unordered_map<VkTextureViewDesc, CacheEntry> cache;
+    std::unordered_map<VkTextureView, CacheEntry> cache;
 
     friend class VkCommandList;
 };

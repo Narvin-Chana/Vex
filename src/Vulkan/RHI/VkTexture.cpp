@@ -199,7 +199,7 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, RHIAllocator& allocator, Text
 
 BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding, RHIDescriptorPool& descriptorPool)
 {
-    VkTextureViewDesc view{ binding };
+    VkTextureView view{ binding };
     if (auto it = bindlessCache.find(view); it != bindlessCache.end() && descriptorPool.IsValid(it->second.handle))
     {
         return it->second.handle;
@@ -245,7 +245,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
 
 ::vk::ImageView VkTexture::GetOrCreateImageView(const TextureBinding& binding, TextureUsage::Type usage)
 {
-    VkTextureViewDesc view{ binding };
+    VkTextureView view{ binding };
     if (auto it = viewCache.find(view); it != viewCache.end())
     {
         return *it->second;
@@ -260,16 +260,22 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
     }
     viewUsageInfo.usage = viewUsage;
 
+    ::vk::ImageAspectFlags aspectFlags;
+    TextureAspect::Flags subresourceAspects = binding.subresource.GetAspect(binding.texture.desc);
+    if (subresourceAspects & TextureAspect::Color)
+        aspectFlags |= ::vk::ImageAspectFlagBits::eColor;
+    if (subresourceAspects & TextureAspect::Depth)
+        aspectFlags |= ::vk::ImageAspectFlagBits::eDepth;
+    if (subresourceAspects & TextureAspect::Stencil)
+        aspectFlags |= ::vk::ImageAspectFlagBits::eStencil;
+
     const ::vk::ImageViewCreateInfo viewCreate{ 
         .pNext = &viewUsageInfo, 
         .image = GetRawTexture(),
         .viewType = TextureTypeToVulkan(view.viewType),
         .format = view.format,
         .subresourceRange = {
-            .aspectMask = usage == TextureUsage::DepthStencil
-                                ? VkTextureUtil::GetDepthAspectFlags(
-                                    VulkanToTextureFormat(view.format))
-                                : ::vk::ImageAspectFlagBits::eColor,
+            .aspectMask = aspectFlags,
             .baseMipLevel = view.subresource.startMip,
             .levelCount = view.subresource.GetMipCount(binding.texture.desc),
             .baseArrayLayer = view.subresource.startSlice,
@@ -390,8 +396,7 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
     image = std::move(imageTmp);
 }
 
-VkTextureViewDesc::VkTextureViewDesc(const TextureBinding& binding)
-
+VkTextureView::VkTextureView(const TextureBinding& binding)
     : viewType{ TextureUtil::GetTextureViewType(binding) }
     , format{ TextureFormatToVulkan(binding.texture.desc.format, binding.isSRGB) }
     , usage{ static_cast<TextureUsage::Type>(binding.usage) }
