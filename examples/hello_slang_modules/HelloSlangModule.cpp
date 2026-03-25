@@ -1,19 +1,3 @@
-/**
- * hello_slang_modules — Demonstrates:
- *
- *  1. Ahead-of-Time (AOT) shader compilation via ShaderCompileContext
- *  2. Virtual File System (VFS): embedding the "Pattern" Slang module
- *     as a C++ string literal — it never touches the disk
- *  3. On-disk Slang modules (MathUtils, Noise) resolved automatically
- *     via the Slang session's search paths (the example directory)
- *  4. Module dependency chain:
- *       main shader (embedded) → Pattern (embedded VFS)
- *                                    → Noise (disk)
- *                                        → MathUtils (disk)
- *  5. GPU readback: the shader writes a 256×256 procedural pattern
- *     into a structured buffer; the CPU reads it back and prints stats
- */
-
 #include "ExamplePaths.h"
 #include "SlangModuleShaders.h"
 
@@ -27,10 +11,6 @@
 
 #if VEX_SLANG
 
-// ----------------------------------------------------------------
-// Shader push constants — must match the `Uniforms` struct in the
-// embedded kMainShaderSource in SlangModuleShaders.h
-// ----------------------------------------------------------------
 struct Uniforms
 {
     vex::u32 OutputBufferHandle;
@@ -44,11 +24,9 @@ static constexpr vex::u32 Height = 256;
 
 int main()
 {
-    // ----------------------------------------------------------------
-    // 1. Initialise Vex
+
     //    We pass the example directory as a shader include search path
     //    so that Slang can find MathUtils.slang and Noise.slang.
-    // ----------------------------------------------------------------
     const std::filesystem::path exampleDir = ExamplesDir / "hello_slang_modules";
 
     vex::Graphics graphics{ vex::GraphicsCreateDesc{
@@ -60,34 +38,14 @@ int main()
         },
     } };
 
-    VEX_LOG(vex::Info, "=== hello_slang_modules ===");
-    VEX_LOG(vex::Info, "Demonstrating: AOT compile context, embedded VFS modules, disk modules.");
-
-    // ----------------------------------------------------------------
-    // 2. Build the AOT ShaderCompileContext
-    //
-    //    This creates a persistent Slang ISession.  The embedded
     //    "Pattern" module is registered in the VFS; MathUtils and Noise
-    //    are pre-loaded from disk into the same session right now so
-    //    subsequent dispatches are instant (no recompilation required).
-    // ----------------------------------------------------------------
-    VEX_LOG(vex::Info, "");
-    VEX_LOG(vex::Info, "[Step 1/3] Building AOT compile context...");
-
+    //    Will be picked from the file system
     vex::ShaderCompileContext& compileCtx = graphics.GetShaderCompileContext();
 
     // Register the "Pattern" module in the VFS.
     // When `import Pattern;` appears in any shader compiled with this
     // context, Slang finds it here — no .slang file on disk required.
-    compileCtx.AddVirtualFile("Pattern.slang", SlangModuleShaders::kPatternModuleSource);
-
-    VEX_LOG(vex::Info, "  Context ready. MathUtils + Noise pre-loaded.");
-
-    // ----------------------------------------------------------------
-    // 3. Create GPU resources
-    // ----------------------------------------------------------------
-    VEX_LOG(vex::Info, "");
-    VEX_LOG(vex::Info, "[Step 2/3] Allocating GPU resources...");
+    compileCtx.AddVirtualFile("Pattern.slang", SlangModuleShaders::PatternModuleSource);
 
     const vex::u32 pixelCount = Width * Height;
 
@@ -105,19 +63,8 @@ int main()
     };
     vex::BindlessHandle outputHandle = graphics.GetBindlessHandle(outputBinding);
 
-    VEX_LOG(vex::Info, "  Allocated {}x{} float buffer ({} KB).", Width, Height, sizeof(float) * pixelCount / 1024);
+    compileCtx.AddVirtualFile("MainShader.slang", SlangModuleShaders::MainShaderSource);
 
-    // ----------------------------------------------------------------
-    // 4. Dispatch — render three frames at different times.
-    //    Only the first frame triggers shader compilation; subsequent
-    //    frames reuse the compiled program from the cached context.
-    // ----------------------------------------------------------------
-    VEX_LOG(vex::Info, "");
-    VEX_LOG(vex::Info, "[Step 3/3] Dispatching (3 frames)...");
-
-    compileCtx.AddVirtualFile("MainShader.slang", SlangModuleShaders::kMainShaderSource);
-
-    // Reusable ShaderKey — points at the embedded main shader source.
     vex::ShaderKey mainKey{ .path = "MainShader.slang",
                             .entryPoint = "CSMain",
                             .type = vex::ShaderType::ComputeShader,
@@ -158,28 +105,14 @@ int main()
         const float minVal = *std::min_element(cpuPixels.begin(), cpuPixels.end());
         const float maxVal = *std::max_element(cpuPixels.begin(), cpuPixels.end());
         const float avg = std::accumulate(cpuPixels.begin(), cpuPixels.end(), 0.0f) / static_cast<float>(pixelCount);
-
-        VEX_LOG(vex::Info,
-                "  Frame {}: time={:.2f}s  min={:.4f}  avg={:.4f}  max={:.4f}",
-                frame,
-                time,
-                minVal,
-                avg,
-                maxVal);
     }
 
-    VEX_LOG(vex::Info, "");
-    VEX_LOG(vex::Info, "Done!");
-    VEX_LOG(vex::Info, "  -> ShaderCompileContext was shared across all 3 frames.");
-    VEX_LOG(vex::Info, "  -> MathUtils and Noise were compiled once (cached in the Slang session).");
-    VEX_LOG(vex::Info, "  -> Pattern module lived entirely in embedded C++ string — never on disk.");
 }
 
 #else
 
 int main()
 {
-    VEX_LOG(vex::Error, "This example requires Slang to be enabled (VEX_SLANG).");
-}
+    }
 
 #endif // VEX_SLANG

@@ -403,9 +403,7 @@ public:
 };
 
 SlangCompilerContextImpl::SlangCompilerContextImpl(const ShaderEnvironment& env,
-                                                   const ShaderCompilerSettings& compilerSettings,
-                                                   ShaderCompileContext* parentContext)
-    : parentContext(parentContext)
+                                                   const ShaderCompilerSettings& compilerSettings)
 {
 }
 
@@ -433,7 +431,7 @@ std::unique_ptr<ICompilerContextImpl> SlangCompilerImpl::CreateContext(const Sha
                                                                        const ShaderCompilerSettings& compilerSettings,
                                                                        ShaderCompileContext* context) const
 {
-    auto contextImpl = std::make_unique<SlangCompilerContextImpl>(env, compilerSettings, context);
+    auto contextImpl = std::make_unique<SlangCompilerContextImpl>(env, compilerSettings);
     // Explicitly create an ISession for the context which will cache modules loaded into it
     ShaderKey dummyKey;
     if (auto sessionExp = CreateSession(dummyKey, env, compilerSettings, context))
@@ -447,12 +445,12 @@ std::expected<SHA1HashDigest, std::string> SlangCompilerImpl::GetShaderCodeHash(
     const Shader& shader,
     const ShaderEnvironment& shaderEnv,
     const ShaderCompilerSettings& compilerSettings,
-    ShaderCompileContext* context)
+    NonNullPtr<ShaderCompileContext> context)
 {
     ValidateShaderForCompilation(shader);
 
     Slang::ComPtr<slang::ISession> session;
-    if (context && context->GetImpl<SlangCompilerContextImpl>() &&
+    if (context->GetImpl<SlangCompilerContextImpl>() &&
         context->GetImpl<SlangCompilerContextImpl>()->session)
     {
         session = context->GetImpl<SlangCompilerContextImpl>()->session;

@@ -49,7 +49,7 @@ struct DXCCompilerImpl : public CompilerBase
         const Shader& shader,
         const ShaderEnvironment& shaderEnv,
         const ShaderCompilerSettings& compilerSettings,
-        ShaderCompileContext* context = nullptr) override;
+        NonNullPtr<ShaderCompileContext> context) override;
     virtual std::expected<ShaderCompilationResult, std::string> CompileShader(
         const Shader& shader,
         const ShaderEnvironment& shaderEnv,

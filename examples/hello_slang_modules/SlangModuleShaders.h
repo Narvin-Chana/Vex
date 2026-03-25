@@ -16,7 +16,7 @@ namespace SlangModuleShaders
 //
 // It depends on the Noise module (on disk) which in turn depends on MathUtils.
 //
-inline constexpr const char* kPatternModuleSource = R"slang(
+inline constexpr const char* PatternModuleSource = R"slang(
 module Pattern;
 
 import Noise;    // disk-based module: examples/hello_slang_modules/Noise.slang
@@ -53,7 +53,7 @@ public float evaluatePattern(float2 uv, float time)
 // It writes a 256x256 greyscale image into an RW buffer and
 // computes a global average intensity for CPU readback.
 //
-inline constexpr const char* kMainShaderSource = R"slang(
+inline constexpr const char* MainShaderSource = R"slang(
 import Pattern;
 import Vex;
 

@@ -285,7 +285,7 @@ std::expected<SHA1HashDigest, std::string> DXCCompilerImpl::GetShaderCodeHash(
     const Shader& shader,
     const ShaderEnvironment& shaderEnv,
     const ShaderCompilerSettings& compilerSettings,
-    ShaderCompileContext* context)
+    NonNullPtr<ShaderCompileContext> context)
 {
     return DXCImpl_Internal::LoadShaderSource(utils, shader.key, *context)
         .and_then(

@@ -11,6 +11,8 @@
 #include <Vex/Shaders/CompilerBase.h>
 #include <Vex/Shaders/ShaderCompileContext.h>
 
+#include "Vex/Utility/NonNullPtr.h"
+
 namespace vex
 {
 struct ShaderKey;
@@ -19,14 +21,12 @@ struct ShaderDefine;
 struct SlangCompilerContextImpl : public ICompilerContextImpl
 {
     SlangCompilerContextImpl(const ShaderEnvironment& env,
-                             const ShaderCompilerSettings& compilerSettings,
-                             ShaderCompileContext* parentContext);
+                             const ShaderCompilerSettings& compilerSettings);
     virtual ~SlangCompilerContextImpl() override;
 
     virtual bool LoadModule(const std::string& moduleName) override;
 
     Slang::ComPtr<slang::ISession> session;
-    ShaderCompileContext* parentContext = nullptr;
 };
 
 struct SlangCompilerImpl : public CompilerBase
@@ -43,7 +43,8 @@ struct SlangCompilerImpl : public CompilerBase
         const Shader& shader,
         const ShaderEnvironment& shaderEnv,
         const ShaderCompilerSettings& compilerSettings,
-        ShaderCompileContext* context = nullptr) override;
+        NonNullPtr<ShaderCompileContext> context) override;
+
     virtual std::expected<ShaderCompilationResult, std::string> CompileShader(
         const Shader& shader,
         const ShaderEnvironment& shaderEnv,

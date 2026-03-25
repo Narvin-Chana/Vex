@@ -11,6 +11,8 @@
 #include <Vex/Shaders/ShaderCompileContext.h>
 #include <Vex/Types.h>
 
+#include "Vex/Utility/NonNullPtr.h"
+
 namespace vex
 {
 
@@ -52,7 +54,7 @@ struct CompilerBase
 
     virtual std::unique_ptr<ICompilerContextImpl> CreateContext(const ShaderEnvironment& env,
                                                                 const ShaderCompilerSettings& compilerSettings,
-                                                                ShaderCompileContext* context = nullptr) const
+                                                                ShaderCompileContext* context) const
     {
         return nullptr;
     }
@@ -60,7 +62,7 @@ struct CompilerBase
     virtual std::expected<SHA1HashDigest, std::string> GetShaderCodeHash(const Shader& shader,
                                                                          const ShaderEnvironment& shaderEnv,
                                                                          const ShaderCompilerSettings& compilerSettings,
-                                                                         ShaderCompileContext* context = nullptr) = 0;
+                                                                         NonNullPtr<ShaderCompileContext> context) = 0;
     virtual std::expected<ShaderCompilationResult, std::string> CompileShader(
         const Shader& shader,
         const ShaderEnvironment& shaderEnv,

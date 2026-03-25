@@ -104,7 +104,7 @@ NonNullPtr<Shader> ShaderCompiler::GetShader(const ShaderKey& key)
         std::expected<void, std::string> res = GetCompiler(key).and_then(
             [&](CompilerBase* compiler)
             {
-                return compiler->GetShaderCodeHash(*shaderPtr, globalShaderEnv, compilerSettings, shaderContext.get())
+                return compiler->GetShaderCodeHash(*shaderPtr, globalShaderEnv, compilerSettings, NonNullPtr(shaderContext.get()))
                     .and_then(
                         [&](const SHA1HashDigest& digest) -> std::expected<void, std::string>
                         {
