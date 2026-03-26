@@ -39,15 +39,11 @@ if(WIN32)
     set(SLANG_STATIC_LIBS
         "${slang_SOURCE_DIR}/lib/gfx.lib"
         "${slang_SOURCE_DIR}/lib/slang-rt.lib"
-        "${slang_SOURCE_DIR}/lib/slang.lib"
+        "${slang_SOURCE_DIR}/lib/slang-compiler.lib"
     )
     set(SLANG_RUNTIME_LIBS
         "${slang_SOURCE_DIR}/bin/gfx.dll"
-        "${slang_SOURCE_DIR}/bin/slang-glsl-module.dll"
-        "${slang_SOURCE_DIR}/bin/slang-glslang.dll"
-        "${slang_SOURCE_DIR}/bin/slang-llvm.dll"
         "${slang_SOURCE_DIR}/bin/slang-rt.dll"
-        "${slang_SOURCE_DIR}/bin/slang.dll"
         "${slang_SOURCE_DIR}/bin/slang-compiler.dll"
     )
 elseif(LINUX)
