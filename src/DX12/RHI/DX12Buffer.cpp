@@ -34,7 +34,7 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
                                                                        (desc.usage & BufferUsage::ShaderReadWrite)
                                                                            ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
                                                                            : D3D12_RESOURCE_FLAG_NONE);
-    if (desc.usage & BufferUsage::AccelerationStructure)
+    if ((desc.usage & BufferUsage::AccelerationStructure) == BufferUsage::AccelerationStructure)
     {
         bufferDesc.Flags |= D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE;
         // TODO(https://trello.com/c/rLevCOvT): Decide if this should be moved up into the Vex layer or not!
@@ -49,8 +49,13 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
         forcedAlignment = std::max<u64>(forcedAlignment, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
     }
 
-    if (desc.usage & BufferUsage::Scratch)
+    if ((desc.usage & BufferUsage::Scratch) == BufferUsage::Scratch)
     {
+        VEX_ASSERT(desc.usage & BufferUsage::ShaderReadWrite,
+                   "Scratch buffer usage requires the ShaderReadWrite usage flag.");
+        VEX_ASSERT(bufferDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+                   "Scratch buffer usage flag also requires the ShaderReadWrite flag!");
+
         // RT scratch buffers have a higher alignment requirement, for some reason GetResourceAllocationInfo3,
         // does not return the correct alignment.
         forcedAlignment = std::max<u64>(forcedAlignment, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);

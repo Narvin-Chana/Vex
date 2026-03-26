@@ -15,18 +15,26 @@ namespace vex
 
 // Determines how the buffer can be used.
 BEGIN_VEX_ENUM_FLAGS(BufferUsage, u16)
-    None                    = 0,      // Buffers that will never be bound anywhere. Mostly used for staging buffers.
-    ShaderRead              = 1 << 0, // Buffers that can be read from shaders via Structured or ByteAddress reads.
-    ShaderReadUniform       = 1 << 1, // Buffers with specific alignment constraints and uniformly read across waves.
-    ShaderReadWrite         = 1 << 2, // Buffers with read and write operations in shaders via RWStructured or RWByteAddress read/writes.
-    VertexBuffer            = 1 << 3, // Buffers used for vertex buffers.
-    IndexBuffer             = 1 << 4, // Buffers used for index buffers.
-    IndirectArgs            = 1 << 5, // Buffers used as parameters for an indirect dispatch.
-    AccelerationStructure   = 1 << 6  // Buffers used as a HWRT Acceleration Structure, these also require the ShaderReadWrite usage.
-                            | ShaderReadUniform, 
-    Scratch                 = 1 << 7 // Buffers used as a scratch buffer for building HWRT Acceleration Structures, these also require the ShaderReadWrite usage.
-                            | ShaderReadUniform, 
-    ShaderTable             = 1 << 8, // Buffers used as a ShaderTable for HWRT shaders.
+    // Buffers that will never be bound anywhere. Mostly used for staging buffers.
+    None                    = 0,
+    // Buffers that can be read from shaders via Structured or ByteAddress reads.
+    ShaderRead              = 1 << 0,
+    // Buffers with specific alignment constraints and uniformly read across waves.
+    ShaderReadUniform       = 1 << 1,
+    // Buffers with read and write operations in shaders via RWStructured or RWByteAddress read/writes.
+    ShaderReadWrite         = 1 << 2,
+    // Buffers used for vertex buffers.
+    VertexBuffer            = 1 << 3,
+    // Buffers used for index buffers.
+    IndexBuffer             = 1 << 4,
+    // Buffers used as parameters for an indirect dispatch.
+    IndirectArgs            = 1 << 5,
+    // Buffers used as a HWRT Acceleration Structure, these also require the ShaderReadWrite usage.
+    AccelerationStructure   = (1 << 6) | ShaderReadWrite,
+    // Buffers used as a scratch buffer for building HWRT Acceleration Structures, these also require the ShaderReadWrite usage.
+    Scratch                 = (1 << 7) | ShaderReadWrite,
+    // Buffers used as a ShaderTable for HWRT shaders.
+    ShaderTable             = 1 << 8,
 END_VEX_ENUM_FLAGS();
 
 // clang-format on
