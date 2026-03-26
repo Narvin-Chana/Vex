@@ -60,7 +60,7 @@ public:
     void ClearTexture(const Texture& texture,
                       std::optional<TextureClearValue> textureClearValue = std::nullopt,
                       const TextureSubresource& subresource = {},
-                      Span<TextureClearRect> clearRects = {});
+                      Span<const TextureClearRect> clearRects = {});
 
     // Performs a draw call.
     void Draw(const DrawDesc& drawDesc,

@@ -225,7 +225,7 @@ void Graphics::Present()
         commandPool->OnCommandListsSubmitted({ &cmdList, 1 }, { &presentTokens[currentFrameIndex], 1 });
 
         // Certain swapchains reset the state of the backbuffer to Undefined after presenting.
-        if (GPhysicalDevice->PresentResetsBackBufferToUndefined())
+        if (GPhysicalDevice->HasCapability(Capability::PresentResetsBackBufferToUndefined))
         {
             backBufferState.SetUniform(
                 { RHIBarrierSync::None, RHIBarrierAccess::NoAccess, RHITextureLayout::Undefined });

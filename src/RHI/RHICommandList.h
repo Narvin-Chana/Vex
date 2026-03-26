@@ -7,11 +7,13 @@
 #include <Vex/QueueType.h>
 #include <Vex/ResourceCopy.h>
 #include <Vex/Synchronization.h>
+#include <Vex/Texture.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIBarrier.h>
 #include <RHI/RHIFwd.h>
+#include <RHI/RHITexture.h>
 #include <RHI/RHITimestampQueryPool.h>
 
 namespace vex
@@ -55,6 +57,8 @@ public:
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) = 0;
     virtual void SetInputAssembly(InputAssembly inputAssembly) = 0;
 
+    virtual RHITextureState GetClearTextureBarrierState(const TextureDesc& desc,
+                                                        Span<const TextureClearRect> clearRects) = 0;
     virtual void ClearTexture(RHITexture& texture,
                               const TextureSubresource& subresource,
                               TextureUsage::Type usage,

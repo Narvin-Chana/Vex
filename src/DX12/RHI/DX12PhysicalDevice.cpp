@@ -41,14 +41,24 @@ bool DX12PhysicalDevice::IsFeatureSupported(Feature feature) const
         rayTracingSupported &= featureSupport.HighestShaderModel() >= D3D_SHADER_MODEL_6_3;
         return rayTracingSupported;
     }
-    case Feature::MipGeneration:
-        // DX12 has no built-in way to generate mip-maps.
-        return false;
-    case Feature::NativeTextureClear:
-        // DX12 texture clearing always passes through a OMSetRenderTargets call.
-        return false;
     default:
         VEX_LOG(Fatal, "Unable to determine feature support for {}", feature);
+        return false;
+    }
+}
+
+bool DX12PhysicalDevice::HasCapability(Capability capability) const
+{
+    switch (capability)
+    {
+    case Capability::MipGeneration:
+        // DX12 has no built-in way to generate mip-maps.
+        return false;
+    case Capability::PresentResetsBackBufferToUndefined:
+        // DXGI and Enhanced Barriers guarantee that calling Present does not affect the backBuffer's state.
+        return false;
+    default:
+        VEX_LOG(Fatal, "Unable to determine capbility support for {}", capability);
         return false;
     }
 }
@@ -81,12 +91,6 @@ bool DX12PhysicalDevice::FormatSupportsLinearFiltering(TextureFormat format, boo
 
     const bool supportsLinearFiltering = (formatSupport.Support1 & D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE) != 0;
     return supportsLinearFiltering;
-}
-
-bool DX12PhysicalDevice::PresentResetsBackBufferToUndefined() const
-{
-    // DXGI and Enhanced Barriers guarantee that calling Present does not affect the backBuffer's state.
-    return false;
 }
 
 bool DX12PhysicalDevice::SupportsTightAlignment() const

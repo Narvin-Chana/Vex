@@ -185,6 +185,21 @@ void VkCommandList::SetInputAssembly(InputAssembly inputAssembly)
     commandBuffer->setPrimitiveTopology(GraphicsPiplineUtils::InputTopologyToVkTopology(inputAssembly.topology));
 }
 
+RHITextureState VkCommandList::GetClearTextureBarrierState(const TextureDesc& desc,
+                                                           Span<const TextureClearRect> clearRects)
+{
+    if (clearRects.empty())
+    {
+        return { RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest, RHITextureLayout::CopyDest };
+    }
+    const bool isDS = desc.usage & TextureUsage::DepthStencil;
+    return {
+        isDS ? RHIBarrierSync::DepthStencil : RHIBarrierSync::RenderTarget,
+        isDS ? RHIBarrierAccess::DepthStencilReadWrite : RHIBarrierAccess::RenderTarget,
+        isDS ? RHITextureLayout::DepthStencilWrite : RHITextureLayout::RenderTarget,
+    };
+}
+
 void VkCommandList::ClearTexture(RHITexture& texture,
                                  const TextureSubresource& subresource,
                                  TextureUsage::Type usage,
@@ -193,12 +208,6 @@ void VkCommandList::ClearTexture(RHITexture& texture,
 {
     const TextureAspect::Flags clearAspect = subresource.GetAspect(texture.GetDesc());
 
-    ::vk::ImageSubresourceRange ranges{
-        .baseMipLevel = subresource.startMip,
-        .levelCount = subresource.GetMipCount(texture.GetDesc()),
-        .baseArrayLayer = subresource.startSlice,
-        .layerCount = subresource.GetSliceCount(texture.GetDesc()),
-    };
     ::vk::ImageAspectFlags aspect;
     if (clearAspect & TextureAspect::Color)
         aspect |= ::vk::ImageAspectFlagBits::eColor;
@@ -206,11 +215,21 @@ void VkCommandList::ClearTexture(RHITexture& texture,
         aspect |= ::vk::ImageAspectFlagBits::eDepth;
     if (clearAspect & TextureAspect::Stencil)
         aspect |= ::vk::ImageAspectFlagBits::eStencil;
-    ranges.aspectMask = aspect;
+
+    const ::vk::ImageSubresourceRange ranges{
+        .aspectMask = aspect,
+        .baseMipLevel = subresource.startMip,
+        .levelCount = subresource.GetMipCount(texture.GetDesc()),
+        .baseArrayLayer = subresource.startSlice,
+        .layerCount = subresource.GetSliceCount(texture.GetDesc()),
+    };
+
+    const bool isDepthStencilClear =
+        usage == TextureUsage::DepthStencil && clearAspect & (TextureAspect::Depth | TextureAspect::Stencil);
 
     if (clearRects.empty())
     {
-        if (usage == TextureUsage::DepthStencil && clearAspect & (TextureAspect::Depth | TextureAspect::Stencil))
+        if (isDepthStencilClear)
         {
             ::vk::ClearDepthStencilValue clearVal{
                 .depth = clearValue.depth,
@@ -245,7 +264,7 @@ void VkCommandList::ClearTexture(RHITexture& texture,
         ::vk::ClearAttachment clearAttachment{};
         clearAttachment.aspectMask = aspect;
 
-        if (usage == TextureUsage::DepthStencil && clearAspect & (TextureAspect::Depth | TextureAspect::Stencil))
+        if (isDepthStencilClear)
         {
             resources.depthStencil = RHITextureBinding{
                 .binding = { .texture = { .desc = texture.GetDesc() }, .isSRGB = false },

@@ -1,5 +1,7 @@
 #include "VkPhysicalDevice.h"
 
+#include <Vex/Logger.h>
+
 #include <Vulkan/VkFormats.h>
 
 namespace vex::vk
@@ -67,16 +69,26 @@ bool VkPhysicalDevice::IsFeatureSupported(Feature feature) const
     case Feature::RayTracing:
         // Vulkan RHI currently does not support ray tracing.
         return false && rayTracingFeatures.rayTracingPipeline;
-    case Feature::MipGeneration:
-        // Vk can use vkCmdBlitImage to generate mips.
-        return true;
-    case Feature::NativeTextureClear:
-        // Vk can use a native texture clear operation which does not require RT/DS access.
-        return true;
     default:
+        VEX_LOG(Fatal, "Unable to determine feature support for {}", feature);
         return false;
     }
-    std::unreachable();
+}
+
+bool VkPhysicalDevice::HasCapability(Capability capability) const
+{
+    switch (capability)
+    {
+    case Capability::MipGeneration:
+        // Vk can use vkCmdBlitImage to generate mips.
+        return true;
+    case Capability::PresentResetsBackBufferToUndefined:
+        // Vk swapchain present will reset the backbuffer to the undefined state.
+        return true;
+    default:
+        VEX_LOG(Fatal, "Unable to determine capbility support for {}", capability);
+        return false;
+    }
 }
 
 FeatureLevel VkPhysicalDevice::GetFeatureLevel() const
@@ -251,12 +263,6 @@ bool VkPhysicalDevice::FormatSupportsLinearFiltering(TextureFormat format, bool 
 {
     ::vk::FormatProperties formatProperties = physicalDevice.getFormatProperties(TextureFormatToVulkan(format, isSRGB));
     return !!(formatProperties.optimalTilingFeatures & ::vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
-}
-
-bool VkPhysicalDevice::PresentResetsBackBufferToUndefined() const
-{
-    // Vk swapchain present will reset the backbuffer to the undefined state.
-    return true;
 }
 
 } // namespace vex::vk

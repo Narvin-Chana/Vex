@@ -230,6 +230,17 @@ void DX12CommandList::SetInputAssembly(InputAssembly inputAssembly)
     commandList->IASetPrimitiveTopology(GraphicsPipeline::GetDX12PrimitiveTopologyFromInputAssembly(inputAssembly));
 }
 
+RHITextureState DX12CommandList::GetClearTextureBarrierState(const TextureDesc& desc,
+                                                             Span<const TextureClearRect> clearRects)
+{
+    const bool isDS = desc.usage & TextureUsage::DepthStencil;
+    return {
+        isDS ? RHIBarrierSync::DepthStencil : RHIBarrierSync::RenderTarget,
+        isDS ? RHIBarrierAccess::DepthStencilReadWrite : RHIBarrierAccess::RenderTarget,
+        isDS ? RHITextureLayout::DepthStencilWrite : RHITextureLayout::RenderTarget,
+    };
+}
+
 void DX12CommandList::ClearTexture(RHITexture& texture,
                                    const TextureSubresource& subresource,
                                    TextureUsage::Type usage,

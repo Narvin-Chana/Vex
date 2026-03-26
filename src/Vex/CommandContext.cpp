@@ -166,37 +166,20 @@ void CommandContext::SetScissor(i32 x, i32 y, u32 width, u32 height)
 void CommandContext::ClearTexture(const Texture& texture,
                                   std::optional<TextureClearValue> textureClearValue,
                                   const TextureSubresource& subresource,
-                                  Span<TextureClearRect> clearRects)
+                                  Span<const TextureClearRect> clearRects)
 {
     VEX_CHECK(
         texture.desc.usage & (TextureUsage::RenderTarget | TextureUsage::DepthStencil),
         "ClearUsage not supported on this texture, it must be either usable as a render target or as a depth stencil!");
-
     TextureUtil::ValidateSubresource(texture.desc, subresource);
 
-    const bool isDepthStencil = texture.desc.usage & TextureUsage::DepthStencil;
     RHITexture& rhiTexture = graphics->GetRHITexture(texture.handle);
 
-    TextureClearValue clearValue = textureClearValue.value_or(texture.desc.clearValue);
-
-    if (GPhysicalDevice->IsFeatureSupported(Feature::NativeTextureClear) && clearRects.empty())
-    {
-        EnqueueTextureBarrier(texture,
-                              subresource,
-                              RHIBarrierSync::Clear,
-                              RHIBarrierAccess::CopyDest,
-                              RHITextureLayout::CopyDest);
-    }
-    else
-    {
-        EnqueueTextureBarrier(texture,
-                              subresource,
-                              isDepthStencil ? RHIBarrierSync::DepthStencil : RHIBarrierSync::RenderTarget,
-                              isDepthStencil ? RHIBarrierAccess::DepthStencilReadWrite : RHIBarrierAccess::RenderTarget,
-                              isDepthStencil ? RHITextureLayout::DepthStencilWrite : RHITextureLayout::RenderTarget);
-    }
-
+    const auto [dstSync, dstAccess, dstLayout] = cmdList->GetClearTextureBarrierState(texture.desc, clearRects);
+    EnqueueTextureBarrier(texture, subresource, dstSync, dstAccess, dstLayout);
     FlushBarriers();
+
+    TextureClearValue clearValue = textureClearValue.value_or(texture.desc.clearValue);
     cmdList->ClearTexture(
         rhiTexture,
         subresource,
@@ -402,7 +385,7 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
 
     // Built-in mip generation is leveraged if supported (and if we're using a graphics command queue).
     // If we want to perform SRGB mip generation, we must do it manually.
-    if (GPhysicalDevice->IsFeatureSupported(Feature::MipGeneration) && cmdList->GetQueue() == QueueType::Graphics &&
+    if (GPhysicalDevice->HasCapability(Capability::MipGeneration) && cmdList->GetQueue() == QueueType::Graphics &&
         !textureBinding.isSRGB)
     {
         EnqueueTextureBarrier(texture,

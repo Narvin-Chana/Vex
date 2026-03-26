@@ -713,7 +713,6 @@ void VkRHI::FlushGPU()
             continue;
         }
 
-        // We could use queue.queue.waitIdle(), but its cleaner to only wait on the signaled values:
         const auto& fence = (*fences)[queueType];
         // We want to wait for the most recently queued up signal (aka nextSignalValue - 1).
         const u64 waitValue = fence.nextSignalValue - 1;
@@ -723,6 +722,8 @@ void VkRHI::FlushGPU()
             .pValues = &waitValue,
         };
         VEX_VK_CHECK << device->waitSemaphores(&flushWaitInfo, std::numeric_limits<u64>::max());
+
+        queue.queue.waitIdle();
     }
 }
 

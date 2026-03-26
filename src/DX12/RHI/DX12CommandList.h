@@ -28,6 +28,8 @@ public:
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) override;
     virtual void SetInputAssembly(InputAssembly inputAssembly) override;
 
+    virtual RHITextureState GetClearTextureBarrierState(const TextureDesc& desc,
+                                                        Span<const TextureClearRect> clearRects) override;
     virtual void ClearTexture(RHITexture& texture,
                               const TextureSubresource& subresource,
                               TextureUsage::Type usage,

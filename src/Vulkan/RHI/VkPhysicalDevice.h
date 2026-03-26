@@ -27,12 +27,12 @@ public:
     ::vk::PhysicalDevice physicalDevice;
 
     virtual bool IsFeatureSupported(Feature feature) const override;
+    virtual bool HasCapability(Capability capability) const override;
     virtual FeatureLevel GetFeatureLevel() const override;
     virtual ResourceBindingTier GetResourceBindingTier() const override;
     virtual ShaderModel GetShaderModel() const override;
     virtual u32 GetMaxLocalConstantsByteSize() const override;
     virtual bool FormatSupportsLinearFiltering(TextureFormat format, bool isSRGB) const override;
-    virtual bool PresentResetsBackBufferToUndefined() const override;
 
     std::string_view GetMaxSupportedSpirVVersion() const;
     std::string_view GetMaxSupportedVulkanVersion() const;
