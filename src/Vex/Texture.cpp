@@ -44,7 +44,7 @@ TextureViewType GetTextureViewType(const TextureDesc& desc, bool textureCubeAsTe
     case TextureType::Texture3D:
         return TextureViewType::Texture3D;
     default:
-        VEX_LOG(Fatal, "Unrecognized texture type for texture: {}...", desc.name);
+        VEX_LOG(Fatal, "Unrecognized texture type for texture: {}.", desc.name);
     }
     std::unreachable();
 }
