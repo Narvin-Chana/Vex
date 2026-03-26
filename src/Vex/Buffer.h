@@ -22,8 +22,10 @@ BEGIN_VEX_ENUM_FLAGS(BufferUsage, u16)
     VertexBuffer            = 1 << 3, // Buffers used for vertex buffers.
     IndexBuffer             = 1 << 4, // Buffers used for index buffers.
     IndirectArgs            = 1 << 5, // Buffers used as parameters for an indirect dispatch.
-    AccelerationStructure   = 1 << 6, // Buffers used as a HWRT Acceleration Structure, these also implicitly require the ShaderReadWrite usage.
-    Scratch                 = 1 << 7, // Buffers used as a scratch buffer for building HWRT Acceleration Structures, these also implicitly require the ShaderReadWrite usage.
+    AccelerationStructure   = 1 << 6  // Buffers used as a HWRT Acceleration Structure, these also require the ShaderReadWrite usage.
+                            | ShaderReadUniform, 
+    Scratch                 = 1 << 7 // Buffers used as a scratch buffer for building HWRT Acceleration Structures, these also require the ShaderReadWrite usage.
+                            | ShaderReadUniform, 
     ShaderTable             = 1 << 8, // Buffers used as a ShaderTable for HWRT shaders.
 END_VEX_ENUM_FLAGS();
 

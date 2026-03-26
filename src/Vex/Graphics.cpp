@@ -442,6 +442,7 @@ void Graphics::DestroyTexture(const Texture& texture)
     {
         return;
     }
+    // TODO(https://trello.com/c/lEZ7PhTc): MostRecentSyncToken is error prone.
     EnqueueCPUWork([&, rhiTexture = *textureRegistry.ExtractElement(texture.handle)]() mutable
                    { CleanupResource(std::move(rhiTexture), *descriptorPool, *allocator); },
                    rhi.GetMostRecentSyncTokenPerQueue());
@@ -453,6 +454,7 @@ void Graphics::DestroyBuffer(const Buffer& buffer)
     {
         return;
     }
+    // TODO(https://trello.com/c/lEZ7PhTc): MostRecentSyncToken is error prone.
     EnqueueCPUWork([&, rhiBuffer = *bufferRegistry.ExtractElement(buffer.handle)]() mutable
                    { CleanupResource(std::move(rhiBuffer), *descriptorPool, *allocator); },
                    rhi.GetMostRecentSyncTokenPerQueue());
@@ -464,6 +466,7 @@ void Graphics::DestroyAccelerationStructure(const AccelerationStructure& acceler
     {
         return;
     }
+    // TODO(https://trello.com/c/lEZ7PhTc): MostRecentSyncToken is error prone.
     EnqueueCPUWork([&, rhiAS = *accelerationStructureRegistry.ExtractElement(accelerationStructure.handle)]() mutable
                    { CleanupResource(std::move(rhiAS), *descriptorPool, *allocator); },
                    rhi.GetMostRecentSyncTokenPerQueue());
