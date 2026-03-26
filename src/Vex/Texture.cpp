@@ -4,6 +4,7 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/Logger.h>
+#include <Vex/Platform/Debug.h>
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Formattable.h>
 #include <Vex/Utility/Validation.h>
@@ -13,6 +14,12 @@ namespace vex
 
 namespace TextureUtil
 {
+
+u32 GetSubresourceIndex(const TextureDesc& desc, u16 mip, u32 slice, u32 plane)
+{
+    VEX_ASSERT(mip < desc.mips && slice < desc.GetSliceCount() && plane < desc.GetPlaneCount());
+    return plane * (desc.mips * desc.GetSliceCount()) + static_cast<u32>(mip) + slice * desc.mips;
+}
 
 std::tuple<u32, u32, u32> GetMipSize(const TextureDesc& desc, u32 mip)
 {
@@ -31,11 +38,9 @@ TextureViewType GetTextureViewType(const TextureDesc& desc, bool textureCubeAsTe
     switch (desc.type)
     {
     case TextureType::Texture2D:
-        return (desc.depthOrSliceCount > 1) ? TextureViewType::Texture2DArray
-                                                            : TextureViewType::Texture2D;
+        return (desc.depthOrSliceCount > 1) ? TextureViewType::Texture2DArray : TextureViewType::Texture2D;
     case TextureType::TextureCube:
-        return (desc.depthOrSliceCount > 1) ? TextureViewType::TextureCubeArray
-                                                            : TextureViewType::TextureCube;
+        return (desc.depthOrSliceCount > 1) ? TextureViewType::TextureCubeArray : TextureViewType::TextureCube;
     case TextureType::Texture3D:
         return TextureViewType::Texture3D;
     default:
@@ -369,7 +374,7 @@ void ValidateSubresource(const TextureDesc& desc, const TextureSubresource& subr
                   subresource.sliceCount,
                   desc.GetSliceCount());
     }
-    
+
     if (subresource.aspect != TextureAspect::All)
     {
         if (FormatUtil::IsDepthOrDepthStencilFormat(desc.format))

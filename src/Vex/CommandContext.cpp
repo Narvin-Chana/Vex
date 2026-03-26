@@ -1136,6 +1136,14 @@ void CommandContext::ExecuteInDrawContext(Span<const TextureBinding> renderTarge
 
 QueryHandle CommandContext::BeginTimestampQuery()
 {
+    cmdList->EmitBarriers({},
+                          {},
+                          { RHIGlobalBarrier{
+                              RHIBarrierSync::Copy,
+                              RHIBarrierSync::Copy,
+                              RHIBarrierAccess::CopyDest,
+                              RHIBarrierAccess::CopySource,
+                          } });
     return cmdList->BeginTimestampQuery();
 }
 
@@ -1144,7 +1152,7 @@ void CommandContext::EndTimestampQuery(QueryHandle handle)
     cmdList->EndTimestampQuery(handle);
 }
 
-void CommandContext::Transition(const Buffer& buffer, RHIBarrierAccess access)
+void CommandContext::Barrier(const Buffer& buffer, RHIBarrierAccess access)
 {
     EnqueueGlobalBarrier({
         .srcSync = RHIBarrierSync::AllCommands,
@@ -1154,12 +1162,12 @@ void CommandContext::Transition(const Buffer& buffer, RHIBarrierAccess access)
     });
 }
 
-void CommandContext::Transition(const Texture& texture, RHIBarrierAccess access, const TextureSubresource& subresource)
+void CommandContext::Barrier(const Texture& texture, RHIBarrierAccess access, const TextureSubresource& subresource)
 {
     EnqueueTextureBarrier(texture, subresource, RHIBarrierSync::AllCommands, access, RHIAccessToRHILayout(access));
 }
 
-void CommandContext::Transition(const AccelerationStructure& as, RHIBarrierAccess access)
+void CommandContext::Barrier(const AccelerationStructure& as, RHIBarrierAccess access)
 {
     VEX_CHECK(
         access == RHIBarrierAccess::AccelerationStructureRead || access == RHIBarrierAccess::AccelerationStructureWrite,
@@ -1313,7 +1321,7 @@ void CommandContext::InferResourceBarriers(RHIBarrierSync syncStage, Span<const 
 
                          EnqueueTextureBarrier(texBinding.texture, texBinding.subresource, syncStage, access, layout);
                      },
-                     [this, syncStage](const ASBinding& asBinding)
+                     [this, syncStage](const AccelerationStructureBinding& asBinding)
                      {
                          // All ASBindings use AccelerationStructureRead.
                          EnqueueGlobalBarrier(RHIGlobalBarrier{
@@ -1375,24 +1383,19 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
     if (drawResources.depthStencil.has_value())
     {
         // Start with the most restrictive access.
-        RHIBarrierAccess depthAccess = RHIBarrierAccess::DepthStencilReadWrite;
-        RHITextureLayout depthLayout = RHITextureLayout::DepthStencilWrite;
-        if (drawDesc.depthStencilState.depthWriteEnabled)
+        RHIBarrierAccess depthAccess;
+        if (!drawDesc.depthStencilState.depthWriteEnabled)
         {
-            if (drawDesc.depthStencilState.depthTestEnabled)
-            {
-                depthAccess = RHIBarrierAccess::DepthStencilReadWrite;
-            }
-            else
-            {
-                depthAccess = RHIBarrierAccess::DepthStencilWrite;
-            }
+            depthAccess = RHIBarrierAccess::DepthStencilRead;
         }
         else
         {
-            depthAccess = RHIBarrierAccess::DepthStencilRead;
-            depthLayout = RHITextureLayout::DepthStencilRead;
+            depthAccess = drawDesc.depthStencilState.depthTestEnabled ? RHIBarrierAccess::DepthStencilReadWrite
+                                                                      : RHIBarrierAccess::DepthStencilWrite;
         }
+        RHITextureLayout depthLayout = drawDesc.depthStencilState.depthWriteEnabled
+                                           ? RHITextureLayout::DepthStencilWrite
+                                           : RHITextureLayout::DepthStencilRead;
 
         EnqueueTextureBarrier(drawResources.depthStencil->binding.texture,
                               drawResources.depthStencil->binding.subresource,

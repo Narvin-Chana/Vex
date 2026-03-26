@@ -341,14 +341,13 @@ void VkCommandList::EmitBarriers(Span<const RHIBufferBarrier> bufferBarriers,
         srcAccessMask |= RHIBarrierAccessToVulkan(gb.srcAccess);
         dstAccessMask |= RHIBarrierAccessToVulkan(gb.dstAccess);
     }
-    const bool useMemoryBarrier = (srcSyncMask != ::vk::PipelineStageFlags2{}) ||
-                                  (dstSyncMask != ::vk::PipelineStageFlags2{}) ||
-                                  (srcAccessMask != ::vk::AccessFlags2{}) || (dstAccessMask != ::vk::AccessFlags2{});
-    ::vk::MemoryBarrier2 memoryBarrier = ::vk::MemoryBarrier2()
-                                             .setSrcStageMask(srcSyncMask)
-                                             .setDstStageMask(dstSyncMask)
-                                             .setSrcAccessMask(srcAccessMask)
-                                             .setDstAccessMask(dstAccessMask);
+    const bool useMemoryBarrier = srcSyncMask || dstSyncMask || srcAccessMask || dstAccessMask;
+    ::vk::MemoryBarrier2 memoryBarrier{
+        .srcStageMask = srcSyncMask,
+        .srcAccessMask = srcAccessMask,
+        .dstStageMask = dstSyncMask,
+        .dstAccessMask = dstAccessMask,
+    };
 
     ::vk::DependencyInfo info{
         .memoryBarrierCount = useMemoryBarrier ? 1u : 0u,

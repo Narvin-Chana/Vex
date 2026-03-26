@@ -116,13 +116,6 @@ void RHITimestampQueryPoolBase::FetchQueriesTimestamps(RHICommandList& cmdList, 
                              {},
                              {});
         cmdList.ResolveTimestampQueries(range.begin * 2, range.count * 2);
-        cmdList.EmitBarriers({ RHIBufferBarrier{ timestampBuffer,
-                                                 RHIBarrierSync::Copy,
-                                                 RHIBarrierSync::Copy,
-                                                 RHIBarrierAccess::CopyDest,
-                                                 RHIBarrierAccess::CopySource } },
-                             {},
-                             {});
     }
 }
 

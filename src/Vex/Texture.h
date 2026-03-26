@@ -231,7 +231,7 @@ struct TextureSubresource
     u16 mipCount = GTextureAllMips;
     u32 startSlice = 0;
     u32 sliceCount = GTextureAllSlices;
-    // Refers to the slice in DX12 and the aspect mask in Vulkan
+    // Refers to the plane in DX12 and the aspect mask in Vulkan
     TextureAspect::Flags aspect = TextureAspect::All;
 
     bool IsFullResource(const TextureDesc& desc) const;
@@ -279,6 +279,8 @@ namespace TextureUtil
 static constexpr u64 RowPitchAlignment = 256;
 static constexpr u64 MipAlignment = 512;
 static constexpr u64 SliceAlignment = 512;
+
+u32 GetSubresourceIndex(const TextureDesc& desc, u16 mip, u32 slice, u32 plane);
 
 std::tuple<u32, u32, u32> GetMipSize(const TextureDesc& desc, u32 mip);
 TextureViewType GetTextureViewType(const TextureDesc& desc, bool textureCubeAsTexture2DArray);

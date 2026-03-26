@@ -128,10 +128,7 @@ struct TextureBinding
     bool textureCubeAsTexture2DArray = false;
 };
 
-struct ASBinding
-{
-    AccelerationStructure accelerationStructure;
-};
+using AccelerationStructureBinding = AccelerationStructure;
 
 struct ResourceBinding
 {
@@ -143,12 +140,12 @@ struct ResourceBinding
         : binding{ binding }
     {
     }
-    ResourceBinding(const ASBinding& binding)
+    ResourceBinding(const AccelerationStructureBinding& binding)
         : binding{ binding }
     {
     }
 
-    std::variant<TextureBinding, BufferBinding, ASBinding> binding;
+    std::variant<TextureBinding, BufferBinding, AccelerationStructureBinding> binding;
 
     [[nodiscard]] bool IsTexture() const
     {
@@ -168,13 +165,13 @@ struct ResourceBinding
         return std::get<BufferBinding>(binding);
     }
 
-    [[nodiscard]] bool IsAS() const
+    [[nodiscard]] bool IsAccelerationStructure() const
     {
-        return std::holds_alternative<ASBinding>(binding);
+        return std::holds_alternative<AccelerationStructureBinding>(binding);
     }
-    [[nodiscard]] const ASBinding& GetASBinding() const
+    [[nodiscard]] const AccelerationStructureBinding& GetAccelerationStructureBinding() const
     {
-        return std::get<ASBinding>(binding);
+        return std::get<AccelerationStructureBinding>(binding);
     }
 };
 

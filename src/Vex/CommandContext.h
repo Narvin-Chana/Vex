@@ -214,9 +214,9 @@ public:
     // Manual synchronization is typically unnecessary as long as you use the "tracked resources" provided by
     // Draw/Dispatch/TraceRays. In the cases it is necessary we still expose it here.
 
-    void Transition(const Buffer& buffer, RHIBarrierAccess access);
-    void Transition(const Texture& texture, RHIBarrierAccess access, const TextureSubresource& subresource = {});
-    void Transition(const AccelerationStructure& as, RHIBarrierAccess access);
+    void Barrier(const Buffer& buffer, RHIBarrierAccess access);
+    void Barrier(const Texture& texture, RHIBarrierAccess access, const TextureSubresource& subresource = {});
+    void Barrier(const AccelerationStructure& as, RHIBarrierAccess access);
 
     // ---------------------------------------------------------------------------------------------------------------
 

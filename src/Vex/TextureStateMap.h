@@ -81,7 +81,7 @@ struct TextureStateMap
                                                desc,
                                                [&](u16 mip, u32 slice, u32 plane)
                                                {
-                                                   const u32 idx = GetSubresourceIndex(desc, mip, slice, plane);
+                                                   const u32 idx = TextureUtil::GetSubresourceIndex(desc, mip, slice, plane);
                                                    const RHITextureState state = (*perSubresourceState)[idx];
 
                                                    if (!sectionState || *sectionState != state)
@@ -99,9 +99,7 @@ struct TextureStateMap
 
     void DetectUniformity();
 
-private:
-    [[nodiscard]] u32 GetSubresourceIndex(const TextureDesc& desc, u16 mip, u32 slice, u32 plane) const;
-    
+private:    
     RHITextureState uniformState;
     std::optional<std::vector<RHITextureState>> perSubresourceState;
 };

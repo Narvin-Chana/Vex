@@ -23,7 +23,7 @@ void ResourceBindingUtils::CollectRHIResources(Graphics& graphics,
                                 RHITexture& texture = graphics.GetRHITexture(texBinding.texture.handle);
                                 textureBindings.emplace_back(texBinding, NonNullPtr(texture));
                             },
-                            [](const ASBinding& asBinding)
+                            [](const AccelerationStructureBinding& asBinding)
                             {
                                 // no-op
                             } },

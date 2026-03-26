@@ -183,7 +183,7 @@ std::vector<BufferTextureCopyDesc> BufferTextureCopyDesc::AllMips(const TextureD
                                      .mipCount = 1,
                                      .startSlice = 0,
                                      .sliceCount = sliceCount,
-                                     .aspect = TextureAspect::All, },
+                                     .aspect = TextureSubresource::GetDefaultAspect(desc), },
                     .extent = { mipSize.width, mipSize.height, mipSize.depth },
                 },
         });
@@ -241,7 +241,7 @@ std::vector<BufferTextureCopyDesc> BufferTextureCopyDesc::SingleMip(u16 mipIndex
                                  .mipCount = 1,
                                  .startSlice = 0,
                                  .sliceCount = sliceCount,
-                                 .aspect = TextureAspect::All, },
+                                 .aspect = TextureSubresource::GetDefaultAspect(desc), },
                 .extent = { mipSize.width, mipSize.height, mipSize.depth },
             },
     });

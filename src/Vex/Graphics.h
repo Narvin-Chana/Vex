@@ -201,7 +201,7 @@ private:
 
     std::optional<SyncToken> FlushPendingInitializations();
     void PrepareCommandContextForSubmission(CommandContext& ctx);
-    void CleanupResources();
+    void Cleanup();
 
     PipelineStateCache& GetPipelineStateCache();
 

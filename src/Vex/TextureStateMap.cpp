@@ -20,7 +20,7 @@ RHITextureState TextureStateMap::Get(const TextureDesc& desc, const TextureSubre
         desc,
         [this, &desc, &state](u16 mip, u32 slice, u32 plane)
         {
-            const u32 key = GetSubresourceIndex(desc, mip, slice, plane);
+            const u32 key = TextureUtil::GetSubresourceIndex(desc, mip, slice, plane);
             const RHITextureState subresourceState = (*perSubresourceState)[key];
             if (!state)
             {
@@ -53,7 +53,7 @@ void TextureStateMap::Set(const TextureDesc& desc, const TextureSubresource& sub
             {
                 for (u32 plane = 0; plane < desc.GetPlaneCount(); ++plane)
                 {
-                    (*perSubresourceState)[GetSubresourceIndex(desc, mip, slice, plane)] = uniformState;
+                    (*perSubresourceState)[TextureUtil::GetSubresourceIndex(desc, mip, slice, plane)] = uniformState;
                 }
             }
         }
@@ -63,7 +63,8 @@ void TextureStateMap::Set(const TextureDesc& desc, const TextureSubresource& sub
                                            desc,
                                            [this, &desc, &newState](u16 mip, u32 slice, u32 plane)
                                            {
-                                               const u32 key = GetSubresourceIndex(desc, mip, slice, plane);
+                                               const u32 key =
+                                                   TextureUtil::GetSubresourceIndex(desc, mip, slice, plane);
                                                (*perSubresourceState)[key] = newState;
                                            });
 
@@ -95,12 +96,6 @@ void TextureStateMap::DetectUniformity()
         // Uniformity detected!
         SetUniform(firstState);
     }
-}
-
-u32 TextureStateMap::GetSubresourceIndex(const TextureDesc& desc, u16 mip, u32 slice, u32 plane) const
-{
-    VEX_ASSERT(mip < desc.mips && slice < desc.GetSliceCount() && plane < desc.GetPlaneCount());
-    return plane * (desc.mips * desc.GetSliceCount()) + static_cast<u32>(mip) + slice * desc.mips;
 }
 
 } // namespace vex

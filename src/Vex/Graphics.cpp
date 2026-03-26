@@ -252,7 +252,7 @@ void Graphics::Present()
     }
     else
     {
-        CleanupResources();
+        Cleanup();
     }
 }
 
@@ -357,10 +357,11 @@ void Graphics::PrepareCommandContextForSubmission(CommandContext& ctx)
     ctx.cmdList->Close();
 }
 
-void Graphics::CleanupResources()
+void Graphics::Cleanup()
 {
     // Flush all potential CPU work that was enqueued to the GPU timeline, this can include RHI resource cleanup.
     ExecuteCPUWork();
+    // Reclaim all finished command lists.
     commandPool->ReclaimCommandLists();
     // Send all shader errors to the user, we do this every time we cleanup, since cleanup occurs when we submit or
     // present.
@@ -501,8 +502,8 @@ std::vector<BindlessHandle> Graphics::GetBindlessHandles(Span<const ResourceBind
                             { handles.emplace_back(GetBindlessHandle(bufferBinding)); },
                             [&handles, this](const TextureBinding& texBinding)
                             { handles.emplace_back(GetBindlessHandle(texBinding)); },
-                            [&handles, this](const ASBinding& asBinding)
-                            { handles.emplace_back(GetBindlessHandle(asBinding.accelerationStructure)); } },
+                            [&handles, this](const AccelerationStructureBinding& asBinding)
+                            { handles.emplace_back(GetBindlessHandle(asBinding)); } },
                    binding.binding);
     }
     return handles;
@@ -570,7 +571,7 @@ std::vector<SyncToken> Graphics::Submit(Span<CommandContext> commandContexts, Sp
 
     commandPool->OnCommandListsSubmitted(cmdLists, tokens);
 
-    CleanupResources();
+    Cleanup();
 
     return tokens;
 }
@@ -600,7 +601,9 @@ void Graphics::FlushGPU()
 
     rhi.FlushGPU();
 
-    CleanupResources();
+    Cleanup();
+
+    VEX_ASSERT(pendingCPUWork.empty(), "Should never have remaining CPU work after a flush and cleanup...");
 }
 
 void Graphics::SetUseVSync(bool useVSync)
@@ -651,7 +654,7 @@ void Graphics::OnWindowResized(u32 newWidth, u32 newHeight)
     FlushGPU();
 
     // Take advantage of the resize to cleanup no longer needed resources.
-    CleanupResources();
+    Cleanup();
 
     // Recreate our swapchain.
     swapChain->RecreateSwapChain(newWidth, newHeight);
@@ -696,7 +699,7 @@ void Graphics::WaitForTokenOnCPU(const SyncToken& syncToken)
 {
     rhi.WaitForTokenOnCPU(syncToken);
 
-    CleanupResources();
+    Cleanup();
 }
 
 void Graphics::RecompileAllShaders()
