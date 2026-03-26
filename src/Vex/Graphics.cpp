@@ -139,6 +139,8 @@ Graphics::~Graphics()
     // Wait for work to be done before starting the deletion of resources.
     FlushGPU();
 
+    allocator.reset();
+
     // Clear the global physical device.
     GPhysicalDevice = nullptr;
     GEnableGPUScopedEvents = false;
@@ -439,9 +441,9 @@ void Graphics::DestroyTexture(const Texture& texture)
     {
         return;
     }
-    ScheduleCPUCallback([&, rhiTexture = *textureRegistry.ExtractElement(texture.handle)]() mutable
-                        { CleanupResource(std::move(rhiTexture), *descriptorPool, *allocator); },
-                        rhi.GetMostRecentSyncTokenPerQueue());
+    EnqueueCPUWork([&, rhiTexture = *textureRegistry.ExtractElement(texture.handle)]() mutable
+                   { CleanupResource(std::move(rhiTexture), *descriptorPool, *allocator); },
+                   rhi.GetMostRecentSyncTokenPerQueue());
 }
 
 void Graphics::DestroyBuffer(const Buffer& buffer)
@@ -450,9 +452,9 @@ void Graphics::DestroyBuffer(const Buffer& buffer)
     {
         return;
     }
-    ScheduleCPUCallback([&, rhiBuffer = *bufferRegistry.ExtractElement(buffer.handle)]() mutable
-                        { CleanupResource(std::move(rhiBuffer), *descriptorPool, *allocator); },
-                        rhi.GetMostRecentSyncTokenPerQueue());
+    EnqueueCPUWork([&, rhiBuffer = *bufferRegistry.ExtractElement(buffer.handle)]() mutable
+                   { CleanupResource(std::move(rhiBuffer), *descriptorPool, *allocator); },
+                   rhi.GetMostRecentSyncTokenPerQueue());
 }
 
 void Graphics::DestroyAccelerationStructure(const AccelerationStructure& accelerationStructure)
@@ -461,10 +463,9 @@ void Graphics::DestroyAccelerationStructure(const AccelerationStructure& acceler
     {
         return;
     }
-    ScheduleCPUCallback(
-        [&, rhiAS = *accelerationStructureRegistry.ExtractElement(accelerationStructure.handle)]() mutable
-        { CleanupResource(std::move(rhiAS), *descriptorPool, *allocator); },
-        rhi.GetMostRecentSyncTokenPerQueue());
+    EnqueueCPUWork([&, rhiAS = *accelerationStructureRegistry.ExtractElement(accelerationStructure.handle)]() mutable
+                   { CleanupResource(std::move(rhiAS), *descriptorPool, *allocator); },
+                   rhi.GetMostRecentSyncTokenPerQueue());
 }
 
 BindlessHandle Graphics::GetBindlessHandle(const TextureBinding& bindlessResource)
@@ -549,20 +550,23 @@ std::vector<SyncToken> Graphics::Submit(Span<CommandContext> commandContexts, Sp
         }
         for (auto& resource : ctx.temporaryResources)
         {
-            phaseTemporaryResources.emplace_back(std::move(resource));
+            phaseTemporaryResources.push_back(std::move(resource));
         }
     }
 
     // Send them to be cleaned-up once the GPU has done executing.
-    ScheduleCPUCallback(
-        [this, resources = std::move(phaseTemporaryResources)]() mutable
-        {
-            for (auto& resource : resources)
+    if (!phaseTemporaryResources.empty())
+    {
+        EnqueueCPUWork(
+            [this, resources = std::move(phaseTemporaryResources)]() mutable
             {
-                CleanupResource(std::move(resource), *descriptorPool, *allocator);
-            }
-        },
-        tokens);
+                for (auto& resource : resources)
+                {
+                    CleanupResource(std::move(resource), *descriptorPool, *allocator);
+                }
+            },
+            tokens);
+    }
 
     commandPool->OnCommandListsSubmitted(cmdLists, tokens);
 
@@ -571,14 +575,9 @@ std::vector<SyncToken> Graphics::Submit(Span<CommandContext> commandContexts, Sp
     return tokens;
 }
 
-void Graphics::ScheduleCPUCallback(CPUCallback&& callback, Span<const SyncToken> tokens)
-{
-    pendingCPUWork.emplace_back(std::move(callback), std::vector<SyncToken>{ tokens.begin(), tokens.end() });
-}
-
 void Graphics::EnqueueCPUWork(CPUCallback&& callback, Span<const SyncToken> tokens)
 {
-    ScheduleCPUCallback(std::move(callback), tokens);
+    pendingCPUWork.emplace_back(std::move(callback), std::vector<SyncToken>{ tokens.begin(), tokens.end() });
 }
 
 void Graphics::ExecuteCPUWork()
@@ -593,20 +592,6 @@ void Graphics::ExecuteCPUWork()
                       }
                       return false;
                   });
-}
-
-void Graphics::FlushCPUWork()
-{
-    while (!pendingCPUWork.empty())
-    {
-        ExecuteCPUWork();
-
-        if (!pendingCPUWork.empty())
-        {
-            // Provide hint to the OS to avoid spinning when the GPU has not yet finished all work.
-            std::this_thread::yield();
-        }
-    }
 }
 
 void Graphics::FlushGPU()

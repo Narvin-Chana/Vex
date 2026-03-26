@@ -54,7 +54,7 @@ namespace vex::vk
 struct VkGPUContext;
 class VkDescriptorPool;
 
-class VkTexture : public RHITextureBase
+class VkTexture final : public RHITextureBase
 {
 public:
     // BackBuffer constructor:
@@ -98,11 +98,12 @@ private:
     NonNullPtr<VkGPUContext> ctx;
 
     bool isBackBuffer;
-    std::variant<::vk::Image, ::vk::UniqueImage> image;
 #if !VEX_USE_CUSTOM_RESOURCE_ALLOCATOR
     // Only valid if type == UniqueImage.
+    // Order is important, destroy the memory AFTER the image!
     ::vk::UniqueDeviceMemory memory;
 #endif
+    std::variant<::vk::Image, ::vk::UniqueImage> image;
 
     std::unordered_map<VkTextureView, CacheEntry> cache;
 

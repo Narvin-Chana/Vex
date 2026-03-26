@@ -9,7 +9,7 @@ namespace QueueTypes
 {
 enum Value : u8
 {
-    Invalid = 0xff,
+    Invalid = 0xFF,
     // Transfer-only operations
     Copy = 0,
     // Compute operations (includes Copy capabilites)

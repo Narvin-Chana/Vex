@@ -23,7 +23,8 @@ inline void* GModule = nullptr;
 inline void LoadRenderDocAPI()
 {
 #if defined(_WIN32)
-    if (GModule = GetModuleHandleA("renderdoc.dll"))
+    GModule = GetModuleHandleA("renderdoc.dll");
+    if (GModule != nullptr)
     {
         pRENDERDOC_GetAPI RENDERDOC_GetAPI = (pRENDERDOC_GetAPI)GetProcAddress(GModule, "RENDERDOC_GetAPI");
         int ret = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_1_2, (void**)&GRDoc_api);
@@ -33,7 +34,8 @@ inline void LoadRenderDocAPI()
         }
     }
 #elif defined(__linux__)
-    if (GModule = dlopen("librenderdoc.so", RTLD_NOW | RTLD_NOLOAD))
+    GModule = dlopen("librenderdoc.so", RTLD_NOW | RTLD_NOLOAD);
+    if (GModule != nullptr)
     {
         pRENDERDOC_GetAPI RENDERDOC_GetAPI = (pRENDERDOC_GetAPI)dlsym(GModule, "RENDERDOC_GetAPI");
         int ret = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_1_2, (void**)&GRDoc_api);

@@ -25,7 +25,7 @@ bool IsMemoryTypeIndexMappable(::vk::PhysicalDevice device, u32 memoryTypeIndex)
 
 } // namespace AllocatorUtils
 
-class VkAllocator : public RHIAllocatorBase
+class VkAllocator final : public RHIAllocatorBase
 {
 public:
     VkAllocator(NonNullPtr<VkGPUContext> ctx);

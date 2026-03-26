@@ -8,7 +8,7 @@
 #include <RHI/RHIFwd.h>
 
 #ifndef VEX_USE_CUSTOM_RESOURCE_ALLOCATOR 
-#define VEX_USE_CUSTOM_RESOURCE_ALLOCATOR 0
+#define VEX_USE_CUSTOM_RESOURCE_ALLOCATOR 1
 #endif
 
 namespace vex

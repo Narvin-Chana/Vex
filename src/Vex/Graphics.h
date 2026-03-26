@@ -198,13 +198,10 @@ public:
 private:
     void EnqueueCPUWork(CPUCallback&& callback, Span<const SyncToken> tokens);
     void ExecuteCPUWork();
-    void FlushCPUWork();
 
     std::optional<SyncToken> FlushPendingInitializations();
     void PrepareCommandContextForSubmission(CommandContext& ctx);
     void CleanupResources();
-
-    void ScheduleCPUCallback(CPUCallback&& callback, Span<const SyncToken> tokens);
 
     PipelineStateCache& GetPipelineStateCache();
 

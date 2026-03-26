@@ -13,7 +13,7 @@ namespace vex::dx12
 
 using HeapType = ResourceMemoryLocality;
 
-class DX12Allocator : public RHIAllocatorBase
+class DX12Allocator final : public RHIAllocatorBase
 {
 public:
     DX12Allocator(const ComPtr<DX12Device>& device);
