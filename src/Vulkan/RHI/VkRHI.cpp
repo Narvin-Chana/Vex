@@ -713,8 +713,8 @@ void VkRHI::FlushGPU()
             continue;
         }
 
-        const auto& fence = (*fences)[queueType];
         // We want to wait for the most recently queued up signal (aka nextSignalValue - 1).
+        const auto& fence = (*fences)[queueType];
         const u64 waitValue = fence.nextSignalValue - 1;
         const ::vk::SemaphoreWaitInfo flushWaitInfo{
             .semaphoreCount = 1,
@@ -723,7 +723,8 @@ void VkRHI::FlushGPU()
         };
         VEX_VK_CHECK << device->waitSemaphores(&flushWaitInfo, std::numeric_limits<u64>::max());
 
-        queue.queue.waitIdle();
+        // Now wait for the semaphore itself to be done signaling.
+        VEX_VK_CHECK << queue.queue.waitIdle();
     }
 }
 

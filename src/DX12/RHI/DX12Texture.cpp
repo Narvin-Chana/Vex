@@ -84,7 +84,8 @@ static D3D12_DEPTH_STENCIL_VIEW_DESC CreateDepthStencilViewDesc(const DX12Textur
     return desc;
 }
 
-static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const TextureDesc& textureDesc, const DX12TextureView& view)
+static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const TextureDesc& textureDesc,
+                                                                    const DX12TextureView& view)
 {
     D3D12_SHADER_RESOURCE_VIEW_DESC desc{
         .Format = GetDX12FormatForShaderResourceViewFormat(view.format, view.subresource.GetSingleAspect(textureDesc)),
@@ -466,14 +467,11 @@ DX12TextureView::DX12TextureView(const TextureDesc& desc,
     : subresource{ inSubresource }
     , usage{ usage }
     , dimension{ dimension }
-    , format{ format }
+    , format{ usage == TextureUsage::ShaderRead &&
+                      (desc.usage & TextureUsage::DepthStencil && desc.usage & TextureUsage::ShaderRead)
+                  ? GetTypelessFormatForDepthStencilCompatibleDX12Format(format)
+                  : format }
 {
-    if (usage == TextureUsage::ShaderRead &&
-        (desc.usage & TextureUsage::DepthStencil && desc.usage & TextureUsage::ShaderRead))
-    {
-        format = GetTypelessFormatForDepthStencilCompatibleDX12Format(format);
-    }
-
     // Resolve subresource (replacing MAX values with the actual value).
     subresource.mipCount = inSubresource.GetMipCount(desc);
     subresource.sliceCount = inSubresource.GetSliceCount(desc);
