@@ -193,6 +193,8 @@ add_library(Vex STATIC
     "src/Vex/Shaders/CompilerBase.h"
     "src/Vex/Shaders/RayTracingShaders.h"
     "src/Vex/Shaders/RayTracingShaders.cpp"
+    "src/Vex/Shaders/ShaderCompileContext.h"
+    "src/Vex/Shaders/ShaderCompileContext.cpp"
     # Vex Built-In Shaders
     "src/Vex/BuiltInShaders/MipGeneration.h"
     # Vex API

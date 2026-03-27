@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -13,6 +14,8 @@
 
 namespace vex
 {
+
+class ShaderCompileContext;
 
 enum class ShaderType : u8
 {
@@ -55,17 +58,14 @@ enum class ShaderCompilerBackend : u8
 
 struct ShaderKey
 {
-    // Vex accepts either a filepath, or the sourceCode directly.
-    // If both are filled in, we prefer the filepath.
-
     std::filesystem::path path;
-    std::string sourceCode;
 
     std::string entryPoint;
     ShaderType type;
     std::vector<ShaderDefine> defines;
     // Determines which compilation backend to use in the shader compiler.
     ShaderCompilerBackend compiler = ShaderCompilerBackend::Auto;
+
     bool operator==(const ShaderKey& other) const = default;
 };
 
@@ -80,7 +80,6 @@ VEX_MAKE_HASHABLE(vex::ShaderDefine,
 
 VEX_MAKE_HASHABLE(vex::ShaderKey, 
     VEX_HASH_COMBINE(seed, obj.path);
-    VEX_HASH_COMBINE(seed, obj.sourceCode);
     VEX_HASH_COMBINE(seed, obj.entryPoint);
     VEX_HASH_COMBINE(seed, obj.type);
     VEX_HASH_COMBINE_CONTAINER(seed, obj.defines);
@@ -91,9 +90,9 @@ VEX_MAKE_HASHABLE(vex::ShaderKey,
 
 VEX_FORMATTABLE(vex::ShaderDefine, "ShaderDefine(\"{}\", \"{}\")", obj.name, obj.value);
 
-VEX_FORMATTABLE(
-    vex::ShaderKey,
-    "ShaderKey(\n\tKey Hash: \"{}\"\n\t{}: \"{}\"\n\tEntry Point: \"{}\"\n\tType: {}\n\tDefines: {}\n\tCompiler: {})",
+VEX_FORMATTABLE(vex::ShaderKey,
+    "ShaderKey(\n\tKey Hash: \"{}\"\n\t{}: \"{}\"\n\tEntry Point: \"{}\"\n\tType: {}\n\tDefines: "
+    "{}\n\tCompiler: {})",
     std::hash<vex::ShaderKey>{}(obj),
     !obj.path.empty() ? "Path" : "Source code",
     !obj.path.empty() ? obj.path.string() : "SOURCE STRING",

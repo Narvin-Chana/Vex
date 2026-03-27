@@ -39,15 +39,37 @@ ShaderCompiler::ShaderCompiler(const ShaderCompilerSettings& compilerSettings)
 #if VEX_SLANG
     , slangCompilerImpl(compilerSettings.shaderIncludeDirectories)
 #endif
+, globalCompileContext(CreateCompileContext())
 {
 #if VEX_SHIPPING
     // Force disable shader debugging in shipping.
     this->compilerSettings.enableShaderDebugging = false;
 #endif
     globalShaderEnv = CreateShaderEnvironment();
+
+
 }
 
 ShaderCompiler::~ShaderCompiler() = default;
+
+ShaderCompileContext& ShaderCompiler::GetCompileContext()
+{
+    return globalCompileContext;
+}
+
+ShaderCompileContext ShaderCompiler::CreateCompileContext(ShaderCompileContext* originalContext)
+{
+    ShaderCompileContext newContext;
+    if (originalContext)
+    {
+        newContext.virtualFiles = originalContext->virtualFiles;
+    }
+#if VEX_SLANG
+    slangCompilerImpl.SetContextImpl(globalShaderEnv, compilerSettings, globalCompileContext, originalContext);
+#endif
+
+    return newContext;
+}
 
 ShaderEnvironment ShaderCompiler::CreateShaderEnvironment()
 {
@@ -68,11 +90,10 @@ std::expected<void, std::string> ShaderCompiler::CompileShader(Shader& shader)
 
 NonNullPtr<Shader> ShaderCompiler::GetShader(const ShaderKey& key)
 {
-    if (!key.path.empty() && !key.sourceCode.empty())
+    if (key.path.empty())
     {
-        VEX_LOG(Warning,
-                "Shader {} has both a shader filepath and shader source string. Using the filepath for compilation...",
-                key);
+        VEX_LOG(Fatal,
+                "Attempting to get a shader with an empty path! This is likely a bug, as it will lead to nothing");
     }
 
     Shader* shaderPtr;
@@ -93,7 +114,7 @@ NonNullPtr<Shader> ShaderCompiler::GetShader(const ShaderKey& key)
         std::expected<void, std::string> res = GetCompiler(key).and_then(
             [&](CompilerBase* compiler)
             {
-                return compiler->GetShaderCodeHash(*shaderPtr, globalShaderEnv, compilerSettings)
+                return compiler->GetShaderCodeHash(*shaderPtr, globalShaderEnv, compilerSettings, NonNullPtr(globalCompileContext))
                     .and_then(
                         [&](const SHA1HashDigest& digest) -> std::expected<void, std::string>
                         {
@@ -204,7 +225,7 @@ void ShaderCompiler::FlushCompilationErrors()
 
 std::expected<void, std::string> ShaderCompiler::CompileShader(CompilerBase* compiler, Shader& shader)
 {
-    return compiler->CompileShader(shader, globalShaderEnv, compilerSettings)
+    return compiler->CompileShader(shader, globalShaderEnv, compilerSettings, &globalCompileContext)
         .and_then(
             [&](ShaderCompilationResult result) -> std::expected<void, std::string>
             {

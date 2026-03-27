@@ -1,6 +1,8 @@
 #include "SlangImpl.h"
 
 #include <algorithm>
+#include <atomic>
+#include <fstream>
 
 #include <magic_enum/magic_enum.hpp>
 
@@ -8,6 +10,7 @@
 #include <Vex/PhysicalDevice.h>
 #include <Vex/Platform/Platform.h>
 #include <Vex/Shaders/Shader.h>
+#include <Vex/Shaders/ShaderCompileContext.h>
 #include <Vex/Shaders/ShaderCompilerSettings.h>
 #include <Vex/Shaders/ShaderEnvironment.h>
 
@@ -58,13 +61,7 @@ std::expected<NonNullPtr<slang::IModule>, std::string> LoadModule(Slang::ComPtr<
     }
     else
     {
-        // Used for identifying the shader inside the session.
-        // Should be unique per compilation session, which is why we give it a slightly convoluted name.
-        constexpr const char* moduleName = "VEX_InlineShaderModule";
-        slangModule = session->loadModuleFromSourceString(moduleName,
-                                                          nullptr,
-                                                          shaderKey.sourceCode.c_str(),
-                                                          diagnostics.writeRef());
+        return std::unexpected(std::format("Can't find the module in either fs"));
     }
 
     if (!slangModule || diagnostics)
@@ -294,6 +291,134 @@ static ShaderReflection GetSlangReflection(slang::IComponentType* program)
 
 } // namespace SlangImpl_Internal
 
+struct StringBlob : public ISlangBlob
+{
+    std::string data;
+    std::atomic<uint32_t> refCount = 1;
+
+    StringBlob(std::string d)
+        : data(std::move(d))
+    {
+    }
+
+    virtual SLANG_NO_THROW SlangResult SLANG_MCALL queryInterface(SlangUUID const& uuid, void** outObject) override
+    {
+        if (uuid == SLANG_UUID_ISlangBlob || uuid == SLANG_UUID_ISlangUnknown)
+        {
+            *outObject = static_cast<ISlangBlob*>(this);
+            addRef();
+            return SLANG_OK;
+        }
+        *outObject = nullptr;
+        return SLANG_E_NO_INTERFACE;
+    }
+
+    virtual SLANG_NO_THROW uint32_t SLANG_MCALL addRef() override
+    {
+        return ++refCount;
+    }
+    virtual SLANG_NO_THROW uint32_t SLANG_MCALL release() override
+    {
+        uint32_t count = --refCount;
+        if (count == 0)
+            delete this;
+        return count;
+    }
+
+    // ISlangBlob
+    virtual SLANG_NO_THROW void const* SLANG_MCALL getBufferPointer() override
+    {
+        return data.data();
+    }
+    virtual SLANG_NO_THROW size_t SLANG_MCALL getBufferSize() override
+    {
+        return data.size();
+    }
+};
+
+class VirtualSlangFileSystem : public ISlangFileSystem
+{
+public:
+    NonNullPtr<ShaderCompileContext> context;
+    std::atomic<uint32_t> refCount = 1;
+
+    VirtualSlangFileSystem(NonNullPtr<ShaderCompileContext> context)
+        : context(context)
+    {
+    }
+
+    virtual SLANG_NO_THROW SlangResult SLANG_MCALL queryInterface(SlangUUID const& uuid, void** outObject) override
+    {
+        if (uuid == SLANG_UUID_ISlangFileSystem || uuid == SLANG_UUID_ISlangUnknown)
+        {
+            *outObject = static_cast<ISlangFileSystem*>(this);
+            addRef();
+            return SLANG_OK;
+        }
+        *outObject = nullptr;
+        return SLANG_E_NO_INTERFACE;
+    }
+    virtual SLANG_NO_THROW uint32_t SLANG_MCALL addRef() override
+    {
+        return ++refCount;
+    }
+    virtual SLANG_NO_THROW uint32_t SLANG_MCALL release() override
+    {
+        uint32_t count = --refCount;
+        if (count == 0)
+            delete this;
+        return count;
+    }
+    virtual SLANG_NO_THROW void* SLANG_MCALL castAs(const SlangUUID& guid) override
+    {
+        if (guid == SLANG_UUID_ISlangFileSystem)
+            return static_cast<ISlangFileSystem*>(this);
+        return nullptr;
+    }
+
+    virtual SLANG_NO_THROW SlangResult SLANG_MCALL loadFile(char const* path, ISlangBlob** outBlob) override
+    {
+        if (const auto file = context->GetVirtualFile(path); file.has_value())
+        {
+            *outBlob = new StringBlob(*file);
+            return SLANG_OK;
+        }
+
+        if (!std::filesystem::exists(path))
+            return SLANG_E_NOT_FOUND;
+
+        std::filesystem::path filePath = path;
+        std::streamsize size = std::filesystem::file_size(filePath);
+        std::ifstream file(filePath, std::ios::binary | std::ios::ate);
+        file.seekg(0, std::ios::beg);
+
+        std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        if (!content.empty())
+        {
+            *outBlob = new StringBlob(std::move(content));
+            return SLANG_OK;
+        }
+        return SLANG_E_CANNOT_OPEN;
+    }
+};
+
+SlangCompilerContextImpl::SlangCompilerContextImpl(const ShaderEnvironment& env,
+                                                   const ShaderCompilerSettings& compilerSettings)
+{
+}
+
+SlangCompilerContextImpl::~SlangCompilerContextImpl() = default;
+
+bool SlangCompilerContextImpl::LoadModule(const std::string& moduleName)
+{
+    if (session)
+    {
+        slang::IModule* module = session->loadModule(moduleName.c_str());
+        return module != nullptr;
+    }
+    return false;
+}
+
 SlangCompilerImpl::SlangCompilerImpl(std::vector<std::filesystem::path> incDirs)
     : CompilerBase(std::move(incDirs))
 {
@@ -302,50 +427,96 @@ SlangCompilerImpl::SlangCompilerImpl(std::vector<std::filesystem::path> incDirs)
 
 SlangCompilerImpl::~SlangCompilerImpl() = default;
 
+void SlangCompilerImpl::SetContextImpl(const ShaderEnvironment& env,
+                                       const ShaderCompilerSettings& compilerSettings,
+                                       NonNullPtr<ShaderCompileContext> newCompileContext,
+                                       ShaderCompileContext* originalContext)
+{
+    std::unique_ptr<SlangCompilerContextImpl> contextImpl =
+        std::make_unique<SlangCompilerContextImpl>(env, compilerSettings);
+    // Explicitly create an ISession for the context which will cache modules loaded into it
+    ShaderKey dummyKey;
+    if (auto sessionExp = CreateSession(dummyKey, env, compilerSettings, newCompileContext))
+    {
+        contextImpl->session = sessionExp.value();
+    }
+
+    newCompileContext->slangImpl = std::move(contextImpl);
+}
+
 std::expected<SHA1HashDigest, std::string> SlangCompilerImpl::GetShaderCodeHash(
-    const Shader& shader, const ShaderEnvironment& shaderEnv, const ShaderCompilerSettings& compilerSettings)
+    const Shader& shader,
+    const ShaderEnvironment& shaderEnv,
+    const ShaderCompilerSettings& compilerSettings,
+    NonNullPtr<ShaderCompileContext> context)
 {
     ValidateShaderForCompilation(shader);
 
-    return CreateSession(shader.key, shaderEnv, compilerSettings)
-        .and_then([&](const Slang::ComPtr<slang::ISession>& session)
-                  { return SlangImpl_Internal::GetLinkedShader(session, shader.key); })
+    Slang::ComPtr<slang::ISession> session;
+    VEX_ASSERT(context->slangImpl);
+    if ( context->slangImpl->session && shader.key.defines.size() == 0)
+    {
+        session = context->slangImpl->session;
+    }
+    else
+    {
+        auto sessionRes = CreateSession(shader.key, shaderEnv, compilerSettings, context);
+        if (!sessionRes)
+            return std::unexpected(sessionRes.error());
+        session = sessionRes.value();
+    }
+
+    return SlangImpl_Internal::GetLinkedShader(session, shader.key)
         .and_then(
             [&](const Slang::ComPtr<slang::IComponentType>& linkedShader) -> std::expected<SHA1HashDigest, std::string>
             { return SlangImpl_Internal::GetProgramHash(linkedShader); });
 }
 
 std::expected<ShaderCompilationResult, std::string> SlangCompilerImpl::CompileShader(
-    const Shader& shader, const ShaderEnvironment& shaderEnv, const ShaderCompilerSettings& compilerSettings) const
+    const Shader& shader,
+    const ShaderEnvironment& shaderEnv,
+    const ShaderCompilerSettings& compilerSettings,
+    ShaderCompileContext* context) const
 {
     ValidateShaderForCompilation(shader);
 
-    return CreateSession(shader.key, shaderEnv, compilerSettings)
-        .and_then([&](const Slang::ComPtr<slang::ISession>& session)
-                  { return SlangImpl_Internal::GetLinkedShader(session, shader.key); })
-        .and_then(
-            [&](const Slang::ComPtr<slang::IComponentType>& linkedProgram)
-            {
-                return SlangImpl_Internal::GetByteCode(linkedProgram)
-                    .and_then(
-                        [&](const Slang::ComPtr<slang::IBlob>& bytecodeBlob)
-                            -> std::expected<ShaderCompilationResult, std::string>
-                        {
-                            // Copy the bytecode to our return vector
-                            std::vector<byte> finalShaderBlob;
-                            std::size_t blobSize = bytecodeBlob->getBufferSize();
-                            finalShaderBlob.resize(blobSize);
-                            std::memcpy(finalShaderBlob.data(), bytecodeBlob->getBufferPointer(), blobSize);
+    Slang::ComPtr<slang::ISession> session;
+    VEX_ASSERT(context->slangImpl);
+    if (context->slangImpl->session && shader.key.defines.size() == 0)
+    {
+        session = context->slangImpl->session;
+    }
+    else
+    {
+        auto sessionRes = CreateSession(shader.key, shaderEnv, compilerSettings, context);
+        if (!sessionRes)
+            return std::unexpected(sessionRes.error());
+        session = sessionRes.value();
+    }
 
-                            std::optional<ShaderReflection> reflection;
-                            if (ShaderUtil::CanReflectShaderType(shader.key.type))
-                            {
-                                reflection = SlangImpl_Internal::GetSlangReflection(linkedProgram);
-                            }
-                            return ShaderCompilationResult{ SlangImpl_Internal::GetProgramHash(linkedProgram),
-                                                            finalShaderBlob,
-                                                            reflection };
-                        });
+    auto linkedProgramRes = SlangImpl_Internal::GetLinkedShader(session, shader.key);
+    if (!linkedProgramRes)
+        return std::unexpected(linkedProgramRes.error());
+    const Slang::ComPtr<slang::IComponentType>& linkedProgram = linkedProgramRes.value();
+
+    return SlangImpl_Internal::GetByteCode(linkedProgram)
+        .and_then(
+            [&](const Slang::ComPtr<slang::IBlob>& bytecodeBlob) -> std::expected<ShaderCompilationResult, std::string>
+            {
+                // Copy the bytecode to our return vector
+                std::vector<byte> finalShaderBlob;
+                std::size_t blobSize = bytecodeBlob->getBufferSize();
+                finalShaderBlob.resize(blobSize);
+                std::memcpy(finalShaderBlob.data(), bytecodeBlob->getBufferPointer(), blobSize);
+
+                std::optional<ShaderReflection> reflection;
+                if (ShaderUtil::CanReflectShaderType(shader.key.type))
+                {
+                    reflection = SlangImpl_Internal::GetSlangReflection(linkedProgram);
+                }
+                return ShaderCompilationResult{ SlangImpl_Internal::GetProgramHash(linkedProgram),
+                                                finalShaderBlob,
+                                                reflection };
             });
 }
 
@@ -370,10 +541,21 @@ void SlangCompilerImpl::FillInIncludeDirectories(std::vector<std::string>& inclu
 }
 
 std::expected<Slang::ComPtr<slang::ISession>, std::string> SlangCompilerImpl::CreateSession(
-    const ShaderKey& key, const ShaderEnvironment& shaderEnv, const ShaderCompilerSettings& compilerSettings) const
+    const ShaderKey& key,
+    const ShaderEnvironment& shaderEnv,
+    const ShaderCompilerSettings& compilerSettings,
+    ShaderCompileContext* context) const
 {
     slang::SessionDesc sessionDesc = {};
     slang::TargetDesc targetDesc = {};
+
+    Slang::ComPtr<VirtualSlangFileSystem> customFileSystem;
+    if (context)
+    {
+        customFileSystem = new VirtualSlangFileSystem(NonNullPtr(context));
+        sessionDesc.fileSystem = customFileSystem;
+    }
+
 
     // Add include directories
     std::vector<std::string> stringPaths;
@@ -464,15 +646,7 @@ std::expected<Slang::ComPtr<slang::ISession>, std::string> SlangCompilerImpl::Cr
 
 void SlangCompilerImpl::ValidateShaderForCompilation(const Shader& shader) const
 {
-    const bool useFilepath = !shader.key.path.empty();
-    if (useFilepath && !shader.key.sourceCode.empty())
-    {
-        VEX_LOG(Warning,
-                "Shader {} has both a shader filepath and shader source string. Using the filepath for compilation...",
-                shader.key);
-    }
-
-    if (useFilepath && shader.key.path.extension() != ".slang")
+    if (shader.key.path.extension() != ".slang")
     {
         VEX_LOG(Fatal,
                 "Slang shaders must use a .slang file format, your extension: {}!",

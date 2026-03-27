@@ -187,6 +187,8 @@ public:
     void RecompileAllShaders();
     void SetShaderCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback);
 
+    ShaderCompileContext& GetShaderCompileContext();
+
     void SetSamplers(Span<const TextureSampler> newSamplers);
 
     // Returns Query or status if query is not yet ready
@@ -210,6 +212,8 @@ private:
     RHIAccelerationStructure& GetRHIAccelerationStructure(ASHandle asHandle);
 
     void RecreatePresentTextures();
+
+    void LoadEmbeddedShaders();
 
     // Index of the current frame, possible values depends on buffering:
     //  {0} if single buffering

@@ -7,13 +7,13 @@ if(NOT VEX_ENABLE_SLANG)
     return()
 endif()
 
-set(SLANG_VERSION "2026.3.1")
+set(SLANG_VERSION "2026.5")
 
 # Choose URLs based on platform
 if(WIN32)
     set(SLANG_RELEASE_URL "https://github.com/shader-slang/slang/releases/download/v${SLANG_VERSION}/slang-${SLANG_VERSION}-windows-x86_64.zip")
 elseif(LINUX)
-    set(SLANG_RELEASE_URL "https://github.com/shader-slang/slang/releases/download/v${SLANG_VERSION}/slang-${SLANG_VERSION}-linux-x86_64.tar.gz")
+    set(SLANG_RELEASE_URL "https://github.com/shader-slang/slang/releases/download/v${SLANG_VERSION}/slang-${SLANG_VERSION}-linux-x86_64-glibc-2.27.tar.gz")
 else()
     message(FATAL_ERROR "Unsupported platform for Slang binaries")
 endif()
@@ -22,8 +22,16 @@ message(STATUS "Fetching Slang...")
 FetchContent_Declare(
     slang
     URL ${SLANG_RELEASE_URL}
+    FIND_PACKAGE_ARGS ${SLANG_VERSION} GLOBAL
 )
 FetchContent_MakeAvailable(slang)
+
+# print the contents of the slang directory for debugging
+file(GLOB SLANG_FILES "${slang_SOURCE_DIR}/*")
+message(STATUS "Slang files:\n${SLANG_FILES}")
+
+set(slang_DIR "${slang_SOURCE_DIR}/cmake")
+find_package(slang CONFIG REQUIRED)
 
 # Create imported target for slang
 set(SLANG_INCLUDE_DIR "${slang_SOURCE_DIR}/include")
@@ -43,14 +51,10 @@ if(WIN32)
         "${slang_SOURCE_DIR}/bin/slang-compiler.dll"
     )
 elseif(LINUX)
-    set(DXC_STATIC_LIB "")
     set(SLANG_RUNTIME_LIBS
         "${slang_SOURCE_DIR}/lib/libgfx.so"
-        "${slang_SOURCE_DIR}/lib/libslang-glsl-module-${SLANG_VERSION}.so"
-        "${slang_SOURCE_DIR}/lib/libslang-glslang-${SLANG_VERSION}.so"
-        "${slang_SOURCE_DIR}/lib/libslang-llvm.so"
         "${slang_SOURCE_DIR}/lib/libslang-rt.so"
-        "${slang_SOURCE_DIR}/lib/libslang.so"
+        "${slang_SOURCE_DIR}/lib/libslang-compiler.so"
     )
 endif()
 
