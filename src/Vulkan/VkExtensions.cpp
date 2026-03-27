@@ -1,5 +1,7 @@
 ﻿#include "VkExtensions.h"
 
+#include <Vex/Logger.h>
+
 #include <Vulkan/VkHeaders.h>
 
 namespace vex::vk

@@ -66,7 +66,7 @@ void ValidateBufferBinding(const BufferBinding& binding, BufferUsage::Flags vali
             buffer.desc.name);
     }
 
-    if (usage == BufferBindingUsage::ConstantBuffer)
+    if (usage == BufferBindingUsage::UniformBuffer)
     {
         VEX_CHECK(binding.offsetByteSize.value_or(0) % ConstantBufferBindingOffsetMultiple == 0,
                   "Invalid binding for resource \"{}\": "
@@ -104,7 +104,7 @@ void ValidateTextureBinding(const TextureBinding& binding, TextureUsage::Flags v
     }
 
     if ((validTextureUsageFlags & TextureUsage::DepthStencil) &&
-        !FormatUtil::IsDepthOrStencilFormat(texture.desc.format))
+        !FormatUtil::IsDepthOrDepthStencilFormat(texture.desc.format))
     {
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": texture cannot be bound as depth stencil",
@@ -141,7 +141,7 @@ void ValidateTextureBinding(const TextureBinding& binding, TextureUsage::Flags v
         }
     }
 
-    if (FormatUtil::IsDepthOrStencilFormat(texture.desc.format) && !(texture.desc.usage & TextureUsage::DepthStencil))
+    if (FormatUtil::IsDepthOrDepthStencilFormat(texture.desc.format) && !(texture.desc.usage & TextureUsage::DepthStencil))
     {
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": Texture's format ({}) requires the depth stencil usage "
@@ -229,7 +229,7 @@ BufferBinding BufferBinding::CreateConstantBuffer(const Buffer& buffer,
                                                   std::optional<u64> rangeByteSize)
 {
     return { .buffer = buffer,
-             .usage = BufferBindingUsage::ConstantBuffer,
+             .usage = BufferBindingUsage::UniformBuffer,
              .offsetByteSize = offsetByteSize,
              .rangeByteSize = rangeByteSize.value_or(buffer.desc.byteSize - offsetByteSize) };
 }

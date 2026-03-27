@@ -23,6 +23,7 @@ public:
     DX12PhysicalDevice& operator=(DX12PhysicalDevice&&) = default;
 
     virtual bool IsFeatureSupported(Feature feature) const override;
+    virtual bool HasCapability(Capability capability) const override;
     virtual FeatureLevel GetFeatureLevel() const override;
     virtual ResourceBindingTier GetResourceBindingTier() const override;
     virtual ShaderModel GetShaderModel() const override;

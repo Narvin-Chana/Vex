@@ -11,7 +11,7 @@ namespace vex::vk
 
 struct VkGPUContext;
 
-class VkFence : public RHIFenceBase
+class VkFence final : public RHIFenceBase
 {
 public:
     VkFence(::vk::Device device);

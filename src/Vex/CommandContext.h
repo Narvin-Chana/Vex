@@ -1,22 +1,27 @@
 #pragma once
 
 #include <optional>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
-#include <Vex/Containers/ResourceCleanup.h>
+#include <Vex/BuildAccelerationStructure.h>
 #include <Vex/Containers/Span.h>
+#include <Vex/RHIImpl/RHIBuffer.h>
+#include <Vex/ResourceCleanup.h>
+#include <Vex/ResourceCopy.h>
 #include <Vex/ResourceReadbackContext.h>
 #include <Vex/ScopedGPUEvent.h>
 #include <Vex/Shaders/ShaderKey.h>
-#include <Vex/Synchronization.h>
+#include <Vex/TextureStateMap.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/NonNullPtr.h>
 
+#include <RHI/RHIBarrier.h>
 #include <RHI/RHIBindings.h>
-#include <RHI/RHIBuffer.h>
-#include <RHI/RHICommandList.h>
 #include <RHI/RHIFwd.h>
 #include <RHI/RHIPipelineState.h>
-#include <RHI/RHITexture.h>
+#include <RHI/RHITimestampQueryPool.h>
 
 namespace vex
 {
@@ -39,25 +44,29 @@ private:
 
 public:
     ~CommandContext();
-    CommandContext(const CommandContext& other) = delete;
-    CommandContext& operator=(const CommandContext& other) = delete;
-    CommandContext(CommandContext&& other) = default;
-    CommandContext& operator=(CommandContext&& other) = default;
+    CommandContext(const CommandContext&) = delete;
+    CommandContext& operator=(const CommandContext&) = delete;
+    CommandContext(CommandContext&&) = default;
+    CommandContext& operator=(CommandContext&&) = default;
+
+    QueueType GetQueue() const;
 
     // Sets the viewport dimensions.
     void SetViewport(float x, float y, float width, float height, float minDepth = 0.0f, float maxDepth = 1.0f);
     // Sets the viewport scissor.
     void SetScissor(i32 x, i32 y, u32 width, u32 height);
 
-    // Clears a texture, by default will use the texture's ClearColor.
-    void ClearTexture(const TextureBinding& binding,
+    // Clears a texture, by default will use the texture's ClearColor and clear the entire texture.
+    void ClearTexture(const Texture& texture,
                       std::optional<TextureClearValue> textureClearValue = std::nullopt,
-                      std::span<TextureClearRect> clearRects = {});
+                      const TextureSubresource& subresource = {},
+                      Span<const TextureClearRect> clearRects = {});
 
     // Performs a draw call.
     void Draw(const DrawDesc& drawDesc,
               const DrawResourceBinding& drawBindings,
               ConstantBinding constants,
+              Span<const ResourceBinding> trackedResources,
               u32 vertexCount,
               u32 instanceCount = 1,
               u32 vertexOffset = 0,
@@ -67,6 +76,7 @@ public:
     void DrawIndexed(const DrawDesc& drawDesc,
                      const DrawResourceBinding& drawBindings,
                      ConstantBinding constants,
+                     Span<const ResourceBinding> trackedResources,
                      u32 indexCount,
                      u32 instanceCount = 1,
                      u32 indexOffset = 0,
@@ -80,7 +90,10 @@ public:
     void DrawIndexedIndirect();
 
     // Dispatches a compute shader.
-    void Dispatch(const ShaderKey& shader, ConstantBinding constants, std::array<u32, 3> groupCount);
+    void Dispatch(const ShaderKey& shader,
+                  ConstantBinding constants,
+                  Span<const ResourceBinding> trackedResources,
+                  std::array<u32, 3> groupCount);
 
     // Not yet implemented
     void DispatchIndirect();
@@ -88,6 +101,7 @@ public:
     // Dispatches a ray tracing pass.
     void TraceRays(const RayTracingCollection& rayTracingCollection,
                    ConstantBinding constants,
+                   Span<const ResourceBinding> trackedResources,
                    const TraceRaysDesc& rayTracingArgs);
 
     // Fills in all lower resolution mips with downsampled version of the source mip.
@@ -168,38 +182,13 @@ public:
 
     // Builds a Bottom Level Acceleration Structure for Hardware Ray Tracing, by uploading the passed in Geometry.
     void BuildBLAS(const AccelerationStructure& accelerationStructure, const BLASBuildDesc& desc);
+    // TODO(https://trello.com/c/LUYWkd2L): add batched tlas / blas build
     // void BuildBLAS(Span<std::pair<const AccelerationStructure&, const BLASBuildDesc&>> blasToBuild);
 
     // Builds a Top Level Acceleration Structure for Hardware Ray Tracing, by uploading the passed in Instances.
     void BuildTLAS(const AccelerationStructure& accelerationStructure, const TLASBuildDesc& desc);
+    // TODO(https://trello.com/c/LUYWkd2L): add batched tlas / blas build
     // void BuildTLAS(Span<std::pair<const AccelerationStructure&, const TLASBuildDesc&>> tlasToBuild);
-
-    // ---------------------------------------------------------------------------------------------------------------
-    // Barrier Operations
-    // ---------------------------------------------------------------------------------------------------------------
-    // Vex's barrier philosophy is that they should only be applied when you have Write-After-Write (WAW) or
-    // Read-After-Write (RAW) situations. If you read from a resource multiple times, then you should avoid applying
-    // superfluous barriers to it.
-
-    // Will apply a barrier to the passed in texture binding.
-    void BarrierBinding(const TextureBinding& textureBinding);
-
-    // Will apply a barrier to the passed in buffer binding.
-    void BarrierBinding(const BufferBinding& bufferBinding);
-
-    // Will apply a barrier to the passed in bindings.
-    void BarrierBindings(Span<const ResourceBinding> resourceBindings);
-    // Will apply a barrier to the passed in texture.
-    void Barrier(const Texture& texture,
-                 RHIBarrierSync newSync,
-                 RHIBarrierAccess newAccess,
-                 RHITextureLayout newLayout);
-
-    // Will apply a barrier to the passed in buffer.
-    void Barrier(const Buffer& buffer, RHIBarrierSync newSync, RHIBarrierAccess newAccess);
-
-    // Will apply a barrier to the passed in acceleration structure's buffer.
-    void Barrier(const AccelerationStructure& as, RHIBarrierSync newSync, RHIBarrierAccess newAccess);
 
     // ---------------------------------------------------------------------------------------------------------------
 
@@ -207,29 +196,47 @@ public:
     // lambda to be executed in a draw scope.
     void ExecuteInDrawContext(Span<const TextureBinding> renderTargets,
                               std::optional<const TextureBinding> depthStencil,
+                              Span<const ResourceBinding> trackedResources,
                               const std::function<void()>& callback);
 
     QueryHandle BeginTimestampQuery();
     void EndTimestampQuery(QueryHandle handle);
 
     // Returns an object which will scope a set of commands to label them for a external debug tool such as RenderDoc or
-    // Pix
+    // Pix.
     ScopedGPUEvent CreateScopedGPUEvent(const char* markerLabel, std::array<float, 3> color = { 1, 1, 1 });
 
     // ---------------------------------------------------------------------------------------------------------------
     // Advanced Operations, should be used with care!
     // ---------------------------------------------------------------------------------------------------------------
 
+    // ---------------------------------------------------------------------------------------------------------------
+    // Manual synchronization is typically unnecessary as long as you use the "tracked resources" provided by
+    // Draw/Dispatch/TraceRays. In the cases it is necessary we still expose it here.
+
+    void Barrier(const Buffer& buffer, RHIBarrierAccess access);
+    void Barrier(const Texture& texture, RHIBarrierAccess access, const TextureSubresource& subresource = {});
+    void Barrier(const AccelerationStructure& as, RHIBarrierAccess access);
+
+    // ---------------------------------------------------------------------------------------------------------------
+
     // Returns the RHI command list associated with this context allowing for access to the native
     // CommandList/CommandContext (you should avoid using this unless you know what you are doing).
     RHICommandList& GetRHICommandList();
 
-    // Flushes all pending barriers. Vex automatically batches barrier submissions just before GPU operations (eg:
-    // Draw/Dispatch). This means that you shouldn't call this function in most situations. This remains exposed for
-    // when you have custom RHI code which can create GPU operations.
-    void FlushBarriers();
-
 private:
+    TextureStateMap& GetOrFetchTextureState(TextureHandle handle);
+
+    void FlushBarriers();
+    void EnqueueTextureBarrier(const Texture& texture,
+                               const TextureSubresource& subresource,
+                               RHIBarrierSync dstSync,
+                               RHIBarrierAccess dstAccess,
+                               RHITextureLayout dstLayout);
+    void EnqueueGlobalBarrier(const RHIGlobalBarrier& globalBarrier);
+
+    void InferResourceBarriers(RHIBarrierSync syncStage, Span<const ResourceBinding> resources);
+
     // Creates a temporary staging buffer that will be destroyed once the command context is done executing.
     // Buffer creation invalidates pointers to existing RHI buffers.
     Buffer CreateTemporaryStagingBuffer(const std::string& name,
@@ -242,22 +249,22 @@ private:
 
     std::optional<RHIDrawResources> PrepareDrawCall(const DrawDesc& drawDesc,
                                                     const DrawResourceBinding& drawBindings,
-                                                    ConstantBinding constants);
+                                                    ConstantBinding constants,
+                                                    Span<const ResourceBinding> trackedResources);
     void CheckViewportAndScissor() const;
 
-    [[nodiscard]] std::vector<RHIBufferBarrier> SetVertexBuffers(u32 vertexBuffersFirstSlot,
-                                                                 Span<const BufferBinding> vertexBuffers);
-    [[nodiscard]] std::optional<RHIBufferBarrier> SetIndexBuffer(std::optional<BufferBinding> indexBuffer);
-
-    void EnqueueBarriers(Span<const RHITextureBarrier> barriers);
-    void EnqueueBarriers(Span<const RHIBufferBarrier> barriers);
+    void SetVertexBuffers(u32 vertexBuffersFirstSlot, Span<const BufferBinding> vertexBuffers);
+    void SetIndexBuffer(BufferBinding indexBuffer);
 
     NonNullPtr<Graphics> graphics;
     NonNullPtr<RHICommandList> cmdList;
+    std::unordered_map<TextureHandle, TextureStateMap> textureStates;
+    std::unordered_set<Texture, TextureHandleHash> touchedTextures;
 
     // Temporary resources (eg: staging resources) that will be marked for destruction once this command list is
     // submitted.
-    std::vector<vex::Buffer> temporaryResources;
+    std::vector<Buffer> temporaryBuffers;
+    std::vector<CleanupVariant> temporaryResources;
 
     // Used to avoid resetting the same state multiple times which can be costly on certain hardware.
     // In general draws and dispatches are recommended to be grouped by PSO, so this caching can be very efficient
@@ -266,8 +273,11 @@ private:
     std::optional<ComputePipelineStateKey> cachedComputePSOKey;
     std::optional<InputAssembly> cachedInputAssembly;
 
+    // Pending barriers, which are emitted only when the user performs a GPU operation (ie. draw call, dispatch, ...) or
+    // submits the command context.
     std::vector<RHIBufferBarrier> pendingBufferBarriers;
     std::vector<RHITextureBarrier> pendingTextureBarriers;
+    std::vector<RHIGlobalBarrier> pendingGlobalBarriers;
 
     bool hasInitializedViewport = false;
     bool hasInitializedScissor = false;

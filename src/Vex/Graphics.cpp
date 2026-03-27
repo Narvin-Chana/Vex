@@ -2,6 +2,7 @@
 
 #include <array>
 #include <functional>
+#include <thread>
 #include <utility>
 
 #include <Vex/CommandContext.h>
@@ -11,15 +12,19 @@
 #include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
+#include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHITexture.h>
+#include <Vex/ResourceCleanup.h>
 #include <Vex/Utility/ByteUtils.h>
+#include <Vex/Utility/Validation.h>
 #include <Vex/Utility/Visitor.h>
 
 #include <RHI/RHIAccelerationStructure.h>
 #include <RHI/RHIBarrier.h>
 #include <RHI/RHIBuffer.h>
 #include <RHI/RHIPhysicalDevice.h>
+#include <RHI/RHIScopedGPUEvent.h>
 
 namespace vex
 {
@@ -27,7 +32,6 @@ namespace vex
 Graphics::Graphics(const GraphicsCreateDesc& desc)
     : desc(desc)
     , rhi(desc.platformWindow.windowHandle, desc.enableGPUDebugLayer, desc.enableGPUBasedValidation)
-    , resourceCleanup(rhi)
     , textureRegistry(DefaultRegistrySize)
     , bufferRegistry(DefaultRegistrySize)
 {
@@ -92,19 +96,26 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
     GPhysicalDevice->DumpPhysicalDeviceInfo();
 #endif
 
-    // Initializes RHI which includes creating logical device and swapchain.
+    // Initializes RHI which includes creating logical device and swapchain (if applicable).
     rhi.Init();
 
-    VEX_LOG(Info,
-            "Created graphics backend with width {} and height {}.",
-            desc.platformWindow.width,
-            desc.platformWindow.height);
+    if (desc.useSwapChain)
+    {
+        VEX_LOG(Info,
+                "Created graphics backend with width {} and height {}.",
+                desc.platformWindow.width,
+                desc.platformWindow.height);
+    }
+    else
+    {
+        VEX_LOG(Info, "Created headless graphics backend.");
+    }
 
     commandPool.emplace(rhi.CreateCommandPool());
 
     descriptorPool = rhi.CreateDescriptorPool();
 
-    psCache.emplace(&rhi, *descriptorPool, &resourceCleanup, desc.shaderCompilerSettings);
+    psCache.emplace(&rhi, *descriptorPool, desc.shaderCompilerSettings);
 
     allocator = rhi.CreateAllocator();
 
@@ -128,12 +139,14 @@ Graphics::~Graphics()
     // Wait for work to be done before starting the deletion of resources.
     FlushGPU();
 
+    allocator.reset();
+
     // Clear the global physical device.
     GPhysicalDevice = nullptr;
     GEnableGPUScopedEvents = false;
 }
 
-void Graphics::Present(bool isFullscreenMode)
+void Graphics::Present()
 {
     if (!desc.useSwapChain)
     {
@@ -155,38 +168,79 @@ void Graphics::Present(bool isFullscreenMode)
         NonNullPtr<RHICommandList> cmdList = commandPool->GetOrCreateCommandList(QueueType::Graphics);
         cmdList->Open();
 
+        RHIBarrierSync srcSync = RHIBarrierSync::None;
+        RHIBarrierAccess srcAccess = RHIBarrierAccess::NoAccess;
+        RHITextureLayout srcLayout = RHITextureLayout::Common;
+        const auto [bbSrcSync, bbSrcAccess, bbSrcLayout] =
+            backBufferState.Get(backBuffer->GetDesc(), TextureSubresource{});
+
         std::array barriers = {
             RHITextureBarrier{
-                presentTexture,
-                TextureSubresource{},
-                RHIBarrierSync::Copy,
-                RHIBarrierAccess::CopySource,
-                RHITextureLayout::CopySource,
+                .texture = presentTexture,
+                .subresource = TextureSubresource{},
+                .srcSync = srcSync,
+                .dstSync = RHIBarrierSync::Copy,
+                .srcAccess = srcAccess,
+                .dstAccess = RHIBarrierAccess::CopySource,
+                .srcLayout = srcLayout,
+                .dstLayout = RHITextureLayout::CopySource,
             },
             RHITextureBarrier{
-                *backBuffer,
-                TextureSubresource{},
-                RHIBarrierSync::Copy,
-                RHIBarrierAccess::CopyDest,
-                RHITextureLayout::CopyDest,
+                .texture = *backBuffer,
+                .subresource = TextureSubresource{},
+                .srcSync = bbSrcSync,
+                .dstSync = RHIBarrierSync::Copy,
+                .srcAccess = bbSrcAccess,
+                .dstAccess = RHIBarrierAccess::CopyDest,
+                .srcLayout = bbSrcLayout,
+                .dstLayout = RHITextureLayout::CopyDest,
             },
         };
-        cmdList->Barrier({}, barriers);
+        cmdList->EmitBarriers({}, barriers, {});
         cmdList->Copy(presentTexture, *backBuffer);
-        cmdList->TextureBarrier(*backBuffer,
-                                RHIBarrierSync::AllGraphics,
-                                RHIBarrierAccess::NoAccess,
-                                RHITextureLayout::Present);
+        RHITextureBarrier backBufferBarrier{
+            .texture = *backBuffer,
+            .subresource = {},
+            .srcSync = RHIBarrierSync::Copy,
+            .dstSync = RHIBarrierSync::AllGraphics,
+            .srcAccess = RHIBarrierAccess::CopyDest,
+            .dstAccess = RHIBarrierAccess::NoAccess,
+            .srcLayout = RHITextureLayout::CopyDest,
+            .dstLayout = RHITextureLayout::Present,
+        };
+        RHITextureBarrier presentTextureBarrier{
+            .texture = presentTexture,
+            .subresource = {},
+            .srcSync = RHIBarrierSync::Copy,
+            .dstSync = RHIBarrierSync::None,
+            .srcAccess = RHIBarrierAccess::CopySource,
+            .dstAccess = RHIBarrierAccess::NoAccess,
+            .srcLayout = RHITextureLayout::CopySource,
+            .dstLayout = RHITextureLayout::Common,
+        };
+        cmdList->EmitBarriers({}, { backBufferBarrier, presentTextureBarrier }, {});
         cmdList->Close();
 
-        presentTokens[currentFrameIndex] = swapChain->Present(currentFrameIndex, rhi, cmdList, isFullscreenMode);
+        presentTokens[currentFrameIndex] = swapChain->Present(currentFrameIndex, rhi, cmdList);
         commandPool->OnCommandListsSubmitted({ &cmdList, 1 }, { &presentTokens[currentFrameIndex], 1 });
+
+        // Certain swapchains reset the state of the backbuffer to Undefined after presenting.
+        if (GPhysicalDevice->HasCapability(Capability::PresentResetsBackBufferToUndefined))
+        {
+            backBufferState.SetUniform(
+                { RHIBarrierSync::None, RHIBarrierAccess::NoAccess, RHITextureLayout::Undefined });
+        }
+        else
+        {
+            backBufferState.SetUniform(
+                { RHIBarrierSync::AllGraphics, RHIBarrierAccess::NoAccess, RHITextureLayout::Present });
+        }
     }
 
     currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(desc.swapChainDesc.frameBuffering);
 
     // If our swapchain is stale, we must recreate it.
-    if (swapChain->NeedsRecreation())
+    if (swapChain->NeedsRecreation() && swapChain->CanRecreate())
     {
         VEX_LOG(Warning,
                 "Swapchain is stale meaning it must be recreated. This can occur when changes occur with the "
@@ -198,7 +252,7 @@ void Graphics::Present(bool isFullscreenMode)
     }
     else
     {
-        CleanupResources();
+        Cleanup();
     }
 }
 
@@ -207,23 +261,108 @@ CommandContext Graphics::CreateCommandContext(QueueType queueType)
     return CommandContext{ *this, commandPool->GetOrCreateCommandList(queueType), *queryPool };
 }
 
+std::optional<SyncToken> Graphics::FlushPendingInitializations()
+{
+    // Remove all stale textures, eg: if a texture is created then deleted without having been used.
+    std::erase_if(pendingInitializations, [this](const Texture& tex) { return !textureRegistry.IsValid(tex.handle); });
+    if (pendingInitializations.empty())
+    {
+        return std::nullopt;
+    }
+
+    // Transition all newly created textures to the default layout.
+    CommandContext ctx = CreateCommandContext(QueueType::Graphics);
+    for (auto& texture : pendingInitializations)
+    {
+
+        RHITextureBarrier barrier{
+            .texture = GetRHITexture(texture.handle),
+            .subresource = TextureSubresource{},
+            .srcSync = RHIBarrierSync::None,
+            .dstSync = RHIBarrierSync::None,
+            .srcAccess = RHIBarrierAccess::NoAccess,
+            .dstAccess = RHIBarrierAccess::NoAccess,
+            .srcLayout = RHITextureLayout::Undefined,
+            .dstLayout = RHITextureLayout::Common,
+        };
+
+        // A clear is needed for RT/DS-compatible textures before first use, as per DX12/Vulkan API requirements.
+        if (texture.desc.usage & (TextureUsage::RenderTarget | TextureUsage::DepthStencil))
+        {
+            // Force the copy to consider the texture as initially in an undefined layout.
+            // This only occurs the first time we initialize the texture, it will then be supposed that it is in the
+            // default global state.
+            ctx.textureStates[texture.handle].Set(texture.desc,
+                                                  {},
+                                                  RHITextureState{
+                                                      .layout = RHITextureLayout::Undefined,
+                                                  });
+
+            ctx.ClearTexture(texture);
+
+            // We still need to transition the texture to the default global state, just have to modify the src* values
+            // since we just called ClearTexture.
+            const auto& textureStatesMap = ctx.textureStates[texture.handle];
+            const auto& states = textureStatesMap.Get(texture.desc, {});
+            barrier.srcSync = states.sync;
+            barrier.srcAccess = states.access;
+            barrier.srcLayout = states.layout;
+        }
+
+        ctx.pendingTextureBarriers.push_back(std::move(barrier));
+    }
+
+    ctx.FlushBarriers();
+    ctx.cmdList->Close();
+
+    pendingInitializations.clear();
+
+    auto token = rhi.Submit({ ctx.cmdList }, {})[0];
+    commandPool->OnCommandListsSubmitted({ ctx.cmdList }, { token });
+
+    return token;
+}
+
 void Graphics::PrepareCommandContextForSubmission(CommandContext& ctx)
 {
     VEX_ASSERT(ctx.cmdList->IsOpen(), "Error on submit: attempting to submit an already closed command context...");
 
+    // Reset all touched textures to the universal default texture layout.
+    for (auto& touchedTex : ctx.touchedTextures)
+    {
+        if (!textureRegistry.IsValid(touchedTex.handle))
+        {
+            continue;
+        }
+
+        ctx.EnqueueTextureBarrier(touchedTex,
+                                  TextureSubresource{},
+                                  RHIBarrierSync::None,
+                                  RHIBarrierAccess::NoAccess,
+                                  RHITextureLayout::Common);
+    }
+
+    // Flush all resource writes using a global barrier.
+    ctx.EnqueueGlobalBarrier({
+        .srcSync = RHIBarrierSync::AllCommands,
+        .dstSync = RHIBarrierSync::AllCommands,
+        .srcAccess = RHIBarrierAccess::MemoryWrite,
+        .dstAccess = RHIBarrierAccess::MemoryRead,
+    });
+
     // Flush barriers before submitting.
     ctx.FlushBarriers();
+
     // We want to close a command list asap, to allow for driver optimizations.
     ctx.cmdList->Close();
 }
 
-void Graphics::CleanupResources()
+void Graphics::Cleanup()
 {
-    // Flushes all resources that were queued up for deletion (using the max sync token that was used when the resource
-    // was submitted for destruction).
-    resourceCleanup.FlushResources(*descriptorPool, *allocator);
+    // Flush all potential CPU work that was enqueued to the GPU timeline, this can include RHI resource cleanup.
+    ExecuteCPUWork();
+    // Reclaim all finished command lists.
     commandPool->ReclaimCommandLists();
-
     // Send all shader errors to the user, we do this every time we cleanup, since cleanup occurs when we submit or
     // present.
     psCache->GetShaderCompiler().FlushCompilationErrors();
@@ -247,9 +386,12 @@ Texture Graphics::CreateTexture(TextureDesc desc, ResourceLifetime lifetime)
         VEX_NOT_YET_IMPLEMENTED();
     }
 
-    return Texture{ .handle = textureRegistry.AllocateElement(
-                        std::make_unique<RHITexture>(rhi.CreateTexture(*allocator, desc))),
-                    .desc = std::move(desc) };
+    Texture texture{
+        .handle = textureRegistry.AllocateElement(std::make_unique<RHITexture>(rhi.CreateTexture(*allocator, desc))),
+        .desc = std::move(desc),
+    };
+    pendingInitializations.push_back(texture);
+    return texture;
 }
 
 Buffer Graphics::CreateBuffer(BufferDesc desc, ResourceLifetime lifetime)
@@ -300,7 +442,10 @@ void Graphics::DestroyTexture(const Texture& texture)
     {
         return;
     }
-    resourceCleanup.CleanupResource(*textureRegistry.ExtractElement(texture.handle));
+    // TODO(https://trello.com/c/lEZ7PhTc): MostRecentSyncToken is error prone.
+    EnqueueCPUWork([&, rhiTexture = *textureRegistry.ExtractElement(texture.handle)]() mutable
+                   { CleanupResource(std::move(rhiTexture), *descriptorPool, *allocator); },
+                   rhi.GetMostRecentSyncTokenPerQueue());
 }
 
 void Graphics::DestroyBuffer(const Buffer& buffer)
@@ -309,7 +454,10 @@ void Graphics::DestroyBuffer(const Buffer& buffer)
     {
         return;
     }
-    resourceCleanup.CleanupResource(*bufferRegistry.ExtractElement(buffer.handle));
+    // TODO(https://trello.com/c/lEZ7PhTc): MostRecentSyncToken is error prone.
+    EnqueueCPUWork([&, rhiBuffer = *bufferRegistry.ExtractElement(buffer.handle)]() mutable
+                   { CleanupResource(std::move(rhiBuffer), *descriptorPool, *allocator); },
+                   rhi.GetMostRecentSyncTokenPerQueue());
 }
 
 void Graphics::DestroyAccelerationStructure(const AccelerationStructure& accelerationStructure)
@@ -318,9 +466,10 @@ void Graphics::DestroyAccelerationStructure(const AccelerationStructure& acceler
     {
         return;
     }
-    VEX_CHECK(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing),
-              "Your GPU does not support ray tracing, unable to create an acceleration structure!");
-    resourceCleanup.CleanupResource(*accelerationStructureRegistry.ExtractElement(accelerationStructure.handle));
+    // TODO(https://trello.com/c/lEZ7PhTc): MostRecentSyncToken is error prone.
+    EnqueueCPUWork([&, rhiAS = *accelerationStructureRegistry.ExtractElement(accelerationStructure.handle)]() mutable
+                   { CleanupResource(std::move(rhiAS), *descriptorPool, *allocator); },
+                   rhi.GetMostRecentSyncTokenPerQueue());
 }
 
 BindlessHandle Graphics::GetBindlessHandle(const TextureBinding& bindlessResource)
@@ -355,66 +504,98 @@ std::vector<BindlessHandle> Graphics::GetBindlessHandles(Span<const ResourceBind
         std::visit(Visitor{ [&handles, this](const BufferBinding& bufferBinding)
                             { handles.emplace_back(GetBindlessHandle(bufferBinding)); },
                             [&handles, this](const TextureBinding& texBinding)
-                            { handles.emplace_back(GetBindlessHandle(texBinding)); } },
+                            { handles.emplace_back(GetBindlessHandle(texBinding)); },
+                            [&handles, this](const AccelerationStructureBinding& asBinding)
+                            { handles.emplace_back(GetBindlessHandle(asBinding)); } },
                    binding.binding);
     }
     return handles;
 }
 
-SyncToken Graphics::Submit(CommandContext& ctx, Span<SyncToken> dependencies)
+SyncToken Graphics::Submit(CommandContext& ctx, Span<const SyncToken> dependencies)
 {
-    PrepareCommandContextForSubmission(ctx);
-
-    std::vector<SyncToken> syncTokens = rhi.Submit({ &ctx.cmdList, 1 }, dependencies);
-
-    // Enqueue the command context's temporary resources for destruction.
-    for (Buffer& tempBuffer : ctx.temporaryResources)
-    {
-        DestroyBuffer(tempBuffer);
-    }
-
-    commandPool->OnCommandListsSubmitted({ &ctx.cmdList, 1 }, syncTokens);
-
-    // Users will not necessarily present (in the case we don't have a swapchain). So we instead cleanup our
-    // resources at this point.
-    CleanupResources();
-
-    VEX_ASSERT(syncTokens.size() == 1);
-    return syncTokens[0];
+    auto tokens = Submit(std::span(&ctx, 1), dependencies);
+    VEX_ASSERT(tokens.size() == 1);
+    return tokens[0];
 }
 
-std::vector<SyncToken> Graphics::Submit(Span<const NonNullPtr<CommandContext>> ctxSpan, Span<SyncToken> dependencies)
+std::vector<SyncToken> Graphics::Submit(Span<CommandContext> commandContexts, Span<const SyncToken> dependencies)
 {
-    VEX_CHECK(!ctxSpan.empty(), "You must submit at least one command context...");
+    // Process any pending textures.
+    std::optional<SyncToken> pendingInitializationToken = FlushPendingInitializations();
 
-    std::vector<NonNullPtr<RHICommandList>> rhiCommandLists;
-    rhiCommandLists.reserve(ctxSpan.size());
-
-    for (NonNullPtr<CommandContext> ctx : ctxSpan)
+    // Collect and prepare all command contexts for submission.
+    std::vector<NonNullPtr<RHICommandList>> cmdLists;
+    for (auto& ctx : commandContexts)
     {
-        PrepareCommandContextForSubmission(*ctx);
-        rhiCommandLists.emplace_back(ctx->cmdList);
+        PrepareCommandContextForSubmission(ctx);
+        cmdLists.push_back(ctx.cmdList);
     }
 
-    // Submit all the command contexts together.
-    std::vector<SyncToken> syncTokens = rhi.Submit(rhiCommandLists, dependencies);
-
-    for (NonNullPtr<CommandContext> ctx : ctxSpan)
+    std::vector<SyncToken> tokens;
+    if (pendingInitializationToken.has_value())
     {
-        // Enqueue the command context's temporary resources for destruction.
-        for (Buffer& tempBuffer : ctx->temporaryResources)
+        std::vector<SyncToken> finalDependencies{ dependencies.begin(), dependencies.end() };
+        finalDependencies.push_back(pendingInitializationToken.value());
+        tokens = rhi.Submit(cmdLists, finalDependencies);
+    }
+    else
+    {
+        tokens = rhi.Submit(cmdLists, dependencies);
+    }
+
+    // Collect the temporary resources of all command contexts in this phase.
+    std::vector<CleanupVariant> phaseTemporaryResources;
+    for (auto& ctx : commandContexts)
+    {
+        for (auto& buffer : ctx.temporaryBuffers)
         {
-            DestroyBuffer(tempBuffer);
+            phaseTemporaryResources.push_back(*bufferRegistry.ExtractElement(buffer.handle));
+        }
+        for (auto& resource : ctx.temporaryResources)
+        {
+            phaseTemporaryResources.push_back(std::move(resource));
         }
     }
 
-    commandPool->OnCommandListsSubmitted(rhiCommandLists, syncTokens);
+    // Send them to be cleaned-up once the GPU has done executing.
+    if (!phaseTemporaryResources.empty())
+    {
+        EnqueueCPUWork(
+            [this, resources = std::move(phaseTemporaryResources)]() mutable
+            {
+                for (auto& resource : resources)
+                {
+                    CleanupResource(std::move(resource), *descriptorPool, *allocator);
+                }
+            },
+            tokens);
+    }
 
-    // Users will not necessarily present (in the case we don't have a swapchain). So we instead cleanup our
-    // resources at this point.
-    CleanupResources();
+    commandPool->OnCommandListsSubmitted(cmdLists, tokens);
 
-    return syncTokens;
+    Cleanup();
+
+    return tokens;
+}
+
+void Graphics::EnqueueCPUWork(CPUCallback&& callback, Span<const SyncToken> tokens)
+{
+    pendingCPUWork.emplace_back(std::move(callback), std::vector<SyncToken>{ tokens.begin(), tokens.end() });
+}
+
+void Graphics::ExecuteCPUWork()
+{
+    std::erase_if(pendingCPUWork,
+                  [this](PendingCPUWork& work)
+                  {
+                      if (AreTokensComplete(work.tokens))
+                      {
+                          work.callback();
+                          return true;
+                      }
+                      return false;
+                  });
 }
 
 void Graphics::FlushGPU()
@@ -423,7 +604,9 @@ void Graphics::FlushGPU()
 
     rhi.FlushGPU();
 
-    CleanupResources();
+    Cleanup();
+
+    VEX_ASSERT(pendingCPUWork.empty(), "Should never have remaining CPU work after a flush and cleanup...");
 }
 
 void Graphics::SetUseVSync(bool useVSync)
@@ -474,7 +657,7 @@ void Graphics::OnWindowResized(u32 newWidth, u32 newHeight)
     FlushGPU();
 
     // Take advantage of the resize to cleanup no longer needed resources.
-    CleanupResources();
+    Cleanup();
 
     // Recreate our swapchain.
     swapChain->RecreateSwapChain(newWidth, newHeight);
@@ -519,7 +702,7 @@ void Graphics::WaitForTokenOnCPU(const SyncToken& syncToken)
 {
     rhi.WaitForTokenOnCPU(syncToken);
 
-    CleanupResources();
+    Cleanup();
 }
 
 void Graphics::RecompileAllShaders()
@@ -548,9 +731,9 @@ void Graphics::SetShaderCompilationErrorsCallback(std::function<ShaderCompileErr
 
 void Graphics::SetSamplers(Span<const TextureSampler> newSamplers)
 {
-    // TODO(https://trello.com/c/T1DY4QOT): This is not the cleanest, we need a linear sampler for the mip generation
-    // shader, so we add it to the end of the users samplers. Instead we should probably have a way to declare a
-    // specific sampler per-pass? Or support bindless samplers? Unsure...
+    // TODO(https://trello.com/c/T1DY4QOT): This is not the cleanest, we need a linear sampler for the mip
+    // generation shader, so we add it to the end of the users samplers. Instead we should probably have a way to
+    // declare a specific sampler per-pass? Or support bindless samplers? Unsure...
     std::vector<TextureSampler> samplers = { newSamplers.begin(), newSamplers.end() };
     samplers.push_back(TextureSampler::CreateSampler(FilterMode::Linear, AddressMode::Clamp));
     builtInLinearSamplerSlot = samplers.size() - 1u;
@@ -627,10 +810,9 @@ void Graphics::RecreatePresentTextures()
         DestroyTexture(tex);
     }
 
-    CommandContext ctx = CreateCommandContext(QueueType::Graphics);
-
     // Create new present textures.
     presentTextures.resize(std::to_underlying(desc.swapChainDesc.frameBuffering));
+
     presentTokens.clear();
     presentTokens.resize(std::to_underlying(desc.swapChainDesc.frameBuffering));
     for (u8 presentTextureIndex = 0; presentTextureIndex < std::to_underlying(desc.swapChainDesc.frameBuffering);
@@ -643,12 +825,8 @@ void Graphics::RecreatePresentTextures()
         presentTextureDesc.usage =
             TextureUsage::ShaderRead | TextureUsage::ShaderReadWrite | TextureUsage::RenderTarget;
         presentTextures[presentTextureIndex] = CreateTexture(presentTextureDesc);
-
-        // Force the present textures to start zeroed out.
-        ctx.ClearTexture({ .texture = presentTextures[presentTextureIndex] });
+        // Present texture will be initialized when pendingInitializations are flushed on next submit.
     }
-
-    Submit(ctx);
 }
 
 } // namespace vex

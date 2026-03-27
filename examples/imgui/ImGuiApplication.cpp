@@ -55,7 +55,7 @@ void ImGuiApplication::Run()
 
         RenderImGui();
 
-        graphics->Present(windowMode == Fullscreen);
+        graphics->Present();
     }
 }
 void ImGuiApplication::RenderImGui()
@@ -77,20 +77,23 @@ void ImGuiApplication::RenderImGui()
     // It does not touch the graphics API at all.
     ImGui::Render();
 
-    // Render ImGui to the backbuffer.
+    // Render ImGui to the present texture.
     vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
 
     vex::Texture presentTexture = graphics->GetCurrentPresentTexture();
-    vex::TextureBinding backBufferBinding = { .texture = presentTexture };
-    vex::TextureClearValue clearValue{ .clearAspect = vex::TextureAspect::Color, .color = { 0, 0, 0, 0 } };
     ctx.Copy(presentTexture, lastFrameTexture);
-    ctx.BarrierBinding(vex::TextureBinding{ lastFrameTexture, vex::TextureBindingUsage::ShaderRead });
-    ctx.ClearTexture(backBufferBinding, clearValue);
 
+    vex::TextureClearValue clearValue{ .color = { 0, 0, 0, 0 } };
+    ctx.ClearTexture(presentTexture, clearValue);
+
+    vex::TextureBinding presentBinding = { .texture = presentTexture };
     // ImGui renders to the texture that is currently set as render target. In this case we want to render
-    // directly to the backbuffer. For this we use the ExecuteInDrawContext function, which will take care of
+    // directly to the present texture. For this we use the ExecuteInDrawContext function, which will take care of
     // binding the render targets/depth stencil and then execute the passed in callback.
-    ctx.ExecuteInDrawContext({ &backBufferBinding, 1 }, std::nullopt, [&ctx]() { ImGui_ImplVex_RenderDrawData(ctx); });
+    ctx.ExecuteInDrawContext({ &presentBinding, 1 },
+                             std::nullopt,
+                             { vex::TextureBinding{ lastFrameTexture, vex::TextureBindingUsage::ShaderRead } },
+                             [&ctx]() { ImGui_ImplVex_RenderDrawData(ctx); });
 
     // Submit our command context.
     graphics->Submit(ctx);

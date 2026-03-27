@@ -41,7 +41,7 @@ const RHIAccelerationStructureBuildInfo& DX12AccelerationStructure::SetupBLASBui
     BufferDesc asDesc{
         .name = GetDesc().name,
         .byteSize = prebuildInfo.asByteSize,
-        .usage = BufferUsage::AccelerationStructure | BufferUsage::ReadWriteBuffer,
+        .usage = BufferUsage::AccelerationStructure,
         .memoryLocality = ResourceMemoryLocality::GPUOnly,
     };
     accelerationStructure = RHIBuffer(device, allocator, asDesc);
@@ -75,7 +75,7 @@ const RHIAccelerationStructureBuildInfo& DX12AccelerationStructure::SetupTLASBui
     BufferDesc asDesc{
         .name = GetDesc().name,
         .byteSize = prebuildInfo.asByteSize,
-        .usage = BufferUsage::AccelerationStructure | BufferUsage::ReadWriteBuffer,
+        .usage = BufferUsage::AccelerationStructure,
         .memoryLocality = ResourceMemoryLocality::GPUOnly,
     };
     accelerationStructure = RHIBuffer(device, allocator, asDesc);

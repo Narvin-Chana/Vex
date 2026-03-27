@@ -3,6 +3,10 @@
 namespace vex
 {
 
+RHIAccelerationStructureBase::~RHIAccelerationStructureBase()
+{
+}
+
 void RHIAccelerationStructureBase::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 {
     if (accelerationStructure.has_value())

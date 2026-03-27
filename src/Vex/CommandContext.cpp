@@ -1,7 +1,8 @@
 #include "CommandContext.h"
 
 #include <algorithm>
-#include <variant>
+#include <array>
+#include <functional>
 
 #include <Vex/AccelerationStructure.h>
 #include <Vex/BuiltInShaders/MipGeneration.h>
@@ -21,11 +22,12 @@
 #include <Vex/ResourceBindingUtils.h>
 #include <Vex/Shaders/RayTracingShaders.h>
 #include <Vex/Utility/ByteUtils.h>
-#include <Vex/Utility/Hash.h>
 #include <Vex/Utility/Validation.h>
+#include <Vex/Utility/Visitor.h>
 
 #include <RHI/RHIBarrier.h>
 #include <RHI/RHIBindings.h>
+#include <RHI/RHIPhysicalDevice.h>
 
 namespace vex
 {
@@ -89,30 +91,6 @@ static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureReg
     return copyDescs;
 }
 
-static std::vector<RHIBufferBarrier> CreateBarriersFromBindings(RHIBarrierSync dstSync,
-                                                                const std::vector<RHIBufferBinding>& rhiBufferBindings)
-{
-    std::vector<RHIBufferBarrier> barriers;
-    barriers.reserve(rhiBufferBindings.size());
-    for (const auto& rhiBinding : rhiBufferBindings)
-    {
-        barriers.push_back(ResourceBindingUtils::CreateBarrierFromRHIBinding(dstSync, rhiBinding));
-    }
-    return barriers;
-}
-
-static std::vector<RHITextureBarrier> CreateBarriersFromBindings(
-    RHIBarrierSync dstSync, const std::vector<RHITextureBinding>& rhiTextureBindings)
-{
-    std::vector<RHITextureBarrier> barriers;
-    barriers.reserve(rhiTextureBindings.size());
-    for (const auto& rhiBinding : rhiTextureBindings)
-    {
-        barriers.push_back(ResourceBindingUtils::CreateBarrierFromRHIBinding(dstSync, rhiBinding));
-    }
-    return barriers;
-}
-
 static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDesc& drawDesc,
                                                               const RHIDrawResources& rhiDrawRes)
 {
@@ -151,7 +129,7 @@ CommandContext::CommandContext(NonNullPtr<Graphics> graphics,
 {
     cmdList->Open();
     cmdList->SetTimestampQueryPool(queryPool);
-    if (cmdList->GetType() != QueueType::Copy)
+    if (cmdList->GetQueue() != QueueType::Copy)
     {
         cmdList->SetDescriptorPool(*graphics->descriptorPool, graphics->psCache->GetResourceLayout());
     }
@@ -168,6 +146,11 @@ CommandContext::~CommandContext()
 #endif
 }
 
+QueueType CommandContext::GetQueue() const
+{
+    return cmdList->GetQueue();
+}
+
 void CommandContext::SetViewport(float x, float y, float width, float height, float minDepth, float maxDepth)
 {
     cmdList->SetViewport(x, y, width, height, minDepth, maxDepth);
@@ -180,31 +163,36 @@ void CommandContext::SetScissor(i32 x, i32 y, u32 width, u32 height)
     hasInitializedScissor = true;
 }
 
-void CommandContext::ClearTexture(const TextureBinding& binding,
+void CommandContext::ClearTexture(const Texture& texture,
                                   std::optional<TextureClearValue> textureClearValue,
-                                  std::span<TextureClearRect> clearRects)
+                                  const TextureSubresource& subresource,
+                                  Span<const TextureClearRect> clearRects)
 {
-    if (!(binding.texture.desc.usage & (TextureUsage::RenderTarget | TextureUsage::DepthStencil)))
-    {
-        VEX_LOG(Fatal,
-                "ClearUsage not supported on this texture, it must be either usable as a render target or as a depth "
-                "stencil!");
-    }
+    VEX_CHECK(
+        texture.desc.usage & (TextureUsage::RenderTarget | TextureUsage::DepthStencil),
+        "ClearUsage not supported on this texture, it must be either usable as a render target or as a depth stencil!");
+    TextureUtil::ValidateSubresource(texture.desc, subresource);
 
-    RHITexture& texture = graphics->GetRHITexture(binding.texture.handle);
+    RHITexture& rhiTexture = graphics->GetRHITexture(texture.handle);
 
+    const auto [dstSync, dstAccess, dstLayout] = cmdList->GetClearTextureBarrierState(texture.desc, clearRects);
+    EnqueueTextureBarrier(texture, subresource, dstSync, dstAccess, dstLayout);
     FlushBarriers();
-    cmdList->ClearTexture({ binding, NonNullPtr(texture) },
-                          // This is a safe cast, textures can only contain one of the two usages (RT/DS).
-                          static_cast<TextureUsage::Type>(binding.texture.desc.usage &
-                                                          (TextureUsage::RenderTarget | TextureUsage::DepthStencil)),
-                          textureClearValue.value_or(binding.texture.desc.clearValue),
-                          clearRects);
+
+    TextureClearValue clearValue = textureClearValue.value_or(texture.desc.clearValue);
+    cmdList->ClearTexture(
+        rhiTexture,
+        subresource,
+        // This is a safe cast, textures can only contain one of the two usages (RT/DS).
+        static_cast<TextureUsage::Type>(texture.desc.usage & (TextureUsage::RenderTarget | TextureUsage::DepthStencil)),
+        std::move(clearValue),
+        clearRects);
 }
 
 void CommandContext::Draw(const DrawDesc& drawDesc,
                           const DrawResourceBinding& drawBindings,
                           ConstantBinding constants,
+                          Span<const ResourceBinding> trackedResources,
                           u32 vertexCount,
                           u32 instanceCount,
                           u32 vertexOffset,
@@ -220,7 +208,8 @@ void CommandContext::Draw(const DrawDesc& drawDesc,
                 "to use the index buffer, call CommandContext::DrawIndexed instead.");
     }
 
-    auto drawResources = PrepareDrawCall(drawDesc, drawBindings, constants);
+    auto drawResources = PrepareDrawCall(drawDesc, drawBindings, constants, trackedResources);
+    FlushBarriers();
     if (!drawResources.has_value())
     {
         return;
@@ -236,6 +225,7 @@ void CommandContext::Draw(const DrawDesc& drawDesc,
 void CommandContext::DrawIndexed(const DrawDesc& drawDesc,
                                  const DrawResourceBinding& drawBindings,
                                  ConstantBinding constants,
+                                 Span<const ResourceBinding> trackedResources,
                                  u32 indexCount,
                                  u32 instanceCount,
                                  u32 indexOffset,
@@ -243,7 +233,8 @@ void CommandContext::DrawIndexed(const DrawDesc& drawDesc,
                                  u32 instanceOffset)
 {
     CheckViewportAndScissor();
-    auto drawResources = PrepareDrawCall(drawDesc, drawBindings, constants);
+    auto drawResources = PrepareDrawCall(drawDesc, drawBindings, constants, trackedResources);
+    FlushBarriers();
     if (!drawResources.has_value())
     {
         return;
@@ -259,6 +250,7 @@ void CommandContext::DrawIndirect()
 {
     CheckViewportAndScissor();
 
+    FlushBarriers();
     VEX_NOT_YET_IMPLEMENTED();
 }
 
@@ -266,18 +258,31 @@ void CommandContext::DrawIndexedIndirect()
 {
     CheckViewportAndScissor();
 
+    FlushBarriers();
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-void CommandContext::Dispatch(const ShaderKey& shader, ConstantBinding constants, std::array<u32, 3> groupCount)
+void CommandContext::Dispatch(const ShaderKey& shader,
+                              ConstantBinding constants,
+                              Span<const ResourceBinding> trackedResources,
+                              std::array<u32, 3> groupCount)
 {
     using namespace CommandContext_Internal;
+
+    InferResourceBarriers(RHIBarrierSync::ComputeShader, trackedResources);
+    FlushBarriers();
 
     ComputePipelineStateKey psoKey = { .computeShader = shader };
     if (!cachedComputePSOKey || psoKey != cachedComputePSOKey)
     {
+        std::unique_ptr<RHIComputePipelineState> oldPSO;
+
         // Register shader and get Pipeline if exists (if not create it).
-        const RHIComputePipelineState* pipelineState = graphics->psCache->GetComputePipelineState(psoKey);
+        const RHIComputePipelineState* pipelineState = graphics->psCache->GetComputePipelineState(psoKey, oldPSO);
+        if (oldPSO)
+        {
+            temporaryResources.emplace_back(std::move(oldPSO));
+        }
 
         // Nothing more to do if the PSO is invalid.
         if (!pipelineState)
@@ -297,8 +302,6 @@ void CommandContext::Dispatch(const ShaderKey& shader, ConstantBinding constants
     // Validate dispatch (vs platform/api constraints)
     // graphics->ValidateDispatch(groupCount);
 
-    FlushBarriers();
-
     // Perform dispatch
     cmdList->Dispatch(groupCount);
 }
@@ -310,14 +313,32 @@ void CommandContext::DispatchIndirect()
 
 void CommandContext::TraceRays(const RayTracingCollection& rayTracingCollection,
                                ConstantBinding constants,
+                               Span<const ResourceBinding> trackedResources,
                                const TraceRaysDesc& rayTracingArgs)
 {
     VEX_CHECK(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing),
               "Your GPU does not support ray tracing, unable to dispatch rays!");
     RayTracingCollection::ValidateShaderTypes(rayTracingCollection);
 
+    InferResourceBarriers(RHIBarrierSync::RayTracing, trackedResources);
+    FlushBarriers();
+
+    std::unique_ptr<RHIRayTracingPipelineState> oldPSO;
+    std::vector<MaybeUninitialized<RHIBuffer>> oldSBTs;
+
     const RHIRayTracingPipelineState* pipelineState =
-        graphics->psCache->GetRayTracingPipelineState(rayTracingCollection, *graphics->allocator);
+        graphics->psCache->GetRayTracingPipelineState(rayTracingCollection, *graphics->allocator, oldPSO, oldSBTs);
+    if (oldPSO)
+    {
+        temporaryResources.emplace_back(std::move(oldPSO));
+    }
+    if (!oldSBTs.empty())
+    {
+        for (auto& resource : oldSBTs)
+        {
+            temporaryResources.emplace_back(std::move(resource));
+        }
+    }
     if (!pipelineState)
     {
         VEX_LOG(Error, "PSO cache returned an invalid pipeline state, unable to continue dispatch...");
@@ -333,8 +354,6 @@ void CommandContext::TraceRays(const RayTracingCollection& rayTracingCollection,
 
     // Validate ray trace (vs platform/api constraints)
     // graphics->ValidateTraceRays(widthHeightDepth);
-
-    FlushBarriers();
 
     cmdList->TraceRays(rayTracingArgs, *pipelineState);
 }
@@ -361,14 +380,25 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
               "The texture's format must be a valid format for mip generation. Only uncompressed floating point / "
               "normalized color formats are supported.");
 
-    VEX_CHECK(cmdList->GetType() != QueueType::Copy,
+    VEX_CHECK(cmdList->GetQueue() != QueueType::Copy,
               "Mip Generation requires a Compute or Graphics command list type.");
 
     // Built-in mip generation is leveraged if supported (and if we're using a graphics command queue).
     // If we want to perform SRGB mip generation, we must do it manually.
-    if (GPhysicalDevice->IsFeatureSupported(Feature::MipGeneration) && cmdList->GetType() == QueueType::Graphics &&
+    if (GPhysicalDevice->HasCapability(Capability::MipGeneration) && cmdList->GetQueue() == QueueType::Graphics &&
         !textureBinding.isSRGB)
     {
+        EnqueueTextureBarrier(texture,
+                              { .startMip = sourceMip, .mipCount = 1 },
+                              RHIBarrierSync::Blit,
+                              RHIBarrierAccess::CopySource,
+                              RHITextureLayout::CopySource);
+        EnqueueTextureBarrier(texture,
+                              { .startMip = static_cast<u16>(sourceMip + 1), .mipCount = GTextureAllMips },
+                              RHIBarrierSync::Blit,
+                              RHIBarrierAccess::CopyDest,
+                              RHITextureLayout::CopyDest);
+        FlushBarriers();
         cmdList->GenerateMips(graphics->GetRHITexture(texture.handle), textureBinding.subresource);
         return;
     }
@@ -426,6 +456,18 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         BindlessHandle destinationMip1;
     };
 
+    EnqueueTextureBarrier(texture,
+                          { .startMip = sourceMip, .mipCount = 1 },
+                          RHIBarrierSync::ComputeShader,
+                          RHIBarrierAccess::ShaderRead,
+                          RHITextureLayout::ShaderRead);
+
+    EnqueueTextureBarrier(texture,
+                          { .startMip = static_cast<u16>(sourceMip + 1), .mipCount = GTextureAllMips },
+                          RHIBarrierSync::ComputeShader,
+                          RHIBarrierAccess::ShaderReadWrite,
+                          RHITextureLayout::ShaderReadWrite);
+
     u32 width = texture.desc.width;
     u32 height = texture.desc.height;
     u32 depth = texture.desc.GetDepth();
@@ -466,7 +508,6 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
             });
         }
         auto handles = graphics->GetBindlessHandles(bindings);
-        BarrierBindings(bindings);
 
         Uniforms uniforms{
             {
@@ -488,7 +529,7 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         // For 3D: z = depth
         u32 dispatchZ = texture.desc.type == TextureType::Texture3D ? depth : texture.desc.GetSliceCount();
         std::array<u32, 3> dispatchGroupCount{ (width + 7u) / 8u, (height + 7u) / 8u, dispatchZ };
-        Dispatch(shaderKey, ConstantBinding(uniforms), dispatchGroupCount);
+        Dispatch(shaderKey, ConstantBinding(uniforms), bindings, dispatchGroupCount);
 
         width = std::max(1u, width >> (1 + !isLastIteration));
         height = std::max(1u, height >> (1 + !isLastIteration));
@@ -496,35 +537,28 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
 
         mip += 1 + !isLastIteration;
     }
-
-    // Transfers the entirety of the resource back to ShaderRead, ready for use in a shader.
-    TextureBinding finalBinding{
-        .texture = texture,
-        .usage = TextureBindingUsage::ShaderRead,
-    };
-    BarrierBindings({ finalBinding });
 }
 
 void CommandContext::Copy(const Texture& source, const Texture& destination)
 {
-    VEX_CHECK(source.handle != destination.handle, "Cannot copy a texture to itself!");
+    VEX_CHECK(source.handle != destination.handle, "Cannot copy a texture entirely to itself!");
 
     TextureUtil::ValidateCompatibleTextureDescs(source.desc, destination.desc);
 
+    EnqueueTextureBarrier(source,
+                          TextureSubresource{},
+                          RHIBarrierSync::Copy,
+                          RHIBarrierAccess::CopySource,
+                          RHITextureLayout::CopySource);
+    EnqueueTextureBarrier(destination,
+                          TextureSubresource{},
+                          RHIBarrierSync::Copy,
+                          RHIBarrierAccess::CopyDest,
+                          RHITextureLayout::CopyDest);
+    FlushBarriers();
+
     RHITexture& sourceRHI = graphics->GetRHITexture(source.handle);
     RHITexture& destinationRHI = graphics->GetRHITexture(destination.handle);
-    std::array barriers{ RHITextureBarrier{ sourceRHI,
-                                            TextureSubresource{},
-                                            RHIBarrierSync::Copy,
-                                            RHIBarrierAccess::CopySource,
-                                            RHITextureLayout::CopySource },
-                         RHITextureBarrier{ destinationRHI,
-                                            TextureSubresource{},
-                                            RHIBarrierSync::Copy,
-                                            RHIBarrierAccess::CopyDest,
-                                            RHITextureLayout::CopyDest } };
-    EnqueueBarriers(barriers);
-    FlushBarriers();
     cmdList->Copy(sourceRHI, destinationRHI);
 }
 
@@ -535,71 +569,98 @@ void CommandContext::Copy(const Texture& source, const Texture& destination, con
 
 void CommandContext::Copy(const Texture& source, const Texture& destination, Span<const TextureCopyDesc> regionMappings)
 {
-    VEX_CHECK(source.handle != destination.handle, "Cannot copy a texture to itself!");
-
     for (auto& mapping : regionMappings)
     {
         TextureUtil::ValidateCopyDesc(source.desc, destination.desc, mapping);
+        EnqueueTextureBarrier(source,
+                              mapping.srcRegion.subresource,
+                              RHIBarrierSync::Copy,
+                              RHIBarrierAccess::CopySource,
+                              RHITextureLayout::CopySource);
+        EnqueueTextureBarrier(destination,
+                              mapping.dstRegion.subresource,
+                              RHIBarrierSync::Copy,
+                              RHIBarrierAccess::CopyDest,
+                              RHITextureLayout::CopyDest);
     }
+    FlushBarriers();
 
     RHITexture& sourceRHI = graphics->GetRHITexture(source.handle);
     RHITexture& destinationRHI = graphics->GetRHITexture(destination.handle);
-    std::array barriers{ RHITextureBarrier{ sourceRHI,
-                                            TextureSubresource{},
-                                            RHIBarrierSync::Copy,
-                                            RHIBarrierAccess::CopySource,
-                                            RHITextureLayout::CopySource },
-                         RHITextureBarrier{ destinationRHI,
-                                            TextureSubresource{},
-                                            RHIBarrierSync::Copy,
-                                            RHIBarrierAccess::CopyDest,
-                                            RHITextureLayout::CopyDest } };
-    EnqueueBarriers(barriers);
-    FlushBarriers();
     cmdList->Copy(sourceRHI, destinationRHI, regionMappings);
 }
 
 void CommandContext::Copy(const Buffer& source, const Buffer& destination)
 {
-    VEX_CHECK(source.handle != destination.handle, "Cannot copy a buffer to itself!");
+    VEX_CHECK(source.handle != destination.handle, "Cannot copy a buffer entirely to itself!");
 
     BufferUtil::ValidateSimpleBufferCopy(source.desc, destination.desc);
 
+    // Makes sure writes to the source are done.
+    EnqueueGlobalBarrier({
+        .srcSync = RHIBarrierSync::AllCommands,
+        .dstSync = RHIBarrierSync::Copy,
+        .srcAccess = RHIBarrierAccess::MemoryWrite,
+        .dstAccess = RHIBarrierAccess::CopySource,
+    });
+    // Makes sure reads of the destination are done.
+    EnqueueGlobalBarrier({
+        .srcSync = RHIBarrierSync::AllCommands,
+        .dstSync = RHIBarrierSync::Copy,
+        .srcAccess = RHIBarrierAccess::MemoryRead,
+        .dstAccess = RHIBarrierAccess::CopyDest,
+    });
+    FlushBarriers();
+
     RHIBuffer& sourceRHI = graphics->GetRHIBuffer(source.handle);
     RHIBuffer& destinationRHI = graphics->GetRHIBuffer(destination.handle);
-    std::array barriers{ RHIBufferBarrier{ sourceRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource },
-                         RHIBufferBarrier{ destinationRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest } };
-    EnqueueBarriers(barriers);
-    FlushBarriers();
     cmdList->Copy(sourceRHI, destinationRHI);
 }
 
 void CommandContext::Copy(const Buffer& source, const Buffer& destination, const BufferCopyDesc& bufferCopyDesc)
 {
-    VEX_CHECK(source.handle != destination.handle, "Cannot copy a buffer to itself!");
-
     BufferUtil::ValidateBufferCopyDesc(source.desc, destination.desc, bufferCopyDesc);
+
+    // Makes sure writes to the source are done.
+    EnqueueGlobalBarrier({
+        .srcSync = RHIBarrierSync::AllCommands,
+        .dstSync = RHIBarrierSync::Copy,
+        .srcAccess = RHIBarrierAccess::MemoryWrite,
+        .dstAccess = RHIBarrierAccess::CopySource,
+    });
+    // Makes sure reads of the destination are done.
+    EnqueueGlobalBarrier({
+        .srcSync = RHIBarrierSync::AllCommands,
+        .dstSync = RHIBarrierSync::Copy,
+        .srcAccess = RHIBarrierAccess::MemoryRead,
+        .dstAccess = RHIBarrierAccess::CopyDest,
+    });
+    FlushBarriers();
 
     RHIBuffer& sourceRHI = graphics->GetRHIBuffer(source.handle);
     RHIBuffer& destinationRHI = graphics->GetRHIBuffer(destination.handle);
-    std::array barriers{ RHIBufferBarrier{ sourceRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource },
-                         RHIBufferBarrier{ destinationRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest } };
-    EnqueueBarriers(barriers);
-    FlushBarriers();
     cmdList->Copy(sourceRHI, destinationRHI, bufferCopyDesc);
 }
 
 void CommandContext::Copy(const Buffer& source, const Texture& destination)
 {
+    // Makes sure writes to the source buffer are done.
+    EnqueueGlobalBarrier({
+        .srcSync = RHIBarrierSync::AllCommands,
+        .dstSync = RHIBarrierSync::Copy,
+        .srcAccess = RHIBarrierAccess::MemoryWrite,
+        .dstAccess = RHIBarrierAccess::CopySource,
+    });
+    // Makes sure that reads of the dst texture are finished.
+    EnqueueTextureBarrier(destination,
+                          TextureSubresource{},
+                          RHIBarrierSync::Copy,
+                          RHIBarrierAccess::CopyDest,
+                          RHITextureLayout::CopyDest);
+    FlushBarriers();
+
     RHIBuffer& sourceRHI = graphics->GetRHIBuffer(source.handle);
     RHITexture& destinationRHI = graphics->GetRHITexture(destination.handle);
-    pendingBufferBarriers.push_back(RHIBufferBarrier{ sourceRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource });
-    pendingTextureBarriers.push_back(RHITextureBarrier{ destinationRHI,
-                                                        TextureSubresource{},
-                                                        RHIBarrierSync::Copy,
-                                                        RHIBarrierAccess::CopyDest,
-                                                        RHITextureLayout::CopyDest });
-    FlushBarriers();
     cmdList->Copy(sourceRHI, destinationRHI);
 }
 
@@ -615,15 +676,26 @@ void CommandContext::Copy(const Buffer& source, const Texture& destination, Span
         TextureCopyUtil::ValidateBufferTextureCopyDesc(source.desc, destination.desc, copyDesc);
     }
 
+    // Makes sure writes to the source buffer are done.
+    EnqueueGlobalBarrier({
+        .srcSync = RHIBarrierSync::AllCommands,
+        .dstSync = RHIBarrierSync::Copy,
+        .srcAccess = RHIBarrierAccess::MemoryWrite,
+        .dstAccess = RHIBarrierAccess::CopySource,
+    });
+    for (const auto& cd : copyDescs)
+    {
+        // Makes sure that reads of the dest texture subresources are finished.
+        EnqueueTextureBarrier(destination,
+                              cd.textureRegion.subresource,
+                              RHIBarrierSync::Copy,
+                              RHIBarrierAccess::CopyDest,
+                              RHITextureLayout::CopyDest);
+    }
+    FlushBarriers();
+
     RHIBuffer& sourceRHI = graphics->GetRHIBuffer(source.handle);
     RHITexture& destinationRHI = graphics->GetRHITexture(destination.handle);
-    pendingBufferBarriers.push_back(RHIBufferBarrier{ sourceRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopySource });
-    pendingTextureBarriers.push_back(RHITextureBarrier{ destinationRHI,
-                                                        TextureSubresource{},
-                                                        RHIBarrierSync::Copy,
-                                                        RHIBarrierAccess::CopyDest,
-                                                        RHITextureLayout::CopyDest });
-    FlushBarriers();
     cmdList->Copy(sourceRHI, destinationRHI, copyDescs);
 }
 
@@ -637,25 +709,35 @@ void CommandContext::Copy(const Texture& source,
                           Span<const BufferTextureCopyDesc> bufferToTextureCopyDescriptions)
 {
     TextureAspect::Flags aspects = 0;
-    for (auto& copyDesc : bufferToTextureCopyDescriptions)
+    for (const auto& copyDesc : bufferToTextureCopyDescriptions)
     {
         TextureCopyUtil::ValidateBufferTextureCopyDesc(destination.desc, source.desc, copyDesc);
-        aspects |= copyDesc.textureRegion.subresource.aspect;
+        aspects |= copyDesc.textureRegion.subresource.GetAspect(source.desc);
     }
+
+    for (const auto& copyDesc : bufferToTextureCopyDescriptions)
+    {
+        // Make sure that writes to the source texture regions are finished.
+        TextureSubresource regionSubresource = copyDesc.textureRegion.subresource;
+        regionSubresource.aspect = aspects;
+        EnqueueTextureBarrier(source,
+                              regionSubresource,
+                              RHIBarrierSync::Copy,
+                              RHIBarrierAccess::CopySource,
+                              RHITextureLayout::CopySource);
+    }
+
+    // Make sure that reads of the dest buffer are finished.
+    EnqueueGlobalBarrier({
+        .srcSync = RHIBarrierSync::AllCommands,
+        .dstSync = RHIBarrierSync::Copy,
+        .srcAccess = RHIBarrierAccess::MemoryRead,
+        .dstAccess = RHIBarrierAccess::CopyDest,
+    });
+    FlushBarriers();
 
     RHITexture& sourceRHI = graphics->GetRHITexture(source.handle);
     RHIBuffer& destinationRHI = graphics->GetRHIBuffer(destination.handle);
-
-    pendingTextureBarriers.push_back(RHITextureBarrier{ sourceRHI,
-                                                        { .aspect = aspects },
-                                                        RHIBarrierSync::Copy,
-                                                        RHIBarrierAccess::CopySource,
-                                                        RHITextureLayout::CopySource });
-
-    pendingBufferBarriers.push_back(
-        RHIBufferBarrier{ destinationRHI, RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest });
-    FlushBarriers();
-
     cmdList->Copy(sourceRHI, destinationRHI, bufferToTextureCopyDescriptions);
 }
 
@@ -706,7 +788,9 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
     u64 packedDataByteSize = TextureUtil::ComputePackedTextureDataByteSize(texture.desc, textureRegions);
     VEX_CHECK(packedData.size_bytes() == packedDataByteSize,
               "Cannot enqueue a data upload: The passed in packed data's size ({}) must be equal to the total texture "
-              "size computed from your specified upload regions ({}).",
+              "size computed from your specified upload regions ({}). Make sure you are correctly uploading the data "
+              "you are specifying in your texture regions and that your data is tightly packed (no alignement "
+              "per-mip/per-slice/...).",
               packedData.size_bytes(),
               packedDataByteSize);
 
@@ -811,8 +895,15 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
 
             MappedMemory mappedMemory = graphics->MapResource(transformBuffer);
             mappedMemory.WriteData(std::as_bytes(std::span<std::array<float, 3 * 4>>(transformsToUpload)));
-            Barrier(transformBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderRead);
         }
+
+        // Ensure that vertex/index buffers have had time to be written-to correctly.
+        EnqueueGlobalBarrier(RHIGlobalBarrier{
+            .srcSync = RHIBarrierSync::AllCommands,
+            .dstSync = RHIBarrierSync::BuildAccelerationStructure,
+            .srcAccess = RHIBarrierAccess::MemoryWrite,
+            .dstAccess = RHIBarrierAccess::ShaderRead,
+        });
 
         u32 transformIndex = 0;
         for (const BLASGeometryDesc& blasGeometry : desc.geometry)
@@ -823,18 +914,12 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
                                      graphics->GetRHIBuffer(blasGeometry.vertexBufferBinding.buffer.handle)),
                 .flags = blasGeometry.flags,
             };
-            Barrier(blasGeometry.vertexBufferBinding.buffer,
-                    RHIBarrierSync::BuildAccelerationStructure,
-                    RHIBarrierAccess::ShaderRead);
 
             if (blasGeometry.indexBufferBinding.has_value())
             {
                 rhiBLASGeometry.indexBufferBinding =
                     RHIBufferBinding(*blasGeometry.indexBufferBinding,
                                      graphics->GetRHIBuffer(blasGeometry.indexBufferBinding->buffer.handle));
-                Barrier(blasGeometry.indexBufferBinding->buffer,
-                        RHIBarrierSync::BuildAccelerationStructure,
-                        RHIBarrierAccess::ShaderRead);
             }
 
             if (blasGeometry.transform.has_value())
@@ -875,8 +960,15 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
 
             MappedMemory mappedMemory = graphics->MapResource(aabbBuffer);
             mappedMemory.WriteData(std::as_bytes(std::span(aabbsToUpload)));
-            Barrier(aabbBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderRead);
         }
+
+        // Ensure that AABB upload is finished.
+        EnqueueGlobalBarrier(RHIGlobalBarrier{
+            .srcSync = RHIBarrierSync::AllCommands,
+            .dstSync = RHIBarrierSync::BuildAccelerationStructure,
+            .srcAccess = RHIBarrierAccess::MemoryWrite,
+            .dstAccess = RHIBarrierAccess::ShaderRead,
+        });
 
         u32 aabbIndex = 0;
         for (const BLASGeometryDesc& blasGeometry : desc.geometry)
@@ -905,18 +997,14 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
         graphics->GetRHIAccelerationStructure(accelerationStructure.handle)
             .SetupBLASBuild(*graphics->allocator,
                             RHIBLASBuildDesc{ .type = desc.type, .geometry = rhiBLASGeometryDescs });
-    Barrier(accelerationStructure,
-            RHIBarrierSync::BuildAccelerationStructure,
-            RHIBarrierAccess::AccelerationStructureWrite);
 
     BufferDesc scratchBufferDesc{
         .name =
             graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_blas_scratch",
         .byteSize = buildInfo.scratchByteSize,
-        .usage = BufferUsage::ScratchBuffer | BufferUsage::ReadWriteBuffer,
+        .usage = BufferUsage::Scratch,
     };
     Buffer scratchBuffer = CreateTemporaryBuffer(scratchBufferDesc);
-    Barrier(scratchBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderReadWrite);
 
     FlushBarriers();
     cmdList->BuildBLAS(graphics->GetRHIAccelerationStructure(accelerationStructure.handle),
@@ -940,10 +1028,12 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
         uniqueBLAS.insert(tlasInstanceDesc.blas);
     }
 
-    for (auto& blas : uniqueBLAS)
-    {
-        Barrier(blas, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::AccelerationStructureRead);
-    }
+    EnqueueGlobalBarrier(RHIGlobalBarrier{
+        .srcSync = RHIBarrierSync::BuildAccelerationStructure,
+        .dstSync = RHIBarrierSync::BuildAccelerationStructure,
+        .srcAccess = RHIBarrierAccess::AccelerationStructureWrite,
+        .dstAccess = RHIBarrierAccess::AccelerationStructureRead,
+    });
 
     const RHITLASBuildDesc rhiTLASDesc{
         .instanceDescs = desc.instances,
@@ -957,10 +1047,9 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
         .name =
             graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_tlas_scratch",
         .byteSize = buildInfo.scratchByteSize,
-        .usage = BufferUsage::ScratchBuffer | BufferUsage::ReadWriteBuffer,
+        .usage = BufferUsage::Scratch,
     };
     Buffer scratchBuffer = CreateTemporaryBuffer(scratchBufferDesc);
-    Barrier(scratchBuffer, RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::ShaderReadWrite);
     Buffer uploadBuffer = CreateTemporaryStagingBuffer(
         graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_tlas",
         *buildInfo.uploadBufferByteSize);
@@ -993,65 +1082,35 @@ BufferReadbackContext CommandContext::EnqueueDataReadback(const Buffer& srcBuffe
     return { stagingBuffer, *graphics };
 }
 
-void CommandContext::BarrierBinding(const TextureBinding& textureBinding)
-{
-    ResourceBinding rb{ textureBinding };
-    BarrierBindings({ &rb, 1 });
-}
-
-void CommandContext::BarrierBinding(const BufferBinding& bufferBinding)
-{
-    ResourceBinding rb{ bufferBinding };
-    BarrierBindings({ &rb, 1 });
-}
-
-void CommandContext::BarrierBindings(Span<const ResourceBinding> resourceBindings)
-{
-    // Collect all underlying RHI textures.
-    std::vector<RHITextureBinding> rhiTextureBindings;
-    rhiTextureBindings.reserve(resourceBindings.size());
-    std::vector<RHIBufferBinding> rhiBufferBindings;
-    rhiBufferBindings.reserve(resourceBindings.size());
-    ResourceBindingUtils::CollectRHIResources(*graphics, resourceBindings, rhiTextureBindings, rhiBufferBindings);
-
-    const RHIBarrierSync dstSync =
-        cmdList->GetType() == QueueTypes::Compute ? RHIBarrierSync::ComputeShader : RHIBarrierSync::AllGraphics;
-
-    EnqueueBarriers(CommandContext_Internal::CreateBarriersFromBindings(dstSync, rhiBufferBindings));
-    EnqueueBarriers(CommandContext_Internal::CreateBarriersFromBindings(dstSync, rhiTextureBindings));
-}
-
-void CommandContext::Barrier(const Texture& texture,
-                             RHIBarrierSync newSync,
-                             RHIBarrierAccess newAccess,
-                             RHITextureLayout newLayout)
-{
-    pendingTextureBarriers.push_back(RHITextureBarrier{ graphics->GetRHITexture(texture.handle),
-                                                        TextureSubresource{},
-                                                        newSync,
-                                                        newAccess,
-                                                        newLayout });
-}
-
-void CommandContext::Barrier(const Buffer& buffer, RHIBarrierSync newSync, RHIBarrierAccess newAccess)
-{
-    pendingBufferBarriers.push_back(RHIBufferBarrier{ graphics->GetRHIBuffer(buffer.handle), newSync, newAccess });
-}
-
-void CommandContext::Barrier(const AccelerationStructure& as, RHIBarrierSync newSync, RHIBarrierAccess newAccess)
-{
-    pendingBufferBarriers.push_back(
-        RHIBufferBarrier{ graphics->GetRHIAccelerationStructure(as.handle).GetRHIBuffer(), newSync, newAccess });
-}
-
 void CommandContext::ExecuteInDrawContext(Span<const TextureBinding> renderTargets,
                                           std::optional<const TextureBinding> depthStencil,
+                                          Span<const ResourceBinding> trackedResources,
                                           const std::function<void()>& callback)
 {
-    RHIDrawResources drawResources = ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(*graphics,
-                                                                                              renderTargets,
-                                                                                              depthStencil,
-                                                                                              pendingTextureBarriers);
+    RHIDrawResources drawResources =
+        ResourceBindingUtils::CollectRHIDrawResources(*graphics, renderTargets, depthStencil);
+    for (const auto& rt : drawResources.renderTargets)
+    {
+        EnqueueTextureBarrier(rt.binding.texture,
+                              rt.binding.subresource,
+                              RHIBarrierSync::RenderTarget,
+                              RHIBarrierAccess::RenderTarget,
+                              RHITextureLayout::RenderTarget);
+    }
+    if (drawResources.depthStencil.has_value())
+    {
+        // Use the most restrictive access, since we don't know how the caller will use the depth stencil texture.
+        RHIBarrierAccess depthAccess = RHIBarrierAccess::DepthStencilReadWrite;
+        RHITextureLayout depthLayout = RHITextureLayout::DepthStencilWrite;
+        EnqueueTextureBarrier(drawResources.depthStencil->binding.texture,
+                              drawResources.depthStencil->binding.subresource,
+                              RHIBarrierSync::DepthStencil,
+                              depthAccess,
+                              depthLayout);
+    }
+
+    InferResourceBarriers(RHIBarrierSync::AllGraphics, trackedResources);
+
     FlushBarriers();
     cmdList->BeginRendering(drawResources);
     callback();
@@ -1060,6 +1119,14 @@ void CommandContext::ExecuteInDrawContext(Span<const TextureBinding> renderTarge
 
 QueryHandle CommandContext::BeginTimestampQuery()
 {
+    cmdList->EmitBarriers({},
+                          {},
+                          { RHIGlobalBarrier{
+                              RHIBarrierSync::Copy,
+                              RHIBarrierSync::Copy,
+                              RHIBarrierAccess::CopyDest,
+                              RHIBarrierAccess::CopySource,
+                          } });
     return cmdList->BeginTimestampQuery();
 }
 
@@ -1068,9 +1135,187 @@ void CommandContext::EndTimestampQuery(QueryHandle handle)
     cmdList->EndTimestampQuery(handle);
 }
 
+void CommandContext::Barrier(const Buffer& buffer, RHIBarrierAccess access)
+{
+    EnqueueGlobalBarrier({
+        .srcSync = RHIBarrierSync::AllCommands,
+        .dstSync = RHIBarrierSync::AllCommands,
+        .srcAccess = RHIBarrierAccess::MemoryWrite,
+        .dstAccess = access,
+    });
+}
+
+void CommandContext::Barrier(const Texture& texture, RHIBarrierAccess access, const TextureSubresource& subresource)
+{
+    EnqueueTextureBarrier(texture, subresource, RHIBarrierSync::AllCommands, access, RHIAccessToRHILayout(access));
+}
+
+void CommandContext::Barrier(const AccelerationStructure& as, RHIBarrierAccess access)
+{
+    VEX_CHECK(
+        access == RHIBarrierAccess::AccelerationStructureRead || access == RHIBarrierAccess::AccelerationStructureWrite,
+        "An acceleration structure can only have Acceleration structure accesses.");
+    EnqueueGlobalBarrier({
+        .srcSync = RHIBarrierSync::BuildAccelerationStructure,
+        .dstSync = RHIBarrierSync::AllCommands,
+        .srcAccess = RHIBarrierAccess::AccelerationStructureWrite,
+        .dstAccess = access,
+    });
+}
+
 RHICommandList& CommandContext::GetRHICommandList()
 {
     return *cmdList;
+}
+
+TextureStateMap& CommandContext::GetOrFetchTextureState(TextureHandle handle)
+{
+    auto [it, inserted] = textureStates.try_emplace(handle, TextureStateMap{});
+    if (inserted)
+    {
+        it->second.SetUniform({ RHIBarrierSync::None, RHIBarrierAccess::NoAccess, RHITextureLayout::Common });
+    }
+    return it->second;
+}
+
+void CommandContext::FlushBarriers()
+{
+    if (pendingBufferBarriers.empty() && pendingTextureBarriers.empty() && pendingGlobalBarriers.empty())
+    {
+        return;
+    }
+
+    cmdList->EmitBarriers(pendingBufferBarriers, pendingTextureBarriers, pendingGlobalBarriers);
+
+    pendingBufferBarriers.clear();
+    pendingTextureBarriers.clear();
+    pendingGlobalBarriers.clear();
+}
+
+void CommandContext::EnqueueTextureBarrier(const Texture& texture,
+                                           const TextureSubresource& subresource,
+                                           RHIBarrierSync dstSync,
+                                           RHIBarrierAccess dstAccess,
+                                           RHITextureLayout dstLayout)
+{
+    TextureStateMap& textureStateMap = GetOrFetchTextureState(texture.handle);
+
+    // Iterate on subresource sections which have the same source state.
+    textureStateMap.ForEachStateSection(texture.desc,
+                                        subresource,
+                                        [&](const TextureSubresource& section, RHITextureState srcState)
+                                        {
+                                            RHITextureBarrier barrier{
+                                                .texture = graphics->GetRHITexture(texture.handle),
+                                                .subresource = section,
+                                                .srcSync = srcState.sync,
+                                                .dstSync = dstSync,
+                                                .srcAccess = srcState.access,
+                                                .dstAccess = dstAccess,
+                                                .srcLayout = srcState.layout,
+                                                .dstLayout = dstLayout,
+                                            };
+
+                                            const bool sameState = srcState.sync == dstSync &&
+                                                                   srcState.access == dstAccess &&
+                                                                   srcState.layout == dstLayout;
+
+                                            const bool isDstWriteAccess = IsWriteAccess(dstAccess);
+
+                                            // Already in the right state, nothing to do. If the dest is a write, we
+                                            // still have to add the barrier though to avoid Write-After-Write hazards.
+                                            if (sameState && !isDstWriteAccess)
+                                            {
+                                                return;
+                                            }
+
+                                            // Have to add all resources to the touched textures list, as DX12 could
+                                            // require a resource layout transition (even when read<->read is
+                                            // occurring).
+                                            touchedTextures.insert(texture);
+
+                                            pendingTextureBarriers.push_back(std::move(barrier));
+                                        });
+
+    // Set the new state in the texture state map, no matter the previous codepath we end up with the entire passed in
+    // subresource in a uniform state.
+    textureStateMap.Set(texture.desc, subresource, { dstSync, dstAccess, dstLayout });
+}
+
+void CommandContext::EnqueueGlobalBarrier(const RHIGlobalBarrier& globalBarrier)
+{
+    pendingGlobalBarriers.push_back(globalBarrier);
+}
+
+void CommandContext::InferResourceBarriers(RHIBarrierSync syncStage, Span<const ResourceBinding> resources)
+{
+    for (const auto& rb : resources)
+    {
+        std::visit(
+            Visitor{ [this, syncStage](const BufferBinding& bufferBinding)
+                     {
+                         using enum BufferBindingUsage;
+                         RHIBarrierAccess dstAccess;
+                         switch (bufferBinding.usage)
+                         {
+                         case UniformBuffer:
+                             dstAccess = RHIBarrierAccess::UniformRead;
+                             break;
+                         case StructuredBuffer:
+                         case ByteAddressBuffer:
+                             dstAccess = RHIBarrierAccess::ShaderRead;
+                             break;
+                         case RWStructuredBuffer:
+                         case RWByteAddressBuffer:
+                             dstAccess = RHIBarrierAccess::ShaderReadWrite;
+                             break;
+                         default:
+                             VEX_LOG(Fatal, "Invalid usage for buffer binding {}...", bufferBinding.buffer.desc.name);
+                             break;
+                         }
+
+                         // In Vex buffers just use global barriers.
+                         EnqueueGlobalBarrier(RHIGlobalBarrier{
+                             .srcSync = RHIBarrierSync::AllCommands,
+                             .dstSync = syncStage,
+                             .srcAccess = RHIBarrierAccess::MemoryWrite,
+                             .dstAccess = dstAccess,
+                         });
+                     },
+                     [this, syncStage](const TextureBinding& texBinding)
+                     {
+                         using enum TextureBindingUsage;
+                         RHIBarrierAccess access;
+                         RHITextureLayout layout;
+                         switch (texBinding.usage)
+                         {
+                         case ShaderRead:
+                             access = RHIBarrierAccess::ShaderRead;
+                             layout = RHITextureLayout::ShaderRead;
+                             break;
+                         case ShaderReadWrite:
+                             access = RHIBarrierAccess::ShaderReadWrite;
+                             layout = RHITextureLayout::ShaderReadWrite;
+                             break;
+                         default:
+                             VEX_LOG(Fatal, "Invalid usage for texture binding {}...", texBinding.texture.desc.name);
+                             break;
+                         }
+
+                         EnqueueTextureBarrier(texBinding.texture, texBinding.subresource, syncStage, access, layout);
+                     },
+                     [this, syncStage](const AccelerationStructureBinding& asBinding)
+                     {
+                         // All ASBindings use AccelerationStructureRead.
+                         EnqueueGlobalBarrier(RHIGlobalBarrier{
+                             .srcSync = RHIBarrierSync::AllCommands,
+                             .dstSync = syncStage,
+                             .srcAccess = RHIBarrierAccess::MemoryWrite,
+                             .dstAccess = RHIBarrierAccess::AccelerationStructureRead,
+                         });
+                     } },
+            rb.binding);
+    }
 }
 
 ScopedGPUEvent CommandContext::CreateScopedGPUEvent(const char* markerLabel, std::array<float, 3> color)
@@ -1086,7 +1331,7 @@ Buffer CommandContext::CreateTemporaryStagingBuffer(const std::string& name,
     const Buffer stagingBuffer =
         graphics->CreateBuffer(BufferDesc::CreateStagingBufferDesc(name + "_staging", byteSize, additionalUsages));
     // Schedule a cleanup of the staging buffer.
-    temporaryResources.push_back(stagingBuffer);
+    temporaryBuffers.push_back(stagingBuffer);
     return stagingBuffer;
 }
 
@@ -1094,27 +1339,66 @@ Buffer CommandContext::CreateTemporaryBuffer(const BufferDesc& desc)
 {
     const Buffer buf = graphics->CreateBuffer(desc);
     // Schedule a cleanup of the buffer.
-    temporaryResources.push_back(buf);
+    temporaryBuffers.push_back(buf);
     return buf;
 }
 
 std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& drawDesc,
                                                                 const DrawResourceBinding& drawBindings,
-                                                                ConstantBinding constants)
+                                                                ConstantBinding constants,
+                                                                Span<const ResourceBinding> trackedResources)
 {
+    InferResourceBarriers(RHIBarrierSync::AllGraphics, trackedResources);
+
     // Transition RTs/DepthStencil
-    RHIDrawResources drawResources =
-        ResourceBindingUtils::CollectRHIDrawResourcesAndBarriers(*graphics,
-                                                                 drawBindings.renderTargets,
-                                                                 drawBindings.depthStencil,
-                                                                 pendingTextureBarriers,
-                                                                 drawDesc.depthStencilState);
+    RHIDrawResources drawResources = ResourceBindingUtils::CollectRHIDrawResources(*graphics,
+                                                                                   drawBindings.renderTargets,
+                                                                                   drawBindings.depthStencil,
+                                                                                   drawDesc.depthStencilState);
+    for (const auto& rt : drawResources.renderTargets)
+    {
+        EnqueueTextureBarrier(rt.binding.texture,
+                              rt.binding.subresource,
+                              RHIBarrierSync::RenderTarget,
+                              RHIBarrierAccess::RenderTarget,
+                              RHITextureLayout::RenderTarget);
+    }
+    if (drawResources.depthStencil.has_value())
+    {
+        // Start with the most restrictive access.
+        RHIBarrierAccess depthAccess;
+        if (!drawDesc.depthStencilState.depthWriteEnabled)
+        {
+            depthAccess = RHIBarrierAccess::DepthStencilRead;
+        }
+        else
+        {
+            depthAccess = drawDesc.depthStencilState.depthTestEnabled ? RHIBarrierAccess::DepthStencilReadWrite
+                                                                      : RHIBarrierAccess::DepthStencilWrite;
+        }
+        RHITextureLayout depthLayout = drawDesc.depthStencilState.depthWriteEnabled
+                                           ? RHITextureLayout::DepthStencilWrite
+                                           : RHITextureLayout::DepthStencilRead;
+
+        EnqueueTextureBarrier(drawResources.depthStencil->binding.texture,
+                              drawResources.depthStencil->binding.subresource,
+                              RHIBarrierSync::DepthStencil,
+                              depthAccess,
+                              depthLayout);
+    }
 
     auto graphicsPSOKey = CommandContext_Internal::GetGraphicsPSOKeyFromDrawDesc(drawDesc, drawResources);
 
     if (!cachedGraphicsPSOKey || graphicsPSOKey != *cachedGraphicsPSOKey)
     {
-        const RHIGraphicsPipelineState* pipelineState = graphics->psCache->GetGraphicsPipelineState(graphicsPSOKey);
+        std::unique_ptr<RHIGraphicsPipelineState> oldPSO;
+        const RHIGraphicsPipelineState* pipelineState =
+            graphics->psCache->GetGraphicsPipelineState(graphicsPSOKey, oldPSO);
+        if (oldPSO)
+        {
+            temporaryResources.emplace_back(std::move(oldPSO));
+        }
+
         // No valid PSO means we cannot proceed.
         if (!pipelineState)
         {
@@ -1137,16 +1421,14 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
         cachedInputAssembly = drawDesc.inputAssembly;
     }
 
-    // Transition and bind Vertex Buffer(s)
-    EnqueueBarriers(SetVertexBuffers(drawBindings.vertexBuffersFirstSlot, drawBindings.vertexBuffers));
+    // Bind Vertex Buffer(s)
+    SetVertexBuffers(drawBindings.vertexBuffersFirstSlot, drawBindings.vertexBuffers);
 
-    // Transition and bind Index Buffer.
-    if (auto indexBarrier = SetIndexBuffer(drawBindings.indexBuffer))
+    // Bind Index Buffer.
+    if (drawBindings.indexBuffer.has_value())
     {
-        pendingBufferBarriers.push_back(std::move(*indexBarrier));
+        SetIndexBuffer(*drawBindings.indexBuffer);
     }
-
-    FlushBarriers();
 
     return drawResources;
 }
@@ -1163,17 +1445,14 @@ void CommandContext::CheckViewportAndScissor() const
               "No scissor rect was set! Remember to call CommandContext::SetScissor before performing a draw call!");
 }
 
-std::vector<RHIBufferBarrier> CommandContext::SetVertexBuffers(u32 vertexBuffersFirstSlot,
-                                                               Span<const BufferBinding> vertexBuffers)
+void CommandContext::SetVertexBuffers(u32 vertexBuffersFirstSlot, Span<const BufferBinding> vertexBuffers)
 {
     if (vertexBuffers.empty())
     {
-        return {};
+        return;
     }
 
-    std::vector<RHIBufferBarrier> barriers;
     std::vector<RHIBufferBinding> rhiBindings;
-    barriers.reserve(vertexBuffers.size());
     rhiBindings.reserve(vertexBuffers.size());
     for (const auto& vertexBuffer : vertexBuffers)
     {
@@ -1183,55 +1462,15 @@ std::vector<RHIBufferBarrier> CommandContext::SetVertexBuffers(u32 vertexBuffers
         }
         RHIBuffer& buffer = graphics->GetRHIBuffer(vertexBuffer.buffer.handle);
         rhiBindings.emplace_back(vertexBuffer, NonNullPtr(buffer));
-        barriers.push_back(RHIBufferBarrier{ buffer, RHIBarrierSync::VertexInput, RHIBarrierAccess::VertexInputRead });
     }
     cmdList->SetVertexBuffers(vertexBuffersFirstSlot, rhiBindings);
-    return barriers;
 }
 
-std::optional<RHIBufferBarrier> CommandContext::SetIndexBuffer(std::optional<BufferBinding> indexBuffer)
+void CommandContext::SetIndexBuffer(BufferBinding indexBuffer)
 {
-    if (!indexBuffer.has_value())
-    {
-        return {};
-    }
-
-    RHIBuffer& buffer = graphics->GetRHIBuffer(indexBuffer->buffer.handle);
-
-    RHIBufferBinding binding{ *indexBuffer, NonNullPtr(buffer) };
+    RHIBuffer& buffer = graphics->GetRHIBuffer(indexBuffer.buffer.handle);
+    RHIBufferBinding binding{ indexBuffer, NonNullPtr(buffer) };
     cmdList->SetIndexBuffer(binding);
-
-    return RHIBufferBarrier{ buffer, RHIBarrierSync::VertexInput, RHIBarrierAccess::VertexInputRead };
-}
-
-void CommandContext::EnqueueBarriers(Span<const RHITextureBarrier> barriers)
-{
-#ifdef __cpp_lib_containers_ranges
-    pendingTextureBarriers.append_range(barriers);
-#else
-    pendingTextureBarriers.insert(pendingTextureBarriers.end(), barriers.cbegin(), barriers.cend());
-#endif
-}
-
-void CommandContext::EnqueueBarriers(Span<const RHIBufferBarrier> barriers)
-{
-#ifdef __cpp_lib_containers_ranges
-    pendingBufferBarriers.append_range(barriers);
-#else
-    pendingBufferBarriers.insert(pendingBufferBarriers.end(), barriers.cbegin(), barriers.cend());
-#endif
-}
-
-void CommandContext::FlushBarriers()
-{
-    if (pendingBufferBarriers.empty() && pendingTextureBarriers.empty())
-    {
-        return;
-    }
-    // Submit all barriers at once to reduce API calls.
-    cmdList->Barrier(pendingBufferBarriers, pendingTextureBarriers);
-    pendingBufferBarriers.clear();
-    pendingTextureBarriers.clear();
 }
 
 } // namespace vex

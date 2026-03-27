@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <string>
 
 #include <Vex/Formats.h>
@@ -44,8 +45,8 @@ enum class TextureViewType : u8
 enum class TextureBindingUsage : u8
 {
     None = 0,
-    ShaderRead = TextureUsage::ShaderRead,           // Equivalent to SRV in DX12.
-    ShaderReadWrite = TextureUsage::ShaderReadWrite, // Equivalent to UAV in DX12.
+    ShaderRead = TextureUsage::ShaderRead,           // Equivalent to SRV in DX12, used as Texture<type> in shaders.
+    ShaderReadWrite = TextureUsage::ShaderReadWrite, // Equivalent to UAV in DX12, used as RWTexture<type> in shaders.
 };
 
 // clang-format off
@@ -63,10 +64,11 @@ END_VEX_ENUM_FLAGS();
 
 struct TextureClearValue
 {
-    TextureAspect::Flags clearAspect = TextureAspect::None;
-    std::array<float, 4> color;
-    float depth;
-    u8 stencil;
+    std::array<float, 4> color{ 0, 0, 0, 0 };
+    float depth = 0;
+    u8 stencil = 0;
+
+    constexpr bool operator==(const TextureClearValue&) const = default;
 };
 
 static constexpr u8 GTextureCubeFaceCount = 6U;
@@ -81,6 +83,8 @@ struct TextureDesc
     TextureUsage::Flags usage = TextureUsage::ShaderRead;
     TextureClearValue clearValue;
     ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly;
+
+    constexpr bool operator==(const TextureDesc&) const = default;
 
     [[nodiscard]] u32 GetDepth() const
     {
@@ -169,6 +173,16 @@ struct Texture final
 {
     TextureHandle handle;
     TextureDesc desc;
+
+    constexpr bool operator==(const Texture&) const = default;
+};
+
+struct TextureHandleHash
+{
+    size_t operator()(const Texture& texture) const noexcept
+    {
+        return std::hash<TextureHandle>{}(texture.handle);
+    }
 };
 
 static constexpr u32 GTextureExtentMax = ~static_cast<u32>(0);
@@ -217,7 +231,7 @@ struct TextureSubresource
     u16 mipCount = GTextureAllMips;
     u32 startSlice = 0;
     u32 sliceCount = GTextureAllSlices;
-    // Refers to the slice in DX12 and the aspect mask in Vulkan
+    // Refers to the plane in DX12 and the aspect mask in Vulkan
     TextureAspect::Flags aspect = TextureAspect::All;
 
     bool IsFullResource(const TextureDesc& desc) const;
@@ -226,6 +240,7 @@ struct TextureSubresource
     u32 GetSliceCount(const TextureDesc& desc) const;
     u32 GetStartPlane(const TextureDesc& desc) const;
     u32 GetPlaneCount(const TextureDesc& desc) const;
+    TextureAspect::Flags GetAspect(const TextureDesc& desc) const;
     TextureAspect::Type GetSingleAspect(const TextureDesc& desc) const;
     static TextureAspect::Flags GetDefaultAspect(const TextureDesc& desc);
 
@@ -243,9 +258,9 @@ struct TextureRegion
     constexpr bool operator==(const TextureRegion&) const = default;
 
     // The entirety of the texture (all mips and all slices).
-    static TextureRegion AllMips(TextureAspect::Type aspect = TextureAspect::Color);
+    static TextureRegion AllMips(TextureAspect::Flags aspect = TextureAspect::All);
     // The entirety of a single mip (one mip and all slices).
-    static TextureRegion SingleMip(u16 mipIndex, TextureAspect::Type aspect = TextureAspect::Color);
+    static TextureRegion SingleMip(u16 mipIndex, TextureAspect::Flags aspect = TextureAspect::All);
 };
 
 struct TextureCopyDesc
@@ -265,7 +280,10 @@ static constexpr u64 RowPitchAlignment = 256;
 static constexpr u64 MipAlignment = 512;
 static constexpr u64 SliceAlignment = 512;
 
+u32 GetSubresourceIndex(const TextureDesc& desc, u16 mip, u32 slice, u32 plane);
+
 std::tuple<u32, u32, u32> GetMipSize(const TextureDesc& desc, u32 mip);
+TextureViewType GetTextureViewType(const TextureDesc& desc, bool textureCubeAsTexture2DArray);
 TextureViewType GetTextureViewType(const TextureBinding& binding);
 // This provides the correct format on which the data should be interpreted when copying data from and to a texture.
 // This applies mostly to depth/stencil formats that are read separately from their original format. (It applies to any
@@ -275,6 +293,7 @@ void ValidateTextureDescription(const TextureDesc& desc);
 float GetPixelByteSizeFromFormat(TextureFormat format);
 
 u32 TextureAspectToPlaneIndex(TextureAspect::Type aspect);
+TextureAspect::Flags PlaneStartCountToTextureAspect(TextureFormat format, u32 startPlane, u32 planeCount);
 
 u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions);
 u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions);
@@ -283,7 +302,7 @@ bool IsBindingUsageCompatibleWithUsage(TextureUsage::Flags usages, TextureBindin
 
 void ForEachSubresourceIndices(const TextureSubresource& subresource,
                                const TextureDesc& desc,
-                               std::function<void(u32 mip, u32 slice, u32 plane)> func);
+                               std::function<void(u16 mip, u32 slice, u32 plane)> func);
 
 void ValidateSubresource(const TextureDesc& desc, const TextureSubresource& subresource);
 void ValidateRegion(const TextureDesc& desc, const TextureRegion& region);
@@ -295,6 +314,7 @@ void ValidateCompatibleTextureDescs(const TextureDesc& srcDesc, const TextureDes
 } // namespace vex
 
 // clang-format off
+
 VEX_MAKE_HASHABLE(vex::TextureSubresource,
     VEX_HASH_COMBINE(seed, obj.startMip);
     VEX_HASH_COMBINE(seed, obj.mipCount);
@@ -302,4 +322,5 @@ VEX_MAKE_HASHABLE(vex::TextureSubresource,
     VEX_HASH_COMBINE(seed, obj.sliceCount);
     VEX_HASH_COMBINE(seed, obj.aspect);
 );
+
 // clang-format on

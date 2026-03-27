@@ -9,7 +9,7 @@
 namespace vex::dx12
 {
 
-class DX12Fence : public RHIFenceBase
+class DX12Fence final : public RHIFenceBase
 {
 public:
     DX12Fence(ComPtr<DX12Device>& device);

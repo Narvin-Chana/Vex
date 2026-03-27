@@ -119,7 +119,7 @@ namespace VkTextureUtil
 
 ::vk::ImageAspectFlags AspectFlagFromPlaneIndex(TextureFormat format, u32 plane)
 {
-    if (FormatUtil::IsDepthOrStencilFormat(format))
+    if (FormatUtil::IsDepthOrDepthStencilFormat(format))
     {
         VEX_ASSERT(plane <= 1);
         if (plane == 1)
@@ -199,7 +199,7 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, RHIAllocator& allocator, Text
 
 BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding, RHIDescriptorPool& descriptorPool)
 {
-    VkTextureViewDesc view{ binding };
+    VkTextureView view{ binding };
     if (auto it = bindlessCache.find(view); it != bindlessCache.end() && descriptorPool.IsValid(it->second.handle))
     {
         return it->second.handle;
@@ -231,18 +231,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
     ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx->device.createImageViewUnique(viewCreate);
     const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
 
-    ::vk::ImageLayout viewLayout;
-    switch (binding.usage)
-    {
-    case TextureBindingUsage::ShaderRead:
-        viewLayout = ::vk::ImageLayout::eShaderReadOnlyOptimal;
-        break;
-    case TextureBindingUsage::ShaderReadWrite:
-        viewLayout = ::vk::ImageLayout::eGeneral;
-        break;
-    default:
-        VEX_LOG(Fatal, "Unsupported binding usage for texture {}.", binding.texture.desc.name);
-    }
+    ::vk::ImageLayout viewLayout = ::vk::ImageLayout::eGeneral;
 
     descriptorPool.GetBindlessSet().UpdateDescriptor(
         handle,
@@ -256,7 +245,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
 
 ::vk::ImageView VkTexture::GetOrCreateImageView(const TextureBinding& binding, TextureUsage::Type usage)
 {
-    VkTextureViewDesc view{ binding };
+    VkTextureView view{ binding };
     if (auto it = viewCache.find(view); it != viewCache.end())
     {
         return *it->second;
@@ -271,16 +260,22 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
     }
     viewUsageInfo.usage = viewUsage;
 
+    ::vk::ImageAspectFlags aspectFlags;
+    TextureAspect::Flags subresourceAspects = binding.subresource.GetAspect(binding.texture.desc);
+    if (subresourceAspects & TextureAspect::Color)
+        aspectFlags |= ::vk::ImageAspectFlagBits::eColor;
+    if (subresourceAspects & TextureAspect::Depth)
+        aspectFlags |= ::vk::ImageAspectFlagBits::eDepth;
+    if (subresourceAspects & TextureAspect::Stencil)
+        aspectFlags |= ::vk::ImageAspectFlagBits::eStencil;
+
     const ::vk::ImageViewCreateInfo viewCreate{ 
         .pNext = &viewUsageInfo, 
         .image = GetRawTexture(),
         .viewType = TextureTypeToVulkan(view.viewType),
         .format = view.format,
         .subresourceRange = {
-            .aspectMask = usage == TextureUsage::DepthStencil
-                                ? VkTextureUtil::GetDepthAspectFlags(
-                                    VulkanToTextureFormat(view.format))
-                                : ::vk::ImageAspectFlagBits::eColor,
+            .aspectMask = aspectFlags,
             .baseMipLevel = view.subresource.startMip,
             .levelCount = view.subresource.GetMipCount(binding.texture.desc),
             .baseArrayLayer = view.subresource.startSlice,
@@ -309,7 +304,7 @@ void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 
 void VkTexture::FreeAllocation(RHIAllocator& allocator)
 {
-#if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
+#if VEX_USE_CUSTOM_RESOURCE_ALLOCATOR
     allocator.FreeResource(allocation);
 #else
     memory.release();
@@ -324,15 +319,35 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
         return;
     }
 
-    ::vk::ImageCreateInfo createInfo{};
-    // Force the non-SRGB variant.
-    createInfo.format = TextureFormatToVulkan(desc.format, false);
-    createInfo.sharingMode = ::vk::SharingMode::eExclusive;
-    createInfo.tiling = ::vk::ImageTiling::eOptimal;
-    createInfo.initialLayout = ::vk::ImageLayout::eUndefined;
-    createInfo.mipLevels = desc.mips;
-    createInfo.samples = ::vk::SampleCountFlagBits::e1;
-    createInfo.flags = ::vk::ImageCreateFlagBits::eMutableFormat;
+    // Use of mutable formats can disable DCC on certain hardware. We can avoid this by specifying a subset of possible
+    // formats, in our case only the srgb and non-srgb variants are needed.
+    const bool useMutableFormat = FormatUtil::HasSRGBEquivalent(desc.format);
+    std::vector<::vk::Format> possibleViewFormats;
+    if (useMutableFormat)
+    {
+        possibleViewFormats.push_back(TextureFormatToVulkan(desc.format, false));
+        possibleViewFormats.push_back(TextureFormatToVulkan(desc.format, true));
+    }
+    ::vk::ImageFormatListCreateInfoKHR imageFormatList{
+        .viewFormatCount = static_cast<u32>(possibleViewFormats.size()),
+        .pViewFormats = possibleViewFormats.data(),
+    };
+
+    const bool needsConcurrent = ctx->queueFamilyIndices.size() > 1;
+    ::vk::ImageCreateInfo createInfo{
+        .pNext = useMutableFormat ? &imageFormatList : nullptr,
+        .flags = useMutableFormat ? ::vk::ImageCreateFlagBits::eMutableFormat : ::vk::ImageCreateFlags{},
+        // Force the non-SRGB variant.
+        .format = TextureFormatToVulkan(desc.format, false),
+        .mipLevels = desc.mips,
+        .samples = ::vk::SampleCountFlagBits::e1,
+        .tiling = ::vk::ImageTiling::eOptimal,
+        .usage = GetImageUsage(desc),
+        .sharingMode = needsConcurrent ? ::vk::SharingMode::eConcurrent : ::vk::SharingMode::eExclusive,
+        .queueFamilyIndexCount = needsConcurrent ? static_cast<u32>(ctx->queueFamilyIndices.size()) : 0,
+        .pQueueFamilyIndices = needsConcurrent ? ctx->queueFamilyIndices.data() : nullptr,
+        .initialLayout = ::vk::ImageLayout::eUndefined,
+    };
 
     switch (desc.type)
     {
@@ -354,13 +369,11 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
     default:;
     }
 
-    createInfo.usage = GetImageUsage(desc);
-
     ::vk::UniqueImage imageTmp = VEX_VK_CHECK <<= ctx->device.createImageUnique(createInfo);
 
     ::vk::MemoryRequirements imageMemoryReq = ctx->device.getImageMemoryRequirements(*imageTmp);
 
-#if VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
+#if VEX_USE_CUSTOM_RESOURCE_ALLOCATOR
     auto [memory, newAllocation] = allocator.AllocateResource(desc.memoryLocality, imageMemoryReq);
     allocation = newAllocation;
     VEX_VK_CHECK << ctx->device.bindImageMemory(*imageTmp, memory, allocation.memoryRange.offset);
@@ -383,8 +396,7 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
     image = std::move(imageTmp);
 }
 
-VkTextureViewDesc::VkTextureViewDesc(const TextureBinding& binding)
-
+VkTextureView::VkTextureView(const TextureBinding& binding)
     : viewType{ TextureUtil::GetTextureViewType(binding) }
     , format{ TextureFormatToVulkan(binding.texture.desc.format, binding.isSRGB) }
     , usage{ static_cast<TextureUsage::Type>(binding.usage) }

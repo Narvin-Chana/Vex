@@ -91,13 +91,14 @@ VkSwapChain::VkSwapChain(NonNullPtr<VkGPUContext> ctx, SwapChainDesc& desc, cons
         });
         return semaphore;
     };
-    // Requires including the heavy <algorithm>
+
     std::ranges::generate_n(std::back_inserter(presentSemaphore), requestedImageCount, BinarySemaphoreCreator);
     std::ranges::generate_n(std::back_inserter(backbufferAcquisition), requestedImageCount, BinarySemaphoreCreator);
 }
 
 void VkSwapChain::RecreateSwapChain(u32 width, u32 height)
 {
+    VEX_ASSERT(width != 0 && height != 0);
     supportDetails = GetSwapChainSupportDetails(ctx->physDevice, ctx->surface);
     currentColorSpace = GetValidColorSpace(desc->preferredColorSpace);
     surfaceFormat = GetBestSurfaceFormat(supportDetails);
@@ -119,16 +120,30 @@ void VkSwapChain::RecreateSwapChain(u32 width, u32 height)
                 currentColorSpace);
     }
 
+    if (supportDetails.capabilities.currentExtent.width == 0 || supportDetails.capabilities.currentExtent.height == 0)
+    {
+        return;
+    }
+
     InitSwapchainResource(width, height);
 }
 
 bool VkSwapChain::NeedsRecreation() const
 {
+    // Update support details.
     const ::vk::PresentModeKHR newPresentMode = GetBestPresentMode(supportDetails, desc->useVSync);
     const bool needsRecreationDueToVSync = newPresentMode != presentMode;
 
     return swapchainIsInErrorState || needsRecreationDueToVSync || !IsColorSpaceStillSupported(*desc) ||
            (!desc->useHDRIfSupported && IsHDREnabled());
+}
+
+bool VkSwapChain::CanRecreate()
+{
+    supportDetails = GetSwapChainSupportDetails(ctx->physDevice, ctx->surface);
+
+    return NeedsRecreation() && supportDetails.capabilities.currentExtent.width != 0 &&
+           supportDetails.capabilities.currentExtent.height != 0;
 }
 
 TextureDesc VkSwapChain::GetBackBufferTextureDescription() const
@@ -223,7 +238,7 @@ std::optional<RHITexture> VkSwapChain::AcquireBackBuffer(u8 frameIndex)
     return RHITexture{ ctx, std::move(desc), backbufferImages[currentBackbufferId] };
 }
 
-SyncToken VkSwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandList> commandList, bool isFullscreen)
+SyncToken VkSwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandList> commandList)
 {
     ::vk::CommandBufferSubmitInfo cmdBufferSubmitInfo{ .commandBuffer = commandList->GetNativeCommandList() };
 
@@ -240,7 +255,7 @@ SyncToken VkSwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandLis
         .stageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput,
     };
 
-    SyncToken syncToken = rhi.SubmitToQueue(commandList->GetType(),
+    SyncToken syncToken = rhi.SubmitToQueue(commandList->GetQueue(),
                                             { &cmdBufferSubmitInfo, 1 },
                                             { &acquireWaitInfo, 1 },
                                             { presentSignalInfo });
@@ -273,6 +288,7 @@ void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
     height = inHeight;
     ::vk::Extent2D extent = GetBestSwapExtent(supportDetails, width, height);
 
+    const bool needsConcurrent = ctx->queueFamilyIndices.size() > 1;
     ::vk::SwapchainCreateInfoKHR swapChainCreateInfo{
         .surface = ctx->surface,
         .minImageCount = std::to_underlying(desc->frameBuffering),
@@ -282,9 +298,9 @@ void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
         .imageArrayLayers = 1,
         .imageUsage = ::vk::ImageUsageFlagBits::eColorAttachment | ::vk::ImageUsageFlagBits::eTransferDst |
                       ::vk::ImageUsageFlagBits::eTransferSrc,
-        .imageSharingMode = ::vk::SharingMode::eExclusive,
-        .queueFamilyIndexCount = 0,
-        .pQueueFamilyIndices = nullptr,
+        .imageSharingMode = needsConcurrent ? ::vk::SharingMode::eExclusive : ::vk::SharingMode::eConcurrent,
+        .queueFamilyIndexCount = needsConcurrent ? static_cast<u32>(ctx->queueFamilyIndices.size()) : 0,
+        .pQueueFamilyIndices = needsConcurrent ? ctx->queueFamilyIndices.data() : nullptr,
         .preTransform = supportDetails.capabilities.currentTransform,
         .compositeAlpha = ::vk::CompositeAlphaFlagBitsKHR::eOpaque,
         .presentMode = presentMode,

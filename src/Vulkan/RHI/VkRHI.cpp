@@ -1,5 +1,6 @@
 #include "VkRHI.h"
 
+#include <algorithm>
 #include <set>
 #include <utility>
 #include <variant>
@@ -22,8 +23,9 @@
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
 #include <Vex/Synchronization.h>
-#include <Vex/Types.h>
 #include <Vex/Texture.h>
+#include <Vex/Types.h>
+#include <Vex/Utility/Validation.h>
 #include <Vex/Utility/Visitor.h>
 
 #include <RHI/RHICommandList.h>
@@ -116,7 +118,7 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
     // Enable extensions depending on what we require
     std::vector<const char*> extensions;
 
-    static auto ValidateAndAddExtension = [&extensions, &extensionProperties](const char* extensionName)
+    auto ValidateAndAddExtension = [&extensions, &extensionProperties](const char* extensionName)
     {
         VEX_CHECK(SupportsExtension(extensionProperties, extensionName),
                   "Cannot create vk instance, unsupported extension: {}",
@@ -325,7 +327,7 @@ void VkRHI::Init()
                                                                   extensionProperties.data());
 
     std::vector<const char*> extensions;
-    static auto ValidateAndAddExtension = [&extensions, &extensionProperties](const char* extensionName)
+    auto ValidateAndAddExtension = [&extensions, &extensionProperties](const char* extensionName)
     {
         VEX_CHECK(SupportsExtension(extensionProperties, extensionName),
                   "Cannot create vk device, unsupported extension: {}",
@@ -470,6 +472,20 @@ void VkRHI::Init()
 
     // Initializes values for the first time
     GetGPUContext();
+
+    // Collect unique, valid queue family indices for concurrent resource sharing (eConcurrent SharedMode flag).
+    for (i32 family : { graphicsQueueFamily, computeQueueFamily, copyQueueFamily })
+    {
+        if (family != -1)
+        {
+            u32 ufamily = static_cast<u32>(family);
+            if (std::find(ctx->queueFamilyIndices.begin(), ctx->queueFamilyIndices.end(), ufamily) ==
+                ctx->queueFamilyIndices.end())
+            {
+                ctx->queueFamilyIndices.push_back(ufamily);
+            }
+        }
+    }
 }
 
 RHISwapChain VkRHI::CreateSwapChain(SwapChainDesc& desc, const PlatformWindow& platformWindow)
@@ -572,6 +588,17 @@ std::array<SyncToken, QueueTypes::Count> VkRHI::GetMostRecentSyncTokenPerQueue()
 void VkRHI::AddDependencyWait(std::vector<::vk::SemaphoreSubmitInfo>& waitSemaphores, SyncToken syncToken)
 {
     auto& signalingFence = (*fences)[syncToken.queueType];
+
+    // Avoid duplicate semaphore entries — keep highest value for this semaphore
+    for (auto& existing : waitSemaphores)
+    {
+        if (existing.semaphore == *signalingFence.timelineSemaphore)
+        {
+            existing.value = std::max(existing.value, syncToken.value);
+            return;
+        }
+    }
+
     waitSemaphores.push_back({ .semaphore = *signalingFence.timelineSemaphore,
                                .value = syncToken.value,
                                .stageMask = ::vk::PipelineStageFlagBits2::eAllCommands });
@@ -588,7 +615,9 @@ SyncToken VkRHI::SubmitToQueue(QueueType queueType,
     // Obtain signal value and increment for the next signal.
     u64 signalValue = fence.nextSignalValue++;
 
-    ::vk::SemaphoreSubmitInfo signalInfo{ .semaphore = *fence.timelineSemaphore, .value = signalValue };
+    ::vk::SemaphoreSubmitInfo signalInfo{ .semaphore = *fence.timelineSemaphore,
+                                          .value = signalValue,
+                                          .stageMask = ::vk::PipelineStageFlagBits2::eAllCommands };
     signalSemaphores.push_back(signalInfo);
 
     ::vk::SubmitInfo2 submitInfo = {
@@ -617,7 +646,7 @@ std::vector<SyncToken> VkRHI::Submit(Span<const NonNullPtr<RHICommandList>> comm
     std::array<std::vector<::vk::CommandBufferSubmitInfo>, QueueTypes::Count> commandListsPerQueue;
     for (NonNullPtr<RHICommandList> cmdList : commandLists)
     {
-        commandListsPerQueue[cmdList->GetType()].push_back(
+        commandListsPerQueue[cmdList->GetQueue()].push_back(
             ::vk::CommandBufferSubmitInfo{ .commandBuffer = cmdList->GetNativeCommandList() });
     }
 
@@ -655,7 +684,7 @@ std::vector<SyncToken> VkRHI::Submit(Span<const NonNullPtr<RHICommandList>> comm
 
         for (auto& cmdList : commandLists)
         {
-            if (cmdList->GetType() == i)
+            if (cmdList->GetQueue() == i)
             {
                 cmdList->UpdateTimestampQueryTokens(cmdListToken);
             }
@@ -683,11 +712,9 @@ void VkRHI::FlushGPU()
             VEX_LOG(Warning, "VkQueue was invalid on flush, skipping flush operations on it")
             continue;
         }
-        // Force immediate queue flush
-        VEX_VK_CHECK << queue.queue.waitIdle();
 
-        const auto& fence = (*fences)[queueType];
         // We want to wait for the most recently queued up signal (aka nextSignalValue - 1).
+        const auto& fence = (*fences)[queueType];
         const u64 waitValue = fence.nextSignalValue - 1;
         const ::vk::SemaphoreWaitInfo flushWaitInfo{
             .semaphoreCount = 1,
@@ -695,6 +722,9 @@ void VkRHI::FlushGPU()
             .pValues = &waitValue,
         };
         VEX_VK_CHECK << device->waitSemaphores(&flushWaitInfo, std::numeric_limits<u64>::max());
+
+        // Now wait for the semaphore itself to be done signaling.
+        VEX_VK_CHECK << queue.queue.waitIdle();
     }
 }
 
@@ -702,11 +732,7 @@ NonNullPtr<VkGPUContext> VkRHI::GetGPUContext()
 {
     if (!ctx)
     {
-        ctx = std::make_unique<VkGPUContext>(*device,
-                                             physDevice,
-                                             *surface,
-                                             queues[QueueType::Graphics],
-                                             (*fences)[QueueType::Graphics]);
+        ctx = std::make_unique<VkGPUContext>(*device, physDevice, *surface, queues[QueueType::Graphics]);
     }
     return NonNullPtr(*ctx);
 }

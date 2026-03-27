@@ -6,10 +6,13 @@
 #include <Vex/Graphics.h>
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
+#include <Vex/RHIImpl/RHIAccelerationStructure.h>
+#include <Vex/RHIImpl/RHIBuffer.h>
+#include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/TextureSampler.h>
 #include <Vex/Utility/Formattable.h>
 #include <Vex/Utility/NonNullPtr.h>
-
+#include <Vex/Utility/Validation.h>
 
 namespace vex
 {

@@ -36,6 +36,7 @@ public:
 
     virtual void RecreateSwapChain(u32 width, u32 height) override;
     virtual bool NeedsRecreation() const override;
+    virtual bool CanRecreate() override;
 
     virtual TextureDesc GetBackBufferTextureDescription() const override;
 
@@ -44,8 +45,7 @@ public:
     virtual std::optional<RHITexture> AcquireBackBuffer(u8 frameIndex) override;
     virtual SyncToken Present(u8 frameIndex,
                               RHI& rhi,
-                              NonNullPtr<RHICommandList> commandList,
-                              bool isFullscreen) override;
+                              NonNullPtr<RHICommandList> commandList) override;
 
 private:
     void InitSwapchainResource(u32 width, u32 height);

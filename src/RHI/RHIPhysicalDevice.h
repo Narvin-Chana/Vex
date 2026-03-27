@@ -8,12 +8,18 @@
 namespace vex
 {
 
+// Device-specific features that could or could not exist, depends on the user's GPU model.
 enum class Feature : u8
 {
     MeshShader,
     RayTracing,
+};
+
+// Graphics API implementation differences, depends on what the API allows for.
+enum class Capability : u8
+{
     MipGeneration,
-    // Additional features go here...
+    PresentResetsBackBufferToUndefined,
 };
 
 // TODO(https://trello.com/c/KnVRsH9P): add more specific ray tracing support flags
@@ -78,6 +84,7 @@ struct RHIPhysicalDeviceBase
 
     virtual ~RHIPhysicalDeviceBase() = default;
     virtual bool IsFeatureSupported(Feature feature) const = 0;
+    virtual bool HasCapability(Capability capability) const = 0;
     virtual FeatureLevel GetFeatureLevel() const = 0;
     virtual ResourceBindingTier GetResourceBindingTier() const = 0;
     virtual ShaderModel GetShaderModel() const = 0;

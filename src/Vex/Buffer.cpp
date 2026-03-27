@@ -66,7 +66,7 @@ BufferDesc BufferDesc::CreateUniformBufferDesc(std::string name, u64 byteSize)
     return {
         .name = std::move(name),
         .byteSize = byteSize,
-        .usage = BufferUsage::UniformBuffer,
+        .usage = BufferUsage::ShaderReadUniform,
         .memoryLocality = ResourceMemoryLocality::CPUWrite,
     };
 }
@@ -76,7 +76,7 @@ BufferDesc BufferDesc::CreateVertexBufferDesc(std::string name, u64 byteSize, bo
     BufferUsage::Flags usageFlags = BufferUsage::VertexBuffer;
     if (allowShaderRead)
     {
-        usageFlags |= BufferUsage::GenericBuffer;
+        usageFlags |= BufferUsage::ShaderRead;
     }
     return {
         .name = std::move(name),
@@ -91,7 +91,7 @@ BufferDesc BufferDesc::CreateIndexBufferDesc(std::string name, u64 byteSize, boo
     BufferUsage::Flags usageFlags = BufferUsage::IndexBuffer;
     if (allowShaderRead)
     {
-        usageFlags |= BufferUsage::GenericBuffer;
+        usageFlags |= BufferUsage::ShaderRead;
     }
     return {
         .name = std::move(name),
@@ -123,10 +123,10 @@ BufferDesc BufferDesc::CreateReadbackBufferDesc(std::string name, u64 byteSize, 
 
 BufferDesc BufferDesc::CreateGenericBufferDesc(std::string name, u64 byteSize, bool readWrite)
 {
-    BufferUsage::Flags usage = BufferUsage::GenericBuffer;
+    BufferUsage::Flags usage = BufferUsage::ShaderRead;
     if (readWrite)
     {
-        usage |= BufferUsage::ReadWriteBuffer;
+        usage |= BufferUsage::ShaderReadWrite;
     }
     return {
         .name = std::move(name),

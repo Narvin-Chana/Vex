@@ -15,16 +15,26 @@ namespace vex
 
 // Determines how the buffer can be used.
 BEGIN_VEX_ENUM_FLAGS(BufferUsage, u16)
-    None                            = 0,      // Buffers that will never be bound anywhere. Mostly used for staging buffers.
-    GenericBuffer                   = 1 << 0, // Buffers that can be read from shaders (SRV).
-    UniformBuffer                   = 1 << 1, // Buffers with specific alignment constraints uniformly read across waves (CBV).
-    ReadWriteBuffer                 = 1 << 2, // Buffers with read and write operations in shaders (UAV).
-    VertexBuffer                    = 1 << 3, // Buffers used for vertex buffers.
-    IndexBuffer                     = 1 << 4, // Buffers used for index buffers.
-    IndirectArgs                    = 1 << 5, // Buffers used as parameters for an indirect dispatch.
-    AccelerationStructure           = 1 << 6, // Buffers used as a HWRT Acceleration Structure, these also implicitly require the ReadWriteBuffer usage.
-    ScratchBuffer                   = 1 << 7, // Buffers used as a scratch buffer for building HWRT Acceleration Structures, these also implicitly require the ReadWriteBuffer usage.
-    ShaderTable                     = 1 << 8, // Buffers used as a ShaderTable for HWRT shaders.
+    // Buffers that will never be bound anywhere. Mostly used for staging buffers.
+    None                    = 0,
+    // Buffers that can be read from shaders via Structured or ByteAddress reads.
+    ShaderRead              = 1 << 0,
+    // Buffers with specific alignment constraints and uniformly read across waves.
+    ShaderReadUniform       = 1 << 1,
+    // Buffers with read and write operations in shaders via RWStructured or RWByteAddress read/writes.
+    ShaderReadWrite         = 1 << 2,
+    // Buffers used for vertex buffers.
+    VertexBuffer            = 1 << 3,
+    // Buffers used for index buffers.
+    IndexBuffer             = 1 << 4,
+    // Buffers used as parameters for an indirect dispatch.
+    IndirectArgs            = 1 << 5,
+    // Buffers used as a HWRT Acceleration Structure, these also require the ShaderReadWrite usage.
+    AccelerationStructure   = (1 << 6) | ShaderReadWrite,
+    // Buffers used as a scratch buffer for building HWRT Acceleration Structures, these also require the ShaderReadWrite usage.
+    Scratch                 = (1 << 7) | ShaderReadWrite,
+    // Buffers used as a ShaderTable for HWRT shaders.
+    ShaderTable             = 1 << 8,
 END_VEX_ENUM_FLAGS();
 
 // clang-format on
@@ -33,7 +43,7 @@ END_VEX_ENUM_FLAGS();
 // the buffer.
 enum class BufferBindingUsage : u8
 {
-    ConstantBuffer,
+    UniformBuffer,
     StructuredBuffer,
     RWStructuredBuffer,
     ByteAddressBuffer,
@@ -43,20 +53,20 @@ enum class BufferBindingUsage : u8
 
 inline bool IsBindingUsageCompatibleWithBufferUsage(BufferUsage::Flags usages, BufferBindingUsage bindingUsage)
 {
-    if (bindingUsage == BufferBindingUsage::ConstantBuffer)
+    if (bindingUsage == BufferBindingUsage::UniformBuffer)
     {
-        return usages & BufferUsage::UniformBuffer;
+        return usages & BufferUsage::ShaderReadUniform;
     }
 
     if (bindingUsage == BufferBindingUsage::StructuredBuffer || bindingUsage == BufferBindingUsage::ByteAddressBuffer)
     {
-        return usages & BufferUsage::GenericBuffer;
+        return usages & BufferUsage::ShaderRead;
     }
 
     if (bindingUsage == BufferBindingUsage::RWStructuredBuffer ||
         bindingUsage == BufferBindingUsage::RWByteAddressBuffer)
     {
-        return usages & BufferUsage::ReadWriteBuffer;
+        return usages & BufferUsage::ShaderReadWrite;
     }
 
     return true;
@@ -66,7 +76,7 @@ struct BufferDesc
 {
     std::string name;
     u64 byteSize = 0;
-    BufferUsage::Flags usage = BufferUsage::GenericBuffer;
+    BufferUsage::Flags usage = BufferUsage::ShaderRead;
     ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly;
 
     // Helpers to create a buffer description.

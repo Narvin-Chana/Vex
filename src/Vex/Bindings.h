@@ -3,6 +3,7 @@
 #include <optional>
 #include <variant>
 
+#include <Vex/AccelerationStructure.h>
 #include <Vex/Buffer.h>
 #include <Vex/Containers/Span.h>
 #include <Vex/Platform/Debug.h>
@@ -75,7 +76,7 @@ struct BufferBinding
     std::optional<u32> strideByteSize;
 
     // Optional: The offset to apply when binding the buffer (in bytes).
-    // When using ConstantBuffer usage the offset must be a multiple of 256 bytes
+    // When using UniformBuffer usage the offset must be a multiple of 256 bytes
     // When using (RW)ByteAddressBuffer usage the offset must be a multiple of 16 bytes
     std::optional<u64> offsetByteSize;
 
@@ -127,14 +128,24 @@ struct TextureBinding
     bool textureCubeAsTexture2DArray = false;
 };
 
+using AccelerationStructureBinding = AccelerationStructure;
+
 struct ResourceBinding
 {
     ResourceBinding(const TextureBinding& binding)
-        : binding{ binding } {};
+        : binding{ binding }
+    {
+    }
     ResourceBinding(const BufferBinding& binding)
-        : binding{ binding } {};
+        : binding{ binding }
+    {
+    }
+    ResourceBinding(const AccelerationStructureBinding& binding)
+        : binding{ binding }
+    {
+    }
 
-    std::variant<TextureBinding, BufferBinding> binding;
+    std::variant<TextureBinding, BufferBinding, AccelerationStructureBinding> binding;
 
     [[nodiscard]] bool IsTexture() const
     {
@@ -152,6 +163,15 @@ struct ResourceBinding
     [[nodiscard]] const BufferBinding& GetBufferBinding() const
     {
         return std::get<BufferBinding>(binding);
+    }
+
+    [[nodiscard]] bool IsAccelerationStructure() const
+    {
+        return std::holds_alternative<AccelerationStructureBinding>(binding);
+    }
+    [[nodiscard]] const AccelerationStructureBinding& GetAccelerationStructureBinding() const
+    {
+        return std::get<AccelerationStructureBinding>(binding);
     }
 };
 

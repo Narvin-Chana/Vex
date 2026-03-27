@@ -1,5 +1,8 @@
 #pragma once
 
+#include <Vex/RHIImpl/RHITexture.h>
+#include <Vex/Texture.h>
+
 #include <RHI/RHIBarrier.h>
 
 #include <Vulkan/VkHeaders.h>

@@ -4,6 +4,7 @@
 
 #include <Vex/Containers/FreeList.h>
 #include <Vex/Resource.h>
+#include <Vex/Texture.h>
 #include <Vex/Utility/Hash.h>
 
 #include <RHI/RHIAllocator.h>
@@ -24,27 +25,34 @@ namespace vex::dx12
 
 struct DX12TextureView
 {
+    DX12TextureView(const TextureDesc& desc, const TextureSubresource& subresource, TextureUsage::Type usage);
     DX12TextureView(const TextureBinding& binding);
-    NonNullPtr<TextureDesc> desc;
+
+    TextureSubresource subresource;
     TextureUsage::Type usage;
     TextureViewType dimension;
     // Uses the underlying resource's format if set to DXGI_FORMAT_UNKNOWN (and if the texture's format is not
     // TYPELESS!).
     DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
 
-    TextureSubresource subresource;
-
     constexpr bool operator==(const DX12TextureView&) const = default;
+
+private:
+    DX12TextureView(const TextureDesc& desc,
+                    const TextureSubresource& subresource,
+                    TextureUsage::Type usage,
+                    TextureViewType dimension,
+                    DXGI_FORMAT format);
 };
 
 } // namespace vex::dx12
 
 // clang-format off
 VEX_MAKE_HASHABLE(vex::dx12::DX12TextureView,
+    VEX_HASH_COMBINE(seed, obj.subresource);
     VEX_HASH_COMBINE(seed, obj.usage);
     VEX_HASH_COMBINE(seed, obj.dimension);
     VEX_HASH_COMBINE(seed, obj.format);
-    VEX_HASH_COMBINE(seed, obj.subresource);
 )
 // clang-format on
 

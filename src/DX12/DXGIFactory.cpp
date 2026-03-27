@@ -63,6 +63,8 @@ ComPtr<IDXGISwapChain4> DXGIFactory::CreateSwapChain(const DXGI_SWAP_CHAIN_DESC1
                                                nullptr,
                                                nullptr,
                                                reinterpret_cast<IDXGISwapChain1**>(swapChain.GetAddressOf()));
+    // Disable native alt+enter fullscreen toggle.
+    chk << dxgiFactory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_ALT_ENTER);
     return swapChain;
 }
 

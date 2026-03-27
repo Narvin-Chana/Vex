@@ -28,13 +28,17 @@ public:
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) override;
     virtual void SetInputAssembly(InputAssembly inputAssembly) override;
 
-    virtual void ClearTexture(const RHITextureBinding& binding,
+    virtual RHITextureState GetClearTextureBarrierState(const TextureDesc& desc,
+                                                        Span<const TextureClearRect> clearRects) override;
+    virtual void ClearTexture(RHITexture& texture,
+                              const TextureSubresource& subresource,
                               TextureUsage::Type usage,
                               const TextureClearValue& clearValue,
-                              std::span<TextureClearRect> clearRects) override;
+                              Span<const TextureClearRect> clearRects) override;
 
-    virtual void Barrier(Span<const RHIBufferBarrier> bufferBarriers,
-                         Span<const RHITextureBarrier> textureBarriers) override;
+    virtual void EmitBarriers(Span<const RHIBufferBarrier> bufferBarriers,
+                              Span<const RHITextureBarrier> textureBarriers,
+                              Span<const RHIGlobalBarrier> globalBarriers) override;
 
     virtual void BeginRendering(const RHIDrawResources& resources) override;
     virtual void EndRendering() override;

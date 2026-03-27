@@ -1,11 +1,14 @@
 ﻿#include "VexTest.h"
 
+#include <array>
+
 #include <gtest/gtest.h>
 
 #include <Vex/CommandContext.h>
 #include <Vex/Graphics.h>
 #include <Vex/Logger.h>
 #include <Vex/Types.h>
+#include <Vex/Bindings.h>
 
 namespace vex
 {
@@ -487,11 +490,11 @@ TEST_P(ScalarBlockLayoutTests, ComputeMisalignedData)
     Buffer resultBuffer =
         graphics.CreateBuffer(BufferDesc{ .name = "ResultBuffer",
                                           .byteSize = 3 * sizeof(float),
-                                          .usage = BufferUsage::GenericBuffer | BufferUsage::ReadWriteBuffer });
+                                          .usage = BufferUsage::ShaderRead | BufferUsage::ShaderReadWrite });
 
     ctx.EnqueueDataUpload(dataBuffer, std::as_bytes(std::span{ data }));
 
-    ResourceBinding bindings[]{
+    std::array<ResourceBinding, 2> bindings{
         BufferBinding{ .buffer = dataBuffer,
                        .usage = BufferBindingUsage::StructuredBuffer,
                        .strideByteSize = static_cast<u32>(sizeof(WeirdlyPackedData)) },
@@ -503,8 +506,6 @@ TEST_P(ScalarBlockLayoutTests, ComputeMisalignedData)
     };
     std::vector<BindlessHandle> handles = graphics.GetBindlessHandles(bindings);
 
-    ctx.BarrierBindings(bindings);
-
     ctx.Dispatch(
         {
             .path = GetParam() == ShaderCompilerBackend::DXC
@@ -514,6 +515,7 @@ TEST_P(ScalarBlockLayoutTests, ComputeMisalignedData)
             .type = ShaderType::ComputeShader,
         },
         ConstantBinding(std::span(handles)),
+        bindings,
         {
             1u,
             1u,

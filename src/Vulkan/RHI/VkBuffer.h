@@ -35,7 +35,7 @@ private:
 
     ::vk::UniqueBuffer buffer;
 
-#if !VEX_USE_CUSTOM_ALLOCATOR_BUFFERS
+#if !VEX_USE_CUSTOM_RESOURCE_ALLOCATOR
     ::vk::UniqueDeviceMemory memory;
 #endif
 

@@ -1,6 +1,6 @@
 ﻿#include "VkGraphicsPipeline.h"
 
-#include <Vex/Containers/ResourceCleanup.h>
+#include <Vex/ResourceCleanup.h>
 #include <Vex/Logger.h>
 
 

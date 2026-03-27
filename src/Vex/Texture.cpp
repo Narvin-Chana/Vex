@@ -4,6 +4,7 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/Logger.h>
+#include <Vex/Platform/Debug.h>
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Formattable.h>
 #include <Vex/Utility/Validation.h>
@@ -14,6 +15,12 @@ namespace vex
 namespace TextureUtil
 {
 
+u32 GetSubresourceIndex(const TextureDesc& desc, u16 mip, u32 slice, u32 plane)
+{
+    VEX_ASSERT(mip < desc.mips && slice < desc.GetSliceCount() && plane < desc.GetPlaneCount());
+    return plane * (desc.mips * desc.GetSliceCount()) + static_cast<u32>(mip) + slice * desc.mips;
+}
+
 std::tuple<u32, u32, u32> GetMipSize(const TextureDesc& desc, u32 mip)
 {
     VEX_ASSERT(mip < desc.mips);
@@ -21,27 +28,30 @@ std::tuple<u32, u32, u32> GetMipSize(const TextureDesc& desc, u32 mip)
     return { std::max(desc.width >> mip, 1u), std::max(desc.height >> mip, 1u), std::max(desc.GetDepth() >> mip, 1u) };
 }
 
-TextureViewType GetTextureViewType(const TextureBinding& binding)
+TextureViewType GetTextureViewType(const TextureDesc& desc, bool textureCubeAsTexture2DArray)
 {
-    if (binding.textureCubeAsTexture2DArray && binding.texture.desc.type == TextureType::TextureCube)
+    if (textureCubeAsTexture2DArray && desc.type == TextureType::TextureCube)
     {
         return TextureViewType::Texture2DArray;
     }
 
-    switch (binding.texture.desc.type)
+    switch (desc.type)
     {
     case TextureType::Texture2D:
-        return (binding.texture.desc.depthOrSliceCount > 1) ? TextureViewType::Texture2DArray
-                                                                             : TextureViewType::Texture2D;
+        return (desc.depthOrSliceCount > 1) ? TextureViewType::Texture2DArray : TextureViewType::Texture2D;
     case TextureType::TextureCube:
-        return (binding.texture.desc.depthOrSliceCount > 1) ? TextureViewType::TextureCubeArray
-                                                            : TextureViewType::TextureCube;
+        return (desc.depthOrSliceCount > 1) ? TextureViewType::TextureCubeArray : TextureViewType::TextureCube;
     case TextureType::Texture3D:
         return TextureViewType::Texture3D;
     default:
-        VEX_LOG(Fatal, "Unrecognized texture type...");
+        VEX_LOG(Fatal, "Unrecognized texture type for texture: {}.", desc.name);
     }
     std::unreachable();
+}
+
+TextureViewType GetTextureViewType(const TextureBinding& binding)
+{
+    return GetTextureViewType(binding.texture.desc, binding.textureCubeAsTexture2DArray);
 }
 
 TextureFormat GetCopyFormat(TextureFormat format, TextureAspect::Type aspect)
@@ -64,19 +74,19 @@ TextureFormat GetCopyFormat(TextureFormat format, TextureAspect::Type aspect)
 void ValidateTextureDescription(const TextureDesc& desc)
 {
     VEX_CHECK(desc.width != 0,
-        "Invalid Texture description for texture \"{}\": Cannot create a texture with a width of 0.",
-        desc.name);
+              "Invalid Texture description for texture \"{}\": Cannot create a texture with a width of 0.",
+              desc.name);
     VEX_CHECK(desc.height != 0,
-        "Invalid Texture description for texture \"{}\": Cannot create a texture with a height of 0.",
-        desc.name);
+              "Invalid Texture description for texture \"{}\": Cannot create a texture with a height of 0.",
+              desc.name);
     VEX_CHECK(desc.GetDepth() != 0,
-        "Invalid Texture description for texture \"{}\": Cannot create a texture with a depth of 0.",
-        desc.name);
+              "Invalid Texture description for texture \"{}\": Cannot create a texture with a depth of 0.",
+              desc.name);
     VEX_CHECK(desc.GetSliceCount() != 0,
-        "Invalid Texture description for texture \"{}\": Cannot create a texture with a slice count of 0.",
-        desc.name);
+              "Invalid Texture description for texture \"{}\": Cannot create a texture with a slice count of 0.",
+              desc.name);
 
-    bool isDepthStencilFormat = FormatUtil::IsDepthOrStencilFormat(desc.format);
+    bool isDepthStencilFormat = FormatUtil::IsDepthOrDepthStencilFormat(desc.format);
     if (isDepthStencilFormat && !(desc.usage & TextureUsage::DepthStencil))
     {
         VEX_LOG(Fatal,
@@ -211,6 +221,19 @@ u32 TextureAspectToPlaneIndex(TextureAspect::Type aspect)
     return 0;
 }
 
+TextureAspect::Flags PlaneStartCountToTextureAspect(TextureFormat format, u32 startPlane, u32 planeCount)
+{
+    if (planeCount == 1 && FormatUtil::IsDepthAndStencilFormat(format))
+    {
+        if (startPlane == 0)
+            return TextureAspect::Depth;
+        if (startPlane == 1)
+            return TextureAspect::Stencil;
+    }
+
+    return TextureAspect::All;
+}
+
 u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions)
 {
     const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
@@ -293,7 +316,7 @@ bool IsBindingUsageCompatibleWithUsage(TextureUsage::Flags usages, TextureBindin
 
 void ForEachSubresourceIndices(const TextureSubresource& subresource,
                                const TextureDesc& desc,
-                               std::function<void(u32 mip, u32 slice, u32 plane)> func)
+                               std::function<void(u16 mip, u32 slice, u32 plane)> func)
 {
     for (u16 mip = subresource.startMip; mip < subresource.startMip + subresource.GetMipCount(desc); ++mip)
     {
@@ -350,6 +373,29 @@ void ValidateSubresource(const TextureDesc& desc, const TextureSubresource& subr
                   subresource.startSlice,
                   subresource.sliceCount,
                   desc.GetSliceCount());
+    }
+
+    if (subresource.aspect != TextureAspect::All)
+    {
+        if (FormatUtil::IsDepthOrDepthStencilFormat(desc.format))
+        {
+            VEX_CHECK((subresource.aspect & TextureAspect::Color) == 0,
+                      "Invalid subresource for resource \"{}\": Cannot use color aspect for depth stencil resource.",
+                      desc.name);
+        }
+        else
+        {
+            VEX_CHECK((subresource.aspect & TextureAspect::Color) == TextureAspect::Color,
+                      "Invalid subresource for resource \"{}\": Cannot use depth/stencil aspects for a color resource.",
+                      desc.name);
+        }
+
+        if (FormatUtil::IsDepthOnlyFormat(desc.format))
+        {
+            VEX_CHECK((subresource.aspect & TextureAspect::Stencil) == 0,
+                      "Invalid subresource for resource \"{}\": Cannot use stencil aspect for depth-only resource.",
+                      desc.name);
+        }
     }
 }
 
@@ -600,19 +646,34 @@ u32 TextureSubresource::GetPlaneCount(const TextureDesc& desc) const
     return count;
 }
 
+TextureAspect::Flags TextureSubresource::GetAspect(const TextureDesc& desc) const
+{
+    const bool isDepthOrDepthStencil = FormatUtil::IsDepthOrDepthStencilFormat(desc.format);
+    const bool isDepthOnly = FormatUtil::IsDepthOnlyFormat(desc.format);
+
+    TextureAspect::Flags cleanAspect = TextureAspect::None;
+    if (aspect & TextureAspect::Color && !isDepthOrDepthStencil)
+        cleanAspect |= TextureAspect::Color;
+    if (aspect & TextureAspect::Depth && isDepthOrDepthStencil)
+        cleanAspect |= TextureAspect::Depth;
+    if (aspect & TextureAspect::Stencil && isDepthOrDepthStencil && !isDepthOnly)
+        cleanAspect |= TextureAspect::Stencil;
+    return cleanAspect;
+}
+
 TextureAspect::Type TextureSubresource::GetSingleAspect(const TextureDesc& desc) const
 {
     if (aspect == TextureAspect::All)
     {
         return static_cast<TextureAspect::Type>(GetDefaultAspect(desc));
     }
-    VEX_ASSERT((aspect & (aspect - 1)) == 0, "Tried to get single aspect when multiple where flagged");
+    VEX_ASSERT((aspect & (aspect - 1)) == 0, "Tried to get single aspect when multiple were flagged");
     return static_cast<TextureAspect::Type>(aspect);
 }
 
 TextureAspect::Flags TextureSubresource::GetDefaultAspect(const TextureDesc& desc)
 {
-    if (FormatUtil::IsDepthOrStencilFormat(desc.format))
+    if (FormatUtil::IsDepthOrDepthStencilFormat(desc.format))
     {
         return TextureAspect::Depth;
     }
@@ -621,8 +682,8 @@ TextureAspect::Flags TextureSubresource::GetDefaultAspect(const TextureDesc& des
 
 bool TextureSubresource::IsFullResource(const TextureDesc& desc) const
 {
-    return startMip == 0 && (mipCount == GTextureAllMips || mipCount == desc.mips) &&
-           startSlice == 0 && (sliceCount == GTextureAllSlices || sliceCount == desc.depthOrSliceCount) &&
+    return startMip == 0 && (mipCount == GTextureAllMips || mipCount == desc.mips) && startSlice == 0 &&
+           (sliceCount == GTextureAllSlices || sliceCount == desc.depthOrSliceCount) &&
            desc.GetPlaneCount() == GetPlaneCount(desc);
 }
 
@@ -631,13 +692,13 @@ std::tuple<u32, u32, u32> TextureRegion::GetExtents(const TextureDesc& desc, u16
     return { extent.GetWidth(desc, mip), extent.GetHeight(desc, mip), extent.GetDepth(desc, mip) };
 }
 
-TextureRegion TextureRegion::AllMips(TextureAspect::Type aspect)
+TextureRegion TextureRegion::AllMips(TextureAspect::Flags aspect)
 {
     // Defaults will specify all mips and all slices.
     return TextureRegion{ .subresource{ .aspect = aspect } };
 }
 
-TextureRegion TextureRegion::SingleMip(u16 mipIndex, TextureAspect::Type aspect)
+TextureRegion TextureRegion::SingleMip(u16 mipIndex, TextureAspect::Flags aspect)
 {
     return TextureRegion{ .subresource = { .startMip = mipIndex, .mipCount = 1, .aspect = aspect } };
 }

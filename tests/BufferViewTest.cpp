@@ -41,19 +41,19 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
     Buffer dataBuffer = graphics.CreateBuffer(BufferDesc{
         .name = "DataBuffer",
         .byteSize = data.size() * sizeof(float),
-        .usage = usage == BufferBindingUsage::ConstantBuffer
-                     ? static_cast<BufferUsage::Type>(BufferUsage::UniformBuffer)
-                     : static_cast<BufferUsage::Type>(BufferUsage::GenericBuffer | BufferUsage::ReadWriteBuffer),
+        .usage = usage == BufferBindingUsage::UniformBuffer
+                     ? static_cast<BufferUsage::Type>(BufferUsage::ShaderReadUniform)
+                     : static_cast<BufferUsage::Type>(BufferUsage::ShaderRead | BufferUsage::ShaderReadWrite),
     });
     Buffer resultBuffer =
         graphics.CreateBuffer(BufferDesc{ .name = "ResultBuffer",
                                           .byteSize = DataSize,
-                                          .usage = BufferUsage::GenericBuffer | BufferUsage::ReadWriteBuffer });
+                                          .usage = BufferUsage::ShaderRead | BufferUsage::ShaderReadWrite });
 
     BufferBinding binding;
     switch (usage)
     {
-    case BufferBindingUsage::ConstantBuffer:
+    case BufferBindingUsage::UniformBuffer:
         binding = BufferBinding::CreateConstantBuffer(dataBuffer, testData.offset.value_or(0), DataSize);
         break;
     case BufferBindingUsage::StructuredBuffer:
@@ -85,33 +85,31 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
 
     ctx.EnqueueDataUpload(dataBuffer, std::as_bytes(std::span{ data }));
 
-    ResourceBinding bindings[]{
+    std::array<ResourceBinding, 2> bindings{
         binding,
         BufferBinding::CreateRWStructuredBuffer(resultBuffer, DataSize),
     };
     std::vector<BindlessHandle> handles = graphics.GetBindlessHandles(bindings);
 
-    struct Uniform
+    struct ShaderUniform
     {
         BindlessHandle inputBuffer;
         BindlessHandle outputBuffer;
         u32 numElements{};
     };
 
-    Uniform uniforms{ handles[0],
+    ShaderUniform uniforms{ handles[0],
                       handles[1],
-                      usage == BufferBindingUsage::ConstantBuffer
+                      usage == BufferBindingUsage::UniformBuffer
                           ? 1
                           : GetParam().elementCount.value_or(ElementCount - testData.firstElement.value_or(0)) };
-
-    ctx.BarrierBindings(bindings);
 
     ShaderKey key = {
         .path = VexRootPath / "tests/shaders/BufferView.cs.hlsl",
         .entryPoint = "CSMain",
         .type = ShaderType::ComputeShader,
         .defines = {
-            { "CONSTANT_BUFFER", usage == BufferBindingUsage::ConstantBuffer ? "1" : "0" },
+            { "CONSTANT_BUFFER", usage == BufferBindingUsage::UniformBuffer ? "1" : "0" },
             { "STRUCTURED_BUFFER", usage == BufferBindingUsage::StructuredBuffer || usage == BufferBindingUsage::RWStructuredBuffer ? "1" : "0" },
             { "BYTE_ADDRESS_BUFFER", usage == BufferBindingUsage::ByteAddressBuffer || usage == BufferBindingUsage::RWByteAddressBuffer ? "1" : "0" },
             { "READ_WRITE", usage == BufferBindingUsage::RWStructuredBuffer || usage == BufferBindingUsage::RWByteAddressBuffer ? "1" : "0" },
@@ -120,6 +118,7 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
 
     ctx.Dispatch(key,
                  ConstantBinding(std::span{ &uniforms, 1 }),
+                 bindings,
                  {
                      1u,
                      1u,
@@ -128,10 +127,9 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
 
     key.path = VexRootPath / "tests/shaders/BufferView.cs.slang";
 
-    ctx.BarrierBindings(bindings);
-
     ctx.Dispatch(key,
                  ConstantBinding(std::span{ &uniforms, 1 }),
+                 bindings,
                  {
                      1u,
                      1u,
@@ -189,13 +187,13 @@ INSTANTIATE_TEST_SUITE_P(StructureBufferTests,
 INSTANTIATE_TEST_SUITE_P(
     ConstantBufferTests,
     BufferBindingTest,
-    testing::Values(BufferBindingTestData{ .usage = BufferBindingUsage::ConstantBuffer, .expectedResult{ 1, 2, 3 } },
+    testing::Values(BufferBindingTestData{ .usage = BufferBindingUsage::UniformBuffer, .expectedResult{ 1, 2, 3 } },
                     BufferBindingTestData{
-                        .usage = BufferBindingUsage::ConstantBuffer, .offset{ 256 }, .expectedResult{ 2, 3, 1 } },
+                        .usage = BufferBindingUsage::UniformBuffer, .offset{ 256 }, .expectedResult{ 2, 3, 1 } },
                     BufferBindingTestData{
-                        .usage = BufferBindingUsage::ConstantBuffer, .offset{ 512 }, .expectedResult{ 3, 1, 2 } },
+                        .usage = BufferBindingUsage::UniformBuffer, .offset{ 512 }, .expectedResult{ 3, 1, 2 } },
                     BufferBindingTestData{
-                        .usage = BufferBindingUsage::ConstantBuffer, .offset{ 768 }, .expectedResult{ 1, 2, 3 } }));
+                        .usage = BufferBindingUsage::UniformBuffer, .offset{ 768 }, .expectedResult{ 1, 2, 3 } }));
 
 INSTANTIATE_TEST_SUITE_P(ByteAddressBufferTests,
                          BufferBindingTest,

@@ -73,7 +73,6 @@ struct RTVexTest : VexTest
         {
             GTEST_SKIP() << "Raytracing is not supported, skipping RT-related tests.";
         }
-
         VexTest::SetUp();
     }
 };

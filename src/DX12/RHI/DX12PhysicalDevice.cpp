@@ -41,11 +41,24 @@ bool DX12PhysicalDevice::IsFeatureSupported(Feature feature) const
         rayTracingSupported &= featureSupport.HighestShaderModel() >= D3D_SHADER_MODEL_6_3;
         return rayTracingSupported;
     }
-    case Feature::MipGeneration:
-        // DX12 has no built-in way to generate mip-maps.
-        return false;
     default:
         VEX_LOG(Fatal, "Unable to determine feature support for {}", feature);
+        return false;
+    }
+}
+
+bool DX12PhysicalDevice::HasCapability(Capability capability) const
+{
+    switch (capability)
+    {
+    case Capability::MipGeneration:
+        // DX12 has no built-in way to generate mip-maps.
+        return false;
+    case Capability::PresentResetsBackBufferToUndefined:
+        // DXGI and Enhanced Barriers guarantee that calling Present does not affect the backBuffer's state.
+        return false;
+    default:
+        VEX_LOG(Fatal, "Unable to determine capbility support for {}", capability);
         return false;
     }
 }

@@ -1,8 +1,7 @@
 #pragma once
 
-#include <Vex/QueueType.h>
-
 #include <Vex/Platform/PlatformWindow.h>
+#include <Vex/QueueType.h>
 
 #include <RHI/RHIFwd.h>
 #include <RHI/RHISwapChain.h>
@@ -31,14 +30,12 @@ public:
     virtual TextureDesc GetBackBufferTextureDescription() const override;
 
     virtual bool NeedsRecreation() const override;
+    virtual bool CanRecreate() override;
 
     virtual ColorSpace GetValidColorSpace(ColorSpace preferredColorSpace) const override;
 
     virtual std::optional<RHITexture> AcquireBackBuffer(u8 frameIndex) override;
-    virtual SyncToken Present(u8 frameIndex,
-                              RHI& rhi,
-                              NonNullPtr<RHICommandList> commandList,
-                              bool isFullscreen) override;
+    virtual SyncToken Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandList> commandList) override;
 
 private:
     DXGI_FORMAT GetDXGIFormat() const;

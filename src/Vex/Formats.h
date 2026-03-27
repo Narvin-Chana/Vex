@@ -83,7 +83,7 @@ namespace FormatUtil
 u32 GetPlaneCount(TextureFormat format);
 
 bool HasSRGBEquivalent(TextureFormat format);
-bool IsDepthOrStencilFormat(TextureFormat format);
+bool IsDepthOrDepthStencilFormat(TextureFormat format);
 bool IsDepthOnlyFormat(TextureFormat format);
 bool IsDepthAndStencilFormat(TextureFormat format);
 std::string_view GetHLSLType(TextureFormat format);

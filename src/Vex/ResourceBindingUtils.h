@@ -23,16 +23,11 @@ struct ResourceBindingUtils
                                     std::vector<RHIBufferBinding>& bufferBindings);
 
     // Collects draw textures from a set of render targets and a depth stencil
-    static RHIDrawResources CollectRHIDrawResourcesAndBarriers(
+    static RHIDrawResources CollectRHIDrawResources(
         Graphics& graphics,
         Span<const TextureBinding> renderTargets,
         std::optional<TextureBinding> depthStencil,
-        std::vector<RHITextureBarrier>& barriers,
         std::optional<DepthStencilState> depthStencilState = std::nullopt);
-
-    static RHIBufferBarrier CreateBarrierFromRHIBinding(RHIBarrierSync stage, const RHIBufferBinding& rhiBufferBinding);
-    static RHITextureBarrier CreateBarrierFromRHIBinding(RHIBarrierSync stage,
-                                                         const RHITextureBinding& rhiTextureBinding);
 };
 
 } // namespace vex

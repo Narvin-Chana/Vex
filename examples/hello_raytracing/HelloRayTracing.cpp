@@ -70,8 +70,6 @@ HelloRayTracing::HelloRayTracing()
                         .flags = vex::ASGeometry::Opaque,
                     } } });
 
-    ctx.Barrier(triangleBLAS, vex::RHIBarrierSync::AllCommands, vex::RHIBarrierAccess::AccelerationStructureRead);
-
     std::array<vex::TLASInstanceDesc, 2> instances{
         // Left triangle (in front)
         vex::TLASInstanceDesc{
@@ -95,8 +93,6 @@ HelloRayTracing::HelloRayTracing()
         },
     };
     ctx.BuildTLAS(tlas, { .instances = instances });
-
-    ctx.Barrier(tlas, vex::RHIBarrierSync::RayTracing, vex::RHIBarrierAccess::AccelerationStructureRead);
 
     graphics->Submit(ctx);
 
@@ -160,9 +156,6 @@ void HelloRayTracing::Run()
                 .usage = vex::TextureBindingUsage::ShaderReadWrite,
             };
 
-            // Make sure our resource is ready for writing.
-            ctx.BarrierBinding(outputTextureBinding);
-
             struct Data
             {
                 vex::BindlessHandle outputHandle;
@@ -181,6 +174,7 @@ void HelloRayTracing::Run()
             static const vex::RayTracingCollection HLSLRayTracingPassDesc = CreateRTCollection(HLSLShaderPath);
             ctx.TraceRays(HLSLRayTracingPassDesc,
                           vex::ConstantBinding(data),
+                          { outputTextureBinding },
                           { static_cast<vex::u32>(width), static_cast<vex::u32>(height), 1 } // One ray per pixel.
             );
 
@@ -190,6 +184,7 @@ void HelloRayTracing::Run()
             static const vex::RayTracingCollection SlangRayTracingPassDesc = CreateRTCollection(SlangShaderPath);
             ctx.TraceRays(SlangRayTracingPassDesc,
                           vex::ConstantBinding(data),
+                          { outputTextureBinding },
                           { static_cast<vex::u32>(width), static_cast<vex::u32>(height), 1 } // One ray per pixel.
             );
 #endif
@@ -200,7 +195,7 @@ void HelloRayTracing::Run()
             graphics->Submit(ctx);
         }
 
-        graphics->Present(windowMode == Fullscreen);
+        graphics->Present();
     }
 }
 

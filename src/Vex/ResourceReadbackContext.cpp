@@ -1,5 +1,6 @@
 ﻿#include "ResourceReadbackContext.h"
 
+#include <Vex/Graphics.h>
 #include <Vex/ResourceCopy.h>
 
 namespace vex
@@ -8,17 +9,17 @@ namespace vex
 TextureReadbackContext::TextureReadbackContext(const Buffer& buffer,
                                                Span<const TextureRegion> textureRegions,
                                                const TextureDesc& desc,
-                                               Graphics& backend)
+                                               Graphics& graphics)
     : buffer{ buffer }
     , textureRegions{ textureRegions.begin(), textureRegions.end() }
     , textureDesc{ desc }
-    , backend{ backend }
+    , graphics{ graphics }
 {
 }
 
 void BufferReadbackContext::ReadData(Span<byte> outData)
 {
-    RHIBuffer& rhiBuffer = backend->GetRHIBuffer(buffer.handle);
+    RHIBuffer& rhiBuffer = graphics->GetRHIBuffer(buffer.handle);
     Span<const byte> bufferData = rhiBuffer.GetMappedData();
     std::copy(bufferData.begin(), bufferData.begin() + outData.size(), outData.begin());
 }
@@ -30,12 +31,12 @@ u64 BufferReadbackContext::GetDataByteSize() const
 
 BufferReadbackContext::~BufferReadbackContext()
 {
-    backend->DestroyBuffer(buffer);
+    graphics->DestroyBuffer(buffer);
 }
 
 BufferReadbackContext::BufferReadbackContext(BufferReadbackContext&& other)
     : buffer(std::exchange(other.buffer, {}))
-    , backend{ other.backend }
+    , graphics{ other.graphics }
 {
 }
 
@@ -44,14 +45,14 @@ BufferReadbackContext& BufferReadbackContext::operator=(BufferReadbackContext&& 
     if (this != &other)
     {
         std::swap(buffer, other.buffer);
-        backend = other.backend;
+        graphics = other.graphics;
     }
     return *this;
 }
 
-BufferReadbackContext::BufferReadbackContext(const Buffer& buffer, Graphics& backend)
+BufferReadbackContext::BufferReadbackContext(const Buffer& buffer, Graphics& graphics)
     : buffer{ buffer }
-    , backend{ backend }
+    , graphics{ graphics }
 {
 }
 
@@ -59,7 +60,7 @@ TextureReadbackContext::~TextureReadbackContext()
 {
     if (buffer.handle != GInvalidBufferHandle)
     {
-        backend->DestroyBuffer(buffer);
+        graphics->DestroyBuffer(buffer);
     }
 }
 
@@ -67,7 +68,7 @@ TextureReadbackContext::TextureReadbackContext(TextureReadbackContext&& other)
     : buffer(std::exchange(other.buffer, {}))
     , textureRegions{ std::move(other.textureRegions) }
     , textureDesc{ std::move(other.textureDesc) }
-    , backend{ other.backend }
+    , graphics{ other.graphics }
 {
 }
 
@@ -78,14 +79,14 @@ TextureReadbackContext& TextureReadbackContext::operator=(TextureReadbackContext
         std::swap(buffer, other.buffer);
         std::swap(textureRegions, other.textureRegions);
         std::swap(textureDesc, other.textureDesc);
-        backend = other.backend;
+        graphics = other.graphics;
     }
     return *this;
 }
 
 void TextureReadbackContext::ReadData(Span<byte> outData) const
 {
-    RHIBuffer& rhiBuffer = backend->GetRHIBuffer(buffer.handle);
+    RHIBuffer& rhiBuffer = graphics->GetRHIBuffer(buffer.handle);
 
     Span<const byte> bufferData = rhiBuffer.GetMappedData();
     TextureCopyUtil::ReadTextureDataAligned(textureDesc, textureRegions, bufferData, outData);

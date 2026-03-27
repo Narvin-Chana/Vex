@@ -1,5 +1,7 @@
 #include "DX12Texture.h"
 
+#include <optional>
+
 #include <magic_enum/magic_enum.hpp>
 
 #include <Vex/Bindings.h>
@@ -14,10 +16,6 @@
 
 #include <DX12/DX12Formats.h>
 #include <DX12/HRChecker.h>
-
-#ifndef VEX_USE_CUSTOM_ALLOCATOR_TEXTURES
-#define VEX_USE_CUSTOM_ALLOCATOR_TEXTURES 1
-#endif
 
 namespace vex::dx12
 {
@@ -86,10 +84,11 @@ static D3D12_DEPTH_STENCIL_VIEW_DESC CreateDepthStencilViewDesc(const DX12Textur
     return desc;
 }
 
-static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const DX12TextureView& view)
+static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const TextureDesc& textureDesc,
+                                                                    const DX12TextureView& view)
 {
     D3D12_SHADER_RESOURCE_VIEW_DESC desc{
-        .Format = GetDX12FormatForShaderResourceViewFormat(view.format, view.subresource.GetSingleAspect(*view.desc)),
+        .Format = GetDX12FormatForShaderResourceViewFormat(view.format, view.subresource.GetSingleAspect(textureDesc)),
         .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
     };
 
@@ -100,7 +99,7 @@ static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const DX12Te
         desc.Texture2D = {
             .MostDetailedMip = view.subresource.startMip,
             .MipLevels = view.subresource.mipCount,
-            .PlaneSlice = view.subresource.GetSingleAspect(*view.desc) == TextureAspect::Stencil ? 1u : 0u,
+            .PlaneSlice = view.subresource.GetSingleAspect(textureDesc) == TextureAspect::Stencil ? 1u : 0u,
             .ResourceMinLODClamp = 0,
         };
         break;
@@ -111,7 +110,7 @@ static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const DX12Te
             .MipLevels = view.subresource.mipCount,
             .FirstArraySlice = view.subresource.startSlice,
             .ArraySize = view.subresource.sliceCount,
-            .PlaneSlice = view.subresource.GetSingleAspect(*view.desc) == TextureAspect::Stencil ? 1u : 0u,
+            .PlaneSlice = view.subresource.GetSingleAspect(textureDesc) == TextureAspect::Stencil ? 1u : 0u,
             .ResourceMinLODClamp = 0,
         };
         break;
@@ -223,11 +222,14 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
         break;
     }
 
+    bool useFastTextureClear = false;
+
     if (desc.usage & TextureUsage::RenderTarget)
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
         rtvHeap = DX12DescriptorHeap<DX12HeapType::RTV>(device, InitialViewCountPerRTVHeap, desc.name);
         rtvHeapAllocator = FreeListAllocator(InitialViewCountPerRTVHeap);
+        useFastTextureClear = true;
     }
     if (desc.usage & TextureUsage::ShaderReadWrite)
     {
@@ -243,18 +245,15 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
         texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
         dsvHeap = DX12DescriptorHeap<DX12HeapType::DSV>(device, InitialViewCountPerDSVHeap, desc.name);
         dsvHeapAllocator = FreeListAllocator(InitialViewCountPerDSVHeap);
+        useFastTextureClear = true;
     }
+
+    D3D12_CLEAR_VALUE clearValue{};
+    clearValue.Format = texDesc.Format;
+    std::memcpy(clearValue.Color, desc.clearValue.color.data(), sizeof(float) * 4);
+    clearValue.DepthStencil = { .Depth = desc.clearValue.depth, .Stencil = desc.clearValue.stencil };
 
     static const D3D12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-
-    std::optional<D3D12_CLEAR_VALUE> clearValue;
-    if (desc.clearValue.clearAspect != TextureAspect::None)
-    {
-        clearValue = D3D12_CLEAR_VALUE();
-        clearValue->Format = texDesc.Format;
-        std::memcpy(clearValue->Color, desc.clearValue.color.data(), sizeof(float) * 4);
-        clearValue->DepthStencil = { .Depth = desc.clearValue.depth, .Stencil = desc.clearValue.stencil };
-    }
 
     // In order to allow for a depth stencil texture to be read as an SRV, it must have the equivalent typeless format
     // (converted to the equivalent typed/D_ format for the actual view).
@@ -269,24 +268,25 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
         texDesc.Format = GetTypelessFormatForSRGBCompatibleDX12Format(texDesc.Format);
     }
 
-    if (VEX_USE_CUSTOM_ALLOCATOR_TEXTURES && GPhysicalDevice->SupportsTightAlignment())
+    if (VEX_USE_CUSTOM_RESOURCE_ALLOCATOR && GPhysicalDevice->SupportsTightAlignment())
     {
         texDesc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
     }
 
-#if VEX_USE_CUSTOM_ALLOCATOR_TEXTURES
-    allocation = allocator.AllocateResource(texture,
-                                            texDesc,
-                                            desc.memoryLocality,
-                                            0,
-                                            D3D12_BARRIER_LAYOUT_UNDEFINED,
-                                            clearValue);
+#if VEX_USE_CUSTOM_RESOURCE_ALLOCATOR
+    allocation =
+        allocator.AllocateResource(texture,
+                                   texDesc,
+                                   desc.memoryLocality,
+                                   0,
+                                   D3D12_BARRIER_LAYOUT_UNDEFINED,
+                                   useFastTextureClear ? std::optional<D3D12_CLEAR_VALUE>(clearValue) : std::nullopt);
 #else
     chk << device->CreateCommittedResource3(&heapProps,
                                             D3D12_HEAP_FLAG_NONE,
                                             &texDesc,
                                             D3D12_BARRIER_LAYOUT_UNDEFINED,
-                                            clearValue.has_value() ? &clearValue.value() : nullptr,
+                                            useFastTextureClear ? &clearValue : nullptr,
                                             nullptr,
                                             0,
                                             nullptr,
@@ -381,7 +381,7 @@ BindlessHandle DX12Texture::GetOrCreateBindlessView(const TextureBinding& bindin
 
     if (isSRVView)
     {
-        auto desc = CreateShaderResourceViewDesc(view);
+        auto desc = CreateShaderResourceViewDesc(binding.texture.desc, view);
         auto cpuDescriptorHandle = descriptorPool.GetCPUDescriptor(handle);
         device->CreateShaderResourceView(texture.Get(), &desc, cpuDescriptorHandle);
     }
@@ -420,8 +420,8 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(const DX12Textu
 {
     using namespace Texture_Internal;
 
-    bool isRTVView = (view.usage == TextureUsage::RenderTarget) && (desc.usage & TextureUsage::RenderTarget);
-    bool isDSVView = (view.usage == TextureUsage::DepthStencil) && (desc.usage & TextureUsage::DepthStencil);
+    const bool isRTVView = (view.usage == TextureUsage::RenderTarget) && (desc.usage & TextureUsage::RenderTarget);
+    const bool isDSVView = (view.usage == TextureUsage::DepthStencil) && (desc.usage & TextureUsage::DepthStencil);
     VEX_ASSERT(isRTVView || isDSVView,
                "Texture view requested must be for an RTV or DSV AND the underlying texture must support this usage.");
 
@@ -459,26 +459,43 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(const DX12Textu
     }
 }
 
-DX12TextureView::DX12TextureView(const TextureBinding& binding)
-    : desc{binding.texture.desc}
-    , usage{ binding.usage != TextureBindingUsage::None ? static_cast<TextureUsage::Type>(binding.usage)
-                                                        : TextureUsage::None }
-    , dimension{ TextureUtil::GetTextureViewType(binding) }
-    , format{ TextureFormatToDXGI(binding.texture.desc.format, binding.isSRGB) }
-    , subresource{ binding.subresource }
+DX12TextureView::DX12TextureView(const TextureDesc& desc,
+                                 const TextureSubresource& inSubresource,
+                                 TextureUsage::Type usage,
+                                 TextureViewType dimension,
+                                 DXGI_FORMAT format)
+    : subresource{ inSubresource }
+    , usage{ usage }
+    , dimension{ dimension }
+    , format{ usage == TextureUsage::ShaderRead &&
+                      (desc.usage & TextureUsage::DepthStencil && desc.usage & TextureUsage::ShaderRead)
+                  ? GetTypelessFormatForDepthStencilCompatibleDX12Format(format)
+                  : format }
 {
-    if (binding.usage == TextureBindingUsage::ShaderRead)
-    {
-        if (binding.texture.desc.usage & TextureUsage::DepthStencil &&
-            binding.texture.desc.usage & TextureUsage::ShaderRead)
-        {
-            format = GetTypelessFormatForDepthStencilCompatibleDX12Format(format);
-        }
-    }
-
     // Resolve subresource (replacing MAX values with the actual value).
-    subresource.mipCount = subresource.GetMipCount(binding.texture.desc);
-    subresource.sliceCount = subresource.GetSliceCount(binding.texture.desc);
+    subresource.mipCount = inSubresource.GetMipCount(desc);
+    subresource.sliceCount = inSubresource.GetSliceCount(desc);
+}
+
+DX12TextureView::DX12TextureView(const TextureDesc& desc,
+                                 const TextureSubresource& subresource,
+                                 TextureUsage::Type usage)
+    : DX12TextureView(desc,
+                      subresource,
+                      usage,
+                      TextureUtil::GetTextureViewType(desc, false),
+                      TextureFormatToDXGI(desc.format, false))
+{
+}
+
+DX12TextureView::DX12TextureView(const TextureBinding& binding)
+    : DX12TextureView(binding.texture.desc,
+                      binding.subresource,
+                      binding.usage != TextureBindingUsage::None ? static_cast<TextureUsage::Type>(binding.usage)
+                                                                 : TextureUsage::None,
+                      TextureUtil::GetTextureViewType(binding),
+                      TextureFormatToDXGI(binding.texture.desc.format, binding.isSRGB))
+{
 }
 
 } // namespace vex::dx12

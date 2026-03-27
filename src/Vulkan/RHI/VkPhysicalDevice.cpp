@@ -1,5 +1,7 @@
 #include "VkPhysicalDevice.h"
 
+#include <Vex/Logger.h>
+
 #include <Vulkan/VkFormats.h>
 
 namespace vex::vk
@@ -67,13 +69,26 @@ bool VkPhysicalDevice::IsFeatureSupported(Feature feature) const
     case Feature::RayTracing:
         // Vulkan RHI currently does not support ray tracing.
         return false && rayTracingFeatures.rayTracingPipeline;
-    case Feature::MipGeneration:
-        // Vk can use vkCmdBlitImage to generate mips.
-        return true;
     default:
+        VEX_LOG(Fatal, "Unable to determine feature support for {}", feature);
         return false;
     }
-    std::unreachable();
+}
+
+bool VkPhysicalDevice::HasCapability(Capability capability) const
+{
+    switch (capability)
+    {
+    case Capability::MipGeneration:
+        // Vk can use vkCmdBlitImage to generate mips.
+        return true;
+    case Capability::PresentResetsBackBufferToUndefined:
+        // Vk swapchain present will reset the backbuffer to the undefined state.
+        return true;
+    default:
+        VEX_LOG(Fatal, "Unable to determine capbility support for {}", capability);
+        return false;
+    }
 }
 
 FeatureLevel VkPhysicalDevice::GetFeatureLevel() const

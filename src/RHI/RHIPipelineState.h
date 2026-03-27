@@ -1,11 +1,15 @@
 #pragma once
 
+#include <memory>
+#include <vector>
+
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Shaders/RayTracingShaders.h>
 #include <Vex/Shaders/Shader.h>
 #include <Vex/Shaders/ShaderKey.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/Hash.h>
+#include <Vex/Utility/MaybeUninitialized.h>
 
 #include <RHI/RHIFwd.h>
 
@@ -38,7 +42,7 @@ public:
     {
     }
     virtual void Compile(const Shader& vertexShader, const Shader& pixelShader, RHIResourceLayout& resourceLayout) = 0;
-    virtual void Cleanup(ResourceCleanup& resourceCleanup) = 0;
+    virtual std::unique_ptr<RHIGraphicsPipelineState> Cleanup() = 0;
 
     Key key;
     u32 rootSignatureVersion = 0;
@@ -52,17 +56,17 @@ struct ComputePipelineStateKey
     bool operator==(const ComputePipelineStateKey& other) const = default;
 };
 
-class RHIComputePipelineStateInterface
+class RHIComputePipelineStateBase
 {
 public:
     using Key = ComputePipelineStateKey;
 
-    RHIComputePipelineStateInterface(const Key& key)
+    RHIComputePipelineStateBase(const Key& key)
         : key{ key }
     {
     }
     virtual void Compile(const Shader& computeShader, RHIResourceLayout& resourceLayout) = 0;
-    virtual void Cleanup(ResourceCleanup& resourceCleanup) = 0;
+    virtual std::unique_ptr<RHIComputePipelineState> Cleanup() = 0;
 
     Key key;
     u32 rootSignatureVersion = 0;
@@ -71,20 +75,19 @@ public:
 
 using RayTracingPipelineStateKey = RayTracingCollection;
 
-class RHIRayTracingPipelineStateInterface
+class RHIRayTracingPipelineStateBase
 {
 public:
     using Key = RayTracingPipelineStateKey;
 
-    RHIRayTracingPipelineStateInterface(const Key& key)
+    RHIRayTracingPipelineStateBase(const Key& key)
         : key{ key }
     {
     }
-    virtual void Compile(const RayTracingShaderCollection& shaderCollection,
-                         RHIResourceLayout& resourceLayout,
-                         ResourceCleanup& resourceCleanup,
-                         RHIAllocator& allocator) = 0;
-    virtual void Cleanup(ResourceCleanup& resourceCleanup) = 0;
+    virtual std::vector<MaybeUninitialized<RHIBuffer>> Compile(const RayTracingShaderCollection& shaderCollection,
+                                                               RHIResourceLayout& resourceLayout,
+                                                               RHIAllocator& allocator) = 0;
+    virtual std::unique_ptr<RHIRayTracingPipelineState> Cleanup() = 0;
 
     Key key;
     u32 rootSignatureVersion = 0;
