@@ -13,22 +13,11 @@ namespace
 {
 ::vk::TransformMatrixKHR GetVkTransformMatrix(std::array<float, 3 * 4> matrix)
 {
-    // TODO: make this a loop
     ::vk::TransformMatrixKHR mat;
-    mat.matrix[0][0] = matrix[0];
-    mat.matrix[0][1] = matrix[1];
-    mat.matrix[0][2] = matrix[2];
-    mat.matrix[0][3] = matrix[3];
-
-    mat.matrix[1][0] = matrix[4];
-    mat.matrix[1][1] = matrix[5];
-    mat.matrix[1][2] = matrix[6];
-    mat.matrix[1][3] = matrix[7];
-
-    mat.matrix[2][0] = matrix[8];
-    mat.matrix[2][1] = matrix[9];
-    mat.matrix[2][2] = matrix[10];
-    mat.matrix[2][3] = matrix[11];
+    for (int i = 0; i < matrix.size(); ++i)
+    {
+        mat.matrix[i / 4][i % 4] = matrix[i];
+    }
     return mat;
 }
 } // namespace
@@ -261,7 +250,7 @@ void VkAccelerationStructure::BuildAccelerationStructure(::vk::AccelerationStruc
         .pGeometries = geometries.data(), // The geometry to build the acceleration structure from
     };
 
-    // TODO: Move this to VkPhysicalDevice
+    // TODO(https://trello.com/c/ZUZPpce4): Move this to VkPhysicalDevice class
     ::vk::StructureChain<::vk::PhysicalDeviceProperties2, ::vk::PhysicalDeviceAccelerationStructurePropertiesKHR>
         propertiesChain = ctx->physDevice.getProperties2<::vk::PhysicalDeviceProperties2,
                                                          ::vk::PhysicalDeviceAccelerationStructurePropertiesKHR>();
