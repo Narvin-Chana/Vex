@@ -2,6 +2,11 @@
 
 #include <utility>
 
+#ifndef __cpp_lib_move_only_function
+// Fallback for environments with incomplete C++23 support
+#include <Vex/Utility/Functional/move_only_function.h>
+#endif
+
 #include <Vex/Containers/Span.h>
 #include <Vex/ShaderView.h>
 #include <Vex/Utility/MoveOnlyFunction.h>

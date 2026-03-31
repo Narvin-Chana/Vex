@@ -5,6 +5,11 @@
 #include <optional>
 #include <vector>
 
+#ifndef __cpp_lib_move_only_function
+// Fallback for environments with incomplete C++23 support
+#include <Vex/Utility/Functional/move_only_function.h>
+#endif
+
 #include <Vex/AccelerationStructure.h>
 #include <Vex/Containers/FreeList.h>
 #include <Vex/Containers/Span.h>

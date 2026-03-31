@@ -233,7 +233,7 @@ add_library(Vex STATIC
     "src/Vex/RayTracing.h"
     "src/Vex/PipelineState.cpp"
     "src/Vex/PipelineState.h"
-        src/Vex/Utility/MoveOnlyFunction.h
+    "src/Vex/Utility/MoveOnlyFunction.h"
 )
 
 if(WIN32)
@@ -245,6 +245,25 @@ endif()
 if(LINUX)
     target_sources(Vex PRIVATE
     # Nothing for now...
+    )
+endif()
+
+# Vex Shader Compiler
+if (VEX_ENABLE_SHADER_COMPILER)
+    target_sources(Vex PRIVATE
+        "src/ShaderCompiler/ShaderKey.h"
+        "src/ShaderCompiler/Shader.h"
+        "src/ShaderCompiler/Shader.cpp"
+        "src/ShaderCompiler/ShaderCompiler.h"
+        "src/ShaderCompiler/ShaderCompiler.cpp"
+        "src/ShaderCompiler/ShaderCompilerSettings.h"
+        "src/ShaderCompiler/Compiler/DXC/DXCCompiler.h"
+        "src/ShaderCompiler/Compiler/DXC/DXCCompiler.cpp"
+        "src/ShaderCompiler/Compiler/DXC/DXCReflection.cpp"
+        "src/ShaderCompiler/ShaderEnvironment.h"
+        "src/ShaderCompiler/Compiler/CompilerBase.h"
+        "src/ShaderCompiler/RayTracingShaderKey.h"
+        "src/ShaderCompiler/RayTracingShaderKey.cpp"
     )
 endif()
 
