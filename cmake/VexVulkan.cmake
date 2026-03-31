@@ -71,6 +71,8 @@ function(setup_vulkan_backend TARGET)
         "src/Vulkan/VkErrorHandler.h"
         "src/Vulkan/VkCommandQueue.h"
         "src/Vulkan/VkGPUContext.h"
+        "src/Vulkan/VkSampler.h"
+        "src/Vulkan/VkSampler.cpp"
     )
 
     # Add Vulkan sources to target

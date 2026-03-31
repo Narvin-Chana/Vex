@@ -1,9 +1,11 @@
 #pragma once
 
+#include <Vex/Utility/MaybeUninitialized.h>
 #include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIResourceLayout.h>
 
+#include <Vulkan/RHI/VkDescriptorSet.h>
 #include <Vulkan/VkHeaders.h>
 
 namespace vex::vk
@@ -16,8 +18,10 @@ class VkResourceLayout final : public RHIResourceLayoutBase
 public:
     VkResourceLayout(NonNullPtr<VkGPUContext> ctx, NonNullPtr<VkDescriptorPool> descriptorPool);
 
-    ::vk::UniquePipelineLayout pipelineLayout;
-    const VkDescriptorSet& GetSamplerDescriptor();
+    ::vk::PipelineLayout GetPipelineLayout();
+    ::vk::DescriptorSet GetStaticSamplerDescriptorSet();
+
+    static ::vk::ShaderStageFlags GetPushConstantStageFlags();
 
 private:
     ::vk::UniquePipelineLayout CreateLayout();
@@ -26,6 +30,7 @@ private:
 
     NonNullPtr<VkGPUContext> ctx;
     NonNullPtr<VkDescriptorPool> descriptorPool;
+    ::vk::UniquePipelineLayout pipelineLayout;
 };
 
 } // namespace vex::vk

@@ -64,44 +64,34 @@ jobs:
     - name: Install latest GCC
       if: matrix.os == 'ubuntu-latest'
       run: |
-        # add universe repo to have acess to GCC 14
-        sudo add-apt-repository universe && sudo apt update
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test && sudo apt update
+        sudo apt-get install -y gcc-15 g++-15 libstdc++-15-dev
         
-        # Set the GCC 14 as the default
-        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
-        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
-
-        # Verify the version
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-15 100
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-15 100
+    
         gcc --version
         g++ --version
 
-    # GitHub Action's ubuntu image has a clang which does not support <expected> (added in clang 16).
-    # Use of libc++ requires clang 19 minimum.
-    - name: Install Clang 19
+    - name: Install Clang 22
       if: matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'clang'
       run: |
-        # Add the LLVM repository for Clang 19
         wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
         
-        # Add specific repository for LLVM 19
         UBUNTU_CODENAME=$(lsb_release -cs)
-        sudo bash -c "cat > /etc/apt/sources.list.d/llvm-19.list << EOF
-        deb http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-19 main
-        deb-src http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-19 main
+        sudo bash -c "cat > /etc/apt/sources.list.d/llvm-20.list << EOF
+        deb http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-20 main
+        deb-src http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-20 main
         EOF"
         
         sudo apt-get update
+        sudo apt-get install -y clang-20 libc++-20-dev libc++abi-20-dev
         
-        # Install Clang 19 and associated libraries
-        sudo apt-get install -y clang-19 libc++-19-dev
-        
-        # Set Clang 19 as the default
-        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-19 100
-        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-19 100
-        sudo update-alternatives --set clang /usr/bin/clang-19
-        sudo update-alternatives --set clang++ /usr/bin/clang++-19
-
-        # Verify the version
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-20 100
+        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-20 100
+        sudo update-alternatives --set clang /usr/bin/clang-20
+        sudo update-alternatives --set clang++ /usr/bin/clang++-20
+    
         clang --version
         clang++ --version
 

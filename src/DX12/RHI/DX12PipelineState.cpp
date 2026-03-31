@@ -1,13 +1,13 @@
 #include "DX12PipelineState.h"
 
-#include <Vex/ResourceCleanup.h>
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
 #include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHITexture.h>
-#include <Vex/Shaders/Shader.h>
+#include <Vex/ResourceCleanup.h>
+#include <Vex/ShaderView.h>
 
 #include <DX12/DX12Formats.h>
 #include <DX12/DX12GraphicsPipeline.h>
@@ -151,14 +151,14 @@ DX12GraphicsPipelineState::DX12GraphicsPipelineState(const ComPtr<DX12Device>& d
 {
 }
 
-void DX12GraphicsPipelineState::Compile(const Shader& vertexShader,
-                                        const Shader& pixelShader,
+void DX12GraphicsPipelineState::Compile(const ShaderView& vertexShader,
+                                        const ShaderView& pixelShader,
                                         RHIResourceLayout& resourceLayout)
 {
     using namespace GraphicsPipeline;
 
-    auto vsBlob = vertexShader.GetBlob();
-    auto psBlob = pixelShader.GetBlob();
+    const auto vsBlob = vertexShader.bytecode;
+    const auto psBlob = pixelShader.bytecode;
     std::vector<D3D12_INPUT_ELEMENT_DESC> inputElementDesc =
         GetDX12InputElementDescFromVertexInputAssembly(key.vertexInputLayout);
     D3D12_INPUT_LAYOUT_DESC layoutDesc{ .pInputElementDescs = inputElementDesc.data(),
@@ -189,8 +189,6 @@ void DX12GraphicsPipelineState::Compile(const Shader& vertexShader,
 
     // Update versions for staleness purposes.
     rootSignatureVersion = resourceLayout.version;
-    vertexShaderVersion = vertexShader.version;
-    pixelShaderVersion = pixelShader.version;
 
 #if !VEX_SHIPPING
     chk << graphicsPSO->SetName(StringToWString(std::format("GraphicsPSO: {}", key)).c_str());
@@ -231,9 +229,9 @@ DX12ComputePipelineState::DX12ComputePipelineState(const ComPtr<DX12Device>& dev
 {
 }
 
-void DX12ComputePipelineState::Compile(const Shader& computeShader, RHIResourceLayout& resourceLayout)
+void DX12ComputePipelineState::Compile(const ShaderView& computeShader, RHIResourceLayout& resourceLayout)
 {
-    auto blob = computeShader.GetBlob();
+    const auto blob = computeShader.bytecode;
     D3D12_COMPUTE_PIPELINE_STATE_DESC desc{
         .pRootSignature = resourceLayout.GetRootSignature().Get(),
         .CS = CD3DX12_SHADER_BYTECODE(blob.data(), blob.size()),
@@ -244,7 +242,6 @@ void DX12ComputePipelineState::Compile(const Shader& computeShader, RHIResourceL
 
     // Update versions for staleness purposes.
     rootSignatureVersion = resourceLayout.version;
-    computeShaderVersion = computeShader.version;
 
 #if !VEX_SHIPPING
     chk << computePSO->SetName(StringToWString(std::format("ComputePSO: {}", key)).c_str());
@@ -270,43 +267,41 @@ DX12RayTracingPipelineState::DX12RayTracingPipelineState(const ComPtr<DX12Device
 }
 
 std::vector<MaybeUninitialized<RHIBuffer>> DX12RayTracingPipelineState::Compile(
-    const RayTracingShaderCollection& shaderCollection,
-                                                            RHIResourceLayout& resourceLayout,
-                                                            RHIAllocator& allocator)
+    const RayTracingShaderCollection& shaderCollection, RHIResourceLayout& resourceLayout, RHIAllocator& allocator)
 {
     CD3DX12_STATE_OBJECT_DESC raytracingPipeline{ D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE };
 
     // Ray generation shaders
-    for (NonNullPtr<Shader> rayGenShaders : shaderCollection.rayGenerationShaders)
+    for (const ShaderView& rayGenShaders : shaderCollection.rayGenerationShaders)
     {
         CD3DX12_DXIL_LIBRARY_SUBOBJECT* rayGenerationLib =
             raytracingPipeline.CreateSubobject<CD3DX12_DXIL_LIBRARY_SUBOBJECT>();
         D3D12_SHADER_BYTECODE rayGenBC =
-            CD3DX12_SHADER_BYTECODE{ rayGenShaders->GetBlob().data(), rayGenShaders->GetBlob().size() };
+            CD3DX12_SHADER_BYTECODE{ rayGenShaders.bytecode.data(), rayGenShaders.bytecode.size() };
         rayGenerationLib->SetDXILLibrary(&rayGenBC);
-        rayGenerationLib->DefineExport(StringToWString(rayGenShaders->key.entryPoint).c_str());
+        rayGenerationLib->DefineExport(StringToWString(std::string(rayGenShaders.entryPoint)).c_str());
     }
 
     // Ray miss shaders
-    for (NonNullPtr<Shader> missShader : shaderCollection.rayMissShaders)
+    for (const ShaderView& missShader : shaderCollection.rayMissShaders)
     {
         CD3DX12_DXIL_LIBRARY_SUBOBJECT* missLib = raytracingPipeline.CreateSubobject<CD3DX12_DXIL_LIBRARY_SUBOBJECT>();
-        D3D12_SHADER_BYTECODE missBC = { missShader->GetBlob().data(), missShader->GetBlob().size() };
+        D3D12_SHADER_BYTECODE missBC = { missShader.bytecode.data(), missShader.bytecode.size() };
         missLib->SetDXILLibrary(&missBC);
-        missLib->DefineExport(StringToWString(missShader->key.entryPoint).c_str());
+        missLib->DefineExport(StringToWString(std::string(missShader.entryPoint)).c_str());
     }
 
     // Hit group shaders
-    for (const auto& hitGroup : shaderCollection.hitGroupShaders)
+    for (const auto& [name, rayClosestHitShader, rayAnyHitShader, rayIntersectionShader] : shaderCollection.hitGroups)
     {
         CD3DX12_HIT_GROUP_SUBOBJECT* hitGroupSubObj = raytracingPipeline.CreateSubobject<CD3DX12_HIT_GROUP_SUBOBJECT>();
 
         // Set the hit group name
-        std::wstring hitGroupName = StringToWString(hitGroup.name);
+        std::wstring hitGroupName = StringToWString(name);
         hitGroupSubObj->SetHitGroupExport(hitGroupName.c_str());
 
         // Set hit group type (triangles vs procedural)
-        D3D12_HIT_GROUP_TYPE hitGroupType = hitGroup.rayIntersectionShader.has_value()
+        D3D12_HIT_GROUP_TYPE hitGroupType = rayIntersectionShader.has_value()
                                                 ? D3D12_HIT_GROUP_TYPE_PROCEDURAL_PRIMITIVE
                                                 : D3D12_HIT_GROUP_TYPE_TRIANGLES;
         hitGroupSubObj->SetHitGroupType(hitGroupType);
@@ -315,50 +310,50 @@ std::vector<MaybeUninitialized<RHIBuffer>> DX12RayTracingPipelineState::Compile(
         {
             CD3DX12_DXIL_LIBRARY_SUBOBJECT* closestHitLib =
                 raytracingPipeline.CreateSubobject<CD3DX12_DXIL_LIBRARY_SUBOBJECT>();
-            D3D12_SHADER_BYTECODE closestHitBC = { hitGroup.rayClosestHitShader->GetBlob().data(),
-                                                   hitGroup.rayClosestHitShader->GetBlob().size() };
+            D3D12_SHADER_BYTECODE closestHitBC = { rayClosestHitShader.bytecode.data(),
+                                                   rayClosestHitShader.bytecode.size() };
             closestHitLib->SetDXILLibrary(&closestHitBC);
-            closestHitLib->DefineExport(StringToWString(hitGroup.rayClosestHitShader->key.entryPoint).c_str());
+            closestHitLib->DefineExport(StringToWString(std::string(rayClosestHitShader.entryPoint)).c_str());
             hitGroupSubObj->SetClosestHitShaderImport(
-                StringToWString(hitGroup.rayClosestHitShader->key.entryPoint).c_str());
+                StringToWString(std::string(rayClosestHitShader.entryPoint)).c_str());
         }
 
         // Any hit shader
-        if (hitGroup.rayAnyHitShader)
+        if (rayAnyHitShader)
         {
             CD3DX12_DXIL_LIBRARY_SUBOBJECT* anyHitLib =
                 raytracingPipeline.CreateSubobject<CD3DX12_DXIL_LIBRARY_SUBOBJECT>();
-            D3D12_SHADER_BYTECODE anyHitBC = { hitGroup.rayAnyHitShader.value()->GetBlob().data(),
-                                               hitGroup.rayAnyHitShader.value()->GetBlob().size() };
+            D3D12_SHADER_BYTECODE anyHitBC = { rayAnyHitShader.value().bytecode.data(),
+                                               rayAnyHitShader.value().bytecode.size() };
             anyHitLib->SetDXILLibrary(&anyHitBC);
-            anyHitLib->DefineExport(StringToWString(hitGroup.rayAnyHitShader.value()->key.entryPoint).c_str());
+            anyHitLib->DefineExport(StringToWString(std::string(rayAnyHitShader.value().entryPoint)).c_str());
             hitGroupSubObj->SetAnyHitShaderImport(
-                StringToWString(hitGroup.rayAnyHitShader.value()->key.entryPoint).c_str());
+                StringToWString(std::string(rayAnyHitShader.value().entryPoint)).c_str());
         }
 
         // Ray intersection shader
-        if (hitGroup.rayIntersectionShader)
+        if (rayIntersectionShader)
         {
             CD3DX12_DXIL_LIBRARY_SUBOBJECT* intersectionLib =
                 raytracingPipeline.CreateSubobject<CD3DX12_DXIL_LIBRARY_SUBOBJECT>();
-            D3D12_SHADER_BYTECODE intersectionBC = { hitGroup.rayIntersectionShader.value()->GetBlob().data(),
-                                                     hitGroup.rayIntersectionShader.value()->GetBlob().size() };
+            D3D12_SHADER_BYTECODE intersectionBC = { rayIntersectionShader.value().bytecode.data(),
+                                                     rayIntersectionShader.value().bytecode.size() };
             intersectionLib->SetDXILLibrary(&intersectionBC);
             intersectionLib->DefineExport(
-                StringToWString(hitGroup.rayIntersectionShader.value()->key.entryPoint).c_str());
+                StringToWString(std::string(rayIntersectionShader.value().entryPoint)).c_str());
             hitGroupSubObj->SetIntersectionShaderImport(
-                StringToWString(hitGroup.rayIntersectionShader.value()->key.entryPoint).c_str());
+                StringToWString(std::string(rayIntersectionShader.value().entryPoint)).c_str());
         }
     }
 
     // Ray callable shaders
-    for (NonNullPtr<Shader> callableShader : shaderCollection.rayCallableShaders)
+    for (const ShaderView& callableShader : shaderCollection.rayCallableShaders)
     {
         CD3DX12_DXIL_LIBRARY_SUBOBJECT* callableLib =
             raytracingPipeline.CreateSubobject<CD3DX12_DXIL_LIBRARY_SUBOBJECT>();
-        D3D12_SHADER_BYTECODE intersectionBC = { callableShader->GetBlob().data(), callableShader->GetBlob().size() };
+        D3D12_SHADER_BYTECODE intersectionBC = { callableShader.bytecode.data(), callableShader.bytecode.size() };
         callableLib->SetDXILLibrary(&intersectionBC);
-        callableLib->DefineExport(StringToWString(callableShader->key.entryPoint).c_str());
+        callableLib->DefineExport(StringToWString(std::string(callableShader.entryPoint)).c_str());
     }
 
     // Shader Config - defines payload and attribute sizes
@@ -391,9 +386,9 @@ std::vector<MaybeUninitialized<RHIBuffer>> DX12RayTracingPipelineState::Compile(
 
     GenerateIdentifiers(shaderCollection);
 
-    auto oldShaderTables = CreateShaderTables(allocator);
+    std::vector<MaybeUninitialized<RHIBuffer>> oldShaderTables = CreateShaderTables(allocator);
 
-    UpdateVersions(shaderCollection, resourceLayout);
+    rootSignatureVersion = resourceLayout.version;
 
     return oldShaderTables;
 }
@@ -403,7 +398,7 @@ std::unique_ptr<RHIRayTracingPipelineState> DX12RayTracingPipelineState::Cleanup
     if (!(stateObject || rayGenerationShaderTable || rayMissShaderTable || hitGroupShaderTable ||
           rayCallableShaderTable))
     {
-        // We have nothing to cleanup!
+        // We have nothing to clean up!
         return nullptr;
     }
 
@@ -450,33 +445,33 @@ void DX12RayTracingPipelineState::GenerateIdentifiers(const RayTracingShaderColl
     ComPtr<ID3D12StateObjectProperties> stateObjectProperties;
     chk << stateObject->QueryInterface(IID_PPV_ARGS(&stateObjectProperties));
 
-    for (NonNullPtr<Shader> rayGenShader : shaderCollection.rayGenerationShaders)
+    for (const ShaderView& rayGenShader : shaderCollection.rayGenerationShaders)
     {
         void* identifier =
-            stateObjectProperties->GetShaderIdentifier(StringToWString(rayGenShader->key.entryPoint).c_str());
+            stateObjectProperties->GetShaderIdentifier(StringToWString(std::string(rayGenShader.entryPoint)).c_str());
         VEX_ASSERT(identifier != nullptr, "Unable to use null RTPSO shader identifier...");
         rayGenerationIdentifiers.push_back(identifier);
     }
 
-    for (NonNullPtr<Shader> missShader : shaderCollection.rayMissShaders)
+    for (const ShaderView& missShader : shaderCollection.rayMissShaders)
     {
         void* identifier =
-            stateObjectProperties->GetShaderIdentifier(StringToWString(missShader->key.entryPoint).c_str());
+            stateObjectProperties->GetShaderIdentifier(StringToWString(std::string(missShader.entryPoint)).c_str());
         VEX_ASSERT(identifier != nullptr, "Unable to use null RTPSO shader identifier...");
         rayMissIdentifiers.push_back(identifier);
     }
 
-    for (const auto& hitGroupData : shaderCollection.hitGroupShaders)
+    for (const HitGroup& hitGroupData : shaderCollection.hitGroups)
     {
         void* identifier = stateObjectProperties->GetShaderIdentifier(StringToWString(hitGroupData.name).c_str());
         VEX_ASSERT(identifier != nullptr, "Unable to use null RTPSO shader identifier...");
         hitGroupIdentifiers.push_back(identifier);
     }
 
-    for (NonNullPtr<Shader> callableShader : shaderCollection.rayCallableShaders)
+    for (const ShaderView& callableShader : shaderCollection.rayCallableShaders)
     {
         void* identifier =
-            stateObjectProperties->GetShaderIdentifier(StringToWString(callableShader->key.entryPoint).c_str());
+            stateObjectProperties->GetShaderIdentifier(StringToWString(std::string(callableShader.entryPoint)).c_str());
         VEX_ASSERT(identifier != nullptr, "Unable to use null RTPSO shader identifier...");
         rayCallableIdentifiers.push_back(identifier);
     }
@@ -521,45 +516,6 @@ std::vector<MaybeUninitialized<RHIBuffer>> DX12RayTracingPipelineState::CreateSh
     }
 
     return oldBuffers;
-}
-
-void DX12RayTracingPipelineState::UpdateVersions(const RayTracingShaderCollection& shaderCollection,
-                                                 RHIResourceLayout& resourceLayout)
-{
-    rootSignatureVersion = resourceLayout.version;
-
-    rayGenerationShaderVersions.resize(shaderCollection.rayGenerationShaders.size());
-    for (u32 i = 0; i < shaderCollection.rayGenerationShaders.size(); ++i)
-    {
-        rayGenerationShaderVersions[i] = shaderCollection.rayGenerationShaders[i]->version;
-    }
-
-    rayMissShaderVersions.resize(shaderCollection.rayMissShaders.size());
-    for (u32 i = 0; i < shaderCollection.rayMissShaders.size(); ++i)
-    {
-        rayMissShaderVersions[i] = shaderCollection.rayMissShaders[i]->version;
-    }
-
-    hitGroupVersions.resize(shaderCollection.hitGroupShaders.size());
-    for (u32 i = 0; i < shaderCollection.hitGroupShaders.size(); ++i)
-    {
-        hitGroupVersions[i].rayClosestHitVersion = shaderCollection.hitGroupShaders[i].rayClosestHitShader->version;
-        if (shaderCollection.hitGroupShaders[i].rayAnyHitShader)
-        {
-            hitGroupVersions[i].rayAnyHitVersion = shaderCollection.hitGroupShaders[i].rayAnyHitShader.value()->version;
-        }
-        if (shaderCollection.hitGroupShaders[i].rayIntersectionShader)
-        {
-            hitGroupVersions[i].rayIntersectionVersion =
-                shaderCollection.hitGroupShaders[i].rayIntersectionShader.value()->version;
-        }
-    }
-
-    rayCallableShaderVersions.resize(shaderCollection.rayCallableShaders.size());
-    for (u32 i = 0; i < shaderCollection.rayCallableShaders.size(); ++i)
-    {
-        rayCallableShaderVersions[i] = shaderCollection.rayCallableShaders[i]->version;
-    }
 }
 
 } // namespace vex::dx12

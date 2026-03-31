@@ -115,14 +115,11 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
 
     descriptorPool = rhi.CreateDescriptorPool();
 
-    psCache.emplace(&rhi, *descriptorPool, desc.shaderCompilerSettings);
+    psCache.emplace(rhi, *descriptorPool);
 
     allocator = rhi.CreateAllocator();
 
     queryPool = rhi.CreateTimestampQueryPool(*allocator);
-
-    // TODO(https://trello.com/c/T1DY4QOT): See the comment inside SetSampler().
-    SetSamplers({});
 
     GEnableGPUScopedEvents = desc.enableGPUDebugLayer;
 
@@ -162,6 +159,16 @@ void Graphics::Present()
     {
         // Open a new command list that will be used to copy the presentTexture to the backbuffer, and presenting.
         RHITexture& presentTexture = GetRHITexture(GetCurrentPresentTexture().handle);
+
+        // Validate backbuffer/present texture dimensions, a copy won't work if the textures don't have the same size.
+        VEX_ASSERT(backBuffer->GetDesc().width == presentTexture.GetDesc().width &&
+                       backBuffer->GetDesc().height == presentTexture.GetDesc().height,
+                   "The backbuffer's dimensions ({}x{}) don't match the present texture's dimensions ({}x{}). Make "
+                   "sure that you are correctly handling resizing!",
+                   backBuffer->GetDesc().width,
+                   backBuffer->GetDesc().height,
+                   presentTexture.GetDesc().width,
+                   presentTexture.GetDesc().height);
 
         // Copy the present texture to the backbuffer.
         // Must be a graphics queue in order to be able to move the backbuffer to the present state.
@@ -259,6 +266,385 @@ void Graphics::Present()
 CommandContext Graphics::CreateCommandContext(QueueType queueType)
 {
     return CommandContext{ *this, commandPool->GetOrCreateCommandList(queueType), *queryPool };
+}
+
+Texture Graphics::CreateTexture(const TextureDesc& textureDesc, ResourceLifetime lifetime)
+{
+    TextureUtil::ValidateTextureDescription(textureDesc);
+    TextureDesc texDesc = textureDesc;
+
+    if (textureDesc.mips == 0)
+    {
+        texDesc.mips = ComputeMipCount(std::make_tuple(textureDesc.width, textureDesc.height, textureDesc.GetDepth()));
+    }
+
+    if (lifetime == ResourceLifetime::Dynamic)
+    {
+        // TODO(https://trello.com/c/K2jgp9ax): handle dynamic resources, includes specifying that the resource when
+        // bound should use dynamic bindless indices and self-cleanup of the RHITexture should occur after the current
+        // frame ends, would be used for transient resources inside our memory allocation strategy (avoids constant
+        // reallocations).
+        VEX_NOT_YET_IMPLEMENTED();
+    }
+
+    Texture texture{
+        .handle = textureRegistry.AllocateElement(std::make_unique<RHITexture>(rhi.CreateTexture(*allocator, texDesc))),
+        .desc = std::move(texDesc),
+    };
+    pendingInitializations.push_back(texture);
+    return texture;
+}
+
+void Graphics::DestroyTexture(const Texture& texture)
+{
+    if (!texture.handle.IsValid())
+    {
+        return;
+    }
+    // TODO(https://trello.com/c/lEZ7PhTc): MostRecentSyncToken is error prone.
+    EnqueueCPUWork([&, rhiTexture = *textureRegistry.ExtractElement(texture.handle)]() mutable
+                   { CleanupResource(std::move(rhiTexture), *descriptorPool, *allocator); },
+                   rhi.GetMostRecentSyncTokenPerQueue());
+}
+
+Buffer Graphics::CreateBuffer(const BufferDesc& bufferDesc, ResourceLifetime lifetime)
+{
+    BufferUtil::ValidateBufferDesc(bufferDesc);
+
+    if (lifetime == ResourceLifetime::Dynamic)
+    {
+        // TODO(https://trello.com/c/K2jgp9ax): handle dynamic resources, includes specifying that the resource when
+        // bound should use dynamic bindless indices and self-cleanup of the RHITexture should occur after the current
+        // frame ends, would be used for transient resources inside our memory allocation strategy (avoids constant
+        // reallocations).
+        VEX_NOT_YET_IMPLEMENTED();
+    }
+
+    return Buffer{ .handle = bufferRegistry.AllocateElement(
+                       std::make_unique<RHIBuffer>(rhi.CreateBuffer(*allocator, bufferDesc))),
+                   .desc = std::move(bufferDesc) };
+}
+
+void Graphics::DestroyBuffer(const Buffer& buffer)
+{
+    if (!buffer.handle.IsValid())
+    {
+        return;
+    }
+    // TODO(https://trello.com/c/lEZ7PhTc): MostRecentSyncToken is error prone.
+    EnqueueCPUWork([&, rhiBuffer = *bufferRegistry.ExtractElement(buffer.handle)]() mutable
+                   { CleanupResource(std::move(rhiBuffer), *descriptorPool, *allocator); },
+                   rhi.GetMostRecentSyncTokenPerQueue());
+}
+
+AccelerationStructure Graphics::CreateAccelerationStructure(const AccelerationStructureDesc& asDesc)
+{
+    VEX_CHECK(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing),
+              "Your GPU does not support ray tracing, unable to create an acceleration structure!");
+    return {
+        .handle = accelerationStructureRegistry.AllocateElement(
+            std::make_unique<RHIAccelerationStructure>(rhi.CreateAS(asDesc))),
+        .desc = asDesc,
+    };
+}
+
+void Graphics::DestroyAccelerationStructure(const AccelerationStructure& accelerationStructure)
+{
+    if (!accelerationStructure.handle.IsValid())
+    {
+        return;
+    }
+    // TODO(https://trello.com/c/lEZ7PhTc): MostRecentSyncToken is error prone.
+    EnqueueCPUWork([&, rhiAS = *accelerationStructureRegistry.ExtractElement(accelerationStructure.handle)]() mutable
+                   { CleanupResource(std::move(rhiAS), *descriptorPool, *allocator); },
+                   rhi.GetMostRecentSyncTokenPerQueue());
+}
+
+MappedMemory Graphics::MapResource(const Buffer& buffer)
+{
+    RHIBuffer& rhiBuffer = GetRHIBuffer(buffer.handle);
+
+    if (rhiBuffer.GetDesc().memoryLocality != ResourceMemoryLocality::CPUWrite &&
+        rhiBuffer.GetDesc().memoryLocality != ResourceMemoryLocality::CPURead)
+    {
+        VEX_LOG(Fatal, "A non CPU-visible buffer cannot be mapped to.");
+    }
+
+    return { rhiBuffer };
+}
+
+BindlessHandle Graphics::GetBindlessHandle(const TextureBinding& bindlessResource)
+{
+    BindingUtil::ValidateTextureBinding(bindlessResource, bindlessResource.texture.desc.usage);
+
+    auto& texture = GetRHITexture(bindlessResource.texture.handle);
+    return texture.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
+}
+
+BindlessHandle Graphics::GetBindlessHandle(const BufferBinding& bindlessResource)
+{
+    BindingUtil::ValidateBufferBinding(bindlessResource, bindlessResource.buffer.desc.usage);
+
+    auto& buffer = GetRHIBuffer(bindlessResource.buffer.handle);
+    return buffer.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
+}
+
+BindlessHandle Graphics::GetBindlessHandle(const AccelerationStructure& accelerationStructure)
+{
+    return GetRHIAccelerationStructure(accelerationStructure.handle)
+        .GetRHIBuffer()
+        .GetOrCreateBindlessView({}, *descriptorPool);
+}
+
+std::vector<BindlessHandle> Graphics::GetBindlessHandles(Span<const ResourceBinding> bindlessResources)
+{
+    std::vector<BindlessHandle> handles;
+    handles.reserve(bindlessResources.size());
+    for (const auto& binding : bindlessResources)
+    {
+        std::visit(Visitor{ [&handles, this](const BufferBinding& bufferBinding)
+                            { handles.emplace_back(GetBindlessHandle(bufferBinding)); },
+                            [&handles, this](const TextureBinding& texBinding)
+                            { handles.emplace_back(GetBindlessHandle(texBinding)); },
+                            [&handles, this](const AccelerationStructureBinding& asBinding)
+                            { handles.emplace_back(GetBindlessHandle(asBinding)); } },
+                   binding.binding);
+    }
+    return handles;
+}
+
+BindlessHandle Graphics::GetBindlessSampler(const BindlessTextureSampler& sampler)
+{
+    if (bindlessSamplers.size() == GMaxBindlessSamplerCount)
+    {
+        VEX_LOG(
+            Fatal,
+            "Max number of different bindless samplers reached (2048). You must reduce the number of variations used.");
+    }
+
+    auto& handle = bindlessSamplers[sampler];
+    if (handle.IsValid())
+    {
+        return bindlessSamplers[sampler];
+    }
+
+    handle = descriptorPool->CreateBindlessSampler(sampler);
+    return handle;
+}
+
+void Graphics::SetStaticSamplers(Span<const StaticTextureSampler> staticSamplers)
+{
+    psCache->resourceLayout->SetStaticSamplers(staticSamplers);
+}
+
+SyncToken Graphics::Submit(CommandContext& ctx, Span<const SyncToken> dependencies)
+{
+    auto tokens = Submit(std::span(&ctx, 1), dependencies);
+    VEX_ASSERT(tokens.size() == 1);
+    return tokens[0];
+}
+
+std::vector<SyncToken> Graphics::Submit(Span<CommandContext> commandContexts, Span<const SyncToken> dependencies)
+{
+    // Process any pending textures.
+    std::optional<SyncToken> pendingInitializationToken = FlushPendingInitializations();
+
+    // Collect and prepare all command contexts for submission.
+    std::vector<NonNullPtr<RHICommandList>> cmdLists;
+    for (auto& ctx : commandContexts)
+    {
+        PrepareCommandContextForSubmission(ctx);
+        cmdLists.push_back(ctx.cmdList);
+    }
+
+    std::vector<SyncToken> tokens;
+    if (pendingInitializationToken.has_value())
+    {
+        std::vector<SyncToken> finalDependencies{ dependencies.begin(), dependencies.end() };
+        finalDependencies.push_back(pendingInitializationToken.value());
+        tokens = rhi.Submit(cmdLists, finalDependencies);
+    }
+    else
+    {
+        tokens = rhi.Submit(cmdLists, dependencies);
+    }
+
+    // Collect the temporary resources of all command contexts in this phase.
+    std::vector<CleanupVariant> phaseTemporaryResources;
+    for (auto& ctx : commandContexts)
+    {
+        for (auto& buffer : ctx.temporaryBuffers)
+        {
+            phaseTemporaryResources.push_back(*bufferRegistry.ExtractElement(buffer.handle));
+        }
+        for (auto& resource : ctx.temporaryResources)
+        {
+            phaseTemporaryResources.push_back(std::move(resource));
+        }
+    }
+
+    // Send them to be cleaned-up once the GPU has done executing.
+    if (!phaseTemporaryResources.empty())
+    {
+        EnqueueCPUWork(
+            [this, resources = std::move(phaseTemporaryResources)]() mutable
+            {
+                for (auto& resource : resources)
+                {
+                    CleanupResource(std::move(resource), *descriptorPool, *allocator);
+                }
+            },
+            tokens);
+    }
+
+    commandPool->OnCommandListsSubmitted(cmdLists, tokens);
+
+    Cleanup();
+
+    return tokens;
+}
+
+bool Graphics::IsTokenComplete(const SyncToken& token) const
+{
+    return rhi.IsTokenComplete(token);
+}
+
+bool Graphics::AreTokensComplete(Span<const SyncToken> tokens) const
+{
+    for (const auto& token : tokens)
+    {
+        if (!rhi.IsTokenComplete(token))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+void Graphics::WaitForTokenOnCPU(const SyncToken& syncToken)
+{
+    rhi.WaitForTokenOnCPU(syncToken);
+
+    Cleanup();
+}
+
+void Graphics::FlushGPU()
+{
+    VEX_LOG(Info, "Forcing a GPU flush...");
+
+    rhi.FlushGPU();
+
+    Cleanup();
+
+    VEX_ASSERT(pendingCPUWork.empty(), "Should never have remaining CPU work after a flush and cleanup...");
+}
+
+void Graphics::SetUseVSync(bool useVSync)
+{
+    desc.swapChainDesc.useVSync = useVSync;
+}
+
+bool Graphics::GetUseVSync() const
+{
+    return desc.swapChainDesc.useVSync;
+}
+
+void Graphics::SetUseHDRIfSupported(bool newValue)
+{
+    desc.swapChainDesc.useHDRIfSupported = newValue;
+}
+
+bool Graphics::GetUseHDRIfSupported() const
+{
+    return desc.swapChainDesc.useHDRIfSupported;
+}
+
+void Graphics::SetPreferredHDRColorSpace(ColorSpace newValue)
+{
+    desc.swapChainDesc.preferredColorSpace = newValue;
+}
+
+ColorSpace Graphics::GetPreferredHDRColorSpace() const
+{
+    return desc.swapChainDesc.preferredColorSpace;
+}
+
+ColorSpace Graphics::GetCurrentHDRColorSpace() const
+{
+    return swapChain->GetCurrentColorSpace();
+}
+
+void Graphics::OnWindowResized(const u32 newWidth, const u32 newHeight)
+{
+    // Do not resize if any of the dimensions is 0, or if the resize gives us the same window size as we have
+    // currently.
+    if (newWidth == 0 || newHeight == 0 ||
+        (newWidth == desc.platformWindow.width && newHeight == desc.platformWindow.height))
+    {
+        return;
+    }
+
+    FlushGPU();
+
+    // Take advantage of the resize to cleanup no longer needed resources.
+    Cleanup();
+
+    // Recreate our swapchain.
+    swapChain->RecreateSwapChain(newWidth, newHeight);
+    RecreatePresentTextures();
+
+    desc.platformWindow.width = newWidth;
+    desc.platformWindow.height = newHeight;
+}
+
+Texture Graphics::GetCurrentPresentTexture()
+{
+    if (!desc.useSwapChain)
+    {
+        VEX_LOG(Fatal, "Your backend was created without swapchain support. Backbuffers were not created.");
+    }
+    return presentTextures[currentFrameIndex];
+}
+
+bool Graphics::IsRayTracingSupported() const
+{
+    return GPhysicalDevice->IsFeatureSupported(Feature::RayTracing);
+}
+
+std::expected<Query, QueryStatus> Graphics::GetTimestampValue(const QueryHandle handle)
+{
+    VEX_CHECK(handle != vex::GInvalidQueryHandle, "Query handle must be valid when getting timestamp value");
+    return queryPool->GetQueryData(handle);
+}
+
+std::vector<PhysicalDeviceInfo> Graphics::GetSupportedDevices()
+{
+    std::vector<std::unique_ptr<RHIPhysicalDevice>> devices = RHI::EnumeratePhysicalDevices();
+
+    std::vector<PhysicalDeviceInfo> infos(devices.size());
+    std::ranges::transform(devices,
+                           infos.begin(),
+                           [](const std::unique_ptr<RHIPhysicalDevice>& device) { return device->info; });
+    return infos;
+}
+
+void Graphics::EnqueueCPUWork(CPUCallback&& callback, Span<const SyncToken> tokens)
+{
+    pendingCPUWork.emplace_back(std::move(callback), std::vector<SyncToken>{ tokens.begin(), tokens.end() });
+}
+
+void Graphics::ExecuteCPUWork()
+{
+    std::erase_if(pendingCPUWork,
+                  [this](PendingCPUWork& work)
+                  {
+                      if (AreTokensComplete(work.tokens))
+                      {
+                          work.callback();
+                          return true;
+                      }
+                      return false;
+                  });
 }
 
 std::optional<SyncToken> Graphics::FlushPendingInitializations()
@@ -363,411 +749,6 @@ void Graphics::Cleanup()
     ExecuteCPUWork();
     // Reclaim all finished command lists.
     commandPool->ReclaimCommandLists();
-    // Send all shader errors to the user, we do this every time we cleanup, since cleanup occurs when we submit or
-    // present.
-    psCache->GetShaderCompiler().FlushCompilationErrors();
-}
-
-Texture Graphics::CreateTexture(TextureDesc desc, ResourceLifetime lifetime)
-{
-    TextureUtil::ValidateTextureDescription(desc);
-
-    if (desc.mips == 0)
-    {
-        desc.mips = ComputeMipCount(std::make_tuple(desc.width, desc.height, desc.GetDepth()));
-    }
-
-    if (lifetime == ResourceLifetime::Dynamic)
-    {
-        // TODO(https://trello.com/c/K2jgp9ax): handle dynamic resources, includes specifying that the resource when
-        // bound should use dynamic bindless indices and self-cleanup of the RHITexture should occur after the current
-        // frame ends, would be used for transient resources inside our memory allocation strategy (avoids constant
-        // reallocations).
-        VEX_NOT_YET_IMPLEMENTED();
-    }
-
-    Texture texture{
-        .handle = textureRegistry.AllocateElement(std::make_unique<RHITexture>(rhi.CreateTexture(*allocator, desc))),
-        .desc = std::move(desc),
-    };
-    pendingInitializations.push_back(texture);
-    return texture;
-}
-
-Buffer Graphics::CreateBuffer(BufferDesc desc, ResourceLifetime lifetime)
-{
-    BufferUtil::ValidateBufferDesc(desc);
-
-    if (lifetime == ResourceLifetime::Dynamic)
-    {
-        // TODO(https://trello.com/c/K2jgp9ax): handle dynamic resources, includes specifying that the resource when
-        // bound should use dynamic bindless indices and self-cleanup of the RHITexture should occur after the current
-        // frame ends, would be used for transient resources inside our memory allocation strategy (avoids constant
-        // reallocations).
-        VEX_NOT_YET_IMPLEMENTED();
-    }
-
-    return Buffer{ .handle =
-                       bufferRegistry.AllocateElement(std::make_unique<RHIBuffer>(rhi.CreateBuffer(*allocator, desc))),
-                   .desc = std::move(desc) };
-}
-
-AccelerationStructure Graphics::CreateAccelerationStructure(const ASDesc& desc)
-{
-    VEX_CHECK(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing),
-              "Your GPU does not support ray tracing, unable to create an acceleration structure!");
-    return {
-        .handle = accelerationStructureRegistry.AllocateElement(
-            std::make_unique<RHIAccelerationStructure>(rhi.CreateAS(desc))),
-        .desc = desc,
-    };
-}
-
-MappedMemory Graphics::MapResource(const Buffer& buffer)
-{
-    RHIBuffer& rhiBuffer = GetRHIBuffer(buffer.handle);
-
-    if (rhiBuffer.GetDesc().memoryLocality != ResourceMemoryLocality::CPUWrite &&
-        rhiBuffer.GetDesc().memoryLocality != ResourceMemoryLocality::CPURead)
-    {
-        VEX_LOG(Fatal, "A non CPU-visible buffer cannot be mapped to.");
-    }
-
-    return { rhiBuffer };
-}
-
-void Graphics::DestroyTexture(const Texture& texture)
-{
-    if (!texture.handle.IsValid())
-    {
-        return;
-    }
-    // TODO(https://trello.com/c/lEZ7PhTc): MostRecentSyncToken is error prone.
-    EnqueueCPUWork([&, rhiTexture = *textureRegistry.ExtractElement(texture.handle)]() mutable
-                   { CleanupResource(std::move(rhiTexture), *descriptorPool, *allocator); },
-                   rhi.GetMostRecentSyncTokenPerQueue());
-}
-
-void Graphics::DestroyBuffer(const Buffer& buffer)
-{
-    if (!buffer.handle.IsValid())
-    {
-        return;
-    }
-    // TODO(https://trello.com/c/lEZ7PhTc): MostRecentSyncToken is error prone.
-    EnqueueCPUWork([&, rhiBuffer = *bufferRegistry.ExtractElement(buffer.handle)]() mutable
-                   { CleanupResource(std::move(rhiBuffer), *descriptorPool, *allocator); },
-                   rhi.GetMostRecentSyncTokenPerQueue());
-}
-
-void Graphics::DestroyAccelerationStructure(const AccelerationStructure& accelerationStructure)
-{
-    if (!accelerationStructure.handle.IsValid())
-    {
-        return;
-    }
-    // TODO(https://trello.com/c/lEZ7PhTc): MostRecentSyncToken is error prone.
-    EnqueueCPUWork([&, rhiAS = *accelerationStructureRegistry.ExtractElement(accelerationStructure.handle)]() mutable
-                   { CleanupResource(std::move(rhiAS), *descriptorPool, *allocator); },
-                   rhi.GetMostRecentSyncTokenPerQueue());
-}
-
-BindlessHandle Graphics::GetBindlessHandle(const TextureBinding& bindlessResource)
-{
-    BindingUtil::ValidateTextureBinding(bindlessResource, bindlessResource.texture.desc.usage);
-
-    auto& texture = GetRHITexture(bindlessResource.texture.handle);
-    return texture.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
-}
-
-BindlessHandle Graphics::GetBindlessHandle(const BufferBinding& bindlessResource)
-{
-    BindingUtil::ValidateBufferBinding(bindlessResource, bindlessResource.buffer.desc.usage);
-
-    auto& buffer = GetRHIBuffer(bindlessResource.buffer.handle);
-    return buffer.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
-}
-
-BindlessHandle Graphics::GetBindlessHandle(const AccelerationStructure& accelerationStructure)
-{
-    return GetRHIAccelerationStructure(accelerationStructure.handle)
-        .GetRHIBuffer()
-        .GetOrCreateBindlessView({}, *descriptorPool);
-}
-
-std::vector<BindlessHandle> Graphics::GetBindlessHandles(Span<const ResourceBinding> bindlessResources)
-{
-    std::vector<BindlessHandle> handles;
-    handles.reserve(bindlessResources.size());
-    for (const auto& binding : bindlessResources)
-    {
-        std::visit(Visitor{ [&handles, this](const BufferBinding& bufferBinding)
-                            { handles.emplace_back(GetBindlessHandle(bufferBinding)); },
-                            [&handles, this](const TextureBinding& texBinding)
-                            { handles.emplace_back(GetBindlessHandle(texBinding)); },
-                            [&handles, this](const AccelerationStructureBinding& asBinding)
-                            { handles.emplace_back(GetBindlessHandle(asBinding)); } },
-                   binding.binding);
-    }
-    return handles;
-}
-
-SyncToken Graphics::Submit(CommandContext& ctx, Span<const SyncToken> dependencies)
-{
-    auto tokens = Submit(std::span(&ctx, 1), dependencies);
-    VEX_ASSERT(tokens.size() == 1);
-    return tokens[0];
-}
-
-std::vector<SyncToken> Graphics::Submit(Span<CommandContext> commandContexts, Span<const SyncToken> dependencies)
-{
-    // Process any pending textures.
-    std::optional<SyncToken> pendingInitializationToken = FlushPendingInitializations();
-
-    // Collect and prepare all command contexts for submission.
-    std::vector<NonNullPtr<RHICommandList>> cmdLists;
-    for (auto& ctx : commandContexts)
-    {
-        PrepareCommandContextForSubmission(ctx);
-        cmdLists.push_back(ctx.cmdList);
-    }
-
-    std::vector<SyncToken> tokens;
-    if (pendingInitializationToken.has_value())
-    {
-        std::vector<SyncToken> finalDependencies{ dependencies.begin(), dependencies.end() };
-        finalDependencies.push_back(pendingInitializationToken.value());
-        tokens = rhi.Submit(cmdLists, finalDependencies);
-    }
-    else
-    {
-        tokens = rhi.Submit(cmdLists, dependencies);
-    }
-
-    // Collect the temporary resources of all command contexts in this phase.
-    std::vector<CleanupVariant> phaseTemporaryResources;
-    for (auto& ctx : commandContexts)
-    {
-        for (auto& buffer : ctx.temporaryBuffers)
-        {
-            phaseTemporaryResources.push_back(*bufferRegistry.ExtractElement(buffer.handle));
-        }
-        for (auto& resource : ctx.temporaryResources)
-        {
-            phaseTemporaryResources.push_back(std::move(resource));
-        }
-    }
-
-    // Send them to be cleaned-up once the GPU has done executing.
-    if (!phaseTemporaryResources.empty())
-    {
-        EnqueueCPUWork(
-            [this, resources = std::move(phaseTemporaryResources)]() mutable
-            {
-                for (auto& resource : resources)
-                {
-                    CleanupResource(std::move(resource), *descriptorPool, *allocator);
-                }
-            },
-            tokens);
-    }
-
-    commandPool->OnCommandListsSubmitted(cmdLists, tokens);
-
-    Cleanup();
-
-    return tokens;
-}
-
-void Graphics::EnqueueCPUWork(CPUCallback&& callback, Span<const SyncToken> tokens)
-{
-    pendingCPUWork.emplace_back(std::move(callback), std::vector<SyncToken>{ tokens.begin(), tokens.end() });
-}
-
-void Graphics::ExecuteCPUWork()
-{
-    std::erase_if(pendingCPUWork,
-                  [this](PendingCPUWork& work)
-                  {
-                      if (AreTokensComplete(work.tokens))
-                      {
-                          work.callback();
-                          return true;
-                      }
-                      return false;
-                  });
-}
-
-void Graphics::FlushGPU()
-{
-    VEX_LOG(Info, "Forcing a GPU flush...");
-
-    rhi.FlushGPU();
-
-    Cleanup();
-
-    VEX_ASSERT(pendingCPUWork.empty(), "Should never have remaining CPU work after a flush and cleanup...");
-}
-
-void Graphics::SetUseVSync(bool useVSync)
-{
-    desc.swapChainDesc.useVSync = useVSync;
-}
-
-bool Graphics::GetUseVSync() const
-{
-    return desc.swapChainDesc.useVSync;
-}
-
-void Graphics::SetUseHDRIfSupported(bool newValue)
-{
-    desc.swapChainDesc.useHDRIfSupported = newValue;
-}
-
-bool Graphics::GetUseHDRIfSupported() const
-{
-    return desc.swapChainDesc.useHDRIfSupported;
-}
-
-void Graphics::SetPreferredHDRColorSpace(vex::ColorSpace newValue)
-{
-    desc.swapChainDesc.preferredColorSpace = newValue;
-}
-
-ColorSpace Graphics::GetPreferredHDRColorSpace() const
-{
-    return desc.swapChainDesc.preferredColorSpace;
-}
-
-ColorSpace Graphics::GetCurrentHDRColorSpace() const
-{
-    return swapChain->GetCurrentColorSpace();
-}
-
-void Graphics::OnWindowResized(u32 newWidth, u32 newHeight)
-{
-    // Do not resize if any of the dimensions is 0, or if the resize gives us the same window size as we have
-    // currently.
-    if (newWidth == 0 || newHeight == 0 ||
-        (newWidth == desc.platformWindow.width && newHeight == desc.platformWindow.height))
-    {
-        return;
-    }
-
-    FlushGPU();
-
-    // Take advantage of the resize to cleanup no longer needed resources.
-    Cleanup();
-
-    // Recreate our swapchain.
-    swapChain->RecreateSwapChain(newWidth, newHeight);
-    RecreatePresentTextures();
-
-    desc.platformWindow.width = newWidth;
-    desc.platformWindow.height = newHeight;
-}
-
-Texture Graphics::GetCurrentPresentTexture()
-{
-    if (!desc.useSwapChain)
-    {
-        VEX_LOG(Fatal, "Your backend was created without swapchain support. Backbuffers were not created.");
-    }
-    return presentTextures[currentFrameIndex];
-}
-
-bool Graphics::IsRayTracingSupported() const
-{
-    return GPhysicalDevice->IsFeatureSupported(Feature::RayTracing);
-}
-
-bool Graphics::IsTokenComplete(const SyncToken& token) const
-{
-    return rhi.IsTokenComplete(token);
-}
-
-bool Graphics::AreTokensComplete(Span<const SyncToken> tokens) const
-{
-    for (const auto& token : tokens)
-    {
-        if (!rhi.IsTokenComplete(token))
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
-void Graphics::WaitForTokenOnCPU(const SyncToken& syncToken)
-{
-    rhi.WaitForTokenOnCPU(syncToken);
-
-    Cleanup();
-}
-
-void Graphics::RecompileAllShaders()
-{
-    if (desc.shaderCompilerSettings.enableShaderDebugging)
-    {
-        psCache->GetShaderCompiler().MarkAllShadersDirty();
-    }
-    else
-    {
-        VEX_LOG(Warning, "Cannot recompile shaders when not in shader debug mode.");
-    }
-}
-
-void Graphics::SetShaderCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback)
-{
-    if (desc.shaderCompilerSettings.enableShaderDebugging)
-    {
-        psCache->GetShaderCompiler().SetCompilationErrorsCallback(callback);
-    }
-    else
-    {
-        VEX_LOG(Warning, "Cannot subscribe to shader errors when not in shader debug mode.");
-    }
-}
-
-void Graphics::SetSamplers(Span<const TextureSampler> newSamplers)
-{
-    // TODO(https://trello.com/c/T1DY4QOT): This is not the cleanest, we need a linear sampler for the mip
-    // generation shader, so we add it to the end of the users samplers. Instead we should probably have a way to
-    // declare a specific sampler per-pass? Or support bindless samplers? Unsure...
-    std::vector<TextureSampler> samplers = { newSamplers.begin(), newSamplers.end() };
-    samplers.push_back(TextureSampler::CreateSampler(FilterMode::Linear, AddressMode::Clamp));
-    builtInLinearSamplerSlot = samplers.size() - 1u;
-    psCache->GetResourceLayout().SetSamplers(samplers);
-}
-
-std::expected<Query, QueryStatus> Graphics::GetTimestampValue(QueryHandle handle)
-{
-    VEX_CHECK(handle != vex::GInvalidQueryHandle, "Query handle must be valid when getting timestamp value");
-    return queryPool->GetQueryData(handle);
-}
-
-std::vector<PhysicalDeviceInfo> Graphics::GetSupportedDevices()
-{
-    std::vector<std::unique_ptr<RHIPhysicalDevice>> devices = RHI::EnumeratePhysicalDevices();
-
-    std::vector<PhysicalDeviceInfo> infos(devices.size());
-    std::transform(devices.begin(),
-                   devices.end(),
-                   infos.begin(),
-                   [](const std::unique_ptr<RHIPhysicalDevice>& device) { return device->info; });
-    return infos;
-}
-
-void Graphics::RecompileChangedShaders()
-{
-    if (desc.shaderCompilerSettings.enableShaderDebugging)
-    {
-        psCache->GetShaderCompiler().MarkAllStaleShadersDirty();
-    }
-    else
-    {
-        VEX_LOG(Warning, "Cannot recompile changed shaders when not in shader debug mode.");
-    }
 }
 
 PipelineStateCache& Graphics::GetPipelineStateCache()
@@ -785,7 +766,7 @@ RHIBuffer& Graphics::GetRHIBuffer(BufferHandle bufferHandle)
     return *bufferRegistry[bufferHandle];
 }
 
-RHIAccelerationStructure& Graphics::GetRHIAccelerationStructure(ASHandle asHandle)
+RHIAccelerationStructure& Graphics::GetRHIAccelerationStructure(AccelerationStructureHandle asHandle)
 {
     return *accelerationStructureRegistry[asHandle];
 }

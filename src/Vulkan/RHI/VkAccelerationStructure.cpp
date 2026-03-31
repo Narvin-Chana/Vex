@@ -60,7 +60,7 @@ namespace VkAccelerationStructure_Internal
     return vkFlags;
 }
 
-VkAccelerationStructure::VkAccelerationStructure(NonNullPtr<VkGPUContext> ctx, const ASDesc& desc)
+VkAccelerationStructure::VkAccelerationStructure(NonNullPtr<VkGPUContext> ctx, const AccelerationStructureDesc& desc)
     : RHIAccelerationStructureBase(desc)
     , ctx{ ctx }
 {

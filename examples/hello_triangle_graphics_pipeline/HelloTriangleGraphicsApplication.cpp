@@ -10,7 +10,6 @@ HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
         .useSwapChain = true,
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
-    SetupShaderErrorHandling();
 
     // Example of CPU accessible buffer
     colorBuffer = graphics->CreateBuffer({ .name = "Color Buffer",
@@ -63,27 +62,34 @@ void HelloTriangleGraphicsApplication::Run()
 
             // Setup our draw call's description.
             vex::DrawDesc hlslDrawDesc{
-                .vertexShader = { .path = ExamplesDir / "hello_triangle_graphics_pipeline" /
-                                          "HelloTriangleGraphicsShader.hlsl",
-                                  .entryPoint = "VSMain",
-                                  .type = vex::ShaderType::VertexShader, },
-                .pixelShader = { .path = ExamplesDir / "hello_triangle_graphics_pipeline" /
-                                         "HelloTriangleGraphicsShader.hlsl",
-                                 .entryPoint = "PSMain",
-                                 .type = vex::ShaderType::PixelShader, },
+                .vertexShader = shaderCompiler.GetShaderView({
+                    .filepath = (ExamplesDir / "hello_triangle_graphics_pipeline" / "HelloTriangleGraphicsShader.hlsl")
+                                    .string(),
+                    .entryPoint = "VSMain",
+                    .type = vex::ShaderType::VertexShader,
+                }),
+                .pixelShader = shaderCompiler.GetShaderView({
+                    .filepath = (ExamplesDir / "hello_triangle_graphics_pipeline" / "HelloTriangleGraphicsShader.hlsl")
+                                    .string(),
+                    .entryPoint = "PSMain",
+                    .type = vex::ShaderType::PixelShader,
+                }),
             };
-#if VEX_SLANG
+
             vex::DrawDesc slangDrawDesc{
-                .vertexShader = { .path = ExamplesDir / "hello_triangle_graphics_pipeline" /
-                                          "HelloTriangleGraphicsShader.slang",
-                                  .entryPoint = "VSMain",
-                                  .type = vex::ShaderType::VertexShader, },
-                .pixelShader = { .path = ExamplesDir / "hello_triangle_graphics_pipeline" /
-                                         "HelloTriangleGraphicsShader.slang",
-                                 .entryPoint = "PSMain",
-                                 .type = vex::ShaderType::PixelShader, },
+                .vertexShader = shaderCompiler.GetShaderView({
+                    .filepath = (ExamplesDir / "hello_triangle_graphics_pipeline" / "HelloTriangleGraphicsShader.slang")
+                                    .string(),
+                    .entryPoint = "VSMain",
+                    .type = vex::ShaderType::VertexShader,
+                }),
+                .pixelShader = shaderCompiler.GetShaderView({
+                    .filepath = (ExamplesDir / "hello_triangle_graphics_pipeline" / "HelloTriangleGraphicsShader.slang")
+                                    .string(),
+                    .entryPoint = "PSMain",
+                    .type = vex::ShaderType::PixelShader,
+                }),
             };
-#endif
 
             // Setup our rendering pass.
             std::array renderTargets = { vex::TextureBinding{
@@ -112,16 +118,11 @@ void HelloTriangleGraphicsApplication::Run()
                      { colorBufferBinding },
                      3);
             ctx.SetViewport(width / 2.0f, 0, width / 2.0f, height);
-            ctx.Draw(
-#if VEX_SLANG
-                slangDrawDesc,
-#else
-                hlslDrawDesc,
-#endif
-                { .renderTargets = renderTargets },
-                vex::ConstantBinding(lc),
-                { colorBufferBinding },
-                3);
+            ctx.Draw(slangDrawDesc,
+                     { .renderTargets = renderTargets },
+                     vex::ConstantBinding(lc),
+                     { colorBufferBinding },
+                     3);
         }
         graphics->Submit(ctx);
 
@@ -129,7 +130,7 @@ void HelloTriangleGraphicsApplication::Run()
     }
 }
 
-void HelloTriangleGraphicsApplication::OnResize(GLFWwindow* window, uint32_t width, uint32_t height)
+void HelloTriangleGraphicsApplication::OnResize(GLFWwindow* window, int width, int height)
 {
     if (width == 0 || height == 0)
     {
@@ -144,8 +145,8 @@ void HelloTriangleGraphicsApplication::OnResize(GLFWwindow* window, uint32_t wid
         graphics->CreateTexture({ .name = "Working Texture",
                                   .type = vex::TextureType::Texture2D,
                                   .format = vex::TextureFormat::RGBA8_UNORM,
-                                  .width = width,
-                                  .height = height,
+                                  .width = static_cast<uint32_t>(width),
+                                  .height = static_cast<uint32_t>(height),
                                   .depthOrSliceCount = 1,
                                   .mips = 1,
                                   .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });

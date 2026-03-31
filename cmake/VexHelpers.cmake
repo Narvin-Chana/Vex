@@ -98,7 +98,7 @@ function(vex_setup_runtime TARGET)
             )
         endforeach()
     else()
-        message(FATAL_ERROR "No runtime DLLs found for Vex...")
+        message(STATUS "No runtime DLLs found for Vex...")
     endif()
 
     # D3D12 Agility SDK DLLs need to be inserted into the D3D12/ subdirectory.

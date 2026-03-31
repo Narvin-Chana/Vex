@@ -7,7 +7,7 @@ namespace vex::vk
 class VkAccelerationStructure final : public RHIAccelerationStructureBase
 {
 public:
-    VkAccelerationStructure(NonNullPtr<VkGPUContext> ctx, const ASDesc& desc);
+    VkAccelerationStructure(NonNullPtr<VkGPUContext> ctx, const AccelerationStructureDesc& desc);
 
     virtual const RHIAccelerationStructureBuildInfo& SetupBLASBuild(RHIAllocator& allocator,
                                                                     const RHIBLASBuildDesc& desc) override;

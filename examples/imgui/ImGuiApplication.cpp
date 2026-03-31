@@ -14,8 +14,6 @@ ImGuiApplication::ImGuiApplication()
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
 
-    SetupShaderErrorHandling();
-
     lastFrameTexture = graphics->CreateTexture(vex::TextureDesc::CreateTexture2DDesc("PrevFrame",
                                                                                      vex::TextureFormat::BGRA8_UNORM,
                                                                                      DefaultWidth,
@@ -99,7 +97,7 @@ void ImGuiApplication::RenderImGui()
     graphics->Submit(ctx);
 }
 
-void ImGuiApplication::OnResize(GLFWwindow* window, uint32_t width, uint32_t height)
+void ImGuiApplication::OnResize(GLFWwindow* window, int width, int height)
 {
     if (width == 0 || height == 0)
     {

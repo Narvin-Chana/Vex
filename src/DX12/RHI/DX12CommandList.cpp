@@ -222,7 +222,11 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
 
 void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& layout)
 {
-    commandList->SetDescriptorHeaps(1, descriptorPool.gpuHeap.GetNativeDescriptorHeap().GetAddressOf());
+    const std::array heaps {
+        descriptorPool.gpuHeap.GetNativeDescriptorHeap().Get(),
+        descriptorPool.samplerHeap.GetNativeDescriptorHeap().Get(),
+    };
+    commandList->SetDescriptorHeaps(heaps.size(), heaps.data());
 }
 
 void DX12CommandList::SetInputAssembly(InputAssembly inputAssembly)
@@ -414,14 +418,14 @@ void DX12CommandList::EmitBarriers(Span<const RHIBufferBarrier> bufferBarriers,
     }
 
     // DX12 limitation with global barriers.
-    if (dx12GlobalBarrier.AccessBefore == D3D12_BARRIER_ACCESS_COMMON)
+    if (!dx12GlobalBarrier.AccessBefore)
     {
         dx12GlobalBarrier.AccessAfter = D3D12_BARRIER_ACCESS_COMMON;
     }
 
     // Take our barriers and now insert them into groups to be sent to the command list.
     std::vector<D3D12_BARRIER_GROUP> barrierGroups;
-    barrierGroups.reserve(dx12TextureBarriers.size() + dx12BufferBarriers.size());
+    barrierGroups.reserve(dx12TextureBarriers.size() + dx12BufferBarriers.size() + 1);
 
     if (!dx12TextureBarriers.empty())
     {
@@ -435,10 +439,8 @@ void DX12CommandList::EmitBarriers(Span<const RHIBufferBarrier> bufferBarriers,
             CD3DX12_BARRIER_GROUP{ static_cast<UINT>(dx12BufferBarriers.size()), dx12BufferBarriers.data() });
     }
 
-    if (dx12GlobalBarrier.SyncBefore != D3D12_BARRIER_SYNC_NONE ||
-        dx12GlobalBarrier.SyncAfter != D3D12_BARRIER_SYNC_NONE ||
-        dx12GlobalBarrier.AccessBefore != D3D12_BARRIER_ACCESS_COMMON ||
-        dx12GlobalBarrier.AccessAfter != D3D12_BARRIER_ACCESS_COMMON)
+    if (!!dx12GlobalBarrier.SyncBefore || !!dx12GlobalBarrier.SyncAfter || !!dx12GlobalBarrier.AccessBefore ||
+        !!dx12GlobalBarrier.AccessAfter)
     {
         barrierGroups.push_back(CD3DX12_BARRIER_GROUP{ 1, &dx12GlobalBarrier });
     }

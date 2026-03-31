@@ -75,12 +75,20 @@ TEST_P(ReflectionTestFull, CompleteGraphicsPSOTest)
 
     // Setup our draw call's description...
     DrawDesc hlslDrawDesc{
-        .vertexShader = { .path = std::format("{}/tests/shaders/VertexInputLayoutTest.{}", VexRootPath.string(), GetShaderExtension(GetShaderCompilerBackend())),
-                          .entryPoint = "VSMain",
-                          .type = ShaderType::VertexShader, },
-        .pixelShader = { .path = std::format("{}/tests/shaders/VertexInputLayoutTest.{}", VexRootPath.string(), GetShaderExtension(GetShaderCompilerBackend())),
-                         .entryPoint = "PSMain",
-                         .type = ShaderType::PixelShader, },
+        .vertexShader = shaderCompiler.GetShaderView({
+            .filepath = std::format("{}/tests/shaders/VertexInputLayoutTest.{}",
+                                    VexRootPath.string(),
+                                    GetShaderExtension(GetShaderCompilerBackend())),
+            .entryPoint = "VSMain",
+            .type = ShaderType::VertexShader,
+        }),
+        .pixelShader = shaderCompiler.GetShaderView({
+            .filepath = std::format("{}/tests/shaders/VertexInputLayoutTest.{}",
+                                    VexRootPath.string(),
+                                    GetShaderExtension(GetShaderCompilerBackend())),
+            .entryPoint = "PSMain",
+            .type = ShaderType::PixelShader,
+        }),
         .vertexInputLayout = vertexLayout,
         .depthStencilState = depthStencilState,
     };
@@ -145,18 +153,17 @@ TEST_P(VertexShaderReflectionTest, VertexShaderReflection)
     VertexShaderReflectionTestParam param = GetParam();
 
     ShaderKey shaderKey{
-        .path = std::format("{}/tests/shaders/reflection/Semantics.{}",
-                            VexRootPath.string(),
-                            GetShaderExtension(GetShaderCompilerBackend())),
+        .filepath = std::format("{}/tests/shaders/reflection/Semantics.{}",
+                                VexRootPath.string(),
+                                GetShaderExtension(GetShaderCompilerBackend())),
         .entryPoint = std::string(param.entryPoint),
         .type = ShaderType::VertexShader,
     };
 
-    Shader shader{ shaderKey };
-    auto res = compiler.CompileShader(shader);
-    VEX_ASSERT(res.has_value());
+    auto err = compiler.CompileShaderFromFilepath(shaderKey);
+    VEX_ASSERT(!err.has_value());
 
-    ValidateShaderReflection(shader, param.inputLayoutToValidate);
+    ValidateShaderReflection(*compiler.GetShader(shaderKey), param.inputLayoutToValidate);
 }
 
 INSTANTIATE_PER_SHADER_COMPILER_TEST_SUITE_P(PerShaderCompiler, VertexShaderReflectionTest,
@@ -229,17 +236,17 @@ TEST_P(ComputeShaderReflectionTest, ComputeShaderReflection)
     ComputeShaderReflectionTestParam param = GetParam();
 
     ShaderKey shaderKey{
-        .path = std::format("{}/tests/shaders/reflection/Semantics.{}",
-                            VexRootPath.string(),
-                            GetShaderExtension(GetShaderCompilerBackend())),
+        .filepath = std::format("{}/tests/shaders/reflection/Semantics.{}",
+                                VexRootPath.string(),
+                                GetShaderExtension(GetShaderCompilerBackend())),
         .entryPoint = std::string(param.entryPoint),
         .type = ShaderType::ComputeShader,
     };
 
-    Shader shader{ shaderKey };
-    auto res = compiler.CompileShader(shader);
-    VEX_ASSERT(res.has_value());
+    auto err = compiler.CompileShaderFromFilepath(shaderKey);
+    VEX_ASSERT(!err.has_value());
 
+    auto& shader = *compiler.GetShader(shaderKey);
     ASSERT_TRUE(shader.GetReflection() && (*shader.GetReflection() == param.expectedReflection));
 }
 
@@ -266,17 +273,17 @@ TEST_P(PixelShaderReflectionTest, PixelShaderReflection)
     PixelShaderReflectionTestParam param = GetParam();
 
     ShaderKey shaderKey{
-        .path = std::format("{}/tests/shaders/reflection/Semantics.{}",
-                            VexRootPath.string(),
-                            GetShaderExtension(GetShaderCompilerBackend())),
+        .filepath = std::format("{}/tests/shaders/reflection/Semantics.{}",
+                                VexRootPath.string(),
+                                GetShaderExtension(GetShaderCompilerBackend())),
         .entryPoint = std::string(param.entryPoint),
         .type = ShaderType::PixelShader,
     };
 
-    Shader shader{ shaderKey };
-    auto res = compiler.CompileShader(shader);
-    VEX_ASSERT(res.has_value());
+    auto err = compiler.CompileShaderFromFilepath(shaderKey);
+    VEX_ASSERT(!err.has_value());
 
+    auto& shader = *compiler.GetShader(shaderKey);
     ASSERT_TRUE(shader.GetReflection() && (*shader.GetReflection() == param.expectedReflection));
 }
 

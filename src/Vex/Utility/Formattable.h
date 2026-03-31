@@ -70,7 +70,7 @@ struct std::formatter<std::wstring>
 };
 
 template <class E>
-    requires std::is_enum_v<E>
+    requires(std::is_enum_v<E> and not std::is_same_v<E, std::byte>)
 struct std::formatter<E> : std::formatter<std::string_view>
 {
     constexpr auto format(E obj, std::format_context& ctx) const

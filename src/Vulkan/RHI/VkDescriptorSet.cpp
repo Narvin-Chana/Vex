@@ -273,6 +273,22 @@ void VkBindlessDescriptorSet::UpdateDescriptor(BindlessHandle targetDescriptor,
     ctx->device.updateDescriptorSets(1, &writeSet, 0, nullptr);
 }
 
+void VkBindlessDescriptorSet::UpdateDescriptor(BindlessHandle targetDescriptor,
+                                               ::vk::DescriptorImageInfo createInfo,
+                                               ::vk::DescriptorType descType)
+{
+    const ::vk::WriteDescriptorSet writeSet{
+        .dstSet = *descriptorSet,
+        .dstBinding = 0,
+        .dstArrayElement = targetDescriptor.GetIndex(),
+        .descriptorCount = 1,
+        .descriptorType = descType,
+        .pImageInfo = &createInfo,
+    };
+
+    ctx->device.updateDescriptorSets(1, &writeSet, 0, nullptr);
+}
+
 void VkBindlessDescriptorSet::SetDescriptorToNull(u32 index)
 {
     // We copy in any arbitrary null descriptor, in this case its a null buffer.

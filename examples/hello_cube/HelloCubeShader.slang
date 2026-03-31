@@ -63,8 +63,8 @@ VSOutput VSMain(in float3 position : POSITION, in float2 uv : TEXCOORD0, uniform
     return vs;
 }
 
-SamplerState LinearSampler;
-SamplerState PointSampler;
+// Vex stores samplers in set/space 1.
+[vk::binding(0, 1)] SamplerState LinearSampler : register(s0, space1);
 
 [shader("pixel")]
 float4 PSMain(VSOutput input, uniform float time, uniform uint uvGuideTextureHandle)
