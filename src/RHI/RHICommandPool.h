@@ -1,13 +1,12 @@
 #pragma once
 
 #include <array>
-#include <Vex/Containers/Span.h>
-#include <utility>
+#include <memory>
 #include <vector>
 
-#include <Vex/Utility/NonNullPtr.h>
+#include <Vex/Containers/Span.h>
 #include <Vex/Synchronization.h>
-
+#include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIFwd.h>
 
@@ -17,7 +16,7 @@ namespace vex
 class RHICommandPoolBase
 {
 public:
-    RHICommandPoolBase(RHI& rhi);
+    explicit RHICommandPoolBase(RHI& rhi);
     // Available -> Recording
     virtual NonNullPtr<RHICommandList> GetOrCreateCommandList(QueueType queueType) = 0;
     // Recording -> Submitted

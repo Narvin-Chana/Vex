@@ -3,12 +3,8 @@
 #include <ranges>
 
 #include <Vex/Bindings.h>
-#include <Vex/Utility/Visitor.h>
-
-#include <RHI/RHIBindings.h>
 
 #include <Vulkan/RHI/VkAllocator.h>
-#include <Vulkan/RHI/VkCommandPool.h>
 #include <Vulkan/RHI/VkDescriptorPool.h>
 #include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
@@ -88,7 +84,7 @@ namespace VkTextureUtil
     return aspectFlags;
 }
 
-::vk::ImageAspectFlags BindingAspectToVkAspectFlags(TextureAspect::Type aspect)
+::vk::ImageAspectFlags BindingAspectToVkAspectFlags(TextureAspect aspect)
 {
     switch (aspect)
     {
@@ -145,7 +141,7 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDesc&& inDescription, 
     desc = std::move(inDescription);
     SetDebugName(ctx->device,
                  backbufferImage,
-                 std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name).c_str());
+                 std::format("{}: {}", desc.type, desc.name).c_str());
 }
 
 VkTexture::VkTexture(const NonNullPtr<VkGPUContext> ctx, const TextureDesc& inDescription, ::vk::UniqueImage rawImage)
@@ -154,7 +150,7 @@ VkTexture::VkTexture(const NonNullPtr<VkGPUContext> ctx, const TextureDesc& inDe
     , image{ std::move(rawImage) }
 {
     desc = inDescription;
-    SetDebugName(ctx->device, *rawImage, std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name).c_str());
+    SetDebugName(ctx->device, *rawImage, std::format("{}: {}", desc.type, desc.name).c_str());
 }
 
 VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDesc&& inDescription, ::vk::UniqueImage rawImage)
@@ -163,7 +159,7 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDesc&& inDescription, 
     , image{ std::move(rawImage) }
 {
     desc = std::move(inDescription);
-    SetDebugName(ctx->device, *rawImage, std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name).c_str());
+    SetDebugName(ctx->device, *rawImage, std::format("{}: {}", desc.type, desc.name).c_str());
 }
 
 VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, RHIAllocator& allocator, TextureDesc&& inDescription)
@@ -245,7 +241,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
     return handle;
 }
 
-::vk::ImageView VkTexture::GetOrCreateImageView(const TextureBinding& binding, TextureUsage::Type usage)
+::vk::ImageView VkTexture::GetOrCreateImageView(const TextureBinding& binding, TextureUsage)
 {
     VkTextureView view{ binding };
     if (auto it = viewCache.find(view); it != viewCache.end())
@@ -263,7 +259,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
     viewUsageInfo.usage = viewUsage;
 
     ::vk::ImageAspectFlags aspectFlags;
-    TextureAspect::Flags subresourceAspects = binding.subresource.GetAspect(binding.texture.desc);
+    Flags subresourceAspects = binding.subresource.GetAspect(binding.texture.desc);
     if (subresourceAspects & TextureAspect::Color)
         aspectFlags |= ::vk::ImageAspectFlagBits::eColor;
     if (subresourceAspects & TextureAspect::Depth)
@@ -403,7 +399,7 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
 #endif
     SetDebugName(ctx->device,
                  imageTmp.get(),
-                 std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name).c_str());
+                 std::format("{}: {}", desc.type, desc.name).c_str());
 
     image = std::move(imageTmp);
 }
@@ -411,7 +407,7 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
 VkTextureView::VkTextureView(const TextureBinding& binding)
     : viewType{ TextureUtil::GetTextureViewType(binding) }
     , format{ TextureFormatToVulkan(binding.texture.desc.format, binding.isSRGB) }
-    , usage{ static_cast<TextureUsage::Type>(binding.usage) }
+    , usage{ static_cast<TextureUsage>(binding.usage) }
     , subresource{ binding.subresource }
 {
     // Resolve subresource (replacing MAX values with the actual value).

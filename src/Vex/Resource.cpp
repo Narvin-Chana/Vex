@@ -2,7 +2,7 @@
 
 #include <utility>
 
-#include <Vex/Platform/Debug.h>
+#include <VexMacros.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 
 namespace vex

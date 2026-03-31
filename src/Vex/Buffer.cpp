@@ -1,20 +1,20 @@
 ﻿#include "Buffer.h"
 
-#include <Vex/Utility/Validation.h>
+#include <Vex/Logger.h>
+#include <VexMacros.h>
 
 namespace vex
 {
 
-namespace BufferUtil
-{
-
-void ValidateBufferDesc(const BufferDesc& desc)
+void BufferUtil::ValidateBufferDesc(const BufferDesc& desc)
 {
     VEX_CHECK(!desc.name.empty(), "The buffer needs a name on creation.");
     VEX_CHECK(desc.byteSize != 0, "Buffer \"{}\" must have a size greater than 0", desc.name)
 }
 
-void ValidateBufferCopyDesc(const BufferDesc& srcDesc, const BufferDesc& dstDesc, const BufferCopyDesc& copyDesc)
+void BufferUtil::ValidateBufferCopyDesc(const BufferDesc& srcDesc,
+                                        const BufferDesc& dstDesc,
+                                        const BufferCopyDesc& copyDesc)
 {
     VEX_CHECK(srcDesc.byteSize >= copyDesc.byteSize,
               "Invalid BufferCopyDesc for resources \"{}\" and \"{}\": The source buffer's byteSize should be at least "
@@ -29,7 +29,7 @@ void ValidateBufferCopyDesc(const BufferDesc& srcDesc, const BufferDesc& dstDesc
     ValidateBufferRegion(dstDesc, { copyDesc.dstOffset, copyDesc.byteSize });
 }
 
-void ValidateBufferRegion(const BufferDesc& desc, const BufferRegion& region)
+void BufferUtil::ValidateBufferRegion(const BufferDesc& desc, const BufferRegion& region)
 {
     VEX_CHECK(region.offset < desc.byteSize,
               "Invalid region for resource \"{}\": The buffer's offset ({}) cannot be larger than the "
@@ -51,15 +51,13 @@ void ValidateBufferRegion(const BufferDesc& desc, const BufferRegion& region)
     }
 }
 
-void ValidateSimpleBufferCopy(const BufferDesc& srcDesc, const BufferDesc& dstDesc)
+void BufferUtil::ValidateSimpleBufferCopy(const BufferDesc& srcDesc, const BufferDesc& dstDesc)
 {
     VEX_CHECK(srcDesc.byteSize <= dstDesc.byteSize,
               "Source buffer must fit in destination buffer for simple copy: Source size: {}, Dest size: {}",
               srcDesc.byteSize,
               dstDesc.byteSize);
 }
-
-} // namespace BufferUtil
 
 BufferDesc BufferDesc::CreateUniformBufferDesc(std::string name, u64 byteSize)
 {
@@ -76,7 +74,7 @@ BufferDesc BufferDesc::CreateVertexBufferDesc(std::string name,
                                               bool allowShaderRead,
                                               bool canBeAccelerationStructureSource)
 {
-    BufferUsage::Flags usageFlags = BufferUsage::VertexBuffer;
+    Flags usageFlags = BufferUsage::VertexBuffer;
     if (allowShaderRead)
     {
         usageFlags |= BufferUsage::ShaderRead;
@@ -98,7 +96,7 @@ BufferDesc BufferDesc::CreateIndexBufferDesc(std::string name,
                                              bool allowShaderRead,
                                              bool canBeAccelerationStructureSource)
 {
-    BufferUsage::Flags usageFlags = BufferUsage::IndexBuffer;
+    Flags usageFlags = BufferUsage::IndexBuffer;
     if (allowShaderRead)
     {
         usageFlags |= BufferUsage::ShaderRead;
@@ -115,7 +113,7 @@ BufferDesc BufferDesc::CreateIndexBufferDesc(std::string name,
     };
 }
 
-BufferDesc BufferDesc::CreateStagingBufferDesc(std::string name, u64 byteSize, BufferUsage::Flags usageFlags)
+BufferDesc BufferDesc::CreateStagingBufferDesc(std::string name, u64 byteSize, Flags<BufferUsage> usageFlags)
 {
     return {
         .name = std::move(name),
@@ -125,7 +123,7 @@ BufferDesc BufferDesc::CreateStagingBufferDesc(std::string name, u64 byteSize, B
     };
 }
 
-BufferDesc BufferDesc::CreateReadbackBufferDesc(std::string name, u64 byteSize, BufferUsage::Flags usageFlags)
+BufferDesc BufferDesc::CreateReadbackBufferDesc(std::string name, u64 byteSize, Flags<BufferUsage> usageFlags)
 {
     return {
         .name = std::move(name),
@@ -137,7 +135,7 @@ BufferDesc BufferDesc::CreateReadbackBufferDesc(std::string name, u64 byteSize, 
 
 BufferDesc BufferDesc::CreateGenericBufferDesc(std::string name, u64 byteSize, bool readWrite)
 {
-    BufferUsage::Flags usage = BufferUsage::ShaderRead;
+    Flags usage = BufferUsage::ShaderRead;
     if (readWrite)
     {
         usage |= BufferUsage::ShaderReadWrite;

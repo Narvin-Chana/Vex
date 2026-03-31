@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_map>
+
 #include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIDescriptorPool.h>

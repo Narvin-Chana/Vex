@@ -19,7 +19,7 @@ namespace vex::vk
 namespace VkTextureUtil
 {
 ::vk::ImageAspectFlags GetDepthAspectFlags(TextureFormat format);
-::vk::ImageAspectFlags BindingAspectToVkAspectFlags(TextureAspect::Type aspect);
+::vk::ImageAspectFlags BindingAspectToVkAspectFlags(TextureAspect aspect);
 ::vk::ImageAspectFlags GetFormatAspectFlags(TextureFormat format);
 ::vk::ImageAspectFlags AspectFlagFromPlaneIndex(TextureFormat format, u32 plane);
 
@@ -31,7 +31,7 @@ struct VkTextureView
 
     TextureViewType viewType = TextureViewType::Texture2D;
     ::vk::Format format;
-    TextureUsage::Type usage = TextureUsage::None;
+    TextureUsage usage = TextureUsage::None;
 
     TextureSubresource subresource;
 
@@ -78,7 +78,7 @@ public:
     virtual BindlessHandle GetOrCreateBindlessView(const TextureBinding& binding,
                                                    RHIDescriptorPool& descriptorPool) override;
 
-    ::vk::ImageView GetOrCreateImageView(const TextureBinding& binding, TextureUsage::Type usage);
+    ::vk::ImageView GetOrCreateImageView(const TextureBinding& binding, TextureUsage usage);
 
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
     virtual void FreeAllocation(RHIAllocator& allocator) override;

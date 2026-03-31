@@ -1,11 +1,12 @@
 #pragma once
 
+#include <array>
 #include <iomanip>
 #include <sstream>
 
-#include <magic_enum/magic_enum.hpp>
-
 #include <Vex/Types.h>
+#include <Vex/Utility/Formattable.h>
+#include <VexMacros.h>
 
 namespace vex
 {

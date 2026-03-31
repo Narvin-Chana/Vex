@@ -31,13 +31,13 @@ void ValidateBufferTextureCopyDesc(const BufferDesc& srcDesc,
 // Reads data according to alignment. The texture regions provided need describe how the data is laid out in memory
 // The textureDesc and texture regions represent the layout of the aligned data.
 // If the desc and regions are wrong the data will be badly interpreted
-void ReadTextureDataAligned(const TextureDesc& textureDesc,
+void ReadTextureDataAligned(const TextureDesc& desc,
                             Span<const TextureRegion> textureRegions,
                             Span<const byte> alignedTextureData,
                             Span<byte> packedOutputData);
 
 // This aligns packed data into another buffer matching the textureRegions and textureDesc provided.
-void WriteTextureDataAligned(const TextureDesc& textureDesc,
+void WriteTextureDataAligned(const TextureDesc& desc,
                              Span<const TextureRegion> textureRegions,
                              Span<const byte> packedData,
                              Span<byte> alignedOutData);

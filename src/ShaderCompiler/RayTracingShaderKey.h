@@ -3,8 +3,6 @@
 #include <string>
 #include <vector>
 
-#include <Vex/Utility/NonNullPtr.h>
-
 #include <ShaderCompiler/ShaderKey.h>
 
 namespace vex::sc

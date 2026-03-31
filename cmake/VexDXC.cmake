@@ -7,63 +7,67 @@ if(NOT VEX_ENABLE_SHADER_COMPILER OR NOT VEX_ENABLE_DXC)
 endif()
 
 # Choose URLs based on platform
+set(DXC_VERSION "2026_02_20")
+set(DXC_NAME dxc_${DXC_VERSION})
 if(WIN32)
-    set(DXC_RELEASE_URL "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.9.2602/dxc_2026_02_20.zip")
+    set(DXC_RELEASE_URL "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.9.2602/dxc_${DXC_VERSION}.zip")
 elseif(LINUX)
-    set(DXC_RELEASE_URL "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.9.2602/linux_dxc_2026_02_20.x86_64.tar.gz")
+    set(DXC_RELEASE_URL "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.9.2602/linux_dxc_${DXC_VERSION}.x86_64.tar.gz")
 else()
     message(FATAL_ERROR "Unsupported platform for DXC binaries")
 endif()
 
 message(STATUS "Fetching DXC...")
 FetchContent_Declare(
-    dxc
+    ${DXC_NAME}
     URL ${DXC_RELEASE_URL}
 )
-FetchContent_MakeAvailable(dxc)
+FetchContent_MakeAvailable(${DXC_NAME})
+
+set(DXC_SOURCE_DIR ${dxc_${DXC_VERSION}_SOURCE_DIR})
 
 # Create imported target for dxc
 if(WIN32)
     set(DXC_HEADERS_INCLUDE_NAME "inc")
-    set(DXC_STATIC_LIB "${dxc_SOURCE_DIR}/lib/x64/dxcompiler.lib")
-    set(DXC_RUNTIME_LIB "${dxc_SOURCE_DIR}/bin/x64/dxcompiler.dll")
+    set(DXC_STATIC_LIB "${DXC_SOURCE_DIR}/lib/x64/dxcompiler.lib")
+    set(DXC_RUNTIME_LIB "${DXC_SOURCE_DIR}/bin/x64/dxcompiler.dll")
 elseif(LINUX)
     set(DXC_HEADERS_INCLUDE_NAME "include")
     set(DXC_STATIC_LIB "")
-    set(DXC_RUNTIME_LIB "${dxc_SOURCE_DIR}/lib/libdxcompiler.so")
+    set(DXC_RUNTIME_LIB "${DXC_SOURCE_DIR}/lib/libdxcompiler.so")
 endif()
-set(DXC_INCLUDE_DIR "${dxc_SOURCE_DIR}/${DXC_HEADERS_INCLUDE_NAME}")
+set(DXC_INCLUDE_DIR "${DXC_SOURCE_DIR}/${DXC_HEADERS_INCLUDE_NAME}")
 
-if(NOT TARGET dxc::dxc)
-    add_library(dxc::dxc SHARED IMPORTED GLOBAL)
-    set_target_properties(dxc::dxc PROPERTIES
+if(NOT TARGET ${DXC_NAME})
+    add_library(${DXC_NAME} SHARED IMPORTED GLOBAL)
+    set_target_properties(${DXC_NAME} PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES "${DXC_INCLUDE_DIR}"
         IMPORTED_LOCATION "${DXC_RUNTIME_LIB}"
     )
     
     # Windows needs the import library
     if(WIN32)
-        set_target_properties(dxc::dxc PROPERTIES
+        set_target_properties(${DXC_NAME} PROPERTIES
             IMPORTED_IMPLIB "${DXC_STATIC_LIB}"
         )
     endif()
 endif()
 
 function(build_with_dxc target)
-    target_link_libraries(${target} PRIVATE dxc::dxc)
+    target_link_libraries(${target} PRIVATE ${DXC_NAME})
     
     if(LINUX)
         # Set RPATH for Linux builds
         set_target_properties(${target} PROPERTIES
-            INSTALL_RPATH "${dxc_SOURCE_DIR}/lib"
+            INSTALL_RPATH "${DXC_SOURCE_DIR}/lib"
             BUILD_WITH_INSTALL_RPATH TRUE
         )
+    else()
+        message(STATUS "Statically linked ${target} with DXC: ${DXC_STATIC_LIB}")
     endif()
 
-    message(STATUS "Statically linked ${target} with DXC: ${DXC_STATIC_LIB}")
-    
     # Register the DXC headers for installation
-    add_header_only_dependency(${target} dxc "${dxc_SOURCE_DIR}" "${DXC_HEADERS_INCLUDE_NAME}" "dxc")
+    add_header_only_dependency(${target} ${DXC_NAME} "${DXC_SOURCE_DIR}" "${DXC_HEADERS_INCLUDE_NAME}" "dxc")
 
     target_sources(${target} PRIVATE
             "src/ShaderCompiler/Compiler/DXC/DXCCompiler.h"

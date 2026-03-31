@@ -5,7 +5,7 @@
 #include <Vex/Containers/Span.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/Hash.h>
-#include <Vex/Utility/NonNullPtr.h>
+#include <Vex/Utility/Formattable.h>
 
 namespace vex
 {
@@ -54,7 +54,7 @@ struct ShaderView
     }
 
     // Errored shaders are silently ignored (Vex will not error out when compared to invalid shaders).
-    static constexpr ShaderView CreateErroredShader(ShaderView&& view)
+    static constexpr ShaderView CreateErroredShader(ShaderView& view)
     {
         view.isErrored = true;
         return view;

@@ -3,11 +3,11 @@
 #include <ranges>
 #include <string>
 
-#include <magic_enum/magic_enum.hpp>
+#include <Vex/Utility/Formattable.h>
 
 #include <Vex/Logger.h>
 #include <Vex/RayTracing.h>
-#include <Vex/Utility/Validation.h>
+#include <VexMacros.h>
 
 #include <ShaderCompiler/RayTracingShaderKey.h>
 #include <ShaderCompiler/Shader.h>
