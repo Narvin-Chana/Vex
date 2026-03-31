@@ -6,8 +6,6 @@ void ComputeTriangleVertex(in uint vertexID, out float4 position, out float2 uv)
     position = float4(uv.x * 2 - 1, -uv.y * 2 + 1, 0, 1);
 }
 
-SamplerState LinearSampler;
-
 [shader("vertex")]
 void FullscreenTriangleVS(in uint vertexID : SV_VERTEXID, out float4 outPosition : SV_POSITION, out float2 outUV : TEXCOORD)
 {
@@ -59,10 +57,11 @@ float3 ApplyST2084Curve(float3 linearColor)
 static const float HDRExposure = 200.0f;
 
 [shader("pixel")]
-float4 TonemapPS(in float4 position : SV_POSITION, in float2 uv : TEXCOORD, uniform uint hdrTextureHandle) : SV_Target
+float4 TonemapPS(in float4 position : SV_POSITION, in float2 uv : TEXCOORD, uniform uint hdrTextureHandle, uniform uint linearSamplerHandle) : SV_Target
 {
+    let linearSampler = GetBindlessResource<SamplerState>(linearSamplerHandle);
     let hdrTexture = GetBindlessResource<Texture2D<float3>>(hdrTextureHandle);
-    float3 color = hdrTexture.Sample(LinearSampler, uv);
+    float3 color = hdrTexture.Sample(linearSampler, uv);
     
     if (COLOR_SPACE >= COLOR_SPACE_scRGB)
     {

@@ -2,27 +2,33 @@
 
 #include <Vex/Containers/FreeList.h>
 #include <Vex/Resource.h>
-
-#include <RHI/RHIFwd.h>
+#include <Vex/TextureSampler.h>
 
 namespace vex
 {
 
 static constexpr u32 GDefaultDescriptorPoolSize = 65536;
 
+enum class DescriptorType : u8
+{
+    Resource,
+    Sampler,
+};
+
 class RHIDescriptorPoolBase
 {
 public:
     RHIDescriptorPoolBase();
-    // Nullifies the passed in descriptor handle slot, to indicate that the resource is no longer useable.
+
+    virtual BindlessHandle CreateBindlessSampler(const TextureSampler& textureSampler) = 0;
+    virtual void FreeBindlessSampler(BindlessHandle handle) = 0;
+
+    // Nullifies the passed in descriptor handle slot, to indicate that the resource is no longer usable.
     // We don't use BindlessHandle, as it is technically no longer valid.
-    virtual void CopyNullDescriptor(u32 slotIndex) = 0;
+    virtual void CopyNullDescriptor(DescriptorType descriptorType, u32 slotIndex) = 0;
 
-    BindlessHandle AllocateStaticDescriptor();
-    void FreeStaticDescriptor(BindlessHandle handle);
-
-    BindlessHandle AllocateDynamicDescriptor();
-    void FreeDynamicDescriptor(BindlessHandle handle);
+    BindlessHandle AllocateStaticDescriptor(DescriptorType descriptorType);
+    void FreeStaticDescriptor(DescriptorType descriptorType, BindlessHandle handle);
 
     bool IsValid(BindlessHandle handle);
 
@@ -33,6 +39,7 @@ protected:
         FreeListAllocator32 handles;
     };
     BindlessAllocation allocator;
+    BindlessAllocation samplerAllocator;
 };
 
 } // namespace vex

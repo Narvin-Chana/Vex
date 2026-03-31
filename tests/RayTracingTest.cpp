@@ -30,10 +30,12 @@ struct RTTestFixture : public RTVexTest
             return;
         }
 
-        triangleBLAS = graphics.CreateAccelerationStructure(
-            ASDesc{ .name = "Triangle BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
-        triangleTLAS = graphics.CreateAccelerationStructure(
-            ASDesc{ .name = "Triangle TLAS", .type = ASType::TopLevel, .buildFlags = ASBuild::None });
+        triangleBLAS = graphics.CreateAccelerationStructure(AccelerationStructureDesc{ .name = "Triangle BLAS",
+                                                                                       .type = ASType::BottomLevel,
+                                                                                       .buildFlags = ASBuild::None });
+        triangleTLAS = graphics.CreateAccelerationStructure(AccelerationStructureDesc{ .name = "Triangle TLAS",
+                                                                                       .type = ASType::TopLevel,
+                                                                                       .buildFlags = ASBuild::None });
 
         auto ctx = graphics.CreateCommandContext(QueueType::Compute);
         const BufferDesc vbDesc =
@@ -129,25 +131,25 @@ struct RTShaderTest
 TEST_P(RTShaderTest, CompilePipeline_SingleRayGen_SingleMiss_SingleHitGroup)
 {
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
-    auto shaderPath = GetShaderName(GetParam());
+    auto shaderPath = GetShaderName(GetParam()).string();
 
-    ctx.TraceRays(
-        RayTracingCollection{
-            .rayGenerationShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "RayGenBasicMain", .type = ShaderType::RayGenerationShader },
-            },
-            .rayMissShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "MissMain", .type = ShaderType::RayMissShader },
-            },
-            .hitGroups = {
-                HitGroup{
-                    .name = "SimpleHitGroup",
-                    .rayClosestHitShader = { .path = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
-                },
-            },
+    ctx.TraceRays(shaderCompiler.GetRayTracingShaderCollection(
+        RayTracingShaderKey{
             .maxPayloadByteSize = 16,
             .maxAttributeByteSize = 8,
-        },
+            .rayGenerationShaders = {
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "RayGenBasicMain", .type = ShaderType::RayGenerationShader },
+            },
+            .rayMissShaders = {
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "MissMain", .type = ShaderType::RayMissShader },
+            },
+            .hitGroups = {
+                HitGroupKey{
+                    .name = "SimpleHitGroup",
+                    .rayClosestHitShader = { .filepath = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
+                },
+            },
+        }),
         ConstantBinding(data),
         {},
         { 1, 1, 1 }
@@ -160,27 +162,27 @@ TEST_P(RTShaderTest, CompilePipeline_SingleRayGen_SingleMiss_SingleHitGroup)
 TEST_P(RTShaderTest, CompilePipeline_MultipleRayGen)
 {
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
-    auto shaderPath = GetShaderName(GetParam());
+    auto shaderPath = GetShaderName(GetParam()).string();
 
-    ctx.TraceRays(
-        RayTracingCollection{
-            .rayGenerationShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "RayGenMain",      .type = ShaderType::RayGenerationShader },
-                ShaderKey{ .path = shaderPath, .entryPoint = "RayGenBasicMain", .type = ShaderType::RayGenerationShader },
-            },
-            .rayMissShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "MissMain",   .type = ShaderType::RayMissShader },
-                ShaderKey{ .path = shaderPath, .entryPoint = "MissShadow", .type = ShaderType::RayMissShader },
-            },
-            .hitGroups = {
-                HitGroup{
-                    .name = "SimpleHitGroup",
-                    .rayClosestHitShader = { .path = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
-                },
-            },
+    ctx.TraceRays(shaderCompiler.GetRayTracingShaderCollection(
+        RayTracingShaderKey{
             .maxPayloadByteSize = 16,
             .maxAttributeByteSize = 8,
-        },
+            .rayGenerationShaders = {
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "RayGenMain",      .type = ShaderType::RayGenerationShader },
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "RayGenBasicMain", .type = ShaderType::RayGenerationShader },
+            },
+            .rayMissShaders = {
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "MissMain",   .type = ShaderType::RayMissShader },
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "MissShadow", .type = ShaderType::RayMissShader },
+            },
+            .hitGroups = {
+                HitGroupKey{
+                    .name = "SimpleHitGroup",
+                    .rayClosestHitShader = { .filepath = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
+                },
+            },
+        }),
         ConstantBinding(data),
         {},
         // Select RayGenBasicMain (index 1). It only uses miss 0 and hit group 0,
@@ -196,30 +198,30 @@ TEST_P(RTShaderTest, CompilePipeline_MultipleRayGen)
 TEST_P(RTShaderTest, CompilePipeline_MultipleMissShaders)
 {
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
-    auto shaderPath = GetShaderName(GetParam());
+    auto shaderPath = GetShaderName(GetParam()).string();
 
     ctx.TraceRays(
-        RayTracingCollection{
+        shaderCompiler.GetRayTracingShaderCollection({
+            .maxPayloadByteSize = 16,
+            .maxAttributeByteSize = 8,
             .rayGenerationShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "RayGenMain", .type = ShaderType::RayGenerationShader },
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "RayGenMain", .type = ShaderType::RayGenerationShader },
             },
             .rayMissShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "MissMain",   .type = ShaderType::RayMissShader },
-                ShaderKey{ .path = shaderPath, .entryPoint = "MissShadow", .type = ShaderType::RayMissShader },
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "MissMain",   .type = ShaderType::RayMissShader },
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "MissShadow", .type = ShaderType::RayMissShader },
             },
             .hitGroups = {
-                HitGroup{
+                HitGroupKey{
                     .name = "SimpleHitGroup",
-                    .rayClosestHitShader = { .path = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
+                    .rayClosestHitShader = { .filepath = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
                 },
             },
             // RayGenMain calls CallShader(0, ...) so callable 0 must be present.
             .rayCallableShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "CallableMain", .type = ShaderType::RayCallableShader },
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "CallableMain", .type = ShaderType::RayCallableShader },
             },
-            .maxPayloadByteSize = 16,
-            .maxAttributeByteSize = 8,
-        },
+        }),
         ConstantBinding(data),
         {},
         { 1, 1, 1 }
@@ -233,29 +235,29 @@ TEST_P(RTShaderTest, CompilePipeline_MultipleMissShaders)
 TEST_P(RTShaderTest, CompilePipeline_MultipleHitGroups)
 {
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
-    auto shaderPath = GetShaderName(GetParam());
+    auto shaderPath = GetShaderName(GetParam()).string();
 
     ctx.TraceRays(
-        RayTracingCollection{
-            .rayGenerationShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "RayGenHitGroupSelectionMain", .type = ShaderType::RayGenerationShader },
-            },
-            .rayMissShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "MissMain", .type = ShaderType::RayMissShader },
-            },
-            .hitGroups = {
-                HitGroup{
-                    .name = "HitGroup1",
-                    .rayClosestHitShader = { .path = shaderPath, .entryPoint = "ClosestHitMain",    .type = ShaderType::RayClosestHitShader },
-                },
-                HitGroup{
-                    .name = "HitGroup2",
-                    .rayClosestHitShader = { .path = shaderPath, .entryPoint = "ClosestHitMainAlt", .type = ShaderType::RayClosestHitShader },
-                },
-            },
+        shaderCompiler.GetRayTracingShaderCollection({
             .maxPayloadByteSize = 16,
             .maxAttributeByteSize = 8,
-        },
+            .rayGenerationShaders = {
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "RayGenHitGroupSelectionMain", .type = ShaderType::RayGenerationShader },
+            },
+            .rayMissShaders = {
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "MissMain", .type = ShaderType::RayMissShader },
+            },
+            .hitGroups = {
+                HitGroupKey{
+                    .name = "HitGroup1",
+                    .rayClosestHitShader = { .filepath = shaderPath, .entryPoint = "ClosestHitMain",    .type = ShaderType::RayClosestHitShader },
+                },
+                HitGroupKey{
+                    .name = "HitGroup2",
+                    .rayClosestHitShader = { .filepath = shaderPath, .entryPoint = "ClosestHitMainAlt", .type = ShaderType::RayClosestHitShader },
+                },
+            },
+        }),
         ConstantBinding(data),
         {},
         { 1, 1, 1 }
@@ -268,26 +270,26 @@ TEST_P(RTShaderTest, CompilePipeline_MultipleHitGroups)
 TEST_P(RTShaderTest, CompilePipeline_HitGroup_WithAnyHit)
 {
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
-    auto shaderPath = GetShaderName(GetParam());
+    auto shaderPath = GetShaderName(GetParam()).string();
 
     ctx.TraceRays(
-        RayTracingCollection{
-            .rayGenerationShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "RayGenBasicMain", .type = ShaderType::RayGenerationShader },
-            },
-            .rayMissShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "MissMain", .type = ShaderType::RayMissShader },
-            },
-            .hitGroups = {
-                HitGroup{
-                    .name = "HitGroupWithAnyHit",
-                    .rayClosestHitShader = vex::ShaderKey{ .path = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
-                    .rayAnyHitShader     = vex::ShaderKey{ .path = shaderPath, .entryPoint = "AnyHitMain",     .type = ShaderType::RayAnyHitShader     },
-                },
-            },
+        shaderCompiler.GetRayTracingShaderCollection({
             .maxPayloadByteSize = 16,
             .maxAttributeByteSize = 8,
-        },
+            .rayGenerationShaders = {
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "RayGenBasicMain", .type = ShaderType::RayGenerationShader },
+            },
+            .rayMissShaders = {
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "MissMain", .type = ShaderType::RayMissShader },
+            },
+            .hitGroups = {
+                HitGroupKey{
+                    .name = "HitGroupWithAnyHit",
+                    .rayClosestHitShader = ShaderKey{ .filepath = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
+                    .rayAnyHitShader     = ShaderKey{ .filepath = shaderPath, .entryPoint = "AnyHitMain",     .type = ShaderType::RayAnyHitShader     },
+                },
+            },
+        }),
         ConstantBinding(data),
         {},
         { 1, 1, 1 }
@@ -300,31 +302,31 @@ TEST_P(RTShaderTest, CompilePipeline_HitGroup_WithAnyHit)
 TEST_P(RTShaderTest, CompilePipeline_WithCallableShaders)
 {
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
-    auto shaderPath = GetShaderName(GetParam());
+    auto shaderPath = GetShaderName(GetParam()).string();
 
     // First dispatch exercises callable 0 (via RayGenMain).
     ctx.TraceRays(
-        RayTracingCollection{
+        shaderCompiler.GetRayTracingShaderCollection({
+            .maxPayloadByteSize = 16,
+            .maxAttributeByteSize = 8,
             .rayGenerationShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "RayGenMain", .type = ShaderType::RayGenerationShader },
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "RayGenMain", .type = ShaderType::RayGenerationShader },
             },
             .rayMissShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "MissMain",   .type = ShaderType::RayMissShader },
-                ShaderKey{ .path = shaderPath, .entryPoint = "MissShadow", .type = ShaderType::RayMissShader },
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "MissMain",   .type = ShaderType::RayMissShader },
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "MissShadow", .type = ShaderType::RayMissShader },
             },
             .hitGroups = {
-                HitGroup{
+                HitGroupKey{
                     .name = "SimpleHitGroup",
-                    .rayClosestHitShader = { .path = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
+                    .rayClosestHitShader = { .filepath = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
                 },
             },
             .rayCallableShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "CallableMain",    .type = ShaderType::RayCallableShader },
-                ShaderKey{ .path = shaderPath, .entryPoint = "CallableMainAlt", .type = ShaderType::RayCallableShader },
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "CallableMain",    .type = ShaderType::RayCallableShader },
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "CallableMainAlt", .type = ShaderType::RayCallableShader },
             },
-            .maxPayloadByteSize = 16,
-            .maxAttributeByteSize = 8,
-        },
+        }),
         ConstantBinding(data),
         {},
         { 1, 1, 1 }
@@ -332,26 +334,26 @@ TEST_P(RTShaderTest, CompilePipeline_WithCallableShaders)
 
     // Second dispatch exercises callable 1 (via RayGenMainAlt).
     ctx.TraceRays(
-        RayTracingCollection{
+        shaderCompiler.GetRayTracingShaderCollection({
+            .maxPayloadByteSize = 16,
+            .maxAttributeByteSize = 8,
             .rayGenerationShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "RayGenMainAlt", .type = ShaderType::RayGenerationShader },
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "RayGenMainAlt", .type = ShaderType::RayGenerationShader },
             },
             .rayMissShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "MissMain", .type = ShaderType::RayMissShader },
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "MissMain", .type = ShaderType::RayMissShader },
             },
             .hitGroups = {
-                HitGroup{
+                HitGroupKey{
                     .name = "SimpleHitGroup",
-                    .rayClosestHitShader = { .path = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
+                    .rayClosestHitShader = { .filepath = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
                 },
             },
             .rayCallableShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "CallableMain",    .type = ShaderType::RayCallableShader },
-                ShaderKey{ .path = shaderPath, .entryPoint = "CallableMainAlt", .type = ShaderType::RayCallableShader },
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "CallableMain",    .type = ShaderType::RayCallableShader },
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "CallableMainAlt", .type = ShaderType::RayCallableShader },
             },
-            .maxPayloadByteSize = 16,
-            .maxAttributeByteSize = 8,
-        },
+        }),
         ConstantBinding(data),
         {},
         { 1, 1, 1 }
@@ -368,33 +370,33 @@ TEST_P(RTShaderTest, CompilePipeline_WithCallableShaders)
 TEST_P(RTShaderTest, SBT_SelectDifferentRayGenShaders)
 {
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
-    auto shaderPath = GetShaderName(GetParam());
+    auto shaderPath = GetShaderName(GetParam()).string();
 
     // RayGenMain needs MissShadow (index 1) and callable 0.
     // RayGenMainAlt needs callable 1.
     // Both are present in every pipeline below.
-    const auto collection = RayTracingCollection{
+    const auto collection = shaderCompiler.GetRayTracingShaderCollection({
+        .maxPayloadByteSize = 16,
+        .maxAttributeByteSize = 8,
         .rayGenerationShaders = {
-            ShaderKey{ .path = shaderPath, .entryPoint = "RayGenMain",    .type = ShaderType::RayGenerationShader },
-            ShaderKey{ .path = shaderPath, .entryPoint = "RayGenMainAlt", .type = ShaderType::RayGenerationShader },
+            ShaderKey{ .filepath = shaderPath, .entryPoint = "RayGenMain",    .type = ShaderType::RayGenerationShader },
+            ShaderKey{ .filepath = shaderPath, .entryPoint = "RayGenMainAlt", .type = ShaderType::RayGenerationShader },
         },
         .rayMissShaders = {
-            ShaderKey{ .path = shaderPath, .entryPoint = "MissMain",   .type = ShaderType::RayMissShader },
-            ShaderKey{ .path = shaderPath, .entryPoint = "MissShadow", .type = ShaderType::RayMissShader },
+            ShaderKey{ .filepath = shaderPath, .entryPoint = "MissMain",   .type = ShaderType::RayMissShader },
+            ShaderKey{ .filepath = shaderPath, .entryPoint = "MissShadow", .type = ShaderType::RayMissShader },
         },
         .hitGroups = {
-            HitGroup{
+            HitGroupKey{
                 .name = "SimpleHitGroup",
-                .rayClosestHitShader = { .path = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
+                .rayClosestHitShader = { .filepath = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
             },
         },
         .rayCallableShaders = {
-            ShaderKey{ .path = shaderPath, .entryPoint = "CallableMain",    .type = ShaderType::RayCallableShader },
-            ShaderKey{ .path = shaderPath, .entryPoint = "CallableMainAlt", .type = ShaderType::RayCallableShader },
+            ShaderKey{ .filepath = shaderPath, .entryPoint = "CallableMain",    .type = ShaderType::RayCallableShader },
+            ShaderKey{ .filepath = shaderPath, .entryPoint = "CallableMainAlt", .type = ShaderType::RayCallableShader },
         },
-        .maxPayloadByteSize = 16,
-        .maxAttributeByteSize = 8,
-    };
+    });
 
     // Dispatch selecting RayGenMain (index 0).
     ctx.TraceRays(collection,
@@ -417,30 +419,30 @@ TEST_P(RTShaderTest, SBT_SelectDifferentRayGenShaders)
 TEST_P(RTShaderTest, SBT_SelectDifferentMissShaders)
 {
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
-    auto shaderPath = GetShaderName(GetParam());
+    auto shaderPath = GetShaderName(GetParam()).string();
 
     ctx.TraceRays(
-        RayTracingCollection{
+        shaderCompiler.GetRayTracingShaderCollection({
+            .maxPayloadByteSize = 16,
+            .maxAttributeByteSize = 8,
             .rayGenerationShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "RayGenMain", .type = ShaderType::RayGenerationShader },
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "RayGenMain", .type = ShaderType::RayGenerationShader },
             },
             .rayMissShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "MissMain",   .type = ShaderType::RayMissShader },  // index 0
-                ShaderKey{ .path = shaderPath, .entryPoint = "MissShadow", .type = ShaderType::RayMissShader },  // index 1
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "MissMain",   .type = ShaderType::RayMissShader },  // index 0
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "MissShadow", .type = ShaderType::RayMissShader },  // index 1
             },
             .hitGroups = {
-                HitGroup{
+                HitGroupKey{
                     .name = "SimpleHitGroup",
-                    .rayClosestHitShader = { .path = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
+                    .rayClosestHitShader = { .filepath = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
                 },
             },
             // RayGenMain calls CallShader(0, ...) unconditionally.
             .rayCallableShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "CallableMain", .type = ShaderType::RayCallableShader },
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "CallableMain", .type = ShaderType::RayCallableShader },
             },
-            .maxPayloadByteSize = 16,
-            .maxAttributeByteSize = 8,
-        },
+        }),
         ConstantBinding(data),
         {},
         TraceRaysDesc{ .width = 1, .height = 1, .depth = 1 }
@@ -454,29 +456,29 @@ TEST_P(RTShaderTest, SBT_SelectDifferentMissShaders)
 TEST_P(RTShaderTest, SBT_SelectDifferentHitGroups)
 {
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
-    auto shaderPath = GetShaderName(GetParam());
+    auto shaderPath = GetShaderName(GetParam()).string();
 
     ctx.TraceRays(
-        RayTracingCollection{
-            .rayGenerationShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "RayGenHitGroupSelectionMain", .type = ShaderType::RayGenerationShader },
-            },
-            .rayMissShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "MissMain", .type = ShaderType::RayMissShader },
-            },
-            .hitGroups = {
-                HitGroup{
-                    .name = "HitGroup1",
-                    .rayClosestHitShader = { .path = shaderPath, .entryPoint = "ClosestHitMain",    .type = ShaderType::RayClosestHitShader },
-                },
-                HitGroup{
-                    .name = "HitGroup2",
-                    .rayClosestHitShader = { .path = shaderPath, .entryPoint = "ClosestHitMainAlt", .type = ShaderType::RayClosestHitShader },
-                },
-            },
+        shaderCompiler.GetRayTracingShaderCollection({
             .maxPayloadByteSize = 16,
             .maxAttributeByteSize = 8,
-        },
+            .rayGenerationShaders = {
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "RayGenHitGroupSelectionMain", .type = ShaderType::RayGenerationShader },
+            },
+            .rayMissShaders = {
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "MissMain", .type = ShaderType::RayMissShader },
+            },
+            .hitGroups = {
+                HitGroupKey{
+                    .name = "HitGroup1",
+                    .rayClosestHitShader = { .filepath = shaderPath, .entryPoint = "ClosestHitMain",    .type = ShaderType::RayClosestHitShader },
+                },
+                HitGroupKey{
+                    .name = "HitGroup2",
+                    .rayClosestHitShader = { .filepath = shaderPath, .entryPoint = "ClosestHitMainAlt", .type = ShaderType::RayClosestHitShader },
+                },
+            },
+        }),
         ConstantBinding(data),
         {},
         TraceRaysDesc{ .width = 1, .height = 1, .depth = 1 }
@@ -492,26 +494,26 @@ TEST_P(RTShaderTest, SBT_SelectDifferentHitGroups)
 TEST_P(RTShaderTest, CompilePipeline_VariousRecursionDepths)
 {
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
-    auto shaderPath = GetShaderName(GetParam());
+    auto shaderPath = GetShaderName(GetParam()).string();
 
     // Depth = 1 (shader internally limits recursion via payload.depth < 3).
     ctx.TraceRays(
-        RayTracingCollection{
-            .rayGenerationShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "RayGenBasicMain", .type = ShaderType::RayGenerationShader },
-            },
-            .rayMissShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "MissMain", .type = ShaderType::RayMissShader },
-            },
-            .hitGroups = {
-                HitGroup{
-                    .name = "SimpleHitGroup",
-                    .rayClosestHitShader = { .path = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
-                },
-            },
+        shaderCompiler.GetRayTracingShaderCollection({
             .maxPayloadByteSize = 16,
             .maxAttributeByteSize = 8,
-        },
+            .rayGenerationShaders = {
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "RayGenBasicMain", .type = ShaderType::RayGenerationShader },
+            },
+            .rayMissShaders = {
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "MissMain", .type = ShaderType::RayMissShader },
+            },
+            .hitGroups = {
+                HitGroupKey{
+                    .name = "SimpleHitGroup",
+                    .rayClosestHitShader = { .filepath = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
+                },
+            },
+        }),
         ConstantBinding(data),
         {},
         { 1, 1, 1 }
@@ -519,23 +521,23 @@ TEST_P(RTShaderTest, CompilePipeline_VariousRecursionDepths)
 
     // Depth = 5 (pipeline allows deeper recursion; shader self-limits at 3).
     ctx.TraceRays(
-        RayTracingCollection{
-            .rayGenerationShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "RayGenBasicMain", .type = ShaderType::RayGenerationShader },
-            },
-            .rayMissShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "MissMain", .type = ShaderType::RayMissShader },
-            },
-            .hitGroups = {
-                HitGroup{
-                    .name = "SimpleHitGroup",
-                    .rayClosestHitShader = { .path = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
-                },
-            },
+        shaderCompiler.GetRayTracingShaderCollection({
             .maxRecursionDepth = 5,
             .maxPayloadByteSize = 16,
             .maxAttributeByteSize = 8,
-        },
+            .rayGenerationShaders = {
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "RayGenBasicMain", .type = ShaderType::RayGenerationShader },
+            },
+            .rayMissShaders = {
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "MissMain", .type = ShaderType::RayMissShader },
+            },
+            .hitGroups = {
+                HitGroupKey{
+                    .name = "SimpleHitGroup",
+                    .rayClosestHitShader = { .filepath = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
+                },
+            },
+        }),
         ConstantBinding(data),
         {},
         { 1, 1, 1 }
@@ -547,26 +549,26 @@ TEST_P(RTShaderTest, CompilePipeline_VariousRecursionDepths)
 TEST_P(RTShaderTest, CompilePipeline_VariousPayloadSizes)
 {
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
-    auto shaderPath = GetShaderName(GetParam());
+    auto shaderPath = GetShaderName(GetParam()).string();
 
     // Small payload (4 bytes — fits hitValue only).
     ctx.TraceRays(
-        RayTracingCollection{
-            .rayGenerationShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "RayGenBasicMain", .type = ShaderType::RayGenerationShader },
-            },
-            .rayMissShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "MissMain", .type = ShaderType::RayMissShader },
-            },
-            .hitGroups = {
-                HitGroup{
-                    .name = "SimpleHitGroup",
-                    .rayClosestHitShader = { .path = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
-                },
-            },
+        shaderCompiler.GetRayTracingShaderCollection({
             .maxPayloadByteSize = 8,
             .maxAttributeByteSize = 8,
-        },
+            .rayGenerationShaders = {
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "RayGenBasicMain", .type = ShaderType::RayGenerationShader },
+            },
+            .rayMissShaders = {
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "MissMain", .type = ShaderType::RayMissShader },
+            },
+            .hitGroups = {
+                HitGroupKey{
+                    .name = "SimpleHitGroup",
+                    .rayClosestHitShader = { .filepath = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
+                },
+            },
+        }),
         ConstantBinding(data),
         {},
         { 1, 1, 1 }
@@ -574,22 +576,22 @@ TEST_P(RTShaderTest, CompilePipeline_VariousPayloadSizes)
 
     // Large payload (128 bytes).
     ctx.TraceRays(
-        RayTracingCollection{
-            .rayGenerationShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "RayGenBasicMain", .type = ShaderType::RayGenerationShader },
-            },
-            .rayMissShaders = {
-                ShaderKey{ .path = shaderPath, .entryPoint = "MissMain", .type = ShaderType::RayMissShader },
-            },
-            .hitGroups = {
-                HitGroup{
-                    .name = "SimpleHitGroup",
-                    .rayClosestHitShader = { .path = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
-                },
-            },
+        shaderCompiler.GetRayTracingShaderCollection({
             .maxPayloadByteSize  = 128,
             .maxAttributeByteSize = 8,
-        },
+            .rayGenerationShaders = {
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "RayGenBasicMain", .type = ShaderType::RayGenerationShader },
+            },
+            .rayMissShaders = {
+                ShaderKey{ .filepath = shaderPath, .entryPoint = "MissMain", .type = ShaderType::RayMissShader },
+            },
+            .hitGroups = {
+                HitGroupKey{
+                    .name = "SimpleHitGroup",
+                    .rayClosestHitShader = { .filepath = shaderPath, .entryPoint = "ClosestHitMain", .type = ShaderType::RayClosestHitShader },
+                },
+            },
+        }),
         ConstantBinding(data),
         {},
         { 1, 1, 1 }

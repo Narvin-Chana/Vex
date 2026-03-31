@@ -63,13 +63,11 @@ VSOutput VSMain(in float3 position : POSITION, in float2 uv : TEXCOORD0, uniform
     return vs;
 }
 
-SamplerState LinearSampler;
-SamplerState PointSampler;
-
 [shader("pixel")]
-float4 PSMain(VSOutput input, uniform float time, uniform uint uvGuideTextureHandle)
+float4 PSMain(VSOutput input, uniform float time, uniform uint uvGuideTextureHandle, uniform uint linearSamplerHandle)
     : SV_Target
 {
+    SamplerState linearSampler = GetBindlessResource<SamplerState>(linearSamplerHandle);
     let UVGuideTexture = GetBindlessResource<Texture2D<float4>>(uvGuideTextureHandle);
-    return float4(UVGuideTexture.Sample(LinearSampler, input.uv).rgb, 1);
+    return float4(UVGuideTexture.Sample(linearSampler, input.uv).rgb, 1);
 }

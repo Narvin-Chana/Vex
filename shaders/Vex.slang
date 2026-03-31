@@ -1,7 +1,7 @@
 module Vex;
 
 // All texture and buffer handles are defined in descriptor set 0.
-[vk::binding(0, 1)]
+[vk::binding(0, 0)]
 __DynamicResource<__DynamicResourceKind.General> resourceHandles[];
 
 export T getDescriptorFromHandle<T>(DescriptorHandle<T> handle) where T : IOpaqueDescriptor

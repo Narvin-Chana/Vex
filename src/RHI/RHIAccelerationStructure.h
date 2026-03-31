@@ -61,7 +61,7 @@ struct RHIAccelerationStructureBuildInfo
 class RHIAccelerationStructureBase
 {
 public:
-    RHIAccelerationStructureBase(const ASDesc& desc)
+    RHIAccelerationStructureBase(const AccelerationStructureDesc& desc)
         : desc(desc)
     {
     }
@@ -71,7 +71,7 @@ public:
     RHIAccelerationStructureBase& operator=(RHIAccelerationStructureBase&&) = default;
     ~RHIAccelerationStructureBase();
 
-    const ASDesc& GetDesc() const
+    const AccelerationStructureDesc& GetDesc() const
     {
         return desc;
     }
@@ -95,7 +95,7 @@ public:
     void FreeAllocation(RHIAllocator& allocator);
 
 protected:
-    ASDesc desc;
+    AccelerationStructureDesc desc;
     MaybeUninitialized<RHIBuffer> accelerationStructure;
     RHIAccelerationStructureBuildInfo prebuildInfo;
 };

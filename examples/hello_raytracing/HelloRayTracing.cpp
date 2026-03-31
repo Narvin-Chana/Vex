@@ -14,8 +14,6 @@ HelloRayTracing::HelloRayTracing()
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
 
-    SetupShaderErrorHandling();
-
     workingTexture =
         graphics->CreateTexture({ .name = "Working Texture",
                                   .type = vex::TextureType::Texture2D,
@@ -101,14 +99,20 @@ HelloRayTracing::HelloRayTracing()
 }
 
 // Creates a ray tracing collection, used to specify the various shaders and RT-related properties for RT shader
-// invocations. Typically applications will have one of these with all the possible shaders for each material type.
-static vex::RayTracingCollection CreateRTCollection(const std::filesystem::path& shaderPath)
+// invocations. Typically, applications will have one of these with all the possible shaders for each material type.
+static vex::RayTracingShaderCollection CreateRTCollection(vex::ShaderCompiler& sc, const std::string& shaderPath)
 {
-    return vex::RayTracingCollection{
+    return sc.GetRayTracingShaderCollection(vex::RayTracingShaderKey{
+        // Allow for primary rays only (no recursion).
+        .maxRecursionDepth = 1,
+        // We use a payload of 3 floats (so 12 bytes).
+        .maxPayloadByteSize = 12,
+        // We use the built-in hlsl attributes (so 8 bytes).
+        .maxAttributeByteSize = 8,
         .rayGenerationShaders = 
         { 
             vex::ShaderKey{
-                .path = shaderPath,
+                .filepath = shaderPath,
                 .entryPoint = "RayGenMain",
                 .type = vex::ShaderType::RayGenerationShader,
             },
@@ -116,30 +120,24 @@ static vex::RayTracingCollection CreateRTCollection(const std::filesystem::path&
          .rayMissShaders =
          {
              vex::ShaderKey{
-                 .path = shaderPath,
+                 .filepath = shaderPath,
                  .entryPoint = "RayMiss",
                  .type = vex::ShaderType::RayMissShader,
              }
          },
          .hitGroups =
          {
-             vex::HitGroup{
+             vex::HitGroupKey{
                  .name = "HelloRayTracing_HitGroup",
                  .rayClosestHitShader = 
                  {
-                     .path = shaderPath,
+                     .filepath = shaderPath,
                      .entryPoint = "RayClosestHit",
                      .type = vex::ShaderType::RayClosestHitShader,
                  },
              }
          },
-         // Allow for primary rays only (no recursion).
-         .maxRecursionDepth = 1,
-         // We use a payload of 3 floats (so 12 bytes).
-         .maxPayloadByteSize = 12,
-         // We use the built-in hlsl attributes (so 8 bytes).
-         .maxAttributeByteSize = 8,
-    };
+    });
 }
 
 void HelloRayTracing::Run()
@@ -171,23 +169,23 @@ void HelloRayTracing::Run()
 
             static const std::filesystem::path HLSLShaderPath =
                 ExamplesDir / "hello_raytracing" / "HelloRayTracingShader.hlsl";
-            static const vex::RayTracingCollection HLSLRayTracingPassDesc = CreateRTCollection(HLSLShaderPath);
+            static const vex::RayTracingShaderCollection HLSLRayTracingPassDesc =
+                CreateRTCollection(shaderCompiler, HLSLShaderPath.string());
             ctx.TraceRays(HLSLRayTracingPassDesc,
                           vex::ConstantBinding(data),
                           { outputTextureBinding },
                           { static_cast<vex::u32>(width), static_cast<vex::u32>(height), 1 } // One ray per pixel.
             );
 
-#if VEX_SLANG
             static const std::filesystem::path SlangShaderPath =
                 ExamplesDir / "hello_raytracing" / "HelloRayTracingShader.slang";
-            static const vex::RayTracingCollection SlangRayTracingPassDesc = CreateRTCollection(SlangShaderPath);
+            static const vex::RayTracingShaderCollection SlangRayTracingPassDesc =
+                CreateRTCollection(shaderCompiler, SlangShaderPath.string());
             ctx.TraceRays(SlangRayTracingPassDesc,
                           vex::ConstantBinding(data),
                           { outputTextureBinding },
                           { static_cast<vex::u32>(width), static_cast<vex::u32>(height), 1 } // One ray per pixel.
             );
-#endif
 
             // Copy output to the backbuffer.
             ctx.Copy(workingTexture, graphics->GetCurrentPresentTexture());
@@ -199,7 +197,7 @@ void HelloRayTracing::Run()
     }
 }
 
-void HelloRayTracing::OnResize(GLFWwindow* window, uint32_t newWidth, uint32_t newHeight)
+void HelloRayTracing::OnResize(GLFWwindow* window, int newWidth, int newHeight)
 {
     if (newWidth == 0 || newHeight == 0)
     {
@@ -214,8 +212,8 @@ void HelloRayTracing::OnResize(GLFWwindow* window, uint32_t newWidth, uint32_t n
         .name = "Working Texture",
         .type = vex::TextureType::Texture2D,
         .format = vex::TextureFormat::BGRA8_UNORM,
-        .width = newWidth,
-        .height = newHeight,
+        .width = static_cast<uint32_t>(newWidth),
+        .height = static_cast<uint32_t>(newHeight),
         .depthOrSliceCount = 1,
         .mips = 1,
         .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite,

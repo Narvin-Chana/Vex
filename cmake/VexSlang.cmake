@@ -1,8 +1,7 @@
 include(FetchContent)
 
-if(NOT VEX_ENABLE_SLANG)
+if(NOT VEX_ENABLE_SHADER_COMPILER OR NOT VEX_ENABLE_SLANG)
     function(build_with_slang target)
-        target_compile_definitions(${target} PUBLIC VEX_SLANG=0)
     endfunction()
     return()
 endif()
@@ -86,11 +85,11 @@ function(build_with_slang target)
     add_header_only_dependency(${target} slang "${slang_SOURCE_DIR}" "${SLANG_HEADERS_INCLUDE_NAME}" "slang")
 
     target_sources(${target} PRIVATE
-        "src/Vex/Shaders/SlangImpl.h"
-        "src/Vex/Shaders/SlangImpl.cpp"
+        "src/ShaderCompiler/Compiler/Slang/SlangCompiler.h"
+        "src/ShaderCompiler/Compiler/Slang/SlangCompiler.cpp"
     )
     
-    target_compile_definitions(Vex PUBLIC VEX_SLANG=1)
+    target_compile_definitions(${target} PUBLIC VEX_SLANG=1)
 
     vex_add_files_to_target_property(${target} "VEX_RUNTIME_DLLS" ${SLANG_RUNTIME_LIBS})
 endfunction()

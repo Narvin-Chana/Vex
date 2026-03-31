@@ -6,7 +6,6 @@
 #include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
-#include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHICommandPool.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
 #include <Vex/RHIImpl/RHIFence.h>
@@ -16,8 +15,6 @@
 #include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
-#include <Vex/Shaders/ShaderCompilerSettings.h>
-#include <Vex/Shaders/ShaderEnvironment.h>
 #include <Vex/Synchronization.h>
 
 #include <DX12/DX12Debug.h>
@@ -83,7 +80,8 @@ std::vector<std::unique_ptr<RHIPhysicalDevice>> DX12RHI::EnumeratePhysicalDevice
             ComPtr<DX12Device> minVersionDevice;
             device.As(&minVersionDevice);
 
-            std::unique_ptr<DX12PhysicalDevice> physicalDevice = std::make_unique<DX12PhysicalDevice>(adapter, minVersionDevice);
+            std::unique_ptr<DX12PhysicalDevice> physicalDevice =
+                std::make_unique<DX12PhysicalDevice>(adapter, minVersionDevice);
             if (minVersionDevice && physicalDevice->SupportsMinimalRequirements())
             {
                 physicalDevices.push_back(std::move(physicalDevice));
@@ -114,7 +112,7 @@ void DX12RHI::Init()
                                        .NodeMask = 0 };
         chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetNativeQueue(QueueType::Graphics)));
 #if !VEX_SHIPPING
-        GetNativeQueue(QueueType::Graphics)->SetName(L"CommandQueue: Graphics");
+        chk << GetNativeQueue(QueueType::Graphics)->SetName(L"CommandQueue: Graphics");
 #endif
     }
 
@@ -125,7 +123,7 @@ void DX12RHI::Init()
                                        .NodeMask = 0 };
         chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetNativeQueue(QueueType::Compute)));
 #if !VEX_SHIPPING
-        GetNativeQueue(QueueType::Compute)->SetName(L"CommandQueue: Compute");
+        chk << GetNativeQueue(QueueType::Compute)->SetName(L"CommandQueue: Compute");
 #endif
     }
 
@@ -136,7 +134,7 @@ void DX12RHI::Init()
                                        .NodeMask = 0 };
         chk << device->CreateCommandQueue(&desc, IID_PPV_ARGS(&GetNativeQueue(QueueType::Copy)));
 #if !VEX_SHIPPING
-        GetNativeQueue(QueueType::Copy)->SetName(L"CommandQueue: Copy");
+        chk << GetNativeQueue(QueueType::Copy)->SetName(L"CommandQueue: Copy");
 #endif
     }
 
@@ -153,20 +151,20 @@ RHICommandPool DX12RHI::CreateCommandPool()
     return DX12CommandPool(*this, device);
 }
 
-RHIGraphicsPipelineState DX12RHI::CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key)
+RHIGraphicsPipelineState DX12RHI::CreateGraphicsPipelineState(const GraphicsPSOKey& key)
 {
-    GraphicsPipelineStateKey keyCopy = key;
+    GraphicsPSOKey keyCopy = key;
     // Will clear out unsupported fields/validate that the user is not expecting invalid features.
     DX12GraphicsPipelineState::ClearUnsupportedKeyFields(keyCopy);
     return { device, keyCopy };
 }
 
-RHIComputePipelineState DX12RHI::CreateComputePipelineState(const ComputePipelineStateKey& key)
+RHIComputePipelineState DX12RHI::CreateComputePipelineState(const ComputePSOKey& key)
 {
     return { device, key };
 }
 
-RHIRayTracingPipelineState DX12RHI::CreateRayTracingPipelineState(const RayTracingPipelineStateKey& key)
+RHIRayTracingPipelineState DX12RHI::CreateRayTracingPipelineState(const RayTracingPSOKey& key)
 {
     return { device, key };
 }
@@ -201,7 +199,7 @@ RHITimestampQueryPool DX12RHI::CreateTimestampQueryPool(RHIAllocator& allocator)
     return RHITimestampQueryPool{ *this, allocator };
 }
 
-RHIAccelerationStructure DX12RHI::CreateAS(const ASDesc& desc)
+RHIAccelerationStructure DX12RHI::CreateAS(const AccelerationStructureDesc& desc)
 {
     return RHIAccelerationStructure(device, desc);
 }
@@ -220,7 +218,7 @@ bool DX12RHI::IsTokenComplete(const SyncToken& syncToken) const
 
 void DX12RHI::WaitForTokenOnGPU(QueueType waitingQueue, const SyncToken& waitFor)
 {
-    auto& signalingFence = (*fences)[waitFor.queueType];
+    const auto& signalingFence = (*fences)[waitFor.queueType];
 
     // GPU-side wait: waitingQueue waits for waitFor.value on signalingQueue
     chk << GetNativeQueue(waitingQueue)->Wait(signalingFence.fence.Get(), waitFor.value);
@@ -310,7 +308,7 @@ DX12RHI::LiveObjectsReporter::~LiveObjectsReporter()
     // Output all live (potentially leaked) objects to the debug console
     ComPtr<IDXGIDebug1> dxgiDebug = nullptr;
     chk << DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug));
-    dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
+    chk << dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
 #endif
 }
 

@@ -43,6 +43,7 @@ public:
     void UpdateDescriptor(BindlessHandle targetDescriptor,
                           ::vk::DescriptorType descType,
                           ::vk::DescriptorBufferInfo createInfo);
+    void UpdateDescriptor(BindlessHandle targetDescriptor, ::vk::DescriptorImageInfo createInfo, ::vk::DescriptorType descType);
     void SetDescriptorToNull(u32 index);
 
     ::vk::UniqueDescriptorSet descriptorSet;

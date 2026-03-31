@@ -5,6 +5,11 @@
 #include <optional>
 #include <vector>
 
+#ifndef __cpp_lib_move_only_function
+// Fallback for environments with incomplete C++23 support
+#include <Vex/Utility/Functional/move_only_function.h>
+#endif
+
 #include <Vex/AccelerationStructure.h>
 #include <Vex/Containers/FreeList.h>
 #include <Vex/Containers/Span.h>
@@ -20,10 +25,9 @@
 #include <Vex/RHIImpl/RHITimestampQueryPool.h>
 #include <Vex/ResourceCleanup.h>
 #include <Vex/Synchronization.h>
+#include <Vex/TextureSampler.h>
 #include <Vex/TextureStateMap.h>
 #include <Vex/Utility/MaybeUninitialized.h>
-#include <Vex/Utility/NonNullPtr.h>
-#include <Vex/Utility/Functional/move_only_function.h>
 
 #include <RHI/RHIFwd.h>
 
@@ -33,7 +37,6 @@ class TextureReadbackContext;
 class CommandContext;
 struct RHIPhysicalDeviceBase;
 struct Texture;
-struct TextureSampler;
 struct TextureBinding;
 struct BufferBinding;
 struct ResourceBinding;
@@ -41,7 +44,6 @@ struct ResourceBinding;
 #ifdef __cpp_lib_move_only_function
 using CPUCallback = std::move_only_function<void()>;
 #else
-// Fallback for environments with incomplete C++23 support
 using CPUCallback = std23::move_only_function<void()>;
 #endif
 
@@ -60,9 +62,7 @@ struct GraphicsCreateDesc
     // Enables GPU-based validation. Can be very costly in terms of performance.
     bool enableGPUBasedValidation = VEX_DEBUG;
 
-    ShaderCompilerSettings shaderCompilerSettings;
-
-    // This specifies the device to use when desired. If null the "best" device according to Vex will be picked
+    // This specifies the device to use when desired. If unset the "best" device according to Vex will be picked
     std::optional<PhysicalDeviceInfo> specifiedDevice;
 };
 
@@ -88,21 +88,23 @@ public:
     [[nodiscard]] CommandContext CreateCommandContext(QueueType queueType);
 
     // Creates a new texture with the specified description.
-    [[nodiscard]] Texture CreateTexture(TextureDesc desc, ResourceLifetime lifetime = ResourceLifetime::Static);
+    [[nodiscard]] Texture CreateTexture(const TextureDesc& textureDesc,
+                                        ResourceLifetime lifetime = ResourceLifetime::Static);
 
     // Destroys a texture, the handle passed in must be the one obtained from calling CreateTexture earlier.
     // Once destroyed, the handle passed in is invalid and should no longer be used.
     void DestroyTexture(const Texture& texture);
 
     // Creates a new buffer with the specified description.
-    [[nodiscard]] Buffer CreateBuffer(BufferDesc desc, ResourceLifetime lifetime = ResourceLifetime::Static);
+    [[nodiscard]] Buffer CreateBuffer(const BufferDesc& bufferDesc,
+                                      ResourceLifetime lifetime = ResourceLifetime::Static);
 
     // Destroys a buffer, the handle passed in must be the one obtained from calling CreateBuffer earlier.
     // Once destroyed, the handle passed in is invalid and should no longer be used.
     void DestroyBuffer(const Buffer& buffer);
 
     // Creates an acceleration structure. Invalid for use in shaders until it is built with a CommandContext.
-    [[nodiscard]] AccelerationStructure CreateAccelerationStructure(const ASDesc& desc);
+    [[nodiscard]] AccelerationStructure CreateAccelerationStructure(const AccelerationStructureDesc& asDesc);
 
     // Destroys an acceleration structure, the handle passed in must be the one obtained from calling
     // CreateAccelerationStructure earlier. Once destroyed, the handle passed in is invalid and should no longer be
@@ -127,6 +129,9 @@ public:
     // Allows users to fetch the bindless handles for multiple resource bindings. These bindless handles remain valid as
     // long as the resources themselves are alive.
     [[nodiscard]] std::vector<BindlessHandle> GetBindlessHandles(Span<const ResourceBinding> bindlessResources);
+
+    // Obtains the specified sampler (creating it if it doesn't yet exist) for use as a bindless sampler in a shader.
+    [[nodiscard]] BindlessHandle GetBindlessSampler(const TextureSampler& sampler);
 
     // Allows you to submit the command context to the GPU, receiving a SyncToken which can be optionally used to track
     // work completion.
@@ -180,15 +185,6 @@ public:
     // Determines if the current RHI supports raytracing.
     [[nodiscard]] bool IsRayTracingSupported() const;
 
-    // Recompiles all shader which have changed since the last compilation. Useful for shader development and
-    // hot-reloading. You generally want to avoid calling this too often if your application has many shaders.
-    void RecompileChangedShaders();
-    // Recompiles all shaders, could cause a big hitch depending on how many shaders your application uses.
-    void RecompileAllShaders();
-    void SetShaderCompilationErrorsCallback(std::function<ShaderCompileErrorsCallback> callback);
-
-    void SetSamplers(Span<const TextureSampler> newSamplers);
-
     // Returns Query or status if query is not yet ready
     [[nodiscard]] std::expected<Query, QueryStatus> GetTimestampValue(QueryHandle handle);
 
@@ -207,7 +203,7 @@ private:
 
     RHITexture& GetRHITexture(TextureHandle textureHandle);
     RHIBuffer& GetRHIBuffer(BufferHandle bufferHandle);
-    RHIAccelerationStructure& GetRHIAccelerationStructure(ASHandle asHandle);
+    RHIAccelerationStructure& GetRHIAccelerationStructure(AccelerationStructureHandle asHandle);
 
     void RecreatePresentTextures();
 
@@ -229,7 +225,7 @@ private:
 
     MaybeUninitialized<RHICommandPool> commandPool;
 
-    // Used for allocating/freeing bindless descriptors for resources.
+    // Used for allocating/freeing bindless descriptors for resources and samplers.
     MaybeUninitialized<RHIDescriptorPool> descriptorPool;
 
     MaybeUninitialized<PipelineStateCache> psCache;
@@ -243,14 +239,12 @@ private:
     // Converts from the Handle to the actual underlying RHI resource.
     FreeList<std::unique_ptr<RHITexture>, TextureHandle> textureRegistry;
     FreeList<std::unique_ptr<RHIBuffer>, BufferHandle> bufferRegistry;
-    FreeList<std::unique_ptr<RHIAccelerationStructure>, ASHandle> accelerationStructureRegistry;
+    FreeList<std::unique_ptr<RHIAccelerationStructure>, AccelerationStructureHandle> accelerationStructureRegistry;
 
     std::vector<Texture> pendingInitializations;
 
     std::vector<Texture> presentTextures;
     std::vector<SyncToken> presentTokens;
-
-    u32 builtInLinearSamplerSlot = ~0;
 
     TextureStateMap backBufferState;
 
@@ -260,6 +254,8 @@ private:
         std::vector<SyncToken> tokens;
     };
     std::vector<PendingCPUWork> pendingCPUWork;
+
+    std::unordered_map<TextureSampler, BindlessHandle> bindlessSamplers;
 
     static constexpr u32 DefaultRegistrySize = 1024;
 
@@ -294,7 +290,7 @@ struct RHIAccessor
 
     RHIResourceLayout& GetResourceLayout() const
     {
-        return graphics->psCache->GetResourceLayout();
+        return graphics->psCache->resourceLayout.value();
     }
     // Add getters if needed...
 private:

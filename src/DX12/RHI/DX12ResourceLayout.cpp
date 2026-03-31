@@ -6,7 +6,7 @@
 #include <Vex/PhysicalDevice.h>
 #include <Vex/Platform/Windows/HResult.h>
 
-#include <DX12/DX12TextureSampler.h>
+#include <DX12/DX12Sampler.h>
 #include <DX12/HRChecker.h>
 
 namespace vex::dx12
@@ -32,7 +32,7 @@ ComPtr<ID3D12RootSignature>& DX12ResourceLayout::GetRootSignature()
 
 void DX12ResourceLayout::CompileRootSignature()
 {
-    u32 rootSignatureDWORDCount = GPhysicalDevice->GetMaxLocalConstantsByteSize() / sizeof(DWORD);
+    const u32 rootSignatureDWORDCount = GPhysicalDevice->GetMaxLocalConstantsByteSize() / sizeof(DWORD);
 
     std::vector<CD3DX12_ROOT_PARAMETER> rootParameters;
     CD3DX12_ROOT_PARAMETER rootConstants{};
@@ -40,19 +40,14 @@ void DX12ResourceLayout::CompileRootSignature()
     rootConstants.InitAsConstants(rootSignatureDWORDCount, 0, 0);
     rootParameters.push_back(std::move(rootConstants));
 
-    std::vector<D3D12_STATIC_SAMPLER_DESC> dxSamplers =
-        GraphicsPipeline::GetDX12StaticSamplersFromTextureSamplers(samplers);
-
     CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc =
         CD3DX12_ROOT_SIGNATURE_DESC(static_cast<u32>(rootParameters.size()),
                                     rootParameters.data(),
-                                    static_cast<u32>(dxSamplers.size()),
-                                    dxSamplers.data(),
+                                    0,
+                                    nullptr,
                                     D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-                                        D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED 
-            // Evaluate the usefulness of bindless samplers, static samplers seem to be easier to map to how Vulkan works.
-            /* |
-                                        D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED*/);
+                                        D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED |
+                                        D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED);
 
     ComPtr<ID3DBlob> signature;
     ComPtr<ID3DBlob> error;

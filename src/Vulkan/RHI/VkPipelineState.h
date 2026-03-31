@@ -29,8 +29,8 @@ public:
     VkGraphicsPipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache);
     VkGraphicsPipelineState(VkGraphicsPipelineState&&) = default;
     VkGraphicsPipelineState& operator=(VkGraphicsPipelineState&&) = default;
-    virtual void Compile(const Shader& vertexShader,
-                         const Shader& pixelShader,
+    virtual void Compile(const ShaderView& vertexShader,
+                         const ShaderView& pixelShader,
                          RHIResourceLayout& resourceLayout) override;
     virtual std::unique_ptr<RHIGraphicsPipelineState> Cleanup() override;
 
@@ -47,7 +47,7 @@ public:
     VkComputePipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache);
     VkComputePipelineState(VkComputePipelineState&&) = default;
     VkComputePipelineState& operator=(VkComputePipelineState&&) = default;
-    virtual void Compile(const Shader& computeShader, RHIResourceLayout& resourceLayout) override;
+    virtual void Compile(const ShaderView& computeShader, RHIResourceLayout& resourceLayout) override;
     virtual std::unique_ptr<RHIComputePipelineState> Cleanup() override;
 
     ::vk::UniquePipeline computePipeline;

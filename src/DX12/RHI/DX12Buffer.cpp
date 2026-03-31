@@ -160,7 +160,7 @@ void DX12Buffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
     const bool isSRV = usage == BufferBindingUsage::StructuredBuffer || usage == BufferBindingUsage::ByteAddressBuffer;
     const bool isUAV =
         usage == BufferBindingUsage::RWStructuredBuffer || usage == BufferBindingUsage::RWByteAddressBuffer;
-    const bool isAccelerationStructure = desc.usage & BufferUsage::AccelerationStructure;
+    const bool isAccelerationStructure = (desc.usage & BufferUsage::AccelerationStructure) == BufferUsage::AccelerationStructure;
 
     VEX_ASSERT(isSRV || isUAV || isCBV || isAccelerationStructure,
                "The bindless view requested for buffer '{}' must be either of type SRV, CBV, UAV or the underlying "

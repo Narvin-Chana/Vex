@@ -4,10 +4,10 @@
 #include <string>
 #include <vector>
 
-#include <Vex/Utility/EnumFlags.h>
 #include <Vex/Formats.h>
-#include <Vex/Utility/Hash.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/EnumFlags.h>
+#include <Vex/Utility/Hash.h>
 
 namespace vex
 {
@@ -22,7 +22,7 @@ struct VertexInputLayout
         TextureFormat format;
         u32 offset;
 
-        bool operator==(const VertexAttribute& other) const = default;
+        constexpr bool operator==(const VertexAttribute& other) const = default;
     };
 
     enum InputRate : u8
@@ -37,13 +37,13 @@ struct VertexInputLayout
         u32 strideByteSize;
         InputRate inputRate;
 
-        bool operator==(const VertexBinding& other) const = default;
+        constexpr bool operator==(const VertexBinding& other) const = default;
     };
 
     std::vector<VertexAttribute> attributes;
     std::vector<VertexBinding> bindings;
 
-    bool operator==(const VertexInputLayout& other) const = default;
+    constexpr bool operator==(const VertexInputLayout& other) const = default;
 };
 
 enum class InputTopology : u8
@@ -58,7 +58,7 @@ struct InputAssembly
     InputTopology topology = InputTopology::TriangleList;
     bool primitiveRestartEnabled = false; // Vulkan only
 
-    bool operator==(const InputAssembly& other) const = default;
+    constexpr bool operator==(const InputAssembly& other) const = default;
 };
 
 enum class CullMode : u8
@@ -100,7 +100,7 @@ struct RasterizerState
     float depthBiasSlopeFactor = 0;
     float lineWidth = 0; // Vulkan only
 
-    bool operator==(const RasterizerState& other) const = default;
+    constexpr bool operator==(const RasterizerState& other) const = default;
 };
 
 // Note: for now Multisampling is unsupported in Vex. If the need ever arises it would be trivial to add.
@@ -153,14 +153,14 @@ struct DepthStencilState
         u32 writeMask = 0; // Only u8 in DX12
         u32 reference = 0; // Vulkan only
 
-        bool operator==(const StencilOpState& other) const = default;
+        constexpr bool operator==(const StencilOpState& other) const = default;
     };
     StencilOpState front;
     StencilOpState back;
     float minDepthBounds = 0; // Vulkan only
     float maxDepthBounds = 0; // Vulkan only
 
-    bool operator==(const DepthStencilState& other) const = default;
+    constexpr bool operator==(const DepthStencilState& other) const = default;
 };
 
 // See the following link for an explanation of each step:
@@ -254,14 +254,14 @@ struct ColorBlendState
         BlendOp alphaBlendOp = BlendOp::Add;
         ColorWriteMask::Flags colorWriteMask = ColorWriteMask::All;
 
-        bool operator==(const ColorBlendAttachment& other) const = default;
+        constexpr bool operator==(const ColorBlendAttachment& other) const = default;
     };
 
     // One blend attachment per render target.
     std::vector<ColorBlendAttachment> attachments;
     std::array<float, 4> blendConstants{};
 
-    bool operator==(const ColorBlendState& other) const = default;
+    constexpr bool operator==(const ColorBlendState& other) const = default;
 };
 
 struct RenderTargetState
@@ -271,12 +271,12 @@ struct RenderTargetState
         TextureFormat format;
         bool isSRGB = false;
 
-        bool operator==(const ColorFormat& other) const = default;
+        constexpr bool operator==(const ColorFormat& other) const = default;
     };
     std::vector<ColorFormat> colorFormats;
     TextureFormat depthStencilFormat = TextureFormat::UNKNOWN;
 
-    bool operator==(const RenderTargetState& other) const = default;
+    constexpr bool operator==(const RenderTargetState& other) const = default;
 };
 
 } // namespace vex

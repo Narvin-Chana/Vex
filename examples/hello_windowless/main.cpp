@@ -1,12 +1,11 @@
 #include <ExamplePaths.h>
 
-#include <Vex/CommandContext.h>
-#include <Vex/Graphics.h>
+#include <Vex.h>
 
 int main()
 {
-    const uint32_t width = 500;
-    const uint32_t height = 500;
+    constexpr int width = 500;
+    constexpr int height = 500;
 
     vex::Graphics graphics{ vex::GraphicsCreateDesc{
         .useSwapChain = false,
@@ -14,21 +13,22 @@ int main()
         .enableGPUBasedValidation = !VEX_SHIPPING,
     } };
 
+    vex::ShaderCompiler shaderCompiler;
+
     vex::CommandContext ctx = graphics.CreateCommandContext(vex::QueueType::Compute);
 
-    ctx.Dispatch(
-        vex::ShaderKey{
-            .path = ExamplesDir / "hello_windowless/Dummy.hlsl",
-            .entryPoint = "CSMain",
-            .type = vex::ShaderType::ComputeShader,
-        },
-        {},
-        {},
-        std::array{
-            (width + 7u) / 8u,
-            (height + 7u) / 8u,
-            1u,
-        });
+    ctx.Dispatch(shaderCompiler.GetShaderView(vex::ShaderKey{
+                     .filepath = (ExamplesDir / "hello_windowless/Dummy.hlsl").string(),
+                     .entryPoint = "CSMain",
+                     .type = vex::ShaderType::ComputeShader,
+                 }),
+                 {},
+                 {},
+                 std::array{
+                     (width + 7u) / 8u,
+                     (height + 7u) / 8u,
+                     1u,
+                 });
 
     graphics.Submit(ctx);
 }

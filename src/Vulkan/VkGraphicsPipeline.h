@@ -7,7 +7,7 @@
 
 namespace vex
 {
-struct GraphicsPipelineStateKey;
+struct GraphicsPSOKey;
 }
 
 namespace vex::vk
@@ -23,7 +23,7 @@ VEX_VK_DECLARE_ENUM_MAPPING(VertexInputLayout::InputRate, InputRate, ::vk::Verte
 VEX_VK_DECLARE_ENUM_MAPPING_FLAGS(CullMode, CullMode, ::vk::CullMode, VkCullMode);
 
 ::vk::StencilOpState StencilOpStateToVkStencilOpState(DepthStencilState::StencilOpState op);
-void ValidateGraphicsPipeline(const GraphicsPipelineStateKey& graphicsPipelineKey);
+void ValidateGraphicsPipeline(const GraphicsPSOKey& graphicsPipelineKey);
 
 } // namespace GraphicsPiplineUtils
 
