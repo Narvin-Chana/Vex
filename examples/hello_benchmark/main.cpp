@@ -11,8 +11,9 @@ int main()
         .useSwapChain = false,
     } };
 
-    vex::CommandContext ctx =
-        graphics.CreateCommandContext(vex::QueueType::Compute);
+    vex::ShaderCompiler shaderCompiler;
+
+    vex::CommandContext ctx = graphics.CreateCommandContext(vex::QueueType::Compute);
 
     vex::Buffer resultBuffer = graphics.CreateBuffer(
         vex::BufferDesc{ .name = "Result Buffer",
@@ -36,16 +37,15 @@ int main()
     {
         // Begins a timestamp query for iteration i
         dispatchQueries[i] = ctx.BeginTimestampQuery();
-
-        ctx.Dispatch(
-            vex::ShaderKey{
-                .path = ExamplesDir / "hello_benchmark/Dummy.cs.hlsl",
-                .entryPoint = "CSMain",
-                .type = vex::ShaderType::ComputeShader,
-            },
-            vex::ConstantBinding{ passHandle },
-            { resultBufferBinding },
-            std::array{ M / 8, 1u, 1u });
+        static const vex::ShaderKey ComputeShader{
+            .filepath = (ExamplesDir / "hello_benchmark/Dummy.cs.hlsl").string(),
+            .entryPoint = "CSMain",
+            .type = vex::ShaderType::ComputeShader,
+        };
+        ctx.Dispatch(shaderCompiler.GetShaderView(ComputeShader),
+                     vex::ConstantBinding{ passHandle },
+                     { resultBufferBinding },
+                     std::array{ M / 8, 1u, 1u });
 
         ctx.EndTimestampQuery(dispatchQueries[i]);
     }

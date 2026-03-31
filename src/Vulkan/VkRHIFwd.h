@@ -30,6 +30,7 @@ namespace vex
 {
 
 // Vulkan limit is a max of 128, but could be potentially less depending on the device.
+// TODO(https://trello.com/c/pJjvtq7N): Implement VK_EXT_descriptor_heap to increase push constants size and align Vulkan better with DX12.
 static constexpr std::size_t MaxTheoreticalLocalConstantsByteSize = 128;
 
 using RHIAllocator = vk::VkAllocator;

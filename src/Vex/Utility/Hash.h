@@ -64,3 +64,5 @@ inline std::string HashToString(const SHA1HashDigest& hash)
             return seed;                                                                                               \
         }                                                                                                              \
     };
+
+VEX_MAKE_HASHABLE(vex::SHA1HashDigest, VEX_HASH_COMBINE_CONTAINER(seed, obj););

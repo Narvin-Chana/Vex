@@ -8,6 +8,9 @@
 namespace vex
 {
 
+namespace MipGenerationTests
+{
+
 struct MipGenerationTest : public VexTest
 {
 public:
@@ -714,5 +717,382 @@ TEST_F(MipGenerationTest, TextureCubeArray)
         EXPECT_NEAR(a, 1.0f, 0.01f) << "Cube " << cubeIndex << " Face " << faceIndex << " alpha should be 1.0";
     }
 }
+
+} // namespace MipGenerationTests
+
+// ---------------------------------------------------------------------------------------------------------------
+// Second batch of tests to make sure that the mip generation shader correctly handles various formats.
+
+struct FormatTestDesc
+{
+    std::string_view name;
+    TextureFormat format;
+    bool isSRGB;
+
+    std::function<std::vector<byte>(u32 width, u32 height)> generator;
+    std::function<std::array<float, 4>(const std::vector<byte>&)> reader;
+
+    std::array<float, 4> expectedResult;
+    float tolerance;
+};
+
+namespace ByteUtils
+{
+
+// Sourced from https://stackoverflow.com/a/76816560
+u16 FloatToHalf(float a)
+{
+    uint32_t ia = *reinterpret_cast<uint32_t*>(&a);
+    uint16_t ir;
+
+    ir = (ia >> 16) & 0x8000;
+    if ((ia & 0x7f800000) == 0x7f800000)
+    {
+        if ((ia & 0x7fffffff) == 0x7f800000)
+        {
+            ir |= 0x7c00; /* infinity */
+        }
+        else
+        {
+            ir |= 0x7e00 | ((ia >> (24 - 11)) & 0x1ff); /* NaN, quietened */
+        }
+    }
+    else if ((ia & 0x7f800000) >= 0x33000000)
+    {
+        int shift = (int)((ia >> 23) & 0xff) - 127;
+        if (shift > 15)
+        {
+            ir |= 0x7c00; /* infinity */
+        }
+        else
+        {
+            ia = (ia & 0x007fffff) | 0x00800000; /* extract mantissa */
+            if (shift < -14)
+            { /* denormal */
+                ir |= ia >> (-1 - shift);
+                ia = ia << (32 - (-1 - shift));
+            }
+            else
+            { /* normal */
+                ir |= ia >> (24 - 11);
+                ia = ia << (32 - (24 - 11));
+                ir = ir + ((14 + shift) << 10);
+            }
+            /* IEEE-754 round to nearest of even */
+            if ((ia > 0x80000000) || ((ia == 0x80000000) && (ir & 1)))
+            {
+                ir++;
+            }
+        }
+    }
+    return ir;
+}
+
+// Generated with Claude, Warning!! Doesn't handle denormalized values!!
+static float HalfToFloat(u16 h)
+{
+    u32 bits = ((h & 0x8000u) << 16) | (((h & 0x7c00u) + 0x1C000u) << 13) | ((h & 0x03ffu) << 13);
+    float f;
+    std::memcpy(&f, &bits, sizeof(f));
+    return f;
+}
+
+} // namespace ByteUtils
+
+// Claude-generated generators and readers.
+
+namespace generators
+{
+
+static std::vector<byte> MakeCheckerRGBA32F(u32 w, u32 h)
+{
+    std::vector<byte> data(w * h * 4 * sizeof(float));
+    float* p = reinterpret_cast<float*>(data.data());
+    for (u32 y = 0; y < h; ++y)
+        for (u32 x = 0; x < w; ++x)
+        {
+            bool isRed = ((x / 64 + y / 64) % 2) == 0;
+            u32 i = (y * w + x) * 4;
+            p[i + 0] = isRed ? 1.f : 0.f;
+            p[i + 1] = 0.f;
+            p[i + 2] = isRed ? 0.f : 1.f;
+            p[i + 3] = 1.f;
+        }
+    return data;
+}
+
+static std::vector<byte> MakeCheckerRG32F(u32 w, u32 h)
+{
+    std::vector<byte> data(w * h * 2 * sizeof(float));
+    float* p = reinterpret_cast<float*>(data.data());
+    for (u32 y = 0; y < h; ++y)
+        for (u32 x = 0; x < w; ++x)
+        {
+            bool isRed = ((x / 64 + y / 64) % 2) == 0;
+            u32 i = (y * w + x) * 2;
+            p[i + 0] = isRed ? 1.f : 0.f; // R
+            p[i + 1] = isRed ? 0.f : 1.f; // G — blue mapped to G for RG format
+        }
+    return data;
+}
+
+static std::vector<byte> MakeCheckerR32F(u32 w, u32 h)
+{
+    std::vector<byte> data(w * h * sizeof(float));
+    float* p = reinterpret_cast<float*>(data.data());
+    for (u32 y = 0; y < h; ++y)
+        for (u32 x = 0; x < w; ++x)
+        {
+            bool isA = ((x / 64 + y / 64) % 2) == 0;
+            p[y * w + x] = isA ? 1.f : 0.f;
+        }
+    return data;
+}
+
+static std::vector<byte> MakeCheckerRGBA16F(u32 w, u32 h)
+{
+    std::vector<byte> data(w * h * 4 * sizeof(u16));
+    u16* p = reinterpret_cast<u16*>(data.data());
+    auto ToHalf = [](float f) -> u16 { return ByteUtils::FloatToHalf(f); };
+    for (u32 y = 0; y < h; ++y)
+        for (u32 x = 0; x < w; ++x)
+        {
+            bool isRed = ((x / 64 + y / 64) % 2) == 0;
+            u32 i = (y * w + x) * 4;
+            p[i + 0] = ToHalf(isRed ? 1.f : 0.f);
+            p[i + 1] = ToHalf(0.f);
+            p[i + 2] = ToHalf(isRed ? 0.f : 1.f);
+            p[i + 3] = ToHalf(1.f);
+        }
+    return data;
+}
+
+static std::vector<byte> MakeCheckerRGBA8(u32 w, u32 h)
+{
+    std::vector<byte> data(w * h * 4);
+    for (u32 y = 0; y < h; ++y)
+        for (u32 x = 0; x < w; ++x)
+        {
+            bool isRed = ((x / 64 + y / 64) % 2) == 0;
+            u32 i = (y * w + x) * 4;
+            data[i + 0] = byte(isRed ? 255 : 0);
+            data[i + 1] = byte(0);
+            data[i + 2] = byte(isRed ? 0 : 255);
+            data[i + 3] = byte(255);
+        }
+    return data;
+}
+
+static std::vector<byte> MakeCheckerRG8(u32 w, u32 h)
+{
+    std::vector<byte> data(w * h * 2);
+    for (u32 y = 0; y < h; ++y)
+        for (u32 x = 0; x < w; ++x)
+        {
+            bool isA = ((x / 64 + y / 64) % 2) == 0;
+            u32 i = (y * w + x) * 2;
+            data[i + 0] = byte(isA ? 255 : 0);
+            data[i + 1] = byte(isA ? 0 : 255);
+        }
+    return data;
+}
+
+static std::vector<byte> MakeCheckerR8(u32 w, u32 h)
+{
+    std::vector<byte> data(w * h);
+    for (u32 y = 0; y < h; ++y)
+        for (u32 x = 0; x < w; ++x)
+        {
+            bool isA = ((x / 64 + y / 64) % 2) == 0;
+            data[y * w + x] = byte(isA ? 255 : 0);
+        }
+    return data;
+}
+
+} // namespace generators
+
+namespace readers
+{
+static std::array<float, 4> ReadRGBA32F(const std::vector<byte>& d)
+{
+    const float* p = reinterpret_cast<const float*>(d.data());
+    return { p[0], p[1], p[2], p[3] };
+}
+
+static std::array<float, 4> ReadRG32F(const std::vector<byte>& d)
+{
+    const float* p = reinterpret_cast<const float*>(d.data());
+    return { p[0], p[1], 0.f, 1.f };
+}
+
+static std::array<float, 4> ReadR32F(const std::vector<byte>& d)
+{
+    const float* p = reinterpret_cast<const float*>(d.data());
+    return { p[0], 0.f, 0.f, 1.f };
+}
+
+static std::array<float, 4> ReadRGBA16F(const std::vector<byte>& d)
+{
+    const u16* p = reinterpret_cast<const u16*>(d.data());
+    return {
+        ByteUtils::HalfToFloat(p[0]),
+        ByteUtils::HalfToFloat(p[1]),
+        ByteUtils::HalfToFloat(p[2]),
+        ByteUtils::HalfToFloat(p[3]),
+    };
+}
+
+static std::array<float, 4> ReadRGBA8(const std::vector<byte>& d)
+{
+    return {
+        u8(d[0]) / 255.f,
+        u8(d[1]) / 255.f,
+        u8(d[2]) / 255.f,
+        u8(d[3]) / 255.f,
+    };
+}
+
+static std::array<float, 4> ReadRG8(const std::vector<byte>& d)
+{
+    return { u8(d[0]) / 255.f, u8(d[1]) / 255.f, 0.f, 1.f };
+}
+
+static std::array<float, 4> ReadR8(const std::vector<byte>& d)
+{
+    return { u8(d[0]) / 255.f, 0.f, 0.f, 1.f };
+}
+
+} // namespace readers
+
+struct MipGenerationFormatTest
+    : public VexTest
+    , public ::testing::WithParamInterface<FormatTestDesc>
+{
+};
+
+TEST_P(MipGenerationFormatTest, FinalMipAveragesCorrectly)
+{
+    const FormatTestDesc& desc = GetParam();
+
+    // Use a size guaranteed to produce a clean 50/50 average:
+    // 512 gives many mip levels and the checkerboard tiles evenly.
+    constexpr u32 size = 512;
+    u16 numMips = ComputeMipCount({ size, size, 1 });
+
+    Texture tex = graphics.CreateTexture(
+        TextureDesc::CreateTexture2DDesc(std::string(desc.name),
+                                         desc.format,
+                                         size,
+                                         size,
+                                         numMips,
+                                         TextureUsage::ShaderRead | TextureUsage::ShaderReadWrite));
+
+    CommandContext ctx = graphics.CreateCommandContext(QueueType::Graphics);
+    ctx.EnqueueDataUpload(tex, desc.generator(size, size), TextureRegion::SingleMip(0));
+    ctx.GenerateMips(TextureBinding{ .texture = tex, .isSRGB = desc.isSRGB });
+
+    TextureReadbackContext readback = ctx.EnqueueDataReadback(tex, TextureRegion::SingleMip(numMips - 1));
+    graphics.WaitForTokenOnCPU(graphics.Submit(ctx));
+
+    std::vector<byte> mipData(readback.GetDataByteSize());
+    readback.ReadData(mipData);
+
+    auto [r, g, b, a] = desc.reader(mipData);
+
+    EXPECT_NEAR(r, desc.expectedResult[0], desc.tolerance) << desc.name << ": R channel";
+    EXPECT_NEAR(g, desc.expectedResult[1], desc.tolerance) << desc.name << ": G channel";
+    EXPECT_NEAR(b, desc.expectedResult[2], desc.tolerance) << desc.name << ": B channel";
+    EXPECT_NEAR(a, desc.expectedResult[3], desc.tolerance) << desc.name << ": A channel";
+}
+
+using namespace generators;
+using namespace readers;
+
+static const std::array FormatCases = {
+    // --- 32-bit float ---
+    FormatTestDesc{
+        "RGBA32F_Linear",
+        TextureFormat::RGBA32_FLOAT,
+        false,
+        MakeCheckerRGBA32F,
+        ReadRGBA32F,
+        { 0.5f, 0.f, 0.5f, 1.f },
+        0.01f,
+    },
+    FormatTestDesc{
+        "RG32F_Linear",
+        TextureFormat::RG32_FLOAT,
+        false,
+        MakeCheckerRG32F,
+        ReadRG32F,
+        { 0.5f, 0.5f, 0.f, 1.f },
+        0.01f,
+    },
+    FormatTestDesc{
+        "R32F_Linear",
+        TextureFormat::R32_FLOAT,
+        false,
+        MakeCheckerR32F,
+        ReadR32F,
+        { 0.5f, 0.f, 0.f, 1.f },
+        0.01f,
+    },
+    // --- 16-bit float ---
+    FormatTestDesc{
+        "RGBA16F_Linear",
+        TextureFormat::RGBA16_FLOAT,
+        false,
+        MakeCheckerRGBA16F,
+        ReadRGBA16F,
+        { 0.5f, 0.f, 0.5f, 1.f },
+        0.01f,
+    },
+    // --- 8-bit unorm (linear) ---
+    FormatTestDesc{
+        "RGBA8_Linear",
+        TextureFormat::RGBA8_UNORM,
+        false,
+        MakeCheckerRGBA8,
+        ReadRGBA8,
+        { 0.5f, 0.f, 0.5f, 1.f },
+        0.01f,
+    },
+    FormatTestDesc{
+        "RG8_Linear",
+        TextureFormat::RG8_UNORM,
+        false,
+        MakeCheckerRG8,
+        ReadRG8,
+        { 0.5f, 0.5f, 0.f, 1.f },
+        0.01f,
+    },
+    FormatTestDesc{
+        "R8_Linear",
+        TextureFormat::R8_UNORM,
+        false,
+        MakeCheckerR8,
+        ReadR8,
+        { 0.5f, 0.f, 0.f, 1.f },
+        0.01f,
+    },
+    // --- 8-bit unorm with sRGB mip generation ---
+    // Input is raw 8-bit (0 or 255), read back normalized.
+    // Correct linear-space averaging of sRGB 0 and 1 re-encodes to ~0.735.
+    FormatTestDesc{
+        "RGBA8_SRGB",
+        TextureFormat::RGBA8_UNORM,
+        true,
+        MakeCheckerRGBA8,
+        ReadRGBA8,
+        { 0.735f, 0.f, 0.735f, 1.f },
+        0.01f,
+    },
+};
+
+INSTANTIATE_TEST_SUITE_P(AllFormats,
+                         MipGenerationFormatTest,
+                         ::testing::ValuesIn(FormatCases),
+                         [](const ::testing::TestParamInfo<FormatTestDesc>& info)
+                         { return std::string(info.param.name); });
 
 } // namespace vex

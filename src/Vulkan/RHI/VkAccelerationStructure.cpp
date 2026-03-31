@@ -9,15 +9,17 @@
 namespace vex::vk
 {
 
-namespace
+namespace VkAccelerationStructure_Internal
 {
+
 ::vk::TransformMatrixKHR GetVkTransformMatrix(std::array<float, 3 * 4> matrix)
 {
     ::vk::TransformMatrixKHR mat;
     std::uninitialized_copy_n(matrix.data(), 12, &mat.matrix[0][0]);
     return mat;
 }
-} // namespace
+
+}
 
 ::vk::GeometryFlagsKHR GeometryFlagsToVkGeometryFlags(ASGeometry::Flags flags)
 {
@@ -60,7 +62,7 @@ namespace
     return vkFlags;
 }
 
-VkAccelerationStructure::VkAccelerationStructure(NonNullPtr<VkGPUContext> ctx, const ASDesc& desc)
+VkAccelerationStructure::VkAccelerationStructure(NonNullPtr<VkGPUContext> ctx, const AccelerationStructureDesc& desc)
     : RHIAccelerationStructureBase(desc)
     , ctx{ ctx }
 {
@@ -209,7 +211,7 @@ std::vector<std::byte> VkAccelerationStructure::GetInstanceBufferData(const RHIT
         const NonNullPtr<RHIAccelerationStructure> as = desc.perInstanceBLAS[i];
 
         instances.push_back(::vk::AccelerationStructureInstanceKHR{
-            .transform = GetVkTransformMatrix(instance.transform),
+            .transform = VkAccelerationStructure_Internal::GetVkTransformMatrix(instance.transform),
             .instanceCustomIndex = instance.instanceID,
             .mask = instance.instanceMask,
             .instanceShaderBindingTableRecordOffset = instance.instanceContributionToHitGroupIndex,

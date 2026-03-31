@@ -18,9 +18,11 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     option(VEX_BUILD_EXAMPLES "Build the example programs" ON)
     option(VEX_BUILD_TESTS "Build Vex tests" ON)
+    option(VEX_BUILD_TOOLS "Build Vex tools" ON)
 else()
     option(VEX_BUILD_EXAMPLES "Build the example programs" OFF)
     option(VEX_BUILD_TESTS "Build Vex tests" OFF)
+    option(VEX_BUILD_TOOLS "Build Vex tools" OFF)
 endif()
 
 # CMake Helpers
@@ -29,16 +31,16 @@ include(VexHelpers)
 # Will correctly install our custom githook to run clang-format on staged files when committing
 include(GitHooks)
 
-# Contains all logic to fetch and include DXC
-include(VexDXC)
-
+option(VEX_ENABLE_SHADER_COMPILER "Enables the possibility to use Vex's built-in ShaderCompiler." ON)
+option(VEX_ENABLE_DXC "Enables the possibility to use the DXC shader compiler backend." ON)
 if (VEX_BUILD_EXAMPLES OR VEX_BUILD_TESTS)
     option(VEX_ENABLE_SLANG "Enables the possibility to use the Slang shader compiler backend." ON)
 else()
     option(VEX_ENABLE_SLANG "Enables the possibility to use the Slang shader compiler backend." OFF)
 endif()
 
-# Contains all logic to fetch and include Slang
+# Contains all logic to fetch and include shader compiler backends.
+include(VexDXC)
 include(VexSlang)
 
 # =========================================
@@ -120,7 +122,7 @@ add_library(Vex STATIC
     "src/Vex/Platform/Platform.h"
     # RHI
     "src/RHI/RHIFwd.h"
-    "src/RHI/RHI.h"  
+    "src/RHI/RHI.h"
     "src/RHI/RHICommandPool.h"
     "src/RHI/RHICommandPool.cpp"
     "src/RHI/RHISwapChain.h"
@@ -165,7 +167,7 @@ add_library(Vex STATIC
     "src/Vex/Utility/Concepts.h"
     "src/Vex/Utility/EnumFlags.h"
     "src/Vex/Utility/Handle.h"
-    "src/Vex/Utility/Formattable.h"    
+    "src/Vex/Utility/Formattable.h"
     "src/Vex/Utility/Hash.h"
     "src/Vex/Utility/MaybeUninitialized.h"
     "src/Vex/Utility/NonNullPtr.h"
@@ -174,34 +176,20 @@ add_library(Vex STATIC
     "src/Vex/Utility/Visitor.h"
     "src/Vex/Utility/Algorithms.h"
     # Vex Platform
-    "src/Vex/Platform/PlatformWindow.h" 
-    "src/Vex/Platform/Debug.h" 
+    "src/Vex/Platform/PlatformWindow.h"
+    "src/Vex/Platform/Debug.h"
     # Vex Containers
     "src/Vex/Containers/FreeList.h"
     "src/Vex/Containers/Span.h"
-    # Vex Shader API
-    "src/Vex/Shaders/ShaderKey.h"
-    "src/Vex/Shaders/Shader.h"
-    "src/Vex/Shaders/Shader.cpp"
-    "src/Vex/Shaders/ShaderCompiler.h"
-    "src/Vex/Shaders/ShaderCompiler.cpp"
-    "src/Vex/Shaders/ShaderCompilerSettings.h"
-    "src/Vex/Shaders/DXCImpl.h"
-    "src/Vex/Shaders/DXCImpl.cpp"
-    "src/Vex/Shaders/DXCImplReflection.cpp"
-    "src/Vex/Shaders/ShaderEnvironment.h"
-    "src/Vex/Shaders/CompilerBase.h"
-    "src/Vex/Shaders/RayTracingShaders.h"
-    "src/Vex/Shaders/RayTracingShaders.cpp"
     # Vex Built-In Shaders
-    "src/Vex/BuiltInShaders/MipGeneration.h"
+    "src/Vex/Generated/MipGeneration.h"
     # Vex API
     "src/Vex.h"
-    "src/Vex/Graphics.h" 
-    "src/Vex/Graphics.cpp" 
-    "src/Vex/Formats.h" 
-    "src/Vex/Types.h" 
-    "src/Vex/Logger.h" 
+    "src/Vex/Graphics.h"
+    "src/Vex/Graphics.cpp"
+    "src/Vex/Formats.h"
+    "src/Vex/Types.h"
+    "src/Vex/Logger.h"
     "src/Vex/Logger.cpp"
     "src/Vex/FrameResource.h"
     "src/Vex/Formats.cpp"
@@ -240,6 +228,10 @@ add_library(Vex STATIC
     "src/Vex/Utility/Functional/function.h"
     "src/Vex/Utility/Functional/function_ref.h"
     "src/Vex/Utility/Functional/move_only_function.h"
+    "src/Vex/ShaderView.h"
+    "src/Vex/RayTracing.h"
+    "src/Vex/PipelineState.cpp"
+    "src/Vex/PipelineState.h"
 )
 
 if(WIN32)
@@ -251,6 +243,25 @@ endif()
 if(LINUX)
     target_sources(Vex PRIVATE
     # Nothing for now...
+    )
+endif()
+
+# Vex Shader Compiler
+if (VEX_ENABLE_SHADER_COMPILER)
+    target_sources(Vex PRIVATE
+        "src/ShaderCompiler/ShaderKey.h"
+        "src/ShaderCompiler/Shader.h"
+        "src/ShaderCompiler/Shader.cpp"
+        "src/ShaderCompiler/ShaderCompiler.h"
+        "src/ShaderCompiler/ShaderCompiler.cpp"
+        "src/ShaderCompiler/ShaderCompilerSettings.h"
+        "src/ShaderCompiler/Compiler/DXC/DXCCompiler.h"
+        "src/ShaderCompiler/Compiler/DXC/DXCCompiler.cpp"
+        "src/ShaderCompiler/Compiler/DXC/DXCReflection.cpp"
+        "src/ShaderCompiler/ShaderEnvironment.h"
+        "src/ShaderCompiler/Compiler/CompilerBase.h"
+        "src/ShaderCompiler/RayTracingShaderKey.h"
+        "src/ShaderCompiler/RayTracingShaderKey.cpp"
     )
 endif()
 
@@ -308,6 +319,11 @@ if(WIN32)
     target_compile_definitions(Vex PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS)
 endif()
 
+# Shader compiler defines
+target_compile_definitions(Vex PUBLIC VEX_SHADER_COMPILER=$<BOOL:${VEX_ENABLE_SHADER_COMPILER}>)
+target_compile_definitions(Vex PUBLIC VEX_DXC=$<BOOL:${VEX_ENABLE_DXC}>)
+target_compile_definitions(Vex PUBLIC VEX_SLANG=$<BOOL:${VEX_ENABLE_SLANG}>)
+
 # =========================================
 # INSTALLATION
 # =========================================
@@ -351,6 +367,11 @@ endif()
 if (VEX_BUILD_TESTS)
     message(STATUS "Building Vex tests...")
     add_subdirectory(tests)
+endif()
+# Add the tools projects.
+if (VEX_BUILD_TOOLS)
+    message(STATUS "Building Vex tools...")
+    add_subdirectory(tools/GenerateBuiltInShaders)
 endif()
 
 install(EXPORT VexTargets

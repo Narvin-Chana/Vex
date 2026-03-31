@@ -17,9 +17,9 @@ public:
     virtual void HandleKeyInput(int key, int scancode, int action, int mods);
 
 protected:
-    static constexpr int32_t DefaultWidth = 1280, DefaultHeight = 600;
+    static constexpr int DefaultWidth = 1280, DefaultHeight = 600;
 
-    virtual void OnResize(GLFWwindow* window, uint32_t newWidth, uint32_t newHeight);
+    virtual void OnResize(GLFWwindow* window, int newWidth, int newHeight);
     void ToggleFullscreen();
     void SetupShaderErrorHandling();
 
@@ -33,11 +33,12 @@ protected:
 
     struct WindowedInfo
     {
-        int32_t width, height, x, y;
+        int width, height, x, y;
     } windowedInfo;
 
-    int32_t width, height;
+    int width, height;
 
     GLFWwindow* window;
     std::unique_ptr<vex::Graphics> graphics;
+    vex::ShaderCompiler shaderCompiler;
 };

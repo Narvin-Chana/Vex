@@ -1,13 +1,9 @@
 ﻿#include "VkGraphicsPipeline.h"
 
-#include <Vex/ResourceCleanup.h>
 #include <Vex/Logger.h>
 
-
-#include <Vulkan/RHI/VkBuffer.h>
 #include <Vulkan/RHI/VkPipelineState.h>
 #include <Vulkan/RHI/VkResourceLayout.h>
-#include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkFormats.h>
 #include <Vulkan/VkMacros.h>
 
@@ -63,7 +59,7 @@ VEX_VK_END_ENUM_MAPPING
     };
 }
 
-void ValidateGraphicsPipeline(const GraphicsPipelineStateKey& key)
+void ValidateGraphicsPipeline(const GraphicsPSOKey& key)
 {
     // TODO: add validation nothing obvious comes to mind for the moment
 }

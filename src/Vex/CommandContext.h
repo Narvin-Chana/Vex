@@ -7,15 +7,15 @@
 
 #include <Vex/BuildAccelerationStructure.h>
 #include <Vex/Containers/Span.h>
-#include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/ResourceCleanup.h>
 #include <Vex/ResourceCopy.h>
 #include <Vex/ResourceReadbackContext.h>
 #include <Vex/ScopedGPUEvent.h>
-#include <Vex/Shaders/ShaderKey.h>
+#include <Vex/ShaderView.h>
 #include <Vex/TextureStateMap.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/NonNullPtr.h>
+
 
 #include <RHI/RHIBarrier.h>
 #include <RHI/RHIBindings.h>
@@ -25,6 +25,8 @@
 
 namespace vex
 {
+struct TraceRaysDesc;
+struct RayTracingShaderCollection;
 
 class Graphics;
 struct ConstantBinding;
@@ -33,11 +35,9 @@ struct Texture;
 struct Buffer;
 struct TextureClearValue;
 struct DrawDesc;
-struct RayTracingCollection;
 
 class CommandContext
 {
-private:
     CommandContext(NonNullPtr<Graphics> graphics,
                    NonNullPtr<RHICommandList> cmdList,
                    NonNullPtr<RHITimestampQueryPool> queryPool);
@@ -49,7 +49,7 @@ public:
     CommandContext(CommandContext&&) = default;
     CommandContext& operator=(CommandContext&&) = default;
 
-    QueueType GetQueue() const;
+    [[nodiscard]] QueueType GetQueue() const;
 
     // Sets the viewport dimensions.
     void SetViewport(float x, float y, float width, float height, float minDepth = 0.0f, float maxDepth = 1.0f);
@@ -90,7 +90,7 @@ public:
     void DrawIndexedIndirect();
 
     // Dispatches a compute shader.
-    void Dispatch(const ShaderKey& shader,
+    void Dispatch(const ShaderView& computeShader,
                   ConstantBinding constants,
                   Span<const ResourceBinding> trackedResources,
                   std::array<u32, 3> groupCount);
@@ -99,7 +99,7 @@ public:
     void DispatchIndirect();
 
     // Dispatches a ray tracing pass.
-    void TraceRays(const RayTracingCollection& rayTracingCollection,
+    void TraceRays(const RayTracingShaderCollection& rayTracingShaderCollection,
                    ConstantBinding constants,
                    Span<const ResourceBinding> trackedResources,
                    const TraceRaysDesc& rayTracingArgs);
@@ -254,7 +254,7 @@ private:
     void CheckViewportAndScissor() const;
 
     void SetVertexBuffers(u32 vertexBuffersFirstSlot, Span<const BufferBinding> vertexBuffers);
-    void SetIndexBuffer(BufferBinding indexBuffer);
+    void SetIndexBuffer(const BufferBinding& indexBuffer);
 
     NonNullPtr<Graphics> graphics;
     NonNullPtr<RHICommandList> cmdList;
@@ -269,8 +269,9 @@ private:
     // Used to avoid resetting the same state multiple times which can be costly on certain hardware.
     // In general draws and dispatches are recommended to be grouped by PSO, so this caching can be very efficient
     // versus binding everything each time.
-    std::optional<GraphicsPipelineStateKey> cachedGraphicsPSOKey;
-    std::optional<ComputePipelineStateKey> cachedComputePSOKey;
+    RHIGraphicsPipelineState* cachedGraphicsPSO = nullptr;
+    RHIComputePipelineState* cachedComputePSO = nullptr;
+    RHIRayTracingPipelineState* cachedRayTracingPSO = nullptr;
     std::optional<InputAssembly> cachedInputAssembly;
 
     // Pending barriers, which are emitted only when the user performs a GPU operation (ie. draw call, dispatch, ...) or

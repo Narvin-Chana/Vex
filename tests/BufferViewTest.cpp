@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include "ShaderCompiler/Shader.h"
+
 using namespace vex;
 
 struct BufferBindingTestData
@@ -99,13 +101,13 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
     };
 
     ShaderUniform uniforms{ handles[0],
-                      handles[1],
-                      usage == BufferBindingUsage::UniformBuffer
-                          ? 1
-                          : GetParam().elementCount.value_or(ElementCount - testData.firstElement.value_or(0)) };
+                            handles[1],
+                            usage == BufferBindingUsage::UniformBuffer
+                                ? 1
+                                : GetParam().elementCount.value_or(ElementCount - testData.firstElement.value_or(0)) };
 
-    ShaderKey key = {
-        .path = VexRootPath / "tests/shaders/BufferView.cs.hlsl",
+    ShaderKey key {
+        .filepath = (VexRootPath / "tests/shaders/BufferView.cs.hlsl").string(),
         .entryPoint = "CSMain",
         .type = ShaderType::ComputeShader,
         .defines = {
@@ -116,7 +118,7 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
         },
     };
 
-    ctx.Dispatch(key,
+    ctx.Dispatch(shaderCompiler.GetShaderView(key),
                  ConstantBinding(std::span{ &uniforms, 1 }),
                  bindings,
                  {
@@ -125,9 +127,9 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
                      1u,
                  });
 
-    key.path = VexRootPath / "tests/shaders/BufferView.cs.slang";
+    key.filepath = (VexRootPath / "tests/shaders/BufferView.cs.slang").string();
 
-    ctx.Dispatch(key,
+    ctx.Dispatch(shaderCompiler.GetShaderView(key),
                  ConstantBinding(std::span{ &uniforms, 1 }),
                  bindings,
                  {
@@ -145,10 +147,7 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
     readbackContext.ReadData(std::as_writable_bytes(std::span{ result }));
 
     std::array<float, 3> expectedResult{};
-    std::transform(GetParam().expectedResult.begin(),
-                   GetParam().expectedResult.end(),
-                   expectedResult.begin(),
-                   [](float f) { return f * 2; });
+    std::ranges::transform(GetParam().expectedResult, expectedResult.begin(), [](float f) { return f * 2; });
 
     EXPECT_TRUE(result == expectedResult);
 }
@@ -187,13 +186,12 @@ INSTANTIATE_TEST_SUITE_P(StructureBufferTests,
 INSTANTIATE_TEST_SUITE_P(
     ConstantBufferTests,
     BufferBindingTest,
-    testing::Values(BufferBindingTestData{ .usage = BufferBindingUsage::UniformBuffer, .expectedResult{ 1, 2, 3 } },
-                    BufferBindingTestData{
-                        .usage = BufferBindingUsage::UniformBuffer, .offset{ 256 }, .expectedResult{ 2, 3, 1 } },
-                    BufferBindingTestData{
-                        .usage = BufferBindingUsage::UniformBuffer, .offset{ 512 }, .expectedResult{ 3, 1, 2 } },
-                    BufferBindingTestData{
-                        .usage = BufferBindingUsage::UniformBuffer, .offset{ 768 }, .expectedResult{ 1, 2, 3 } }));
+    testing::Values(
+        BufferBindingTestData{ .usage = BufferBindingUsage::UniformBuffer, .expectedResult{ 1, 2, 3 } },
+        BufferBindingTestData{ .usage = BufferBindingUsage::UniformBuffer, .offset{ 256 }, .expectedResult{ 2, 3, 1 } },
+        BufferBindingTestData{ .usage = BufferBindingUsage::UniformBuffer, .offset{ 512 }, .expectedResult{ 3, 1, 2 } },
+        BufferBindingTestData{
+            .usage = BufferBindingUsage::UniformBuffer, .offset{ 768 }, .expectedResult{ 1, 2, 3 } }));
 
 INSTANTIATE_TEST_SUITE_P(ByteAddressBufferTests,
                          BufferBindingTest,

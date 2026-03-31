@@ -37,7 +37,7 @@ static ::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDesc& desc)
     {
         flags |= eIndirectBuffer;
     }
-    if (desc.usage & BufferUsage::AccelerationStructure)
+    if ((desc.usage & BufferUsage::AccelerationStructure) == BufferUsage::AccelerationStructure)
     {
         flags |= eAccelerationStructureStorageKHR;
     }

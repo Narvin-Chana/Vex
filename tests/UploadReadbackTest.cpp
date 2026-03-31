@@ -4,11 +4,11 @@
 
 #include <gtest/gtest.h>
 
+#include <Vex/Bindings.h>
 #include <Vex/CommandContext.h>
 #include <Vex/Graphics.h>
 #include <Vex/Logger.h>
 #include <Vex/Types.h>
-#include <Vex/Bindings.h>
 
 namespace vex
 {
@@ -414,8 +414,7 @@ TEST_P(BufferUploadReadbackTests, BufferUploadAndFullReadback)
         data[i] = static_cast<float>(i);
     }
 
-    Buffer uploadBuffer =
-        graphics.CreateBuffer(BufferDesc::CreateGenericBufferDesc("GPUBuffer", sizeof(float) * 100));
+    Buffer uploadBuffer = graphics.CreateBuffer(BufferDesc::CreateGenericBufferDesc("GPUBuffer", sizeof(float) * 100));
 
     ctx.EnqueueDataUpload(uploadBuffer, std::as_bytes(std::span(data)), params.uploadRegion);
 
@@ -506,21 +505,21 @@ TEST_P(ScalarBlockLayoutTests, ComputeMisalignedData)
     };
     std::vector<BindlessHandle> handles = graphics.GetBindlessHandles(bindings);
 
-    ctx.Dispatch(
-        {
-            .path = GetParam() == ShaderCompilerBackend::DXC
-                        ? VexRootPath / "tests/shaders/ScalarBlockLayoutTest.hlsl"
-                        : VexRootPath / "tests/shaders/ScalarBlockLayoutTest.slang",
-            .entryPoint = "CSMain",
-            .type = ShaderType::ComputeShader,
-        },
-        ConstantBinding(std::span(handles)),
-        bindings,
-        {
-            1u,
-            1u,
-            1u,
-        });
+    ctx.Dispatch(shaderCompiler.GetShaderView({
+                     .filepath = (GetParam() == ShaderCompilerBackend::DXC
+                                      ? VexRootPath / "tests/shaders/ScalarBlockLayoutTest.hlsl"
+                                      : VexRootPath / "tests/shaders/ScalarBlockLayoutTest.slang")
+                                     .string(),
+                     .entryPoint = "CSMain",
+                     .type = ShaderType::ComputeShader,
+                 }),
+                 ConstantBinding(std::span(handles)),
+                 bindings,
+                 {
+                     1u,
+                     1u,
+                     1u,
+                 });
 
     BufferReadbackContext readbackContext = ctx.EnqueueDataReadback(resultBuffer);
 

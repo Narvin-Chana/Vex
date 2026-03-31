@@ -9,7 +9,7 @@ public:
     void Run();
 
 protected:
-    virtual void OnResize(GLFWwindow* window, uint32_t newWidth, uint32_t newHeight) override;
+    virtual void OnResize(GLFWwindow* window, int newWidth, int newHeight) override;
 
 private:
     vex::Texture workingTexture;

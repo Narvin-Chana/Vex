@@ -1,14 +1,9 @@
 #include "RHIResourceLayout.h"
 
-#include <utility>
-
 #include <Vex/Bindings.h>
-#include <Vex/ResourceCleanup.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
-#include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHIPhysicalDevice.h>
-#include <Vex/RHIImpl/RHIPipelineState.h>
 
 namespace vex
 {
@@ -21,7 +16,7 @@ RHIResourceLayoutBase::RHIResourceLayoutBase()
 
 RHIResourceLayoutBase::~RHIResourceLayoutBase() = default;
 
-void RHIResourceLayoutBase::SetLayoutResources(ConstantBinding constants)
+void RHIResourceLayoutBase::SetLayoutResources(const ConstantBinding& constants)
 {
     if (constants.IsValid())
     {
@@ -40,15 +35,15 @@ void RHIResourceLayoutBase::SetLayoutResources(ConstantBinding constants)
     }
 }
 
-void RHIResourceLayoutBase::SetSamplers(Span<const TextureSampler> newSamplers)
+void RHIResourceLayoutBase::SetStaticSamplers(Span<const StaticTextureSampler> newSamplers)
 {
-    samplers = { newSamplers.begin(), newSamplers.end() };
+    staticSamplers = { newSamplers.begin(), newSamplers.end() };
     isDirty = true;
 }
 
-Span<const TextureSampler> RHIResourceLayoutBase::GetStaticSamplers() const
+Span<const StaticTextureSampler> RHIResourceLayoutBase::GetStaticSamplers() const
 {
-    return samplers;
+    return staticSamplers;
 }
 
 Span<const byte> RHIResourceLayoutBase::GetLocalConstantsData() const

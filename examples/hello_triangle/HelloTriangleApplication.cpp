@@ -11,8 +11,6 @@ HelloTriangleApplication::HelloTriangleApplication()
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
 
-    SetupShaderErrorHandling();
-
     vex::TextureFormat presentTextureFormat = graphics->GetCurrentPresentTexture().desc.format;
 
     workingTexture =
@@ -96,11 +94,11 @@ void HelloTriangleApplication::Run()
                 {
                     VEX_GPU_SCOPED_EVENT_COL(ctx, "HLSL Triangle", 1, 0, 1)
                     ctx.Dispatch(
-                        {
-                            .path = ExamplesDir / "hello_triangle" / "HelloTriangleShader.cs.hlsl",
+                        shaderCompiler.GetShaderView({
+                            .filepath = (ExamplesDir / "hello_triangle" / "HelloTriangleShader.cs.hlsl").string(),
                             .entryPoint = "CSMain",
                             .type = vex::ShaderType::ComputeShader,
-                        },
+                        }),
                         vex::ConstantBinding(std::span(pass1Handles)),
                         { pass1Bindings },
                         {
@@ -110,15 +108,14 @@ void HelloTriangleApplication::Run()
                         });
                 }
 
-#if VEX_SLANG
                 {
                     VEX_GPU_SCOPED_EVENT_COL(ctx, "Slang Triangle", 1, 1, 0)
                     ctx.Dispatch(
-                        {
-                            .path = ExamplesDir / "hello_triangle" / "HelloTriangleShader.slang",
+                        shaderCompiler.GetShaderView({
+                            .filepath = (ExamplesDir / "hello_triangle" / "HelloTriangleShader.slang").string(),
                             .entryPoint = "CSMain",
                             .type = vex::ShaderType::ComputeShader,
-                        },
+                        }),
                         vex::ConstantBinding(std::span(pass1Handles)),
                         { pass1Bindings },
                         {
@@ -127,40 +124,35 @@ void HelloTriangleApplication::Run()
                             1u,
                         });
                 }
-#endif
             }
 
             // Draw the second pass, first with an HLSL shader, then with a Slang shader (if available).
             {
-                ctx.Dispatch(
-                    {
-                        .path = ExamplesDir / "hello_triangle" / "HelloTriangleShader2.cs.hlsl",
-                        .entryPoint = "CSMain",
-                        .type = vex::ShaderType::ComputeShader,
-                    },
-                    vex::ConstantBinding(std::span(pass2Handles)),
-                    { pass2Bindings },
-                    {
-                        (width + 7u) / 8u,
-                        (height + 7u) / 8u,
-                        1u,
-                    });
+                ctx.Dispatch(shaderCompiler.GetShaderView({
+                                 .filepath = (ExamplesDir / "hello_triangle" / "HelloTriangleShader2.cs.hlsl").string(),
+                                 .entryPoint = "CSMain",
+                                 .type = vex::ShaderType::ComputeShader,
+                             }),
+                             vex::ConstantBinding(std::span(pass2Handles)),
+                             { pass2Bindings },
+                             {
+                                 (width + 7u) / 8u,
+                                 (height + 7u) / 8u,
+                                 1u,
+                             });
 
-#if VEX_SLANG
-                ctx.Dispatch(
-                    {
-                        .path = ExamplesDir / "hello_triangle" / "HelloTriangleShader2.slang",
-                        .entryPoint = "CSMain",
-                        .type = vex::ShaderType::ComputeShader,
-                    },
-                    vex::ConstantBinding(std::span(pass2Handles)),
-                    { pass2Bindings },
-                    {
-                        (width + 7u) / 8u,
-                        (height + 7u) / 8u,
-                        1u,
-                    });
-#endif
+                ctx.Dispatch(shaderCompiler.GetShaderView({
+                                 .filepath = (ExamplesDir / "hello_triangle" / "HelloTriangleShader2.slang").string(),
+                                 .entryPoint = "CSMain",
+                                 .type = vex::ShaderType::ComputeShader,
+                             }),
+                             vex::ConstantBinding(std::span(pass2Handles)),
+                             { pass2Bindings },
+                             {
+                                 (width + 7u) / 8u,
+                                 (height + 7u) / 8u,
+                                 1u,
+                             });
             }
 
             graphics->Submit(ctx);
@@ -170,7 +162,7 @@ void HelloTriangleApplication::Run()
     }
 }
 
-void HelloTriangleApplication::OnResize(GLFWwindow* window, uint32_t newWidth, uint32_t newHeight)
+void HelloTriangleApplication::OnResize(GLFWwindow* window, int newWidth, int newHeight)
 {
     if (newWidth == 0 || newHeight == 0)
     {
@@ -185,8 +177,8 @@ void HelloTriangleApplication::OnResize(GLFWwindow* window, uint32_t newWidth, u
         graphics->CreateTexture({ .name = "Working Texture",
                                   .type = vex::TextureType::Texture2D,
                                   .format = graphics->GetCurrentPresentTexture().desc.format,
-                                  .width = newWidth,
-                                  .height = newHeight,
+                                  .width = static_cast<uint32_t>(newWidth),
+                                  .height = static_cast<uint32_t>(newHeight),
                                   .depthOrSliceCount = 1,
                                   .mips = 1,
                                   .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });

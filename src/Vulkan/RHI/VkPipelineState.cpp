@@ -3,7 +3,7 @@
 #include <algorithm>
 
 #include <Vex/PhysicalDevice.h>
-#include <Vex/ResourceCleanup.h>
+#include <Vex/RayTracing.h>
 #include <Vex/Utility/ByteUtils.h>
 
 #include <Vulkan/RHI/VkAccelerationStructure.h>
@@ -13,9 +13,6 @@
 #include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkFormats.h>
-// These are necessary for ResourceCleanup
-#include <Vulkan/RHI/VkBuffer.h>
-#include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkGraphicsPipeline.h>
 
 namespace vex::vk
@@ -28,17 +25,17 @@ VkGraphicsPipelineState::VkGraphicsPipelineState(const Key& key, ::vk::Device de
     GraphicsPiplineUtils::ValidateGraphicsPipeline(key);
 }
 
-void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
-                                      const Shader& pixelShader,
+void VkGraphicsPipelineState::Compile(const ShaderView& vertexShader,
+                                      const ShaderView& pixelShader,
                                       RHIResourceLayout& resourceLayout)
 {
-    Span<const byte> vsCode = vertexShader.GetBlob();
+    Span<const byte> vsCode = vertexShader.bytecode;
     ::vk::ShaderModuleCreateInfo vsShaderModuleCreateInfo{
         .codeSize = vsCode.size(),
         .pCode = reinterpret_cast<const u32*>(&vsCode[0]),
     };
 
-    Span<const byte> psCode = pixelShader.GetBlob();
+    Span<const byte> psCode = pixelShader.bytecode;
     ::vk::ShaderModuleCreateInfo psShaderModuleCreateInfo{
         .codeSize = psCode.size(),
         .pCode = reinterpret_cast<const u32*>(&psCode[0]),
@@ -47,12 +44,15 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
     auto vsShaderModule = VEX_VK_CHECK <<= device.createShaderModuleUnique(vsShaderModuleCreateInfo);
     auto psShaderModule = VEX_VK_CHECK <<= device.createShaderModuleUnique(psShaderModuleCreateInfo);
 
+    std::string vertexShaderEntryPoint{ vertexShader.entryPoint };
+    std::string pixelShaderEntryPoint{ pixelShader.entryPoint };
+
     std::array stages{ ::vk::PipelineShaderStageCreateInfo{ .stage = ::vk::ShaderStageFlagBits::eVertex,
                                                             .module = *vsShaderModule,
-                                                            .pName = key.vertexShader.entryPoint.c_str() },
+                                                            .pName = vertexShaderEntryPoint.c_str() },
                        ::vk::PipelineShaderStageCreateInfo{ .stage = ::vk::ShaderStageFlagBits::eFragment,
                                                             .module = *psShaderModule,
-                                                            .pName = key.pixelShader.entryPoint.c_str() } };
+                                                            .pName = pixelShaderEntryPoint.c_str() } };
 
     std::vector<::vk::VertexInputBindingDescription> bindings{ key.vertexInputLayout.bindings.size() };
     std::ranges::transform(key.vertexInputLayout.bindings,
@@ -192,7 +192,7 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
                                                          .pDepthStencilState = &depthStateCI,
                                                          .pColorBlendState = &blendStateCI,
                                                          .pDynamicState = &dynamicStateInfo,
-                                                         .layout = *resourceLayout.pipelineLayout,
+                                                         .layout = resourceLayout.GetPipelineLayout(),
                                                          .renderPass = nullptr,
                                                          .subpass = 0,
                                                          .basePipelineHandle = nullptr,
@@ -200,8 +200,6 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
 
     graphicsPipeline = VEX_VK_CHECK <<= device.createGraphicsPipelineUnique(psoCache, graphicsPipelineCI);
 
-    vertexShaderVersion = vertexShader.version;
-    pixelShaderVersion = pixelShader.version;
     rootSignatureVersion = resourceLayout.version;
 
     SetDebugName(device, *graphicsPipeline, std::format("GraphicsPSO: {}", key).c_str());
@@ -225,9 +223,9 @@ VkComputePipelineState::VkComputePipelineState(const Key& key, ::vk::Device devi
 {
 }
 
-void VkComputePipelineState::Compile(const Shader& computeShader, RHIResourceLayout& resourceLayout)
+void VkComputePipelineState::Compile(const ShaderView& computeShader, RHIResourceLayout& resourceLayout)
 {
-    Span<const byte> shaderCode = computeShader.GetBlob();
+    Span<const byte> shaderCode = computeShader.bytecode;
     ::vk::ShaderModuleCreateInfo shaderModulecreateInfo{
         .codeSize = shaderCode.size(),
         .pCode = reinterpret_cast<const u32*>(&shaderCode[0]),
@@ -235,19 +233,20 @@ void VkComputePipelineState::Compile(const Shader& computeShader, RHIResourceLay
 
     auto computeShaderModule = VEX_VK_CHECK <<= device.createShaderModuleUnique(shaderModulecreateInfo);
 
+    std::string computeShaderEntryPoint{ computeShader.entryPoint };
+
     ::vk::ComputePipelineCreateInfo computePipelineCreateInfo{
         .stage =
             ::vk::PipelineShaderStageCreateInfo{
                 .stage = ::vk::ShaderStageFlagBits::eCompute,
                 .module = *computeShaderModule,
-                .pName = key.computeShader.entryPoint.c_str(),
+                .pName = computeShaderEntryPoint.c_str(),
             },
-        .layout = *resourceLayout.pipelineLayout,
+        .layout = resourceLayout.GetPipelineLayout(),
     };
 
     computePipeline = VEX_VK_CHECK <<= device.createComputePipelineUnique(psoCache, computePipelineCreateInfo);
 
-    computeShaderVersion = computeShader.version;
     rootSignatureVersion = resourceLayout.version;
 
     SetDebugName(device, *computePipeline, std::format("ComputePSO: {}", key).c_str());
@@ -276,15 +275,15 @@ VkRayTracingPipelineState::VkRayTracingPipelineState(const Key& key,
 std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
     const RayTracingShaderCollection& shaderCollection, RHIResourceLayout& resourceLayout, RHIAllocator& allocator)
 {
-    auto CreateShaderModule = [&](const Shader& s)
+    auto CreateShaderModule = [&](const ShaderView& s)
     {
-        Span<const byte> shaderCode = s.GetBlob();
-        ::vk::ShaderModuleCreateInfo shaderModulecreateInfo{
+        Span<const byte> shaderCode = s.bytecode;
+        ::vk::ShaderModuleCreateInfo shaderModuleCreateInfo{
             .codeSize = shaderCode.size(),
             .pCode = reinterpret_cast<const u32*>(&shaderCode[0]),
         };
 
-        return VEX_VK_CHECK <<= ctx->device.createShaderModuleUnique(shaderModulecreateInfo);
+        return VEX_VK_CHECK <<= ctx->device.createShaderModuleUnique(shaderModuleCreateInfo);
     };
 
     std::vector<::vk::UniqueShaderModule> modules;
@@ -292,14 +291,14 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
     std::vector<::vk::RayTracingShaderGroupCreateInfoKHR> groups;
 
     using VkShaderGroupCreateInfo = ::vk::RayTracingShaderGroupCreateInfoKHR;
-    auto RegisterShaderStage = [&](const std::vector<NonNullPtr<Shader>>& shaders,
+    auto RegisterShaderStage = [&](const std::vector<ShaderView>& shaders,
                                    ::vk::ShaderStageFlagBits type,
                                    ::vk::RayTracingShaderGroupTypeKHR groupType,
                                    uint32_t VkShaderGroupCreateInfo::* p)
     {
-        for (u32 i = 0; i < shaders.size(); ++i)
+        for (const auto& shader : shaders)
         {
-            modules.push_back(CreateShaderModule(*shaders[i]));
+            modules.push_back(CreateShaderModule(shader));
 
             ::vk::RayTracingShaderGroupCreateInfoKHR group{
                 .type = groupType,
@@ -307,7 +306,7 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
             group.*p = stages.size();
             groups.push_back(group);
 
-            stages.push_back({ .stage = type, .module = *modules.back(), .pName = shaders[i]->key.entryPoint.c_str() });
+            stages.push_back({ .stage = type, .module = *modules.back(), .pName = shader.entryPoint.data() });
         }
     };
 
@@ -324,7 +323,7 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
                         ::vk::RayTracingShaderGroupTypeKHR::eGeneral,
                         &::vk::RayTracingShaderGroupCreateInfoKHR::generalShader);
 
-    for (const auto& group : shaderCollection.hitGroupShaders)
+    for (const auto& group : shaderCollection.hitGroups)
     {
         auto groupType = ::vk::RayTracingShaderGroupTypeKHR::eTrianglesHitGroup;
 
@@ -332,18 +331,18 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
             intersectionIndex = ::vk::ShaderUnusedKHR;
 
         closesHitIndex = modules.size();
-        modules.push_back(CreateShaderModule(*group.rayClosestHitShader));
+        modules.push_back(CreateShaderModule(group.rayClosestHitShader));
         stages.push_back({ .stage = ::vk::ShaderStageFlagBits::eClosestHitKHR,
                            .module = *modules.back(),
-                           .pName = group.rayClosestHitShader->key.entryPoint.c_str() });
+                           .pName = group.rayClosestHitShader.entryPoint.data() });
 
         if (group.rayAnyHitShader)
         {
             anyHitIndex = modules.size();
-            modules.push_back(CreateShaderModule(**group.rayAnyHitShader));
+            modules.push_back(CreateShaderModule(*group.rayAnyHitShader));
             stages.push_back({ .stage = ::vk::ShaderStageFlagBits::eAnyHitKHR,
                                .module = *modules.back(),
-                               .pName = (*group.rayAnyHitShader)->key.entryPoint.c_str() });
+                               .pName = group.rayAnyHitShader->entryPoint.data() });
         }
 
         if (group.rayIntersectionShader)
@@ -351,10 +350,10 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
             // the presence of an intersection shader requires procedural hit group for custom intersection logic
             groupType = ::vk::RayTracingShaderGroupTypeKHR::eProceduralHitGroup;
             intersectionIndex = modules.size();
-            modules.push_back(CreateShaderModule(**group.rayIntersectionShader));
+            modules.push_back(CreateShaderModule(*group.rayIntersectionShader));
             stages.push_back({ .stage = ::vk::ShaderStageFlagBits::eIntersectionKHR,
                                .module = *modules.back(),
-                               .pName = (*group.rayIntersectionShader)->key.entryPoint.c_str() });
+                               .pName = group.rayIntersectionShader->entryPoint.data() });
         }
 
         groups.push_back(::vk::RayTracingShaderGroupCreateInfoKHR{ .type = groupType,
@@ -369,16 +368,16 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
         .groupCount = static_cast<u32>(groups.size()),
         .pGroups = groups.data(),
         .maxPipelineRayRecursionDepth = key.maxRecursionDepth,
-        .layout = *resourceLayout.pipelineLayout,
+        .layout = resourceLayout.GetPipelineLayout(),
     };
     rtPipeline = VEX_VK_CHECK <<= ctx->device.createRayTracingPipelineKHRUnique({}, psoCache, rtPSOCI);
 
-    auto ASProperties =
+    auto asProperties =
         GPhysicalDevice->physicalDevice
             .getProperties2<::vk::PhysicalDeviceProperties2, ::vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>()
             .get<::vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>();
 
-    u32 handleSize = ASProperties.shaderGroupHandleSize;
+    u32 handleSize = asProperties.shaderGroupHandleSize;
 
     std::vector<std::byte> groupHandles;
     u32 totalHandlesByteSize = handleSize * groups.size();

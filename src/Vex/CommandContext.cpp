@@ -5,8 +5,8 @@
 #include <functional>
 
 #include <Vex/AccelerationStructure.h>
-#include <Vex/BuiltInShaders/MipGeneration.h>
 #include <Vex/DrawHelpers.h>
+#include <Vex/Generated/MipGeneration.h>
 #include <Vex/Graphics.h>
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
@@ -17,10 +17,7 @@
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
-#include <Vex/RHIImpl/RHISwapChain.h>
-#include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/ResourceBindingUtils.h>
-#include <Vex/Shaders/RayTracingShaders.h>
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Validation.h>
 #include <Vex/Utility/Visitor.h>
@@ -35,8 +32,8 @@ namespace vex
 namespace CommandContext_Internal
 {
 
-static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureRegions(const TextureDesc& desc,
-                                                                                     Span<const TextureRegion> regions)
+static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureRegions(
+    const TextureDesc& desc, const Span<const TextureRegion> regions)
 {
     // Otherwise we have to translate the TextureRegions to their equivalent BufferTextureCopyDescs.
     std::vector<BufferTextureCopyDesc> copyDescs;
@@ -91,32 +88,26 @@ static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureReg
     return copyDescs;
 }
 
-static GraphicsPipelineStateKey GetGraphicsPSOKeyFromDrawDesc(const DrawDesc& drawDesc,
-                                                              const RHIDrawResources& rhiDrawRes)
+static std::pair<DrawDesc, RenderTargetState> CreateRenderTargetStateFromBindings(const DrawDesc& drawDesc,
+                                                                                  const RHIDrawResources& rhiDrawRes)
 {
-    GraphicsPipelineStateKey key{ .vertexShader = drawDesc.vertexShader,
-                                  .pixelShader = drawDesc.pixelShader,
-                                  .vertexInputLayout = drawDesc.vertexInputLayout,
-                                  .inputAssembly = drawDesc.inputAssembly,
-                                  .rasterizerState = drawDesc.rasterizerState,
-                                  .depthStencilState = drawDesc.depthStencilState,
-                                  .colorBlendState = drawDesc.colorBlendState };
+    RenderTargetState rtState;
 
-    for (const RHITextureBinding& rhiBinding : rhiDrawRes.renderTargets)
+    for (const auto& [binding, _] : rhiDrawRes.renderTargets)
     {
-        key.renderTargetState.colorFormats.emplace_back(rhiBinding.binding.texture.desc.format,
-                                                        rhiBinding.binding.isSRGB);
+        rtState.colorFormats.emplace_back(binding.texture.desc.format, binding.isSRGB);
     }
 
     if (rhiDrawRes.depthStencil)
     {
-        key.renderTargetState.depthStencilFormat = rhiDrawRes.depthStencil->binding.texture.desc.format;
+        rtState.depthStencilFormat = rhiDrawRes.depthStencil->binding.texture.desc.format;
     }
 
-    // Ensure each render target has atleast a default color attachment (no blending, write all).
-    key.colorBlendState.attachments.resize(rhiDrawRes.renderTargets.size());
+    // Ensure each render target has at least a default color attachment (no blending, write all).
+    DrawDesc newDrawDesc = drawDesc;
+    newDrawDesc.colorBlendState.attachments.resize(rhiDrawRes.renderTargets.size());
 
-    return key;
+    return { newDrawDesc, rtState };
 }
 
 } // namespace CommandContext_Internal
@@ -131,15 +122,15 @@ CommandContext::CommandContext(NonNullPtr<Graphics> graphics,
     cmdList->SetTimestampQueryPool(queryPool);
     if (cmdList->GetQueue() != QueueType::Copy)
     {
-        cmdList->SetDescriptorPool(*graphics->descriptorPool, graphics->psCache->GetResourceLayout());
+        cmdList->SetDescriptorPool(*graphics->descriptorPool, graphics->psCache->resourceLayout.value());
     }
 }
 
 CommandContext::~CommandContext()
 {
+#ifndef VEX_TESTS
     // This must be disabled for tests, as it interferes with gtest's crash catching logic (this intercepts the actual
     // error message). This is due to the fact that objects inside the test are destroyed upon test cleanup.
-#ifndef VEX_TESTS
     VEX_CHECK(!cmdList->IsOpen(),
               "A command context was destroyed while still being open for commands, remember to submit your command "
               "context to the GPU using vex::Graphics::Submit()!");
@@ -262,42 +253,38 @@ void CommandContext::DrawIndexedIndirect()
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-void CommandContext::Dispatch(const ShaderKey& shader,
-                              ConstantBinding constants,
-                              Span<const ResourceBinding> trackedResources,
-                              std::array<u32, 3> groupCount)
+void CommandContext::Dispatch(const ShaderView& computeShader,
+                              const ConstantBinding constants,
+                              const Span<const ResourceBinding> trackedResources,
+                              const std::array<u32, 3> groupCount)
 {
     using namespace CommandContext_Internal;
 
     InferResourceBarriers(RHIBarrierSync::ComputeShader, trackedResources);
     FlushBarriers();
 
-    ComputePipelineStateKey psoKey = { .computeShader = shader };
-    if (!cachedComputePSOKey || psoKey != cachedComputePSOKey)
-    {
-        std::unique_ptr<RHIComputePipelineState> oldPSO;
-
-        // Register shader and get Pipeline if exists (if not create it).
-        const RHIComputePipelineState* pipelineState = graphics->psCache->GetComputePipelineState(psoKey, oldPSO);
-        if (oldPSO)
-        {
-            temporaryResources.emplace_back(std::move(oldPSO));
-        }
-
-        // Nothing more to do if the PSO is invalid.
-        if (!pipelineState)
-        {
-            VEX_LOG(Error, "PSO cache returned an invalid pipeline state, unable to continue dispatch...");
-            return;
-        }
-        cmdList->SetPipelineState(*pipelineState);
-        cachedComputePSOKey = psoKey;
-    }
-
-    // Sets the resource layout to use for the dispatch.
-    RHIResourceLayout& resourceLayout = graphics->psCache->GetResourceLayout();
+    // Setup the layout for our pass (must be done before PSO handling).
+    RHIResourceLayout& resourceLayout = *graphics->psCache->resourceLayout;
     resourceLayout.SetLayoutResources(constants);
     cmdList->SetLayout(resourceLayout);
+
+    std::unique_ptr<RHIComputePipelineState> oldPSO;
+    // Register shader and get Pipeline if exists (if not create it).
+    RHIComputePipelineState* pipelineState = graphics->psCache->GetComputePipelineState(computeShader, oldPSO);
+    if (oldPSO)
+    {
+        temporaryResources.emplace_back(std::move(oldPSO));
+    }
+    if (!pipelineState)
+    {
+        return;
+    }
+
+    if (!cachedComputePSO || pipelineState != cachedComputePSO)
+    {
+        cmdList->SetPipelineState(*pipelineState);
+        cachedComputePSO = pipelineState;
+    }
 
     // Validate dispatch (vs platform/api constraints)
     // graphics->ValidateDispatch(groupCount);
@@ -311,23 +298,30 @@ void CommandContext::DispatchIndirect()
     VEX_NOT_YET_IMPLEMENTED();
 }
 
-void CommandContext::TraceRays(const RayTracingCollection& rayTracingCollection,
+void CommandContext::TraceRays(const RayTracingShaderCollection& rayTracingShaderCollection,
                                ConstantBinding constants,
                                Span<const ResourceBinding> trackedResources,
                                const TraceRaysDesc& rayTracingArgs)
 {
     VEX_CHECK(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing),
               "Your GPU does not support ray tracing, unable to dispatch rays!");
-    RayTracingCollection::ValidateShaderTypes(rayTracingCollection);
 
     InferResourceBarriers(RHIBarrierSync::RayTracing, trackedResources);
     FlushBarriers();
 
+    // Setup the layout for our pass (must be done before PSO handling).
+    RHIResourceLayout& resourceLayout = graphics->psCache->resourceLayout.value();
+    resourceLayout.SetLayoutResources(constants);
+    cmdList->SetLayout(resourceLayout);
+
     std::unique_ptr<RHIRayTracingPipelineState> oldPSO;
     std::vector<MaybeUninitialized<RHIBuffer>> oldSBTs;
 
-    const RHIRayTracingPipelineState* pipelineState =
-        graphics->psCache->GetRayTracingPipelineState(rayTracingCollection, *graphics->allocator, oldPSO, oldSBTs);
+    RHIRayTracingPipelineState* pipelineState =
+        graphics->psCache->GetRayTracingPipelineState(rayTracingShaderCollection,
+                                                      *graphics->allocator,
+                                                      oldPSO,
+                                                      oldSBTs);
     if (oldPSO)
     {
         temporaryResources.emplace_back(std::move(oldPSO));
@@ -341,16 +335,14 @@ void CommandContext::TraceRays(const RayTracingCollection& rayTracingCollection,
     }
     if (!pipelineState)
     {
-        VEX_LOG(Error, "PSO cache returned an invalid pipeline state, unable to continue dispatch...");
         return;
     }
-    cmdList->SetPipelineState(*pipelineState);
 
-    // Sets the resource layout to use for the ray trace.
-    RHIResourceLayout& resourceLayout = graphics->psCache->GetResourceLayout();
-    resourceLayout.SetLayoutResources(constants);
-
-    cmdList->SetLayout(resourceLayout);
+    if (!cachedRayTracingPSO || pipelineState != cachedRayTracingPSO)
+    {
+        cmdList->SetPipelineState(*pipelineState);
+        cachedRayTracingPSO = pipelineState;
+    }
 
     // Validate ray trace (vs platform/api constraints)
     // graphics->ValidateTraceRays(widthHeightDepth);
@@ -403,29 +395,30 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         return;
     }
 
-    auto GetTextureDimensionDefine = [desc = &texture.desc](TextureType type) -> std::string
+    auto GetTextureDimension = [desc = &texture.desc](const TextureType type) -> TextureViewType
     {
         switch (type)
         {
         case TextureType::Texture2D:
-            return (desc->GetSliceCount() > 1) ? "1" : "0"; // 2DArray or 2D
+            return desc->GetSliceCount() > 1 ? TextureViewType::Texture2DArray
+                                             : TextureViewType::Texture2D; // 2DArray or 2D
         case TextureType::TextureCube:
-            return (desc->GetSliceCount() > 6) ? "3" : "2"; // CubeArray or Cube
+            return desc->GetSliceCount() > 6 ? TextureViewType::TextureCubeArray
+                                             : TextureViewType::TextureCube; // CubeArray or Cube
         case TextureType::Texture3D:
-            return "4";
+            return TextureViewType::Texture3D;
         default:
-            return "0";
+            std::unreachable();
         }
     };
 
     // We have to perform manual mip generation if not supported by the graphics API.
-    ShaderKey shaderKey = MipGenerationShaderKey;
-    shaderKey.defines = { ShaderDefine{ "TEXTURE_TYPE", std::string(FormatUtil::GetHLSLType(texture.desc.format)) },
-                          ShaderDefine{ "TEXTURE_DIMENSION", GetTextureDimensionDefine(texture.desc.type) },
-                          ShaderDefine{ "LINEAR_SAMPLER_SLOT", std::format("s{}", graphics->builtInLinearSamplerSlot) },
-                          ShaderDefine{ "CONVERT_TO_SRGB", textureBinding.isSRGB ? "1" : "0" },
-                          ShaderDefine{ "NON_POWER_OF_TWO" } };
-    const u32 nonPowerOfTwoDefineIndex = shaderKey.defines.size() - 1;
+    const ShaderView shaderKey =
+#if VEX_DX12
+        dxil::GetMipGenerationShader(GetTextureDimension(texture.desc.type));
+#elif VEX_VULKAN
+        spirv::GetMipGenerationShader(GetTextureDimension(texture.desc.type));
+#endif
 
     static auto ComputeNPOTFlag = [](u32 srcWidth, u32 srcHeight, u32 srcDepth, bool is3D) -> u32
     {
@@ -436,24 +429,30 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
             bool yRatio = (srcHeight / std::max(1u, srcHeight >> 1)) > 2;
             return (xRatio ? 1 : 0) | (yRatio ? 2 : 0);
         }
-        else
-        {
-            // 3D logic
-            bool xRatio = (srcWidth / std::max(1u, srcWidth >> 1)) > 2;
-            bool yRatio = (srcHeight / std::max(1u, srcHeight >> 1)) > 2;
-            bool zRatio = (srcDepth / std::max(1u, srcDepth >> 1)) > 2;
-            return (xRatio ? 1 : 0) | (yRatio ? 2 : 0) | (zRatio ? 4 : 0);
-        }
+
+        // 3D logic
+        bool xRatio = (srcWidth / std::max(1u, srcWidth >> 1)) > 2;
+        bool yRatio = (srcHeight / std::max(1u, srcHeight >> 1)) > 2;
+        bool zRatio = (srcDepth / std::max(1u, srcDepth >> 1)) > 2;
+        return (xRatio ? 1 : 0) | (yRatio ? 2 : 0) | (zRatio ? 4 : 0);
     };
+
+    const BindlessHandle linearSamplerHandle =
+        graphics->GetBindlessSampler(BindlessTextureSampler::CreateSampler(FilterMode::Linear, AddressMode::Clamp));
 
     struct Uniforms
     {
+        BindlessHandle linearSamplerHandle;
         std::array<float, 3> texelSize;
         BindlessHandle sourceMipHandle;
         u32 sourceMipLevel;
         u32 numMips;
         BindlessHandle destinationMip0;
         BindlessHandle destinationMip1;
+        u32 npotFlag;
+        u32 textureDimension;
+        u32 convertToSRGB;
+        u32 numChannels;
     };
 
     EnqueueTextureBarrier(texture,
@@ -479,9 +478,6 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         {
             isLastIteration = true;
         }
-
-        shaderKey.defines[nonPowerOfTwoDefineIndex].value =
-            std::to_string(ComputeNPOTFlag(width, height, depth, texture.desc.type == TextureType::Texture3D));
 
         std::vector<ResourceBinding> bindings{
             TextureBinding{
@@ -510,6 +506,7 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         auto handles = graphics->GetBindlessHandles(bindings);
 
         Uniforms uniforms{
+            linearSamplerHandle,
             {
                 2.0f / width,
                 2.0f / height,
@@ -520,6 +517,9 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
             1u + !isLastIteration,
             handles[1],
             !isLastIteration ? handles[2] : BindlessHandle{},
+            ComputeNPOTFlag(width, height, depth, texture.desc.type == TextureType::Texture3D),
+            textureBinding.isSRGB,
+            FormatUtil::GetNumChannels(texture.desc.format),
         };
 
         // For 2D: z = 1
@@ -528,7 +528,7 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         // For CubeArray: z = 6 * faces * numCubes
         // For 3D: z = depth
         u32 dispatchZ = texture.desc.type == TextureType::Texture3D ? depth : texture.desc.GetSliceCount();
-        std::array<u32, 3> dispatchGroupCount{ (width + 7u) / 8u, (height + 7u) / 8u, dispatchZ };
+        std::array dispatchGroupCount{ (width + 7u) / 8u, (height + 7u) / 8u, dispatchZ };
         Dispatch(shaderKey, ConstantBinding(uniforms), bindings, dispatchGroupCount);
 
         width = std::max(1u, width >> (1 + !isLastIteration));
@@ -773,6 +773,27 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, Span<const byte> da
              .dstOffset = region.offset,
              .byteSize = region.GetByteSize(buffer.desc),
          });
+}
+
+BufferReadbackContext CommandContext::EnqueueDataReadback(const Buffer& srcBuffer, const BufferRegion& region)
+{
+    BufferUtil::ValidateBufferRegion(srcBuffer.desc, region);
+
+    // Create packed readback buffer.
+    const BufferDesc readbackBufferDesc =
+        BufferDesc::CreateReadbackBufferDesc(srcBuffer.desc.name + "_readback", region.GetByteSize(srcBuffer.desc));
+    Buffer stagingBuffer = graphics->CreateBuffer(readbackBufferDesc, ResourceLifetime::Static);
+
+    if (srcBuffer.desc.byteSize == GBufferWholeSize)
+    {
+        Copy(srcBuffer, stagingBuffer);
+    }
+    else
+    {
+        Copy(srcBuffer, stagingBuffer, BufferCopyDesc{ region.offset, 0, region.GetByteSize(srcBuffer.desc) });
+    }
+
+    return { stagingBuffer, *graphics };
 }
 
 void CommandContext::EnqueueDataUpload(const Texture& texture,
@@ -1106,27 +1127,6 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
                        rhiTLASDesc);
 }
 
-BufferReadbackContext CommandContext::EnqueueDataReadback(const Buffer& srcBuffer, const BufferRegion& region)
-{
-    BufferUtil::ValidateBufferRegion(srcBuffer.desc, region);
-
-    // Create packed readback buffer.
-    const BufferDesc readbackBufferDesc =
-        BufferDesc::CreateReadbackBufferDesc(srcBuffer.desc.name + "_readback", region.GetByteSize(srcBuffer.desc));
-    Buffer stagingBuffer = graphics->CreateBuffer(readbackBufferDesc, ResourceLifetime::Static);
-
-    if (srcBuffer.desc.byteSize == GBufferWholeSize)
-    {
-        Copy(srcBuffer, stagingBuffer);
-    }
-    else
-    {
-        Copy(srcBuffer, stagingBuffer, BufferCopyDesc{ region.offset, 0, region.GetByteSize(srcBuffer.desc) });
-    }
-
-    return { stagingBuffer, *graphics };
-}
-
 void CommandContext::ExecuteInDrawContext(Span<const TextureBinding> renderTargets,
                                           std::optional<const TextureBinding> depthStencil,
                                           Span<const ResourceBinding> trackedResources,
@@ -1164,20 +1164,18 @@ void CommandContext::ExecuteInDrawContext(Span<const TextureBinding> renderTarge
 
 QueryHandle CommandContext::BeginTimestampQuery()
 {
-    cmdList->EmitBarriers({},
-                          {},
-                          { RHIGlobalBarrier{
-                              RHIBarrierSync::Copy,
-                              RHIBarrierSync::Copy,
-                              RHIBarrierAccess::CopyDest,
-                              RHIBarrierAccess::CopySource,
-                          } });
     return cmdList->BeginTimestampQuery();
 }
 
 void CommandContext::EndTimestampQuery(QueryHandle handle)
 {
     cmdList->EndTimestampQuery(handle);
+}
+
+ScopedGPUEvent CommandContext::CreateScopedGPUEvent(const char* markerLabel, std::array<float, 3> color)
+{
+    VEX_CHECK(cmdList->IsOpen(), "Cannot create a scoped GPU Event with a closed command context.");
+    return { cmdList->CreateScopedMarker(markerLabel, color) };
 }
 
 void CommandContext::Barrier(const Buffer& buffer, RHIBarrierAccess access)
@@ -1316,7 +1314,7 @@ void CommandContext::InferResourceBarriers(RHIBarrierSync syncStage, Span<const 
                              break;
                          default:
                              VEX_LOG(Fatal, "Invalid usage for buffer binding {}...", bufferBinding.buffer.desc.name);
-                             break;
+                             std::unreachable();
                          }
 
                          // In Vex buffers just use global barriers.
@@ -1344,7 +1342,7 @@ void CommandContext::InferResourceBarriers(RHIBarrierSync syncStage, Span<const 
                              break;
                          default:
                              VEX_LOG(Fatal, "Invalid usage for texture binding {}...", texBinding.texture.desc.name);
-                             break;
+                             std::unreachable();
                          }
 
                          EnqueueTextureBarrier(texBinding.texture, texBinding.subresource, syncStage, access, layout);
@@ -1361,12 +1359,6 @@ void CommandContext::InferResourceBarriers(RHIBarrierSync syncStage, Span<const 
                      } },
             rb.binding);
     }
-}
-
-ScopedGPUEvent CommandContext::CreateScopedGPUEvent(const char* markerLabel, std::array<float, 3> color)
-{
-    VEX_CHECK(cmdList->IsOpen(), "Cannot create a scoped GPU Event with a closed command context.");
-    return { cmdList->CreateScopedMarker(markerLabel, color) };
 }
 
 Buffer CommandContext::CreateTemporaryStagingBuffer(const std::string& name,
@@ -1390,20 +1382,18 @@ Buffer CommandContext::CreateTemporaryBuffer(const BufferDesc& desc)
 
 std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& drawDesc,
                                                                 const DrawResourceBinding& drawBindings,
-                                                                ConstantBinding constants,
+                                                                const ConstantBinding constants,
                                                                 Span<const ResourceBinding> trackedResources)
 {
     InferResourceBarriers(RHIBarrierSync::AllGraphics, trackedResources);
 
     // Transition RTs/DepthStencil
-    RHIDrawResources drawResources = ResourceBindingUtils::CollectRHIDrawResources(*graphics,
-                                                                                   drawBindings.renderTargets,
-                                                                                   drawBindings.depthStencil,
-                                                                                   drawDesc.depthStencilState);
-    for (const auto& rt : drawResources.renderTargets)
+    RHIDrawResources drawResources =
+        ResourceBindingUtils::CollectRHIDrawResources(*graphics, drawBindings.renderTargets, drawBindings.depthStencil);
+    for (const auto& [binding, _] : drawResources.renderTargets)
     {
-        EnqueueTextureBarrier(rt.binding.texture,
-                              rt.binding.subresource,
+        EnqueueTextureBarrier(binding.texture,
+                              binding.subresource,
                               RHIBarrierSync::RenderTarget,
                               RHIBarrierAccess::RenderTarget,
                               RHITextureLayout::RenderTarget);
@@ -1421,9 +1411,9 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
             depthAccess = drawDesc.depthStencilState.depthTestEnabled ? RHIBarrierAccess::DepthStencilReadWrite
                                                                       : RHIBarrierAccess::DepthStencilWrite;
         }
-        RHITextureLayout depthLayout = drawDesc.depthStencilState.depthWriteEnabled
-                                           ? RHITextureLayout::DepthStencilWrite
-                                           : RHITextureLayout::DepthStencilRead;
+        const RHITextureLayout depthLayout = drawDesc.depthStencilState.depthWriteEnabled
+                                                 ? RHITextureLayout::DepthStencilWrite
+                                                 : RHITextureLayout::DepthStencilRead;
 
         EnqueueTextureBarrier(drawResources.depthStencil->binding.texture,
                               drawResources.depthStencil->binding.subresource,
@@ -1432,33 +1422,31 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
                               depthLayout);
     }
 
-    auto graphicsPSOKey = CommandContext_Internal::GetGraphicsPSOKeyFromDrawDesc(drawDesc, drawResources);
+    auto [newDrawDesc, renderTargetState] =
+        CommandContext_Internal::CreateRenderTargetStateFromBindings(drawDesc, drawResources);
 
-    if (!cachedGraphicsPSOKey || graphicsPSOKey != *cachedGraphicsPSOKey)
+    // Setup the layout for our pass (must be done before PSO handling).
+    RHIResourceLayout& resourceLayout = graphics->psCache->resourceLayout.value();
+    resourceLayout.SetLayoutResources(constants);
+    cmdList->SetLayout(resourceLayout);
+
+    std::unique_ptr<RHIGraphicsPipelineState> oldPSO;
+    RHIGraphicsPipelineState* pipelineState =
+        graphics->psCache->GetGraphicsPipelineState(newDrawDesc, renderTargetState, oldPSO);
+    if (oldPSO)
     {
-        std::unique_ptr<RHIGraphicsPipelineState> oldPSO;
-        const RHIGraphicsPipelineState* pipelineState =
-            graphics->psCache->GetGraphicsPipelineState(graphicsPSOKey, oldPSO);
-        if (oldPSO)
-        {
-            temporaryResources.emplace_back(std::move(oldPSO));
-        }
-
-        // No valid PSO means we cannot proceed.
-        if (!pipelineState)
-        {
-            return std::nullopt;
-        }
-
-        cmdList->SetPipelineState(*pipelineState);
-        cachedGraphicsPSOKey = graphicsPSOKey;
+        temporaryResources.emplace_back(std::move(oldPSO));
+    }
+    if (!pipelineState)
+    {
+        return std::nullopt;
     }
 
-    // Setup the layout for our pass.
-    RHIResourceLayout& resourceLayout = graphics->psCache->GetResourceLayout();
-    resourceLayout.SetLayoutResources(constants);
-
-    cmdList->SetLayout(resourceLayout);
+    if (!cachedGraphicsPSO || cachedGraphicsPSO != pipelineState)
+    {
+        cmdList->SetPipelineState(*pipelineState);
+        cachedGraphicsPSO = pipelineState;
+    }
 
     if (!cachedInputAssembly || drawDesc.inputAssembly != cachedInputAssembly)
     {
@@ -1516,7 +1504,7 @@ void CommandContext::SetVertexBuffers(u32 vertexBuffersFirstSlot, Span<const Buf
     cmdList->SetVertexBuffers(vertexBuffersFirstSlot, rhiBindings);
 }
 
-void CommandContext::SetIndexBuffer(BufferBinding indexBuffer)
+void CommandContext::SetIndexBuffer(const BufferBinding& indexBuffer)
 {
     RHIBuffer& buffer = graphics->GetRHIBuffer(indexBuffer.buffer.handle);
     RHIBufferBinding binding{ indexBuffer, NonNullPtr(buffer) };

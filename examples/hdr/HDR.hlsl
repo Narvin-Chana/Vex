@@ -2,6 +2,7 @@
 
 struct PassConstants
 {
+    uint linearSamplerHandle;
     uint hdrTextureHandle;
 };
 VEX_UNIFORMS(PassConstants, PassData);
@@ -12,7 +13,7 @@ void ComputeTriangleVertex(in uint vertexID, out float4 position, out float2 uv)
     position = float4(uv.x * 2 - 1, -uv.y * 2 + 1, 0, 1);
 }
 
-SamplerState LinearSampler;
+static SamplerState LinearSampler = GetBindlessSampler(PassData.linearSamplerHandle);
 
 void FullscreenTriangleVS(in uint vertexID : SV_VERTEXID, out float4 outPosition : SV_POSITION, out float2 outUV : TEXCOORD)
 {
@@ -76,7 +77,7 @@ float4 TonemapPS(in float4 position : SV_POSITION, in float2 uv : TEXCOORD) : SV
     }
     
 #if COLOR_SPACE == COLOR_SPACE_NONE
-    // COLOR_SPACE_NONE means we let the output incorrectly be sent to the swapchan as-is.
+    // COLOR_SPACE_NONE means we let the output incorrectly be sent to the swapchain as-is.
 #elif COLOR_SPACE == COLOR_SPACE_sRGB
     // Simple reinhard tonemap.
     color = color / (1.0f + color);
