@@ -284,9 +284,9 @@ SyncToken VkSwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandLis
 
 void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
 {
-    width = inWidth;
-    height = inHeight;
-    ::vk::Extent2D extent = GetBestSwapExtent(supportDetails, width, height);
+    ::vk::Extent2D extent = GetBestSwapExtent(supportDetails, inWidth, inHeight);
+    width = extent.width;
+    height = extent.height;
 
     const bool needsConcurrent = ctx->queueFamilyIndices.size() > 1;
     ::vk::SwapchainCreateInfoKHR swapChainCreateInfo{
