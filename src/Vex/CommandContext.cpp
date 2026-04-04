@@ -1060,12 +1060,11 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
     RHIAccelerationStructure& accelStruct = graphics->GetRHIAccelerationStructure(accelerationStructure.handle);
     std::vector<std::byte> instanceData = accelStruct.GetInstanceBufferData(rhiTLASDesc);
 
-    BufferDesc instancesBufferDesc{
+    Buffer instanceBuffer = CreateTemporaryBuffer({
         .name = accelStruct.GetDesc().name + "_build_tlas_instances",
         .byteSize = instanceData.size(),
-        .usage = BufferUsage::AccelerationStructure,
-    };
-    Buffer instanceBuffer = CreateTemporaryBuffer(instancesBufferDesc);
+        .usage = BufferUsage::ShaderRead,
+    });
     RHIBuffer& rhiInstanceBuffer = graphics->GetRHIBuffer(instanceBuffer.handle);
     EnqueueDataUpload(instanceBuffer, instanceData);
 
@@ -1074,14 +1073,16 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
     rhiTLASDesc.instancesBinding = RHIBufferBinding{ binding, rhiInstanceBuffer };
 
     const RHIAccelerationStructureBuildInfo& buildInfo = accelStruct.SetupTLASBuild(*graphics->allocator, rhiTLASDesc);
-    BufferDesc scratchBufferDesc{
+    Buffer scratchBuffer = CreateTemporaryBuffer({
         .name = accelStruct.GetDesc().name + "_build_tlas_scratch",
         .byteSize = buildInfo.scratchByteSize,
-        .usage = BufferUsage::AccelerationStructure | BufferUsage::Scratch,
-    };
-    Buffer scratchBuffer = CreateTemporaryBuffer(scratchBufferDesc);
-    Barrier(scratchBuffer, RHIBarrierAccess::AccelerationStructureWrite);
-    Barrier(instanceBuffer, RHIBarrierAccess::ShaderRead);
+        .usage = BufferUsage::Scratch,
+    });
+
+    EnqueueGlobalBarrier({ .srcSync = RHIBarrierSync::Copy,
+                           .dstSync = RHIBarrierSync::BuildAccelerationStructure,
+                           .srcAccess = RHIBarrierAccess::CopyDest,
+                           .dstAccess = RHIBarrierAccess::MemoryRead });
 
     FlushBarriers();
     cmdList->BuildTLAS(accelStruct,
