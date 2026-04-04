@@ -16,25 +16,27 @@ namespace vex
 // Determines how the buffer can be used.
 BEGIN_VEX_ENUM_FLAGS(BufferUsage, u16)
     // Buffers that will never be bound anywhere. Mostly used for staging buffers.
-    None                    = 0,
+    None                        = 0,
     // Buffers that can be read from shaders via Structured or ByteAddress reads.
-    ShaderRead              = 1 << 0,
+    ShaderRead                  = 1 << 0,
     // Buffers with specific alignment constraints and uniformly read across waves.
-    ShaderReadUniform       = 1 << 1,
+    ShaderReadUniform           = 1 << 1,
     // Buffers with read and write operations in shaders via RWStructured or RWByteAddress read/writes.
-    ShaderReadWrite         = 1 << 2,
+    ShaderReadWrite             = 1 << 2,
     // Buffers used for vertex buffers.
-    VertexBuffer            = 1 << 3,
+    VertexBuffer                = 1 << 3,
     // Buffers used for index buffers.
-    IndexBuffer             = 1 << 4,
+    IndexBuffer                 = 1 << 4,
     // Buffers used as parameters for an indirect dispatch.
-    IndirectArgs            = 1 << 5,
+    IndirectArgs                = 1 << 5,
     // Buffers used as a HWRT Acceleration Structure, these also require the ShaderReadWrite usage.
-    AccelerationStructure   = (1 << 6) | ShaderReadWrite,
+    AccelerationStructure       = (1 << 6) | ShaderReadWrite,
     // Buffers used as a scratch buffer for building HWRT Acceleration Structures, these also require the ShaderReadWrite usage.
-    Scratch                 = (1 << 7) | ShaderReadWrite,
+    Scratch                     = (1 << 7) | ShaderReadWrite,
+    // Buffers used as inputs to acceleration structure builds (i.e. vertex, index buffers)
+    BuildAccelerationStructure  = 1 << 8,
     // Buffers used as a ShaderTable for HWRT shaders.
-    ShaderTable             = 1 << 8,
+    ShaderTable                 = 1 << 9,
 END_VEX_ENUM_FLAGS();
 
 // clang-format on
@@ -84,9 +86,15 @@ struct BufferDesc
     // Creates a CPUWrite buffer useable as a Uniform (/constant) Buffer.
     static BufferDesc CreateUniformBufferDesc(std::string name, u64 byteSize);
     // Creates a GPUOnly buffer useable as an Vertex Buffer.
-    static BufferDesc CreateVertexBufferDesc(std::string name, u64 byteSize, bool allowShaderRead = false);
+    static BufferDesc CreateVertexBufferDesc(std::string name,
+                                             u64 byteSize,
+                                             bool allowShaderRead = false,
+                                             bool canBeAccelerationStructureSource = false);
     // Creates a GPUOnly buffer useable as an Index Buffer.
-    static BufferDesc CreateIndexBufferDesc(std::string name, u64 byteSize, bool allowShaderRead = false);
+    static BufferDesc CreateIndexBufferDesc(std::string name,
+                                            u64 byteSize,
+                                            bool allowShaderRead = false,
+                                            bool canBeAccelerationStructureSource = false);
     // Creates a CPUWrite staging buffer useful for uploading data to GPUOnly resources.
     static BufferDesc CreateStagingBufferDesc(std::string name,
                                               u64 byteSize,

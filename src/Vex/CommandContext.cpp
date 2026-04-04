@@ -870,6 +870,19 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
 
     if (desc.type == ASGeometryType::Triangles)
     {
+        for (const BLASGeometryDesc& desc : desc.geometry)
+        {
+            if (desc.indexBufferBinding)
+            {
+                VEX_CHECK(desc.indexBufferBinding->buffer.desc.usage & BufferUsage::BuildAccelerationStructure,
+                          "Index buffer binding must have the BuildAccelerationStructure usage to be used as source "
+                          "for building a BLAS");
+            }
+            VEX_CHECK(desc.vertexBufferBinding.buffer.desc.usage & BufferUsage::BuildAccelerationStructure,
+                      "Vertex buffer binding must have the BuildAccelerationStructure usage to be used as source for "
+                      "building a BLAS");
+        }
+
         // Upload all the transforms into one GPU/ staging buffer.
         std::vector<std::array<float, 3 * 4>> transformsToUpload;
         // Conservative allocation.
@@ -1063,7 +1076,7 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
     Buffer instanceBuffer = CreateTemporaryBuffer({
         .name = accelStruct.GetDesc().name + "_build_tlas_instances",
         .byteSize = instanceData.size(),
-        .usage = BufferUsage::ShaderRead,
+        .usage = BufferUsage::ShaderRead | BufferUsage::BuildAccelerationStructure,
     });
     RHIBuffer& rhiInstanceBuffer = graphics->GetRHIBuffer(instanceBuffer.handle);
     EnqueueDataUpload(instanceBuffer, instanceData);

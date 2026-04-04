@@ -67,7 +67,6 @@ bool VkPhysicalDevice::IsFeatureSupported(Feature feature) const
     case Feature::MeshShader:
         return meshShaderFeatures.meshShader && meshShaderFeatures.taskShader;
     case Feature::RayTracing:
-        // Vulkan RHI currently does not support ray tracing.
         return rayTracingFeatures.rayTracingPipeline;
     default:
         VEX_LOG(Fatal, "Unable to determine feature support for {}", feature);

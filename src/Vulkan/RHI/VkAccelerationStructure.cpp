@@ -14,10 +14,7 @@ namespace
 ::vk::TransformMatrixKHR GetVkTransformMatrix(std::array<float, 3 * 4> matrix)
 {
     ::vk::TransformMatrixKHR mat;
-    for (int i = 0; i < matrix.size(); ++i)
-    {
-        mat.matrix[i / 4][i % 4] = matrix[i];
-    }
+    std::uninitialized_copy_n(matrix.data(), 12, &mat.matrix[0][0]);
     return mat;
 }
 } // namespace

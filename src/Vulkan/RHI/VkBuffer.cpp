@@ -16,8 +16,7 @@ namespace vex::vk
 static ::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDesc& desc)
 {
     using enum ::vk::BufferUsageFlagBits;
-    // TODO: Figure out implication of eAccelerationStructureBuildInputReadOnlyKHR needed when uploading to AS
-    ::vk::BufferUsageFlags flags = eTransferSrc | eShaderDeviceAddress | eAccelerationStructureBuildInputReadOnlyKHR;
+    ::vk::BufferUsageFlags flags = eTransferSrc | eShaderDeviceAddress;
     if (desc.usage & BufferUsage::ShaderReadUniform)
     {
         flags |= eUniformBuffer;
@@ -45,6 +44,10 @@ static ::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDesc& desc)
     if (desc.usage & BufferUsage::ShaderTable)
     {
         flags |= eShaderBindingTableKHR;
+    }
+    if (desc.usage & BufferUsage::BuildAccelerationStructure)
+    {
+        flags |= eAccelerationStructureBuildInputReadOnlyKHR;
     }
     return flags;
 }

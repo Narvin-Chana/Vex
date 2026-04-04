@@ -81,7 +81,7 @@ public:
 
 private:
     NonNullPtr<VkGPUContext> ctx;
-    ::vk::PipelineCache PSOCache;
+    ::vk::PipelineCache psoCache;
 };
 
 } // namespace vex::vk

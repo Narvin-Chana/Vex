@@ -269,7 +269,7 @@ VkRayTracingPipelineState::VkRayTracingPipelineState(const Key& key,
                                                      ::vk::PipelineCache PSOCache)
     : RHIRayTracingPipelineStateBase(key)
     , ctx{ ctx }
-    , PSOCache{ PSOCache }
+    , psoCache{ PSOCache }
 {
 }
 
@@ -371,7 +371,7 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
         .maxPipelineRayRecursionDepth = key.maxRecursionDepth,
         .layout = *resourceLayout.pipelineLayout,
     };
-    rtPipeline = VEX_VK_CHECK <<= ctx->device.createRayTracingPipelineKHRUnique({}, PSOCache, rtPSOCI);
+    rtPipeline = VEX_VK_CHECK <<= ctx->device.createRayTracingPipelineKHRUnique({}, psoCache, rtPSOCI);
 
     auto ASProperties =
         GPhysicalDevice->physicalDevice
@@ -460,7 +460,7 @@ std::unique_ptr<RHIRayTracingPipelineState> VkRayTracingPipelineState::Cleanup()
     {
         return nullptr;
     }
-    auto cleanupPSO = std::make_unique<VkRayTracingPipelineState>(key, ctx, PSOCache);
+    auto cleanupPSO = std::make_unique<VkRayTracingPipelineState>(key, ctx, psoCache);
     std::swap(cleanupPSO->rtPipeline, rtPipeline);
     return cleanupPSO;
 }

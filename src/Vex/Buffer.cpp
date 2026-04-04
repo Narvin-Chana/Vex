@@ -71,12 +71,19 @@ BufferDesc BufferDesc::CreateUniformBufferDesc(std::string name, u64 byteSize)
     };
 }
 
-BufferDesc BufferDesc::CreateVertexBufferDesc(std::string name, u64 byteSize, bool allowShaderRead)
+BufferDesc BufferDesc::CreateVertexBufferDesc(std::string name,
+                                              u64 byteSize,
+                                              bool allowShaderRead,
+                                              bool canBeAccelerationStructureSource)
 {
     BufferUsage::Flags usageFlags = BufferUsage::VertexBuffer;
     if (allowShaderRead)
     {
         usageFlags |= BufferUsage::ShaderRead;
+    }
+    if (canBeAccelerationStructureSource)
+    {
+        usageFlags |= BufferUsage::BuildAccelerationStructure;
     }
     return {
         .name = std::move(name),
@@ -86,12 +93,19 @@ BufferDesc BufferDesc::CreateVertexBufferDesc(std::string name, u64 byteSize, bo
     };
 }
 
-BufferDesc BufferDesc::CreateIndexBufferDesc(std::string name, u64 byteSize, bool allowShaderRead)
+BufferDesc BufferDesc::CreateIndexBufferDesc(std::string name,
+                                             u64 byteSize,
+                                             bool allowShaderRead,
+                                             bool canBeAccelerationStructureSource)
 {
     BufferUsage::Flags usageFlags = BufferUsage::IndexBuffer;
     if (allowShaderRead)
     {
         usageFlags |= BufferUsage::ShaderRead;
+    }
+    if (canBeAccelerationStructureSource)
+    {
+        usageFlags |= BufferUsage::BuildAccelerationStructure;
     }
     return {
         .name = std::move(name),

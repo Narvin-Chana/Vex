@@ -21,12 +21,16 @@ struct AccelerationStructureTest : RTVexTest
 
         auto ctx = graphics.CreateCommandContext(QueueType::Compute);
 
-        const BufferDesc vbDesc =
-            BufferDesc::CreateVertexBufferDesc("RT Triangle Vertex Buffer", sizeof(Vertex) * TriangleVerts.size());
+        const BufferDesc vbDesc = BufferDesc::CreateVertexBufferDesc("RT Triangle Vertex Buffer",
+                                                                     sizeof(Vertex) * TriangleVerts.size(),
+                                                                     false,
+                                                                     true);
         triangleVertexBuffer = graphics.CreateBuffer(vbDesc);
 
-        const BufferDesc ibDesc =
-            BufferDesc::CreateIndexBufferDesc("RT Triangle Index Buffer", sizeof(u32) * TriangleIndices.size());
+        const BufferDesc ibDesc = BufferDesc::CreateIndexBufferDesc("RT Triangle Index Buffer",
+                                                                    sizeof(u32) * TriangleIndices.size(),
+                                                                    false,
+                                                                    true);
         triangleIndexBuffer = graphics.CreateBuffer(ibDesc);
 
         ctx.EnqueueDataUpload(triangleVertexBuffer, std::as_bytes(std::span(TriangleVerts)));

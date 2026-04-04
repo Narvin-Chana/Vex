@@ -36,12 +36,16 @@ struct RTTestFixture : public RTVexTest
             ASDesc{ .name = "Triangle TLAS", .type = ASType::TopLevel, .buildFlags = ASBuild::None });
 
         auto ctx = graphics.CreateCommandContext(QueueType::Compute);
-        const BufferDesc vbDesc =
-            BufferDesc::CreateVertexBufferDesc("RT Triangle Vertex Buffer", sizeof(Vertex) * TriangleVerts.size());
+        const BufferDesc vbDesc = BufferDesc::CreateVertexBufferDesc("RT Triangle Vertex Buffer",
+                                                                     sizeof(Vertex) * TriangleVerts.size(),
+                                                                     false,
+                                                                     true);
         triangleVertexBuffer = graphics.CreateBuffer(vbDesc);
 
-        const BufferDesc ibDesc =
-            BufferDesc::CreateIndexBufferDesc("RT Triangle Index Buffer", sizeof(u32) * TriangleIndices.size());
+        const BufferDesc ibDesc = BufferDesc::CreateIndexBufferDesc("RT Triangle Index Buffer",
+                                                                    sizeof(u32) * TriangleIndices.size(),
+                                                                    false,
+                                                                    true);
         triangleIndexBuffer = graphics.CreateBuffer(ibDesc);
 
         const BufferDesc outputDesc = BufferDesc::CreateGenericBufferDesc("RT Output Buffer", sizeof(float) * 3, true);
