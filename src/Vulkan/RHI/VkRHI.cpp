@@ -369,9 +369,6 @@ void VkRHI::Init()
         };
     }
 
-    // TODO(https://trello.com/c/rLevCOvT): vulkan ray tracing add required features
-    ::vk::PhysicalDeviceAccelerationStructureFeaturesKHR featuresAccelerationStructure;
-
     ::vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR featuresUnifiedImageLayouts;
     featuresUnifiedImageLayouts.pNext = &featuresAccelerationStructure;
     featuresUnifiedImageLayouts.unifiedImageLayouts = true;

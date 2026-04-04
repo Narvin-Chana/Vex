@@ -2,8 +2,9 @@
 
 #include <algorithm>
 
-#include <Vex/ResourceCleanup.h>
 #include <Vex/PhysicalDevice.h>
+#include <Vex/ResourceCleanup.h>
+#include <Vex/Utility/ByteUtils.h>
 
 #include <Vulkan/RHI/VkAccelerationStructure.h>
 #include <Vulkan/RHI/VkBuffer.h>
@@ -12,7 +13,6 @@
 #include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkFormats.h>
-#include <Vex/Utility/ByteUtils.h>
 // These are necessary for ResourceCleanup
 #include <Vulkan/RHI/VkBuffer.h>
 #include <Vulkan/RHI/VkTexture.h>
@@ -20,7 +20,6 @@
 
 namespace vex::vk
 {
-
 VkGraphicsPipelineState::VkGraphicsPipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache)
     : RHIGraphicsPipelineStateBase(key)
     , device{ device }
@@ -417,6 +416,24 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
         }
     }
 
+    std::vector<MaybeUninitialized<RHIBuffer>> oldBuffers;
+    if (rayGenTable)
+    {
+        oldBuffers.push_back(std::move(rayGenTable->shaderTableBuffer));
+    }
+    if (rayMissTable)
+    {
+        oldBuffers.push_back(std::move(rayMissTable->shaderTableBuffer));
+    }
+    if (groupHitTable)
+    {
+        oldBuffers.push_back(std::move(groupHitTable->shaderTableBuffer));
+    }
+    if (rayCallableTable)
+    {
+        oldBuffers.push_back(std::move(rayCallableTable->shaderTableBuffer));
+    }
+
     rayGenTable = VkShaderTable(ctx, allocator, "Ray Gen shader Table", handlesPerShaderType[0]);
 
     if (!handlesPerShaderType[1].empty())
@@ -433,6 +450,8 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
     {
         rayCallableTable = VkShaderTable(ctx, allocator, "Ray Callable shader Table", handlesPerShaderType[3]);
     }
+
+    return oldBuffers;
 }
 
 std::unique_ptr<RHIRayTracingPipelineState> VkRayTracingPipelineState::Cleanup()
@@ -441,9 +460,9 @@ std::unique_ptr<RHIRayTracingPipelineState> VkRayTracingPipelineState::Cleanup()
     {
         return nullptr;
     }
-    auto cleanupPSO = MakeUnique<VkRayTracingPipelineState>(key, ctx, PSOCache);
+    auto cleanupPSO = std::make_unique<VkRayTracingPipelineState>(key, ctx, PSOCache);
     std::swap(cleanupPSO->rtPipeline, rtPipeline);
-    resourceCleanup.CleanupResource(std::move(cleanupPSO));
+    return cleanupPSO;
 }
 
 } // namespace vex::vk

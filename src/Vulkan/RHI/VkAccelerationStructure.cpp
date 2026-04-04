@@ -271,7 +271,7 @@ void VkAccelerationStructure::BuildAccelerationStructure(::vk::AccelerationStruc
     BufferDesc asBufferDesc{
         .name = GetDesc().name,
         .byteSize = prebuildInfo.asByteSize,
-        .usage = BufferUsage::AccelerationStructure | BufferUsage::ReadWriteBuffer,
+        .usage = BufferUsage::AccelerationStructure,
         .memoryLocality = ResourceMemoryLocality::GPUOnly,
     };
     accelerationStructure = RHIBuffer(ctx, allocator, asBufferDesc);

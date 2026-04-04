@@ -22,6 +22,8 @@ public:
 private:
     MaybeUninitialized<RHIBuffer> shaderTableBuffer;
     u32 entrySize;
+
+    friend class VkRayTracingPipelineState;
 };
 
 } // namespace vex::vk

@@ -20,7 +20,7 @@ VkShaderTable::VkShaderTable(NonNullPtr<VkGPUContext> ctx,
 
     auto bufferDesc = BufferDesc::CreateStagingBufferDesc(std::string(name),
                                                           entrySize * shaderHandles.size(),
-                                                          BufferUsage::GenericBuffer | BufferUsage::ShaderTable);
+                                                          BufferUsage::ShaderRead | BufferUsage::ShaderTable);
 
     shaderTableBuffer = RHIBuffer(ctx, allocator, bufferDesc);
 
