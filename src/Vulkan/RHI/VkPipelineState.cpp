@@ -20,10 +20,10 @@
 
 namespace vex::vk
 {
-VkGraphicsPipelineState::VkGraphicsPipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache)
+VkGraphicsPipelineState::VkGraphicsPipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache psoCache)
     : RHIGraphicsPipelineStateBase(key)
     , device{ device }
-    , PSOCache{ PSOCache }
+    , psoCache{ psoCache }
 {
     GraphicsPiplineUtils::ValidateGraphicsPipeline(key);
 }
@@ -198,7 +198,7 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
                                                          .basePipelineHandle = nullptr,
                                                          .basePipelineIndex = -1 };
 
-    graphicsPipeline = VEX_VK_CHECK <<= device.createGraphicsPipelineUnique(PSOCache, graphicsPipelineCI);
+    graphicsPipeline = VEX_VK_CHECK <<= device.createGraphicsPipelineUnique(psoCache, graphicsPipelineCI);
 
     vertexShaderVersion = vertexShader.version;
     pixelShaderVersion = pixelShader.version;
@@ -213,15 +213,15 @@ std::unique_ptr<RHIGraphicsPipelineState> VkGraphicsPipelineState::Cleanup()
     {
         return nullptr;
     }
-    auto cleanupPSO = std::make_unique<VkGraphicsPipelineState>(key, device, PSOCache);
+    auto cleanupPSO = std::make_unique<VkGraphicsPipelineState>(key, device, psoCache);
     std::swap(cleanupPSO->graphicsPipeline, graphicsPipeline);
     return cleanupPSO;
 }
 
-VkComputePipelineState::VkComputePipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache PSOCache)
+VkComputePipelineState::VkComputePipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache psoCache)
     : RHIComputePipelineStateBase(key)
     , device{ device }
-    , PSOCache{ PSOCache }
+    , psoCache{ psoCache }
 {
 }
 
@@ -245,7 +245,7 @@ void VkComputePipelineState::Compile(const Shader& computeShader, RHIResourceLay
         .layout = *resourceLayout.pipelineLayout,
     };
 
-    computePipeline = VEX_VK_CHECK <<= device.createComputePipelineUnique(PSOCache, computePipelineCreateInfo);
+    computePipeline = VEX_VK_CHECK <<= device.createComputePipelineUnique(psoCache, computePipelineCreateInfo);
 
     computeShaderVersion = computeShader.version;
     rootSignatureVersion = resourceLayout.version;
@@ -259,17 +259,17 @@ std::unique_ptr<RHIComputePipelineState> VkComputePipelineState::Cleanup()
     {
         return nullptr;
     }
-    auto cleanupPSO = std::make_unique<VkComputePipelineState>(key, device, PSOCache);
+    auto cleanupPSO = std::make_unique<VkComputePipelineState>(key, device, psoCache);
     std::swap(cleanupPSO->computePipeline, computePipeline);
     return cleanupPSO;
 }
 
 VkRayTracingPipelineState::VkRayTracingPipelineState(const Key& key,
                                                      NonNullPtr<VkGPUContext> ctx,
-                                                     ::vk::PipelineCache PSOCache)
+                                                     ::vk::PipelineCache psoCache)
     : RHIRayTracingPipelineStateBase(key)
     , ctx{ ctx }
-    , psoCache{ PSOCache }
+    , psoCache{ psoCache }
 {
 }
 
@@ -292,7 +292,7 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
     std::vector<::vk::RayTracingShaderGroupCreateInfoKHR> groups;
 
     using VkShaderGroupCreateInfo = ::vk::RayTracingShaderGroupCreateInfoKHR;
-    auto registerShaderStage = [&](const std::vector<NonNullPtr<Shader>>& shaders,
+    auto RegisterShaderStage = [&](const std::vector<NonNullPtr<Shader>>& shaders,
                                    ::vk::ShaderStageFlagBits type,
                                    ::vk::RayTracingShaderGroupTypeKHR groupType,
                                    uint32_t VkShaderGroupCreateInfo::* p)
@@ -311,15 +311,15 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
         }
     };
 
-    registerShaderStage(shaderCollection.rayGenerationShaders,
+    RegisterShaderStage(shaderCollection.rayGenerationShaders,
                         ::vk::ShaderStageFlagBits::eRaygenKHR,
                         ::vk::RayTracingShaderGroupTypeKHR::eGeneral,
                         &::vk::RayTracingShaderGroupCreateInfoKHR::generalShader);
-    registerShaderStage(shaderCollection.rayCallableShaders,
+    RegisterShaderStage(shaderCollection.rayCallableShaders,
                         ::vk::ShaderStageFlagBits::eCallableKHR,
                         ::vk::RayTracingShaderGroupTypeKHR::eGeneral,
                         &::vk::RayTracingShaderGroupCreateInfoKHR::generalShader);
-    registerShaderStage(shaderCollection.rayMissShaders,
+    RegisterShaderStage(shaderCollection.rayMissShaders,
                         ::vk::ShaderStageFlagBits::eMissKHR,
                         ::vk::RayTracingShaderGroupTypeKHR::eGeneral,
                         &::vk::RayTracingShaderGroupCreateInfoKHR::generalShader);
@@ -381,13 +381,13 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
     u32 handleSize = ASProperties.shaderGroupHandleSize;
 
     std::vector<std::byte> groupHandles;
-    u32 handlesSize = handleSize * groups.size();
-    groupHandles.resize(handlesSize);
+    u32 totalHandlesByteSize = handleSize * groups.size();
+    groupHandles.resize(totalHandlesByteSize);
     // Buffer containing all handles for groups in pipeline
     VEX_VK_CHECK << ctx->device.getRayTracingShaderGroupHandlesKHR(*rtPipeline,
                                                                    0,
                                                                    groups.size(),
-                                                                   handlesSize,
+                                                                   totalHandlesByteSize,
                                                                    groupHandles.data());
 
     // 0: raygen, 1: raymiss, 2: group (closest hit, any hit and intersect), 3: callable
@@ -462,6 +462,12 @@ std::unique_ptr<RHIRayTracingPipelineState> VkRayTracingPipelineState::Cleanup()
     }
     auto cleanupPSO = std::make_unique<VkRayTracingPipelineState>(key, ctx, psoCache);
     std::swap(cleanupPSO->rtPipeline, rtPipeline);
+
+    std::swap(cleanupPSO->groupHitTable, groupHitTable);
+    std::swap(cleanupPSO->rayCallableTable, rayCallableTable);
+    std::swap(cleanupPSO->rayGenTable, rayGenTable);
+    std::swap(cleanupPSO->rayMissTable, rayMissTable);
+
     return cleanupPSO;
 }
 

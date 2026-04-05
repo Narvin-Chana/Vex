@@ -10,13 +10,13 @@ VkShaderTable::VkShaderTable(NonNullPtr<VkGPUContext> ctx,
                              std::string_view name,
                              Span<void*> shaderHandles)
 {
-    auto ASProperties =
+    auto asProperties =
         ctx->physDevice
             .getProperties2<::vk::PhysicalDeviceProperties2, ::vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>()
             .get<::vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>();
 
-    entrySize = ASProperties.shaderGroupBaseAlignment;
-    auto handleSize = ASProperties.shaderGroupHandleSize;
+    entrySize = asProperties.shaderGroupBaseAlignment;
+    auto handleSize = asProperties.shaderGroupHandleSize;
 
     auto bufferDesc = BufferDesc::CreateStagingBufferDesc(std::string(name),
                                                           entrySize * shaderHandles.size(),

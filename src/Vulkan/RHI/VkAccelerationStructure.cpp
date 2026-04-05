@@ -77,7 +77,7 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
     ranges.reserve(desc.geometries.size());
     geometryCount.reserve(desc.geometries.size());
 
-    auto bindingToOffsetCount = [](const std::optional<RHIBufferBinding>& binding,
+    auto BindingToOffsetCount = [](const std::optional<RHIBufferBinding>& binding,
                                    u32 fallbackStride) -> std::pair<u32, u32> // offset, count
     {
         if (!binding)
@@ -98,12 +98,12 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
 
             static constexpr u32 vertexByteStride = sizeof(float) * 3;
 
-            auto [firstVertex, vertexCount] = bindingToOffsetCount(geom.vertexBufferBinding, vertexByteStride);
+            auto [firstVertex, vertexCount] = BindingToOffsetCount(geom.vertexBufferBinding, vertexByteStride);
 
             u32 triangleCount = vertexCount / 3;
             if (geom.indexBufferBinding)
             {
-                triangleCount = bindingToOffsetCount(geom.indexBufferBinding, sizeof(u32)).second;
+                triangleCount = BindingToOffsetCount(geom.indexBufferBinding, sizeof(u32)).second;
             }
 
             geometryCount.push_back(triangleCount);
@@ -151,7 +151,7 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
                 },
             };
 
-            auto [firstAabb, aabbCount] = bindingToOffsetCount(geom.aabbBufferBinding, sizeof(float) * 6);
+            auto [firstAabb, aabbCount] = BindingToOffsetCount(geom.aabbBufferBinding, sizeof(float) * 6);
 
             geometryCount.push_back(aabbCount);
             ranges.push_back(::vk::AccelerationStructureBuildRangeInfoKHR{
