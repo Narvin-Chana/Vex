@@ -370,7 +370,7 @@ void VkRHI::Init()
     }
 
     ::vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR featuresUnifiedImageLayouts;
-    featuresUnifiedImageLayouts.pNext = &featuresAccelerationStructure;
+    featuresUnifiedImageLayouts.pNext = featuresAccelerationStructure ? &featuresAccelerationStructure : nullptr;
     featuresUnifiedImageLayouts.unifiedImageLayouts = true;
 
     // Allows for mutable descriptors
