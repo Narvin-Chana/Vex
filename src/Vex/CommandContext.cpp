@@ -911,7 +911,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
         }
 
         // Ensure that vertex/index buffers have had time to be written-to correctly.
-        EnqueueGlobalBarrier(RHIGlobalBarrier{
+        EnqueueGlobalBarrier({
             .srcSync = RHIBarrierSync::AllCommands,
             .dstSync = RHIBarrierSync::BuildAccelerationStructure,
             .srcAccess = RHIBarrierAccess::MemoryWrite,
@@ -1298,7 +1298,7 @@ void CommandContext::InferResourceBarriers(RHIBarrierSync syncStage, Span<const 
             Visitor{ [this, syncStage](const BufferBinding& bufferBinding)
                      {
                          using enum BufferBindingUsage;
-                         RHIBarrierAccess dstAccess;
+                         RHIBarrierAccess dstAccess{};
                          switch (bufferBinding.usage)
                          {
                          case UniformBuffer:
@@ -1463,6 +1463,11 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
         cmdList->SetInputAssembly(drawDesc.inputAssembly);
         cachedInputAssembly = drawDesc.inputAssembly;
     }
+
+    EnqueueGlobalBarrier({ .srcSync = RHIBarrierSync::AllCommands,
+                           .dstSync = RHIBarrierSync::AllGraphics,
+                           .srcAccess = RHIBarrierAccess::MemoryWrite,
+                           .dstAccess = RHIBarrierAccess::VertexInputRead });
 
     // Bind Vertex Buffer(s)
     SetVertexBuffers(drawBindings.vertexBuffersFirstSlot, drawBindings.vertexBuffers);
