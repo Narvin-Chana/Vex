@@ -57,7 +57,8 @@ BufferViewDesc RHIBufferBase::GetViewDescFromBinding(const BufferBinding& bindin
         .strideByteSize = binding.strideByteSize.value_or(0),
         .offsetByteSize = offset,
         .rangeByteSize = binding.rangeByteSize.value_or(desc.byteSize - offset),
-        .isAccelerationStructure = (binding.buffer.desc.usage & BufferUsage::AccelerationStructure) != 0,
+        .isAccelerationStructure =
+            (desc.usage & BufferUsage::AccelerationStructure) == BufferUsage::AccelerationStructure,
     };
 }
 
