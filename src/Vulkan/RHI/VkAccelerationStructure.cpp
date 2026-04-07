@@ -103,7 +103,7 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
             u32 triangleCount = vertexCount / 3;
             if (geom.indexBufferBinding)
             {
-                triangleCount = BindingToOffsetCount(geom.indexBufferBinding, sizeof(u32)).second;
+                triangleCount = BindingToOffsetCount(geom.indexBufferBinding, sizeof(u32)).second / 3;
             }
 
             geometryCount.push_back(triangleCount);
