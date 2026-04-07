@@ -54,7 +54,7 @@ using ShaderHotReloadErrorsCallback =
 #ifdef __cpp_lib_move_only_function
 std::move_only_function<ShaderHotReloadErrorsCallbackFuncType>;
 #else
-std23::move_only_function<ShaderHotReloadErrorCallbackFuncType>;
+std23::move_only_function<ShaderHotReloadErrorsCallbackFuncType>;
 #endif
 
 struct RayTracingShaderKey;
