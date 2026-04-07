@@ -861,6 +861,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
 {
     VEX_CHECK(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing),
               "Your GPU does not support ray tracing, unable to build BLAS!");
+    VEX_CHECK(accelerationStructure.handle.IsValid(), "Provided acceleration structure must be valid!");
     VEX_CHECK(accelerationStructure.desc.type == ASType::BottomLevel,
               "BuildBLAS only accepts bottom level acceleration structures...");
     VEX_CHECK(!desc.geometry.empty(), "Cannot build an empty BLAS...");
@@ -1045,6 +1046,7 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
 {
     VEX_CHECK(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing),
               "Your GPU does not support ray tracing, unable to build TLAS!");
+    VEX_CHECK(accelerationStructure.handle.IsValid(), "Provided acceleration structure must be valid!");
     VEX_CHECK(accelerationStructure.desc.type == ASType::TopLevel,
               "BuildTLAS only accepts top level acceleration structures...");
     VEX_CHECK(!desc.instances.empty(), "Cannot build an empty TLAS...");
