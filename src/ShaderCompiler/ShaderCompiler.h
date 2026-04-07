@@ -48,12 +48,13 @@ enum class ShaderHotReloadErrorResponse : u8
     Abort,
 };
 
-using ShaderHotReloadErrorCallbackFuncType =
+using ShaderHotReloadErrorsCallbackFuncType =
     ShaderHotReloadErrorResponse(Span<const std::pair<ShaderKey, std::string>>);
+using ShaderHotReloadErrorsCallback =
 #ifdef __cpp_lib_move_only_function
-using ShaderHotReloadErrorsCallback = std::move_only_function<ShaderHotReloadErrorCallbackFuncType>;
+std::move_only_function<ShaderHotReloadErrorsCallbackFuncType>;
 #else
-using ShaderHotReloadErrorCallback = std23::move_only_function<ShaderHotReloadErrorCallbackFuncType>;
+std23::move_only_function<ShaderHotReloadErrorCallbackFuncType>;
 #endif
 
 struct RayTracingShaderKey;
