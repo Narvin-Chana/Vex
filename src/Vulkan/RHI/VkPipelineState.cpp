@@ -276,7 +276,7 @@ VkRayTracingPipelineState::VkRayTracingPipelineState(const Key& key,
 std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
     const RayTracingShaderCollection& shaderCollection, RHIResourceLayout& resourceLayout, RHIAllocator& allocator)
 {
-    auto createShaderModule = [&](const Shader& s)
+    auto CreateShaderModule = [&](const Shader& s)
     {
         Span<const byte> shaderCode = s.GetBlob();
         ::vk::ShaderModuleCreateInfo shaderModulecreateInfo{
@@ -299,7 +299,7 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
     {
         for (u32 i = 0; i < shaders.size(); ++i)
         {
-            modules.push_back(createShaderModule(*shaders[i]));
+            modules.push_back(CreateShaderModule(*shaders[i]));
 
             ::vk::RayTracingShaderGroupCreateInfoKHR group{
                 .type = groupType,
@@ -332,7 +332,7 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
             intersectionIndex = ::vk::ShaderUnusedKHR;
 
         closesHitIndex = modules.size();
-        modules.push_back(createShaderModule(*group.rayClosestHitShader));
+        modules.push_back(CreateShaderModule(*group.rayClosestHitShader));
         stages.push_back({ .stage = ::vk::ShaderStageFlagBits::eClosestHitKHR,
                            .module = *modules.back(),
                            .pName = group.rayClosestHitShader->key.entryPoint.c_str() });
@@ -340,7 +340,7 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
         if (group.rayAnyHitShader)
         {
             anyHitIndex = modules.size();
-            modules.push_back(createShaderModule(**group.rayAnyHitShader));
+            modules.push_back(CreateShaderModule(**group.rayAnyHitShader));
             stages.push_back({ .stage = ::vk::ShaderStageFlagBits::eAnyHitKHR,
                                .module = *modules.back(),
                                .pName = (*group.rayAnyHitShader)->key.entryPoint.c_str() });
@@ -351,7 +351,7 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
             // the presence of an intersection shader requires procedural hit group for custom intersection logic
             groupType = ::vk::RayTracingShaderGroupTypeKHR::eProceduralHitGroup;
             intersectionIndex = modules.size();
-            modules.push_back(createShaderModule(**group.rayIntersectionShader));
+            modules.push_back(CreateShaderModule(**group.rayIntersectionShader));
             stages.push_back({ .stage = ::vk::ShaderStageFlagBits::eIntersectionKHR,
                                .module = *modules.back(),
                                .pName = (*group.rayIntersectionShader)->key.entryPoint.c_str() });
