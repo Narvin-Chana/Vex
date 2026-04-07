@@ -180,7 +180,7 @@ ShaderEnvironment ShaderCompiler::CreateShaderEnvironment(const ShaderCompilerSe
 CompilerBase& ShaderCompiler::GetCompiler(const ShaderKey& key)
 {
     const std::optional<std::filesystem::path> filepath = ConvertVirtualFilepathToFilepath(key);
-    std::string extension = filepath.value_or({}).extension().string();
+    const std::string extension = filepath.has_value() ? filepath->extension().string() : "NONE";
     switch (key.compiler)
     {
     case ShaderCompilerBackend::Auto:
