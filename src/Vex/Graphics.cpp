@@ -26,6 +26,8 @@
 #include <RHI/RHIPhysicalDevice.h>
 #include <RHI/RHIScopedGPUEvent.h>
 
+#include "BuiltInShaders/MipGeneration.h"
+
 namespace vex
 {
 
@@ -132,6 +134,8 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
 
         RecreatePresentTextures();
     }
+
+    LoadEmbeddedShaders();
 }
 
 Graphics::~Graphics()
@@ -729,6 +733,11 @@ void Graphics::SetShaderCompilationErrorsCallback(std::function<ShaderCompileErr
     }
 }
 
+ShaderCompileContext& Graphics::GetShaderCompileContext()
+{
+    return psCache->GetShaderCompiler().GetCompileContext();
+}
+
 void Graphics::SetSamplers(Span<const TextureSampler> newSamplers)
 {
     // TODO(https://trello.com/c/T1DY4QOT): This is not the cleanest, we need a linear sampler for the mip
@@ -827,6 +836,12 @@ void Graphics::RecreatePresentTextures()
         presentTextures[presentTextureIndex] = CreateTexture(presentTextureDesc);
         // Present texture will be initialized when pendingInitializations are flushed on next submit.
     }
+}
+
+void Graphics::LoadEmbeddedShaders()
+{
+    ShaderCompileContext& shaderCompileContext = psCache->GetShaderCompiler().GetCompileContext();
+    shaderCompileContext.AddVirtualFile("VexMipGeneration.hlsl", std::string{ MipGenerationSource });
 }
 
 } // namespace vex

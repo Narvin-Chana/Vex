@@ -1,15 +1,33 @@
 #pragma once
 
-#include <slang-com-helper.h>
+#include <expected>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include <slang-com-ptr.h>
 #include <slang.h>
 
 #include <Vex/Shaders/CompilerBase.h>
+#include <Vex/Shaders/ShaderCompileContext.h>
+
+#include "Vex/Utility/NonNullPtr.h"
 
 namespace vex
 {
 struct ShaderKey;
 struct ShaderDefine;
+
+struct SlangCompilerContextImpl : public ICompilerContextImpl
+{
+    SlangCompilerContextImpl(const ShaderEnvironment& env,
+                             const ShaderCompilerSettings& compilerSettings);
+    virtual ~SlangCompilerContextImpl() override;
+
+    virtual bool LoadModule(const std::string& moduleName) override;
+
+    Slang::ComPtr<slang::ISession> session;
+};
 
 struct SlangCompilerImpl : public CompilerBase
 {
@@ -17,14 +35,22 @@ struct SlangCompilerImpl : public CompilerBase
     SlangCompilerImpl(std::vector<std::filesystem::path> incDirs);
     virtual ~SlangCompilerImpl() override;
 
+    virtual void SetContextImpl(const ShaderEnvironment& env,
+                                const ShaderCompilerSettings& compilerSettings,
+                                NonNullPtr<ShaderCompileContext> newCompileContext,
+                                ShaderCompileContext* originalContext) override;
+
     virtual std::expected<SHA1HashDigest, std::string> GetShaderCodeHash(
         const Shader& shader,
         const ShaderEnvironment& shaderEnv,
-        const ShaderCompilerSettings& compilerSettings) override;
+        const ShaderCompilerSettings& compilerSettings,
+        NonNullPtr<ShaderCompileContext> context) override;
+
     virtual std::expected<ShaderCompilationResult, std::string> CompileShader(
         const Shader& shader,
         const ShaderEnvironment& shaderEnv,
-        const ShaderCompilerSettings& compilerSettings) const override;
+        const ShaderCompilerSettings& compilerSettings,
+        ShaderCompileContext* context = nullptr) const override;
 
 private:
     void FillInIncludeDirectories(std::vector<std::string>& includeDirStrings,
@@ -32,7 +58,10 @@ private:
                                   slang::SessionDesc& desc) const;
 
     std::expected<Slang::ComPtr<slang::ISession>, std::string> CreateSession(
-        const ShaderKey& key, const ShaderEnvironment& shaderEnv, const ShaderCompilerSettings& compilerSettings) const;
+        const ShaderKey& key,
+        const ShaderEnvironment& shaderEnv,
+        const ShaderCompilerSettings& compilerSettings,
+        ShaderCompileContext* context = nullptr) const;
 
     void ValidateShaderForCompilation(const Shader& shader) const;
 
