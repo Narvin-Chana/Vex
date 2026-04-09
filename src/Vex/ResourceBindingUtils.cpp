@@ -23,7 +23,7 @@ void ResourceBindingUtils::CollectRHIResources(Graphics& graphics,
                                 RHITexture& texture = graphics.GetRHITexture(texBinding.texture.handle);
                                 textureBindings.emplace_back(texBinding, NonNullPtr(texture));
                             },
-                            [](const AccelerationStructureBinding& asBinding)
+                            [](const AccelerationStructureBinding&)
                             {
                                 // no-op
                             } },
@@ -33,14 +33,10 @@ void ResourceBindingUtils::CollectRHIResources(Graphics& graphics,
 
 RHIDrawResources ResourceBindingUtils::CollectRHIDrawResources(Graphics& graphics,
                                                                Span<const TextureBinding> renderTargets,
-                                                               std::optional<TextureBinding> depthStencil,
-                                                               std::optional<DepthStencilState> depthStencilState)
+                                                               std::optional<TextureBinding> depthStencil)
 {
     RHIDrawResources drawResources;
     drawResources.renderTargets.reserve(renderTargets.size());
-
-    std::size_t totalSize = renderTargets.size() + static_cast<std::size_t>(depthStencil.has_value());
-
     for (const auto& renderTarget : renderTargets)
     {
         auto& texture = graphics.GetRHITexture(renderTarget.texture.handle);
@@ -51,7 +47,6 @@ RHIDrawResources ResourceBindingUtils::CollectRHIDrawResources(Graphics& graphic
         auto& texture = graphics.GetRHITexture(depthStencil->texture.handle);
         drawResources.depthStencil = RHITextureBinding{ .binding = *depthStencil, .texture = texture };
     }
-
     return drawResources;
 }
 

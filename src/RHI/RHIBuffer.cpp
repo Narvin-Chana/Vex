@@ -1,5 +1,7 @@
 #include "RHIBuffer.h"
 
+#include <ranges>
+
 #include <Vex/Bindings.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
@@ -20,13 +22,13 @@ bool RHIBufferBase::IsMappable() const
 
 BindlessHandle RHIBufferBase::GetOrCreateBindlessView(const BufferBinding& binding, RHIDescriptorPool& descriptorPool)
 {
-    BufferViewDesc bufferView = GetViewDescFromBinding(binding);
+    const BufferViewDesc bufferView = GetViewDescFromBinding(binding);
     if (viewCache.contains(bufferView))
     {
         return viewCache[bufferView];
     }
 
-    const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
+    const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor(DescriptorType::Resource);
 
     AllocateBindlessHandle(descriptorPool, handle, bufferView);
 
@@ -36,9 +38,9 @@ BindlessHandle RHIBufferBase::GetOrCreateBindlessView(const BufferBinding& bindi
 
 void RHIBufferBase::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 {
-    for (auto [_, handle] : viewCache)
+    for (const auto handle : viewCache | std::views::values)
     {
-        descriptorPool.FreeStaticDescriptor(handle);
+        descriptorPool.FreeStaticDescriptor(DescriptorType::Resource, handle);
     }
     viewCache.clear();
 }
@@ -57,7 +59,7 @@ BufferViewDesc RHIBufferBase::GetViewDescFromBinding(const BufferBinding& bindin
         .strideByteSize = binding.strideByteSize.value_or(0),
         .offsetByteSize = offset,
         .rangeByteSize = binding.rangeByteSize.value_or(binding.buffer.desc.byteSize - offset),
-        .isAccelerationStructure = (binding.buffer.desc.usage & BufferUsage::AccelerationStructure) != 0,
+        .isAccelerationStructure = (binding.buffer.desc.usage & BufferUsage::AccelerationStructure) == BufferUsage::AccelerationStructure,
     };
 }
 
@@ -93,6 +95,7 @@ u64 BufferViewDesc::GetFirstElement() const
 
     return offsetByteSize / GetElementStride();
 }
+
 u64 BufferViewDesc::GetElementCount() const
 {
     if (usage == BufferBindingUsage::UniformBuffer)
@@ -102,4 +105,5 @@ u64 BufferViewDesc::GetElementCount() const
 
     return rangeByteSize / GetElementStride();
 }
+
 } // namespace vex

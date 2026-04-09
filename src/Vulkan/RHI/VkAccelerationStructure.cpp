@@ -3,7 +3,7 @@
 namespace vex::vk
 {
 
-VkAccelerationStructure::VkAccelerationStructure(const ASDesc& desc)
+VkAccelerationStructure::VkAccelerationStructure(const AccelerationStructureDesc& desc)
     : RHIAccelerationStructureBase(desc)
 {
     VEX_NOT_YET_IMPLEMENTED();

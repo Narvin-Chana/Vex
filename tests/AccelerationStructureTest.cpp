@@ -61,7 +61,7 @@ private:
 TEST_F(AccelerationStructureTest, CreateSimpleTriangleBLAS_Vertex)
 {
     auto blas = graphics.CreateAccelerationStructure(
-        ASDesc{ .name = "BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
+        AccelerationStructureDesc{ .name = "BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
 
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
     ctx.BuildBLAS(blas,
@@ -77,7 +77,7 @@ TEST_F(AccelerationStructureTest, CreateSimpleTriangleBLAS_Vertex)
 TEST_F(AccelerationStructureTest, CreateSimpleTriangleBLAS_VertexAndIndex)
 {
     auto blas = graphics.CreateAccelerationStructure(
-        ASDesc{ .name = "BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
+        AccelerationStructureDesc{ .name = "BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
 
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
     ctx.BuildBLAS(blas,
@@ -93,8 +93,10 @@ TEST_F(AccelerationStructureTest, CreateSimpleTriangleBLAS_VertexAndIndex)
 
 TEST_F(AccelerationStructureTest, CreateMultipleTriangleBLAS_VertexAndIndex_Transforms)
 {
-    auto blas1 = graphics.CreateAccelerationStructure(ASDesc{ .name = "BLAS1", .type = ASType::BottomLevel });
-    auto blas2 = graphics.CreateAccelerationStructure(ASDesc{ .name = "BLAS2", .type = ASType::BottomLevel });
+    auto blas1 =
+        graphics.CreateAccelerationStructure(AccelerationStructureDesc{ .name = "BLAS1", .type = ASType::BottomLevel });
+    auto blas2 =
+        graphics.CreateAccelerationStructure(AccelerationStructureDesc{ .name = "BLAS2", .type = ASType::BottomLevel });
 
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
     ctx.BuildBLAS(blas1,
@@ -204,7 +206,7 @@ TEST_P(BLASFlagTest, BLASFlagPermutations)
 {
     const auto& testData = GetParam();
     auto blas = graphics.CreateAccelerationStructure(
-        ASDesc{ .name = "BLAS", .type = ASType::BottomLevel, .buildFlags = testData.buildFlags });
+        AccelerationStructureDesc{ .name = "BLAS", .type = ASType::BottomLevel, .buildFlags = testData.buildFlags });
 
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
     ctx.BuildBLAS(blas,
@@ -238,8 +240,9 @@ struct TLASAccelerationStructureTest : public AccelerationStructureTest
         {
             return;
         }
-        triangleBLAS = graphics.CreateAccelerationStructure(
-            ASDesc{ .name = "Triangle BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
+        triangleBLAS = graphics.CreateAccelerationStructure(AccelerationStructureDesc{ .name = "Triangle BLAS",
+                                                                                       .type = ASType::BottomLevel,
+                                                                                       .buildFlags = ASBuild::None });
 
         auto ctx = graphics.CreateCommandContext(QueueType::Compute);
         ctx.BuildBLAS(triangleBLAS,
@@ -262,7 +265,7 @@ struct TLASAccelerationStructureTest : public AccelerationStructureTest
 TEST_F(TLASAccelerationStructureTest, CreateSimpleTriangleTLAS_Instance)
 {
     auto tlas = graphics.CreateAccelerationStructure(
-        ASDesc{ .name = "TLAS", .type = ASType::TopLevel, .buildFlags = ASBuild::None });
+        AccelerationStructureDesc{ .name = "TLAS", .type = ASType::TopLevel, .buildFlags = ASBuild::None });
 
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
 
@@ -283,7 +286,7 @@ TEST_F(TLASAccelerationStructureTest, CreateSimpleTriangleTLAS_Instance)
 TEST_F(TLASAccelerationStructureTest, CreateSimpleTriangleTLAS_2Instances_InstanceMaskAndSBTContribution)
 {
     auto tlas = graphics.CreateAccelerationStructure(
-        ASDesc{ .name = "TLAS", .type = ASType::TopLevel, .buildFlags = ASBuild::None });
+        AccelerationStructureDesc{ .name = "TLAS", .type = ASType::TopLevel, .buildFlags = ASBuild::None });
 
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
     std::array<TLASInstanceDesc, 2> instances{
@@ -426,7 +429,7 @@ TEST_P(TLASFlagTest, TLASFlagPermutations)
 {
     const auto& testData = GetParam();
     auto tlas = graphics.CreateAccelerationStructure(
-        ASDesc{ .name = "TLAS", .type = ASType::TopLevel, .buildFlags = testData.buildFlags });
+        AccelerationStructureDesc{ .name = "TLAS", .type = ASType::TopLevel, .buildFlags = testData.buildFlags });
 
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
     TLASInstanceDesc instanceDesc{
@@ -450,7 +453,7 @@ INSTANTIATE_TEST_SUITE_P(TLASFlagPermutationTest,
 TEST_F(AccelerationStructureTest, CreateSimpleAABBBLAS)
 {
     auto blas = graphics.CreateAccelerationStructure(
-        ASDesc{ .name = "AABB_BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
+        AccelerationStructureDesc{ .name = "AABB_BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
 
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
     // Build BLAS with single AABB.
@@ -469,7 +472,7 @@ TEST_F(AccelerationStructureTest, CreateSimpleAABBBLAS)
 TEST_F(AccelerationStructureTest, CreateMultiAABBBLAS)
 {
     auto blas = graphics.CreateAccelerationStructure(
-        ASDesc{ .name = "AABB_BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
+        AccelerationStructureDesc{ .name = "AABB_BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
 
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
     // Build BLAS with multiple AABBs.
@@ -488,9 +491,9 @@ TEST_F(AccelerationStructureTest, CreateMultiAABBBLAS)
 TEST_F(AccelerationStructureTest, CreateMultiAABBAndTLAS)
 {
     auto blas = graphics.CreateAccelerationStructure(
-        ASDesc{ .name = "AABB_BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
+        AccelerationStructureDesc{ .name = "AABB_BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
     auto tlas = graphics.CreateAccelerationStructure(
-        ASDesc{ .name = "AABB_TLAS", .type = ASType::TopLevel, .buildFlags = ASBuild::None });
+        AccelerationStructureDesc{ .name = "AABB_TLAS", .type = ASType::TopLevel, .buildFlags = ASBuild::None });
 
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
     // Build BLAS with multiple AABBs.
@@ -534,9 +537,9 @@ TEST_P(ASAABBTest, CreateAABBTraceShader)
     const auto& testData = GetParam();
 
     auto blas = graphics.CreateAccelerationStructure(
-        ASDesc{ .name = "AABB_BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
+        AccelerationStructureDesc{ .name = "AABB_BLAS", .type = ASType::BottomLevel, .buildFlags = ASBuild::None });
     auto tlas = graphics.CreateAccelerationStructure(
-        ASDesc{ .name = "AABB_TLAS", .type = ASType::TopLevel, .buildFlags = ASBuild::None });
+        AccelerationStructureDesc{ .name = "AABB_TLAS", .type = ASType::TopLevel, .buildFlags = ASBuild::None });
 
     auto ctx = graphics.CreateCommandContext(QueueType::Compute);
     // Build BLAS with multiple AABBs.
@@ -577,48 +580,49 @@ TEST_P(ASAABBTest, CreateAABBTraceShader)
     {
         shaderPath /= "tests/shaders/RayTracingAABB.slang";
     }
+    auto shaderPathStr = shaderPath.string();
 
-    ctx.TraceRays(
-        RayTracingCollection{
+    ctx.TraceRays(shaderCompiler.GetRayTracingShaderCollection(
+        RayTracingShaderKey{
+            // Allow for primary rays only (no recursion).
+            .maxRecursionDepth = 1,
+            .maxPayloadByteSize = sizeof(float),
+            .maxAttributeByteSize = sizeof(float) * 2,
             .rayGenerationShaders = 
             {
                 ShaderKey{
-                    .path = shaderPath,
+                    .filepath = shaderPathStr,
                     .entryPoint = "RayGenMain",
                     .type = ShaderType::RayGenerationShader,
-                 }, 
+                 },
             },
              .rayMissShaders =
              {
                  ShaderKey{
-                     .path = shaderPath,
+                     .filepath = shaderPathStr,
                      .entryPoint = "MissMain",
                      .type = ShaderType::RayMissShader,
                  }
              },
              .hitGroups =
              {
-                 HitGroup{
+                 HitGroupKey{
                      .name = "Test_RayTracing_AABB_HitGroup",
                      .rayClosestHitShader = 
                      {
-                         .path = shaderPath,
+                         .filepath = shaderPathStr,
                          .entryPoint = "ClosestHitMain",
                          .type = ShaderType::RayClosestHitShader,
                      },
                      .rayIntersectionShader =
                      ShaderKey{
-                          .path = shaderPath,
+                          .filepath = shaderPathStr,
                           .entryPoint = "IntersectMain",
                           .type = ShaderType::RayIntersectionShader,
                      },
                  }
              },
-             // Allow for primary rays only (no recursion).
-             .maxRecursionDepth = 1,
-             .maxPayloadByteSize = sizeof(float),
-             .maxAttributeByteSize = sizeof(float) * 2,
-        },
+        }),
         ConstantBinding(data),
         {binding},
         {

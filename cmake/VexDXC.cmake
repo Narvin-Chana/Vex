@@ -1,5 +1,11 @@
 include(FetchContent)
 
+if(NOT VEX_ENABLE_SHADER_COMPILER OR NOT VEX_ENABLE_DXC)
+    function(build_with_dxc target)
+    endfunction()
+    return()
+endif()
+
 # Choose URLs based on platform
 if(WIN32)
     set(DXC_RELEASE_URL "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.9.2602/dxc_2026_02_20.zip")
@@ -53,11 +59,16 @@ function(build_with_dxc target)
             BUILD_WITH_INSTALL_RPATH TRUE
         )
     endif()
-    
+
     message(STATUS "Statically linked ${target} with DXC: ${DXC_STATIC_LIB}")
     
     # Register the DXC headers for installation
     add_header_only_dependency(${target} dxc "${dxc_SOURCE_DIR}" "${DXC_HEADERS_INCLUDE_NAME}" "dxc")
+
+    target_sources(${target} PRIVATE
+            "src/ShaderCompiler/Compiler/DXC/DXCCompiler.h"
+            "src/ShaderCompiler/Compiler/DXC/DXCCompiler.cpp"
+    )
 
     # Now store DXC's dlls in Vex's runtime dlls target property.
     vex_add_files_to_target_property(${target} "VEX_RUNTIME_DLLS" ${DXC_RUNTIME_LIB})

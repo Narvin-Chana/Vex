@@ -4,7 +4,6 @@
 
 #include <Vex/Containers/Span.h>
 #include <Vex/QueueType.h>
-#include <Vex/Types.h>
 #include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIFwd.h>
@@ -14,16 +13,13 @@ namespace vex
 
 struct BufferDesc;
 struct TextureDesc;
-struct GraphicsPipelineStateKey;
-struct ComputePipelineStateKey;
-struct RayTracingCollection;
-using RayTracingPipelineStateKey = RayTracingCollection;
+struct GraphicsPSOKey;
+struct ComputePSOKey;
+struct RayTracingPSOKey;
 struct SwapChainDesc;
 struct PlatformWindow;
-enum class ShaderCompilerBackend : u8;
-struct ShaderEnvironment;
 struct SyncToken;
-struct ASDesc;
+struct AccelerationStructureDesc;
 
 struct RHIBase
 {
@@ -33,9 +29,9 @@ struct RHIBase
 
     virtual RHICommandPool CreateCommandPool() = 0;
 
-    virtual RHIGraphicsPipelineState CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key) = 0;
-    virtual RHIComputePipelineState CreateComputePipelineState(const ComputePipelineStateKey& key) = 0;
-    virtual RHIRayTracingPipelineState CreateRayTracingPipelineState(const RayTracingPipelineStateKey& key) = 0;
+    virtual RHIGraphicsPipelineState CreateGraphicsPipelineState(const GraphicsPSOKey& key) = 0;
+    virtual RHIComputePipelineState CreateComputePipelineState(const ComputePSOKey& key) = 0;
+    virtual RHIRayTracingPipelineState CreateRayTracingPipelineState(const RayTracingPSOKey& key) = 0;
     virtual RHIResourceLayout CreateResourceLayout(RHIDescriptorPool& descriptorPool) = 0;
 
     virtual RHITexture CreateTexture(RHIAllocator& allocator, const TextureDesc& desc) = 0;
@@ -47,7 +43,7 @@ struct RHIBase
 
     virtual RHITimestampQueryPool CreateTimestampQueryPool(RHIAllocator& allocator) = 0;
 
-    virtual RHIAccelerationStructure CreateAS(const ASDesc& desc) = 0;
+    virtual RHIAccelerationStructure CreateAS(const AccelerationStructureDesc& desc) = 0;
 
     virtual void WaitForTokenOnCPU(const SyncToken& syncToken) = 0;
     virtual bool IsTokenComplete(const SyncToken& syncToken) const = 0;

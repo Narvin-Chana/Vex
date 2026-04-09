@@ -3,9 +3,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb_image_write.h>
-
 #include <ExamplePaths.h>
+#include <stb_image_write.h>
 
 static const std::filesystem::path WorkingDir = ExamplesDir / "hello_upload_download";
 
@@ -46,6 +45,8 @@ int main()
                                                      .enableGPUDebugLayer = !VEX_SHIPPING,
                                                      .enableGPUBasedValidation = !VEX_SHIPPING } };
 
+    vex::ShaderCompiler shaderCompiler;
+
     Image srcImg = ReadImage(WorkingDir / "Input.jpg");
     vex::Texture srcTexture = graphics.CreateTexture({ .name = "Input Image",
                                                        .type = vex::TextureType::Texture2D,
@@ -64,8 +65,7 @@ int main()
                                                        .mips = 2,
                                                        .usage = vex::TextureUsage::ShaderReadWrite });
 
-    vex::CommandContext ctx =
-        graphics.CreateCommandContext(vex::QueueType::Compute);
+    vex::CommandContext ctx = graphics.CreateCommandContext(vex::QueueType::Compute);
 
     ctx.EnqueueDataUpload(srcTexture, srcImg.data, vex::TextureRegion::AllMips());
 
@@ -83,19 +83,18 @@ int main()
     };
     std::vector<vex::BindlessHandle> handles = graphics.GetBindlessHandles(bindings);
 
-    ctx.Dispatch(
-        vex::ShaderKey{
-            .path = WorkingDir / "BoxBlur.hlsl",
-            .entryPoint = "CSMain",
-            .type = vex::ShaderType::ComputeShader,
-        },
-        vex::ConstantBinding{ std::span{ handles } },
-        bindings,
-        std::array{
-            (srcImg.width + 7u) / 8u,
-            (srcImg.height + 7u) / 8u,
-            1u,
-        });
+    ctx.Dispatch(shaderCompiler.GetShaderView(vex::ShaderKey{
+                     .filepath = (WorkingDir / "BoxBlur.hlsl").string(),
+                     .entryPoint = "CSMain",
+                     .type = vex::ShaderType::ComputeShader,
+                 }),
+                 vex::ConstantBinding{ std::span{ handles } },
+                 bindings,
+                 std::array{
+                     (srcImg.width + 7u) / 8u,
+                     (srcImg.height + 7u) / 8u,
+                     1u,
+                 });
 
     // Pull only mip 1 with output
     vex::TextureReadbackContext readbackContext = ctx.EnqueueDataReadback(dstTexture, vex::TextureRegion::SingleMip(1));

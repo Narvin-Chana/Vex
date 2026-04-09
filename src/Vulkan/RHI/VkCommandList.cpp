@@ -143,7 +143,7 @@ void VkCommandList::SetLayout(RHIResourceLayout& layout)
     }
 
     // Stage flags must be the same as the push constant ranges defined in the layout
-    commandBuffer->pushConstants(*layout.pipelineLayout,
+    commandBuffer->pushConstants(layout.GetPipelineLayout(),
                                  ::vk::ShaderStageFlagBits::eAllGraphics | ::vk::ShaderStageFlagBits::eCompute,
                                  0,
                                  localConstantsData.size(),
@@ -152,13 +152,12 @@ void VkCommandList::SetLayout(RHIResourceLayout& layout)
 
 void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)
 {
-    std::array descriptorSets{ *resourceLayout.GetSamplerDescriptor().descriptorSet,
-                               *descriptorPool.bindlessSet->descriptorSet };
+    const std::array descriptorSets{ *descriptorPool.bindlessSet->descriptorSet, resourceLayout.GetStaticSamplerDescriptorSet() };
     switch (type)
     {
     case QueueTypes::Graphics:
         commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eGraphics,
-                                          *resourceLayout.pipelineLayout,
+                                          resourceLayout.GetPipelineLayout(),
                                           0,
                                           descriptorSets.size(),
                                           descriptorSets.data(),
@@ -166,7 +165,7 @@ void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIReso
                                           nullptr);
     case QueueTypes::Compute:
         commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eCompute,
-                                          *resourceLayout.pipelineLayout,
+                                          resourceLayout.GetPipelineLayout(),
                                           0,
                                           descriptorSets.size(),
                                           descriptorSets.data(),

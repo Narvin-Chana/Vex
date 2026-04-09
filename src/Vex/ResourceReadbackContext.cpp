@@ -1,33 +1,12 @@
 ﻿#include "ResourceReadbackContext.h"
 
+#include <utility>
+
 #include <Vex/Graphics.h>
 #include <Vex/ResourceCopy.h>
 
 namespace vex
 {
-
-TextureReadbackContext::TextureReadbackContext(const Buffer& buffer,
-                                               Span<const TextureRegion> textureRegions,
-                                               const TextureDesc& desc,
-                                               Graphics& graphics)
-    : buffer{ buffer }
-    , textureRegions{ textureRegions.begin(), textureRegions.end() }
-    , textureDesc{ desc }
-    , graphics{ graphics }
-{
-}
-
-void BufferReadbackContext::ReadData(Span<byte> outData)
-{
-    RHIBuffer& rhiBuffer = graphics->GetRHIBuffer(buffer.handle);
-    Span<const byte> bufferData = rhiBuffer.GetMappedData();
-    std::copy(bufferData.begin(), bufferData.begin() + outData.size(), outData.begin());
-}
-
-u64 BufferReadbackContext::GetDataByteSize() const
-{
-    return buffer.desc.byteSize;
-}
 
 BufferReadbackContext::~BufferReadbackContext()
 {
@@ -50,8 +29,20 @@ BufferReadbackContext& BufferReadbackContext::operator=(BufferReadbackContext&& 
     return *this;
 }
 
-BufferReadbackContext::BufferReadbackContext(const Buffer& buffer, Graphics& graphics)
-    : buffer{ buffer }
+void BufferReadbackContext::ReadData(Span<byte> outData) const
+{
+    const RHIBuffer& rhiBuffer = graphics->GetRHIBuffer(buffer.handle);
+    Span<const byte> bufferData = rhiBuffer.GetMappedData();
+    std::copy_n(bufferData.begin(), outData.size(), outData.begin());
+}
+
+u64 BufferReadbackContext::GetDataByteSize() const
+{
+    return buffer.desc.byteSize;
+}
+
+BufferReadbackContext::BufferReadbackContext(Buffer buffer, Graphics& graphics)
+    : buffer{ std::move(buffer) }
     , graphics{ graphics }
 {
 }
@@ -95,5 +86,16 @@ void TextureReadbackContext::ReadData(Span<byte> outData) const
 u64 TextureReadbackContext::GetDataByteSize() const
 {
     return TextureUtil::ComputePackedTextureDataByteSize(textureDesc, textureRegions);
+}
+
+TextureReadbackContext::TextureReadbackContext(Buffer buffer,
+                                               Span<const TextureRegion> textureRegions,
+                                               TextureDesc textureDesc,
+                                               Graphics& graphics)
+    : buffer{ std::move(buffer) }
+    , textureRegions{ textureRegions.begin(), textureRegions.end() }
+    , textureDesc{ std::move(textureDesc) }
+    , graphics{ graphics }
+{
 }
 } // namespace vex

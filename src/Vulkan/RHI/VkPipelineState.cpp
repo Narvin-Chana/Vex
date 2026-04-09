@@ -24,17 +24,17 @@ VkGraphicsPipelineState::VkGraphicsPipelineState(const Key& key, ::vk::Device de
     GraphicsPiplineUtils::ValidateGraphicsPipeline(key);
 }
 
-void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
-                                      const Shader& pixelShader,
+void VkGraphicsPipelineState::Compile(const ShaderView& vertexShader,
+                                      const ShaderView& pixelShader,
                                       RHIResourceLayout& resourceLayout)
 {
-    Span<const byte> vsCode = vertexShader.GetBlob();
+    Span<const byte> vsCode = vertexShader.bytecode;
     ::vk::ShaderModuleCreateInfo vsShaderModuleCreateInfo{
         .codeSize = vsCode.size(),
         .pCode = reinterpret_cast<const u32*>(&vsCode[0]),
     };
 
-    Span<const byte> psCode = pixelShader.GetBlob();
+    Span<const byte> psCode = pixelShader.bytecode;
     ::vk::ShaderModuleCreateInfo psShaderModuleCreateInfo{
         .codeSize = psCode.size(),
         .pCode = reinterpret_cast<const u32*>(&psCode[0]),
@@ -43,12 +43,15 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
     auto vsShaderModule = VEX_VK_CHECK <<= device.createShaderModuleUnique(vsShaderModuleCreateInfo);
     auto psShaderModule = VEX_VK_CHECK <<= device.createShaderModuleUnique(psShaderModuleCreateInfo);
 
+    std::string vertexShaderEntryPoint{ vertexShader.entryPoint };
+    std::string pixelShaderEntryPoint{ pixelShader.entryPoint };
+
     std::array stages{ ::vk::PipelineShaderStageCreateInfo{ .stage = ::vk::ShaderStageFlagBits::eVertex,
                                                             .module = *vsShaderModule,
-                                                            .pName = key.vertexShader.entryPoint.c_str() },
+                                                            .pName = vertexShaderEntryPoint.c_str() },
                        ::vk::PipelineShaderStageCreateInfo{ .stage = ::vk::ShaderStageFlagBits::eFragment,
                                                             .module = *psShaderModule,
-                                                            .pName = key.pixelShader.entryPoint.c_str() } };
+                                                            .pName = pixelShaderEntryPoint.c_str() } };
 
     std::vector<::vk::VertexInputBindingDescription> bindings{ key.vertexInputLayout.bindings.size() };
     std::ranges::transform(key.vertexInputLayout.bindings,
@@ -188,7 +191,7 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
                                                          .pDepthStencilState = &depthStateCI,
                                                          .pColorBlendState = &blendStateCI,
                                                          .pDynamicState = &dynamicStateInfo,
-                                                         .layout = *resourceLayout.pipelineLayout,
+                                                         .layout = resourceLayout.GetPipelineLayout(),
                                                          .renderPass = nullptr,
                                                          .subpass = 0,
                                                          .basePipelineHandle = nullptr,
@@ -196,8 +199,6 @@ void VkGraphicsPipelineState::Compile(const Shader& vertexShader,
 
     graphicsPipeline = VEX_VK_CHECK <<= device.createGraphicsPipelineUnique(PSOCache, graphicsPipelineCI);
 
-    vertexShaderVersion = vertexShader.version;
-    pixelShaderVersion = pixelShader.version;
     rootSignatureVersion = resourceLayout.version;
 
     SetDebugName(device, *graphicsPipeline, std::format("GraphicsPSO: {}", key).c_str());
@@ -221,9 +222,9 @@ VkComputePipelineState::VkComputePipelineState(const Key& key, ::vk::Device devi
 {
 }
 
-void VkComputePipelineState::Compile(const Shader& computeShader, RHIResourceLayout& resourceLayout)
+void VkComputePipelineState::Compile(const ShaderView& computeShader, RHIResourceLayout& resourceLayout)
 {
-    Span<const byte> shaderCode = computeShader.GetBlob();
+    Span<const byte> shaderCode = computeShader.bytecode;
     ::vk::ShaderModuleCreateInfo shaderModulecreateInfo{
         .codeSize = shaderCode.size(),
         .pCode = reinterpret_cast<const u32*>(&shaderCode[0]),
@@ -231,19 +232,20 @@ void VkComputePipelineState::Compile(const Shader& computeShader, RHIResourceLay
 
     auto computeShaderModule = VEX_VK_CHECK <<= device.createShaderModuleUnique(shaderModulecreateInfo);
 
+    std::string computeShaderEntryPoint{ computeShader.entryPoint };
+
     ::vk::ComputePipelineCreateInfo computePipelineCreateInfo{
         .stage =
             ::vk::PipelineShaderStageCreateInfo{
                 .stage = ::vk::ShaderStageFlagBits::eCompute,
                 .module = *computeShaderModule,
-                .pName = key.computeShader.entryPoint.c_str(),
+                .pName = computeShaderEntryPoint.c_str(),
             },
-        .layout = *resourceLayout.pipelineLayout,
+        .layout = resourceLayout.GetPipelineLayout(),
     };
 
     computePipeline = VEX_VK_CHECK <<= device.createComputePipelineUnique(PSOCache, computePipelineCreateInfo);
 
-    computeShaderVersion = computeShader.version;
     rootSignatureVersion = resourceLayout.version;
 
     SetDebugName(device, *computePipeline, std::format("ComputePSO: {}", key).c_str());

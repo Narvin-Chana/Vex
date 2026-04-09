@@ -9,5 +9,5 @@ struct RenderDocApplication : public ExampleApplication
     void Run();
 
 protected:
-    virtual void OnResize(GLFWwindow* window, uint32_t width, uint32_t height) override;
+    virtual void OnResize(GLFWwindow* window, int width, int height) override;
 };

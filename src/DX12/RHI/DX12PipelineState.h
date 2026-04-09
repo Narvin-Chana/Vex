@@ -1,8 +1,8 @@
 #pragma once
 
-#include <cstddef>
 #include <vector>
 
+#include <Vex/RayTracing.h>
 #include <Vex/Utility/Hash.h>
 #include <Vex/Utility/MaybeUninitialized.h>
 
@@ -33,8 +33,8 @@ public:
 
     DX12GraphicsPipelineState(const ComPtr<DX12Device>& device, const Key& key);
 
-    virtual void Compile(const Shader& vertexShader,
-                         const Shader& pixelShader,
+    virtual void Compile(const ShaderView& vertexShader,
+                         const ShaderView& pixelShader,
                          RHIResourceLayout& resourceLayout) override;
     virtual std::unique_ptr<RHIGraphicsPipelineState> Cleanup() override;
 
@@ -53,7 +53,7 @@ class DX12ComputePipelineState final : public RHIComputePipelineStateBase
 public:
     DX12ComputePipelineState(const ComPtr<DX12Device>& device, const Key& key);
 
-    virtual void Compile(const Shader& computeShader, RHIResourceLayout& resourceLayout) override;
+    virtual void Compile(const ShaderView& computeShader, RHIResourceLayout& resourceLayout) override;
     virtual std::unique_ptr<RHIComputePipelineState> Cleanup() override;
 
     ComPtr<ID3D12PipelineState> computePSO;
@@ -68,8 +68,8 @@ public:
     DX12RayTracingPipelineState(const ComPtr<DX12Device>& device, const Key& key);
 
     virtual std::vector<MaybeUninitialized<RHIBuffer>> Compile(const RayTracingShaderCollection& shaderCollection,
-                         RHIResourceLayout& resourceLayout,
-                         RHIAllocator& allocator) override;
+                                                               RHIResourceLayout& resourceLayout,
+                                                               RHIAllocator& allocator) override;
     virtual std::unique_ptr<RHIRayTracingPipelineState> Cleanup() override;
 
     void PrepareDispatchRays(D3D12_DISPATCH_RAYS_DESC& dispatchRaysDesc, const TraceRaysDesc& rayTracingArgs) const;
@@ -79,7 +79,6 @@ public:
 private:
     void GenerateIdentifiers(const RayTracingShaderCollection& shaderCollection);
     std::vector<MaybeUninitialized<RHIBuffer>> CreateShaderTables(RHIAllocator& allocator);
-    void UpdateVersions(const RayTracingShaderCollection& shaderCollection, RHIResourceLayout& resourceLayout);
 
     ComPtr<DX12Device> device;
 

@@ -191,7 +191,95 @@ std::string_view FormatUtil::GetHLSLType(TextureFormat format)
     case TextureFormat::UNKNOWN:
     default:
         VEX_LOG(Fatal, "Invalid or unsupported format!");
-        return "";
+    }
+    std::unreachable();
+}
+
+u8 FormatUtil::GetNumChannels(TextureFormat format)
+{
+switch (format)
+    {
+    // 8-bit single channel
+    case TextureFormat::R8_UNORM:
+    case TextureFormat::R8_SNORM:
+    case TextureFormat::R8_UINT:
+    case TextureFormat::R8_SINT:
+    // 16-bit single channel
+    case TextureFormat::R16_UINT:
+    case TextureFormat::R16_SINT:
+    case TextureFormat::R16_FLOAT:
+    // 32-bit single channel
+    case TextureFormat::R32_UINT:
+    case TextureFormat::R32_SINT:
+    case TextureFormat::R32_FLOAT:
+    // Depth/stencil formats (typically sampled as float)
+    case TextureFormat::D16_UNORM:
+    case TextureFormat::D32_FLOAT:
+    // BC4 is single channel
+    case TextureFormat::BC4_UNORM:
+    case TextureFormat::BC4_SNORM:
+        return 1;
+
+    // 8-bit dual channel
+    case TextureFormat::RG8_UNORM:
+    case TextureFormat::RG8_SNORM:
+    case TextureFormat::RG8_UINT:
+    case TextureFormat::RG8_SINT:
+    // 16-bit dual channel
+    case TextureFormat::RG16_UINT:
+    case TextureFormat::RG16_SINT:
+    case TextureFormat::RG16_FLOAT:
+    // 32-bit dual channel
+    case TextureFormat::RG32_UINT:
+    case TextureFormat::RG32_SINT:
+    case TextureFormat::RG32_FLOAT:
+    // Depth-stencil
+    case TextureFormat::D24_UNORM_S8_UINT:
+    case TextureFormat::D32_FLOAT_S8_UINT:
+    // BC5 is dual channel
+    case TextureFormat::BC5_UNORM:
+    case TextureFormat::BC5_SNORM:
+        return 2;
+
+    // 32-bit triple channel
+    case TextureFormat::RGB32_UINT:
+    case TextureFormat::RGB32_SINT:
+    case TextureFormat::RGB32_FLOAT:
+    // Packed format
+    case TextureFormat::RG11B10_FLOAT:
+    // BC6H is HDR RGB
+    case TextureFormat::BC6H_UF16:
+    case TextureFormat::BC6H_SF16:
+        return 3;
+
+    // 8-bit quad channel
+    case TextureFormat::RGBA8_UNORM:
+    case TextureFormat::RGBA8_SNORM:
+    case TextureFormat::BGRA8_UNORM:
+    case TextureFormat::RGBA8_UINT:
+    case TextureFormat::RGBA8_SINT:
+    // 16-bit quad channel
+    case TextureFormat::RGBA16_UINT:
+    case TextureFormat::RGBA16_SINT:
+    case TextureFormat::RGBA16_FLOAT:
+    // 32-bit quad channel
+    case TextureFormat::RGBA32_UINT:
+    case TextureFormat::RGBA32_SINT:
+    case TextureFormat::RGBA32_FLOAT:
+    // Packed formats
+    case TextureFormat::RGB10A2_UNORM:
+    case TextureFormat::RGB10A2_UINT:
+    // BC compressed formats (all decompress to float4)
+    case TextureFormat::BC1_UNORM:
+    case TextureFormat::BC2_UNORM:
+    case TextureFormat::BC3_UNORM:
+    case TextureFormat::BC7_UNORM:
+        return 4;
+
+    // Error case
+    case TextureFormat::UNKNOWN:
+    default:
+        VEX_LOG(Fatal, "Invalid or unsupported format!");
     }
     std::unreachable();
 }

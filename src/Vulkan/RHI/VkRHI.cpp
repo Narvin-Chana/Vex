@@ -31,7 +31,6 @@
 #include <RHI/RHICommandList.h>
 #include <RHI/RHIPhysicalDevice.h>
 #include <RHI/RHIPipelineState.h>
-#include <RHI/RHISwapChain.h>
 
 #include <Vulkan/RHI/VkPhysicalDevice.h>
 #include <Vulkan/VkCommandQueue.h>
@@ -498,17 +497,17 @@ RHICommandPool VkRHI::CreateCommandPool()
     return { *this, GetGPUContext(), queues };
 }
 
-RHIGraphicsPipelineState VkRHI::CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key)
+RHIGraphicsPipelineState VkRHI::CreateGraphicsPipelineState(const GraphicsPSOKey& key)
 {
     return { key, *device, *PSOCache };
 }
 
-RHIComputePipelineState VkRHI::CreateComputePipelineState(const ComputePipelineStateKey& key)
+RHIComputePipelineState VkRHI::CreateComputePipelineState(const ComputePSOKey& key)
 {
     return { key, *device, *PSOCache };
 }
 
-RHIRayTracingPipelineState VkRHI::CreateRayTracingPipelineState(const RayTracingPipelineStateKey& key)
+RHIRayTracingPipelineState VkRHI::CreateRayTracingPipelineState(const RayTracingPSOKey& key)
 {
     return { key, *device, *PSOCache };
 }
@@ -543,7 +542,7 @@ RHITimestampQueryPool VkRHI::CreateTimestampQueryPool(RHIAllocator& allocator)
     return { GetGPUContext(), *this, allocator };
 }
 
-RHIAccelerationStructure VkRHI::CreateAS(const ASDesc& desc)
+RHIAccelerationStructure VkRHI::CreateAS(const AccelerationStructureDesc& desc)
 {
     // TODO(https://trello.com/c/rLevCOvT): Implement vulkan AS upload/creation.
     VEX_NOT_YET_IMPLEMENTED();

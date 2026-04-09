@@ -8,7 +8,7 @@ namespace vex::vk
 class VkAccelerationStructure final : public RHIAccelerationStructureBase
 {
 public:
-    VkAccelerationStructure(const ASDesc& desc);
+    VkAccelerationStructure(const AccelerationStructureDesc& desc);
 
     virtual const RHIAccelerationStructureBuildInfo& SetupBLASBuild(RHIAllocator& allocator,
                                                                     const RHIBLASBuildDesc& desc) override;
