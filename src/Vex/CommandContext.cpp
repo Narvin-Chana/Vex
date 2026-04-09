@@ -1078,7 +1078,7 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
     Buffer instanceBuffer = CreateTemporaryBuffer({
         .name = accelStruct.GetDesc().name + "_build_tlas_instances",
         .byteSize = instanceData.size(),
-        .usage = BufferUsage::ShaderRead | BufferUsage::BuildAccelerationStructure,
+        .usage = BufferUsage::BuildAccelerationStructure,
     });
     RHIBuffer& rhiInstanceBuffer = graphics->GetRHIBuffer(instanceBuffer.handle);
     EnqueueDataUpload(instanceBuffer, instanceData);

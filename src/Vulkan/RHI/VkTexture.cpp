@@ -346,7 +346,6 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
     const bool needsConcurrent = ctx->queueFamilyIndices.size() > 1;
     ::vk::ImageCreateInfo createInfo{
         .pNext = useMutableFormat ? &imageFormatList : nullptr,
-        // TODO: Add cube eCubeCompatible to flags when type is cube
         .flags = flags,
         // Force the non-SRGB variant.
         .format = TextureFormatToVulkan(desc.format, false),

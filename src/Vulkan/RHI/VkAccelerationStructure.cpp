@@ -96,9 +96,9 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
             VEX_ASSERT(geom.vertexBufferBinding);
             VEX_ASSERT(geom.vertexBufferBinding->binding.strideByteSize);
 
-            static constexpr u32 vertexByteStride = sizeof(float) * 3;
+            static constexpr u32 VertexByteStride = sizeof(float) * 3;
 
-            auto [firstVertex, vertexCount] = BindingToOffsetCount(geom.vertexBufferBinding, vertexByteStride);
+            auto [firstVertex, vertexCount] = BindingToOffsetCount(geom.vertexBufferBinding, VertexByteStride);
 
             u32 triangleCount = vertexCount / 3;
             if (geom.indexBufferBinding)
@@ -129,7 +129,7 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
                 .primitiveCount = triangleCount,
                 .primitiveOffset = static_cast<u32>(geom.indexBufferBinding
                                                         ? geom.indexBufferBinding->binding.offsetByteSize.value_or(0)
-                                                        : firstVertex * vertexByteStride),
+                                                        : firstVertex * VertexByteStride),
                 .firstVertex = 0,
                 .transformOffset =
                     geom.transformBufferBinding
