@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <Vex/Containers/Span.h>
+#include <Vex/TextureSampler.h>
 #include <Vex/Types.h>
 
 namespace vex
@@ -15,6 +16,9 @@ public:
     RHIResourceLayoutBase();
     ~RHIResourceLayoutBase();
     void SetLayoutResources(const ConstantBinding& constants);
+
+    void SetStaticSamplers(Span<const StaticTextureSampler> newSamplers);
+    Span<const StaticTextureSampler> GetStaticSamplers() const;
 
     Span<const byte> GetLocalConstantsData() const;
 
@@ -30,6 +34,8 @@ protected:
 
     // Constant data remains always allocated, avoiding reallocations on successive draw calls.
     std::vector<byte> localConstantsData;
+
+    std::vector<StaticTextureSampler> staticSamplers;
 };
 
 } // namespace vex

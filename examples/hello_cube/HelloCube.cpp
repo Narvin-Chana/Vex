@@ -43,6 +43,9 @@ HelloCubeApplication::HelloCubeApplication()
         .useSwapChain = true,
     });
 
+    graphics->SetStaticSamplers(
+        { vex::StaticTextureSampler::CreateSampler(vex::FilterMode::Linear, vex::AddressMode::Clamp) });
+
     // Depth texture
     depthTexture = graphics->CreateTexture({
         .name = "Depth Texture",
@@ -145,7 +148,6 @@ void HelloCubeApplication::Run()
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
-
         {
             // Make the cube spin over time.
             const double currentTime = glfwGetTime();
@@ -160,7 +162,7 @@ void HelloCubeApplication::Run()
             ctx.SetScissor(0, 0, width, height);
             ctx.SetViewport(0, 0, static_cast<float>(width), static_cast<float>(height));
 
-            // Clear backbuffer.
+            // Clear present texture.
             vex::TextureClearValue clearValue{ .color = { 0.2f, 0.2f, 0.2f, 1 } };
             ctx.ClearTexture(graphics->GetCurrentPresentTexture(), clearValue);
 
@@ -232,15 +234,11 @@ void HelloCubeApplication::Run()
             vex::BindlessHandle uvGuideHandle = graphics->GetBindlessHandle(
                 vex::TextureBinding{ .texture = uvGuideTexture, .usage = vex::TextureBindingUsage::ShaderRead });
 
-            vex::BindlessHandle linearSamplerHandle = graphics->GetBindlessSampler(vex::TextureSampler::CreateSampler(vex::FilterMode::Linear, vex::AddressMode::Clamp));
-
             struct UniformData
             {
-                float currentTime;
+                float currentTime{};
                 vex::BindlessHandle uvGuideHandle;
-                vex::BindlessHandle linearSamplerHandle;
             };
-
             {
                 VEX_GPU_SCOPED_EVENT(ctx, "HLSL Cube");
                 ctx.DrawIndexed(hlslDrawDesc,
@@ -250,11 +248,10 @@ void HelloCubeApplication::Run()
                                     .vertexBuffers = { &vertexBufferBinding, 1 },
                                     .indexBuffer = indexBufferBinding,
                                 },
-                                vex::ConstantBinding(UniformData{ static_cast<float>(currentTime), uvGuideHandle, linearSamplerHandle }),
+                                vex::ConstantBinding(UniformData{ static_cast<float>(currentTime), uvGuideHandle }),
                                 {},
                                 IndexCount);
             }
-
             {
                 VEX_GPU_SCOPED_EVENT(ctx, "Slang Cube");
                 ctx.DrawIndexed(slangDrawDesc,
@@ -264,14 +261,13 @@ void HelloCubeApplication::Run()
                                     .vertexBuffers = { &vertexBufferBinding, 1 },
                                     .indexBuffer = indexBufferBinding,
                                 },
-                                vex::ConstantBinding(UniformData{ static_cast<float>(currentTime), uvGuideHandle, linearSamplerHandle }),
+                                vex::ConstantBinding(
+                                    UniformData{ static_cast<float>(currentTime), uvGuideHandle }),
                                 {},
                                 IndexCount);
             }
-
             graphics->Submit(ctx);
         }
-
         graphics->Present();
     }
 }

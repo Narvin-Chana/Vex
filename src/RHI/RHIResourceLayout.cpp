@@ -1,7 +1,7 @@
 #include "RHIResourceLayout.h"
 
-#include <Vex/Logger.h>
 #include <Vex/Bindings.h>
+#include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHIPhysicalDevice.h>
 
@@ -33,6 +33,17 @@ void RHIResourceLayoutBase::SetLayoutResources(const ConstantBinding& constants)
         localConstantsData.resize(constants.data.size_bytes());
         std::memcpy(localConstantsData.data(), constants.data.data(), constants.data.size_bytes());
     }
+}
+
+void RHIResourceLayoutBase::SetStaticSamplers(Span<const StaticTextureSampler> newSamplers)
+{
+    staticSamplers = { newSamplers.begin(), newSamplers.end() };
+    isDirty = true;
+}
+
+Span<const StaticTextureSampler> RHIResourceLayoutBase::GetStaticSamplers() const
+{
+    return staticSamplers;
 }
 
 Span<const byte> RHIResourceLayoutBase::GetLocalConstantsData() const

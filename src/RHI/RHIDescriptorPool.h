@@ -20,7 +20,7 @@ class RHIDescriptorPoolBase
 public:
     RHIDescriptorPoolBase();
 
-    virtual BindlessHandle CreateBindlessSampler(const TextureSampler& textureSampler) = 0;
+    virtual BindlessHandle CreateBindlessSampler(const BindlessTextureSampler& textureSampler) = 0;
     virtual void FreeBindlessSampler(BindlessHandle handle) = 0;
 
     // Nullifies the passed in descriptor handle slot, to indicate that the resource is no longer usable.

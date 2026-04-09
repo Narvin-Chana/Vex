@@ -131,7 +131,11 @@ public:
     [[nodiscard]] std::vector<BindlessHandle> GetBindlessHandles(Span<const ResourceBinding> bindlessResources);
 
     // Obtains the specified sampler (creating it if it doesn't yet exist) for use as a bindless sampler in a shader.
-    [[nodiscard]] BindlessHandle GetBindlessSampler(const TextureSampler& sampler);
+    [[nodiscard]] BindlessHandle GetBindlessSampler(const BindlessTextureSampler& sampler);
+
+    // Sets the static samplers used by your application. Register number used in shaders must match the index in the
+    // passed-in Span.
+    void SetStaticSamplers(Span<const StaticTextureSampler> staticSamplers);
 
     // Allows you to submit the command context to the GPU, receiving a SyncToken which can be optionally used to track
     // work completion.
@@ -255,7 +259,7 @@ private:
     };
     std::vector<PendingCPUWork> pendingCPUWork;
 
-    std::unordered_map<TextureSampler, BindlessHandle> bindlessSamplers;
+    std::unordered_map<BindlessTextureSampler, BindlessHandle> bindlessSamplers;
 
     static constexpr u32 DefaultRegistrySize = 1024;
 

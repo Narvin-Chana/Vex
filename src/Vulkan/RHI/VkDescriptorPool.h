@@ -15,7 +15,7 @@ class VkDescriptorPool final : public RHIDescriptorPoolBase
 {
 public:
     VkDescriptorPool(NonNullPtr<VkGPUContext> ctx);
-    virtual BindlessHandle CreateBindlessSampler(const TextureSampler& textureSampler) override;
+    virtual BindlessHandle CreateBindlessSampler(const BindlessTextureSampler& textureSampler) override;
     virtual void FreeBindlessSampler(BindlessHandle handle) override;
 
     ::vk::DescriptorPool& GetNativeDescriptorPool()

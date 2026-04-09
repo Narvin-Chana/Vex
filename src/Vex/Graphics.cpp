@@ -413,11 +413,13 @@ std::vector<BindlessHandle> Graphics::GetBindlessHandles(Span<const ResourceBind
     return handles;
 }
 
-BindlessHandle Graphics::GetBindlessSampler(const TextureSampler& sampler)
+BindlessHandle Graphics::GetBindlessSampler(const BindlessTextureSampler& sampler)
 {
     if (bindlessSamplers.size() == GMaxBindlessSamplerCount)
     {
-        VEX_LOG(Fatal, "Max number of different bindless samplers reached (2048). You must reduce the number of variations used.");
+        VEX_LOG(
+            Fatal,
+            "Max number of different bindless samplers reached (2048). You must reduce the number of variations used.");
     }
 
     auto& handle = bindlessSamplers[sampler];
@@ -428,6 +430,11 @@ BindlessHandle Graphics::GetBindlessSampler(const TextureSampler& sampler)
 
     handle = descriptorPool->CreateBindlessSampler(sampler);
     return handle;
+}
+
+void Graphics::SetStaticSamplers(Span<const StaticTextureSampler> staticSamplers)
+{
+    psCache->resourceLayout->SetStaticSamplers(staticSamplers);
 }
 
 SyncToken Graphics::Submit(CommandContext& ctx, Span<const SyncToken> dependencies)

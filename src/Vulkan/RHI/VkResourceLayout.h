@@ -1,9 +1,11 @@
 #pragma once
 
+#include <Vex/Utility/MaybeUninitialized.h>
 #include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIResourceLayout.h>
 
+#include <Vulkan/RHI/VkDescriptorSet.h>
 #include <Vulkan/VkHeaders.h>
 
 namespace vex::vk
@@ -16,10 +18,13 @@ class VkResourceLayout final : public RHIResourceLayoutBase
 public:
     VkResourceLayout(NonNullPtr<VkGPUContext> ctx, NonNullPtr<VkDescriptorPool> descriptorPool);
 
-    const ::vk::UniquePipelineLayout& GetPipelineLayout() const;
+    ::vk::PipelineLayout GetPipelineLayout();
+    ::vk::DescriptorSet GetStaticSamplerDescriptorSet();
 
 private:
     ::vk::UniquePipelineLayout CreateLayout();
+    MaybeUninitialized<VkDescriptorSet> samplerSet;
+    std::vector<::vk::UniqueSampler> vkSamplers;
 
     NonNullPtr<VkGPUContext> ctx;
     NonNullPtr<VkDescriptorPool> descriptorPool;

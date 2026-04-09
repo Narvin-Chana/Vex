@@ -1,4 +1,3 @@
-#include "RayTracingShaderKey.h"
 #include "ShaderCompiler.h"
 
 #include <ranges>
@@ -7,10 +6,10 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include <Vex/Logger.h>
-#include <Vex/PhysicalDevice.h>
 #include <Vex/RayTracing.h>
 #include <Vex/Utility/Validation.h>
 
+#include <ShaderCompiler/RayTracingShaderKey.h>
 #include <ShaderCompiler/Shader.h>
 
 #define VEX_HAS_AT_LEAST_ONE_COMPILER (VEX_DXC || VEX_SLANG)

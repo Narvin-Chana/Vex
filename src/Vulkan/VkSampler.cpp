@@ -3,7 +3,7 @@
 namespace vex::vk
 {
 
-::vk::SamplerCreateInfo GraphicsPipeline::GetVkSamplerCreateInfoFromTextureSampler(const TextureSampler& sampler)
+::vk::SamplerCreateInfo FillInVkSamplerCreateInfoWithTextureSamplerBase(const TextureSamplerBase& sampler)
 {
     const bool useAnisotropy = sampler.minFilter == FilterMode::Anisotropic ||
                                sampler.magFilter == FilterMode::Anisotropic ||
@@ -22,8 +22,23 @@ namespace vex::vk
                                     .compareOp = static_cast<::vk::CompareOp>(sampler.compareOp),
                                     .minLod = sampler.minLOD,
                                     .maxLod = sampler.maxLOD,
-                                    .borderColor = BorderColorToVkBorderColor(sampler.borderColor),
                                     .unnormalizedCoordinates = false };
+}
+
+::vk::SamplerCreateInfo GraphicsPipeline::GetVkSamplerCreateInfoFromStaticTextureSampler(
+    const StaticTextureSampler& sampler)
+{
+    ::vk::SamplerCreateInfo vkSamplerCreateInfo = FillInVkSamplerCreateInfoWithTextureSamplerBase(sampler);
+    vkSamplerCreateInfo.borderColor = BorderColorToVkBorderColor(sampler.borderColor);
+    return vkSamplerCreateInfo;
+}
+::vk::SamplerCreateInfo GraphicsPipeline::GetVkSamplerCreateInfoFromBindlessTextureSampler(
+    const BindlessTextureSampler& sampler)
+{
+    ::vk::SamplerCreateInfo vkSamplerCreateInfo = FillInVkSamplerCreateInfoWithTextureSamplerBase(sampler);
+    // TODO: use VK_EXT_custom_border_color
+    // vkSamplerCreateInfo.borderColor = BorderColorToVkBorderColor(sampler.borderColor);
+    return vkSamplerCreateInfo;
 }
 
 } // namespace vex::vk

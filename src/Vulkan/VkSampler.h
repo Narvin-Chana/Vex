@@ -43,7 +43,8 @@ VEX_VK_END_ENUM_MAPPING
 namespace GraphicsPipeline
 {
 
-::vk::SamplerCreateInfo GetVkSamplerCreateInfoFromTextureSampler(const TextureSampler& sampler);
+::vk::SamplerCreateInfo GetVkSamplerCreateInfoFromStaticTextureSampler(const StaticTextureSampler& sampler);
+::vk::SamplerCreateInfo GetVkSamplerCreateInfoFromBindlessTextureSampler(const BindlessTextureSampler& sampler);
 
 } // namespace GraphicsPipeline
 

@@ -85,7 +85,7 @@ void HDRApplication::Run()
                 vex::BindlessHandle hdrTextureHandle;
             } data{
                 .linearSamplerHandle = graphics->GetBindlessSampler(
-                    vex::TextureSampler::CreateSampler(vex::FilterMode::Linear, vex::AddressMode::Clamp)),
+                    vex::BindlessTextureSampler::CreateSampler(vex::FilterMode::Linear, vex::AddressMode::Clamp)),
                 .hdrTextureHandle = graphics->GetBindlessHandle(shaderRead),
             };
 

@@ -4,7 +4,6 @@ struct UniformStruct
 {
     float time;
     uint uvGuideTextureHandle;
-    uint linearSamplerHandle;
 };
 
 VEX_UNIFORMS(UniformStruct, Uniforms);
@@ -79,8 +78,9 @@ VSOutput VSMain(in float3 position : POSITION, in float2 uv : TEXCOORD)
 
 static const Texture2D<float4> UVGuideTexture = GetBindlessResource(Uniforms.uvGuideTextureHandle);
 
+VEX_STATIC_SAMPLER(LinearSampler, 0);
+
 float4 PSMain(VSOutput input) : SV_Target
 {
-    SamplerState linearSampler = GetBindlessSampler(Uniforms.linearSamplerHandle);
-    return float4(UVGuideTexture.Sample(linearSampler, input.uv).rgb, 1);
+    return float4(UVGuideTexture.Sample(LinearSampler, input.uv).rgb, 1);
 }

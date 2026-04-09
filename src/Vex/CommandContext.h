@@ -16,6 +16,7 @@
 #include <Vex/Types.h>
 #include <Vex/Utility/NonNullPtr.h>
 
+
 #include <RHI/RHIBarrier.h>
 #include <RHI/RHIBindings.h>
 #include <RHI/RHIFwd.h>

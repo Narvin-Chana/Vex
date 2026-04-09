@@ -128,9 +128,9 @@ CommandContext::CommandContext(NonNullPtr<Graphics> graphics,
 
 CommandContext::~CommandContext()
 {
+#ifndef VEX_TESTS
     // This must be disabled for tests, as it interferes with gtest's crash catching logic (this intercepts the actual
     // error message). This is due to the fact that objects inside the test are destroyed upon test cleanup.
-#ifndef VEX_TESTS
     VEX_CHECK(!cmdList->IsOpen(),
               "A command context was destroyed while still being open for commands, remember to submit your command "
               "context to the GPU using vex::Graphics::Submit()!");
@@ -436,7 +436,7 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
     };
 
     const BindlessHandle linearSamplerHandle =
-        graphics->GetBindlessSampler(TextureSampler::CreateSampler(FilterMode::Linear, AddressMode::Clamp));
+        graphics->GetBindlessSampler(BindlessTextureSampler::CreateSampler(FilterMode::Linear, AddressMode::Clamp));
 
     struct Uniforms
     {
@@ -1342,10 +1342,8 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
     InferResourceBarriers(RHIBarrierSync::AllGraphics, trackedResources);
 
     // Transition RTs/DepthStencil
-    RHIDrawResources drawResources = ResourceBindingUtils::CollectRHIDrawResources(*graphics,
-                                                                                   drawBindings.renderTargets,
-                                                                                   drawBindings.depthStencil,
-                                                                                   drawDesc.depthStencilState);
+    RHIDrawResources drawResources =
+        ResourceBindingUtils::CollectRHIDrawResources(*graphics, drawBindings.renderTargets, drawBindings.depthStencil);
     for (const auto& [binding, _] : drawResources.renderTargets)
     {
         EnqueueTextureBarrier(binding.texture,

@@ -16,6 +16,27 @@ D3D12_TEXTURE_ADDRESS_MODE GetDX12TextureAddressModeFromAddressMode(AddressMode 
     return static_cast<D3D12_TEXTURE_ADDRESS_MODE>(std::to_underlying(addressMode) + 1);
 }
 
+D3D12_STATIC_BORDER_COLOR GetDX12StaticBorderColorFromBorderColor(BorderColor borderColor)
+{
+    switch (borderColor)
+    {
+    case BorderColor::TransparentBlackFloat:
+    case BorderColor::TransparentBlackInt:
+        return D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+    case BorderColor::OpaqueBlackFloat:
+        return D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+    case BorderColor::OpaqueBlackInt:
+        return D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK_UINT;
+    case BorderColor::OpaqueWhiteFloat:
+        return D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+    case BorderColor::OpaqueWhiteInt:
+        return D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE_UINT;
+    default:
+        VEX_LOG(Fatal, "Invalid border color passed to DX12 border color conversion function.");
+    }
+    std::unreachable();
+}
+
 D3D12_FILTER GetDX12FilterFromFilterMode(FilterMode minFilter,
                                          FilterMode magFilter,
                                          FilterMode mipFilter,
@@ -49,9 +70,40 @@ D3D12_FILTER GetDX12FilterFromFilterMode(FilterMode minFilter,
     return static_cast<D3D12_FILTER>(filterValue);
 }
 
-D3D12_SAMPLER_DESC GetDX12SamplerDescFromTextureSampler(const TextureSampler& sampler)
+std::vector<D3D12_STATIC_SAMPLER_DESC> GetDX12StaticSamplersFromTextureSamplers(
+    Span<const StaticTextureSampler> samplers)
 {
-    return {
+    std::vector<D3D12_STATIC_SAMPLER_DESC> dxSamplers;
+    dxSamplers.reserve(samplers.size());
+
+    for (u32 i = 0; i < samplers.size(); ++i)
+    {
+        dxSamplers.push_back({
+            .Filter = GetDX12FilterFromFilterMode(samplers[i].minFilter,
+                                                  samplers[i].magFilter,
+                                                  samplers[i].mipFilter,
+                                                  samplers[i].compareOp != CompareOp::Never),
+            .AddressU = GetDX12TextureAddressModeFromAddressMode(samplers[i].addressU),
+            .AddressV = GetDX12TextureAddressModeFromAddressMode(samplers[i].addressV),
+            .AddressW = GetDX12TextureAddressModeFromAddressMode(samplers[i].addressW),
+            .MipLODBias = samplers[i].mipLODBias,
+            .MaxAnisotropy = samplers[i].maxAnisotropy,
+            .ComparisonFunc = GetD3D12ComparisonFuncFromCompareOp(samplers[i].compareOp),
+            .BorderColor = GetDX12StaticBorderColorFromBorderColor(samplers[i].borderColor),
+            .MinLOD = samplers[i].minLOD,
+            .MaxLOD = samplers[i].maxLOD,
+            .ShaderRegister = i,
+            .RegisterSpace = 1,
+            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+        });
+    }
+
+    return dxSamplers;
+}
+
+D3D12_SAMPLER_DESC GetDX12SamplerDescFromBindlessTextureSampler(const BindlessTextureSampler& sampler)
+{
+    D3D12_SAMPLER_DESC samplerDesc{
         .Filter = GetDX12FilterFromFilterMode(sampler.minFilter,
                                               sampler.magFilter,
                                               sampler.mipFilter,
@@ -61,12 +113,12 @@ D3D12_SAMPLER_DESC GetDX12SamplerDescFromTextureSampler(const TextureSampler& sa
         .AddressW = GetDX12TextureAddressModeFromAddressMode(sampler.addressW),
         .MipLODBias = sampler.mipLODBias,
         .MaxAnisotropy = sampler.maxAnisotropy,
-        .ComparisonFunc = GraphicsPipeline::GetD3D12ComparisonFuncFromCompareOp(sampler.compareOp),
-        // TODO: not implemented!
-        // .BorderColor = GetDX12StaticBorderColorFromBorderColor(sampler.borderColor),
+        .ComparisonFunc = GetD3D12ComparisonFuncFromCompareOp(sampler.compareOp),
         .MinLOD = sampler.minLOD,
         .MaxLOD = sampler.maxLOD,
     };
+    std::memcpy(samplerDesc.BorderColor, sampler.borderColor.data(), sizeof(float) * 4);
+    return samplerDesc;
 }
 
 } // namespace GraphicsPipeline

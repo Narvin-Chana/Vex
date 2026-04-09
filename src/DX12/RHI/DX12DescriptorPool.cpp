@@ -57,10 +57,10 @@ void DX12DescriptorPool::CopyNullDescriptor(DescriptorType descriptorType, u32 s
     }
 }
 
-BindlessHandle DX12DescriptorPool::CreateBindlessSampler(const TextureSampler& textureSampler)
+BindlessHandle DX12DescriptorPool::CreateBindlessSampler(const BindlessTextureSampler& textureSampler)
 {
     const BindlessHandle bindlessHandle = AllocateStaticDescriptor(DescriptorType::Sampler);
-    const D3D12_SAMPLER_DESC samplerDesc = GraphicsPipeline::GetDX12SamplerDescFromTextureSampler(textureSampler);
+    const D3D12_SAMPLER_DESC samplerDesc = GraphicsPipeline::GetDX12SamplerDescFromBindlessTextureSampler(textureSampler);
     device->CreateSampler(&samplerDesc, samplerHeap.GetCPUDescriptorHandle(bindlessHandle.GetIndex()));
     return bindlessHandle;
 }

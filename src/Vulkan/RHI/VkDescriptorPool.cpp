@@ -37,13 +37,13 @@ VkDescriptorPool::VkDescriptorPool(NonNullPtr<VkGPUContext> ctx)
     bindlessSet.emplace(ctx, *descriptorPool);
 }
 
-BindlessHandle VkDescriptorPool::CreateBindlessSampler(const TextureSampler& textureSampler)
+BindlessHandle VkDescriptorPool::CreateBindlessSampler(const BindlessTextureSampler& textureSampler)
 {
     // In Vk sampler descriptors can be allocated in the same heap as resource descriptors.
     const BindlessHandle handle = AllocateStaticDescriptor(DescriptorType::Resource);
 
     const ::vk::SamplerCreateInfo samplerCI =
-        GraphicsPipeline::GetVkSamplerCreateInfoFromTextureSampler(textureSampler);
+        GraphicsPipeline::GetVkSamplerCreateInfoFromBindlessTextureSampler(textureSampler);
     ::vk::UniqueSampler vkSampler = VEX_VK_CHECK <<= ctx->device.createSamplerUnique(samplerCI);
 
     const ::vk::DescriptorImageInfo imageInfo{ .sampler = *vkSampler };

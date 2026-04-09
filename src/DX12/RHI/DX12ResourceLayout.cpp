@@ -40,11 +40,14 @@ void DX12ResourceLayout::CompileRootSignature()
     rootConstants.InitAsConstants(rootSignatureDWORDCount, 0, 0);
     rootParameters.push_back(std::move(rootConstants));
 
+    std::vector<D3D12_STATIC_SAMPLER_DESC> dxSamplers =
+        GraphicsPipeline::GetDX12StaticSamplersFromTextureSamplers(staticSamplers);
+
     CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc =
         CD3DX12_ROOT_SIGNATURE_DESC(static_cast<u32>(rootParameters.size()),
                                     rootParameters.data(),
-                                    0,
-                                    nullptr,
+                                    static_cast<u32>(dxSamplers.size()),
+                                    dxSamplers.data(),
                                     D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
                                         D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED |
                                         D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED);

@@ -13,7 +13,7 @@ class DX12DescriptorPool final : public RHIDescriptorPoolBase
 public:
     DX12DescriptorPool(ComPtr<DX12Device>& device);
 
-    virtual BindlessHandle CreateBindlessSampler(const TextureSampler& textureSampler) override;
+    virtual BindlessHandle CreateBindlessSampler(const BindlessTextureSampler& textureSampler) override;
     virtual void FreeBindlessSampler(BindlessHandle handle) override;
 
     virtual void CopyNullDescriptor(DescriptorType descriptorType, u32 slotIndex) override;

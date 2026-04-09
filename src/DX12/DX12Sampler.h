@@ -1,5 +1,8 @@
 #pragma once
 
+#include <vector>
+
+#include <Vex/Containers/Span.h>
 #include <Vex/TextureSampler.h>
 
 #include <DX12/DX12Headers.h>
@@ -11,11 +14,14 @@ namespace GraphicsPipeline
 {
 
 D3D12_TEXTURE_ADDRESS_MODE GetDX12TextureAddressModeFromAddressMode(AddressMode addressMode);
+D3D12_STATIC_BORDER_COLOR GetDX12StaticBorderColorFromBorderColor(BorderColor borderColor);
 D3D12_FILTER GetDX12FilterFromFilterMode(FilterMode minFilter,
                                          FilterMode magFilter,
                                          FilterMode mipFilter,
                                          bool useComparison = false);
-D3D12_SAMPLER_DESC GetDX12SamplerDescFromTextureSampler(const TextureSampler& sampler);
+std::vector<D3D12_STATIC_SAMPLER_DESC> GetDX12StaticSamplersFromTextureSamplers(
+    Span<const StaticTextureSampler> samplers);
+D3D12_SAMPLER_DESC GetDX12SamplerDescFromBindlessTextureSampler(const BindlessTextureSampler& sampler);
 
 } // namespace GraphicsPipeline
 
