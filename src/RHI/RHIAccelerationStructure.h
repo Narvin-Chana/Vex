@@ -20,7 +20,7 @@ struct RHIBLASGeometryDesc
     // For Triangles:
     std::optional<RHIBufferBinding> vertexBufferBinding;
     std::optional<RHIBufferBinding> indexBufferBinding;
-    std::optional<RHIBufferBinding> transform;
+    std::optional<RHIBufferBinding> transformBufferBinding;
 
     // For AABBs:
     // Buffer containing D3D12_RAYTRACING_AABB or VkAabbPositionsKHR
@@ -33,14 +33,15 @@ struct RHIBLASGeometryDesc
 struct RHIBLASBuildDesc
 {
     ASGeometryType type = ASGeometryType::Triangles;
-    Span<const RHIBLASGeometryDesc> geometry;
+    Span<const RHIBLASGeometryDesc> geometries;
 };
 
 // RHI version of TLASBuildDesc
 struct RHITLASBuildDesc
 {
+    std::optional<RHIBufferBinding> instancesBinding;
     // Description of each individual instance in the TLAS.
-    Span<const TLASInstanceDesc> instanceDescs;
+    Span<const TLASInstanceDesc> instances;
     // Per-instance BLAS to map each TLAS instance to.
     Span<const NonNullPtr<RHIAccelerationStructure>> perInstanceBLAS;
 };
@@ -53,9 +54,6 @@ struct RHIAccelerationStructureBuildInfo
     u64 scratchByteSize;
     // Required size to update the acceleration structure.
     u64 updateScratchByteSize;
-
-    // Potentially required upload buffer for acceleration structure initialization.
-    std::optional<u64> uploadBufferByteSize;
 };
 
 class RHIAccelerationStructureBase
@@ -90,6 +88,9 @@ public:
                                                                     const RHIBLASBuildDesc& desc) = 0;
     virtual const RHIAccelerationStructureBuildInfo& SetupTLASBuild(RHIAllocator& allocator,
                                                                     const RHITLASBuildDesc& desc) = 0;
+
+    virtual std::vector<std::byte> GetInstanceBufferData(const RHITLASBuildDesc& desc) = 0;
+    virtual u32 GetInstanceBufferStride() = 0;
 
     void FreeBindlessHandles(RHIDescriptorPool& descriptorPool);
     void FreeAllocation(RHIAllocator& allocator);

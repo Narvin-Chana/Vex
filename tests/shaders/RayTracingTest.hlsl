@@ -8,9 +8,6 @@ struct UniformStruct
 
 VEX_UNIFORMS(UniformStruct, Uniforms);
 
-static RaytracingAccelerationStructure AccelerationStructure = GetBindlessResource(Uniforms.accelerationStructureHandle);
-static RWStructuredBuffer<float3> Output = GetBindlessResource(Uniforms.outputBufferHandle);
-
 struct HitAttributes
 {
     float2 barycentrics;
@@ -45,6 +42,9 @@ struct CallableData
 [shader("raygeneration")]
 void RayGenBasicMain()
 {
+    RaytracingAccelerationStructure AccelerationStructure = GetBindlessResource(Uniforms.accelerationStructureHandle);
+    RWStructuredBuffer<float3> Output = GetBindlessResource(Uniforms.outputBufferHandle);
+
     RayDesc ray;
     ray.Origin = float3(0, 0, 0);
     ray.Direction = float3(0, 0, 1);
@@ -77,6 +77,9 @@ void RayGenBasicMain()
 [shader("raygeneration")]
 void RayGenMain()
 {
+    RaytracingAccelerationStructure AccelerationStructure = GetBindlessResource(Uniforms.accelerationStructureHandle);
+    RWStructuredBuffer<float3> Output = GetBindlessResource(Uniforms.outputBufferHandle);
+
     RayDesc ray;
     ray.Origin = float3(0, 0, 0);
     ray.Direction = float3(0, 0, 1);
@@ -134,6 +137,9 @@ void RayGenMain()
 [shader("raygeneration")]
 void RayGenMainAlt()
 {
+    RaytracingAccelerationStructure AccelerationStructure = GetBindlessResource(Uniforms.accelerationStructureHandle);
+    RWStructuredBuffer<float3> Output = GetBindlessResource(Uniforms.outputBufferHandle);
+
     RayDesc ray;
     ray.Origin = float3(1, 1, 1);
     ray.Direction = float3(0, 0, -1);
@@ -170,6 +176,9 @@ void RayGenMainAlt()
 [shader("raygeneration")]
 void RayGenHitGroupSelectionMain()
 {
+    RaytracingAccelerationStructure AccelerationStructure = GetBindlessResource(Uniforms.accelerationStructureHandle);
+    RWStructuredBuffer<float3> Output = GetBindlessResource(Uniforms.outputBufferHandle);
+
     RayDesc ray;
     ray.Origin = float3(0, 0, 0);
     ray.Direction = float3(0, 0, 1);
@@ -232,6 +241,8 @@ void MissShadow(inout ShadowPayload payload)
 [shader("closesthit")]
 void ClosestHitMain(inout RayPayload payload, in HitAttributes attrib)
 {
+    RaytracingAccelerationStructure AccelerationStructure = GetBindlessResource(Uniforms.accelerationStructureHandle);
+
     payload.hitValue = 1;
 
     if (payload.depth < 3)
@@ -263,6 +274,8 @@ void ClosestHitMain(inout RayPayload payload, in HitAttributes attrib)
 [shader("closesthit")]
 void ClosestHitMainAlt(inout RayPayload payload, in HitAttributes attrib)
 {
+    RaytracingAccelerationStructure AccelerationStructure = GetBindlessResource(Uniforms.accelerationStructureHandle);
+
     payload.hitValue = 2;
 
     if (payload.depth < 2)

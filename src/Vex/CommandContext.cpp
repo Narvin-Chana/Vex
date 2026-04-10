@@ -861,6 +861,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
 {
     VEX_CHECK(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing),
               "Your GPU does not support ray tracing, unable to build BLAS!");
+    VEX_CHECK(accelerationStructure.handle.IsValid(), "Provided acceleration structure must be valid!");
     VEX_CHECK(accelerationStructure.desc.type == ASType::BottomLevel,
               "BuildBLAS only accepts bottom level acceleration structures...");
     VEX_CHECK(!desc.geometry.empty(), "Cannot build an empty BLAS...");
@@ -870,6 +871,19 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
 
     if (desc.type == ASGeometryType::Triangles)
     {
+        for (const BLASGeometryDesc& desc : desc.geometry)
+        {
+            if (desc.indexBufferBinding)
+            {
+                VEX_CHECK(desc.indexBufferBinding->buffer.desc.usage & BufferUsage::BuildAccelerationStructure,
+                          "Index buffer binding must have the BuildAccelerationStructure usage to be used as source "
+                          "for building a BLAS");
+            }
+            VEX_CHECK(desc.vertexBufferBinding.buffer.desc.usage & BufferUsage::BuildAccelerationStructure,
+                      "Vertex buffer binding must have the BuildAccelerationStructure usage to be used as source for "
+                      "building a BLAS");
+        }
+
         // Upload all the transforms into one GPU/ staging buffer.
         std::vector<std::array<float, 3 * 4>> transformsToUpload;
         // Conservative allocation.
@@ -898,7 +912,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
         }
 
         // Ensure that vertex/index buffers have had time to be written-to correctly.
-        EnqueueGlobalBarrier(RHIGlobalBarrier{
+        EnqueueGlobalBarrier({
             .srcSync = RHIBarrierSync::AllCommands,
             .dstSync = RHIBarrierSync::BuildAccelerationStructure,
             .srcAccess = RHIBarrierAccess::MemoryWrite,
@@ -908,6 +922,21 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
         u32 transformIndex = 0;
         for (const BLASGeometryDesc& blasGeometry : desc.geometry)
         {
+            // TODO(https://trello.com/c/srGndUSP): Handle other vertex formats, this should be cross-referenced
+            // with Vulkan to make sure only formats supported by both APIs are accepted.
+            if (*blasGeometry.vertexBufferBinding.strideByteSize > sizeof(float) * 3)
+            {
+                VEX_LOG(
+                    Warning,
+                    "Vex currently does not support acceleration structure geometry whose vertices have a format "
+                    "different to 12 bytes (RGB32). Your vertex buffer binding has a different stride than this, this "
+                    "is ok as long as the user is aware that elements outside the first 12 bytes will be ignored.");
+            }
+
+            VEX_ASSERT(*blasGeometry.vertexBufferBinding.strideByteSize >= sizeof(float) * 3,
+                       "Vex currently does not support acceleration structure geometry whose vertices have a stride "
+                       "smaller than 12 bytes.");
+
             RHIBLASGeometryDesc rhiBLASGeometry{
                 .vertexBufferBinding =
                     RHIBufferBinding(blasGeometry.vertexBufferBinding,
@@ -917,6 +946,8 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
 
             if (blasGeometry.indexBufferBinding.has_value())
             {
+                VEX_CHECK(blasGeometry.indexBufferBinding->strideByteSize == sizeof(u32),
+                          "Vex only supports 32bit index types")
                 rhiBLASGeometry.indexBufferBinding =
                     RHIBufferBinding(*blasGeometry.indexBufferBinding,
                                      graphics->GetRHIBuffer(blasGeometry.indexBufferBinding->buffer.handle));
@@ -924,7 +955,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
 
             if (blasGeometry.transform.has_value())
             {
-                rhiBLASGeometry.transform = RHIBufferBinding{
+                rhiBLASGeometry.transformBufferBinding = RHIBufferBinding{
                     .binding = { .buffer = transformBuffer,
                                  .offsetByteSize = TransformMatrixSize * transformIndex,
                                  .rangeByteSize = TransformMatrixSize },
@@ -996,7 +1027,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
     const RHIAccelerationStructureBuildInfo& buildInfo =
         graphics->GetRHIAccelerationStructure(accelerationStructure.handle)
             .SetupBLASBuild(*graphics->allocator,
-                            RHIBLASBuildDesc{ .type = desc.type, .geometry = rhiBLASGeometryDescs });
+                            RHIBLASBuildDesc{ .type = desc.type, .geometries = rhiBLASGeometryDescs });
 
     BufferDesc scratchBufferDesc{
         .name =
@@ -1015,6 +1046,7 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
 {
     VEX_CHECK(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing),
               "Your GPU does not support ray tracing, unable to build TLAS!");
+    VEX_CHECK(accelerationStructure.handle.IsValid(), "Provided acceleration structure must be valid!");
     VEX_CHECK(accelerationStructure.desc.type == ASType::TopLevel,
               "BuildTLAS only accepts top level acceleration structures...");
     VEX_CHECK(!desc.instances.empty(), "Cannot build an empty TLAS...");
@@ -1035,29 +1067,42 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
         .dstAccess = RHIBarrierAccess::AccelerationStructureRead,
     });
 
-    const RHITLASBuildDesc rhiTLASDesc{
-        .instanceDescs = desc.instances,
+    RHITLASBuildDesc rhiTLASDesc{
+        .instances = desc.instances,
         .perInstanceBLAS = perInstanceBLAS,
     };
 
-    const RHIAccelerationStructureBuildInfo& buildInfo =
-        graphics->GetRHIAccelerationStructure(accelerationStructure.handle)
-            .SetupTLASBuild(*graphics->allocator, rhiTLASDesc);
-    BufferDesc scratchBufferDesc{
-        .name =
-            graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_tlas_scratch",
+    RHIAccelerationStructure& accelStruct = graphics->GetRHIAccelerationStructure(accelerationStructure.handle);
+    std::vector<std::byte> instanceData = accelStruct.GetInstanceBufferData(rhiTLASDesc);
+
+    Buffer instanceBuffer = CreateTemporaryBuffer({
+        .name = accelStruct.GetDesc().name + "_build_tlas_instances",
+        .byteSize = instanceData.size(),
+        .usage = BufferUsage::BuildAccelerationStructure,
+    });
+    RHIBuffer& rhiInstanceBuffer = graphics->GetRHIBuffer(instanceBuffer.handle);
+    EnqueueDataUpload(instanceBuffer, instanceData);
+
+    BufferBinding binding =
+        BufferBinding::CreateStructuredBuffer(instanceBuffer, accelStruct.GetInstanceBufferStride());
+    rhiTLASDesc.instancesBinding = RHIBufferBinding{ binding, rhiInstanceBuffer };
+
+    const RHIAccelerationStructureBuildInfo& buildInfo = accelStruct.SetupTLASBuild(*graphics->allocator, rhiTLASDesc);
+    Buffer scratchBuffer = CreateTemporaryBuffer({
+        .name = accelStruct.GetDesc().name + "_build_tlas_scratch",
         .byteSize = buildInfo.scratchByteSize,
         .usage = BufferUsage::Scratch,
-    };
-    Buffer scratchBuffer = CreateTemporaryBuffer(scratchBufferDesc);
-    Buffer uploadBuffer = CreateTemporaryStagingBuffer(
-        graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_tlas",
-        *buildInfo.uploadBufferByteSize);
+    });
+
+    EnqueueGlobalBarrier({ .srcSync = RHIBarrierSync::Copy,
+                           .dstSync = RHIBarrierSync::BuildAccelerationStructure,
+                           .srcAccess = RHIBarrierAccess::CopyDest,
+                           .dstAccess = RHIBarrierAccess::MemoryRead });
 
     FlushBarriers();
-    cmdList->BuildTLAS(graphics->GetRHIAccelerationStructure(accelerationStructure.handle),
+    cmdList->BuildTLAS(accelStruct,
                        graphics->GetRHIBuffer(scratchBuffer.handle),
-                       graphics->GetRHIBuffer(uploadBuffer.handle),
+                       graphics->GetRHIBuffer(instanceBuffer.handle),
                        rhiTLASDesc);
 }
 
@@ -1255,7 +1300,7 @@ void CommandContext::InferResourceBarriers(RHIBarrierSync syncStage, Span<const 
             Visitor{ [this, syncStage](const BufferBinding& bufferBinding)
                      {
                          using enum BufferBindingUsage;
-                         RHIBarrierAccess dstAccess;
+                         RHIBarrierAccess dstAccess{};
                          switch (bufferBinding.usage)
                          {
                          case UniformBuffer:
@@ -1420,6 +1465,11 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
         cmdList->SetInputAssembly(drawDesc.inputAssembly);
         cachedInputAssembly = drawDesc.inputAssembly;
     }
+
+    EnqueueGlobalBarrier({ .srcSync = RHIBarrierSync::AllCommands,
+                           .dstSync = RHIBarrierSync::AllGraphics,
+                           .srcAccess = RHIBarrierAccess::MemoryWrite,
+                           .dstAccess = RHIBarrierAccess::VertexInputRead });
 
     // Bind Vertex Buffer(s)
     SetVertexBuffers(drawBindings.vertexBuffersFirstSlot, drawBindings.vertexBuffers);

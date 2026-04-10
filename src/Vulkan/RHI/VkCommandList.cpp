@@ -12,6 +12,7 @@
 #include <RHI/RHIBindings.h>
 #include <RHI/RHIPhysicalDevice.h>
 
+#include <Vulkan/RHI/VkAccelerationStructure.h>
 #include <Vulkan/RHI/VkBarrier.h>
 #include <Vulkan/RHI/VkBuffer.h>
 #include <Vulkan/RHI/VkDescriptorPool.h>
@@ -131,7 +132,7 @@ void VkCommandList::SetPipelineState(const RHIComputePipelineState& computePipel
 
 void VkCommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTracingPipelineState)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    commandBuffer->bindPipeline(::vk::PipelineBindPoint::eRayTracingKHR, *rayTracingPipelineState.rtPipeline);
 }
 
 void VkCommandList::SetLayout(RHIResourceLayout& layout)
@@ -144,7 +145,8 @@ void VkCommandList::SetLayout(RHIResourceLayout& layout)
 
     // Stage flags must be the same as the push constant ranges defined in the layout
     commandBuffer->pushConstants(*layout.pipelineLayout,
-                                 ::vk::ShaderStageFlagBits::eAllGraphics | ::vk::ShaderStageFlagBits::eCompute,
+                                 ::vk::ShaderStageFlagBits::eAllGraphics | ::vk::ShaderStageFlagBits::eCompute |
+                                     ::vk::ShaderStageFlagBits::eRaygenKHR,
                                  0,
                                  localConstantsData.size(),
                                  localConstantsData.data());
@@ -166,6 +168,13 @@ void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIReso
                                           nullptr);
     case QueueTypes::Compute:
         commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eCompute,
+                                          *resourceLayout.pipelineLayout,
+                                          0,
+                                          descriptorSets.size(),
+                                          descriptorSets.data(),
+                                          0,
+                                          nullptr);
+        commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eRayTracingKHR,
                                           *resourceLayout.pipelineLayout,
                                           0,
                                           descriptorSets.size(),
@@ -521,7 +530,28 @@ void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount)
 void VkCommandList::TraceRays(const TraceRaysDesc& rayTracingArgs,
                               const RHIRayTracingPipelineState& rayTracingPipelineState)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    ::vk::StridedDeviceAddressRegionKHR rayGenAddress{}, rayMissAddress{}, hitGroupAddress{}, callableAddress{};
+
+    if (rayTracingPipelineState.rayGenTable)
+        rayGenAddress = rayTracingPipelineState.rayGenTable->GetDeviceRegion(rayTracingArgs.rayGenShaderIndex);
+
+    if (rayTracingPipelineState.rayMissTable)
+        rayMissAddress = rayTracingPipelineState.rayMissTable->GetDeviceRegion(rayTracingArgs.rayMissShaderIndex);
+
+    if (rayTracingPipelineState.groupHitTable)
+        hitGroupAddress = rayTracingPipelineState.groupHitTable->GetDeviceRegion(rayTracingArgs.hitGroupShaderIndex);
+
+    if (rayTracingPipelineState.rayCallableTable)
+        callableAddress =
+            rayTracingPipelineState.rayCallableTable->GetDeviceRegion(rayTracingArgs.rayCallableShaderIndex);
+
+    commandBuffer->traceRaysKHR(rayGenAddress,
+                                rayMissAddress,
+                                hitGroupAddress,
+                                callableAddress,
+                                rayTracingArgs.width,
+                                rayTracingArgs.height,
+                                rayTracingArgs.depth);
 }
 
 void VkCommandList::GenerateMips(RHITexture& texture, const TextureSubresource& subresource)
@@ -621,7 +651,18 @@ void VkCommandList::ResolveTimestampQueries(u32 firstQuery, u32 queryCount)
 
 void VkCommandList::BuildBLAS(RHIAccelerationStructure& as, RHIBuffer& scratchBuffer)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    ::vk::AccelerationStructureBuildGeometryInfoKHR asBuildInfo{
+        .type = ::vk::AccelerationStructureTypeKHR::eBottomLevel,
+        .flags = ASBuildFlagsToVkASBuildFlags(as.GetDesc().buildFlags),
+        .mode = ::vk::BuildAccelerationStructureModeKHR::eBuild,
+        .geometryCount = static_cast<u32>(as.geometries.size()),
+        .pGeometries = as.geometries.data(),
+    };
+
+    asBuildInfo.dstAccelerationStructure = *as.vkAccelerationStructure;
+    asBuildInfo.scratchData.deviceAddress = scratchBuffer.GetDeviceAddress();
+
+    commandBuffer->buildAccelerationStructuresKHR({ asBuildInfo }, { as.ranges.data() });
 }
 
 void VkCommandList::BuildTLAS(RHIAccelerationStructure& as,
@@ -629,7 +670,18 @@ void VkCommandList::BuildTLAS(RHIAccelerationStructure& as,
                               RHIBuffer& uploadBuffer,
                               const RHITLASBuildDesc& desc)
 {
-    VEX_NOT_YET_IMPLEMENTED();
+    ::vk::AccelerationStructureBuildGeometryInfoKHR asBuildInfo{
+        .type = ::vk::AccelerationStructureTypeKHR::eTopLevel,
+        .flags = ASBuildFlagsToVkASBuildFlags(as.GetDesc().buildFlags),
+        .mode = ::vk::BuildAccelerationStructureModeKHR::eBuild,
+        .geometryCount = static_cast<u32>(as.geometries.size()),
+        .pGeometries = as.geometries.data(),
+    };
+
+    asBuildInfo.dstAccelerationStructure = *as.vkAccelerationStructure;
+    asBuildInfo.scratchData.deviceAddress = scratchBuffer.GetDeviceAddress();
+
+    commandBuffer->buildAccelerationStructuresKHR({ asBuildInfo }, { as.ranges.data() });
 }
 
 void VkCommandList::Copy(RHITexture& src, RHITexture& dst, Span<const TextureCopyDesc> textureCopyDescriptions)

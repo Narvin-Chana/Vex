@@ -8,9 +8,6 @@ struct UniformStruct
 
 VEX_UNIFORMS(UniformStruct, Uniforms);
 
-static const RWTexture2D<float4> OutputTexture = GetBindlessResource(Uniforms.outputTextureHandle);
-static RaytracingAccelerationStructure AccelerationStructure = GetBindlessResource(Uniforms.accelerationStructureHandle);
-
 // We use the built-in HLSL HitAttributes.
 typedef BuiltInTriangleIntersectionAttributes HitAttributes;
 
@@ -22,6 +19,9 @@ struct [raypayload] RayPayload
 [shader("raygeneration")]
 void RayGenMain()
 {
+    RWTexture2D<float4> OutputTexture = GetBindlessResource(Uniforms.outputTextureHandle);
+    RaytracingAccelerationStructure AccelerationStructure = GetBindlessResource(Uniforms.accelerationStructureHandle);
+
     // Get the dispatch coordinates
     uint2 launchIndex = DispatchRaysIndex().xy;
     uint2 launchDimensions = DispatchRaysDimensions().xy;

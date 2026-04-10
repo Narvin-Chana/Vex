@@ -33,8 +33,9 @@ const VkDescriptorSet& VkResourceLayout::GetSamplerDescriptor()
 
 ::vk::UniquePipelineLayout VkResourceLayout::CreateLayout()
 {
-    ::vk::PushConstantRange range{ .stageFlags =
-                                       ::vk::ShaderStageFlagBits::eAllGraphics | ::vk::ShaderStageFlagBits::eCompute,
+    ::vk::PushConstantRange range{ .stageFlags = ::vk::ShaderStageFlagBits::eAllGraphics |
+                                                 ::vk::ShaderStageFlagBits::eCompute |
+                                                 ::vk::ShaderStageFlagBits::eRaygenKHR,
                                    .offset = 0,
                                    .size = GPhysicalDevice->GetMaxLocalConstantsByteSize() };
 

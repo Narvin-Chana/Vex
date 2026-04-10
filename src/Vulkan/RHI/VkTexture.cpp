@@ -333,10 +333,20 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
         .pViewFormats = possibleViewFormats.data(),
     };
 
+    ::vk::ImageCreateFlags flags = {};
+    if (useMutableFormat)
+    {
+        flags |= ::vk::ImageCreateFlagBits::eMutableFormat;
+    }
+    if (desc.type == TextureType::TextureCube)
+    {
+        flags |= ::vk::ImageCreateFlagBits::eCubeCompatible;
+    }
+
     const bool needsConcurrent = ctx->queueFamilyIndices.size() > 1;
     ::vk::ImageCreateInfo createInfo{
         .pNext = useMutableFormat ? &imageFormatList : nullptr,
-        .flags = useMutableFormat ? ::vk::ImageCreateFlagBits::eMutableFormat : ::vk::ImageCreateFlags{},
+        .flags = flags,
         // Force the non-SRGB variant.
         .format = TextureFormatToVulkan(desc.format, false),
         .mipLevels = desc.mips,

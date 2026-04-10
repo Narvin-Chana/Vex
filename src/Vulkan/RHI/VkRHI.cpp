@@ -348,17 +348,29 @@ void VkRHI::Init()
     ValidateAndAddExtension(VK_GOOGLE_HLSL_FUNCTIONALITY1_EXTENSION_NAME);
     ValidateAndAddExtension(VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME);
 
+    std::optional<::vk::PhysicalDeviceAccelerationStructureFeaturesKHR> featuresAccelerationStructure;
+    std::optional<::vk::PhysicalDeviceRayTracingPipelineFeaturesKHR> featuresRayTracingPipeline;
+    std::optional<::vk::PhysicalDeviceRayQueryFeaturesKHR> featuresRayQuery;
     if (GPhysicalDevice->IsFeatureSupported(Feature::RayTracing))
     {
         ValidateAndAddExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
         ValidateAndAddExtension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+        ValidateAndAddExtension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+        ValidateAndAddExtension(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+
+        featuresRayTracingPipeline = { .rayTracingPipeline = true };
+
+        featuresRayQuery = { .pNext = &*featuresRayTracingPipeline, .rayQuery = true };
+
+        featuresAccelerationStructure = {
+            .pNext = &*featuresRayQuery,
+            .accelerationStructure = true,
+            .descriptorBindingAccelerationStructureUpdateAfterBind = true,
+        };
     }
 
-    // TODO(https://trello.com/c/rLevCOvT): vulkan ray tracing add required features
-    ::vk::PhysicalDeviceAccelerationStructureFeaturesKHR featuresAccelerationStructure;
-
     ::vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR featuresUnifiedImageLayouts;
-    featuresUnifiedImageLayouts.pNext = &featuresAccelerationStructure;
+    featuresUnifiedImageLayouts.pNext = featuresAccelerationStructure ? &featuresAccelerationStructure : nullptr;
     featuresUnifiedImageLayouts.unifiedImageLayouts = true;
 
     // Allows for mutable descriptors
@@ -510,7 +522,7 @@ RHIComputePipelineState VkRHI::CreateComputePipelineState(const ComputePipelineS
 
 RHIRayTracingPipelineState VkRHI::CreateRayTracingPipelineState(const RayTracingPipelineStateKey& key)
 {
-    return { key, *device, *PSOCache };
+    return { key, GetGPUContext(), *PSOCache };
 }
 
 RHIResourceLayout VkRHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool)
@@ -545,9 +557,7 @@ RHITimestampQueryPool VkRHI::CreateTimestampQueryPool(RHIAllocator& allocator)
 
 RHIAccelerationStructure VkRHI::CreateAS(const ASDesc& desc)
 {
-    // TODO(https://trello.com/c/rLevCOvT): Implement vulkan AS upload/creation.
-    VEX_NOT_YET_IMPLEMENTED();
-    return VkAccelerationStructure(desc);
+    return { GetGPUContext(), desc };
 }
 
 ::vk::Instance VkRHI::GetNativeInstance()

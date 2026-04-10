@@ -59,6 +59,8 @@ function(setup_vulkan_backend TARGET)
         "src/Vulkan/RHI/VkAccelerationStructure.cpp"
         "src/Vulkan/RHI/VkPhysicalDevice.h"
         "src/Vulkan/RHI/VkPhysicalDevice.cpp"
+        "src/Vulkan/RHI/VkShaderTable.cpp"
+        "src/Vulkan/RHI/VkShaderTable.h"
         # Vulkan API
         "src/Vulkan/VkGraphicsPipeline.h"
         "src/Vulkan/VkGraphicsPipeline.cpp"
