@@ -456,18 +456,17 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
 
 std::unique_ptr<RHIRayTracingPipelineState> VkRayTracingPipelineState::Cleanup()
 {
-    if (!rtPipeline)
+    if (!rtPipeline && !groupHitTable && !rayCallableTable && !rayGenTable && !rayMissTable)
     {
         return nullptr;
     }
+
     auto cleanupPSO = std::make_unique<VkRayTracingPipelineState>(key, ctx, psoCache);
     std::swap(cleanupPSO->rtPipeline, rtPipeline);
-
     std::swap(cleanupPSO->groupHitTable, groupHitTable);
     std::swap(cleanupPSO->rayCallableTable, rayCallableTable);
     std::swap(cleanupPSO->rayGenTable, rayGenTable);
     std::swap(cleanupPSO->rayMissTable, rayMissTable);
-
     return cleanupPSO;
 }
 
