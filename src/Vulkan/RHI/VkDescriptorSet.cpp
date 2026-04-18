@@ -2,7 +2,7 @@
 
 #include <Vex/PhysicalDevice.h>
 #include <Vex/Utility/Formattable.h>
-#include <Vex/Utility/Validation.h>
+#include <VexMacros.h>
 
 #include <RHI/RHIDescriptorPool.h>
 

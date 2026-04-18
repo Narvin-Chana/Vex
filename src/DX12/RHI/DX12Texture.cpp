@@ -3,7 +3,7 @@
 #include <optional>
 #include <ranges>
 
-#include <magic_enum/magic_enum.hpp>
+#include <Vex/Utility/Formattable.h>
 
 #include <Vex/Bindings.h>
 #include <Vex/Logger.h>

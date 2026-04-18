@@ -6,7 +6,8 @@ if(NOT VEX_ENABLE_SHADER_COMPILER OR NOT VEX_ENABLE_SLANG)
     return()
 endif()
 
-set(SLANG_VERSION "2026.4.2")
+set(SLANG_VERSION "2026.7")
+set(SLANG_NAME slang_${SLANG_VERSION})
 
 # Choose URLs based on platform
 if(WIN32)
@@ -19,70 +20,72 @@ endif()
 
 message(STATUS "Fetching Slang...")
 FetchContent_Declare(
-    slang
+    ${SLANG_NAME}
     URL ${SLANG_RELEASE_URL}
 )
-FetchContent_MakeAvailable(slang)
+FetchContent_MakeAvailable(${SLANG_NAME})
+
+set(SLANG_SOURCE_DIR ${slang_${SLANG_VERSION}_SOURCE_DIR})
+set(SLANG_INCLUDE_DIR "${SLANG_SOURCE_DIR}/include")
 
 # Create imported target for slang
-set(SLANG_INCLUDE_DIR "${slang_SOURCE_DIR}/include")
 if(WIN32)
     set(SLANG_STATIC_LIBS
-        "${slang_SOURCE_DIR}/lib/gfx.lib"
-        "${slang_SOURCE_DIR}/lib/slang-rt.lib"
-        "${slang_SOURCE_DIR}/lib/slang.lib"
+        "${SLANG_SOURCE_DIR}/lib/gfx.lib"
+        "${SLANG_SOURCE_DIR}/lib/slang-rt.lib"
+        "${SLANG_SOURCE_DIR}/lib/slang.lib"
     )
     set(SLANG_RUNTIME_LIBS
-        "${slang_SOURCE_DIR}/bin/gfx.dll"
-        "${slang_SOURCE_DIR}/bin/slang-glsl-module.dll"
-        "${slang_SOURCE_DIR}/bin/slang-glslang.dll"
-        "${slang_SOURCE_DIR}/bin/slang-llvm.dll"
-        "${slang_SOURCE_DIR}/bin/slang-rt.dll"
-        "${slang_SOURCE_DIR}/bin/slang.dll"
-        "${slang_SOURCE_DIR}/bin/slang-compiler.dll"
+        "${SLANG_SOURCE_DIR}/bin/gfx.dll"
+        "${SLANG_SOURCE_DIR}/bin/slang-glsl-module.dll"
+        "${SLANG_SOURCE_DIR}/bin/slang-glslang.dll"
+        "${SLANG_SOURCE_DIR}/bin/slang-llvm.dll"
+        "${SLANG_SOURCE_DIR}/bin/slang-rt.dll"
+        "${SLANG_SOURCE_DIR}/bin/slang.dll"
+        "${SLANG_SOURCE_DIR}/bin/slang-compiler.dll"
     )
 elseif(LINUX)
     set(DXC_STATIC_LIB "")
     set(SLANG_RUNTIME_LIBS
-        "${slang_SOURCE_DIR}/lib/libgfx.so"
-        "${slang_SOURCE_DIR}/lib/libslang-glsl-module-${SLANG_VERSION}.so"
-        "${slang_SOURCE_DIR}/lib/libslang-glslang-${SLANG_VERSION}.so"
-        "${slang_SOURCE_DIR}/lib/libslang-llvm.so"
-        "${slang_SOURCE_DIR}/lib/libslang-rt.so"
-        "${slang_SOURCE_DIR}/lib/libslang.so"
+        "${SLANG_SOURCE_DIR}/lib/libgfx.so"
+        "${SLANG_SOURCE_DIR}/lib/libslang-glsl-module-${SLANG_VERSION}.so"
+        "${SLANG_SOURCE_DIR}/lib/libslang-glslang-${SLANG_VERSION}.so"
+        "${SLANG_SOURCE_DIR}/lib/libslang-llvm.so"
+        "${SLANG_SOURCE_DIR}/lib/libslang-rt.so"
+        "${SLANG_SOURCE_DIR}/lib/libslang.so"
     )
 endif()
 
-if(NOT TARGET slang::slang)
-    add_library(slang::slang INTERFACE IMPORTED GLOBAL)
-    set_target_properties(slang::slang PROPERTIES
+if(NOT TARGET ${SLANG_NAME})
+    add_library(${SLANG_NAME} INTERFACE IMPORTED GLOBAL)
+    set_target_properties(${SLANG_NAME} PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES "${SLANG_INCLUDE_DIR}"
     )
     
     if(WIN32)
-        set_target_properties(slang::slang PROPERTIES
+        set_target_properties(${SLANG_NAME} PROPERTIES
             INTERFACE_LINK_LIBRARIES "${SLANG_STATIC_LIBS}"
         )
     elseif(LINUX)
-        set_target_properties(slang::slang PROPERTIES
+        set_target_properties(${SLANG_NAME} PROPERTIES
             INTERFACE_LINK_LIBRARIES "${SLANG_RUNTIME_LIBS}"
         )
     endif()
 endif()
 
 function(build_with_slang target)
-    target_link_libraries(${target} PUBLIC slang::slang)
+    target_link_libraries(${target} PUBLIC ${SLANG_NAME})
 
     if(LINUX)
         set_target_properties(${target} PROPERTIES
-            INSTALL_RPATH "${slang_SOURCE_DIR}/lib"
+            INSTALL_RPATH "${SLANG_SOURCE_DIR}/lib"
             BUILD_WITH_INSTALL_RPATH TRUE
         )
     endif()
 
     message(STATUS "Statically linked with Slang: ${SLANG_STATIC_LIBS}")
     
-    add_header_only_dependency(${target} slang "${slang_SOURCE_DIR}" "${SLANG_HEADERS_INCLUDE_NAME}" "slang")
+    add_header_only_dependency(${target} ${SLANG_NAME} "${SLANG_SOURCE_DIR}" "${SLANG_HEADERS_INCLUDE_NAME}" "slang")
 
     target_sources(${target} PRIVATE
         "src/ShaderCompiler/Compiler/Slang/SlangCompiler.h"

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Vex/Platform/Debug.h>
+#include <VexMacros.h>
 #include <Vex/Platform/PlatformWindow.h>
 
 #if defined(_WIN32)

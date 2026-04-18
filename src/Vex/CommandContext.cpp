@@ -11,7 +11,7 @@
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
-#include <Vex/Platform/Debug.h>
+#include <VexMacros.h>
 #include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
@@ -19,7 +19,7 @@
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/ResourceBindingUtils.h>
 #include <Vex/Utility/ByteUtils.h>
-#include <Vex/Utility/Validation.h>
+#include <VexMacros.h>
 #include <Vex/Utility/Visitor.h>
 
 #include <RHI/RHIBarrier.h>

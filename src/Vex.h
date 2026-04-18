@@ -12,9 +12,10 @@
 #include <Vex/RayTracing.h>
 #include <Vex/TextureSampler.h>
 #include <Vex/Utility/ByteUtils.h>
-#include <Vex/Utility/Formattable.h>
 #include <Vex/Utility/NonNullPtr.h>
-#include <Vex/Utility/Validation.h>
+#if !VEX_MODULES
+#include <VexMacros.h>
+#endif
 
 #if VEX_SHADER_COMPILER
 #include <ShaderCompiler/RayTracingShaderKey.h>

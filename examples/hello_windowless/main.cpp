@@ -1,6 +1,10 @@
 #include <ExamplePaths.h>
 
+#if VEX_MODULES
+import Vex;
+#else
 #include <Vex.h>
+#endif
 
 int main()
 {

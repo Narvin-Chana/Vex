@@ -2,12 +2,11 @@
 
 #include <optional>
 
-#include <Vex/Bindings.h>
 #include <Vex/Logger.h>
 #include <Vex/Texture.h>
 #include <Vex/Utility/Algorithms.h>
 #include <Vex/Utility/ByteUtils.h>
-#include <Vex/Utility/Validation.h>
+#include <VexMacros.h>
 
 #include <RHI/RHIBindings.h>
 
@@ -222,7 +221,7 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
 
 void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& layout)
 {
-    const std::array heaps {
+    const std::array heaps{
         descriptorPool.gpuHeap.GetNativeDescriptorHeap().Get(),
         descriptorPool.samplerHeap.GetNativeDescriptorHeap().Get(),
     };

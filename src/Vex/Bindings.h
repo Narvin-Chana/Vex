@@ -6,7 +6,7 @@
 #include <Vex/AccelerationStructure.h>
 #include <Vex/Buffer.h>
 #include <Vex/Containers/Span.h>
-#include <Vex/Platform/Debug.h>
+#include <VexMacros.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/Concepts.h>

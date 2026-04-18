@@ -9,7 +9,7 @@
 #include <string>
 #include <string_view>
 
-#include <Vex/Platform/Debug.h>
+#include <VexMacros.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/EnumFlags.h>
 // Keep this include, allows for implicit conversion of enums to enum string.
@@ -30,7 +30,7 @@ enum LogLevel : u8
     Fatal
 };
 
-constexpr inline std::string_view LogLevelToString(LogLevel logLevel)
+constexpr std::string_view LogLevelToString(LogLevel logLevel)
 {
     switch (logLevel)
     {
@@ -119,19 +119,3 @@ private:
 inline Logger GLogger;
 
 } // namespace vex
-
-// Doing logging with macros instead of with a function allows for DebugBreak to break in the actual code, avoiding us
-// having to move up once in the call stack to get to the the actual code causing the error.
-
-// Logs a potentially formatted string with one of the following log levels: Info, Warning, Error, Fatal.
-// This follows std::format()'s formatting.
-#define VEX_LOG(level, message, ...)                                                                                   \
-    if ((level) >= vex::Logger::GetLogLevelFilter())                                                                   \
-    {                                                                                                                  \
-        vex::GLogger.Log((level), message, ##__VA_ARGS__);                                                             \
-        if ((level) == vex::LogLevel::Fatal) /* Fatal error! Must exit. */                                             \
-        {                                                                                                              \
-            VEX_DEBUG_BREAK();                                                                                         \
-            std::exit(1);                                                                                              \
-        }                                                                                                              \
-    }

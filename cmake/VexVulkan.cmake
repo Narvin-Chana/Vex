@@ -81,9 +81,6 @@ function(setup_vulkan_backend TARGET)
     # Link Vulkan libraries
     target_link_libraries(${TARGET} PUBLIC Vulkan::Vulkan vex-spirv-reflect)
 
-    # Make Vulkan-Hpp headers available
-    add_header_only_dependency(${TARGET} vulkanhpp "${vulkanhpp_SOURCE_DIR}" "vulkan" "vulkan")
-
     target_include_directories(${TARGET} PUBLIC
         $<BUILD_INTERFACE:${spirv_reflect_SOURCE_DIR}>
         $<INSTALL_INTERFACE:>

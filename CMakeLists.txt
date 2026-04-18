@@ -1,10 +1,10 @@
-﻿cmake_minimum_required(VERSION 3.27)
-project(Vex VERSION 0.0.2 LANGUAGES CXX C)
+﻿cmake_minimum_required(VERSION 4.2.2)
 include(CMakePackageConfigHelpers)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+project(Vex VERSION 0.0.5 LANGUAGES CXX C)
 
 # Store the root directory of Vex
 set(VEX_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -23,6 +23,22 @@ else()
     option(VEX_BUILD_EXAMPLES "Build the example programs" OFF)
     option(VEX_BUILD_TESTS "Build Vex tests" OFF)
     option(VEX_BUILD_TOOLS "Build Vex tools" OFF)
+endif()
+
+# Detect clang-cl (Clang frontend with MSVC ABI has no module scanning support)
+# This will be fixed in CMake 4.4.0.
+# See https://gitlab.kitware.com/cmake/cmake/-/merge_requests/11875
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC")
+    set(VEX_COMPILER_SUPPORTS_MODULES OFF)
+    message(STATUS "Detected clang-cl: C++20 module scanning not supported, disabling modules. This will be fixed in CMake 4.4.0.")
+else()
+     set(VEX_COMPILER_SUPPORTS_MODULES ON)
+endif()
+
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    option(VEX_USE_MODULES "Determines whether to generate and export the Vex cpp20 module." ${VEX_COMPILER_SUPPORTS_MODULES})
+else()
+    option(VEX_USE_MODULES "Determines whether to generate and export the Vex cpp20 module." OFF)
 endif()
 
 # CMake Helpers
@@ -178,8 +194,7 @@ add_library(Vex STATIC
     "src/Vex/Utility/Algorithms.h"
     # Vex Platform
     "src/Vex/Platform/PlatformWindow.h"
-    "src/Vex/Platform/Debug.h"
-    # Vex Containers
+        # Vex Containers
     "src/Vex/Containers/FreeList.h"
     "src/Vex/Containers/Span.h"
     # Vex Built-In Shaders
@@ -234,6 +249,8 @@ add_library(Vex STATIC
     "src/Vex/PipelineState.cpp"
     "src/Vex/PipelineState.h"
     "src/Vex/Utility/MoveOnlyFunction.h"
+    "src/VexMacros.h"
+    "src/Vex/Platform/Debug.h"
 )
 
 if(WIN32)
@@ -268,7 +285,7 @@ if (VEX_ENABLE_SHADER_COMPILER)
 endif()
 
 # Vex Shader Compiler
-if (VEX_ENABLE_SHADER_COMPILER)
+if(VEX_ENABLE_SHADER_COMPILER)
     target_sources(Vex PRIVATE
         "src/ShaderCompiler/ShaderKey.h"
         "src/ShaderCompiler/Shader.h"
@@ -285,6 +302,12 @@ if (VEX_ENABLE_SHADER_COMPILER)
         "src/ShaderCompiler/RayTracingShaderKey.cpp"
     )
 endif()
+
+if(VEX_USE_MODULES)
+    target_sources(Vex PUBLIC FILE_SET CXX_MODULES FILES "src/Vex.cppm" "${magic_enum_SOURCE_DIR}/module/magic_enum.cppm")
+endif()
+
+set_target_properties(Vex PROPERTIES CXX_SCAN_FOR_MODULES ${VEX_USE_MODULES})
 
 target_include_directories(Vex PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
@@ -340,6 +363,8 @@ if(WIN32)
     target_compile_definitions(Vex PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS)
 endif()
 
+target_compile_definitions(Vex PUBLIC VEX_MODULES=$<BOOL:${VEX_USE_MODULES}>)
+
 # Shader compiler defines
 target_compile_definitions(Vex PUBLIC VEX_SHADER_COMPILER=$<BOOL:${VEX_ENABLE_SHADER_COMPILER}>)
 target_compile_definitions(Vex PUBLIC VEX_DXC=$<BOOL:${VEX_ENABLE_DXC}>)
@@ -353,12 +378,22 @@ message(STATUS "Installing Vex...")
 get_property(HEADER_DEPS_TO_INSTALL GLOBAL PROPERTY HEADER_DEPS_TO_INSTALL)
 
 # Installation rules
-install(TARGETS Vex ${HEADER_DEPS_TO_INSTALL}
-    EXPORT VexTargets
-    ARCHIVE DESTINATION lib
-    LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin
-)
+if(VEX_USE_MODULES)
+    install(TARGETS Vex ${HEADER_DEPS_TO_INSTALL}
+            EXPORT VexTargets
+            ARCHIVE DESTINATION lib
+            LIBRARY DESTINATION lib
+            RUNTIME DESTINATION bin
+            FILE_SET CXX_MODULES DESTINATION modules
+    )
+else()
+    install(TARGETS Vex ${HEADER_DEPS_TO_INSTALL}
+            EXPORT VexTargets
+            ARCHIVE DESTINATION lib
+            LIBRARY DESTINATION lib
+            RUNTIME DESTINATION bin
+    )
+endif()
 
 # Install Vex headers
 install(DIRECTORY src/ DESTINATION include FILES_MATCHING PATTERN "*.h")
