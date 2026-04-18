@@ -5,31 +5,21 @@
 #include <optional>
 #include <vector>
 
+#include <Vex/AccelerationStructure.h>
+#include <Vex/Containers/Span.h>
+#include <Vex/Platform/PlatformWindow.h>
+#include <Vex/QueueType.h>
+#include <Vex/Synchronization.h>
+#include <Vex/TextureSampler.h>
+
+#include <RHI/RHIFwd.h>
+#include <RHI/RHIPhysicalDevice.h>
+#include <RHI/RHISwapChain.h>
+
 #ifndef __cpp_lib_move_only_function
 // Fallback for environments with incomplete C++23 support
 #include <Vex/Utility/Functional/move_only_function.h>
 #endif
-
-#include <Vex/AccelerationStructure.h>
-#include <Vex/Containers/FreeList.h>
-#include <Vex/Containers/Span.h>
-#include <Vex/PipelineStateCache.h>
-#include <Vex/Platform/PlatformWindow.h>
-#include <Vex/QueueType.h>
-#include <Vex/RHIImpl/RHI.h>
-#include <Vex/RHIImpl/RHIAllocator.h>
-#include <Vex/RHIImpl/RHICommandPool.h>
-#include <Vex/RHIImpl/RHIDescriptorPool.h>
-#include <Vex/RHIImpl/RHIPhysicalDevice.h>
-#include <Vex/RHIImpl/RHISwapChain.h>
-#include <Vex/RHIImpl/RHITimestampQueryPool.h>
-#include <Vex/ResourceCleanup.h>
-#include <Vex/Synchronization.h>
-#include <Vex/TextureSampler.h>
-#include <Vex/TextureStateMap.h>
-#include <Vex/Utility/MaybeUninitialized.h>
-
-#include <RHI/RHIFwd.h>
 
 namespace vex
 {
@@ -66,15 +56,15 @@ struct GraphicsCreateDesc
     std::optional<PhysicalDeviceInfo> specifiedDevice;
 };
 
+struct GraphicsImpl;
+
 class Graphics
 {
 public:
-    Graphics(const GraphicsCreateDesc& desc);
-    ~Graphics();
-
+    explicit Graphics(const GraphicsCreateDesc& desc);
+    ~Graphics() = default;
     Graphics(const Graphics&) = delete;
     Graphics& operator=(const Graphics&) = delete;
-
     Graphics(Graphics&&) = default;
     Graphics& operator=(Graphics&&) = default;
 
@@ -177,10 +167,7 @@ public:
 
     // Called when the underlying window resizes, allows the swapchain to be resized.
     void OnWindowResized(u32 newWidth, u32 newHeight);
-    [[nodiscard]] bool UsesSwapChain() const
-    {
-        return desc.useSwapChain;
-    };
+    [[nodiscard]] bool UsesSwapChain() const;
 
     // Obtains the current present texture handle. If the swapchain is enabled, Vex uses a present texture which is
     // copied to the backbuffer when presenting.
@@ -196,78 +183,8 @@ public:
     static std::vector<PhysicalDeviceInfo> GetSupportedDevices();
 
 private:
-    void EnqueueCPUWork(CPUCallback&& callback, Span<const SyncToken> tokens);
-    void ExecuteCPUWork();
-
-    std::optional<SyncToken> FlushPendingInitializations();
-    void PrepareCommandContextForSubmission(CommandContext& ctx);
-    void Cleanup();
-
-    PipelineStateCache& GetPipelineStateCache();
-
-    RHITexture& GetRHITexture(TextureHandle textureHandle);
-    RHIBuffer& GetRHIBuffer(BufferHandle bufferHandle);
-    RHIAccelerationStructure& GetRHIAccelerationStructure(AccelerationStructureHandle asHandle);
-
-    void RecreatePresentTextures();
-
-    // Index of the current frame, possible values depends on buffering:
-    //  {0} if single buffering
-    //  {0, 1} if double buffering
-    //  {0, 1, 2} if triple buffering
-    // Only valid if the backend uses a swapchain and not able to be used for anything OTHER than consecutive
-    // presents/backbuffers.
-    u8 currentFrameIndex = 0;
-
-    GraphicsCreateDesc desc;
-
-    RHI rhi;
-
-    // =========================================================================
-    //  RHI RESOURCES (should be destroyed before rhi and their order matters)
-    // =========================================================================
-
-    MaybeUninitialized<RHICommandPool> commandPool;
-
-    // Used for allocating/freeing bindless descriptors for resources and samplers.
-    MaybeUninitialized<RHIDescriptorPool> descriptorPool;
-
-    MaybeUninitialized<PipelineStateCache> psCache;
-
-    MaybeUninitialized<RHIAllocator> allocator;
-
-    MaybeUninitialized<RHISwapChain> swapChain;
-
-    MaybeUninitialized<RHITimestampQueryPool> queryPool;
-
-    // Converts from the Handle to the actual underlying RHI resource.
-    FreeList<std::unique_ptr<RHITexture>, TextureHandle> textureRegistry;
-    FreeList<std::unique_ptr<RHIBuffer>, BufferHandle> bufferRegistry;
-    FreeList<std::unique_ptr<RHIAccelerationStructure>, AccelerationStructureHandle> accelerationStructureRegistry;
-
-    std::vector<Texture> pendingInitializations;
-
-    std::vector<Texture> presentTextures;
-    std::vector<SyncToken> presentTokens;
-
-    TextureStateMap backBufferState;
-
-    struct PendingCPUWork
-    {
-        CPUCallback callback;
-        std::vector<SyncToken> tokens;
-    };
-    std::vector<PendingCPUWork> pendingCPUWork;
-
-    std::unordered_map<BindlessTextureSampler, BindlessHandle> bindlessSamplers;
-
-    static constexpr u32 DefaultRegistrySize = 1024;
-
+    std::unique_ptr<GraphicsImpl> impl;
     friend class CommandContext;
-    friend struct ResourceBindingUtils;
-    friend class TextureReadbackContext;
-    friend class BufferReadbackContext;
-
     friend struct RHIAccessor;
 };
 

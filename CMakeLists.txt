@@ -1,5 +1,5 @@
-﻿cmake_minimum_required(VERSION 3.27)
-project(Vex VERSION 0.0.2 LANGUAGES CXX C)
+﻿cmake_minimum_required(VERSION 3.28)
+project(Vex VERSION 0.0.5 LANGUAGES CXX C)
 include(CMakePackageConfigHelpers)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -23,6 +23,12 @@ else()
     option(VEX_BUILD_EXAMPLES "Build the example programs" OFF)
     option(VEX_BUILD_TESTS "Build Vex tests" OFF)
     option(VEX_BUILD_TOOLS "Build Vex tools" OFF)
+endif()
+
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    option(VEX_USE_MODULES "Determines whether to generate and export the Vex cpp20 module." ON)
+else()
+    option(VEX_USE_MODULES "Determines whether to generate and export the Vex cpp20 module." OFF)
 endif()
 
 # CMake Helpers
@@ -232,6 +238,7 @@ add_library(Vex STATIC
     "src/Vex/RayTracing.h"
     "src/Vex/PipelineState.cpp"
     "src/Vex/PipelineState.h"
+    "src/Vex/GraphicsImpl.h"
 )
 
 if(WIN32)
@@ -247,7 +254,7 @@ if(LINUX)
 endif()
 
 # Vex Shader Compiler
-if (VEX_ENABLE_SHADER_COMPILER)
+if(VEX_ENABLE_SHADER_COMPILER)
     target_sources(Vex PRIVATE
         "src/ShaderCompiler/ShaderKey.h"
         "src/ShaderCompiler/Shader.h"
@@ -263,6 +270,10 @@ if (VEX_ENABLE_SHADER_COMPILER)
         "src/ShaderCompiler/RayTracingShaderKey.h"
         "src/ShaderCompiler/RayTracingShaderKey.cpp"
     )
+endif()
+
+if(VEX_USE_MODULES)
+    target_sources(Vex PUBLIC FILE_SET CXX_MODULES FILES "src/Vex.cppm")
 endif()
 
 target_include_directories(Vex PUBLIC
@@ -332,12 +343,22 @@ message(STATUS "Installing Vex...")
 get_property(HEADER_DEPS_TO_INSTALL GLOBAL PROPERTY HEADER_DEPS_TO_INSTALL)
 
 # Installation rules
-install(TARGETS Vex ${HEADER_DEPS_TO_INSTALL}
-    EXPORT VexTargets
-    ARCHIVE DESTINATION lib
-    LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin
-)
+if(VEX_USE_MODULES)
+    install(TARGETS Vex ${HEADER_DEPS_TO_INSTALL}
+            EXPORT VexTargets
+            ARCHIVE DESTINATION lib
+            LIBRARY DESTINATION lib
+            RUNTIME DESTINATION bin
+            FILE_SET CXX_MODULES DESTINATION modules
+    )
+else()
+    install(TARGETS Vex ${HEADER_DEPS_TO_INSTALL}
+            EXPORT VexTargets
+            ARCHIVE DESTINATION lib
+            LIBRARY DESTINATION lib
+            RUNTIME DESTINATION bin
+    )
+endif()
 
 # Install Vex headers
 install(DIRECTORY src/ DESTINATION include FILES_MATCHING PATTERN "*.h")
