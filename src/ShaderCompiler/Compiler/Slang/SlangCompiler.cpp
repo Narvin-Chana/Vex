@@ -37,7 +37,7 @@ std::expected<Slang::ComPtr<slang::IBlob>, std::string> GetByteCode(slang::IComp
             return std::unexpected(std::format("Failed to get compiled shader bytecode: {}.",
                                                static_cast<const char*>(diagnostics->getBufferPointer())));
         }
-        return std::unexpected("Failed to compile shader.");
+        return std::unexpected("Failed to compile shader, unknown error.");
     }
 
     // Diagnostics contains warnings if the compilation was successful.

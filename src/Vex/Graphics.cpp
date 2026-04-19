@@ -415,17 +415,17 @@ std::vector<BindlessHandle> Graphics::GetBindlessHandles(Span<const ResourceBind
 
 BindlessHandle Graphics::GetBindlessSampler(const BindlessTextureSampler& sampler)
 {
+    auto& handle = bindlessSamplers[sampler];
+    if (handle.IsValid())
+    {
+        return bindlessSamplers[sampler];
+    }
+
     if (bindlessSamplers.size() == GMaxBindlessSamplerCount)
     {
         VEX_LOG(
             Fatal,
             "Max number of different bindless samplers reached (2048). You must reduce the number of variations used.");
-    }
-
-    auto& handle = bindlessSamplers[sampler];
-    if (handle.IsValid())
-    {
-        return bindlessSamplers[sampler];
     }
 
     handle = descriptorPool->CreateBindlessSampler(sampler);

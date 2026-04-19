@@ -8,7 +8,7 @@ namespace vex::dx12
 namespace GraphicsPipeline
 {
 
-D3D12_COMPARISON_FUNC GetD3D12ComparisonFuncFromCompareOp(CompareOp compareOp)
+D3D12_COMPARISON_FUNC GetDX12ComparisonFuncFromCompareOp(CompareOp compareOp)
 {
     if (compareOp == CompareOp::None)
     {
@@ -17,12 +17,12 @@ D3D12_COMPARISON_FUNC GetD3D12ComparisonFuncFromCompareOp(CompareOp compareOp)
     return static_cast<D3D12_COMPARISON_FUNC>(static_cast<int>(compareOp) + 1);
 }
 
-D3D12_STENCIL_OP GetD3D12StencilOpFromStencilOp(StencilOp stencilOp)
+D3D12_STENCIL_OP GetDX12StencilOpFromStencilOp(StencilOp stencilOp)
 {
     return static_cast<D3D12_STENCIL_OP>(static_cast<int>(stencilOp) + 1);
 }
 
-D3D12_BLEND GetD3D12BlendFromBlendFactor(BlendFactor blendFactor)
+D3D12_BLEND GetDX12BlendFromBlendFactor(BlendFactor blendFactor)
 {
     switch (blendFactor)
     {
@@ -69,7 +69,7 @@ D3D12_BLEND GetD3D12BlendFromBlendFactor(BlendFactor blendFactor)
     }
 }
 
-D3D12_BLEND_OP GetD3D12BlendOpFromBlendOp(BlendOp blendOp)
+D3D12_BLEND_OP GetDX12BlendOpFromBlendOp(BlendOp blendOp)
 {
     return static_cast<D3D12_BLEND_OP>(static_cast<int>(blendOp) + 1);
 }
@@ -128,12 +128,12 @@ CD3DX12_BLEND_DESC GetDX12BlendStateFromColorBlendState(const ColorBlendState& b
         auto& renderTarget = desc.RenderTarget[i];
 
         renderTarget.BlendEnable = attachment.blendEnabled;
-        renderTarget.SrcBlend = GetD3D12BlendFromBlendFactor(attachment.srcColorBlendFactor);
-        renderTarget.DestBlend = GetD3D12BlendFromBlendFactor(attachment.dstColorBlendFactor);
-        renderTarget.BlendOp = GetD3D12BlendOpFromBlendOp(attachment.colorBlendOp);
-        renderTarget.SrcBlendAlpha = GetD3D12BlendFromBlendFactor(attachment.srcAlphaBlendFactor);
-        renderTarget.DestBlendAlpha = GetD3D12BlendFromBlendFactor(attachment.dstAlphaBlendFactor);
-        renderTarget.BlendOpAlpha = GetD3D12BlendOpFromBlendOp(attachment.alphaBlendOp);
+        renderTarget.SrcBlend = GetDX12BlendFromBlendFactor(attachment.srcColorBlendFactor);
+        renderTarget.DestBlend = GetDX12BlendFromBlendFactor(attachment.dstColorBlendFactor);
+        renderTarget.BlendOp = GetDX12BlendOpFromBlendOp(attachment.colorBlendOp);
+        renderTarget.SrcBlendAlpha = GetDX12BlendFromBlendFactor(attachment.srcAlphaBlendFactor);
+        renderTarget.DestBlendAlpha = GetDX12BlendFromBlendFactor(attachment.dstAlphaBlendFactor);
+        renderTarget.BlendOpAlpha = GetDX12BlendOpFromBlendOp(attachment.alphaBlendOp);
 
         // Convert color write mask
         renderTarget.RenderTargetWriteMask = 0;
@@ -159,7 +159,7 @@ D3D12_DEPTH_STENCIL_DESC GetDX12DepthStencilStateFromDepthStencilState(const Dep
     desc.DepthEnable = depthStencilState.depthTestEnabled;
     desc.DepthWriteMask =
         depthStencilState.depthWriteEnabled ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
-    desc.DepthFunc = GetD3D12ComparisonFuncFromCompareOp(depthStencilState.depthCompareOp);
+    desc.DepthFunc = GetDX12ComparisonFuncFromCompareOp(depthStencilState.depthCompareOp);
 
     // Stencil test
     desc.StencilEnable = depthStencilState.stencilTestEnabled;
@@ -167,16 +167,16 @@ D3D12_DEPTH_STENCIL_DESC GetDX12DepthStencilStateFromDepthStencilState(const Dep
     desc.StencilWriteMask = static_cast<UINT8>(depthStencilState.front.writeMask);
 
     // Front face stencil
-    desc.FrontFace.StencilFailOp = GetD3D12StencilOpFromStencilOp(depthStencilState.front.failOp);
-    desc.FrontFace.StencilDepthFailOp = GetD3D12StencilOpFromStencilOp(depthStencilState.front.depthFailOp);
-    desc.FrontFace.StencilPassOp = GetD3D12StencilOpFromStencilOp(depthStencilState.front.passOp);
-    desc.FrontFace.StencilFunc = GetD3D12ComparisonFuncFromCompareOp(depthStencilState.front.compareOp);
+    desc.FrontFace.StencilFailOp = GetDX12StencilOpFromStencilOp(depthStencilState.front.failOp);
+    desc.FrontFace.StencilDepthFailOp = GetDX12StencilOpFromStencilOp(depthStencilState.front.depthFailOp);
+    desc.FrontFace.StencilPassOp = GetDX12StencilOpFromStencilOp(depthStencilState.front.passOp);
+    desc.FrontFace.StencilFunc = GetDX12ComparisonFuncFromCompareOp(depthStencilState.front.compareOp);
 
     // Back face stencil
-    desc.BackFace.StencilFailOp = GetD3D12StencilOpFromStencilOp(depthStencilState.back.failOp);
-    desc.BackFace.StencilDepthFailOp = GetD3D12StencilOpFromStencilOp(depthStencilState.back.depthFailOp);
-    desc.BackFace.StencilPassOp = GetD3D12StencilOpFromStencilOp(depthStencilState.back.passOp);
-    desc.BackFace.StencilFunc = GetD3D12ComparisonFuncFromCompareOp(depthStencilState.back.compareOp);
+    desc.BackFace.StencilFailOp = GetDX12StencilOpFromStencilOp(depthStencilState.back.failOp);
+    desc.BackFace.StencilDepthFailOp = GetDX12StencilOpFromStencilOp(depthStencilState.back.depthFailOp);
+    desc.BackFace.StencilPassOp = GetDX12StencilOpFromStencilOp(depthStencilState.back.passOp);
+    desc.BackFace.StencilFunc = GetDX12ComparisonFuncFromCompareOp(depthStencilState.back.compareOp);
 
     // Note: DX12 doesn't support depth bounds testing or per-face stencil masks/references, we ignore them.
 

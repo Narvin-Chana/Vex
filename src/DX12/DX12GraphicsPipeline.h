@@ -13,10 +13,10 @@ namespace vex::dx12
 namespace GraphicsPipeline
 {
 
-D3D12_COMPARISON_FUNC GetD3D12ComparisonFuncFromCompareOp(CompareOp compareOp);
-D3D12_STENCIL_OP GetD3D12StencilOpFromStencilOp(StencilOp stencilOp);
-D3D12_BLEND GetD3D12BlendFromBlendFactor(BlendFactor blendFactor);
-D3D12_BLEND_OP GetD3D12BlendOpFromBlendOp(BlendOp blendOp);
+D3D12_COMPARISON_FUNC GetDX12ComparisonFuncFromCompareOp(CompareOp compareOp);
+D3D12_STENCIL_OP GetDX12StencilOpFromStencilOp(StencilOp stencilOp);
+D3D12_BLEND GetDX12BlendFromBlendFactor(BlendFactor blendFactor);
+D3D12_BLEND_OP GetDX12BlendOpFromBlendOp(BlendOp blendOp);
 CD3DX12_RASTERIZER_DESC GetDX12RasterizerStateFromRasterizerState(const RasterizerState& rasterizerState);
 CD3DX12_BLEND_DESC GetDX12BlendStateFromColorBlendState(const ColorBlendState& blendState);
 D3D12_DEPTH_STENCIL_DESC GetDX12DepthStencilStateFromDepthStencilState(const DepthStencilState& depthStencilState);

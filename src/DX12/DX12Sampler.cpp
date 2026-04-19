@@ -88,7 +88,7 @@ std::vector<D3D12_STATIC_SAMPLER_DESC> GetDX12StaticSamplersFromTextureSamplers(
             .AddressW = GetDX12TextureAddressModeFromAddressMode(samplers[i].addressW),
             .MipLODBias = samplers[i].mipLODBias,
             .MaxAnisotropy = samplers[i].maxAnisotropy,
-            .ComparisonFunc = GetD3D12ComparisonFuncFromCompareOp(samplers[i].compareOp),
+            .ComparisonFunc = GetDX12ComparisonFuncFromCompareOp(samplers[i].compareOp),
             .BorderColor = GetDX12StaticBorderColorFromBorderColor(samplers[i].borderColor),
             .MinLOD = samplers[i].minLOD,
             .MaxLOD = samplers[i].maxLOD,
@@ -113,11 +113,11 @@ D3D12_SAMPLER_DESC GetDX12SamplerDescFromBindlessTextureSampler(const BindlessTe
         .AddressW = GetDX12TextureAddressModeFromAddressMode(sampler.addressW),
         .MipLODBias = sampler.mipLODBias,
         .MaxAnisotropy = sampler.maxAnisotropy,
-        .ComparisonFunc = GetD3D12ComparisonFuncFromCompareOp(sampler.compareOp),
+        .ComparisonFunc = GetDX12ComparisonFuncFromCompareOp(sampler.compareOp),
         .MinLOD = sampler.minLOD,
         .MaxLOD = sampler.maxLOD,
     };
-    std::memcpy(samplerDesc.BorderColor, sampler.borderColor.data(), sizeof(float) * 4);
+    std::copy_n(sampler.borderColor.data(), 4, samplerDesc.BorderColor);
     return samplerDesc;
 }
 

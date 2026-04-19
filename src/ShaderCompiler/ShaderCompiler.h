@@ -2,13 +2,9 @@
 
 #include <utility>
 
-#ifndef __cpp_lib_move_only_function
-// Fallback for environments with incomplete C++23 support
-#include <Vex/Utility/Functional/move_only_function.h>
-#endif
-
 #include <Vex/Containers/Span.h>
 #include <Vex/ShaderView.h>
+#include <Vex/Utility/MoveOnlyFunction.h>
 #include <Vex/Utility/NonNullPtr.h>
 
 #include <ShaderCompiler/Compiler/CompilerBase.h>
@@ -50,12 +46,7 @@ enum class ShaderHotReloadErrorResponse : u8
 
 using ShaderHotReloadErrorsCallbackFuncType =
     ShaderHotReloadErrorResponse(Span<const std::pair<ShaderKey, std::string>>);
-using ShaderHotReloadErrorsCallback =
-#ifdef __cpp_lib_move_only_function
-std::move_only_function<ShaderHotReloadErrorsCallbackFuncType>;
-#else
-std23::move_only_function<ShaderHotReloadErrorsCallbackFuncType>;
-#endif
+using ShaderHotReloadErrorsCallback = MoveOnlyFunction<ShaderHotReloadErrorsCallbackFuncType>;
 
 struct RayTracingShaderKey;
 
@@ -93,14 +84,16 @@ struct ShaderCompiler
     // development and hot-reloading. You generally want to avoid calling this too often if your application has many
     // shaders. Only valid if enableShaderHotReload is enabled.
     void RecompileChangedShaders();
+
     // Recompiles all filepath-based shaders, could cause a big hitch depending on how many shaders your application
-    // uses. Shaders compiled from source Only valid if enableShaderHotReload is enabled.
+    // uses. Only valid if enableShaderHotReload is enabled.
     void RecompileAllShaders();
+
     // Recompiles all filepath-based shaders passed-in.
     void RecompileShaders(Span<const ShaderKey> shaderKeys);
 
 private:
-    static std::optional<std::filesystem::path> ConvertVirtualFilepathToFilepath(const ShaderKey& key);
+    static std::optional<std::filesystem::path> TryGetFilepathFromVirtualFilepath(const ShaderKey& key);
     static ShaderEnvironment CreateShaderEnvironment(const ShaderCompilerSettings& compilerSettings);
 
     CompilerBase& GetCompiler(const ShaderKey& key);

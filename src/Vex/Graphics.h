@@ -5,11 +5,6 @@
 #include <optional>
 #include <vector>
 
-#ifndef __cpp_lib_move_only_function
-// Fallback for environments with incomplete C++23 support
-#include <Vex/Utility/Functional/move_only_function.h>
-#endif
-
 #include <Vex/AccelerationStructure.h>
 #include <Vex/Containers/FreeList.h>
 #include <Vex/Containers/Span.h>
@@ -28,6 +23,7 @@
 #include <Vex/TextureSampler.h>
 #include <Vex/TextureStateMap.h>
 #include <Vex/Utility/MaybeUninitialized.h>
+#include <Vex/Utility/MoveOnlyFunction.h>
 
 #include <RHI/RHIFwd.h>
 
@@ -41,11 +37,7 @@ struct TextureBinding;
 struct BufferBinding;
 struct ResourceBinding;
 
-#ifdef __cpp_lib_move_only_function
-using CPUCallback = std::move_only_function<void()>;
-#else
-using CPUCallback = std23::move_only_function<void()>;
-#endif
+using CPUCallback = MoveOnlyFunction<void()>;
 
 struct GraphicsCreateDesc
 {

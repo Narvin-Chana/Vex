@@ -180,7 +180,7 @@ void DX12GraphicsPipelineState::Compile(const ShaderView& vertexShader,
         .NodeMask = 0,
         .Flags = D3D12_PIPELINE_STATE_FLAG_NONE,
     };
-    std::uninitialized_copy_n(rtvFormats.data(), 8, desc.RTVFormats);
+    std::copy_n(rtvFormats.data(), 8, desc.RTVFormats);
     // SRGB formats for depth stencil makes no sense.
     static constexpr bool AllowSRGBFormat = false;
     desc.DSVFormat = TextureFormatToDXGI(key.renderTargetState.depthStencilFormat, AllowSRGBFormat);

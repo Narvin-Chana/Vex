@@ -232,6 +232,7 @@ add_library(Vex STATIC
     "src/Vex/RayTracing.h"
     "src/Vex/PipelineState.cpp"
     "src/Vex/PipelineState.h"
+        src/Vex/Utility/MoveOnlyFunction.h
 )
 
 if(WIN32)

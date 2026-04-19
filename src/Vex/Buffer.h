@@ -29,7 +29,7 @@ BEGIN_VEX_ENUM_FLAGS(BufferUsage, u16)
     IndexBuffer                 = 1 << 4,
     // Buffers used as parameters for an indirect dispatch.
     IndirectArgs                = 1 << 5,
-    // TODO: check/rework this, error prone
+    // TODO(https://trello.com/c/92AYN8Oz): check/rework this, error prone
     // Buffers used as a HWRT Acceleration Structure, these also require the ShaderReadWrite usage.
     AccelerationStructure       = (1 << 6) | ShaderReadWrite,
     // Buffers used as a scratch buffer for building HWRT Acceleration Structures, these also require the ShaderReadWrite usage.

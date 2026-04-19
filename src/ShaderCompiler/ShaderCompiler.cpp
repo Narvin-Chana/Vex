@@ -103,7 +103,7 @@ std::optional<std::string> ShaderCompiler::CompileShaderFromFilepath(const Shade
     VEX_CHECK(!key.filepath.empty(),
               "Error compiling shader {} from filepath: Cannot compile from an empty filepath.",
               key);
-    const std::optional<std::filesystem::path> filepathString = ConvertVirtualFilepathToFilepath(key);
+    const std::optional<std::filesystem::path> filepathString = TryGetFilepathFromVirtualFilepath(key);
     VEX_CHECK(filepathString.has_value(), "Unable to find shader at filepath: {}", key.filepath);
     Shader& shader = *GetShader(key, false);
     CompilerBase& compiler = GetCompiler(key);
@@ -130,7 +130,7 @@ void ShaderCompiler::SetShaderCompilationErrorsCallback(ShaderHotReloadErrorsCal
 {
     if (!compilerSettings.enableShaderHotReload)
     {
-        VEX_LOG(Warning, "Cannot set shader compilation errors callback when not in shader hot-reload mode...");
+        VEX_LOG(Warning, "Setting the shader compilation errors callback when not in shader hot-reload mode will have no effect...");
         return;
     }
     errorsCallback = std::move(callback);
@@ -162,7 +162,7 @@ void ShaderCompiler::RecompileShaders(const Span<const ShaderKey> shaderKeys)
     VEX_LOG(Info, "Recompiled the passed-in filepath-based shaders ({})...", numRecompiledShaders);
 }
 
-std::optional<std::filesystem::path> ShaderCompiler::ConvertVirtualFilepathToFilepath(const ShaderKey& key)
+std::optional<std::filesystem::path> ShaderCompiler::TryGetFilepathFromVirtualFilepath(const ShaderKey& key)
 {
     std::filesystem::path filepath{ key.filepath };
     if (!std::filesystem::exists(filepath))
@@ -182,7 +182,7 @@ ShaderEnvironment ShaderCompiler::CreateShaderEnvironment(const ShaderCompilerSe
 
 CompilerBase& ShaderCompiler::GetCompiler(const ShaderKey& key)
 {
-    const std::optional<std::filesystem::path> filepath = ConvertVirtualFilepathToFilepath(key);
+    const std::optional<std::filesystem::path> filepath = TryGetFilepathFromVirtualFilepath(key);
     const std::string extension = filepath.has_value() ? filepath->extension().string() : "NONE";
     switch (key.compiler)
     {
@@ -212,9 +212,9 @@ CompilerBase& ShaderCompiler::GetCompiler(const ShaderKey& key)
 
 NonNullPtr<Shader> ShaderCompiler::GetShader(const ShaderKey& key, bool allowHotReload)
 {
-    if (const auto el = shaderCache.find(key); el != shaderCache.end())
+    if (const auto shader = shaderCache.find(key); shader != shaderCache.end())
     {
-        return el->second;
+        return shader->second;
     }
 
     // Avoids the default constructor being called (it is not defined for class Shader)
@@ -247,6 +247,7 @@ std::optional<std::string> ShaderCompiler::HandleCompiledShader(
     if (compilerSettings.dumpShaderOutputBytecode)
     {
         const std::vector<byte>& shaderBytecode = compilationResult->compiledCode;
+        // TODO(https://trello.com/c/kQsFYUgh): Improve the debug file output (maybe an additional metadata txt file?)
         std::string uniqueFilename = std::format("{}_{}_{}_{}_{}",
                                                  shader.GetHash(),
                                                  shader.GetKey().entryPoint,
