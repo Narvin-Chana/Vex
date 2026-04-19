@@ -6,27 +6,17 @@
 #include <utility>
 
 #include <Vex/CommandContext.h>
-#include <Vex/Containers/FreeList.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
-#include <Vex/PipelineStateCache.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHIAccelerationStructure.h>
-#include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
-#include <Vex/RHIImpl/RHICommandPool.h>
-#include <Vex/RHIImpl/RHIDescriptorPool.h>
-#include <Vex/RHIImpl/RHIPhysicalDevice.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
-#include <Vex/RHIImpl/RHISwapChain.h>
 #include <Vex/RHIImpl/RHITexture.h>
-#include <Vex/RHIImpl/RHITimestampQueryPool.h>
 #include <Vex/ResourceCleanup.h>
-#include <Vex/TextureStateMap.h>
 #include <Vex/Utility/ByteUtils.h>
-#include <Vex/Utility/MaybeUninitialized.h>
 #include <Vex/Utility/Validation.h>
 #include <Vex/Utility/Visitor.h>
 
@@ -39,11 +29,11 @@
 namespace vex
 {
 
-GraphicsImpl::GraphicsImpl(const GraphicsCreateDesc& desc)
+Graphics::Graphics(const GraphicsCreateDesc& desc)
     : desc(desc)
     , rhi(desc.platformWindow.windowHandle, desc.enableGPUDebugLayer, desc.enableGPUBasedValidation)
-    , textureRegistry(GDefaultRegistrySize)
-    , bufferRegistry(GDefaultRegistrySize)
+    , textureRegistry(DefaultRegistrySize)
+    , bufferRegistry(DefaultRegistrySize)
 {
     VEX_LOG(Info, "Creating Vex Graphics Backend with API Support:\n\tDX12: {} Vulkan: {}", VEX_DX12, VEX_VULKAN);
 
@@ -141,7 +131,7 @@ GraphicsImpl::GraphicsImpl(const GraphicsCreateDesc& desc)
     }
 }
 
-GraphicsImpl::~GraphicsImpl()
+Graphics::~Graphics()
 {
     // Wait for work to be done before starting the deletion of resources.
     FlushGPU();
@@ -153,7 +143,7 @@ GraphicsImpl::~GraphicsImpl()
     GEnableGPUScopedEvents = false;
 }
 
-void GraphicsImpl::Present()
+void Graphics::Present()
 {
     if (!desc.useSwapChain)
     {
@@ -275,10 +265,10 @@ void GraphicsImpl::Present()
 
 CommandContext Graphics::CreateCommandContext(QueueType queueType)
 {
-    return CommandContext{ *this, impl->commandPool->GetOrCreateCommandList(queueType), *impl->queryPool };
+    return CommandContext{ *this, commandPool->GetOrCreateCommandList(queueType), *queryPool };
 }
 
-Texture GraphicsImpl::CreateTexture(const TextureDesc& textureDesc, ResourceLifetime lifetime)
+Texture Graphics::CreateTexture(const TextureDesc& textureDesc, ResourceLifetime lifetime)
 {
     TextureUtil::ValidateTextureDescription(textureDesc);
     TextureDesc texDesc = textureDesc;
@@ -305,7 +295,7 @@ Texture GraphicsImpl::CreateTexture(const TextureDesc& textureDesc, ResourceLife
     return texture;
 }
 
-void GraphicsImpl::DestroyTexture(const Texture& texture)
+void Graphics::DestroyTexture(const Texture& texture)
 {
     if (!texture.handle.IsValid())
     {
@@ -317,7 +307,7 @@ void GraphicsImpl::DestroyTexture(const Texture& texture)
                    rhi.GetMostRecentSyncTokenPerQueue());
 }
 
-Buffer GraphicsImpl::CreateBuffer(const BufferDesc& bufferDesc, ResourceLifetime lifetime)
+Buffer Graphics::CreateBuffer(const BufferDesc& bufferDesc, ResourceLifetime lifetime)
 {
     BufferUtil::ValidateBufferDesc(bufferDesc);
 
@@ -335,7 +325,7 @@ Buffer GraphicsImpl::CreateBuffer(const BufferDesc& bufferDesc, ResourceLifetime
                    .desc = std::move(bufferDesc) };
 }
 
-void GraphicsImpl::DestroyBuffer(const Buffer& buffer)
+void Graphics::DestroyBuffer(const Buffer& buffer)
 {
     if (!buffer.handle.IsValid())
     {
@@ -347,7 +337,7 @@ void GraphicsImpl::DestroyBuffer(const Buffer& buffer)
                    rhi.GetMostRecentSyncTokenPerQueue());
 }
 
-AccelerationStructure GraphicsImpl::CreateAccelerationStructure(const AccelerationStructureDesc& asDesc)
+AccelerationStructure Graphics::CreateAccelerationStructure(const AccelerationStructureDesc& asDesc)
 {
     VEX_CHECK(GPhysicalDevice->IsFeatureSupported(Feature::RayTracing),
               "Your GPU does not support ray tracing, unable to create an acceleration structure!");
@@ -358,7 +348,7 @@ AccelerationStructure GraphicsImpl::CreateAccelerationStructure(const Accelerati
     };
 }
 
-void GraphicsImpl::DestroyAccelerationStructure(const AccelerationStructure& accelerationStructure)
+void Graphics::DestroyAccelerationStructure(const AccelerationStructure& accelerationStructure)
 {
     if (!accelerationStructure.handle.IsValid())
     {
@@ -370,7 +360,7 @@ void GraphicsImpl::DestroyAccelerationStructure(const AccelerationStructure& acc
                    rhi.GetMostRecentSyncTokenPerQueue());
 }
 
-MappedMemory GraphicsImpl::MapResource(const Buffer& buffer)
+MappedMemory Graphics::MapResource(const Buffer& buffer)
 {
     RHIBuffer& rhiBuffer = GetRHIBuffer(buffer.handle);
 
@@ -383,7 +373,7 @@ MappedMemory GraphicsImpl::MapResource(const Buffer& buffer)
     return { rhiBuffer };
 }
 
-BindlessHandle GraphicsImpl::GetBindlessHandle(const TextureBinding& bindlessResource)
+BindlessHandle Graphics::GetBindlessHandle(const TextureBinding& bindlessResource)
 {
     BindingUtil::ValidateTextureBinding(bindlessResource, bindlessResource.texture.desc.usage);
 
@@ -391,7 +381,7 @@ BindlessHandle GraphicsImpl::GetBindlessHandle(const TextureBinding& bindlessRes
     return texture.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
 }
 
-BindlessHandle GraphicsImpl::GetBindlessHandle(const BufferBinding& bindlessResource)
+BindlessHandle Graphics::GetBindlessHandle(const BufferBinding& bindlessResource)
 {
     BindingUtil::ValidateBufferBinding(bindlessResource, bindlessResource.buffer.desc.usage);
 
@@ -399,14 +389,14 @@ BindlessHandle GraphicsImpl::GetBindlessHandle(const BufferBinding& bindlessReso
     return buffer.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
 }
 
-BindlessHandle GraphicsImpl::GetBindlessHandle(const AccelerationStructure& accelerationStructure)
+BindlessHandle Graphics::GetBindlessHandle(const AccelerationStructure& accelerationStructure)
 {
     return GetRHIAccelerationStructure(accelerationStructure.handle)
         .GetRHIBuffer()
         .GetOrCreateBindlessView({}, *descriptorPool);
 }
 
-std::vector<BindlessHandle> GraphicsImpl::GetBindlessHandles(Span<const ResourceBinding> bindlessResources)
+std::vector<BindlessHandle> Graphics::GetBindlessHandles(Span<const ResourceBinding> bindlessResources)
 {
     std::vector<BindlessHandle> handles;
     handles.reserve(bindlessResources.size());
@@ -423,7 +413,7 @@ std::vector<BindlessHandle> GraphicsImpl::GetBindlessHandles(Span<const Resource
     return handles;
 }
 
-BindlessHandle GraphicsImpl::GetBindlessSampler(const BindlessTextureSampler& sampler)
+BindlessHandle Graphics::GetBindlessSampler(const BindlessTextureSampler& sampler)
 {
     if (bindlessSamplers.size() == GMaxBindlessSamplerCount)
     {
@@ -442,19 +432,19 @@ BindlessHandle GraphicsImpl::GetBindlessSampler(const BindlessTextureSampler& sa
     return handle;
 }
 
-void GraphicsImpl::SetStaticSamplers(Span<const StaticTextureSampler> staticSamplers)
+void Graphics::SetStaticSamplers(Span<const StaticTextureSampler> staticSamplers)
 {
     psCache->resourceLayout->SetStaticSamplers(staticSamplers);
 }
 
-SyncToken GraphicsImpl::Submit(CommandContext& ctx, Span<const SyncToken> dependencies)
+SyncToken Graphics::Submit(CommandContext& ctx, Span<const SyncToken> dependencies)
 {
     auto tokens = Submit(std::span(&ctx, 1), dependencies);
     VEX_ASSERT(tokens.size() == 1);
     return tokens[0];
 }
 
-std::vector<SyncToken> GraphicsImpl::Submit(Span<CommandContext> commandContexts, Span<const SyncToken> dependencies)
+std::vector<SyncToken> Graphics::Submit(Span<CommandContext> commandContexts, Span<const SyncToken> dependencies)
 {
     // Process any pending textures.
     std::optional<SyncToken> pendingInitializationToken = FlushPendingInitializations();
@@ -514,12 +504,12 @@ std::vector<SyncToken> GraphicsImpl::Submit(Span<CommandContext> commandContexts
     return tokens;
 }
 
-bool GraphicsImpl::IsTokenComplete(const SyncToken& token) const
+bool Graphics::IsTokenComplete(const SyncToken& token) const
 {
     return rhi.IsTokenComplete(token);
 }
 
-bool GraphicsImpl::AreTokensComplete(Span<const SyncToken> tokens) const
+bool Graphics::AreTokensComplete(Span<const SyncToken> tokens) const
 {
     for (const auto& token : tokens)
     {
@@ -531,14 +521,14 @@ bool GraphicsImpl::AreTokensComplete(Span<const SyncToken> tokens) const
     return true;
 }
 
-void GraphicsImpl::WaitForTokenOnCPU(const SyncToken& syncToken)
+void Graphics::WaitForTokenOnCPU(const SyncToken& syncToken)
 {
     rhi.WaitForTokenOnCPU(syncToken);
 
     Cleanup();
 }
 
-void GraphicsImpl::FlushGPU()
+void Graphics::FlushGPU()
 {
     VEX_LOG(Info, "Forcing a GPU flush...");
 
@@ -549,42 +539,42 @@ void GraphicsImpl::FlushGPU()
     VEX_ASSERT(pendingCPUWork.empty(), "Should never have remaining CPU work after a flush and cleanup...");
 }
 
-void GraphicsImpl::SetUseVSync(bool useVSync)
+void Graphics::SetUseVSync(bool useVSync)
 {
     desc.swapChainDesc.useVSync = useVSync;
 }
 
-bool GraphicsImpl::GetUseVSync() const
+bool Graphics::GetUseVSync() const
 {
     return desc.swapChainDesc.useVSync;
 }
 
-void GraphicsImpl::SetUseHDRIfSupported(bool newValue)
+void Graphics::SetUseHDRIfSupported(bool newValue)
 {
     desc.swapChainDesc.useHDRIfSupported = newValue;
 }
 
-bool GraphicsImpl::GetUseHDRIfSupported() const
+bool Graphics::GetUseHDRIfSupported() const
 {
     return desc.swapChainDesc.useHDRIfSupported;
 }
 
-void GraphicsImpl::SetPreferredHDRColorSpace(ColorSpace newValue)
+void Graphics::SetPreferredHDRColorSpace(ColorSpace newValue)
 {
     desc.swapChainDesc.preferredColorSpace = newValue;
 }
 
-ColorSpace GraphicsImpl::GetPreferredHDRColorSpace() const
+ColorSpace Graphics::GetPreferredHDRColorSpace() const
 {
     return desc.swapChainDesc.preferredColorSpace;
 }
 
-ColorSpace GraphicsImpl::GetCurrentHDRColorSpace() const
+ColorSpace Graphics::GetCurrentHDRColorSpace() const
 {
     return swapChain->GetCurrentColorSpace();
 }
 
-void GraphicsImpl::OnWindowResized(const u32 newWidth, const u32 newHeight)
+void Graphics::OnWindowResized(const u32 newWidth, const u32 newHeight)
 {
     // Do not resize if any of the dimensions is 0, or if the resize gives us the same window size as we have
     // currently.
@@ -607,12 +597,7 @@ void GraphicsImpl::OnWindowResized(const u32 newWidth, const u32 newHeight)
     desc.platformWindow.height = newHeight;
 }
 
-bool GraphicsImpl::UsesSwapChain() const
-{
-    return desc.useSwapChain;
-}
-
-Texture GraphicsImpl::GetCurrentPresentTexture()
+Texture Graphics::GetCurrentPresentTexture()
 {
     if (!desc.useSwapChain)
     {
@@ -621,18 +606,18 @@ Texture GraphicsImpl::GetCurrentPresentTexture()
     return presentTextures[currentFrameIndex];
 }
 
-bool GraphicsImpl::IsRayTracingSupported() const
+bool Graphics::IsRayTracingSupported() const
 {
     return GPhysicalDevice->IsFeatureSupported(Feature::RayTracing);
 }
 
-std::expected<Query, QueryStatus> GraphicsImpl::GetTimestampValue(const QueryHandle handle)
+std::expected<Query, QueryStatus> Graphics::GetTimestampValue(const QueryHandle handle)
 {
     VEX_CHECK(handle != vex::GInvalidQueryHandle, "Query handle must be valid when getting timestamp value");
     return queryPool->GetQueryData(handle);
 }
 
-std::vector<PhysicalDeviceInfo> GraphicsImpl::GetSupportedDevices()
+std::vector<PhysicalDeviceInfo> Graphics::GetSupportedDevices()
 {
     std::vector<std::unique_ptr<RHIPhysicalDevice>> devices = RHI::EnumeratePhysicalDevices();
 
@@ -643,12 +628,12 @@ std::vector<PhysicalDeviceInfo> GraphicsImpl::GetSupportedDevices()
     return infos;
 }
 
-void GraphicsImpl::EnqueueCPUWork(CPUCallback&& callback, Span<const SyncToken> tokens)
+void Graphics::EnqueueCPUWork(CPUCallback&& callback, Span<const SyncToken> tokens)
 {
     pendingCPUWork.emplace_back(std::move(callback), std::vector<SyncToken>{ tokens.begin(), tokens.end() });
 }
 
-void GraphicsImpl::ExecuteCPUWork()
+void Graphics::ExecuteCPUWork()
 {
     std::erase_if(pendingCPUWork,
                   [this](PendingCPUWork& work)
@@ -662,7 +647,7 @@ void GraphicsImpl::ExecuteCPUWork()
                   });
 }
 
-std::optional<SyncToken> GraphicsImpl::FlushPendingInitializations()
+std::optional<SyncToken> Graphics::FlushPendingInitializations()
 {
     // Remove all stale textures, eg: if a texture is created then deleted without having been used.
     std::erase_if(pendingInitializations, [this](const Texture& tex) { return !textureRegistry.IsValid(tex.handle); });
@@ -724,7 +709,7 @@ std::optional<SyncToken> GraphicsImpl::FlushPendingInitializations()
     return token;
 }
 
-void GraphicsImpl::PrepareCommandContextForSubmission(CommandContext& ctx)
+void Graphics::PrepareCommandContextForSubmission(CommandContext& ctx)
 {
     VEX_ASSERT(ctx.cmdList->IsOpen(), "Error on submit: attempting to submit an already closed command context...");
 
@@ -758,7 +743,7 @@ void GraphicsImpl::PrepareCommandContextForSubmission(CommandContext& ctx)
     ctx.cmdList->Close();
 }
 
-void GraphicsImpl::Cleanup()
+void Graphics::Cleanup()
 {
     // Flush all potential CPU work that was enqueued to the GPU timeline, this can include RHI resource cleanup.
     ExecuteCPUWork();
@@ -766,27 +751,27 @@ void GraphicsImpl::Cleanup()
     commandPool->ReclaimCommandLists();
 }
 
-PipelineStateCache& GraphicsImpl::GetPipelineStateCache()
+PipelineStateCache& Graphics::GetPipelineStateCache()
 {
     return *psCache;
 }
 
-RHITexture& GraphicsImpl::GetRHITexture(TextureHandle textureHandle)
+RHITexture& Graphics::GetRHITexture(TextureHandle textureHandle)
 {
     return *textureRegistry[textureHandle];
 }
 
-RHIBuffer& GraphicsImpl::GetRHIBuffer(BufferHandle bufferHandle)
+RHIBuffer& Graphics::GetRHIBuffer(BufferHandle bufferHandle)
 {
     return *bufferRegistry[bufferHandle];
 }
 
-RHIAccelerationStructure& GraphicsImpl::GetRHIAccelerationStructure(AccelerationStructureHandle asHandle)
+RHIAccelerationStructure& Graphics::GetRHIAccelerationStructure(AccelerationStructureHandle asHandle)
 {
     return *accelerationStructureRegistry[asHandle];
 }
 
-void GraphicsImpl::RecreatePresentTextures()
+void Graphics::RecreatePresentTextures()
 {
     if (!presentTextures.empty())
     {
@@ -823,11 +808,6 @@ void GraphicsImpl::RecreatePresentTextures()
         presentTextures[presentTextureIndex] = CreateTexture(presentTextureDesc);
         // Present texture will be initialized when pendingInitializations are flushed on next submit.
     }
-}
-
-Graphics::Graphics(const GraphicsCreateDesc& desc)
-    : impl(std::make_unique<GraphicsImpl>(desc))
-{
 }
 
 } // namespace vex

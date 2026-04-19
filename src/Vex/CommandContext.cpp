@@ -122,7 +122,7 @@ CommandContext::CommandContext(NonNullPtr<Graphics> graphics,
     cmdList->SetTimestampQueryPool(queryPool);
     if (cmdList->GetQueue() != QueueType::Copy)
     {
-        cmdList->SetDescriptorPool(*graphics->impl->descriptorPool, graphics->impl->psCache->resourceLayout.value());
+        cmdList->SetDescriptorPool(*graphics->descriptorPool, graphics->psCache->resourceLayout.value());
     }
 }
 

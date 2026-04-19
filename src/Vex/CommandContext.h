@@ -283,7 +283,7 @@ private:
     bool hasInitializedViewport = false;
     bool hasInitializedScissor = false;
 
-    friend struct GraphicsImpl;
+    friend class Graphics;
 };
 
 } // namespace vex

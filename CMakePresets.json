@@ -14,6 +14,7 @@
       "installDir": "${sourceDir}/out/install/${presetName}",
       "cacheVariables": {
         "VEX_BUILD_TESTS": "ON",
+        "VEX_USE_MODULES":  "ON",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "YES",
         "FETCHCONTENT_BASE_DIR": "${sourceDir}/out/_deps"
       }

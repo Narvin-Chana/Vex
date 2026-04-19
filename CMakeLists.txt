@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_SCAN_FOR_MODULES FORCE ON)
 
 # Store the root directory of Vex
 set(VEX_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -238,7 +239,6 @@ add_library(Vex STATIC
     "src/Vex/RayTracing.h"
     "src/Vex/PipelineState.cpp"
     "src/Vex/PipelineState.h"
-    "src/Vex/GraphicsImpl.h"
 )
 
 if(WIN32)

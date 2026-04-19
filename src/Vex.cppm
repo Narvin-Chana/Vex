@@ -1,5 +1,7 @@
 export module Vex;
 
-export extern "C++"
+export
 {
+    constexpr int a = 2;
+    // using vex::Graphics;
 }
