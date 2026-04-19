@@ -9,7 +9,7 @@
 namespace vex::vk
 {
 
-namespace
+namespace VkAccelerationStructure_Internal
 {
 ::vk::TransformMatrixKHR GetVkTransformMatrix(std::array<float, 3 * 4> matrix)
 {
@@ -17,7 +17,7 @@ namespace
     std::uninitialized_copy_n(matrix.data(), 12, &mat.matrix[0][0]);
     return mat;
 }
-} // namespace
+} // namespace VkAccelerationStructure_Internal
 
 ::vk::GeometryFlagsKHR GeometryFlagsToVkGeometryFlags(ASGeometry::Flags flags)
 {
@@ -78,14 +78,14 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
     geometryCount.reserve(desc.geometries.size());
 
     auto BindingToOffsetCount = [](const std::optional<RHIBufferBinding>& binding,
-                                   u32 fallbackStride) -> std::pair<u32, u32> // offset, count
+                                   u32 stride) -> std::pair<u32, u32> // offset, count
     {
         if (!binding)
             return {};
 
-        return { static_cast<u32>(binding->binding.offsetByteSize.value_or(0) / fallbackStride),
+        return { static_cast<u32>(binding->binding.offsetByteSize.value_or(0) / stride),
                  static_cast<u32>(binding->binding.rangeByteSize.value_or(binding->buffer->GetDesc().byteSize) /
-                                  fallbackStride) };
+                                  stride) };
     };
 
     for (const RHIBLASGeometryDesc& geom : desc.geometries)
@@ -96,9 +96,8 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
             VEX_ASSERT(geom.vertexBufferBinding);
             VEX_ASSERT(geom.vertexBufferBinding->binding.strideByteSize);
 
-            static constexpr u32 VertexByteStride = sizeof(float) * 3;
-
-            auto [firstVertex, vertexCount] = BindingToOffsetCount(geom.vertexBufferBinding, VertexByteStride);
+            auto [firstVertex, vertexCount] =
+                BindingToOffsetCount(geom.vertexBufferBinding, *geom.vertexBufferBinding->binding.strideByteSize);
 
             u32 triangleCount = vertexCount / 3;
             if (geom.indexBufferBinding)
@@ -115,8 +114,8 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
                 .geometry = {
                     .triangles = {
                         .vertexFormat = ::vk::Format::eR32G32B32Sfloat,
-                        .vertexData = { geom.vertexBufferBinding->buffer->GetDeviceAddress() },
-                        .vertexStride = sizeof(float) * 3,
+                        .vertexData = { geom.vertexBufferBinding->buffer->GetDeviceAddress() + geom.vertexBufferBinding->binding.offsetByteSize.value_or(0) },
+                        .vertexStride = *geom.vertexBufferBinding->binding.strideByteSize,
                         .maxVertex = vertexCount - 1,
                         .indexType = geom.indexBufferBinding ? ::vk::IndexType::eUint32 : ::vk::IndexType::eNoneKHR,
                         .indexData = { geom.indexBufferBinding ? geom.indexBufferBinding->buffer->GetDeviceAddress() : ::vk::DeviceAddress{} },
@@ -127,9 +126,8 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
 
             ranges.push_back(::vk::AccelerationStructureBuildRangeInfoKHR{
                 .primitiveCount = triangleCount,
-                .primitiveOffset = static_cast<u32>(geom.indexBufferBinding
-                                                        ? geom.indexBufferBinding->binding.offsetByteSize.value_or(0)
-                                                        : firstVertex * VertexByteStride),
+                .primitiveOffset = static_cast<u32>(
+                    geom.indexBufferBinding ? geom.indexBufferBinding->binding.offsetByteSize.value_or(0) : 0),
                 .firstVertex = 0,
                 .transformOffset =
                     geom.transformBufferBinding
@@ -209,7 +207,7 @@ std::vector<std::byte> VkAccelerationStructure::GetInstanceBufferData(const RHIT
         const NonNullPtr<RHIAccelerationStructure> as = desc.perInstanceBLAS[i];
 
         instances.push_back(::vk::AccelerationStructureInstanceKHR{
-            .transform = GetVkTransformMatrix(instance.transform),
+            .transform = VkAccelerationStructure_Internal::GetVkTransformMatrix(instance.transform),
             .instanceCustomIndex = instance.instanceID,
             .mask = instance.instanceMask,
             .instanceShaderBindingTableRecordOffset = instance.instanceContributionToHitGroupIndex,
