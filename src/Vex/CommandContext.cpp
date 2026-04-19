@@ -905,7 +905,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
             transformBuffer = CreateTemporaryStagingBuffer(
                 graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name +
                     "_build_blas_transforms",
-                transformsToUpload.size() * TransformMatrixSize);
+                transformsToUpload.size() * TransformMatrixSize, BufferUsage::BuildAccelerationStructure);
 
             MappedMemory mappedMemory = graphics->MapResource(transformBuffer);
             mappedMemory.WriteData(std::as_bytes(std::span<std::array<float, 3 * 4>>(transformsToUpload)));
@@ -987,7 +987,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
         {
             aabbBuffer = CreateTemporaryStagingBuffer(
                 graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_blas_aabb",
-                aabbsToUpload.size() * sizeof(AABB));
+                aabbsToUpload.size() * sizeof(AABB), BufferUsage::BuildAccelerationStructure);
 
             MappedMemory mappedMemory = graphics->MapResource(aabbBuffer);
             mappedMemory.WriteData(std::as_bytes(std::span(aabbsToUpload)));
