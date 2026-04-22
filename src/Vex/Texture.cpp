@@ -4,10 +4,10 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/Logger.h>
-#include <Vex/Platform/Debug.h>
+#include <VexMacros.h>
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Formattable.h>
-#include <Vex/Utility/Validation.h>
+#include <VexMacros.h>
 
 namespace vex
 {

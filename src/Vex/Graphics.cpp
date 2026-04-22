@@ -17,7 +17,7 @@
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/ResourceCleanup.h>
 #include <Vex/Utility/ByteUtils.h>
-#include <Vex/Utility/Validation.h>
+#include <VexMacros.h>
 #include <Vex/Utility/Visitor.h>
 
 #include <RHI/RHIAccelerationStructure.h>

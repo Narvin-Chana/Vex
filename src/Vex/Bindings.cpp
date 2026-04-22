@@ -1,11 +1,9 @@
 #include "Bindings.h"
 
-#include <numeric>
-
-#include <magic_enum/magic_enum.hpp>
+#include <Vex/Utility/Formattable.h>
 
 #include <Vex/Logger.h>
-#include <Vex/Utility/Validation.h>
+#include <VexMacros.h>
 
 namespace vex
 {
@@ -141,7 +139,8 @@ void ValidateTextureBinding(const TextureBinding& binding, TextureUsage::Flags v
         }
     }
 
-    if (FormatUtil::IsDepthOrDepthStencilFormat(texture.desc.format) && !(texture.desc.usage & TextureUsage::DepthStencil))
+    if (FormatUtil::IsDepthOrDepthStencilFormat(texture.desc.format) &&
+        !(texture.desc.usage & TextureUsage::DepthStencil))
     {
         VEX_LOG(Fatal,
                 "Invalid binding for resource \"{}\": Texture's format ({}) requires the depth stencil usage "

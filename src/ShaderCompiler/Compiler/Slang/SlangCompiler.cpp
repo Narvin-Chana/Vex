@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-#include <magic_enum/magic_enum.hpp>
+#include <Vex/Utility/Formattable.h>
 
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>

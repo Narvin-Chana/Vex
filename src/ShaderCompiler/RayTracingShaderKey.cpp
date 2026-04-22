@@ -1,8 +1,7 @@
 #include "RayTracingShaderKey.h"
 
-#include <magic_enum/magic_enum.hpp>
-
 #include <Vex/Logger.h>
+#include <VexMacros.h>
 #include <Vex/ShaderView.h>
 
 #define VEX_STRINGIFY(val) #val

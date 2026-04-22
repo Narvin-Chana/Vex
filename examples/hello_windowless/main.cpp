@@ -1,14 +1,15 @@
 #include <ExamplePaths.h>
 
-#include <Vex.h>
+#if VEX_MODULES
 import Vex;
+#else
+#include <Vex.h>
+#endif
 
 int main()
 {
     constexpr int width = 500;
     constexpr int height = 500;
-
-    std::cout << a;
 
     vex::Graphics graphics{ vex::GraphicsCreateDesc{
         .useSwapChain = false,

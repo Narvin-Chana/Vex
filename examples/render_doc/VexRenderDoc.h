@@ -8,8 +8,12 @@
 
 #include <renderdoc_app.h>
 
-#include <Vex/Logger.h>
-#include <Vex/Utility/Validation.h>
+#if VEX_MODULES
+import Vex;
+#else
+#include <Vex.h>
+#endif
+#include <VexMacros.h>
 
 namespace RenderDoc
 {
@@ -65,7 +69,8 @@ inline void EndCapture()
 {
     if (GRDoc_api)
     {
-        // Confusingly enough, this returns 1 on success and 0 on failure, which is opposite to what RENDERDOC_GetAPI(...) returns.
+        // Confusingly enough, this returns 1 on success and 0 on failure, which is opposite to what
+        // RENDERDOC_GetAPI(...) returns.
         VEX_CHECK(GRDoc_api->EndFrameCapture(nullptr, nullptr), "RenderDoc indicated an error when capturing!");
     }
 }

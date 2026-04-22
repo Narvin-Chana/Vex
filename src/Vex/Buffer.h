@@ -2,7 +2,6 @@
 
 #include <string>
 
-#include <Vex/Logger.h>
 #include <Vex/Resource.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/EnumFlags.h>

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <magic_enum/magic_enum.hpp>
+
 #include <unordered_map>
 
 #include <Vex/Resource.h>
@@ -33,12 +35,8 @@ protected:
 private:
     ComPtr<DX12Device> device;
 
-    // clang-format off
-    
     // Contains all API-specific data for a specific freeList handle.
     std::array<std::unordered_map<PageHandle, ComPtr<ID3D12Heap>>, magic_enum::enum_count<HeapType>()> heaps;
-
-    // clang-format on
 
     // TODO: Add support for GPU_UPLOAD heap for ultra-fast upload using ReBar. Requires device querying to determine
     // rebar size.

@@ -2,6 +2,7 @@
 
 #include <array>
 #include <string>
+#include <functional>
 
 #include <Vex/Formats.h>
 #include <Vex/Resource.h>
