@@ -42,8 +42,9 @@ BindlessHandle VkDescriptorPool::CreateBindlessSampler(const BindlessTextureSamp
     // In Vk sampler descriptors can be allocated in the same heap as resource descriptors.
     const BindlessHandle handle = AllocateStaticDescriptor(DescriptorType::Resource);
 
+    ::vk::SamplerCustomBorderColorCreateInfoEXT customBorder;
     const ::vk::SamplerCreateInfo samplerCI =
-        GraphicsPipeline::GetVkSamplerCreateInfoFromBindlessTextureSampler(textureSampler);
+        GraphicsPipeline::GetVkSamplerCreateInfoFromBindlessTextureSampler(textureSampler, customBorder);
     ::vk::UniqueSampler vkSampler = VEX_VK_CHECK <<= ctx->device.createSamplerUnique(samplerCI);
 
     const ::vk::DescriptorImageInfo imageInfo{ .sampler = *vkSampler };

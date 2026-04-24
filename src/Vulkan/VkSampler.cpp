@@ -33,11 +33,12 @@ namespace vex::vk
     return vkSamplerCreateInfo;
 }
 ::vk::SamplerCreateInfo GraphicsPipeline::GetVkSamplerCreateInfoFromBindlessTextureSampler(
-    const BindlessTextureSampler& sampler)
+    const BindlessTextureSampler& sampler, ::vk::SamplerCustomBorderColorCreateInfoEXT& customBorder)
 {
     ::vk::SamplerCreateInfo vkSamplerCreateInfo = FillInVkSamplerCreateInfoWithTextureSamplerBase(sampler);
-    // TODO: use VK_EXT_custom_border_color
-    // vkSamplerCreateInfo.borderColor = BorderColorToVkBorderColor(sampler.borderColor);
+    vkSamplerCreateInfo.borderColor = ::vk::BorderColor::eFloatCustomEXT;
+    vkSamplerCreateInfo.pNext = &customBorder;
+    customBorder.customBorderColor.setFloat32(sampler.borderColor);
     return vkSamplerCreateInfo;
 }
 

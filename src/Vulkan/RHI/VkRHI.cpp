@@ -346,6 +346,7 @@ void VkRHI::Init()
     ValidateAndAddExtension(VK_KHR_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME);
     ValidateAndAddExtension(VK_GOOGLE_HLSL_FUNCTIONALITY1_EXTENSION_NAME);
     ValidateAndAddExtension(VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME);
+    ValidateAndAddExtension(VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
 
     std::optional<::vk::PhysicalDeviceAccelerationStructureFeaturesKHR> featuresAccelerationStructure;
     std::optional<::vk::PhysicalDeviceRayTracingPipelineFeaturesKHR> featuresRayTracingPipeline;
@@ -382,9 +383,14 @@ void VkRHI::Init()
     featuresFragmentShaderBarycentric.pNext = &featuresMutableDescriptors;
     featuresFragmentShaderBarycentric.fragmentShaderBarycentric = true;
 
+    ::vk::PhysicalDeviceCustomBorderColorFeaturesEXT featuresCustomBorderColor;
+    featuresCustomBorderColor.pNext = &featuresFragmentShaderBarycentric;
+    featuresCustomBorderColor.customBorderColors = true;
+    featuresCustomBorderColor.customBorderColorWithoutFormat = true;
+
     // Allows for using derivatives in compute shaders.
     ::vk::PhysicalDeviceComputeShaderDerivativesFeaturesKHR featuresComputeShaderDerivatives;
-    featuresComputeShaderDerivatives.pNext = &featuresFragmentShaderBarycentric;
+    featuresComputeShaderDerivatives.pNext = &featuresCustomBorderColor;
     featuresComputeShaderDerivatives.computeDerivativeGroupQuads = true;
     featuresComputeShaderDerivatives.computeDerivativeGroupLinear = false;
 
@@ -426,6 +432,7 @@ void VkRHI::Init()
     // Compatibility built-in shader variables for DX12: BaseInstance, BaseVertex and DrawIndex.
     // Required for certain HLSL/Slang SV_ intrinsics to work.
     features11.shaderDrawParameters = true;
+    features11.storageBuffer16BitAccess = true;
 
     auto physDeviceFeatures = physDevice.getFeatures();
     // Geometry shader being enabled forces SV_PrimitiveID to also be enabled!

@@ -11,6 +11,8 @@ namespace vex::vk
 
 static constexpr u32 MaxSamplerCount = 1024;
 
+// clang-format off
+
 inline VEX_VK_BEGIN_ENUM_MAPPING(AddressMode, AddressMode, ::vk::SamplerAddressMode, VkSamplerAddressMode)
 VEX_VK_ENUM_MAPPING_ENTRY(Wrap, eRepeat)
 VEX_VK_ENUM_MAPPING_ENTRY(Border, eClampToBorder)
@@ -40,11 +42,13 @@ VEX_VK_ENUM_MAPPING_ENTRY(TransparentBlackFloat, eFloatTransparentBlack)
 VEX_VK_ENUM_MAPPING_ENTRY(TransparentBlackInt, eIntTransparentBlack)
 VEX_VK_END_ENUM_MAPPING
 
+// clang-format on
+
 namespace GraphicsPipeline
 {
 
 ::vk::SamplerCreateInfo GetVkSamplerCreateInfoFromStaticTextureSampler(const StaticTextureSampler& sampler);
-::vk::SamplerCreateInfo GetVkSamplerCreateInfoFromBindlessTextureSampler(const BindlessTextureSampler& sampler);
+::vk::SamplerCreateInfo GetVkSamplerCreateInfoFromBindlessTextureSampler(const BindlessTextureSampler& sampler, ::vk::SamplerCustomBorderColorCreateInfoEXT& customBorder);
 
 } // namespace GraphicsPipeline
 
