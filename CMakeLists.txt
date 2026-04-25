@@ -31,13 +31,14 @@ include(VexHelpers)
 # Will correctly install our custom githook to run clang-format on staged files when committing
 include(GitHooks)
 
+set(VEX_ENABLE_SLANG_DEFAULT OFF)
+if(VEX_BUILD_EXAMPLES OR VEX_BUILD_TESTS)
+    set(VEX_ENABLE_SLANG_DEFAULT ON)
+endif()
+
 option(VEX_ENABLE_SHADER_COMPILER "Enables the possibility to use Vex's built-in ShaderCompiler." ON)
 option(VEX_ENABLE_DXC "Enables the possibility to use the DXC shader compiler backend." ON)
-if (VEX_BUILD_EXAMPLES OR VEX_BUILD_TESTS)
-    option(VEX_ENABLE_SLANG "Enables the possibility to use the Slang shader compiler backend." ON)
-else()
-    option(VEX_ENABLE_SLANG "Enables the possibility to use the Slang shader compiler backend." OFF)
-endif()
+option(VEX_ENABLE_SLANG "Enables the possibility to use the Slang shader compiler backend." ${VEX_ENABLE_SLANG_DEFAULT})
 
 # Contains all logic to fetch and include shader compiler backends.
 include(VexDXC)
