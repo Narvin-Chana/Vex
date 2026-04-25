@@ -14,7 +14,7 @@ namespace VkAccelerationStructure_Internal
 ::vk::TransformMatrixKHR GetVkTransformMatrix(std::array<float, 3 * 4> matrix)
 {
     ::vk::TransformMatrixKHR mat;
-    std::uninitialized_copy_n(matrix.data(), 12, &mat.matrix[0][0]);
+    std::copy_n(matrix.data(), 12, &mat.matrix[0][0]);
     return mat;
 }
 } // namespace VkAccelerationStructure_Internal
@@ -60,7 +60,7 @@ namespace VkAccelerationStructure_Internal
     return vkFlags;
 }
 
-VkAccelerationStructure::VkAccelerationStructure(NonNullPtr<VkGPUContext> ctx, const ASDesc& desc)
+VkAccelerationStructure::VkAccelerationStructure(NonNullPtr<VkGPUContext> ctx, const AccelerationStructureDesc& desc)
     : RHIAccelerationStructureBase(desc)
     , ctx{ ctx }
 {

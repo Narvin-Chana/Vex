@@ -87,6 +87,7 @@ bool IsDepthOrDepthStencilFormat(TextureFormat format);
 bool IsDepthOnlyFormat(TextureFormat format);
 bool IsDepthAndStencilFormat(TextureFormat format);
 std::string_view GetHLSLType(TextureFormat format);
+u8 GetNumChannels(TextureFormat format);
 bool IsBlockCompressed(TextureFormat format);
 bool SupportsMipGeneration(TextureFormat format);
 

@@ -1,5 +1,7 @@
 ﻿#include "VkTexture.h"
 
+#include <ranges>
+
 #include <Vex/Bindings.h>
 #include <Vex/Utility/Visitor.h>
 
@@ -229,7 +231,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
     };
 
     ::vk::UniqueImageView imageView = VEX_VK_CHECK <<= ctx->device.createImageViewUnique(viewCreate);
-    const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
+    const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor(DescriptorType::Resource);
 
     ::vk::ImageLayout viewLayout = ::vk::ImageLayout::eGeneral;
 
@@ -292,11 +294,11 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
 
 void VkTexture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 {
-    for (const auto& [viewDesc, entry] : bindlessCache)
+    for (const auto& entry : bindlessCache | std::views::values)
     {
         if (entry.handle != GInvalidBindlessHandle)
         {
-            descriptorPool.FreeStaticDescriptor(entry.handle);
+            descriptorPool.FreeStaticDescriptor(DescriptorType::Resource, entry.handle);
         }
     }
     bindlessCache.clear();

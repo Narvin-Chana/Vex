@@ -21,7 +21,6 @@ HDRApplication::HDRApplication()
         .swapChainDesc = { .useHDRIfSupported = true, .preferredColorSpace = preferredColorSpace },
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
-    SetupShaderErrorHandling();
 
     hdrTexture = graphics->CreateTexture(vex::TextureDesc::CreateTexture2DDesc("Memorial.png",
                                                                                vex::TextureFormat::RGBA32_FLOAT,
@@ -38,11 +37,6 @@ HDRApplication::HDRApplication()
                                                       hdrWidth * hdrHeight * FloatRGBANumChannels * sizeof(float) });
 
     graphics->Submit(ctx);
-
-    std::array samplers{
-        vex::TextureSampler::CreateSampler(vex::FilterMode::Linear, vex::AddressMode::Clamp),
-    };
-    graphics->SetSamplers(samplers);
 }
 
 void HDRApplication::Run()
@@ -63,17 +57,23 @@ void HDRApplication::Run()
             ctx.SetScissor(0, 0, width, height);
             ctx.SetViewport(0, 0, texWidth, texHeight);
 
-            vex::DrawDesc drawDesc;
-            drawDesc.vertexShader = vex::ShaderKey{
-                .path = ExamplesDir / "hdr" / "HDR.hlsl",
+            vex::ShaderKey hdrVertexShader{
+                .filepath = (ExamplesDir / "hdr" / "HDR.hlsl").string(),
                 .entryPoint = "FullscreenTriangleVS",
                 .type = vex::ShaderType::VertexShader,
             };
-            drawDesc.pixelShader = vex::ShaderKey{
-                .path = ExamplesDir / "hdr" / "HDR.hlsl",
+            vex::ShaderKey hdrPixelShader{
+                .filepath = (ExamplesDir / "hdr" / "HDR.hlsl").string(),
                 .entryPoint = "TonemapPS",
                 .type = vex::ShaderType::PixelShader,
             };
+            hdrPixelShader.defines.emplace_back(
+                "COLOR_SPACE",
+                std::to_string(std::to_underlying(graphics->GetCurrentHDRColorSpace()) + 1));
+
+            vex::DrawDesc drawDesc;
+            drawDesc.vertexShader = shaderCompiler.GetShaderView(hdrVertexShader);
+            drawDesc.pixelShader = shaderCompiler.GetShaderView(hdrPixelShader);
 
             vex::TextureBinding shaderRead = { .texture = hdrTexture,
                                                .usage = vex::TextureBindingUsage::ShaderRead,
@@ -81,18 +81,19 @@ void HDRApplication::Run()
 
             struct PassConstants
             {
+                vex::BindlessHandle linearSamplerHandle;
                 vex::BindlessHandle hdrTextureHandle;
-            } data{ .hdrTextureHandle = graphics->GetBindlessHandle(shaderRead) };
+            } data{
+                .linearSamplerHandle = graphics->GetBindlessSampler(
+                    vex::BindlessTextureSampler::CreateSampler(vex::FilterMode::Linear, vex::AddressMode::Clamp)),
+                .hdrTextureHandle = graphics->GetBindlessHandle(shaderRead),
+            };
 
             ctx.Draw(drawDesc,
                      { .renderTargets = { &renderTarget, 1 } },
                      vex::ConstantBinding{ data },
                      { shaderRead },
                      3);
-
-            drawDesc.pixelShader.defines.emplace_back(
-                "COLOR_SPACE",
-                std::to_string(std::to_underlying(graphics->GetCurrentHDRColorSpace()) + 1));
 
             ctx.SetViewport(texWidth, 0, texWidth, texHeight);
             ctx.Draw(drawDesc,
@@ -101,11 +102,12 @@ void HDRApplication::Run()
                      { shaderRead },
                      3);
 
-#if VEX_SLANG
-            drawDesc.vertexShader.path = ExamplesDir / "hdr" / "HDR.slang";
-            drawDesc.pixelShader.path = ExamplesDir / "hdr" / "HDR.slang";
+            hdrVertexShader.filepath = (ExamplesDir / "hdr" / "HDR.slang").string();
+            hdrPixelShader.filepath = (ExamplesDir / "hdr" / "HDR.slang").string();
+            hdrPixelShader.defines = {};
 
-            drawDesc.pixelShader.defines = {};
+            drawDesc.vertexShader = shaderCompiler.GetShaderView(hdrVertexShader);
+            drawDesc.pixelShader = shaderCompiler.GetShaderView(hdrPixelShader);
 
             ctx.SetViewport(0, texHeight, texWidth, texHeight);
             ctx.Draw(drawDesc,
@@ -114,9 +116,10 @@ void HDRApplication::Run()
                      { shaderRead },
                      3);
 
-            drawDesc.pixelShader.defines.emplace_back(
+            hdrPixelShader.defines.emplace_back(
                 "COLOR_SPACE",
                 std::to_string(std::to_underlying(graphics->GetCurrentHDRColorSpace()) + 1));
+            drawDesc.pixelShader = shaderCompiler.GetShaderView(hdrPixelShader);
 
             ctx.SetViewport(texWidth, texHeight, texWidth, texHeight);
             ctx.Draw(drawDesc,
@@ -124,7 +127,6 @@ void HDRApplication::Run()
                      vex::ConstantBinding{ data },
                      { shaderRead },
                      3);
-#endif
 
             graphics->Submit(ctx);
         }
@@ -165,7 +167,7 @@ void HDRApplication::HandleKeyInput(int key, int scancode, int action, int mods)
     ExampleApplication::HandleKeyInput(key, scancode, action, mods);
 }
 
-void HDRApplication::OnResize(GLFWwindow* window, uint32_t width, uint32_t height)
+void HDRApplication::OnResize(GLFWwindow* window, int width, int height)
 {
     if (width == 0 || height == 0)
     {

@@ -10,11 +10,11 @@
 namespace vex
 {
 
-struct ASHandle : Handle64<ASHandle>
+struct AccelerationStructureHandle : Handle64<AccelerationStructureHandle>
 {
 };
 
-static constexpr ASHandle GInvalidASHandle;
+static constexpr AccelerationStructureHandle GInvalidASHandle;
 
 enum class ASType : u8
 {
@@ -38,19 +38,19 @@ END_VEX_ENUM_FLAGS();
 
 // clang-format on
 
-struct ASDesc
+struct AccelerationStructureDesc
 {
     std::string name;
     ASType type;
     ASBuild::Flags buildFlags = ASBuild::PreferFastTrace;
 
-    constexpr bool operator==(const ASDesc&) const = default;
+    constexpr bool operator==(const AccelerationStructureDesc&) const = default;
 };
 
 struct AccelerationStructure
 {
-    ASHandle handle;
-    ASDesc desc;
+    AccelerationStructureHandle handle;
+    AccelerationStructureDesc desc;
 
     constexpr bool operator==(const AccelerationStructure&) const = default;
 };
@@ -59,7 +59,7 @@ struct AccelerationStructure
 
 // clang-format off
 
-VEX_MAKE_HASHABLE(vex::ASDesc,
+VEX_MAKE_HASHABLE(vex::AccelerationStructureDesc,
     VEX_HASH_COMBINE(seed, obj.name);
     VEX_HASH_COMBINE(seed, obj.type);
     VEX_HASH_COMBINE(seed, obj.buildFlags);

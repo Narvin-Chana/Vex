@@ -9,6 +9,8 @@
 namespace vex
 {
 
+using namespace vex::sc;
+
 static const auto VexRootPath =
     std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path().parent_path();
 
@@ -27,13 +29,14 @@ template <class ParamT>
 struct VexTestParam : testing::TestWithParam<ParamT>
 {
     Graphics graphics;
-
+    ShaderCompiler shaderCompiler;
     VexTestParam()
         : graphics{ GraphicsCreateDesc{
               .useSwapChain = false,
               .enableGPUDebugLayer = VEX_DEBUG,
               .enableGPUBasedValidation = VEX_DEBUG,
-              .shaderCompilerSettings = { .shaderIncludeDirectories = { VexRootPath / "shaders" } } } }
+          } }
+        , shaderCompiler({ .shaderIncludeDirectories = { VexRootPath / "shaders" } })
     {
         GLogger.SetLogLevelFilter(Warning);
     }
@@ -42,6 +45,7 @@ struct VexTestParam : testing::TestWithParam<ParamT>
 struct VexTest : testing::Test
 {
     Graphics graphics;
+    ShaderCompiler shaderCompiler;
 
     VexTest()
         : graphics{ GraphicsCreateDesc{
@@ -49,10 +53,12 @@ struct VexTest : testing::Test
               .enableGPUDebugLayer = VEX_DEBUG,
               .enableGPUBasedValidation = VEX_DEBUG,
           } }
+        , shaderCompiler({ .shaderIncludeDirectories = { VexRootPath / "shaders" } })
     {
         GLogger.SetLogLevelFilter(Warning);
     }
 
+protected:
     void SetUp() override
     {
         RenderDoc::StartCapture(testing::UnitTest::GetInstance()->current_test_info()->name());
@@ -67,6 +73,7 @@ struct VexTest : testing::Test
 // Raytracing-specific version which will skip RT-tests if not supported on the current device.
 struct RTVexTest : VexTest
 {
+protected:
     void SetUp() override
     {
         if (!graphics.IsRayTracingSupported())

@@ -5,7 +5,6 @@
 
 #include <Vex/RHIImpl/RHIFence.h>
 
-
 #include <RHI/RHI.h>
 #include <RHI/RHIFwd.h>
 
@@ -35,9 +34,9 @@ public:
 
     virtual RHICommandPool CreateCommandPool() override;
 
-    virtual RHIGraphicsPipelineState CreateGraphicsPipelineState(const GraphicsPipelineStateKey& key) override;
-    virtual RHIComputePipelineState CreateComputePipelineState(const ComputePipelineStateKey& key) override;
-    virtual RHIRayTracingPipelineState CreateRayTracingPipelineState(const RayTracingPipelineStateKey& key) override;
+    virtual RHIGraphicsPipelineState CreateGraphicsPipelineState(const GraphicsPSOKey& key) override;
+    virtual RHIComputePipelineState CreateComputePipelineState(const ComputePSOKey& key) override;
+    virtual RHIRayTracingPipelineState CreateRayTracingPipelineState(const RayTracingPSOKey& key) override;
     virtual RHIResourceLayout CreateResourceLayout(RHIDescriptorPool& descriptorPool) override;
 
     virtual RHITexture CreateTexture(RHIAllocator& allocator, const TextureDesc& desc) override;
@@ -49,7 +48,7 @@ public:
 
     virtual RHITimestampQueryPool CreateTimestampQueryPool(RHIAllocator& allocator) override;
 
-    virtual RHIAccelerationStructure CreateAS(const ASDesc& desc) override;
+    virtual RHIAccelerationStructure CreateAS(const AccelerationStructureDesc& desc) override;
 
     virtual void WaitForTokenOnCPU(const SyncToken& syncToken) override;
     virtual bool IsTokenComplete(const SyncToken& syncToken) const override;

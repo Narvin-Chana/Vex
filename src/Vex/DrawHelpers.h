@@ -1,19 +1,15 @@
 #pragma once
 
-#include <optional>
-#include <Vex/Containers/Span.h>
-
-#include <Vex/Bindings.h>
 #include <Vex/GraphicsPipeline.h>
-#include <Vex/Shaders/ShaderKey.h>
+#include <Vex/ShaderView.h>
 
 namespace vex
 {
 
 struct DrawDesc
 {
-    ShaderKey vertexShader;
-    ShaderKey pixelShader;
+    ShaderView vertexShader;
+    ShaderView pixelShader;
     VertexInputLayout vertexInputLayout;
     InputAssembly inputAssembly;
     RasterizerState rasterizerState;

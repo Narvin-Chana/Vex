@@ -94,11 +94,11 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
 
     // Descriptors callbacks to register and unregister handles.
     initInfo.SrvDescriptorHeap = helper.descriptorPool.GetNativeDescriptorHeap().Get();
-    initInfo.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo* initInfo,
+    initInfo.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo*,
                                        D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle,
                                        D3D12_GPU_DESCRIPTOR_HANDLE* gpuHandle)
     {
-        vex::BindlessHandle handle = helper.descriptorPool.AllocateStaticDescriptor();
+        vex::BindlessHandle handle = helper.descriptorPool.AllocateStaticDescriptor(vex::DescriptorType::Resource);
         *cpuHandle = helper.descriptorPool.GetCPUDescriptor(handle);
         *gpuHandle = helper.descriptorPool.GetGPUDescriptor(handle);
         helper.descriptorsMap[cpuHandle->ptr] = handle;
@@ -107,7 +107,7 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
         [](ImGui_ImplDX12_InitInfo*, D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle, D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle)
     {
         vex::BindlessHandle handle = helper.descriptorsMap[cpuHandle.ptr];
-        helper.descriptorPool.FreeStaticDescriptor(handle);
+        helper.descriptorPool.FreeStaticDescriptor(vex::DescriptorType::Resource, handle);
         helper.descriptorsMap.erase(cpuHandle.ptr);
     };
 

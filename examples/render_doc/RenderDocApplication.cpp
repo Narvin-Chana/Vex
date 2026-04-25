@@ -13,8 +13,6 @@ RenderDocApplication::RenderDocApplication()
         .platformWindow = { .windowHandle = GetPlatformWindowHandle(), .width = DefaultWidth, .height = DefaultHeight },
         .enableGPUDebugLayer = !VEX_SHIPPING,
         .enableGPUBasedValidation = !VEX_SHIPPING });
-
-    SetupShaderErrorHandling();
 }
 
 RenderDocApplication::~RenderDocApplication()
@@ -43,7 +41,7 @@ void RenderDocApplication::Run()
     }
 }
 
-void RenderDocApplication::OnResize(GLFWwindow* window, uint32_t width, uint32_t height)
+void RenderDocApplication::OnResize(GLFWwindow* window, int width, int height)
 {
     if (width == 0 || height == 0)
     {

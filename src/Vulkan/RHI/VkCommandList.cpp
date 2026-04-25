@@ -1,11 +1,11 @@
 ﻿#include "VkCommandList.h"
 
 #include <algorithm>
-#include <cmath>
 #include <ranges>
 
 #include <Vex/Bindings.h>
 #include <Vex/DrawHelpers.h>
+#include <Vex/RayTracing.h>
 #include <Vex/Utility/Algorithms.h>
 #include <Vex/Utility/ByteUtils.h>
 
@@ -22,7 +22,6 @@
 #include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/RHI/VkTimestampQueryPool.h>
 #include <Vulkan/VkErrorHandler.h>
-#include <Vulkan/VkFormats.h>
 #include <Vulkan/VkGPUContext.h>
 #include <Vulkan/VkGraphicsPipeline.h>
 
@@ -35,8 +34,6 @@ namespace CommandList_Internal
 static std::vector<::vk::BufferImageCopy> GetBufferImageCopyFromBufferToImageDescriptions(
     const RHITexture& texture, Span<const BufferTextureCopyDesc> descriptions)
 {
-    std::optional<RHITextureLayout> layout{};
-
     std::vector<::vk::BufferImageCopy> regions;
     regions.reserve(descriptions.size());
     for (const auto& [bufferRegion, textureRegion] : descriptions)
@@ -143,10 +140,8 @@ void VkCommandList::SetLayout(RHIResourceLayout& layout)
         return;
     }
 
-    // Stage flags must be the same as the push constant ranges defined in the layout
-    commandBuffer->pushConstants(*layout.pipelineLayout,
-                                 ::vk::ShaderStageFlagBits::eAllGraphics | ::vk::ShaderStageFlagBits::eCompute |
-                                     ::vk::ShaderStageFlagBits::eRaygenKHR,
+    commandBuffer->pushConstants(layout.GetPipelineLayout(),
+                                 RHIResourceLayout::GetPushConstantStageFlags(),
                                  0,
                                  localConstantsData.size(),
                                  localConstantsData.data());
@@ -154,13 +149,13 @@ void VkCommandList::SetLayout(RHIResourceLayout& layout)
 
 void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)
 {
-    std::array descriptorSets{ *resourceLayout.GetSamplerDescriptor().descriptorSet,
-                               *descriptorPool.bindlessSet->descriptorSet };
+    const std::array descriptorSets{ *descriptorPool.bindlessSet->descriptorSet,
+                                     resourceLayout.GetStaticSamplerDescriptorSet() };
     switch (type)
     {
     case QueueTypes::Graphics:
         commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eGraphics,
-                                          *resourceLayout.pipelineLayout,
+                                          resourceLayout.GetPipelineLayout(),
                                           0,
                                           descriptorSets.size(),
                                           descriptorSets.data(),
@@ -168,14 +163,14 @@ void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIReso
                                           nullptr);
     case QueueTypes::Compute:
         commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eCompute,
-                                          *resourceLayout.pipelineLayout,
+                                          resourceLayout.GetPipelineLayout(),
                                           0,
                                           descriptorSets.size(),
                                           descriptorSets.data(),
                                           0,
                                           nullptr);
         commandBuffer->bindDescriptorSets(::vk::PipelineBindPoint::eRayTracingKHR,
-                                          *resourceLayout.pipelineLayout,
+                                          resourceLayout.GetPipelineLayout(),
                                           0,
                                           descriptorSets.size(),
                                           descriptorSets.data(),

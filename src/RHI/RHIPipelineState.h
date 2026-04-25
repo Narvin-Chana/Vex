@@ -1,14 +1,12 @@
 #pragma once
 
 #include <memory>
+#include <utility>
 #include <vector>
 
-#include <Vex/GraphicsPipeline.h>
-#include <Vex/Shaders/RayTracingShaders.h>
-#include <Vex/Shaders/Shader.h>
-#include <Vex/Shaders/ShaderKey.h>
+#include <Vex/PipelineState.h>
+#include <Vex/ShaderView.h>
 #include <Vex/Types.h>
-#include <Vex/Utility/Hash.h>
 #include <Vex/Utility/MaybeUninitialized.h>
 
 #include <RHI/RHIFwd.h>
@@ -16,72 +14,47 @@
 namespace vex
 {
 
-class ResourceCleanup;
-
-struct GraphicsPipelineStateKey
-{
-    ShaderKey vertexShader;
-    ShaderKey pixelShader;
-    VertexInputLayout vertexInputLayout;
-    InputAssembly inputAssembly;
-    RasterizerState rasterizerState;
-    DepthStencilState depthStencilState;
-    ColorBlendState colorBlendState;
-    RenderTargetState renderTargetState;
-
-    bool operator==(const GraphicsPipelineStateKey& other) const = default;
-};
-
 class RHIGraphicsPipelineStateBase
 {
 public:
-    using Key = GraphicsPipelineStateKey;
+    using Key = GraphicsPSOKey;
 
-    RHIGraphicsPipelineStateBase(const Key& key)
-        : key{ key }
+    RHIGraphicsPipelineStateBase(Key key)
+        : key{ std::move(key) }
     {
     }
-    virtual void Compile(const Shader& vertexShader, const Shader& pixelShader, RHIResourceLayout& resourceLayout) = 0;
+    virtual void Compile(const ShaderView& vertexShader,
+                         const ShaderView& pixelShader,
+                         RHIResourceLayout& resourceLayout) = 0;
     virtual std::unique_ptr<RHIGraphicsPipelineState> Cleanup() = 0;
 
     Key key;
     u32 rootSignatureVersion = 0;
-    u32 vertexShaderVersion = 0;
-    u32 pixelShaderVersion = 0;
-};
-
-struct ComputePipelineStateKey
-{
-    ShaderKey computeShader;
-    bool operator==(const ComputePipelineStateKey& other) const = default;
 };
 
 class RHIComputePipelineStateBase
 {
 public:
-    using Key = ComputePipelineStateKey;
+    using Key = ComputePSOKey;
 
-    RHIComputePipelineStateBase(const Key& key)
-        : key{ key }
+    RHIComputePipelineStateBase(Key key)
+        : key{ std::move(key) }
     {
     }
-    virtual void Compile(const Shader& computeShader, RHIResourceLayout& resourceLayout) = 0;
+    virtual void Compile(const ShaderView& computeShader, RHIResourceLayout& resourceLayout) = 0;
     virtual std::unique_ptr<RHIComputePipelineState> Cleanup() = 0;
 
     Key key;
     u32 rootSignatureVersion = 0;
-    u32 computeShaderVersion = 0;
 };
-
-using RayTracingPipelineStateKey = RayTracingCollection;
 
 class RHIRayTracingPipelineStateBase
 {
 public:
-    using Key = RayTracingPipelineStateKey;
+    using Key = RayTracingPSOKey;
 
-    RHIRayTracingPipelineStateBase(const Key& key)
-        : key{ key }
+    RHIRayTracingPipelineStateBase(Key key)
+        : key{ std::move(key) }
     {
     }
     virtual std::vector<MaybeUninitialized<RHIBuffer>> Compile(const RayTracingShaderCollection& shaderCollection,
@@ -91,34 +64,6 @@ public:
 
     Key key;
     u32 rootSignatureVersion = 0;
-    std::vector<u32> rayGenerationShaderVersions;
-    std::vector<u32> rayMissShaderVersions;
-    struct HitGroupVersions
-    {
-        u32 rayClosestHitVersion = 0;
-        std::optional<u32> rayAnyHitVersion;
-        std::optional<u32> rayIntersectionVersion;
-        std::optional<u32> rayCallableVersion;
-    };
-    std::vector<HitGroupVersions> hitGroupVersions;
-    std::vector<u32> rayCallableShaderVersions;
 };
 
 } // namespace vex
-
-// clang-format off
-
-VEX_MAKE_HASHABLE(vex::ComputePipelineStateKey, 
-    VEX_HASH_COMBINE(seed, obj.computeShader);
-);
-
-
-VEX_FORMATTABLE(vex::GraphicsPipelineStateKey, "GraphicsPipelineKey(\n\tVS: \"{}\"\n\tPS: \"{}\"\n\t",
-    obj.vertexShader, obj.pixelShader
-);
-
-VEX_FORMATTABLE(vex::ComputePipelineStateKey, "ComputePipelineKey(\n\tCS: \"{}\"\n\t",
-    obj.computeShader
-);
-
-// clang-format on

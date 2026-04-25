@@ -18,11 +18,11 @@ public:
     BufferReadbackContext(BufferReadbackContext&& other);
     BufferReadbackContext& operator=(BufferReadbackContext&& other);
 
-    void ReadData(Span<byte> outData);
+    void ReadData(Span<byte> outData) const;
     [[nodiscard]] u64 GetDataByteSize() const;
 
 private:
-    BufferReadbackContext(const Buffer& buffer, Graphics& graphics);
+    BufferReadbackContext(Buffer buffer, Graphics& graphics);
 
     Buffer buffer;
     NonNullPtr<Graphics> graphics;
@@ -48,9 +48,9 @@ public:
     }
 
 private:
-    TextureReadbackContext(const Buffer& buffer,
+    TextureReadbackContext(Buffer buffer,
                            Span<const TextureRegion> textureRegions,
-                           const TextureDesc& textureDesc,
+                           TextureDesc textureDesc,
                            Graphics& graphics);
 
     // Buffer contains readback data from the GPU.

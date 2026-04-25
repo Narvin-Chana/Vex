@@ -1,9 +1,7 @@
 ﻿#pragma once
 
-#include <Vex/Types.h>
 #include <Vex/Utility/NonNullPtr.h>
 
-#include <RHI/RHIAllocator.h>
 #include <RHI/RHIBuffer.h>
 
 #include <Vulkan/RHI/VkDescriptorPool.h>

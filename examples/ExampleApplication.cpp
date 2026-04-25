@@ -1,7 +1,5 @@
 #include "ExampleApplication.h"
 
-#include <functional>
-
 #include <GLFWIncludes.h>
 
 ExampleApplication::ExampleApplication(std::string_view windowName,
@@ -9,6 +7,8 @@ ExampleApplication::ExampleApplication(std::string_view windowName,
                                        int defaultHeight,
                                        bool allowResize)
 {
+    SetupShaderErrorHandling();
+
     if (!glfwInit())
     {
         VEX_LOG(vex::Fatal, "Unable to initialize GLFW.");
@@ -64,17 +64,17 @@ void ExampleApplication::HandleKeyInput(int key, int scancode, int action, int m
     // CTRL+SHIFT+PERIOD to recompile shaders.
     if (action == GLFW_PRESS && key == GLFW_KEY_PERIOD && graphics && (mods & GLFW_MOD_CONTROL))
     {
-        graphics->RecompileChangedShaders();
+        shaderCompiler.RecompileChangedShaders();
     }
 }
 
-void ExampleApplication::OnResize(GLFWwindow* window, uint32_t newWidth, uint32_t newHeight)
+void ExampleApplication::OnResize(GLFWwindow* window, int newWidth, int newHeight)
 {
-    width = static_cast<int32_t>(newWidth);
-    height = static_cast<int32_t>(newHeight);
+    width = newWidth;
+    height = newHeight;
     if (graphics)
     {
-        graphics->OnWindowResized(newWidth, newHeight);
+        graphics->OnWindowResized(static_cast<unsigned int>(newWidth), static_cast<unsigned int>(newHeight));
     }
 }
 
@@ -110,37 +110,35 @@ void ExampleApplication::ToggleFullscreen()
 void ExampleApplication::SetupShaderErrorHandling()
 {
 #if defined(_WIN32)
-    VEX_ASSERT(graphics, "Graphics backend must be defined!");
     // Suggestion of an intrusive (a la Unreal) way to display errors.
     // The handling of shader compilation errors is user choice.
-    graphics->SetShaderCompilationErrorsCallback(
-        [window = window](const std::vector<std::pair<vex::ShaderKey, std::string>>& errors) -> bool
+    shaderCompiler.SetShaderCompilationErrorsCallback(
+        [](vex::Span<const std::pair<vex::ShaderKey, std::string>> errors) -> vex::ShaderHotReloadErrorResponse
         {
-            if (!errors.empty())
+            std::string totalErrorMessage = "Error compiling shader(s):\n";
+            for (auto& [key, err] : errors)
             {
-                std::string totalErrorMessage = "Error compiling shader(s):\n";
-                for (auto& [key, err] : errors)
-                {
-                    totalErrorMessage.append(std::format("Shader: {} - Error: {}\n", key, err));
-                }
-                totalErrorMessage.append("\nDo you want to retry?");
-
-                vex::i32 result = MessageBox(NULL,
-                                             totalErrorMessage.c_str(),
-                                             "Shader Compilation Error",
-                                             MB_ICONERROR | MB_YESNO | MB_DEFBUTTON2);
-                if (result == IDYES)
-                {
-                    return true;
-                }
-                else if (result == IDNO)
-                {
-                    VEX_LOG(vex::Error, "Unable to continue with shader errors. Closing application.");
-                    glfwSetWindowShouldClose(window, true);
-                }
+                totalErrorMessage.append(std::format("Shader: {} - Error: {}\n", key, err));
             }
+            totalErrorMessage.append("\nDo you want to retry?");
 
-            return false;
+            const vex::i32 result = MessageBox(NULL,
+                                               totalErrorMessage.c_str(),
+                                               "Shader Compilation Error",
+                                               MB_ICONERROR | MB_ABORTRETRYIGNORE | MB_DEFBUTTON2);
+            if (result == IDRETRY)
+            {
+                return vex::ShaderHotReloadErrorResponse::RetryAndRetainPreviousShader;
+            }
+            if (result == IDIGNORE)
+            {
+                return vex::ShaderHotReloadErrorResponse::RetainPreviousShader;
+            }
+            if (result == IDABORT)
+            {
+                return vex::ShaderHotReloadErrorResponse::Abort;
+            }
+            return vex::ShaderHotReloadErrorResponse::Abort;
         });
 #endif
 }

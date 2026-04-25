@@ -78,8 +78,7 @@ VSOutput VSMain(in float3 position : POSITION, in float2 uv : TEXCOORD)
 
 static const Texture2D<float4> UVGuideTexture = GetBindlessResource(Uniforms.uvGuideTextureHandle);
 
-SamplerState LinearSampler;
-SamplerState PointSampler;
+VEX_STATIC_SAMPLER(LinearSampler, 0);
 
 float4 PSMain(VSOutput input) : SV_Target
 {

@@ -1,6 +1,7 @@
 #include "DX12Texture.h"
 
 #include <optional>
+#include <ranges>
 
 #include <magic_enum/magic_enum.hpp>
 
@@ -22,21 +23,6 @@ namespace vex::dx12
 
 namespace Texture_Internal
 {
-
-static D3D12_RESOURCE_DIMENSION ConvertTypeToDX12ResourceDimension(TextureType type)
-{
-    switch (type)
-    {
-    case TextureType::Texture2D:
-    case TextureType::TextureCube:
-        return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-    case TextureType::Texture3D:
-        return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
-    default:
-        VEX_LOG(Fatal, "Invalid texture type passed to D3D12_RESOURCE_DIMENSION.");
-    }
-    std::unreachable();
-}
 
 static D3D12_RENDER_TARGET_VIEW_DESC CreateRenderTargetViewDesc(const DX12TextureView& view)
 {
@@ -377,7 +363,7 @@ BindlessHandle DX12Texture::GetOrCreateBindlessView(const TextureBinding& bindin
         return it->second.bindlessHandle;
     }
 
-    BindlessHandle handle = descriptorPool.AllocateStaticDescriptor();
+    BindlessHandle handle = descriptorPool.AllocateStaticDescriptor(DescriptorType::Resource);
 
     if (isSRVView)
     {
@@ -398,11 +384,11 @@ BindlessHandle DX12Texture::GetOrCreateBindlessView(const TextureBinding& bindin
 
 void DX12Texture::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
 {
-    for (auto& [view, entry] : viewCache)
+    for (auto& [_, bindlessHandle] : viewCache | std::views::values)
     {
-        if (entry.bindlessHandle != GInvalidBindlessHandle)
+        if (bindlessHandle != GInvalidBindlessHandle)
         {
-            descriptorPool.FreeStaticDescriptor(entry.bindlessHandle);
+            descriptorPool.FreeStaticDescriptor(DescriptorType::Resource, bindlessHandle);
         }
     }
     viewCache.clear();
