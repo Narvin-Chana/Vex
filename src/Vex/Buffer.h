@@ -13,7 +13,8 @@ namespace vex
 // clang-format off
 
 // Determines how the buffer can be used.
-BEGIN_VEX_ENUM_FLAGS(BufferUsage, u16)
+enum class BufferUsage : u16
+{
     // Buffers that will never be bound anywhere. Mostly used for staging buffers.
     None                        = 0,
     // Buffers that can be read from shaders via Structured or ByteAddress reads.
@@ -37,7 +38,7 @@ BEGIN_VEX_ENUM_FLAGS(BufferUsage, u16)
     BuildAccelerationStructure  = 1 << 8,
     // Buffers used as a ShaderTable for HWRT shaders.
     ShaderTable                 = 1 << 9,
-END_VEX_ENUM_FLAGS();
+};
 
 // clang-format on
 
@@ -53,7 +54,7 @@ enum class BufferBindingUsage : u8
     Invalid = 0xFF
 };
 
-inline bool IsBindingUsageCompatibleWithBufferUsage(BufferUsage::Flags usages, BufferBindingUsage bindingUsage)
+inline bool IsBindingUsageCompatibleWithBufferUsage(Flags<BufferUsage> usages, BufferBindingUsage bindingUsage)
 {
     if (bindingUsage == BufferBindingUsage::UniformBuffer)
     {
@@ -78,7 +79,7 @@ struct BufferDesc
 {
     std::string name;
     u64 byteSize = 0;
-    BufferUsage::Flags usage = BufferUsage::ShaderRead;
+    Flags<BufferUsage> usage = BufferUsage::ShaderRead;
     ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly;
 
     // Helpers to create a buffer description.
@@ -98,11 +99,11 @@ struct BufferDesc
     // Creates a CPUWrite staging buffer useful for uploading data to GPUOnly resources.
     static BufferDesc CreateStagingBufferDesc(std::string name,
                                               u64 byteSize,
-                                              BufferUsage::Flags usageFlags = BufferUsage::None);
+                                              Flags<BufferUsage> usageFlags = BufferUsage::None);
     // Creates a CPURead readback buffer, used for performing data readback from the GPU to the CPU.
     static BufferDesc CreateReadbackBufferDesc(std::string name,
                                                u64 byteSize,
-                                               BufferUsage::Flags usageFlags = BufferUsage::None);
+                                               Flags<BufferUsage> usageFlags = BufferUsage::None);
     // Creates a GPUOnly buffer useable as a StructuredBuffer or ByteAddressBuffer.
     static BufferDesc CreateGenericBufferDesc(std::string name, u64 byteSize, bool readWrite = false);
 };

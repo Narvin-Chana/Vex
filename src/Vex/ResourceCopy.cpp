@@ -1,7 +1,6 @@
 #include "ResourceCopy.h"
 
 #include <Vex/Utility/ByteUtils.h>
-#include <VexMacros.h>
 
 namespace vex
 {

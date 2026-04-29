@@ -6,8 +6,8 @@
 
 #include <Vex/ShaderView.h>
 #include <Vex/Types.h>
-#include <Vex/Utility/Hash.h>
 #include <Vex/Utility/Formattable.h>
+#include <Vex/Utility/Hash.h>
 
 namespace vex::sc
 {
@@ -80,9 +80,9 @@ VEX_FORMATTABLE(
     std::hash<vex::sc::ShaderKey>{}(obj),
     obj.filepath,
     obj.entryPoint,
-    std::format("{}", obj.type),
+    obj.type,
     obj.defines,
-    std::format("{}", obj.compiler)
+    obj.compiler
 );
 
 // clang-format on

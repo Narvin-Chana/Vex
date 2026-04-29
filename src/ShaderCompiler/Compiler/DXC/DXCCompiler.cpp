@@ -1,9 +1,10 @@
 #include "DXCCompiler.h"
 
+#include <magic_enum/magic_enum.hpp>
+
 #include <algorithm>
 
 #include <Vex/Logger.h>
-#include <Vex/PhysicalDevice.h>
 #include <Vex/ShaderView.h>
 #include <Vex/Utility/SHA1.h>
 

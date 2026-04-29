@@ -284,25 +284,6 @@ if (VEX_ENABLE_SHADER_COMPILER)
     )
 endif()
 
-# Vex Shader Compiler
-if(VEX_ENABLE_SHADER_COMPILER)
-    target_sources(Vex PRIVATE
-        "src/ShaderCompiler/ShaderKey.h"
-        "src/ShaderCompiler/Shader.h"
-        "src/ShaderCompiler/Shader.cpp"
-        "src/ShaderCompiler/ShaderCompiler.h"
-        "src/ShaderCompiler/ShaderCompiler.cpp"
-        "src/ShaderCompiler/ShaderCompilerSettings.h"
-        "src/ShaderCompiler/Compiler/DXC/DXCCompiler.h"
-        "src/ShaderCompiler/Compiler/DXC/DXCCompiler.cpp"
-        "src/ShaderCompiler/Compiler/DXC/DXCReflection.cpp"
-        "src/ShaderCompiler/ShaderEnvironment.h"
-        "src/ShaderCompiler/Compiler/CompilerBase.h"
-        "src/ShaderCompiler/RayTracingShaderKey.h"
-        "src/ShaderCompiler/RayTracingShaderKey.cpp"
-    )
-endif()
-
 if(VEX_USE_MODULES)
     target_sources(Vex PUBLIC FILE_SET CXX_MODULES FILES "src/Vex.cppm" "${magic_enum_SOURCE_DIR}/module/magic_enum.cppm")
 endif()

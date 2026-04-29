@@ -60,7 +60,7 @@ NonNullPtr<RHICommandList> VkCommandPool::GetOrCreateCommandList(QueueType queue
 
         commandLists.push_back(std::make_unique<VkCommandList>(ctx, std::move(newBuffer), queueType));
         cmdListPtr = commandLists.back().get();
-        VEX_LOG(Verbose, "Created new commandlist for queue {}", magic_enum::enum_name(queueType));
+        VEX_LOG(Verbose, "Created new commandlist for queue {}", queueType);
     }
 
     VEX_ASSERT(cmdListPtr != nullptr);

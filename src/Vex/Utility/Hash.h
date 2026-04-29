@@ -2,6 +2,7 @@
 
 #include <iomanip>
 #include <sstream>
+#include <array>
 
 #include <Vex/Utility/Formattable.h>
 

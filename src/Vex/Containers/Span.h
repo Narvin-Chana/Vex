@@ -28,4 +28,20 @@ struct Span : public std::span<T, Extent>
     }
 };
 
+// Mirror all std::span deduction guides
+template <class It, class End>
+Span(It, End) -> Span<std::remove_reference_t<std::iter_reference_t<It>>>;
+
+template <class T, std::size_t N>
+Span(T (&)[N]) -> Span<T, N>;
+
+template <class T, std::size_t N>
+Span(std::array<T, N>&) -> Span<T, N>;
+
+template <class T, std::size_t N>
+Span(const std::array<T, N>&) -> Span<const T, N>;
+
+template <class R>
+Span(R&&) -> Span<std::remove_reference_t<std::ranges::range_reference_t<R>>>;
+
 } // namespace vex

@@ -54,7 +54,7 @@ TextureViewType GetTextureViewType(const TextureBinding& binding)
     return GetTextureViewType(binding.texture.desc, binding.textureCubeAsTexture2DArray);
 }
 
-TextureFormat GetCopyFormat(TextureFormat format, TextureAspect::Type aspect)
+TextureFormat GetCopyFormat(TextureFormat format, TextureAspect aspect)
 {
     if (FormatUtil::IsDepthAndStencilFormat(format))
     {

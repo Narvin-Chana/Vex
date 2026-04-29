@@ -9,9 +9,9 @@
 #include <string>
 #include <string_view>
 
-#include <VexMacros.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/EnumFlags.h>
+#include <VexMacros.h>
 // Keep this include, allows for implicit conversion of enums to enum string.
 #include <Vex/Utility/Formattable.h>
 

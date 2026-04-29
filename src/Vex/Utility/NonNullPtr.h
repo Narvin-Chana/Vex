@@ -2,7 +2,6 @@
 
 #include <cstddef>
 
-#include <Vex/Logger.h>
 #include <VexMacros.h>
 
 namespace vex
@@ -23,10 +22,7 @@ public:
     explicit NonNullPtr(T* ptr)
         : ptr(ptr)
     {
-        if (!ptr)
-        {
-            VEX_LOG(Fatal, "NonNullPtr was passed a nullptr!");
-        }
+        VEX_ASSERT(ptr, "NonNullPtr was passed a nullptr!");
     }
     NonNullPtr(T& ref)
         : ptr(&ref)

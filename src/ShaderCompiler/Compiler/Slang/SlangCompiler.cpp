@@ -1,8 +1,8 @@
 #include "SlangCompiler.h"
 
-#include <algorithm>
+#include <magic_enum/magic_enum.hpp>
 
-#include <Vex/Utility/Formattable.h>
+#include <algorithm>
 
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>

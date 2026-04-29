@@ -1,8 +1,8 @@
 #pragma once
 
 #include <array>
-#include <string>
 #include <functional>
+#include <string>
 
 #include <Vex/Formats.h>
 #include <Vex/Resource.h>
@@ -16,13 +16,14 @@ namespace vex
 
 // clang-format off
 
-BEGIN_VEX_ENUM_FLAGS(TextureUsage, u8)
+enum class TextureUsage : u8
+{
     None            = 0,
     ShaderRead      = 1 << 0, // SRV in DX12, Sampled/Combined Image in Vulkan
     ShaderReadWrite = 1 << 1, // UAV in DX12, Storage Image in Vulkan
     RenderTarget    = 1 << 2, // RTV in DX12, Color Attachment in Vulkan
     DepthStencil    = 1 << 3, // DSV in DX12, Depth/Stencil Attachment in Vulkan
-END_VEX_ENUM_FLAGS();
+};
 
 // clang-format on
 
@@ -46,20 +47,23 @@ enum class TextureViewType : u8
 enum class TextureBindingUsage : u8
 {
     None = 0,
-    ShaderRead = TextureUsage::ShaderRead,           // Equivalent to SRV in DX12, used as Texture<type> in shaders.
-    ShaderReadWrite = TextureUsage::ShaderReadWrite, // Equivalent to UAV in DX12, used as RWTexture<type> in shaders.
+    // Equivalent to SRV in DX12, used as Texture<type> in shaders.
+    ShaderRead = std::to_underlying(TextureUsage::ShaderRead),
+    // Equivalent to UAV in DX12, used as RWTexture<type> in shaders.
+    ShaderReadWrite = std::to_underlying(TextureUsage::ShaderReadWrite),
 };
 
 // clang-format off
 
-BEGIN_VEX_ENUM_FLAGS(TextureAspect, u8)
+enum class TextureAspect : u8
+{
     None = 0, // Invalid in most cases
     Color = 1 << 0,
     Depth = 1 << 1,
     Stencil = 1 << 2,
     // All will use all appropriate aspects. Needed for default initialized subresources (color is not valid for depth/stencil and vice versa).
     All = Color | Depth | Stencil,
-END_VEX_ENUM_FLAGS();
+};
 
 // clang-format on
 
@@ -81,7 +85,7 @@ struct TextureDesc
     TextureFormat format;
     u32 width = 1, height = 1, depthOrSliceCount = 1;
     u16 mips = 1;
-    TextureUsage::Flags usage = TextureUsage::ShaderRead;
+    Flags<TextureUsage> usage = TextureUsage::ShaderRead;
     TextureClearValue clearValue;
     ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly;
 
@@ -118,7 +122,7 @@ struct TextureDesc
                                            u32 width,
                                            u32 height,
                                            u16 mips = 1,
-                                           TextureUsage::Flags usage = TextureUsage::ShaderRead,
+                                           Flags<TextureUsage> usage = TextureUsage::ShaderRead,
                                            TextureClearValue clearValue = {},
                                            ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
 
@@ -129,7 +133,7 @@ struct TextureDesc
         u32 height,
         u32 arraySize,
         u16 mips = 1,
-        TextureUsage::Flags usage = TextureUsage::ShaderRead,
+        Flags<TextureUsage> usage = TextureUsage::ShaderRead,
         TextureClearValue clearValue = {},
         ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
 
@@ -137,7 +141,7 @@ struct TextureDesc
                                              TextureFormat format,
                                              u32 faceSize,
                                              u16 mips = 1,
-                                             TextureUsage::Flags usage = TextureUsage::ShaderRead,
+                                             Flags<TextureUsage> usage = TextureUsage::ShaderRead,
                                              TextureClearValue clearValue = {},
                                              ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
 
@@ -147,7 +151,7 @@ struct TextureDesc
         u32 faceSize,
         u32 arraySize,
         u16 mips = 1,
-        TextureUsage::Flags usage = TextureUsage::ShaderRead,
+        Flags<TextureUsage> usage = TextureUsage::ShaderRead,
         TextureClearValue clearValue = {},
         ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
 
@@ -157,7 +161,7 @@ struct TextureDesc
                                            u32 height,
                                            u32 depth,
                                            u16 mips = 1,
-                                           TextureUsage::Flags usage = TextureUsage::ShaderRead,
+                                           Flags<TextureUsage> usage = TextureUsage::ShaderRead,
                                            TextureClearValue clearValue = {},
                                            ResourceMemoryLocality memoryLocality = ResourceMemoryLocality::GPUOnly);
 };
@@ -233,7 +237,7 @@ struct TextureSubresource
     u32 startSlice = 0;
     u32 sliceCount = GTextureAllSlices;
     // Refers to the plane in DX12 and the aspect mask in Vulkan
-    TextureAspect::Flags aspect = TextureAspect::All;
+    Flags<TextureAspect> aspect = TextureAspect::All;
 
     bool IsFullResource(const TextureDesc& desc) const;
 
@@ -241,9 +245,9 @@ struct TextureSubresource
     u32 GetSliceCount(const TextureDesc& desc) const;
     u32 GetStartPlane(const TextureDesc& desc) const;
     u32 GetPlaneCount(const TextureDesc& desc) const;
-    TextureAspect::Flags GetAspect(const TextureDesc& desc) const;
-    TextureAspect::Type GetSingleAspect(const TextureDesc& desc) const;
-    static TextureAspect::Flags GetDefaultAspect(const TextureDesc& desc);
+    Flags<TextureAspect> GetAspect(const TextureDesc& desc) const;
+    TextureAspect GetSingleAspect(const TextureDesc& desc) const;
+    static Flags<TextureAspect> GetDefaultAspect(const TextureDesc& desc);
 
     constexpr bool operator==(const TextureSubresource&) const = default;
 };
@@ -259,9 +263,9 @@ struct TextureRegion
     constexpr bool operator==(const TextureRegion&) const = default;
 
     // The entirety of the texture (all mips and all slices).
-    static TextureRegion AllMips(TextureAspect::Flags aspect = TextureAspect::All);
+    static TextureRegion AllMips(Flags<TextureAspect> aspect = TextureAspect::All);
     // The entirety of a single mip (one mip and all slices).
-    static TextureRegion SingleMip(u16 mipIndex, TextureAspect::Flags aspect = TextureAspect::All);
+    static TextureRegion SingleMip(u16 mipIndex, Flags<TextureAspect> aspect = TextureAspect::All);
 };
 
 struct TextureCopyDesc
@@ -289,17 +293,17 @@ TextureViewType GetTextureViewType(const TextureBinding& binding);
 // This provides the correct format on which the data should be interpreted when copying data from and to a texture.
 // This applies mostly to depth/stencil formats that are read separately from their original format. (It applies to any
 // multi planar format)
-TextureFormat GetCopyFormat(TextureFormat format, TextureAspect::Type aspect);
+TextureFormat GetCopyFormat(TextureFormat format, TextureAspect aspect);
 void ValidateTextureDescription(const TextureDesc& desc);
 float GetPixelByteSizeFromFormat(TextureFormat format);
 
-u32 TextureAspectToPlaneIndex(TextureAspect::Type aspect);
-TextureAspect::Flags PlaneStartCountToTextureAspect(TextureFormat format, u32 startPlane, u32 planeCount);
+u32 TextureAspectToPlaneIndex(TextureAspect aspect);
+Flags<TextureAspect> PlaneStartCountToTextureAspect(TextureFormat format, u32 startPlane, u32 planeCount);
 
 u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions);
 u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions);
 
-bool IsBindingUsageCompatibleWithUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage);
+bool IsBindingUsageCompatibleWithUsage(Flags<TextureUsage> usages, TextureBindingUsage bindingUsage);
 
 void ForEachSubresourceIndices(const TextureSubresource& subresource,
                                const TextureDesc& desc,
