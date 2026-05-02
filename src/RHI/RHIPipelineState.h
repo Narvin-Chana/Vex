@@ -19,8 +19,8 @@ class RHIGraphicsPipelineStateBase
 public:
     using Key = GraphicsPSOKey;
 
-    RHIGraphicsPipelineStateBase(Key  key)
-        : key{std::move( key ) }
+    RHIGraphicsPipelineStateBase(Key key)
+        : key{ std::move(key) }
     {
     }
     virtual void Compile(const ShaderView& vertexShader,
@@ -37,8 +37,8 @@ class RHIComputePipelineStateBase
 public:
     using Key = ComputePSOKey;
 
-    RHIComputePipelineStateBase(Key  key)
-        : key{std::move( key ) }
+    RHIComputePipelineStateBase(Key key)
+        : key{ std::move(key) }
     {
     }
     virtual void Compile(const ShaderView& computeShader, RHIResourceLayout& resourceLayout) = 0;
@@ -53,8 +53,8 @@ class RHIRayTracingPipelineStateBase
 public:
     using Key = RayTracingPSOKey;
 
-    RHIRayTracingPipelineStateBase(Key  key)
-        : key{std::move( key ) }
+    RHIRayTracingPipelineStateBase(Key key)
+        : key{ std::move(key) }
     {
     }
     virtual std::vector<MaybeUninitialized<RHIBuffer>> Compile(const RayTracingShaderCollection& shaderCollection,
