@@ -59,6 +59,9 @@ jobs:
       with:
         submodules: recursive
 
+    - name: get-cmake
+      uses: lukka/get-cmake@v4.3.2
+
     # GitHub Action's ubuntu image has a GCC which does not support <print> (added in GCC 13).
     # We need the latest version of GCC for both compilation with GCC and Clang since we use libstdc++.
     - name: Install latest GCC
