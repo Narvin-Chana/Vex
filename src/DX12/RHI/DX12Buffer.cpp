@@ -4,7 +4,6 @@
 #include <Vex/Buffer.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
-#include <VexMacros.h>
 #include <Vex/Platform/Platform.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>

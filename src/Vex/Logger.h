@@ -12,8 +12,8 @@
 #include <Vex/Types.h>
 #include <Vex/Utility/EnumFlags.h>
 #include <VexMacros.h>
-// Keep this include, allows for implicit conversion of enums to enum string.
-#include <Vex/Utility/Formattable.h>
+// Keep this include, allows for implicit conversion of enums to enum string when using the Logger.
+#include <Vex/Utility/MagicEnum.h>
 
 namespace vex
 {

@@ -1,5 +1,6 @@
 #include <array>
-// This include order has to be used to not have ODR violation when using the vex module.
+// This include order has to be used to not have ODR violation when using the vex module, this is due to a  bug in the MSVC implementation.
+
 #include "HelloRayTracing.h"
 
 #include <span>

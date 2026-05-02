@@ -1,13 +1,20 @@
 ﻿#pragma once
 
-#include <string_view>
 #include <string>
+#include <string_view>
 
 // clang-format off
 // pix3.h needs Windows.h to work properly, the include order matters here!
-#include <Windows.h>
+#include <windows.h>
 #include <WinPixEventRuntime/pix3.h>
 // clang-format on
+
+#if VEX_MODULES
+#include <VexMacros.h>
+import Vex;
+#else
+#include <Vex.h>
+#endif
 
 namespace PIX
 {

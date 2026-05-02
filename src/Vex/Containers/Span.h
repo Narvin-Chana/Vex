@@ -7,8 +7,8 @@ namespace vex
 {
 
 // Cannot use std::dynamic_extent since it would make it part of the Vex module, causing a double inclusion if the user
-// ever includes <span>. This is caused by the fact that the STL (MSVC) declares it as inline constexpr, if it was just
-// constexpr this workaround would not be required.
+// ever includes <span>. This is caused by a bug in the STL (MSVC), to fix this we manually use the value of
+// dynamic_extent.
 #if VEX_MODULES
 template <class T, std::size_t Extent = static_cast<size_t>(-1)>
 #else

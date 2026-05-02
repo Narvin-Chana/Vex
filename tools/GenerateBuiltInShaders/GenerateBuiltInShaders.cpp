@@ -1,8 +1,6 @@
 #include <filesystem>
 #include <string>
 
-#include <VexMacros.h>
-
 #if VEX_MODULES
 #include <VexMacros.h>
 import Vex;

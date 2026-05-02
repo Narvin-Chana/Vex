@@ -104,8 +104,8 @@ HelloCubeApplication::HelloCubeApplication()
 
         // clang-format on
 
-        ctx.EnqueueDataUpload(vertexBuffer, std::as_bytes(vex::Span(cubeVertices)));
-        ctx.EnqueueDataUpload(indexBuffer, std::as_bytes(vex::Span(cubeIndices)));
+        ctx.EnqueueDataUpload(vertexBuffer, std::as_bytes(std::span(cubeVertices)));
+        ctx.EnqueueDataUpload(indexBuffer, std::as_bytes(std::span(cubeIndices)));
 
         // Use the loaded image for mip index 0.
         const std::filesystem::path uvImagePath = ExamplesDir / "uv-guide.png";

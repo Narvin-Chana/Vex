@@ -11,7 +11,6 @@
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
-#include <VexMacros.h>
 #include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
@@ -19,8 +18,8 @@
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/ResourceBindingUtils.h>
 #include <Vex/Utility/ByteUtils.h>
-#include <VexMacros.h>
 #include <Vex/Utility/Visitor.h>
+#include <VexMacros.h>
 
 #include <RHI/RHIBarrier.h>
 #include <RHI/RHIBindings.h>
@@ -171,13 +170,13 @@ void CommandContext::ClearTexture(const Texture& texture,
     FlushBarriers();
 
     TextureClearValue clearValue = textureClearValue.value_or(texture.desc.clearValue);
-    cmdList->ClearTexture(
-        rhiTexture,
-        subresource,
-        // This is a safe cast, textures can only contain one of the two usages (RT/DS).
-        static_cast<TextureUsage>((texture.desc.usage & (TextureUsage::RenderTarget | TextureUsage::DepthStencil)).data),
-        std::move(clearValue),
-        clearRects);
+    cmdList->ClearTexture(rhiTexture,
+                          subresource,
+                          // This is a safe cast, textures can only contain one of the two usages (RT/DS).
+                          static_cast<TextureUsage>(
+                              (texture.desc.usage & (TextureUsage::RenderTarget | TextureUsage::DepthStencil)).data),
+                          std::move(clearValue),
+                          clearRects);
 }
 
 void CommandContext::Draw(const DrawDesc& drawDesc,
@@ -925,7 +924,8 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
             transformBuffer = CreateTemporaryStagingBuffer(
                 graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name +
                     "_build_blas_transforms",
-                transformsToUpload.size() * TransformMatrixSize, BufferUsage::BuildAccelerationStructure);
+                transformsToUpload.size() * TransformMatrixSize,
+                BufferUsage::BuildAccelerationStructure);
 
             MappedMemory mappedMemory = graphics->MapResource(transformBuffer);
             mappedMemory.WriteData(std::as_bytes(std::span<std::array<float, 3 * 4>>(transformsToUpload)));
@@ -1007,7 +1007,8 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
         {
             aabbBuffer = CreateTemporaryStagingBuffer(
                 graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_blas_aabb",
-                aabbsToUpload.size() * sizeof(AABB), BufferUsage::BuildAccelerationStructure);
+                aabbsToUpload.size() * sizeof(AABB),
+                BufferUsage::BuildAccelerationStructure);
 
             MappedMemory mappedMemory = graphics->MapResource(aabbBuffer);
             mappedMemory.WriteData(std::as_bytes(std::span(aabbsToUpload)));

@@ -2,7 +2,6 @@
 
 #include <array>
 #include <functional>
-#include <thread>
 #include <utility>
 
 #include <Vex/CommandContext.h>
@@ -17,8 +16,8 @@
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/ResourceCleanup.h>
 #include <Vex/Utility/ByteUtils.h>
-#include <VexMacros.h>
 #include <Vex/Utility/Visitor.h>
+#include <VexMacros.h>
 
 #include <RHI/RHIAccelerationStructure.h>
 #include <RHI/RHIBarrier.h>

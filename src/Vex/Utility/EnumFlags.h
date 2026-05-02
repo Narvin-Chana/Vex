@@ -16,7 +16,7 @@ struct IsEnumBitFlag : std::false_type{};
 template <typename E>
 concept BitEnum = std::is_enum_v<E> and IsEnumBitFlag<E>::value;
 
-// Defines an enum flag (bitset), underlying enum type should be a bit enum.
+// Defines an enum flag (bitset), underlying enum type should be a bit enum (which means declaring it as a VEX_ENUM_FLAG_BITS).
 template <BitEnum E>
 struct Flags
 {
