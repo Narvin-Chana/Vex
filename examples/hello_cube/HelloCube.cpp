@@ -149,6 +149,10 @@ void HelloCubeApplication::Run()
     {
         glfwPollEvents();
         {
+            static bool b = false;
+            graphics->SetUseVSync(!b);
+            b = !b;
+
             // Make the cube spin over time.
             const double currentTime = glfwGetTime();
 
@@ -159,8 +163,12 @@ void HelloCubeApplication::Run()
             // SRGB-aware downscale!
             ctx.GenerateMips({ .texture = uvGuideTexture, .isSRGB = true });
 
-            ctx.SetScissor(0, 0, width, height);
-            ctx.SetViewport(0, 0, static_cast<float>(width), static_cast<float>(height));
+            // Always use the dimensions of the texture you are rendering to as viewport/scissor dimensions.
+            uint32_t renderWidth = graphics->GetCurrentPresentTexture().desc.width;
+            uint32_t renderHeight = graphics->GetCurrentPresentTexture().desc.height;
+
+            ctx.SetScissor(0, 0, renderWidth, renderHeight);
+            ctx.SetViewport(0, 0, static_cast<float>(renderWidth), static_cast<float>(renderHeight));
 
             // Clear present texture.
             vex::TextureClearValue clearValue{ .color = { 0.2f, 0.2f, 0.2f, 1 } };

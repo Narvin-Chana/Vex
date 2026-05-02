@@ -132,6 +132,10 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
         // Required for any windowed application
         ValidateAndAddExtension(VK_KHR_SURFACE_EXTENSION_NAME);
 
+        // Required for swapchain present mode change without having to recreate the swapchain
+        ValidateAndAddExtension(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
+        ValidateAndAddExtension(VK_KHR_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
+
         // Required for HDR swapchain handling
         ValidateAndAddExtension(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
 
@@ -337,6 +341,7 @@ void VkRHI::Init()
     if (surface)
     {
         ValidateAndAddExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+        ValidateAndAddExtension(VK_KHR_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
     }
 
     ValidateAndAddExtension(VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME);
@@ -373,9 +378,14 @@ void VkRHI::Init()
     featuresUnifiedImageLayouts.pNext = featuresAccelerationStructure ? &featuresAccelerationStructure : nullptr;
     featuresUnifiedImageLayouts.unifiedImageLayouts = true;
 
-    // Allows for mutable descriptors
+    // Allows us to signal a fence on present.
+    ::vk::PhysicalDeviceSwapchainMaintenance1FeaturesKHR featuresSwapchainMaintenance1;
+    featuresSwapchainMaintenance1.pNext = &featuresUnifiedImageLayouts;
+    featuresSwapchainMaintenance1.swapchainMaintenance1 = true;
+
+    // Allows for mutable descriptors.
     ::vk::PhysicalDeviceMutableDescriptorTypeFeaturesEXT featuresMutableDescriptors;
-    featuresMutableDescriptors.pNext = &featuresUnifiedImageLayouts;
+    featuresMutableDescriptors.pNext = surface ? static_cast<void*>(&featuresSwapchainMaintenance1) : &featuresUnifiedImageLayouts;
     featuresMutableDescriptors.mutableDescriptorType = true;
 
     // Allows for the use of SV_Barycentrics in shaders.
@@ -714,34 +724,41 @@ std::vector<SyncToken> VkRHI::Submit(Span<const NonNullPtr<RHICommandList>> comm
 
 void VkRHI::FlushGPU()
 {
-    for (u8 i = 0; i < QueueTypes::Count; ++i)
-    {
-        QueueType queueType = static_cast<QueueType>(i);
-        const auto& queue = queues[queueType];
-        if (queue.type == QueueTypes::Invalid)
-        {
-            continue;
-        }
+    // Unfortunately the only spec-approved way to ensure that the presentation engine is finished is to do a device idle wait.
+    // The "cleaner" but incorrect way to do this is to wait on each queue fence's most recent submitted tokens, and then waitIdle on each queue...
+    // That technically does not ensure that the presentation engine is complete...
+    // We kept the code commented here incase this ever changes in Vulkan (maybe with a future extension).
 
-        if (!queue.queue)
-        {
-            VEX_LOG(Warning, "VkQueue was invalid on flush, skipping flush operations on it")
-            continue;
-        }
+    // for (u8 i = 0; i < QueueTypes::Count; ++i)
+    // {
+    //     QueueType queueType = static_cast<QueueType>(i);
+    //     const auto& queue = queues[queueType];
+    //     if (queue.type == QueueTypes::Invalid)
+    //     {
+    //         continue;
+    //     }
+    //
+    //     if (!queue.queue)
+    //     {
+    //         VEX_LOG(Warning, "VkQueue was invalid on flush, skipping flush operations on it")
+    //         continue;
+    //     }
+    //
+    //     // We want to wait for the most recently queued up signal (aka nextSignalValue - 1).
+    //     const auto& fence = (*fences)[queueType];
+    //     const u64 waitValue = fence.nextSignalValue - 1;
+    //     const ::vk::SemaphoreWaitInfo flushWaitInfo{
+    //         .semaphoreCount = 1,
+    //         .pSemaphores = &*fence.timelineSemaphore,
+    //         .pValues = &waitValue,
+    //     };
+    //     VEX_VK_CHECK << device->waitSemaphores(&flushWaitInfo, std::numeric_limits<u64>::max());
+    //
+    //     // Now wait for the semaphore itself to be done signaling.
+    //     VEX_VK_CHECK << queue.queue.waitIdle();
+    // }
 
-        // We want to wait for the most recently queued up signal (aka nextSignalValue - 1).
-        const auto& fence = (*fences)[queueType];
-        const u64 waitValue = fence.nextSignalValue - 1;
-        const ::vk::SemaphoreWaitInfo flushWaitInfo{
-            .semaphoreCount = 1,
-            .pSemaphores = &*fence.timelineSemaphore,
-            .pValues = &waitValue,
-        };
-        VEX_VK_CHECK << device->waitSemaphores(&flushWaitInfo, std::numeric_limits<u64>::max());
-
-        // Now wait for the semaphore itself to be done signaling.
-        VEX_VK_CHECK << queue.queue.waitIdle();
-    }
+    VEX_VK_CHECK << device->waitIdle();
 }
 
 NonNullPtr<VkGPUContext> VkRHI::GetGPUContext()

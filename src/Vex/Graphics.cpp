@@ -150,25 +150,23 @@ void Graphics::Present()
         VEX_LOG(Fatal, "Cannot present without using a swapchain!");
     }
 
-    // Make sure the ((n - FRAME_BUFFERING) % FRAME_BUFFERING) present has finished before presenting anew.
-    // TODO: Reasses the necessity of this
-    // See: https://trello.com/c/E3ipWUc7
+    // We can ignore the token returned here, since our present texture blit is done on the same queue (graphics queue)
+    // as the pending texture initializations.
+    std::optional<SyncToken> _ = FlushPendingInitializations();
+
+    // Make sure the ((n - FRAME_BUFFERING) % FRAME_BUFFERING) present texture has finished being written-to/read before
+    // presenting anew.
     rhi.WaitForTokenOnCPU(presentTokens[currentFrameIndex]);
 
-    if (std::optional<RHITexture> backBuffer = swapChain->AcquireBackBuffer(currentFrameIndex))
+    if (std::optional<RHITexture> backBuffer = swapChain->AcquireBackBuffer(currentFrameIndex, rhi))
     {
         // Open a new command list that will be used to copy the presentTexture to the backbuffer, and presenting.
         RHITexture& presentTexture = GetRHITexture(GetCurrentPresentTexture().handle);
 
         // Validate backbuffer/present texture dimensions, a copy won't work if the textures don't have the same size.
-        VEX_ASSERT(backBuffer->GetDesc().width == presentTexture.GetDesc().width &&
-                       backBuffer->GetDesc().height == presentTexture.GetDesc().height,
-                   "The backbuffer's dimensions ({}x{}) don't match the present texture's dimensions ({}x{}). Make "
-                   "sure that you are correctly handling resizing!",
-                   backBuffer->GetDesc().width,
-                   backBuffer->GetDesc().height,
-                   presentTexture.GetDesc().width,
-                   presentTexture.GetDesc().height);
+        const bool presentTextureDimsMatchBackbufferDims =
+            backBuffer->GetDesc().width == presentTexture.GetDesc().width &&
+            backBuffer->GetDesc().height == presentTexture.GetDesc().height;
 
         // Copy the present texture to the backbuffer.
         // Must be a graphics queue in order to be able to move the backbuffer to the present state.
@@ -181,17 +179,7 @@ void Graphics::Present()
         const auto [bbSrcSync, bbSrcAccess, bbSrcLayout] =
             backBufferState.Get(backBuffer->GetDesc(), TextureSubresource{});
 
-        std::array barriers = {
-            RHITextureBarrier{
-                .texture = presentTexture,
-                .subresource = TextureSubresource{},
-                .srcSync = srcSync,
-                .dstSync = RHIBarrierSync::Copy,
-                .srcAccess = srcAccess,
-                .dstAccess = RHIBarrierAccess::CopySource,
-                .srcLayout = srcLayout,
-                .dstLayout = RHITextureLayout::CopySource,
-            },
+        std::array preCopyBarriers{
             RHITextureBarrier{
                 .texture = *backBuffer,
                 .subresource = TextureSubresource{},
@@ -202,30 +190,50 @@ void Graphics::Present()
                 .srcLayout = bbSrcLayout,
                 .dstLayout = RHITextureLayout::CopyDest,
             },
+            RHITextureBarrier{
+                .texture = presentTexture,
+                .subresource = TextureSubresource{},
+                .srcSync = srcSync,
+                .dstSync = RHIBarrierSync::Copy,
+                .srcAccess = srcAccess,
+                .dstAccess = RHIBarrierAccess::CopySource,
+                .srcLayout = srcLayout,
+                .dstLayout = RHITextureLayout::CopySource,
+            },
         };
-        cmdList->EmitBarriers({}, barriers, {});
-        cmdList->Copy(presentTexture, *backBuffer);
-        RHITextureBarrier backBufferBarrier{
-            .texture = *backBuffer,
-            .subresource = {},
-            .srcSync = RHIBarrierSync::Copy,
-            .dstSync = RHIBarrierSync::AllGraphics,
-            .srcAccess = RHIBarrierAccess::CopyDest,
-            .dstAccess = RHIBarrierAccess::NoAccess,
-            .srcLayout = RHITextureLayout::CopyDest,
-            .dstLayout = RHITextureLayout::Present,
+        cmdList->EmitBarriers({}, preCopyBarriers, {});
+        if (presentTextureDimsMatchBackbufferDims)
+        {
+            cmdList->Copy(presentTexture, *backBuffer);
+        }
+        else
+        {
+            // TODO(https://trello.com/c/CI2Ob5QM): Do nothing for now, this should be improved in the future to perform
+            // a fullscreen triangle draw call from the present texture to the backbuffer to avoid dropping a frame!
+        }
+        std::array postCopyBarriers{
+            RHITextureBarrier{
+                .texture = *backBuffer,
+                .subresource = {},
+                .srcSync = RHIBarrierSync::Copy,
+                .dstSync = RHIBarrierSync::AllGraphics,
+                .srcAccess = RHIBarrierAccess::CopyDest,
+                .dstAccess = RHIBarrierAccess::NoAccess,
+                .srcLayout = RHITextureLayout::CopyDest,
+                .dstLayout = RHITextureLayout::Present,
+            },
+            RHITextureBarrier{
+                .texture = presentTexture,
+                .subresource = {},
+                .srcSync = RHIBarrierSync::Copy,
+                .dstSync = RHIBarrierSync::None,
+                .srcAccess = RHIBarrierAccess::CopySource,
+                .dstAccess = RHIBarrierAccess::NoAccess,
+                .srcLayout = RHITextureLayout::CopySource,
+                .dstLayout = RHITextureLayout::Common,
+            },
         };
-        RHITextureBarrier presentTextureBarrier{
-            .texture = presentTexture,
-            .subresource = {},
-            .srcSync = RHIBarrierSync::Copy,
-            .dstSync = RHIBarrierSync::None,
-            .srcAccess = RHIBarrierAccess::CopySource,
-            .dstAccess = RHIBarrierAccess::NoAccess,
-            .srcLayout = RHITextureLayout::CopySource,
-            .dstLayout = RHITextureLayout::Common,
-        };
-        cmdList->EmitBarriers({}, { backBufferBarrier, presentTextureBarrier }, {});
+        cmdList->EmitBarriers({}, postCopyBarriers, {});
         cmdList->Close();
 
         presentTokens[currentFrameIndex] = swapChain->Present(currentFrameIndex, rhi, cmdList);
@@ -246,21 +254,8 @@ void Graphics::Present()
 
     currentFrameIndex = (currentFrameIndex + 1) % std::to_underlying(desc.swapChainDesc.frameBuffering);
 
-    // If our swapchain is stale, we must recreate it.
-    if (swapChain->NeedsRecreation() && swapChain->CanRecreate())
-    {
-        VEX_LOG(Warning,
-                "Swapchain is stale meaning it must be recreated. This can occur when changes occur with the "
-                "output display, or changes to settings relating to HDR/Color Spaces.");
-        FlushGPU();
-        swapChain->RecreateSwapChain(desc.platformWindow.width, desc.platformWindow.height);
-        // We can now update our present textures to match the swapchain's potentially new format.
-        RecreatePresentTextures();
-    }
-    else
-    {
-        Cleanup();
-    }
+    RecreatePresentTextures();
+    Cleanup();
 }
 
 CommandContext Graphics::CreateCommandContext(QueueType queueType)
@@ -574,29 +569,6 @@ ColorSpace Graphics::GetCurrentHDRColorSpace() const
     return swapChain->GetCurrentColorSpace();
 }
 
-void Graphics::OnWindowResized(const u32 newWidth, const u32 newHeight)
-{
-    // Do not resize if any of the dimensions is 0, or if the resize gives us the same window size as we have
-    // currently.
-    if (newWidth == 0 || newHeight == 0 ||
-        (newWidth == desc.platformWindow.width && newHeight == desc.platformWindow.height))
-    {
-        return;
-    }
-
-    FlushGPU();
-
-    // Take advantage of the resize to cleanup no longer needed resources.
-    Cleanup();
-
-    // Recreate our swapchain.
-    swapChain->RecreateSwapChain(newWidth, newHeight);
-    RecreatePresentTextures();
-
-    desc.platformWindow.width = newWidth;
-    desc.platformWindow.height = newHeight;
-}
-
 Texture Graphics::GetCurrentPresentTexture()
 {
     if (!desc.useSwapChain)
@@ -660,7 +632,6 @@ std::optional<SyncToken> Graphics::FlushPendingInitializations()
     CommandContext ctx = CreateCommandContext(QueueType::Graphics);
     for (auto& texture : pendingInitializations)
     {
-
         RHITextureBarrier barrier{
             .texture = GetRHITexture(texture.handle),
             .subresource = TextureSubresource{},
@@ -773,13 +744,20 @@ RHIAccelerationStructure& Graphics::GetRHIAccelerationStructure(AccelerationStru
 
 void Graphics::RecreatePresentTextures()
 {
+    TextureDesc backBufferDesc = swapChain->GetBackBufferTextureDescription();
+
     if (!presentTextures.empty())
     {
+        if (backBufferDesc.width == 0 || backBufferDesc.height == 0)
+        {
+            // Invalid viewport, we keep the previous present textures until another resize occurs.
+            return;
+        }
+
         // Check if its even necessary to recreate the present textures.
-        const auto& presentDesc = presentTextures[0].desc;
-        const auto& swapChainDesc = swapChain->GetBackBufferTextureDescription();
-        if (presentDesc.format == swapChainDesc.format && presentDesc.width == swapChainDesc.width &&
-            presentDesc.height == swapChainDesc.height)
+        const TextureDesc& presentDesc = presentTextures[0].desc;
+        if (presentDesc.format == backBufferDesc.format && presentDesc.width == backBufferDesc.width &&
+            presentDesc.height == backBufferDesc.height)
         {
             return;
         }
@@ -793,20 +771,18 @@ void Graphics::RecreatePresentTextures()
 
     // Create new present textures.
     presentTextures.resize(std::to_underlying(desc.swapChainDesc.frameBuffering));
-
     presentTokens.clear();
     presentTokens.resize(std::to_underlying(desc.swapChainDesc.frameBuffering));
+
     for (u8 presentTextureIndex = 0; presentTextureIndex < std::to_underlying(desc.swapChainDesc.frameBuffering);
          ++presentTextureIndex)
     {
-        TextureDesc presentTextureDesc = swapChain->GetBackBufferTextureDescription();
-        presentTextureDesc.name = std::format("PresentTexture_{}", presentTextureIndex);
-        presentTextureDesc.clearValue = desc.presentTextureClearValue;
+        backBufferDesc.name = std::format("PresentTexture_{}", presentTextureIndex);
+        backBufferDesc.clearValue = desc.presentTextureClearValue;
         // Allow for present texture to be used for all usage types.
-        presentTextureDesc.usage =
-            TextureUsage::ShaderRead | TextureUsage::ShaderReadWrite | TextureUsage::RenderTarget;
-        presentTextures[presentTextureIndex] = CreateTexture(presentTextureDesc);
-        // Present texture will be initialized when pendingInitializations are flushed on next submit.
+        backBufferDesc.usage = TextureUsage::ShaderRead | TextureUsage::ShaderReadWrite | TextureUsage::RenderTarget;
+        presentTextures[presentTextureIndex] = CreateTexture(backBufferDesc);
+        // Present texture will be initialized when pendingInitializations are flushed on next submit/present.
     }
 }
 

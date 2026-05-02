@@ -72,10 +72,6 @@ void ExampleApplication::OnResize(GLFWwindow* window, int newWidth, int newHeigh
 {
     width = newWidth;
     height = newHeight;
-    if (graphics)
-    {
-        graphics->OnWindowResized(static_cast<unsigned int>(newWidth), static_cast<unsigned int>(newHeight));
-    }
 }
 
 void ExampleApplication::ToggleFullscreen()

@@ -167,12 +167,10 @@ public:
     // Returns the currently used HDR color-space.
     [[nodiscard]] ColorSpace GetCurrentHDRColorSpace() const;
 
-    // Called when the underlying window resizes, allows the swapchain to be resized.
-    void OnWindowResized(u32 newWidth, u32 newHeight);
     [[nodiscard]] bool UsesSwapChain() const
     {
         return desc.useSwapChain;
-    };
+    }
 
     // Obtains the current present texture handle. If the swapchain is enabled, Vex uses a present texture which is
     // copied to the backbuffer when presenting.

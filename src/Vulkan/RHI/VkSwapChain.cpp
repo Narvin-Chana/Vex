@@ -50,21 +50,38 @@ static ::vk::PresentModeKHR GetBestPresentMode(const VkSwapChainSupportDetails& 
     return ::vk::PresentModeKHR::eImmediate;
 }
 
-static ::vk::Extent2D GetBestSwapExtent(const VkSwapChainSupportDetails& details, u32 width, u32 height)
+static std::vector<::vk::PresentModeKHR> GetCompatiblePresentModes(::vk::PhysicalDevice device,
+                                                                   ::vk::SurfaceKHR surface,
+                                                                   ::vk::PresentModeKHR presentMode)
 {
-    if (details.capabilities.currentExtent.width != std::numeric_limits<u32>::max())
-        return details.capabilities.currentExtent;
+    ::vk::SurfacePresentModeEXT surfacePresentMode{
+        .presentMode = presentMode,
+    };
 
-    ::vk::Extent2D actualExtent = { width, height };
+    ::vk::PhysicalDeviceSurfaceInfo2KHR surfaceInfo{ .pNext = &surfacePresentMode, .surface = surface };
 
-    actualExtent.width = std::clamp(actualExtent.width,
-                                    details.capabilities.minImageExtent.width,
-                                    details.capabilities.maxImageExtent.width);
-    actualExtent.height = std::clamp(actualExtent.height,
-                                     details.capabilities.minImageExtent.height,
-                                     details.capabilities.maxImageExtent.height);
+    ::vk::SurfacePresentModeCompatibilityKHR modes{
+        .presentModeCount = 0,
+    };
+    ::vk::SurfaceCapabilities2KHR surfaceCaps{
+        .pNext = &modes,
+    };
 
-    return actualExtent;
+    // Query once to know the count, then query again to fill in the vector of present modes.
+    VEX_VK_CHECK << device.getSurfaceCapabilities2KHR(&surfaceInfo, &surfaceCaps);
+    std::vector<::vk::PresentModeKHR> compatiblePresentModes(modes.presentModeCount);
+    modes.pPresentModes = compatiblePresentModes.data();
+    VEX_VK_CHECK << device.getSurfaceCapabilities2KHR(&surfaceInfo, &surfaceCaps);
+    return compatiblePresentModes;
+}
+
+static ::vk::UniqueSemaphore CreateBinarySemaphore(NonNullPtr<VkGPUContext> ctx)
+{
+    ::vk::SemaphoreTypeCreateInfoKHR createInfo{ .semaphoreType = ::vk::SemaphoreType::eBinary };
+    auto semaphore = VEX_VK_CHECK <<= ctx->device.createSemaphoreUnique(::vk::SemaphoreCreateInfo{
+        .pNext = &createInfo,
+    });
+    return semaphore;
 }
 
 VkSwapChain::VkSwapChain(NonNullPtr<VkGPUContext> ctx, SwapChainDesc& desc, const PlatformWindow& platformWindow)
@@ -72,69 +89,103 @@ VkSwapChain::VkSwapChain(NonNullPtr<VkGPUContext> ctx, SwapChainDesc& desc, cons
     , desc{ desc }
 {
     VEX_ASSERT(IsSwapChainSupported(ctx->physDevice, ctx->surface));
-    RecreateSwapChain(platformWindow.width, platformWindow.height);
+
+    RecreateSwapChain();
 
     const u32 maxSupportedImageCount =
         std::max(supportDetails.capabilities.minImageCount + 1, supportDetails.capabilities.maxImageCount);
     const u8 requestedImageCount = std::to_underlying(desc.frameBuffering);
-
     // Need to have at least the requested amount of swap chain images
     VEX_ASSERT(maxSupportedImageCount >= requestedImageCount);
 
-    InitSwapchainResource(platformWindow.width, platformWindow.height);
-
-    auto BinarySemaphoreCreator = [&ctx]
-    {
-        ::vk::SemaphoreTypeCreateInfoKHR createInfo{ .semaphoreType = ::vk::SemaphoreType::eBinary };
-        auto semaphore = VEX_VK_CHECK <<= ctx->device.createSemaphoreUnique(::vk::SemaphoreCreateInfo{
-            .pNext = &createInfo,
-        });
-        return semaphore;
-    };
-
-    std::ranges::generate_n(std::back_inserter(presentSemaphore), requestedImageCount, BinarySemaphoreCreator);
-    std::ranges::generate_n(std::back_inserter(backbufferAcquisition), requestedImageCount, BinarySemaphoreCreator);
+    std::ranges::generate_n(std::back_inserter(backbufferAcquisition),
+                            requestedImageCount,
+                            [ctx] { return CreateBinarySemaphore(ctx); });
 }
 
-void VkSwapChain::RecreateSwapChain(u32 width, u32 height)
+void VkSwapChain::RecreateSwapChain()
 {
-    VEX_ASSERT(width != 0 && height != 0);
     supportDetails = GetSwapChainSupportDetails(ctx->physDevice, ctx->surface);
     currentColorSpace = GetValidColorSpace(desc->preferredColorSpace);
     surfaceFormat = GetBestSurfaceFormat(supportDetails);
 
-    presentMode = GetBestPresentMode(supportDetails, desc->useVSync);
-
-    if (!desc->useHDRIfSupported || currentColorSpace == desc->preferredColorSpace)
-    {
-        VEX_LOG(Info, "SwapChain uses the format ({}) with color space {}.", surfaceFormat.format, currentColorSpace);
-    }
-    else
-    {
-        VEX_LOG(Warning,
-                "The user-preferred swapchain color space ({}) is not supported by your current display. Falling back "
-                "to format {} "
-                "with color space {} instead.",
-                desc->preferredColorSpace,
-                surfaceFormat.format,
-                currentColorSpace);
-    }
+    desiredPresentMode = GetBestPresentMode(supportDetails, desc->useVSync);
+    compatiblePresentModes = GetCompatiblePresentModes(ctx->physDevice, ctx->surface, desiredPresentMode);
 
     if (supportDetails.capabilities.currentExtent.width == 0 || supportDetails.capabilities.currentExtent.height == 0)
     {
         return;
     }
 
-    InitSwapchainResource(width, height);
+    if (desc->useHDRIfSupported && currentColorSpace != desc->preferredColorSpace)
+    {
+        VEX_LOG(Warning,
+                "The user-preferred swapchain color space ({}) is not supported by your current display. Falling back "
+                "to format {} "
+                "with color space {} instead. Present mode: {}.",
+                desc->preferredColorSpace,
+                surfaceFormat.format,
+                currentColorSpace,
+                desiredPresentMode);
+    }
+
+    // Indicate which present modes to use, this is possible due to VK_EXT_swapchain_maintenance1 and allows for
+    // changing the present mode without recreating the swapchain.
+    ::vk::SwapchainPresentModesCreateInfoKHR presentModesCreateInfo{
+        .presentModeCount = static_cast<u32>(compatiblePresentModes.size()),
+        .pPresentModes = compatiblePresentModes.data(),
+    };
+
+    const bool needsConcurrent = ctx->queueFamilyIndices.size() > 1;
+    ::vk::SwapchainCreateInfoKHR swapChainCreateInfo{
+        .pNext = &presentModesCreateInfo,
+        .surface = ctx->surface,
+        .minImageCount = std::to_underlying(desc->frameBuffering),
+        .imageFormat = surfaceFormat.format,
+        .imageColorSpace = surfaceFormat.colorSpace,
+        .imageExtent = supportDetails.capabilities.currentExtent,
+        .imageArrayLayers = 1,
+        // Only use transfer usages for swapchain. We only copy to it (and need transfer src for presentation).
+        .imageUsage = ::vk::ImageUsageFlagBits::eTransferDst | ::vk::ImageUsageFlagBits::eTransferSrc,
+        .imageSharingMode = needsConcurrent ? ::vk::SharingMode::eConcurrent : ::vk::SharingMode::eExclusive,
+        .queueFamilyIndexCount = needsConcurrent ? static_cast<u32>(ctx->queueFamilyIndices.size()) : 0,
+        .pQueueFamilyIndices = needsConcurrent ? ctx->queueFamilyIndices.data() : nullptr,
+        .preTransform = supportDetails.capabilities.currentTransform,
+        .compositeAlpha = ::vk::CompositeAlphaFlagBitsKHR::eOpaque,
+        .presentMode = desiredPresentMode,
+        .clipped = ::vk::True,
+        .oldSwapchain = swapchain ? *swapchain : nullptr,
+    };
+
+    if (swapchain)
+    {
+        pendingOldSwapchains.push_back(std::move(swapchain));
+    }
+
+    swapchain = VEX_VK_CHECK <<= ctx->device.createSwapchainKHRUnique(swapChainCreateInfo);
+
+    auto newImages = VEX_VK_CHECK <<= ctx->device.getSwapchainImagesKHR(*swapchain);
+    if (newImages.size() != swapChainCreateInfo.minImageCount)
+    {
+        VEX_LOG(Warning, "Swapchain returned more images than requested for. This might cause instabilities");
+    }
+
+    // We're no longer out of date.
+    swapchainIsInErrorState = false;
 }
 
 bool VkSwapChain::NeedsRecreation() const
 {
     // Update support details.
     const ::vk::PresentModeKHR newPresentMode = GetBestPresentMode(supportDetails, desc->useVSync);
-    const bool needsRecreationDueToVSync = newPresentMode != presentMode;
+    // Only recreate if the new present mode is different to the previous and is not in the current swapchain's
+    // compatible present modes. Thanks to VK_EXT_swapchain_maintenance1 we can avoid a bunch of swapchain recreations
+    // when changing the presentation mode (and thus when changing if vsync is enabled).
+    const bool needsRecreationDueToPresentMode =
+        newPresentMode != desiredPresentMode &&
+        std::ranges::find(compatiblePresentModes, newPresentMode) == compatiblePresentModes.end();
 
-    return swapchainIsInErrorState || needsRecreationDueToVSync || !IsColorSpaceStillSupported(*desc) ||
+    return swapchainIsInErrorState || needsRecreationDueToPresentMode || !IsColorSpaceStillSupported(*desc) ||
            (!desc->useHDRIfSupported && IsHDREnabled());
 }
 
@@ -152,8 +203,8 @@ TextureDesc VkSwapChain::GetBackBufferTextureDescription() const
         .name = "backbuffer",
         .type = TextureType::Texture2D,
         .format = VulkanToTextureFormat(surfaceFormat.format),
-        .width = width,
-        .height = height,
+        .width = supportDetails.capabilities.currentExtent.width,
+        .height = supportDetails.capabilities.currentExtent.height,
         .depthOrSliceCount = 1,
         .mips = 1,
         .usage = TextureUsage::RenderTarget | TextureUsage::ShaderRead,
@@ -214,8 +265,18 @@ ColorSpace VkSwapChain::GetValidColorSpace(ColorSpace preferredColorSpace) const
     return ColorSpace::sRGB;
 }
 
-std::optional<RHITexture> VkSwapChain::AcquireBackBuffer(u8 frameIndex)
+std::optional<RHITexture> VkSwapChain::AcquireBackBuffer(u8 frameIndex, RHI& rhi)
 {
+    pendingOldSwapchains.clear();
+    ProcessPresentHistory();
+
+    // Update the desired present mode, and if necessary, mark the swapchain as being in an errored state.
+    desiredPresentMode = GetBestPresentMode(supportDetails, desc->useVSync);
+    if (std::ranges::find(compatiblePresentModes, desiredPresentMode) == compatiblePresentModes.end())
+    {
+        RecreateSwapChain();
+    }
+
     // Acquire the next backbuffer image.
     auto res = ctx->device.acquireNextImageKHR(*swapchain,
                                                std::numeric_limits<u64>::max(),
@@ -225,17 +286,16 @@ std::optional<RHITexture> VkSwapChain::AcquireBackBuffer(u8 frameIndex)
     if (res == ::vk::Result::eErrorOutOfDateKHR || res == ::vk::Result::eSuboptimalKHR)
     {
         swapchainIsInErrorState = true;
-        return {};
+        return std::nullopt;
     }
 
     VEX_VK_CHECK << res;
 
     // Return the acquired backbuffer.
     auto backbufferImages = VEX_VK_CHECK <<= ctx->device.getSwapchainImagesKHR(*swapchain);
-
-    TextureDesc desc = GetBackBufferTextureDescription();
-    desc.name = std::format("backbuffer_{}", currentBackbufferId);
-    return RHITexture{ ctx, std::move(desc), backbufferImages[currentBackbufferId] };
+    TextureDesc bbDesc = GetBackBufferTextureDescription();
+    bbDesc.name = std::format("backbuffer_{}", currentBackbufferId);
+    return RHITexture{ ctx, std::move(bbDesc), backbufferImages[currentBackbufferId] };
 }
 
 SyncToken VkSwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandList> commandList)
@@ -246,24 +306,38 @@ SyncToken VkSwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandLis
     // This equates to waiting on the backbufferAcquisition binary semaphore of this backbuffer.
     ::vk::SemaphoreSubmitInfo acquireWaitInfo = {
         .semaphore = *backbufferAcquisition[frameIndex],
-        .stageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+        .stageMask = ::vk::PipelineStageFlagBits2::eAllCommands,
     };
 
-    // Signal the present binary semaphore (we only want to present once rendering work is done).
+    ::vk::UniqueSemaphore presentSemaphore = GetSemaphore();
+
+    // Signal the present binary semaphore (we only want to present once rendering work is done, in this case the copy
+    // to the backbuffer).
     ::vk::SemaphoreSubmitInfo presentSignalInfo = {
-        .semaphore = *presentSemaphore[currentBackbufferId],
-        .stageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+        .semaphore = *presentSemaphore,
+        .stageMask = ::vk::PipelineStageFlagBits2::eAllCommands,
     };
 
-    SyncToken syncToken = rhi.SubmitToQueue(commandList->GetQueue(),
-                                            { &cmdBufferSubmitInfo, 1 },
-                                            { &acquireWaitInfo, 1 },
-                                            { presentSignalInfo });
+    SyncToken syncToken =
+        rhi.SubmitToQueue(commandList->GetQueue(), { cmdBufferSubmitInfo }, { acquireWaitInfo }, { presentSignalInfo });
 
     // Present now that we've submitted the present copy work.
-    ::vk::PresentInfoKHR presentInfo = {
+    ::vk::UniqueFence presentFence = GetPresentFence();
+
+    ::vk::SwapchainPresentModeInfoKHR presentModeInfo{
+        .swapchainCount = 1,
+        .pPresentModes = &desiredPresentMode,
+    };
+    ::vk::SwapchainPresentFenceInfoKHR presentFenceInfo{
+        .pNext = &presentModeInfo,
+        .swapchainCount = 1,
+        .pFences = &*presentFence,
+    };
+
+    ::vk::PresentInfoKHR presentInfo{
+        .pNext = &presentFenceInfo,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &*presentSemaphore[currentBackbufferId],
+        .pWaitSemaphores = &*presentSemaphore,
         .swapchainCount = 1,
         .pSwapchains = &*swapchain,
         .pImageIndices = &currentBackbufferId,
@@ -279,48 +353,12 @@ SyncToken VkSwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandLis
         VEX_VK_CHECK << res;
     }
 
+    AddPresentToHistory(std::move(presentFence), std::move(presentSemaphore));
+
     return syncToken;
 }
 
-void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
-{
-    ::vk::Extent2D extent = GetBestSwapExtent(supportDetails, inWidth, inHeight);
-    width = extent.width;
-    height = extent.height;
-
-    const bool needsConcurrent = ctx->queueFamilyIndices.size() > 1;
-    ::vk::SwapchainCreateInfoKHR swapChainCreateInfo{
-        .surface = ctx->surface,
-        .minImageCount = std::to_underlying(desc->frameBuffering),
-        .imageFormat = surfaceFormat.format,
-        .imageColorSpace = surfaceFormat.colorSpace,
-        .imageExtent = extent,
-        .imageArrayLayers = 1,
-        .imageUsage = ::vk::ImageUsageFlagBits::eColorAttachment | ::vk::ImageUsageFlagBits::eTransferDst |
-                      ::vk::ImageUsageFlagBits::eTransferSrc,
-        .imageSharingMode = needsConcurrent ? ::vk::SharingMode::eExclusive : ::vk::SharingMode::eConcurrent,
-        .queueFamilyIndexCount = needsConcurrent ? static_cast<u32>(ctx->queueFamilyIndices.size()) : 0,
-        .pQueueFamilyIndices = needsConcurrent ? ctx->queueFamilyIndices.data() : nullptr,
-        .preTransform = supportDetails.capabilities.currentTransform,
-        .compositeAlpha = ::vk::CompositeAlphaFlagBitsKHR::eOpaque,
-        .presentMode = presentMode,
-        .clipped = ::vk::True,
-        .oldSwapchain = swapchain ? *swapchain : nullptr,
-    };
-
-    swapchain = VEX_VK_CHECK <<= ctx->device.createSwapchainKHRUnique(swapChainCreateInfo);
-
-    auto newImages = VEX_VK_CHECK <<= ctx->device.getSwapchainImagesKHR(*swapchain);
-    if (newImages.size() != swapChainCreateInfo.minImageCount)
-    {
-        VEX_LOG(Warning, "Swapchain returned more images than requested for. This might cause instabilities");
-    }
-
-    // We're no longer out of date.
-    swapchainIsInErrorState = false;
-}
-
-::vk::SurfaceFormatKHR VkSwapChain::GetBestSurfaceFormat(const VkSwapChainSupportDetails& details)
+::vk::SurfaceFormatKHR VkSwapChain::GetBestSurfaceFormat(const VkSwapChainSupportDetails& details) const
 {
     ::vk::Format requestedFormat =
         TextureFormatToVulkan(ColorSpaceToSwapChainFormat(currentColorSpace, desc->useHDRIfSupported), false);
@@ -352,6 +390,58 @@ void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
 
     VEX_LOG(Fatal, "Format \"{}\" not supported", ::vk::to_string(requestedFormat));
     std::unreachable();
+}
+
+::vk::UniqueFence VkSwapChain::GetPresentFence()
+{
+    if (!presentFencesPool.empty())
+    {
+        ::vk::UniqueFence fence = std::move(presentFencesPool.back());
+        presentFencesPool.pop_back();
+        return fence;
+    }
+    return VEX_VK_CHECK <<= ctx->device.createFenceUnique(::vk::FenceCreateInfo{});
+}
+
+void VkSwapChain::AddPresentToHistory(::vk::UniqueFence fence, ::vk::UniqueSemaphore semaphore)
+{
+    presentHistory.push_back({ .presentSemaphore = std::move(semaphore),
+                               .presentFence = std::move(fence),
+                               .oldSwapchains = std::move(pendingOldSwapchains) });
+    pendingOldSwapchains = std::vector<::vk::UniqueSwapchainKHR>{};
+}
+
+void VkSwapChain::ProcessPresentHistory()
+{
+    std::erase_if(presentHistory,
+                  [&](PresentHistoryEntry& entry)
+                  {
+                      if (ctx->device.getFenceStatus(*entry.presentFence) == ::vk::Result::eSuccess)
+                      {
+                          VEX_VK_CHECK << ctx->device.resetFences({ *entry.presentFence });
+
+                          // Recycle the fences and semaphores.
+                          presentFencesPool.push_back(std::move(entry.presentFence));
+                          presentSemaphorePool.push_back(std::move(entry.presentSemaphore));
+
+                          // Old swapchains are no longer in use, we can safely destroy them.
+                          entry.oldSwapchains.clear();
+
+                          return true;
+                      }
+                      return false;
+                  });
+}
+
+::vk::UniqueSemaphore VkSwapChain::GetSemaphore()
+{
+    if (!presentSemaphorePool.empty())
+    {
+        auto semaphore = std::move(presentSemaphorePool.back());
+        presentSemaphorePool.pop_back();
+        return semaphore;
+    }
+    return CreateBinarySemaphore(ctx);
 }
 
 } // namespace vex::vk

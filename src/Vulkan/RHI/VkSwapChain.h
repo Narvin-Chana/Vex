@@ -34,7 +34,7 @@ class VkSwapChain final : public RHISwapChainBase
 public:
     VkSwapChain(NonNullPtr<VkGPUContext> ctx, SwapChainDesc& desc, const PlatformWindow& platformWindow);
 
-    virtual void RecreateSwapChain(u32 width, u32 height) override;
+    virtual void RecreateSwapChain() override;
     virtual bool NeedsRecreation() const override;
     virtual bool CanRecreate() override;
 
@@ -42,33 +42,49 @@ public:
 
     virtual ColorSpace GetValidColorSpace(ColorSpace preferredColorSpace) const override;
 
-    virtual std::optional<RHITexture> AcquireBackBuffer(u8 frameIndex) override;
+    virtual std::optional<RHITexture> AcquireBackBuffer(u8 frameIndex, RHI& rhi) override;
     virtual SyncToken Present(u8 frameIndex,
                               RHI& rhi,
                               NonNullPtr<RHICommandList> commandList) override;
 
 private:
-    void InitSwapchainResource(u32 width, u32 height);
-    ::vk::SurfaceFormatKHR GetBestSurfaceFormat(const VkSwapChainSupportDetails& details);
+    ::vk::SurfaceFormatKHR GetBestSurfaceFormat(const VkSwapChainSupportDetails& details) const;
+
+    ::vk::UniqueFence GetPresentFence();
+    void AddPresentToHistory(::vk::UniqueFence fence, ::vk::UniqueSemaphore semaphore);
+    void ProcessPresentHistory();
+
+    ::vk::UniqueSemaphore GetSemaphore();
 
     NonNullPtr<VkGPUContext> ctx;
     NonNullPtr<SwapChainDesc> desc;
 
     VkSwapChainSupportDetails supportDetails;
-    ::vk::PresentModeKHR presentMode;
+    std::vector<::vk::PresentModeKHR> compatiblePresentModes;
+    ::vk::PresentModeKHR desiredPresentMode;
     ::vk::SurfaceFormatKHR surfaceFormat;
 
     ::vk::UniqueSwapchainKHR swapchain;
 
     // Used to wait for acquisition of the next frame's backbuffer image.
     std::vector<::vk::UniqueSemaphore> backbufferAcquisition;
-    // Used to wait for all command lists to finish before presenting.
-    std::vector<::vk::UniqueSemaphore> presentSemaphore;
+
+    std::vector<::vk::UniqueSemaphore> presentSemaphorePool;
+    std::vector<::vk::UniqueFence> presentFencesPool;
+
+    std::vector<::vk::UniqueSwapchainKHR> pendingOldSwapchains;
+
+    struct PresentHistoryEntry
+    {
+        ::vk::UniqueSemaphore presentSemaphore;
+        ::vk::UniqueFence presentFence;
+        std::vector<::vk::UniqueSwapchainKHR> oldSwapchains;
+    };
+    std::vector<PresentHistoryEntry> presentHistory;
 
     bool swapchainIsInErrorState = false;
 
     u32 currentBackbufferId = 0;
-    u32 width, height;
 
     friend class VkRHI;
 };

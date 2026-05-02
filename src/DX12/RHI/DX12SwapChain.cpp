@@ -57,14 +57,23 @@ DX12SwapChain::DX12SwapChain(ComPtr<DX12Device>& device,
     , graphicsCommandQueue(graphicsCommandQueue)
     , windowHandle(platformWindow.windowHandle)
 {
-    RecreateSwapChain(platformWindow.width, platformWindow.height);
+    RecreateSwapChain();
 }
 
 DX12SwapChain::~DX12SwapChain() = default;
 
 TextureDesc DX12SwapChain::GetBackBufferTextureDescription() const
 {
-    return const_cast<DX12SwapChain&>(*this).AcquireBackBuffer(0)->GetDesc();
+    DXGI_SWAP_CHAIN_DESC1 actualDesc;
+    chk << swapChain->GetDesc1(&actualDesc);
+
+    TextureDesc d;
+    d.width = actualDesc.Width;
+    d.height = actualDesc.Height;
+    d.format = DXGIToTextureFormat(actualDesc.Format);
+    d.mips = 1;
+    d.type = TextureType::Texture2D;
+    return d;
 }
 
 bool DX12SwapChain::NeedsRecreation() const
@@ -83,16 +92,12 @@ bool DX12SwapChain::CanRecreate()
     return true;
 }
 
-void DX12SwapChain::RecreateSwapChain(u32 width, u32 height)
+void DX12SwapChain::RecreateSwapChain()
 {
     currentColorSpace = GetValidColorSpace(desc->preferredColorSpace);
     format = ColorSpaceToSwapChainFormat(currentColorSpace, desc->useHDRIfSupported);
 
-    if (!desc->useHDRIfSupported || currentColorSpace == desc->preferredColorSpace)
-    {
-        VEX_LOG(Info, "SwapChain now uses the format ({}) with color space {}.", format, currentColorSpace);
-    }
-    else
+    if (desc->useHDRIfSupported && currentColorSpace != desc->preferredColorSpace)
     {
         VEX_LOG(Warning,
                 "The user-preferred swapchain color space ({}) is not supported by your current display. Falling back "
@@ -108,8 +113,8 @@ void DX12SwapChain::RecreateSwapChain(u32 width, u32 height)
     if (!swapChain)
     {
         DXGI_SWAP_CHAIN_DESC1 nativeSwapChainDesc{
-            .Width = width,
-            .Height = height,
+            .Width = 0,
+            .Height = 0,
             .Format = nativeFormat,
             .Stereo = false,
             .SampleDesc = { .Count = 1, .Quality = 0 },
@@ -129,11 +134,18 @@ void DX12SwapChain::RecreateSwapChain(u32 width, u32 height)
     else
     {
         chk << swapChain->ResizeBuffers(GetBackBufferCount(desc->frameBuffering),
-                                        width,
-                                        height,
+                                        0,
+                                        0,
                                         nativeFormat,
                                         DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING);
     }
+
+    DXGI_SWAP_CHAIN_DESC1 actualDesc;
+    chk << swapChain->GetDesc1(&actualDesc);
+    width = actualDesc.Width;
+    height = actualDesc.Height;
+
+    VEX_LOG(Info, "Size: {}x{}", width, height);
 
     ApplyColorSpace();
 }
@@ -159,8 +171,22 @@ ColorSpace DX12SwapChain::GetValidColorSpace(ColorSpace preferredColorSpace) con
     return ColorSpace::sRGB;
 }
 
-std::optional<RHITexture> DX12SwapChain::AcquireBackBuffer(u8 frameIndex)
+std::optional<RHITexture> DX12SwapChain::AcquireBackBuffer(u8 frameIndex, RHI& rhi)
 {
+    RECT clientRect;
+    bool success = GetClientRect(std::get<PlatformWindowHandle::WindowsHandle>(windowHandle.handle).window, &clientRect);
+    VEX_ASSERT(success, "Must be able to obtain the client rect.");
+    const u32 newWidth = clientRect.right - clientRect.left;
+    const u32 newHeight = clientRect.bottom - clientRect.top;
+
+    if ((newWidth != width || newHeight != height) && newWidth > 0 && newHeight > 0)
+    {
+        // DX12 requires a flush when resizing the swapchain.
+        rhi.FlushGPU();
+        RecreateSwapChain();
+        return std::nullopt;
+    }
+
     u32 backBufferIndex = swapChain->GetCurrentBackBufferIndex();
     ComPtr<ID3D12Resource> backBuffer;
     chk << swapChain->GetBuffer(backBufferIndex, IID_PPV_ARGS(&backBuffer));
@@ -177,7 +203,7 @@ SyncToken DX12SwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandL
     chk << swapChain->GetFullscreenDesc(&swapChainFullscreenDesc);
     const bool isFullscreen = !swapChainFullscreenDesc.Windowed;
 
-    chk << swapChain->Present(desc->useVSync, (!desc->useVSync && !isFullscreen) ? DXGI_PRESENT_ALLOW_TEARING : 0);
+    chk << swapChain->Present(desc->useVSync, !desc->useVSync && !isFullscreen ? DXGI_PRESENT_ALLOW_TEARING : 0);
 
     auto& fence = (*rhi.fences)[QueueType::Graphics];
     u64 signalValue = fence.nextSignalValue++;

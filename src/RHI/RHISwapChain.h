@@ -77,7 +77,7 @@ class RHISwapChainBase
 {
 public:
     // Recreates the swapchain.
-    virtual void RecreateSwapChain(u32 width, u32 height) = 0;
+    virtual void RecreateSwapChain() = 0;
     // Determines if the swapchain is valid or if it needs to be recreated.
     virtual bool NeedsRecreation() const = 0;
     virtual bool CanRecreate() = 0;
@@ -86,7 +86,7 @@ public:
 
     virtual ColorSpace GetValidColorSpace(ColorSpace preferredColorSpace) const = 0;
 
-    virtual std::optional<RHITexture> AcquireBackBuffer(u8 frameIndex) = 0;
+    virtual std::optional<RHITexture> AcquireBackBuffer(u8 frameIndex, RHI& rhi) = 0;
     virtual SyncToken Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandList> commandList) = 0;
 
     bool IsHDREnabled() const

@@ -25,7 +25,7 @@ public:
                   const PlatformWindow& platformWindow);
     ~DX12SwapChain();
 
-    virtual void RecreateSwapChain(u32 width, u32 height) override;
+    virtual void RecreateSwapChain() override;
 
     virtual TextureDesc GetBackBufferTextureDescription() const override;
 
@@ -34,7 +34,7 @@ public:
 
     virtual ColorSpace GetValidColorSpace(ColorSpace preferredColorSpace) const override;
 
-    virtual std::optional<RHITexture> AcquireBackBuffer(u8 frameIndex) override;
+    virtual std::optional<RHITexture> AcquireBackBuffer(u8 frameIndex, RHI& rhi) override;
     virtual SyncToken Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandList> commandList) override;
 
 private:
@@ -49,6 +49,8 @@ private:
     NonNullPtr<SwapChainDesc> desc;
     ComPtr<ID3D12CommandQueue> graphicsCommandQueue;
     ComPtr<IDXGISwapChain4> swapChain;
+
+    u32 width, height;
 
     PlatformWindowHandle windowHandle;
 };
