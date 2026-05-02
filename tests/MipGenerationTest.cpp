@@ -2,9 +2,6 @@
 
 #include <gtest/gtest.h>
 
-#include <Vex.h>
-#include <Vex/Utility/ByteUtils.h>
-
 namespace vex
 {
 

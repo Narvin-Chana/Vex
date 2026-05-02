@@ -2,7 +2,7 @@
 
 #include <bitset>
 
-#include <Vex/Platform/Debug.h>
+#include <VexMacros.h>
 
 #include <ShaderCompiler/ShaderCompiler.h>
 

@@ -1,3 +1,7 @@
+// Modules do not compile in this file, due to issues with MSVC compiler.
+// Windows includes are the cause!
+#undef VEX_MODULES
+#define VEX_MODULES 0
 #include "PixEventsApplication.h"
 
 #include <GLFWIncludes.h>

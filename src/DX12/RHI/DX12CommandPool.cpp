@@ -1,9 +1,9 @@
 #include "DX12CommandPool.h"
 
-#include <magic_enum/magic_enum.hpp>
+#include <Vex/Utility/Formattable.h>
 
 #include <Vex/Logger.h>
-#include <Vex/Platform/Debug.h>
+#include <VexMacros.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/Utility/WString.h>
 

@@ -2,9 +2,9 @@
 
 #include <format>
 
-#include <magic_enum/magic_enum.hpp>
+#include <Vex/Utility/Formattable.h>
 
-#include <Vex/Platform/Debug.h>
+#include <VexMacros.h>
 #include <Vex/Platform/Platform.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/WString.h>

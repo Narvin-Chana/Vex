@@ -1,6 +1,6 @@
 #pragma once
 
-// Defines platform agnostic debug macros such as assert or debug break.
+// Defines platform-agnostic debug macros such as assert or debug break.
 
 #if !VEX_SHIPPING
 

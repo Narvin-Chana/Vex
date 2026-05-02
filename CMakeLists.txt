@@ -1,10 +1,10 @@
-﻿cmake_minimum_required(VERSION 3.27)
-project(Vex VERSION 0.0.2 LANGUAGES CXX C)
+﻿cmake_minimum_required(VERSION 4.2.2)
 include(CMakePackageConfigHelpers)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+project(Vex VERSION 0.0.5 LANGUAGES CXX C)
 
 # Store the root directory of Vex
 set(VEX_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -13,16 +13,27 @@ set(VEX_ROOT_DIR "${VEX_ROOT_DIR}" CACHE INTERNAL "Path to Vex's library root di
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-# Add the build examples only if we're directly building cmake from Vex (so not if Vex is setup as an actual dependency).
-# Examples are used to develop Vex, they should not be used or included in projects that use Vex.
-if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
-    option(VEX_BUILD_EXAMPLES "Build the example programs" ON)
-    option(VEX_BUILD_TESTS "Build Vex tests" ON)
-    option(VEX_BUILD_TOOLS "Build Vex tools" ON)
+# Examples, tests and tools are used to develop Vex, they should not be used or included in projects that use Vex (to enable them modify your CMakePresets.json).
+option(VEX_BUILD_EXAMPLES "Build the example programs" OFF)
+option(VEX_BUILD_TESTS "Build Vex tests" OFF)
+option(VEX_BUILD_TOOLS "Build Vex tools" OFF)
+
+# Detect clang-cl (Clang frontend with MSVC ABI has no module scanning support)
+# This will be fixed in CMake 4.4.0.
+# See https://gitlab.kitware.com/cmake/cmake/-/merge_requests/11875
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC")
+    set(VEX_COMPILER_SUPPORTS_MODULES OFF)
+    message(STATUS "Detected clang-cl: C++20 module scanning not supported, disabling modules. This will be fixed in CMake 4.4.0.")
 else()
-    option(VEX_BUILD_EXAMPLES "Build the example programs" OFF)
-    option(VEX_BUILD_TESTS "Build Vex tests" OFF)
-    option(VEX_BUILD_TOOLS "Build Vex tools" OFF)
+     set(VEX_COMPILER_SUPPORTS_MODULES ON)
+endif()
+
+option(VEX_USE_MODULES "Determines whether to generate and export the Vex cpp20 module (experimental due to flaky compiler support)." OFF)
+
+# Modules could be unsupported with the current compiler.
+set(VEX_INTERNAL_USE_MODULES OFF)
+if(VEX_COMPILER_SUPPORTS_MODULES AND VEX_USE_MODULES)
+    set(VEX_INTERNAL_USE_MODULES ON)
 endif()
 
 # CMake Helpers
@@ -112,7 +123,7 @@ message(STATUS "Fetching magic_enum...")
 FetchContent_Declare(
     magic_enum
     GIT_REPOSITORY https://github.com/Neargye/magic_enum.git
-    GIT_TAG v0.9.7
+    GIT_BRANCH master
 )
 FetchContent_MakeAvailable(magic_enum)
 # =========================================
@@ -121,6 +132,7 @@ FetchContent_MakeAvailable(magic_enum)
 add_library(Vex STATIC
     # Platform
     "src/Vex/Platform/Platform.h"
+    "src/Vex/Platform/Debug.h"
     # RHI
     "src/RHI/RHIFwd.h"
     "src/RHI/RHI.h"
@@ -176,9 +188,16 @@ add_library(Vex STATIC
     "src/Vex/Utility/WString.h"
     "src/Vex/Utility/Visitor.h"
     "src/Vex/Utility/Algorithms.h"
+    "src/Vex/Utility/SHA1.h"
+    "src/Vex/Utility/SHA1.cpp"
+    "src/Vex/Utility/Functional/__functional_base.h"
+    "src/Vex/Utility/Functional/function.h"
+    "src/Vex/Utility/Functional/function_ref.h"
+    "src/Vex/Utility/Functional/move_only_function.h"
+    "src/Vex/Utility/MoveOnlyFunction.h"
+    "src/Vex/Utility/MagicEnum.h"
     # Vex Platform
     "src/Vex/Platform/PlatformWindow.h"
-    "src/Vex/Platform/Debug.h"
     # Vex Containers
     "src/Vex/Containers/FreeList.h"
     "src/Vex/Containers/Span.h"
@@ -186,6 +205,7 @@ add_library(Vex STATIC
     "src/Vex/Generated/MipGeneration.h"
     # Vex API
     "src/Vex.h"
+    "src/VexMacros.h"
     "src/Vex/Graphics.h"
     "src/Vex/Graphics.cpp"
     "src/Vex/Formats.h"
@@ -222,18 +242,11 @@ add_library(Vex STATIC
     "src/Vex/PhysicalDevice.h"
     "src/Vex/TextureStateMap.h"
     "src/Vex/TextureStateMap.cpp"
-    "src/Vex/Utility/SHA1.h"
-    "src/Vex/Utility/SHA1.cpp"
     "src/Vex/BuildAccelerationStructure.h"
-    "src/Vex/Utility/Functional/__functional_base.h"
-    "src/Vex/Utility/Functional/function.h"
-    "src/Vex/Utility/Functional/function_ref.h"
-    "src/Vex/Utility/Functional/move_only_function.h"
     "src/Vex/ShaderView.h"
     "src/Vex/RayTracing.h"
     "src/Vex/PipelineState.cpp"
     "src/Vex/PipelineState.h"
-        src/Vex/Utility/MoveOnlyFunction.h
 )
 
 if(WIN32)
@@ -266,6 +279,12 @@ if (VEX_ENABLE_SHADER_COMPILER)
         "src/ShaderCompiler/RayTracingShaderKey.cpp"
     )
 endif()
+
+if(VEX_INTERNAL_USE_MODULES)
+    target_sources(Vex PUBLIC FILE_SET CXX_MODULES FILES "src/Vex.cppm" "${magic_enum_SOURCE_DIR}/module/magic_enum.cppm")
+endif()
+
+set_target_properties(Vex PROPERTIES CXX_SCAN_FOR_MODULES ${VEX_INTERNAL_USE_MODULES})
 
 target_include_directories(Vex PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
@@ -321,6 +340,8 @@ if(WIN32)
     target_compile_definitions(Vex PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS)
 endif()
 
+target_compile_definitions(Vex PUBLIC VEX_MODULES=$<BOOL:${VEX_INTERNAL_USE_MODULES}>)
+
 # Shader compiler defines
 target_compile_definitions(Vex PUBLIC VEX_SHADER_COMPILER=$<BOOL:${VEX_ENABLE_SHADER_COMPILER}>)
 target_compile_definitions(Vex PUBLIC VEX_DXC=$<BOOL:${VEX_ENABLE_DXC}>)
@@ -334,12 +355,22 @@ message(STATUS "Installing Vex...")
 get_property(HEADER_DEPS_TO_INSTALL GLOBAL PROPERTY HEADER_DEPS_TO_INSTALL)
 
 # Installation rules
-install(TARGETS Vex ${HEADER_DEPS_TO_INSTALL}
-    EXPORT VexTargets
-    ARCHIVE DESTINATION lib
-    LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin
-)
+if(VEX_INTERNAL_USE_MODULES)
+    install(TARGETS Vex ${HEADER_DEPS_TO_INSTALL}
+            EXPORT VexTargets
+            ARCHIVE DESTINATION lib
+            LIBRARY DESTINATION lib
+            RUNTIME DESTINATION bin
+            FILE_SET CXX_MODULES DESTINATION modules
+    )
+else()
+    install(TARGETS Vex ${HEADER_DEPS_TO_INSTALL}
+            EXPORT VexTargets
+            ARCHIVE DESTINATION lib
+            LIBRARY DESTINATION lib
+            RUNTIME DESTINATION bin
+    )
+endif()
 
 # Install Vex headers
 install(DIRECTORY src/ DESTINATION include FILES_MATCHING PATTERN "*.h")

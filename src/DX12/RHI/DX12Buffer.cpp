@@ -4,12 +4,11 @@
 #include <Vex/Buffer.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
-#include <Vex/Platform/Debug.h>
 #include <Vex/Platform/Platform.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
 #include <Vex/Utility/ByteUtils.h>
-#include <Vex/Utility/Validation.h>
+#include <VexMacros.h>
 
 namespace vex::dx12
 {

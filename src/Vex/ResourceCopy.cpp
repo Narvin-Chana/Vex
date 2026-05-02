@@ -1,10 +1,6 @@
 #include "ResourceCopy.h"
 
-#include <cmath>
-#include <cstring>
-
 #include <Vex/Utility/ByteUtils.h>
-#include <Vex/Utility/Validation.h>
 
 namespace vex
 {

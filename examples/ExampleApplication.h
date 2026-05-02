@@ -1,18 +1,29 @@
 #pragma once
 
 #include <filesystem>
+#include <functional>
 #include <string_view>
+#include <unordered_map>
+#include <variant>
 
-#include <Vex.h>
-#include <Vex/Logger.h>
 #include <ExamplePaths.h>
+
+#if VEX_MODULES
+import Vex;
+#else
+#include <Vex.h>
+#endif
+#include <VexMacros.h>
 
 struct GLFWwindow;
 
 class ExampleApplication
 {
 public:
-    ExampleApplication(std::string_view windowName, int defaultWidth = 0, int defaultHeight = 0, bool allowResize = true);
+    ExampleApplication(std::string_view windowName,
+                       int defaultWidth = 0,
+                       int defaultHeight = 0,
+                       bool allowResize = true);
     virtual ~ExampleApplication();
     virtual void HandleKeyInput(int key, int scancode, int action, int mods);
 

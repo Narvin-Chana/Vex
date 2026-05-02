@@ -2,8 +2,9 @@
 
 #include <algorithm>
 
-#include <Vex/Utility/ByteUtils.h>
 #include <Vex/Logger.h>
+#include <Vex/Utility/ByteUtils.h>
+#include <VexMacros.h>
 
 namespace vex
 {
@@ -24,19 +25,30 @@ std::optional<MemoryRange> MemoryPageInfo::Allocate(u64 size, u64 alignment)
     allocatedRanges.emplace_back(range.value());
 
     // Keep allocated ranges sorted for easier traversal.
-    std::sort(allocatedRanges.begin(), allocatedRanges.end(), std::less<MemoryRange>{});
+    std::ranges::sort(allocatedRanges, std::less<MemoryRange>{});
 
     return range.value();
 }
 
 void MemoryPageInfo::Free(const MemoryRange& range)
 {
+#if defined(__clang__) && defined(_MSC_VER)
+    // clang-cl with MSVC STL has a bug where std::find will attempt to use SIMD vectorization even when the underlying
+    // T is not vectorizable (in this case due to MemoryRange being too big). The stop-gap fix is to use std::find_if
+    // instead.
+    // NB:
+    //  - std::erase    uses std::remove    which uses std::find
+    //  - std::erase_if uses std::remove_if which uses std::find_if
+
+    std::erase_if(allocatedRanges, [&range](const MemoryRange& r) { return r == range; });
+#else
     std::erase(allocatedRanges, range);
+#endif
 }
 
 // Searches for the first range that contains enough space to fit the requested data and, if found, returns the
 // memory range.
-std::optional<MemoryRange> MemoryPageInfo::FindFreeSpace(u64 size, u64 alignment)
+std::optional<MemoryRange> MemoryPageInfo::FindFreeSpace(u64 size, u64 alignment) const
 {
     u64 searchOffset = 0;
 

@@ -1,8 +1,9 @@
 #include "DX12Allocator.h"
 
 #include <Vex/Logger.h>
-#include <Vex/Utility/WString.h>
 #include <Vex/Utility/ByteUtils.h>
+#include <Vex/Utility/Formattable.h>
+#include <Vex/Utility/WString.h>
 
 #include <DX12/HRChecker.h>
 

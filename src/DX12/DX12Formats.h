@@ -343,7 +343,7 @@ constexpr inline DXGI_FORMAT GetTypelessFormatForDepthStencilCompatibleDX12Forma
 }
 
 constexpr inline DXGI_FORMAT GetDX12FormatForShaderResourceViewFormat(DXGI_FORMAT typelessFormat,
-                                                                      TextureAspect::Type aspect)
+                                                                      TextureAspect aspect)
 {
     switch (typelessFormat)
     {

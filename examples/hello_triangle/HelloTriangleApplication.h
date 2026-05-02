@@ -2,8 +2,6 @@
 
 #include <ExampleApplication.h>
 
-#include <Vex.h>
-
 class GLFWwindow;
 
 class HelloTriangleApplication : public ExampleApplication

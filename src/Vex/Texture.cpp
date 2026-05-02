@@ -4,31 +4,27 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/Logger.h>
-#include <Vex/Platform/Debug.h>
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Formattable.h>
-#include <Vex/Utility/Validation.h>
+#include <VexMacros.h>
 
 namespace vex
 {
 
-namespace TextureUtil
-{
-
-u32 GetSubresourceIndex(const TextureDesc& desc, u16 mip, u32 slice, u32 plane)
+u32 TextureUtil::GetSubresourceIndex(const TextureDesc& desc, u16 mip, u32 slice, u32 plane)
 {
     VEX_ASSERT(mip < desc.mips && slice < desc.GetSliceCount() && plane < desc.GetPlaneCount());
     return plane * (desc.mips * desc.GetSliceCount()) + static_cast<u32>(mip) + slice * desc.mips;
 }
 
-std::tuple<u32, u32, u32> GetMipSize(const TextureDesc& desc, u32 mip)
+std::tuple<u32, u32, u32> TextureUtil::GetMipSize(const TextureDesc& desc, u32 mip)
 {
     VEX_ASSERT(mip < desc.mips);
 
     return { std::max(desc.width >> mip, 1u), std::max(desc.height >> mip, 1u), std::max(desc.GetDepth() >> mip, 1u) };
 }
 
-TextureViewType GetTextureViewType(const TextureDesc& desc, bool textureCubeAsTexture2DArray)
+TextureViewType TextureUtil::GetTextureViewType(const TextureDesc& desc, bool textureCubeAsTexture2DArray)
 {
     if (textureCubeAsTexture2DArray && desc.type == TextureType::TextureCube)
     {
@@ -49,12 +45,12 @@ TextureViewType GetTextureViewType(const TextureDesc& desc, bool textureCubeAsTe
     std::unreachable();
 }
 
-TextureViewType GetTextureViewType(const TextureBinding& binding)
+TextureViewType TextureUtil::GetTextureViewType(const TextureBinding& binding)
 {
     return GetTextureViewType(binding.texture.desc, binding.textureCubeAsTexture2DArray);
 }
 
-TextureFormat GetCopyFormat(TextureFormat format, TextureAspect::Type aspect)
+TextureFormat TextureUtil::GetCopyFormat(TextureFormat format, TextureAspect aspect)
 {
     if (FormatUtil::IsDepthAndStencilFormat(format))
     {
@@ -71,7 +67,7 @@ TextureFormat GetCopyFormat(TextureFormat format, TextureAspect::Type aspect)
     return format;
 }
 
-void ValidateTextureDescription(const TextureDesc& desc)
+void TextureUtil::ValidateTextureDescription(const TextureDesc& desc)
 {
     VEX_CHECK(desc.width != 0,
               "Invalid Texture description for texture \"{}\": Cannot create a texture with a width of 0.",
@@ -112,7 +108,7 @@ void ValidateTextureDescription(const TextureDesc& desc)
     }
 }
 
-float GetPixelByteSizeFromFormat(TextureFormat format)
+float TextureUtil::GetPixelByteSizeFromFormat(TextureFormat format)
 {
     using enum TextureFormat;
 
@@ -212,7 +208,7 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
     return 0;
 }
 
-u32 TextureAspectToPlaneIndex(TextureAspect::Type aspect)
+u32 TextureUtil::TextureAspectToPlaneIndex(TextureAspect aspect)
 {
     if (aspect == TextureAspect::Stencil)
     {
@@ -221,7 +217,7 @@ u32 TextureAspectToPlaneIndex(TextureAspect::Type aspect)
     return 0;
 }
 
-TextureAspect::Flags PlaneStartCountToTextureAspect(TextureFormat format, u32 startPlane, u32 planeCount)
+Flags<TextureAspect> TextureUtil::PlaneStartCountToTextureAspect(TextureFormat format, u32 startPlane, u32 planeCount)
 {
     if (planeCount == 1 && FormatUtil::IsDepthAndStencilFormat(format))
     {
@@ -234,7 +230,7 @@ TextureAspect::Flags PlaneStartCountToTextureAspect(TextureFormat format, u32 st
     return TextureAspect::All;
 }
 
-u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions)
+u64 TextureUtil::ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions)
 {
     const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
     float totalSize = 0;
@@ -263,10 +259,10 @@ u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Span<const Textu
         }
     }
 
-    return static_cast<u64>(std::ceil(totalSize));
+    return std::ceil(totalSize);
 }
 
-u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions)
+u64 TextureUtil::ComputePackedTextureDataByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions)
 {
     // Pixel byte size could be less than 1 (BlockCompressed formats).
     float totalSize = 0;
@@ -299,7 +295,7 @@ u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, Span<const Texture
     return static_cast<u64>(std::ceil(totalSize));
 }
 
-bool IsBindingUsageCompatibleWithUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage)
+bool TextureUtil::IsBindingUsageCompatibleWithUsage(Flags<TextureUsage> usages, TextureBindingUsage bindingUsage)
 {
     if (bindingUsage == TextureBindingUsage::ShaderRead)
     {
@@ -314,17 +310,17 @@ bool IsBindingUsageCompatibleWithUsage(TextureUsage::Flags usages, TextureBindin
     return true;
 }
 
-void ForEachSubresourceIndices(const TextureSubresource& subresource,
-                               const TextureDesc& desc,
-                               std::function<void(u16 mip, u32 slice, u32 plane)> func)
+void TextureUtil::ForEachSubresourceIndices(const TextureSubresource& subresource,
+                                            const TextureDesc& desc,
+                                            const std::function<void(u16 mip, u32 slice, u32 plane)>& func)
 {
     for (u16 mip = subresource.startMip; mip < subresource.startMip + subresource.GetMipCount(desc); ++mip)
     {
         for (u32 slice = subresource.startSlice; slice < subresource.startSlice + subresource.GetSliceCount(desc);
              ++slice)
         {
-            for (u32 plane = subresource.GetStartPlane(desc);
-                 plane < subresource.GetStartPlane(desc) + subresource.GetPlaneCount(desc);
+            for (u32 plane = subresource.GetStartPlane();
+                 plane < subresource.GetStartPlane() + subresource.GetPlaneCount(desc);
                  ++plane)
             {
                 func(mip, slice, plane);
@@ -333,7 +329,7 @@ void ForEachSubresourceIndices(const TextureSubresource& subresource,
     }
 }
 
-void ValidateSubresource(const TextureDesc& desc, const TextureSubresource& subresource)
+void TextureUtil::ValidateSubresource(const TextureDesc& desc, const TextureSubresource& subresource)
 {
     VEX_CHECK(subresource.startMip < desc.mips,
               "Invalid subresource for resource \"{}\": The subresource's startMip ({}) cannot be larger than the "
@@ -399,7 +395,7 @@ void ValidateSubresource(const TextureDesc& desc, const TextureSubresource& subr
     }
 }
 
-void ValidateRegion(const TextureDesc& desc, const TextureRegion& region)
+void TextureUtil::ValidateRegion(const TextureDesc& desc, const TextureRegion& region)
 {
     ValidateSubresource(desc, region.subresource);
 
@@ -452,7 +448,9 @@ void ValidateRegion(const TextureDesc& desc, const TextureRegion& region)
     }
 }
 
-void ValidateCopyDesc(const TextureDesc& srcDesc, const TextureDesc& dstDesc, const TextureCopyDesc& copyDesc)
+void TextureUtil::ValidateCopyDesc(const TextureDesc& srcDesc,
+                                   const TextureDesc& dstDesc,
+                                   const TextureCopyDesc& copyDesc)
 {
     ValidateRegion(srcDesc, copyDesc.srcRegion);
     ValidateRegion(dstDesc, copyDesc.dstRegion);
@@ -460,8 +458,7 @@ void ValidateCopyDesc(const TextureDesc& srcDesc, const TextureDesc& dstDesc, co
               "A texture copy's src and dst extents should match!");
 }
 
-void ValidateCompatibleTextureDescs(const TextureDesc& srcDesc, const TextureDesc& dstDesc)
-{
+void TextureUtil::ValidateCompatibleTextureDescs(const TextureDesc& srcDesc, const TextureDesc& dstDesc){
     VEX_CHECK(srcDesc.depthOrSliceCount == dstDesc.depthOrSliceCount && srcDesc.width == dstDesc.width &&
                   srcDesc.height == dstDesc.height && srcDesc.mips == dstDesc.mips &&
                   srcDesc.format == dstDesc.format && srcDesc.type == dstDesc.type,
@@ -469,14 +466,12 @@ void ValidateCompatibleTextureDescs(const TextureDesc& srcDesc, const TextureDes
               "simple copy")
 }
 
-} // namespace TextureUtil
-
 TextureDesc TextureDesc::CreateTexture2DDesc(std::string name,
                                              TextureFormat format,
                                              u32 width,
                                              u32 height,
                                              u16 mips,
-                                             TextureUsage::Flags usage,
+                                             Flags<TextureUsage> usage,
                                              TextureClearValue clearValue,
                                              ResourceMemoryLocality memoryLocality)
 {
@@ -501,7 +496,7 @@ TextureDesc TextureDesc::CreateTexture2DArrayDesc(std::string name,
                                                   u32 height,
                                                   u32 arraySize,
                                                   u16 mips,
-                                                  TextureUsage::Flags usage,
+                                                  Flags<TextureUsage> usage,
                                                   TextureClearValue clearValue,
                                                   ResourceMemoryLocality memoryLocality)
 {
@@ -524,7 +519,7 @@ TextureDesc TextureDesc::CreateTextureCubeDesc(std::string name,
                                                TextureFormat format,
                                                u32 faceSize,
                                                u16 mips,
-                                               TextureUsage::Flags usage,
+                                               Flags<TextureUsage> usage,
                                                TextureClearValue clearValue,
                                                ResourceMemoryLocality memoryLocality)
 {
@@ -548,7 +543,7 @@ TextureDesc TextureDesc::CreateTextureCubeArrayDesc(std::string name,
                                                     u32 faceSize,
                                                     u32 arraySize,
                                                     u16 mips,
-                                                    TextureUsage::Flags usage,
+                                                    Flags<TextureUsage> usage,
                                                     TextureClearValue clearValue,
                                                     ResourceMemoryLocality memoryLocality)
 {
@@ -573,7 +568,7 @@ TextureDesc TextureDesc::CreateTexture3DDesc(std::string name,
                                              u32 height,
                                              u32 depth,
                                              u16 mips,
-                                             TextureUsage::Flags usage,
+                                             Flags<TextureUsage> usage,
                                              TextureClearValue clearValue,
                                              ResourceMemoryLocality memoryLocality)
 {
@@ -612,7 +607,7 @@ u32 TextureSubresource::GetSliceCount(const TextureDesc& desc) const
     return sliceCount == GTextureAllSlices ? (desc.GetSliceCount() - startSlice) : sliceCount;
 }
 
-u32 TextureSubresource::GetStartPlane(const TextureDesc& desc) const
+u32 TextureSubresource::GetStartPlane() const
 {
     if (aspect == TextureAspect::All)
     {
@@ -646,12 +641,12 @@ u32 TextureSubresource::GetPlaneCount(const TextureDesc& desc) const
     return count;
 }
 
-TextureAspect::Flags TextureSubresource::GetAspect(const TextureDesc& desc) const
+Flags<TextureAspect> TextureSubresource::GetAspect(const TextureDesc& desc) const
 {
     const bool isDepthOrDepthStencil = FormatUtil::IsDepthOrDepthStencilFormat(desc.format);
     const bool isDepthOnly = FormatUtil::IsDepthOnlyFormat(desc.format);
 
-    TextureAspect::Flags cleanAspect = TextureAspect::None;
+    Flags cleanAspect = TextureAspect::None;
     if (aspect & TextureAspect::Color && !isDepthOrDepthStencil)
         cleanAspect |= TextureAspect::Color;
     if (aspect & TextureAspect::Depth && isDepthOrDepthStencil)
@@ -661,17 +656,17 @@ TextureAspect::Flags TextureSubresource::GetAspect(const TextureDesc& desc) cons
     return cleanAspect;
 }
 
-TextureAspect::Type TextureSubresource::GetSingleAspect(const TextureDesc& desc) const
+TextureAspect TextureSubresource::GetSingleAspect(const TextureDesc& desc) const
 {
     if (aspect == TextureAspect::All)
     {
-        return static_cast<TextureAspect::Type>(GetDefaultAspect(desc));
+        return static_cast<TextureAspect>(GetDefaultAspect(desc).data);
     }
     VEX_ASSERT((aspect & (aspect - 1)) == 0, "Tried to get single aspect when multiple were flagged");
-    return static_cast<TextureAspect::Type>(aspect);
+    return static_cast<TextureAspect>(aspect.data);
 }
 
-TextureAspect::Flags TextureSubresource::GetDefaultAspect(const TextureDesc& desc)
+Flags<TextureAspect> TextureSubresource::GetDefaultAspect(const TextureDesc& desc)
 {
     if (FormatUtil::IsDepthOrDepthStencilFormat(desc.format))
     {
@@ -692,13 +687,13 @@ std::tuple<u32, u32, u32> TextureRegion::GetExtents(const TextureDesc& desc, u16
     return { extent.GetWidth(desc, mip), extent.GetHeight(desc, mip), extent.GetDepth(desc, mip) };
 }
 
-TextureRegion TextureRegion::AllMips(TextureAspect::Flags aspect)
+TextureRegion TextureRegion::AllMips(Flags<TextureAspect> aspect)
 {
     // Defaults will specify all mips and all slices.
     return TextureRegion{ .subresource{ .aspect = aspect } };
 }
 
-TextureRegion TextureRegion::SingleMip(u16 mipIndex, TextureAspect::Flags aspect)
+TextureRegion TextureRegion::SingleMip(u16 mipIndex, Flags<TextureAspect> aspect)
 {
     return TextureRegion{ .subresource = { .startMip = mipIndex, .mipCount = 1, .aspect = aspect } };
 }

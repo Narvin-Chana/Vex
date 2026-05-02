@@ -132,8 +132,8 @@ TEST_F(AccelerationStructureTest, CreateMultipleTriangleBLAS_VertexAndIndex_Tran
 
 struct BLASFlagTestData
 {
-    ASGeometry::Flags geometryFlags;
-    ASBuild::Flags buildFlags;
+    Flags<ASGeometry> geometryFlags;
+    Flags<ASBuild> buildFlags;
 
     // Claude-generated helper for test naming
     std::string ToString() const
@@ -324,8 +324,8 @@ TEST_F(TLASAccelerationStructureTest, CreateSimpleTriangleTLAS_2Instances_Instan
 
 struct TLASFlagTestData
 {
-    ASInstance::Flags instanceFlags;
-    ASBuild::Flags buildFlags;
+    Flags<ASInstance> instanceFlags;
+    Flags<ASBuild> buildFlags;
 
     // Another Claude-generated function to obtain a readable string from the selected flags.
     std::string ToString() const
