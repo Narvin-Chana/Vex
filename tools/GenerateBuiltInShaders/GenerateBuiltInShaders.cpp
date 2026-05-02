@@ -1,7 +1,16 @@
 #include <filesystem>
+#include <string>
 
+#include <VexMacros.h>
+
+#if VEX_MODULES
+#include <VexMacros.h>
+import Vex;
+import magic_enum;
+#else
 #include <Vex.h>
-
+#include <magic_enum/magic_enum.hpp>
+#endif
 using namespace vex;
 
 static std::string GenerateCppHeaderForShaders(const Span<const NonNullPtr<Shader>> dxilShaders,

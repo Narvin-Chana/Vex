@@ -1,7 +1,5 @@
 #pragma once
 
-#include <magic_enum/magic_enum.hpp>
-
 #include <unordered_map>
 
 #include <Vex/Resource.h>

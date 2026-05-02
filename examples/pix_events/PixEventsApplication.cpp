@@ -1,3 +1,5 @@
+#undef VEX_MODULES
+#define VEX_MODULES 0
 #include "PixEventsApplication.h"
 
 #include <GLFWIncludes.h>

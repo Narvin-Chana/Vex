@@ -1,7 +1,10 @@
 #pragma once
 
 #include <filesystem>
+#include <functional>
 #include <string_view>
+#include <unordered_map>
+#include <variant>
 
 #include <ExamplePaths.h>
 

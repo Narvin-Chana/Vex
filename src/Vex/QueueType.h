@@ -18,9 +18,10 @@ enum Value : u8
     Graphics = 2,
 };
 // Not using a Count enum value allows us to more easily iterate over the QueueTypes with magic_enum.
-static constexpr u8 Count = 3;
+inline constexpr u8 Count = 3;
 } // namespace QueueTypes
 
 using QueueType = QueueTypes::Value;
 
 } // namespace vex
+

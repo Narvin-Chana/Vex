@@ -1,7 +1,8 @@
+#include <array>
+// This include order has to be used to not have ODR violation when using the vex module.
 #include "HelloRayTracing.h"
 
-#include <array>
-#include <vector>
+#include <span>
 
 #include <GLFWIncludes.h>
 

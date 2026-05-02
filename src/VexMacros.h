@@ -1,10 +1,5 @@
 #pragma once
 
-#if !VEX_MODULES
-#include <magic_enum/magic_enum.hpp>
-#include <magic_enum/magic_enum_format.hpp>
-#endif
-
 #include <Vex/Platform/Debug.h>
 
 #if !VEX_SHIPPING

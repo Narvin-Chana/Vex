@@ -147,14 +147,15 @@ struct BufferCopyDesc
     constexpr bool operator==(const BufferCopyDesc&) const = default;
 };
 
-namespace BufferUtil
+struct BufferUtil
 {
 
-void ValidateBufferDesc(const BufferDesc& desc);
-void ValidateBufferCopyDesc(const BufferDesc& srcDesc, const BufferDesc& dstDesc, const BufferCopyDesc& copyDesc);
-void ValidateBufferRegion(const BufferDesc& desc, const BufferRegion& region);
-void ValidateSimpleBufferCopy(const BufferDesc& srcDesc, const BufferDesc& dstDesc);
-
-} // namespace BufferUtil
+    static void ValidateBufferDesc(const BufferDesc& desc);
+    static void ValidateBufferCopyDesc(const BufferDesc& srcDesc,
+                                       const BufferDesc& dstDesc,
+                                       const BufferCopyDesc& copyDesc);
+    static void ValidateBufferRegion(const BufferDesc& desc, const BufferRegion& region);
+    static void ValidateSimpleBufferCopy(const BufferDesc& srcDesc, const BufferDesc& dstDesc);
+};
 
 } // namespace vex

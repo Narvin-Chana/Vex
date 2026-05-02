@@ -186,12 +186,12 @@ void DX12AccelerationStructure::InitRayTracingGeometryDesc(const RHIBLASBuildDes
 
 D3D12_RAYTRACING_GEOMETRY_FLAGS ASGeometryFlagsToDX12GeometryFlags(Flags<ASGeometry> flags)
 {
-    return static_cast<D3D12_RAYTRACING_GEOMETRY_FLAGS>(flags);
+    return static_cast<D3D12_RAYTRACING_GEOMETRY_FLAGS>(flags.data);
 }
 
 D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS ASBuildFlagsToDX12ASBuildFlags(Flags<ASBuild> flags)
 {
-    return static_cast<D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS>(flags);
+    return static_cast<D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS>(flags.data);
 }
 
 u32 ASInstanceFlagsToDX12InstanceFlags(Flags<ASInstance> flags)

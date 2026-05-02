@@ -13,17 +13,10 @@ set(VEX_ROOT_DIR "${VEX_ROOT_DIR}" CACHE INTERNAL "Path to Vex's library root di
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-# Add the build examples only if we're directly building cmake from Vex (so not if Vex is setup as an actual dependency).
-# Examples are used to develop Vex, they should not be used or included in projects that use Vex.
-if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
-    option(VEX_BUILD_EXAMPLES "Build the example programs" ON)
-    option(VEX_BUILD_TESTS "Build Vex tests" ON)
-    option(VEX_BUILD_TOOLS "Build Vex tools" ON)
-else()
-    option(VEX_BUILD_EXAMPLES "Build the example programs" OFF)
-    option(VEX_BUILD_TESTS "Build Vex tests" OFF)
-    option(VEX_BUILD_TOOLS "Build Vex tools" OFF)
-endif()
+# Examples, tests and tools are used to develop Vex, they should not be used or included in projects that use Vex (to enable them modify your CMakePresets.json).
+option(VEX_BUILD_EXAMPLES "Build the example programs" OFF)
+option(VEX_BUILD_TESTS "Build Vex tests" OFF)
+option(VEX_BUILD_TOOLS "Build Vex tools" OFF)
 
 # Detect clang-cl (Clang frontend with MSVC ABI has no module scanning support)
 # This will be fixed in CMake 4.4.0.
@@ -35,11 +28,7 @@ else()
      set(VEX_COMPILER_SUPPORTS_MODULES ON)
 endif()
 
-if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
-    option(VEX_USE_MODULES "Determines whether to generate and export the Vex cpp20 module." ${VEX_COMPILER_SUPPORTS_MODULES})
-else()
-    option(VEX_USE_MODULES "Determines whether to generate and export the Vex cpp20 module." OFF)
-endif()
+option(VEX_USE_MODULES "Determines whether to generate and export the Vex cpp20 module (experimental due to flaky compiler support)." OFF)
 
 # CMake Helpers
 include(VexHelpers)
@@ -128,7 +117,7 @@ message(STATUS "Fetching magic_enum...")
 FetchContent_Declare(
     magic_enum
     GIT_REPOSITORY https://github.com/Neargye/magic_enum.git
-    GIT_TAG v0.9.7
+    GIT_BRANCH master
 )
 FetchContent_MakeAvailable(magic_enum)
 # =========================================
@@ -137,6 +126,7 @@ FetchContent_MakeAvailable(magic_enum)
 add_library(Vex STATIC
     # Platform
     "src/Vex/Platform/Platform.h"
+    "src/Vex/Platform/Debug.h"
     # RHI
     "src/RHI/RHIFwd.h"
     "src/RHI/RHI.h"
@@ -192,15 +182,24 @@ add_library(Vex STATIC
     "src/Vex/Utility/WString.h"
     "src/Vex/Utility/Visitor.h"
     "src/Vex/Utility/Algorithms.h"
+    "src/Vex/Utility/SHA1.h"
+    "src/Vex/Utility/SHA1.cpp"
+    "src/Vex/Utility/Functional/__functional_base.h"
+    "src/Vex/Utility/Functional/function.h"
+    "src/Vex/Utility/Functional/function_ref.h"
+    "src/Vex/Utility/Functional/move_only_function.h"
+    "src/Vex/Utility/MoveOnlyFunction.h"
+    "src/Vex/Utility/MagicEnum.h"
     # Vex Platform
     "src/Vex/Platform/PlatformWindow.h"
-        # Vex Containers
+    # Vex Containers
     "src/Vex/Containers/FreeList.h"
     "src/Vex/Containers/Span.h"
     # Vex Built-In Shaders
     "src/Vex/Generated/MipGeneration.h"
     # Vex API
     "src/Vex.h"
+    "src/VexMacros.h"
     "src/Vex/Graphics.h"
     "src/Vex/Graphics.cpp"
     "src/Vex/Formats.h"
@@ -237,20 +236,11 @@ add_library(Vex STATIC
     "src/Vex/PhysicalDevice.h"
     "src/Vex/TextureStateMap.h"
     "src/Vex/TextureStateMap.cpp"
-    "src/Vex/Utility/SHA1.h"
-    "src/Vex/Utility/SHA1.cpp"
     "src/Vex/BuildAccelerationStructure.h"
-    "src/Vex/Utility/Functional/__functional_base.h"
-    "src/Vex/Utility/Functional/function.h"
-    "src/Vex/Utility/Functional/function_ref.h"
-    "src/Vex/Utility/Functional/move_only_function.h"
     "src/Vex/ShaderView.h"
     "src/Vex/RayTracing.h"
     "src/Vex/PipelineState.cpp"
     "src/Vex/PipelineState.h"
-    "src/Vex/Utility/MoveOnlyFunction.h"
-    "src/VexMacros.h"
-    "src/Vex/Platform/Debug.h"
 )
 
 if(WIN32)

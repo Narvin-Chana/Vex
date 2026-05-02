@@ -1,7 +1,5 @@
 #include "DXCCompiler.h"
 
-#include <magic_enum/magic_enum.hpp>
-
 #include <algorithm>
 
 #include <Vex/Logger.h>

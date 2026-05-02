@@ -1,9 +1,13 @@
 #include "HDR.h"
 
+#include <span>
+
 #include <GLFWIncludes.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+
+import magic_enum;
 
 float* hdrData;
 vex::i32 hdrWidth, hdrHeight, hdrChannels;

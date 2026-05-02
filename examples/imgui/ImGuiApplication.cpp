@@ -1,3 +1,7 @@
+// TODO: Get this working with modules (secondary VexImgui include doesn't currently support them, and is the first case
+// of requiring access to raw RHI types... will we have to export them as well?? preferably not...)
+#undef VEX_MODULES
+#define VEX_MODULES 0
 #include "ImGuiApplication.h"
 
 #include <GLFWIncludes.h>

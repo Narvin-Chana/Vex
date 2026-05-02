@@ -6,16 +6,15 @@
 namespace vex
 {
 
-namespace BufferUtil
-{
-
-void ValidateBufferDesc(const BufferDesc& desc)
+void BufferUtil::ValidateBufferDesc(const BufferDesc& desc)
 {
     VEX_CHECK(!desc.name.empty(), "The buffer needs a name on creation.");
     VEX_CHECK(desc.byteSize != 0, "Buffer \"{}\" must have a size greater than 0", desc.name)
 }
 
-void ValidateBufferCopyDesc(const BufferDesc& srcDesc, const BufferDesc& dstDesc, const BufferCopyDesc& copyDesc)
+void BufferUtil::ValidateBufferCopyDesc(const BufferDesc& srcDesc,
+                                        const BufferDesc& dstDesc,
+                                        const BufferCopyDesc& copyDesc)
 {
     VEX_CHECK(srcDesc.byteSize >= copyDesc.byteSize,
               "Invalid BufferCopyDesc for resources \"{}\" and \"{}\": The source buffer's byteSize should be at least "
@@ -30,7 +29,7 @@ void ValidateBufferCopyDesc(const BufferDesc& srcDesc, const BufferDesc& dstDesc
     ValidateBufferRegion(dstDesc, { copyDesc.dstOffset, copyDesc.byteSize });
 }
 
-void ValidateBufferRegion(const BufferDesc& desc, const BufferRegion& region)
+void BufferUtil::ValidateBufferRegion(const BufferDesc& desc, const BufferRegion& region)
 {
     VEX_CHECK(region.offset < desc.byteSize,
               "Invalid region for resource \"{}\": The buffer's offset ({}) cannot be larger than the "
@@ -52,15 +51,13 @@ void ValidateBufferRegion(const BufferDesc& desc, const BufferRegion& region)
     }
 }
 
-void ValidateSimpleBufferCopy(const BufferDesc& srcDesc, const BufferDesc& dstDesc)
+void BufferUtil::ValidateSimpleBufferCopy(const BufferDesc& srcDesc, const BufferDesc& dstDesc)
 {
     VEX_CHECK(srcDesc.byteSize <= dstDesc.byteSize,
               "Source buffer must fit in destination buffer for simple copy: Source size: {}, Dest size: {}",
               srcDesc.byteSize,
               dstDesc.byteSize);
 }
-
-} // namespace BufferUtil
 
 BufferDesc BufferDesc::CreateUniformBufferDesc(std::string name, u64 byteSize)
 {

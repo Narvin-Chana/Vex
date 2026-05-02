@@ -1,14 +1,6 @@
 ﻿#include "VexTest.h"
 
-#include <array>
-
 #include <gtest/gtest.h>
-
-#include <Vex/Bindings.h>
-#include <Vex/CommandContext.h>
-#include <Vex/Graphics.h>
-#include <Vex/Logger.h>
-#include <Vex/Types.h>
 
 namespace vex
 {
@@ -189,7 +181,7 @@ public:
 
 TEST_P(FixedSizeTexture2DTest, FullTextureUpload1Mip)
 {
-    Texture texture = graphics.CreateTexture(textureDesc_1mip, ResourceLifetime::Static);
+    Texture texture = graphics.CreateTexture(textureDesc_1mip);
 
     UploadTestGridToTexture(graphics, texture, { &regions_1mip, 1 });
 
@@ -198,7 +190,7 @@ TEST_P(FixedSizeTexture2DTest, FullTextureUpload1Mip)
 
 TEST_P(FixedSizeTexture2DTest, FullTextureUpload2Mips)
 {
-    Texture texture = graphics.CreateTexture(textureDesc_2mip, ResourceLifetime::Static);
+    Texture texture = graphics.CreateTexture(textureDesc_2mip);
 
     UploadTestGridToTexture(graphics, texture, { &regions_2mip, 1 });
 
@@ -207,7 +199,7 @@ TEST_P(FixedSizeTexture2DTest, FullTextureUpload2Mips)
 
 TEST_P(FixedSizeTexture2DTest, SeparateMipUpload2Mips)
 {
-    Texture texture = graphics.CreateTexture(textureDesc_2mip, ResourceLifetime::Static);
+    Texture texture = graphics.CreateTexture(textureDesc_2mip);
 
     UploadTestGridToTexture(graphics, texture, { &regions_2mip_mip0, 1 });
     UploadTestGridToTexture(graphics, texture, { &regions_2mip_mip1, 1 });
@@ -217,7 +209,7 @@ TEST_P(FixedSizeTexture2DTest, SeparateMipUpload2Mips)
 
 TEST_P(FixedSizeTexture2DTest, UploadReadbackFull1Mip)
 {
-    Texture texture = graphics.CreateTexture(textureDesc_1mip, ResourceLifetime::Static);
+    Texture texture = graphics.CreateTexture(textureDesc_1mip);
 
     SyncToken uploadToken = UploadTestGridToTexture(graphics, texture, { &regions_1mip, 1 });
 
@@ -230,7 +222,7 @@ TEST_P(FixedSizeTexture2DTest, UploadReadbackFull1Mip)
 
 TEST_P(FixedSizeTexture2DTest, UploadReadbackFull2Mips)
 {
-    Texture texture = graphics.CreateTexture(textureDesc_2mip, ResourceLifetime::Static);
+    Texture texture = graphics.CreateTexture(textureDesc_2mip);
 
     SyncToken uploadToken = UploadTestGridToTexture(graphics, texture, { &regions_2mip, 1 });
 
@@ -243,7 +235,7 @@ TEST_P(FixedSizeTexture2DTest, UploadReadbackFull2Mips)
 
 TEST_P(FixedSizeTexture2DTest, UploadFullReadbackSeparate2Mips)
 {
-    Texture texture = graphics.CreateTexture(textureDesc_2mip, ResourceLifetime::Static);
+    Texture texture = graphics.CreateTexture(textureDesc_2mip);
 
     SyncToken uploadToken = UploadTestGridToTexture(graphics, texture, { &regions_2mip, 1 });
 
@@ -302,7 +294,7 @@ TEST_P(MiscTextureTests, FullUploadCubemap2Mips)
 
     TextureDesc cubemapDesc = TextureDesc::CreateTextureCubeDesc("Cubemap", TextureFormat::RGBA8_UNORM, 16, 2);
 
-    Texture cubemapTexture = graphics.CreateTexture(cubemapDesc, ResourceLifetime::Static);
+    Texture cubemapTexture = graphics.CreateTexture(cubemapDesc);
 
     TextureRegion regions = TextureRegion::AllMips();
 
@@ -327,7 +319,7 @@ TEST_P(MiscTextureTests, FullUpload2DTexture2Slices3Mips)
 
     TextureRegion regions = TextureRegion::AllMips();
 
-    Texture texture = graphics.CreateTexture(cubemapDesc, ResourceLifetime::Static);
+    Texture texture = graphics.CreateTexture(cubemapDesc);
 
     std::vector<byte> fullImageData;
     fullImageData.resize(TextureUtil::ComputePackedTextureDataByteSize(cubemapDesc, { &regions, 1 }));
@@ -350,7 +342,7 @@ TEST_P(MiscTextureTests, FullUploadTextureCube3Slices2Mips)
 
     TextureRegion regions = TextureRegion::AllMips();
 
-    Texture cubemapTexture = graphics.CreateTexture(cubemapDesc, ResourceLifetime::Static);
+    Texture cubemapTexture = graphics.CreateTexture(cubemapDesc);
 
     std::vector<byte> fullImageData;
     fullImageData.resize(TextureUtil::ComputePackedTextureDataByteSize(cubemapDesc, { &regions, 1 }));
@@ -374,7 +366,7 @@ TEST_P(MiscTextureTests, FullUpload3DTexture3Mips)
 
     TextureRegion regions = TextureRegion::AllMips();
 
-    Texture texture = graphics.CreateTexture(cubemapDesc, ResourceLifetime::Static);
+    Texture texture = graphics.CreateTexture(cubemapDesc);
 
     std::vector<byte> fullImageData;
     fullImageData.resize(TextureUtil::ComputePackedTextureDataByteSize(cubemapDesc, { &regions, 1 }));

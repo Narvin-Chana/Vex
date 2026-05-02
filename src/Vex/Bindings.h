@@ -6,12 +6,12 @@
 #include <Vex/AccelerationStructure.h>
 #include <Vex/Buffer.h>
 #include <Vex/Containers/Span.h>
-#include <VexMacros.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/Concepts.h>
 #include <Vex/Utility/EnumFlags.h>
 #include <Vex/Utility/Formattable.h>
+#include <VexMacros.h>
 
 #include <RHI/RHIFwd.h>
 
@@ -35,6 +35,14 @@ struct ConstantBinding
     template <typename T>
         requires(sizeof(T) <= MaxTheoreticalLocalConstantsByteSize)
     explicit ConstantBinding(Span<T> data)
+        : data(std::as_bytes(data))
+    {
+    }
+
+    // Construct from std::span.
+    template <typename T>
+        requires(sizeof(T) <= MaxTheoreticalLocalConstantsByteSize)
+    explicit ConstantBinding(std::span<T> data)
         : data(std::as_bytes(data))
     {
     }

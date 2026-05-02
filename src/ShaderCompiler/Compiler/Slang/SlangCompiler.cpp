@@ -1,7 +1,5 @@
 #include "SlangCompiler.h"
 
-#include <magic_enum/magic_enum.hpp>
-
 #include <algorithm>
 
 #include <Vex/Logger.h>
@@ -43,7 +41,9 @@ std::expected<Slang::ComPtr<slang::IBlob>, std::string> GetByteCode(slang::IComp
     // Diagnostics contains warnings if the compilation was successful.
     if (diagnostics)
     {
-        VEX_LOG(Warning, "Warning compiling shader(GetByteCode): {}", static_cast<const char*>(diagnostics->getBufferPointer()));
+        VEX_LOG(Warning,
+                "Warning compiling shader(GetByteCode): {}",
+                static_cast<const char*>(diagnostics->getBufferPointer()));
     }
 
     return bytecodeBlob;
@@ -78,7 +78,9 @@ std::expected<NonNullPtr<slang::IModule>, std::string> LoadModule(const Slang::C
     // Diagnostics contains warnings if the compilation was successful.
     if (diagnostics)
     {
-        VEX_LOG(Warning, "Warning compiling shader(LoadModule): {}", static_cast<const char*>(diagnostics->getBufferPointer()));
+        VEX_LOG(Warning,
+                "Warning compiling shader(LoadModule): {}",
+                static_cast<const char*>(diagnostics->getBufferPointer()));
     }
 
     return NonNullPtr{ slangModule };
@@ -98,14 +100,16 @@ std::expected<NonNullPtr<slang::IModule>, std::string> LoadModule(const Slang::C
         if (diagnostics)
         {
             return std::unexpected(
-            std::format("Unable to loadModule: {}", static_cast<const char*>(diagnostics->getBufferPointer())));
+                std::format("Unable to loadModule: {}", static_cast<const char*>(diagnostics->getBufferPointer())));
         }
         return std::unexpected("Unable to loadModule, unknown error.");
     }
     // Diagnostics contains warnings if the compilation was successful.
     if (diagnostics)
     {
-        VEX_LOG(Warning, "Warning compiling shader(LoadModule): {}", static_cast<const char*>(diagnostics->getBufferPointer()));
+        VEX_LOG(Warning,
+                "Warning compiling shader(LoadModule): {}",
+                static_cast<const char*>(diagnostics->getBufferPointer()));
     }
 
     return NonNullPtr{ slangModule };
@@ -140,7 +144,9 @@ std::expected<Slang::ComPtr<slang::IComponentType>, std::string> LinkProgram(
     // Diagnostics contains warnings if the compilation was successful.
     if (diagnostics)
     {
-        VEX_LOG(Warning, "Warning compiling shader(LinkProgram): {}", static_cast<const char*>(diagnostics->getBufferPointer()));
+        VEX_LOG(Warning,
+                "Warning compiling shader(LinkProgram): {}",
+                static_cast<const char*>(diagnostics->getBufferPointer()));
     }
 
     return linkedProgram;
@@ -525,7 +531,8 @@ std::expected<Slang::ComPtr<slang::ISession>, std::string> SlangCompiler::Create
                                     .value = slang::CompilerOptionValue{ .kind = slang::CompilerOptionValueKind::Int,
                                                                          .intValue0 = rtCapability } });
 
-        // Force direct SPIR-V compilation (avoids passing through a downstream compiler, in this case glslang-compiler).
+        // Force direct SPIR-V compilation (avoids passing through a downstream compiler, in this case
+        // glslang-compiler).
         compilerOptions.push_back(
             { .name = slang::CompilerOptionName::EmitSpirvMethod,
               .value = slang::CompilerOptionValue{ .kind = slang::CompilerOptionValueKind::Int,

@@ -781,7 +781,7 @@ BufferReadbackContext CommandContext::EnqueueDataReadback(const Buffer& srcBuffe
     // Create packed readback buffer.
     const BufferDesc readbackBufferDesc =
         BufferDesc::CreateReadbackBufferDesc(srcBuffer.desc.name + "_readback", region.GetByteSize(srcBuffer.desc));
-    Buffer stagingBuffer = graphics->CreateBuffer(readbackBufferDesc, ResourceLifetime::Static);
+    Buffer stagingBuffer = graphics->CreateBuffer(readbackBufferDesc);
 
     if (srcBuffer.desc.byteSize == GBufferWholeSize)
     {
@@ -855,7 +855,7 @@ TextureReadbackContext CommandContext::EnqueueDataReadback(const Texture& srcTex
     u64 stagingBufferByteSize = TextureUtil::ComputeAlignedUploadBufferByteSize(srcTexture.desc, textureRegions);
     const BufferDesc readbackBufferDesc =
         BufferDesc::CreateReadbackBufferDesc(srcTexture.desc.name + "_readback", stagingBufferByteSize);
-    Buffer stagingBuffer = graphics->CreateBuffer(readbackBufferDesc, ResourceLifetime::Static);
+    Buffer stagingBuffer = graphics->CreateBuffer(readbackBufferDesc);
 
     if (textureRegions.empty())
     {

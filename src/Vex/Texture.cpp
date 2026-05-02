@@ -11,23 +11,20 @@
 namespace vex
 {
 
-namespace TextureUtil
-{
-
-u32 GetSubresourceIndex(const TextureDesc& desc, u16 mip, u32 slice, u32 plane)
+u32 TextureUtil::GetSubresourceIndex(const TextureDesc& desc, u16 mip, u32 slice, u32 plane)
 {
     VEX_ASSERT(mip < desc.mips && slice < desc.GetSliceCount() && plane < desc.GetPlaneCount());
     return plane * (desc.mips * desc.GetSliceCount()) + static_cast<u32>(mip) + slice * desc.mips;
 }
 
-std::tuple<u32, u32, u32> GetMipSize(const TextureDesc& desc, u32 mip)
+std::tuple<u32, u32, u32> TextureUtil::GetMipSize(const TextureDesc& desc, u32 mip)
 {
     VEX_ASSERT(mip < desc.mips);
 
     return { std::max(desc.width >> mip, 1u), std::max(desc.height >> mip, 1u), std::max(desc.GetDepth() >> mip, 1u) };
 }
 
-TextureViewType GetTextureViewType(const TextureDesc& desc, bool textureCubeAsTexture2DArray)
+TextureViewType TextureUtil::GetTextureViewType(const TextureDesc& desc, bool textureCubeAsTexture2DArray)
 {
     if (textureCubeAsTexture2DArray && desc.type == TextureType::TextureCube)
     {
@@ -48,12 +45,12 @@ TextureViewType GetTextureViewType(const TextureDesc& desc, bool textureCubeAsTe
     std::unreachable();
 }
 
-TextureViewType GetTextureViewType(const TextureBinding& binding)
+TextureViewType TextureUtil::GetTextureViewType(const TextureBinding& binding)
 {
     return GetTextureViewType(binding.texture.desc, binding.textureCubeAsTexture2DArray);
 }
 
-TextureFormat GetCopyFormat(TextureFormat format, TextureAspect aspect)
+TextureFormat TextureUtil::GetCopyFormat(TextureFormat format, TextureAspect aspect)
 {
     if (FormatUtil::IsDepthAndStencilFormat(format))
     {
@@ -70,7 +67,7 @@ TextureFormat GetCopyFormat(TextureFormat format, TextureAspect aspect)
     return format;
 }
 
-void ValidateTextureDescription(const TextureDesc& desc)
+void TextureUtil::ValidateTextureDescription(const TextureDesc& desc)
 {
     VEX_CHECK(desc.width != 0,
               "Invalid Texture description for texture \"{}\": Cannot create a texture with a width of 0.",
@@ -111,7 +108,7 @@ void ValidateTextureDescription(const TextureDesc& desc)
     }
 }
 
-float GetPixelByteSizeFromFormat(TextureFormat format)
+float TextureUtil::GetPixelByteSizeFromFormat(TextureFormat format)
 {
     using enum TextureFormat;
 
@@ -211,7 +208,7 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
     return 0;
 }
 
-u32 TextureAspectToPlaneIndex(TextureAspect aspect)
+u32 TextureUtil::TextureAspectToPlaneIndex(TextureAspect aspect)
 {
     if (aspect == TextureAspect::Stencil)
     {
@@ -220,7 +217,7 @@ u32 TextureAspectToPlaneIndex(TextureAspect aspect)
     return 0;
 }
 
-Flags<TextureAspect> PlaneStartCountToTextureAspect(TextureFormat format, u32 startPlane, u32 planeCount)
+Flags<TextureAspect> TextureUtil::PlaneStartCountToTextureAspect(TextureFormat format, u32 startPlane, u32 planeCount)
 {
     if (planeCount == 1 && FormatUtil::IsDepthAndStencilFormat(format))
     {
@@ -233,7 +230,7 @@ Flags<TextureAspect> PlaneStartCountToTextureAspect(TextureFormat format, u32 st
     return TextureAspect::All;
 }
 
-u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions)
+u64 TextureUtil::ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions)
 {
     const float pixelByteSize = GetPixelByteSizeFromFormat(desc.format);
     float totalSize = 0;
@@ -262,10 +259,10 @@ u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Span<const Textu
         }
     }
 
-    return static_cast<u64>(std::ceil(totalSize));
+    return std::ceil(totalSize);
 }
 
-u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions)
+u64 TextureUtil::ComputePackedTextureDataByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions)
 {
     // Pixel byte size could be less than 1 (BlockCompressed formats).
     float totalSize = 0;
@@ -298,7 +295,7 @@ u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, Span<const Texture
     return static_cast<u64>(std::ceil(totalSize));
 }
 
-bool IsBindingUsageCompatibleWithUsage(Flags<TextureUsage> usages, TextureBindingUsage bindingUsage)
+bool TextureUtil::IsBindingUsageCompatibleWithUsage(Flags<TextureUsage> usages, TextureBindingUsage bindingUsage)
 {
     if (bindingUsage == TextureBindingUsage::ShaderRead)
     {
@@ -313,9 +310,9 @@ bool IsBindingUsageCompatibleWithUsage(Flags<TextureUsage> usages, TextureBindin
     return true;
 }
 
-void ForEachSubresourceIndices(const TextureSubresource& subresource,
-                               const TextureDesc& desc,
-                               std::function<void(u16 mip, u32 slice, u32 plane)> func)
+void TextureUtil::ForEachSubresourceIndices(const TextureSubresource& subresource,
+                                            const TextureDesc& desc,
+                                            const std::function<void(u16 mip, u32 slice, u32 plane)>& func)
 {
     for (u16 mip = subresource.startMip; mip < subresource.startMip + subresource.GetMipCount(desc); ++mip)
     {
@@ -332,7 +329,7 @@ void ForEachSubresourceIndices(const TextureSubresource& subresource,
     }
 }
 
-void ValidateSubresource(const TextureDesc& desc, const TextureSubresource& subresource)
+void TextureUtil::ValidateSubresource(const TextureDesc& desc, const TextureSubresource& subresource)
 {
     VEX_CHECK(subresource.startMip < desc.mips,
               "Invalid subresource for resource \"{}\": The subresource's startMip ({}) cannot be larger than the "
@@ -398,7 +395,7 @@ void ValidateSubresource(const TextureDesc& desc, const TextureSubresource& subr
     }
 }
 
-void ValidateRegion(const TextureDesc& desc, const TextureRegion& region)
+void TextureUtil::ValidateRegion(const TextureDesc& desc, const TextureRegion& region)
 {
     ValidateSubresource(desc, region.subresource);
 
@@ -451,7 +448,9 @@ void ValidateRegion(const TextureDesc& desc, const TextureRegion& region)
     }
 }
 
-void ValidateCopyDesc(const TextureDesc& srcDesc, const TextureDesc& dstDesc, const TextureCopyDesc& copyDesc)
+void TextureUtil::ValidateCopyDesc(const TextureDesc& srcDesc,
+                                   const TextureDesc& dstDesc,
+                                   const TextureCopyDesc& copyDesc)
 {
     ValidateRegion(srcDesc, copyDesc.srcRegion);
     ValidateRegion(dstDesc, copyDesc.dstRegion);
@@ -459,16 +458,13 @@ void ValidateCopyDesc(const TextureDesc& srcDesc, const TextureDesc& dstDesc, co
               "A texture copy's src and dst extents should match!");
 }
 
-void ValidateCompatibleTextureDescs(const TextureDesc& srcDesc, const TextureDesc& dstDesc)
-{
+void TextureUtil::ValidateCompatibleTextureDescs(const TextureDesc& srcDesc, const TextureDesc& dstDesc){
     VEX_CHECK(srcDesc.depthOrSliceCount == dstDesc.depthOrSliceCount && srcDesc.width == dstDesc.width &&
                   srcDesc.height == dstDesc.height && srcDesc.mips == dstDesc.mips &&
                   srcDesc.format == dstDesc.format && srcDesc.type == dstDesc.type,
               "Textures must have the same width, height, depth/array size, mips, format and type to be able to do a "
               "simple copy")
 }
-
-} // namespace TextureUtil
 
 TextureDesc TextureDesc::CreateTexture2DDesc(std::string name,
                                              TextureFormat format,

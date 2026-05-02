@@ -280,43 +280,43 @@ struct TextureCopyDesc
 
 struct TextureBinding;
 
-namespace TextureUtil
+struct TextureUtil
 {
+    static constexpr u64 RowPitchAlignment = 256;
+    static constexpr u64 MipAlignment = 512;
+    static constexpr u64 SliceAlignment = 512;
 
-static constexpr u64 RowPitchAlignment = 256;
-static constexpr u64 MipAlignment = 512;
-static constexpr u64 SliceAlignment = 512;
+    static u32 GetSubresourceIndex(const TextureDesc& desc, u16 mip, u32 slice, u32 plane);
 
-u32 GetSubresourceIndex(const TextureDesc& desc, u16 mip, u32 slice, u32 plane);
+    static std::tuple<u32, u32, u32> GetMipSize(const TextureDesc& desc, u32 mip);
+    static TextureViewType GetTextureViewType(const TextureDesc& desc, bool textureCubeAsTexture2DArray);
+    static TextureViewType GetTextureViewType(const TextureBinding& binding);
+    // This provides the correct format on which the data should be interpreted when copying data from and to a texture.
+    // This applies mostly to depth/stencil formats that are read separately from their original format. (It applies to
+    // any multi planar format)
+    static TextureFormat GetCopyFormat(TextureFormat format, TextureAspect aspect);
+    static void ValidateTextureDescription(const TextureDesc& desc);
+    static float GetPixelByteSizeFromFormat(TextureFormat format);
 
-std::tuple<u32, u32, u32> GetMipSize(const TextureDesc& desc, u32 mip);
-TextureViewType GetTextureViewType(const TextureDesc& desc, bool textureCubeAsTexture2DArray);
-TextureViewType GetTextureViewType(const TextureBinding& binding);
-// This provides the correct format on which the data should be interpreted when copying data from and to a texture.
-// This applies mostly to depth/stencil formats that are read separately from their original format. (It applies to any
-// multi planar format)
-TextureFormat GetCopyFormat(TextureFormat format, TextureAspect aspect);
-void ValidateTextureDescription(const TextureDesc& desc);
-float GetPixelByteSizeFromFormat(TextureFormat format);
+    static u32 TextureAspectToPlaneIndex(TextureAspect aspect);
+    static Flags<TextureAspect> PlaneStartCountToTextureAspect(TextureFormat format, u32 startPlane, u32 planeCount);
 
-u32 TextureAspectToPlaneIndex(TextureAspect aspect);
-Flags<TextureAspect> PlaneStartCountToTextureAspect(TextureFormat format, u32 startPlane, u32 planeCount);
+    static u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions);
+    static u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions);
 
-u64 ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions);
-u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, Span<const TextureRegion> uploadRegions);
+    static bool IsBindingUsageCompatibleWithUsage(Flags<TextureUsage> usages, TextureBindingUsage bindingUsage);
 
-bool IsBindingUsageCompatibleWithUsage(Flags<TextureUsage> usages, TextureBindingUsage bindingUsage);
+    static void ForEachSubresourceIndices(const TextureSubresource& subresource,
+                                          const TextureDesc& desc,
+                                          const std::function<void(u16 mip, u32 slice, u32 plane)>& func);
 
-void ForEachSubresourceIndices(const TextureSubresource& subresource,
-                               const TextureDesc& desc,
-                               std::function<void(u16 mip, u32 slice, u32 plane)> func);
-
-void ValidateSubresource(const TextureDesc& desc, const TextureSubresource& subresource);
-void ValidateRegion(const TextureDesc& desc, const TextureRegion& region);
-void ValidateCopyDesc(const TextureDesc& srcDesc, const TextureDesc& dstDesc, const TextureCopyDesc& copyDesc);
-void ValidateCompatibleTextureDescs(const TextureDesc& srcDesc, const TextureDesc& dstDesc);
-
-} // namespace TextureUtil
+    static void ValidateSubresource(const TextureDesc& desc, const TextureSubresource& subresource);
+    static void ValidateRegion(const TextureDesc& desc, const TextureRegion& region);
+    static void ValidateCopyDesc(const TextureDesc& srcDesc,
+                                 const TextureDesc& dstDesc,
+                                 const TextureCopyDesc& copyDesc);
+    static void ValidateCompatibleTextureDescs(const TextureDesc& srcDesc, const TextureDesc& dstDesc);
+};
 
 } // namespace vex
 
