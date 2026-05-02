@@ -88,6 +88,6 @@ struct std::hash<vex::Flags<E>>
 
 #define VEX_ENUM_FLAG_BITS(enumName)                                                                                   \
     template <>                                                                                                        \
-    struct ::vex::IsEnumBitFlag<enumName> : std::true_type                                                             \
+    struct IsEnumBitFlag<enumName> : std::true_type                                                                    \
     {                                                                                                                  \
     }

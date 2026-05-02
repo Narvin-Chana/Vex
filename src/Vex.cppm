@@ -48,6 +48,7 @@ using vex::QueueType;
 using vex::RayTracingShaderCollection;
 using vex::ResourceBinding;
 using vex::ResourceMemoryLocality;
+using vex::RHIAccessor;
 using vex::ShaderType;
 using vex::ShaderView;
 using vex::Span;
@@ -69,6 +70,7 @@ using vex::TextureUsage;
 using vex::TextureUtil;
 using vex::TextureViewType;
 using vex::TLASInstanceDesc;
+using vex::TraceRaysDesc;
 using vex::VertexInputLayout;
 using vex::WStringToString;
 

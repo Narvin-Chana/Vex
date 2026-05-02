@@ -30,6 +30,12 @@ endif()
 
 option(VEX_USE_MODULES "Determines whether to generate and export the Vex cpp20 module (experimental due to flaky compiler support)." OFF)
 
+# Modules could be unsupported with the current compiler.
+set(VEX_INTERNAL_USE_MODULES OFF)
+if(VEX_COMPILER_SUPPORTS_MODULES AND VEX_USE_MODULES)
+    set(VEX_INTERNAL_USE_MODULES ON)
+endif()
+
 # CMake Helpers
 include(VexHelpers)
 
@@ -274,11 +280,11 @@ if (VEX_ENABLE_SHADER_COMPILER)
     )
 endif()
 
-if(VEX_USE_MODULES)
+if(VEX_INTERNAL_USE_MODULES)
     target_sources(Vex PUBLIC FILE_SET CXX_MODULES FILES "src/Vex.cppm" "${magic_enum_SOURCE_DIR}/module/magic_enum.cppm")
 endif()
 
-set_target_properties(Vex PROPERTIES CXX_SCAN_FOR_MODULES ${VEX_USE_MODULES})
+set_target_properties(Vex PROPERTIES CXX_SCAN_FOR_MODULES ${VEX_INTERNAL_USE_MODULES})
 
 target_include_directories(Vex PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
@@ -334,7 +340,7 @@ if(WIN32)
     target_compile_definitions(Vex PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS)
 endif()
 
-target_compile_definitions(Vex PUBLIC VEX_MODULES=$<BOOL:${VEX_USE_MODULES}>)
+target_compile_definitions(Vex PUBLIC VEX_MODULES=$<BOOL:${VEX_INTERNAL_USE_MODULES}>)
 
 # Shader compiler defines
 target_compile_definitions(Vex PUBLIC VEX_SHADER_COMPILER=$<BOOL:${VEX_ENABLE_SHADER_COMPILER}>)
@@ -349,7 +355,7 @@ message(STATUS "Installing Vex...")
 get_property(HEADER_DEPS_TO_INSTALL GLOBAL PROPERTY HEADER_DEPS_TO_INSTALL)
 
 # Installation rules
-if(VEX_USE_MODULES)
+if(VEX_INTERNAL_USE_MODULES)
     install(TARGETS Vex ${HEADER_DEPS_TO_INSTALL}
             EXPORT VexTargets
             ARCHIVE DESTINATION lib

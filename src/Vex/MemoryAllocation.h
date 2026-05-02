@@ -14,21 +14,20 @@
 
 namespace vex
 {
-
 struct MemoryRange
 {
     u64 offset;
     u64 size;
 
-    bool operator==(const MemoryRange& other) const = default;
+    constexpr bool operator==(const MemoryRange&) const = default;
 
     // When sorting only the offsets have importance.
-    auto operator<=>(const MemoryRange& other) const
+    constexpr auto operator<=>(const MemoryRange& other) const
     {
         return offset <=> other.offset;
     }
 
-    u64 end() const
+    constexpr u64 end() const
     {
         return offset + size;
     }
@@ -62,7 +61,7 @@ struct MemoryPageInfo
 private:
     // Searches for the first range that contains enough space to fit the requested data and, if found, returns the
     // memory range.
-    std::optional<MemoryRange> FindFreeSpace(u64 size, u64 alignment);
+    std::optional<MemoryRange> FindFreeSpace(u64 size, u64 alignment) const;
 
     u32 memoryTypeIndex;
     u64 pageByteSize;

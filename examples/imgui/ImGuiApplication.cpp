@@ -1,11 +1,11 @@
-// TODO: Get this working with modules (secondary VexImgui include doesn't currently support them, and is the first case
-// of requiring access to raw RHI types... will we have to export them as well?? preferably not...)
-#undef VEX_MODULES
-#define VEX_MODULES 0
+#include <VexImgui.h>
+
+// Include order here is important when using C++20 modules, VexImgui.h reaches into the insides of Vex to access
+// RHI-impl specific classes/types. In order to still be able to use modules for the rest of vex, the #include should
+// come first.
 #include "ImGuiApplication.h"
 
 #include <GLFWIncludes.h>
-#include <VexImgui.h>
 #include <imgui_impl_glfw.h>
 
 ImGuiApplication::ImGuiApplication()

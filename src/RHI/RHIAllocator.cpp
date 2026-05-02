@@ -25,7 +25,7 @@ std::optional<MemoryRange> MemoryPageInfo::Allocate(u64 size, u64 alignment)
     allocatedRanges.emplace_back(range.value());
 
     // Keep allocated ranges sorted for easier traversal.
-    std::sort(allocatedRanges.begin(), allocatedRanges.end(), std::less<MemoryRange>{});
+    std::ranges::sort(allocatedRanges, std::less<MemoryRange>{});
 
     return range.value();
 }
@@ -37,7 +37,7 @@ void MemoryPageInfo::Free(const MemoryRange& range)
 
 // Searches for the first range that contains enough space to fit the requested data and, if found, returns the
 // memory range.
-std::optional<MemoryRange> MemoryPageInfo::FindFreeSpace(u64 size, u64 alignment)
+std::optional<MemoryRange> MemoryPageInfo::FindFreeSpace(u64 size, u64 alignment) const
 {
     u64 searchOffset = 0;
 
