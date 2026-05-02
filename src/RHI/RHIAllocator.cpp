@@ -32,7 +32,18 @@ std::optional<MemoryRange> MemoryPageInfo::Allocate(u64 size, u64 alignment)
 
 void MemoryPageInfo::Free(const MemoryRange& range)
 {
+#if defined(__clang__) && defined(_MSC_VER)
+    // clang-cl with MSVC STL has a bug where std::find will attempt to use SIMD vectorization even when the underlying
+    // T is not vectorizable (in this case due to MemoryRange being too big). The stop-gap fix is to use std::find_if
+    // instead.
+    // NB:
+    //  - std::erase    uses std::remove    which uses std::find
+    //  - std::erase_if uses std::remove_if which uses std::find_if
+
+    std::erase_if(allocatedRanges, [&range](const MemoryRange& r) { return r == range; });
+#else
     std::erase(allocatedRanges, range);
+#endif
 }
 
 // Searches for the first range that contains enough space to fit the requested data and, if found, returns the

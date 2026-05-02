@@ -7,7 +7,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-import magic_enum;
+#include <Vex/Utility/MagicEnum.h>
 
 float* hdrData;
 vex::i32 hdrWidth, hdrHeight, hdrChannels;
