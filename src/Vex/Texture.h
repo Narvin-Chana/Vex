@@ -24,6 +24,7 @@ enum class TextureUsage : u8
     RenderTarget    = 1 << 2, // RTV in DX12, Color Attachment in Vulkan
     DepthStencil    = 1 << 3, // DSV in DX12, Depth/Stencil Attachment in Vulkan
 };
+VEX_ENUM_FLAG_BITS(TextureUsage);
 
 // clang-format on
 
@@ -64,6 +65,7 @@ enum class TextureAspect : u8
     // All will use all appropriate aspects. Needed for default initialized subresources (color is not valid for depth/stencil and vice versa).
     All = Color | Depth | Stencil,
 };
+VEX_ENUM_FLAG_BITS(TextureAspect);
 
 // clang-format on
 
@@ -243,7 +245,7 @@ struct TextureSubresource
 
     u16 GetMipCount(const TextureDesc& desc) const;
     u32 GetSliceCount(const TextureDesc& desc) const;
-    u32 GetStartPlane(const TextureDesc& desc) const;
+    u32 GetStartPlane() const;
     u32 GetPlaneCount(const TextureDesc& desc) const;
     Flags<TextureAspect> GetAspect(const TextureDesc& desc) const;
     TextureAspect GetSingleAspect(const TextureDesc& desc) const;

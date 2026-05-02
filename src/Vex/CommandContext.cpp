@@ -175,7 +175,7 @@ void CommandContext::ClearTexture(const Texture& texture,
         rhiTexture,
         subresource,
         // This is a safe cast, textures can only contain one of the two usages (RT/DS).
-        static_cast<TextureUsage::Type>(texture.desc.usage & (TextureUsage::RenderTarget | TextureUsage::DepthStencil)),
+        static_cast<TextureUsage>((texture.desc.usage & (TextureUsage::RenderTarget | TextureUsage::DepthStencil)).data),
         std::move(clearValue),
         clearRects);
 }
@@ -707,7 +707,7 @@ void CommandContext::Copy(const Texture& source,
                           const Buffer& destination,
                           Span<const BufferTextureCopyDesc> bufferToTextureCopyDescriptions)
 {
-    TextureAspect::Flags aspects = 0;
+    Flags<TextureAspect> aspects;
     for (const auto& copyDesc : bufferToTextureCopyDescriptions)
     {
         TextureCopyUtil::ValidateBufferTextureCopyDesc(destination.desc, source.desc, copyDesc);
@@ -1362,7 +1362,7 @@ void CommandContext::InferResourceBarriers(RHIBarrierSync syncStage, Span<const 
 
 Buffer CommandContext::CreateTemporaryStagingBuffer(const std::string& name,
                                                     u64 byteSize,
-                                                    BufferUsage::Flags additionalUsages)
+                                                    Flags<BufferUsage> additionalUsages)
 {
     const Buffer stagingBuffer =
         graphics->CreateBuffer(BufferDesc::CreateStagingBufferDesc(name + "_staging", byteSize, additionalUsages));

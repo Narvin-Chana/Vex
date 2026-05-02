@@ -447,7 +447,7 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(const DX12Textu
 
 DX12TextureView::DX12TextureView(const TextureDesc& desc,
                                  const TextureSubresource& inSubresource,
-                                 TextureUsage::Type usage,
+                                 TextureUsage usage,
                                  TextureViewType dimension,
                                  DXGI_FORMAT format)
     : subresource{ inSubresource }
@@ -465,7 +465,7 @@ DX12TextureView::DX12TextureView(const TextureDesc& desc,
 
 DX12TextureView::DX12TextureView(const TextureDesc& desc,
                                  const TextureSubresource& subresource,
-                                 TextureUsage::Type usage)
+                                 TextureUsage usage)
     : DX12TextureView(desc,
                       subresource,
                       usage,
@@ -477,7 +477,7 @@ DX12TextureView::DX12TextureView(const TextureDesc& desc,
 DX12TextureView::DX12TextureView(const TextureBinding& binding)
     : DX12TextureView(binding.texture.desc,
                       binding.subresource,
-                      binding.usage != TextureBindingUsage::None ? static_cast<TextureUsage::Type>(binding.usage)
+                      binding.usage != TextureBindingUsage::None ? static_cast<TextureUsage>(binding.usage)
                                                                  : TextureUsage::None,
                       TextureUtil::GetTextureViewType(binding),
                       TextureFormatToDXGI(binding.texture.desc.format, binding.isSRGB))

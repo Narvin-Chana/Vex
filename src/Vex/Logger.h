@@ -50,11 +50,13 @@ constexpr std::string_view LogLevelToString(LogLevel logLevel)
 }
 
 /* clang-format off */
-BEGIN_VEX_ENUM_FLAGS(LogDestination, u8)
-    None = 0, 
+enum class LogDestination : u8
+{
+    None    = 0,
     Console = 1 << 0, 
-    File = 1 << 1,
-END_VEX_ENUM_FLAGS();
+    File    = 1 << 1,
+};
+VEX_ENUM_FLAG_BITS(LogDestination);
 /* clang-format on */
 
 struct Logger
@@ -95,7 +97,7 @@ struct Logger
     static void SetLogLevelFilter(LogLevel newFilter);
     // Change directory in which the log file we be created. Will not change the name of the output file.
     static void SetLogFilePath(const std::filesystem::path& newLogFilePath);
-    static void SetLogDestination(LogDestination::Flags newDestinations);
+    static void SetLogDestination(Flags<LogDestination> newDestinations);
 
 private:
     void OpenLogFile();
@@ -110,7 +112,7 @@ private:
 
     // Calls to log with a lower level than this will be ignored.
     LogLevel levelFilter = Info;
-    LogDestination::Flags destinationFlags = LogDestination::Console | LogDestination::File;
+    Flags<LogDestination> destinationFlags = LogDestination::Console | LogDestination::File;
 
     std::filesystem::path filePath = std::filesystem::current_path() / "logs" / LogFileNameFormat;
     std::optional<std::ofstream> logOutput;

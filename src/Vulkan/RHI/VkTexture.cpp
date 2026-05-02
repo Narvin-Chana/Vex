@@ -3,7 +3,6 @@
 #include <ranges>
 
 #include <Vex/Bindings.h>
-#include <Vex/Utility/Formattable.h>
 
 #include <Vulkan/RHI/VkAllocator.h>
 #include <Vulkan/RHI/VkDescriptorPool.h>
@@ -85,7 +84,7 @@ namespace VkTextureUtil
     return aspectFlags;
 }
 
-::vk::ImageAspectFlags BindingAspectToVkAspectFlags(TextureAspect::Type aspect)
+::vk::ImageAspectFlags BindingAspectToVkAspectFlags(TextureAspect aspect)
 {
     switch (aspect)
     {
@@ -242,7 +241,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
     return handle;
 }
 
-::vk::ImageView VkTexture::GetOrCreateImageView(const TextureBinding& binding, TextureUsage::Type usage)
+::vk::ImageView VkTexture::GetOrCreateImageView(const TextureBinding& binding, TextureUsage)
 {
     VkTextureView view{ binding };
     if (auto it = viewCache.find(view); it != viewCache.end())
@@ -260,7 +259,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
     viewUsageInfo.usage = viewUsage;
 
     ::vk::ImageAspectFlags aspectFlags;
-    TextureAspect::Flags subresourceAspects = binding.subresource.GetAspect(binding.texture.desc);
+    Flags subresourceAspects = binding.subresource.GetAspect(binding.texture.desc);
     if (subresourceAspects & TextureAspect::Color)
         aspectFlags |= ::vk::ImageAspectFlagBits::eColor;
     if (subresourceAspects & TextureAspect::Depth)
@@ -408,7 +407,7 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
 VkTextureView::VkTextureView(const TextureBinding& binding)
     : viewType{ TextureUtil::GetTextureViewType(binding) }
     , format{ TextureFormatToVulkan(binding.texture.desc.format, binding.isSRGB) }
-    , usage{ static_cast<TextureUsage::Type>(binding.usage) }
+    , usage{ static_cast<TextureUsage>(binding.usage) }
     , subresource{ binding.subresource }
 {
     // Resolve subresource (replacing MAX values with the actual value).

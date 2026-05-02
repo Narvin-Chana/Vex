@@ -5,12 +5,16 @@
 namespace vex
 {
 
-// Formatted more compactly, so we diable clang-format.
+// Formatted more compactly, so we disable clang-format.
 
 // clang-format off
 
-template <class E>
-concept BitEnum = std::is_enum_v<E>;
+// Flags is opt-in since we define global operators.
+template<typename E> requires std::is_enum_v<E>
+struct IsEnumBitFlag : std::false_type{};
+
+template <typename E>
+concept BitEnum = std::is_enum_v<E> and IsEnumBitFlag<E>::value;
 
 // Defines an enum flag (bitset), underlying enum type should be a bit enum.
 template <BitEnum E>
@@ -19,19 +23,20 @@ struct Flags
     using Underlying = std::underlying_type_t<E>;
 
     constexpr Flags() = default;
-    constexpr Flags(E val) : data{static_cast<Flags>(val)} {}
-    constexpr Flags(const Flags& other) : data{other.data} {}
-    constexpr Flags& operator=(const Flags& other) { data = other.data; return *this;}
-    constexpr Flags(Flags&& other) : data{std::move(other.data)} {}
-    constexpr Flags& operator=(Flags&& other) { data = std::move(other.data); return *this;}
+    constexpr Flags(E val) : data{static_cast<Underlying>(val)} {}
+    explicit constexpr Flags(Underlying val) : data{static_cast<Underlying>(val)} {}
+    constexpr Flags(const Flags& other) = default;
+    constexpr Flags& operator=(const Flags& other) = default;
+    constexpr Flags(Flags&& other) = default;
+    constexpr Flags& operator=(Flags&& other) = default;
     constexpr ~Flags() = default;
 
     constexpr Flags& operator=(E other) { data = static_cast<Flags>(other); return *this; }
 
-    [[nodiscard]] constexpr Flags operator|(Flags other) const { return Flags{data | other.data}; }
-    [[nodiscard]] constexpr Flags operator&(Flags other) const { return Flags{data & other.data}; }
-    [[nodiscard]] constexpr Flags operator^(Flags other) const { return Flags{data ^ other.data}; }
-    [[nodiscard]] constexpr Flags operator~()            const { return Flags{~data}; }
+    [[nodiscard]] constexpr Flags operator|(Flags other) const { return Flags{static_cast<Underlying>(data | other.data)}; }
+    [[nodiscard]] constexpr Flags operator&(Flags other) const { return Flags{static_cast<Underlying>(data & other.data)}; }
+    [[nodiscard]] constexpr Flags operator^(Flags other) const { return Flags{static_cast<Underlying>(data ^ other.data)}; }
+    [[nodiscard]] constexpr Flags operator~()            const { return Flags{static_cast<Underlying>(~data)}; }
 
     [[nodiscard]] constexpr Flags operator|(E other) const { return *this | Flags{other}; }
     [[nodiscard]] constexpr Flags operator&(E other) const { return *this & Flags{other}; }
@@ -75,8 +80,14 @@ struct std::hash<vex::Flags<E>>
 {
     constexpr size_t operator()(vex::Flags<E> f) const noexcept
     {
-        return std::hash<typename vex::Flags<E>::underlying_t>{}(f.data);
+        return std::hash<typename vex::Flags<E>::Underlying>{}(f.data);
     }
 };
 
 // clang-format on
+
+#define VEX_ENUM_FLAG_BITS(enumName)                                                                                   \
+    template <>                                                                                                        \
+    struct ::vex::IsEnumBitFlag<enumName> : std::true_type                                                             \
+    {                                                                                                                  \
+    }

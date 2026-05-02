@@ -19,7 +19,7 @@ namespace VkAccelerationStructure_Internal
 }
 } // namespace VkAccelerationStructure_Internal
 
-::vk::GeometryFlagsKHR GeometryFlagsToVkGeometryFlags(ASGeometry::Flags flags)
+::vk::GeometryFlagsKHR GeometryFlagsToVkGeometryFlags(Flags<ASGeometry> flags)
 {
     ::vk::GeometryFlagsKHR vkFlags{};
     if (flags & ASGeometry::Opaque)
@@ -29,7 +29,7 @@ namespace VkAccelerationStructure_Internal
     return vkFlags;
 }
 
-::vk::GeometryInstanceFlagsKHR ASInstanceFlagsToVkGeometryInstanceFlags(ASInstance::Flags flags)
+::vk::GeometryInstanceFlagsKHR ASInstanceFlagsToVkGeometryInstanceFlags(Flags<ASInstance> flags)
 {
     ::vk::GeometryInstanceFlagsKHR vkFlags{};
     if (flags & ASInstance::ForceNonOpaque)
@@ -43,7 +43,7 @@ namespace VkAccelerationStructure_Internal
     return vkFlags;
 }
 
-::vk::BuildAccelerationStructureFlagsKHR ASBuildFlagsToVkASBuildFlags(ASBuild::Flags flags)
+::vk::BuildAccelerationStructureFlagsKHR ASBuildFlagsToVkASBuildFlags(Flags<ASBuild> flags)
 {
     using enum ::vk::BuildAccelerationStructureFlagBitsKHR;
     ::vk::BuildAccelerationStructureFlagsKHR vkFlags{};

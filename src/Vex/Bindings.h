@@ -39,14 +39,6 @@ struct ConstantBinding
     {
     }
 
-    // Construct from std::span.
-    template <typename T>
-        requires(sizeof(T) <= MaxTheoreticalLocalConstantsByteSize)
-    explicit ConstantBinding(std::span<T> data)
-        : data(std::as_bytes(data))
-    {
-    }
-
     // Construct constant binding from any non-container T.
     // This constructor's concepts are here to avoid taking in a container, and thus polluting constant data with the
     // container's data (eg: a vector's size/capacity).
@@ -57,7 +49,7 @@ struct ConstantBinding
     {
     }
 
-    constexpr bool IsValid() const
+    [[nodiscard]] constexpr bool IsValid() const
     {
         return !data.empty();
     }
@@ -192,8 +184,8 @@ struct DrawResourceBinding
 namespace BindingUtil
 {
 
-void ValidateBufferBinding(const BufferBinding& binding, BufferUsage::Flags validBufferUsageFlags);
-void ValidateTextureBinding(const TextureBinding& binding, TextureUsage::Flags validTextureUsageFlags);
+void ValidateBufferBinding(const BufferBinding& binding, Flags<BufferUsage> validBufferUsageFlags);
+void ValidateTextureBinding(const TextureBinding& binding, Flags<TextureUsage> validTextureUsageFlags);
 void ValidateDrawResource(const DrawResourceBinding& binding);
 
 } // namespace BindingUtil

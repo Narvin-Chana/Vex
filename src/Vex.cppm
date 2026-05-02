@@ -13,6 +13,7 @@ using vex::Buffer;
 using vex::BufferBinding;
 using vex::BufferBindingUsage;
 using vex::BufferDesc;
+using vex::BufferUsage;
 using vex::CommandContext;
 using vex::FilterMode;
 using vex::GLogger;
@@ -24,6 +25,7 @@ using vex::PlatformWindowHandle;
 using vex::QueueType;
 using vex::ShaderType;
 using vex::ShaderView;
+using vex::Span;
 using vex::StaticTextureSampler;
 using vex::Texture;
 using vex::TextureBinding;
@@ -33,10 +35,16 @@ using vex::TextureDesc;
 using vex::TextureFormat;
 using vex::TextureRegion;
 using vex::TextureType;
-using vex::Span;
+using vex::TextureUsage;
 
-using namespace BufferUsage;
-using namespace TextureUsage;
+// Have to export vex::operators in order for users to get syntaxic sugar to implicitly convert a BitEnum type to Flags.
+// Eg: vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite converts to vex::Flags<vex::TextureUsage>.
+using vex::Flags;
+using vex::operator|;
+using vex::operator&;
+using vex::operator^;
+using vex::operator~;
+
 using enum LogLevel;
 
 // clang-format off

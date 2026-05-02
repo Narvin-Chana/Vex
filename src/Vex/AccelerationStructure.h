@@ -25,16 +25,18 @@ enum class ASType : u8
 // clang-format off
 
 // Flags for Acceleration Structure building. Currently most of these are not yet implemented.
-BEGIN_VEX_ENUM_FLAGS(ASBuild, u8)
-	None			= 0,
-	AllowUpdate		= 1 << 0,	// Allows for incremental updates to the AccelerationStructure.
-	AllowCompaction = 1 << 1,	// Allows for acceleration structure compaction to save memory.
-	PreferFastTrace = 1 << 2,	// Optimizes building for raytracing performance. Incompatible with PreferFastBuild.
-	PreferFastBuild = 1 << 3,	// Optimizes building for build-speed. Incompatible with PreferFastTrace.
-	MinimizeMemory	= 1 << 4,	// Minimizes memory usage.
+enum class ASBuild : u8
+{
+    None			= 0,
+    AllowUpdate		= 1 << 0,	// Allows for incremental updates to the AccelerationStructure.
+    AllowCompaction = 1 << 1,	// Allows for acceleration structure compaction to save memory.
+    PreferFastTrace = 1 << 2,	// Optimizes building for raytracing performance. Incompatible with PreferFastBuild.
+    PreferFastBuild = 1 << 3,	// Optimizes building for build-speed. Incompatible with PreferFastTrace.
+    MinimizeMemory	= 1 << 4,	// Minimizes memory usage.
     // TODO(https://trello.com/c/LIEtASpP): Updating AS is not currently supported.
     PerformUpdate   = 1 << 5,   // Allows for updating the AS.
-END_VEX_ENUM_FLAGS();
+};
+VEX_ENUM_FLAG_BITS(ASBuild);
 
 // clang-format on
 
@@ -42,7 +44,7 @@ struct AccelerationStructureDesc
 {
     std::string name;
     ASType type;
-    ASBuild::Flags buildFlags = ASBuild::PreferFastTrace;
+    Flags<ASBuild> buildFlags = ASBuild::PreferFastTrace;
 
     constexpr bool operator==(const AccelerationStructureDesc&) const = default;
 };

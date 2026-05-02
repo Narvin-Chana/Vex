@@ -77,7 +77,7 @@ BufferDesc BufferDesc::CreateVertexBufferDesc(std::string name,
                                               bool allowShaderRead,
                                               bool canBeAccelerationStructureSource)
 {
-    BufferUsage::Flags usageFlags = BufferUsage::VertexBuffer;
+    Flags usageFlags = BufferUsage::VertexBuffer;
     if (allowShaderRead)
     {
         usageFlags |= BufferUsage::ShaderRead;
@@ -99,7 +99,7 @@ BufferDesc BufferDesc::CreateIndexBufferDesc(std::string name,
                                              bool allowShaderRead,
                                              bool canBeAccelerationStructureSource)
 {
-    BufferUsage::Flags usageFlags = BufferUsage::IndexBuffer;
+    Flags usageFlags = BufferUsage::IndexBuffer;
     if (allowShaderRead)
     {
         usageFlags |= BufferUsage::ShaderRead;
@@ -116,7 +116,7 @@ BufferDesc BufferDesc::CreateIndexBufferDesc(std::string name,
     };
 }
 
-BufferDesc BufferDesc::CreateStagingBufferDesc(std::string name, u64 byteSize, BufferUsage::Flags usageFlags)
+BufferDesc BufferDesc::CreateStagingBufferDesc(std::string name, u64 byteSize, Flags<BufferUsage> usageFlags)
 {
     return {
         .name = std::move(name),
@@ -126,7 +126,7 @@ BufferDesc BufferDesc::CreateStagingBufferDesc(std::string name, u64 byteSize, B
     };
 }
 
-BufferDesc BufferDesc::CreateReadbackBufferDesc(std::string name, u64 byteSize, BufferUsage::Flags usageFlags)
+BufferDesc BufferDesc::CreateReadbackBufferDesc(std::string name, u64 byteSize, Flags<BufferUsage> usageFlags)
 {
     return {
         .name = std::move(name),
@@ -138,7 +138,7 @@ BufferDesc BufferDesc::CreateReadbackBufferDesc(std::string name, u64 byteSize, 
 
 BufferDesc BufferDesc::CreateGenericBufferDesc(std::string name, u64 byteSize, bool readWrite)
 {
-    BufferUsage::Flags usage = BufferUsage::ShaderRead;
+    Flags usage = BufferUsage::ShaderRead;
     if (readWrite)
     {
         usage |= BufferUsage::ShaderReadWrite;

@@ -4,7 +4,6 @@
 
 #include <Vex/Bindings.h>
 #include <Vex/Logger.h>
-#include <VexMacros.h>
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Formattable.h>
 #include <VexMacros.h>
@@ -212,7 +211,7 @@ float GetPixelByteSizeFromFormat(TextureFormat format)
     return 0;
 }
 
-u32 TextureAspectToPlaneIndex(TextureAspect::Type aspect)
+u32 TextureAspectToPlaneIndex(TextureAspect aspect)
 {
     if (aspect == TextureAspect::Stencil)
     {
@@ -221,7 +220,7 @@ u32 TextureAspectToPlaneIndex(TextureAspect::Type aspect)
     return 0;
 }
 
-TextureAspect::Flags PlaneStartCountToTextureAspect(TextureFormat format, u32 startPlane, u32 planeCount)
+Flags<TextureAspect> PlaneStartCountToTextureAspect(TextureFormat format, u32 startPlane, u32 planeCount)
 {
     if (planeCount == 1 && FormatUtil::IsDepthAndStencilFormat(format))
     {
@@ -299,7 +298,7 @@ u64 ComputePackedTextureDataByteSize(const TextureDesc& desc, Span<const Texture
     return static_cast<u64>(std::ceil(totalSize));
 }
 
-bool IsBindingUsageCompatibleWithUsage(TextureUsage::Flags usages, TextureBindingUsage bindingUsage)
+bool IsBindingUsageCompatibleWithUsage(Flags<TextureUsage> usages, TextureBindingUsage bindingUsage)
 {
     if (bindingUsage == TextureBindingUsage::ShaderRead)
     {
@@ -323,8 +322,8 @@ void ForEachSubresourceIndices(const TextureSubresource& subresource,
         for (u32 slice = subresource.startSlice; slice < subresource.startSlice + subresource.GetSliceCount(desc);
              ++slice)
         {
-            for (u32 plane = subresource.GetStartPlane(desc);
-                 plane < subresource.GetStartPlane(desc) + subresource.GetPlaneCount(desc);
+            for (u32 plane = subresource.GetStartPlane();
+                 plane < subresource.GetStartPlane() + subresource.GetPlaneCount(desc);
                  ++plane)
             {
                 func(mip, slice, plane);
@@ -476,7 +475,7 @@ TextureDesc TextureDesc::CreateTexture2DDesc(std::string name,
                                              u32 width,
                                              u32 height,
                                              u16 mips,
-                                             TextureUsage::Flags usage,
+                                             Flags<TextureUsage> usage,
                                              TextureClearValue clearValue,
                                              ResourceMemoryLocality memoryLocality)
 {
@@ -501,7 +500,7 @@ TextureDesc TextureDesc::CreateTexture2DArrayDesc(std::string name,
                                                   u32 height,
                                                   u32 arraySize,
                                                   u16 mips,
-                                                  TextureUsage::Flags usage,
+                                                  Flags<TextureUsage> usage,
                                                   TextureClearValue clearValue,
                                                   ResourceMemoryLocality memoryLocality)
 {
@@ -524,7 +523,7 @@ TextureDesc TextureDesc::CreateTextureCubeDesc(std::string name,
                                                TextureFormat format,
                                                u32 faceSize,
                                                u16 mips,
-                                               TextureUsage::Flags usage,
+                                               Flags<TextureUsage> usage,
                                                TextureClearValue clearValue,
                                                ResourceMemoryLocality memoryLocality)
 {
@@ -548,7 +547,7 @@ TextureDesc TextureDesc::CreateTextureCubeArrayDesc(std::string name,
                                                     u32 faceSize,
                                                     u32 arraySize,
                                                     u16 mips,
-                                                    TextureUsage::Flags usage,
+                                                    Flags<TextureUsage> usage,
                                                     TextureClearValue clearValue,
                                                     ResourceMemoryLocality memoryLocality)
 {
@@ -573,7 +572,7 @@ TextureDesc TextureDesc::CreateTexture3DDesc(std::string name,
                                              u32 height,
                                              u32 depth,
                                              u16 mips,
-                                             TextureUsage::Flags usage,
+                                             Flags<TextureUsage> usage,
                                              TextureClearValue clearValue,
                                              ResourceMemoryLocality memoryLocality)
 {
@@ -612,7 +611,7 @@ u32 TextureSubresource::GetSliceCount(const TextureDesc& desc) const
     return sliceCount == GTextureAllSlices ? (desc.GetSliceCount() - startSlice) : sliceCount;
 }
 
-u32 TextureSubresource::GetStartPlane(const TextureDesc& desc) const
+u32 TextureSubresource::GetStartPlane() const
 {
     if (aspect == TextureAspect::All)
     {
@@ -646,12 +645,12 @@ u32 TextureSubresource::GetPlaneCount(const TextureDesc& desc) const
     return count;
 }
 
-TextureAspect::Flags TextureSubresource::GetAspect(const TextureDesc& desc) const
+Flags<TextureAspect> TextureSubresource::GetAspect(const TextureDesc& desc) const
 {
     const bool isDepthOrDepthStencil = FormatUtil::IsDepthOrDepthStencilFormat(desc.format);
     const bool isDepthOnly = FormatUtil::IsDepthOnlyFormat(desc.format);
 
-    TextureAspect::Flags cleanAspect = TextureAspect::None;
+    Flags cleanAspect = TextureAspect::None;
     if (aspect & TextureAspect::Color && !isDepthOrDepthStencil)
         cleanAspect |= TextureAspect::Color;
     if (aspect & TextureAspect::Depth && isDepthOrDepthStencil)
@@ -661,17 +660,17 @@ TextureAspect::Flags TextureSubresource::GetAspect(const TextureDesc& desc) cons
     return cleanAspect;
 }
 
-TextureAspect::Type TextureSubresource::GetSingleAspect(const TextureDesc& desc) const
+TextureAspect TextureSubresource::GetSingleAspect(const TextureDesc& desc) const
 {
     if (aspect == TextureAspect::All)
     {
-        return static_cast<TextureAspect::Type>(GetDefaultAspect(desc));
+        return static_cast<TextureAspect>(GetDefaultAspect(desc).data);
     }
     VEX_ASSERT((aspect & (aspect - 1)) == 0, "Tried to get single aspect when multiple were flagged");
-    return static_cast<TextureAspect::Type>(aspect);
+    return static_cast<TextureAspect>(aspect.data);
 }
 
-TextureAspect::Flags TextureSubresource::GetDefaultAspect(const TextureDesc& desc)
+Flags<TextureAspect> TextureSubresource::GetDefaultAspect(const TextureDesc& desc)
 {
     if (FormatUtil::IsDepthOrDepthStencilFormat(desc.format))
     {
@@ -692,13 +691,13 @@ std::tuple<u32, u32, u32> TextureRegion::GetExtents(const TextureDesc& desc, u16
     return { extent.GetWidth(desc, mip), extent.GetHeight(desc, mip), extent.GetDepth(desc, mip) };
 }
 
-TextureRegion TextureRegion::AllMips(TextureAspect::Flags aspect)
+TextureRegion TextureRegion::AllMips(Flags<TextureAspect> aspect)
 {
     // Defaults will specify all mips and all slices.
     return TextureRegion{ .subresource{ .aspect = aspect } };
 }
 
-TextureRegion TextureRegion::SingleMip(u16 mipIndex, TextureAspect::Flags aspect)
+TextureRegion TextureRegion::SingleMip(u16 mipIndex, Flags<TextureAspect> aspect)
 {
     return TextureRegion{ .subresource = { .startMip = mipIndex, .mipCount = 1, .aspect = aspect } };
 }

@@ -39,7 +39,7 @@ enum class BufferUsage : u16
     // Buffers used as a ShaderTable for HWRT shaders.
     ShaderTable                 = 1 << 9,
 };
-
+VEX_ENUM_FLAG_BITS(BufferUsage);
 // clang-format on
 
 // Defines what the specific binding will bind as maps directly to the type that will be used in the shader to access

@@ -6,7 +6,14 @@
 namespace vex
 {
 
+// Cannot use std::dynamic_extent since it would make it part of the Vex module, causing a double inclusion if the user
+// ever includes <span>. This is caused by the fact that the STL (MSVC) declares it as inline constexpr, if it was just
+// constexpr this workaround would not be required.
+#if VEX_MODULES
+template <class T, std::size_t Extent = static_cast<size_t>(-1)>
+#else
 template <class T, std::size_t Extent = std::dynamic_extent>
+#endif
 struct Span : public std::span<T, Extent>
 {
     using Base = std::span<T, Extent>;

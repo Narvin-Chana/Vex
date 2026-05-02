@@ -1,5 +1,7 @@
 #include "HelloCube.h"
 
+#include <span>
+
 #include <GLFWIncludes.h>
 
 #define STB_IMAGE_IMPLEMENTATION

@@ -1,8 +1,7 @@
 #include "Bindings.h"
 
-#include <Vex/Utility/Formattable.h>
-
 #include <Vex/Logger.h>
+#include <Vex/Utility/Formattable.h>
 #include <VexMacros.h>
 
 namespace vex
@@ -13,7 +12,7 @@ static constexpr u32 ConstantBufferBindingOffsetMultiple = 256;
 namespace BindingUtil
 {
 
-void ValidateBufferBinding(const BufferBinding& binding, BufferUsage::Flags validBufferUsageFlags)
+void ValidateBufferBinding(const BufferBinding& binding, Flags<BufferUsage> validBufferUsageFlags)
 {
     const auto& buffer = binding.buffer;
     const auto& usage = binding.usage;
@@ -90,7 +89,7 @@ void ValidateBufferBinding(const BufferBinding& binding, BufferUsage::Flags vali
     }
 }
 
-void ValidateTextureBinding(const TextureBinding& binding, TextureUsage::Flags validTextureUsageFlags)
+void ValidateTextureBinding(const TextureBinding& binding, Flags<TextureUsage> validTextureUsageFlags)
 {
     const auto& texture = binding.texture;
     if (!(texture.desc.usage & validTextureUsageFlags))
@@ -232,4 +231,5 @@ BufferBinding BufferBinding::CreateConstantBuffer(const Buffer& buffer,
              .offsetByteSize = offsetByteSize,
              .rangeByteSize = rangeByteSize.value_or(buffer.desc.byteSize - offsetByteSize) };
 }
+
 } // namespace vex
