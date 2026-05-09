@@ -274,7 +274,7 @@ Texture Graphics::CreateTexture(const TextureDesc& textureDesc, ResourceLifetime
 
     if (textureDesc.mips == 0)
     {
-        texDesc.mips = ComputeMipCount(std::make_tuple(textureDesc.width, textureDesc.height, textureDesc.GetDepth()));
+        texDesc.mips = ByteUtil::ComputeMipCount(std::make_tuple(textureDesc.width, textureDesc.height, textureDesc.GetDepth()));
     }
 
     if (lifetime == ResourceLifetime::Dynamic)

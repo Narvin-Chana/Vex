@@ -40,7 +40,7 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(RHIBuffer& buffer,
                                                               RHITexture& texture,
                                                               const BufferTextureCopyDesc& desc)
 {
-    VEX_CHECK(IsAligned<u64>(desc.bufferRegion.offset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
+    VEX_CHECK(ByteUtil::IsAligned<u64>(desc.bufferRegion.offset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
               "Source offset should be aligned to 512 bytes!");
 
     D3D12_TEXTURE_COPY_LOCATION bufferLoc = {};
@@ -75,7 +75,7 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(RHIBuffer& buffer,
     bufferLoc.PlacedFootprint.Footprint.Height = std::max(height, 1u);
     bufferLoc.PlacedFootprint.Footprint.Depth = std::max(depth, 1u);
     bufferLoc.PlacedFootprint.Footprint.RowPitch =
-        AlignUp<u64>(width * TextureUtil::GetPixelByteSizeFromFormat(format), TextureUtil::RowPitchAlignment);
+        ByteUtil::AlignUp<u64>(width * TextureUtil::GetPixelByteSizeFromFormat(format), TextureUtil::RowPitchAlignment);
 
     D3D12_TEXTURE_COPY_LOCATION textureLoc = {};
     textureLoc.pResource = texture.GetRawTexture();
@@ -203,16 +203,18 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
     {
     case QueueType::Graphics:
         // Set local constants (in first slot of root signature).
-        commandList->SetGraphicsRoot32BitConstants(0,
-                                                   static_cast<u32>(DivRoundUp(localConstantsData.size(), sizeof(u32))),
-                                                   localConstantsData.data(),
-                                                   0);
+        commandList->SetGraphicsRoot32BitConstants(
+            0,
+            static_cast<u32>(ByteUtil::DivRoundUp(localConstantsData.size(), sizeof(u32))),
+            localConstantsData.data(),
+            0);
     case QueueType::Compute:
         // Set local constants (in first slot of root signature).
-        commandList->SetComputeRoot32BitConstants(0,
-                                                  static_cast<u32>(DivRoundUp(localConstantsData.size(), sizeof(u32))),
-                                                  localConstantsData.data(),
-                                                  0);
+        commandList->SetComputeRoot32BitConstants(
+            0,
+            static_cast<u32>(ByteUtil::DivRoundUp(localConstantsData.size(), sizeof(u32))),
+            localConstantsData.data(),
+            0);
     case QueueType::Copy:
     default:
         break;

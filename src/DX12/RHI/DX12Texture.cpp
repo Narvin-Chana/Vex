@@ -280,7 +280,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
 #endif
 
 #if !VEX_SHIPPING
-    chk << texture->SetName(StringToWString(std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name)).data());
+    chk << texture->SetName(PlatformUtil::StringToWString(std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name)).data());
 #endif
 }
 
@@ -341,7 +341,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
     }
 
 #if !VEX_SHIPPING
-    chk << texture->SetName(StringToWString(std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name)).data());
+    chk << texture->SetName(PlatformUtil::StringToWString(std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name)).data());
 #endif
 }
 

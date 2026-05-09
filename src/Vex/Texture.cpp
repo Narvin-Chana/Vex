@@ -254,8 +254,8 @@ u64 TextureUtil::ComputeAlignedUploadBufferByteSize(const TextureDesc& desc, Spa
 
             // The staging buffer should have a row pitch alignment of 256 and mip alignment of 512 due to API
             // constraints.
-            u64 regionSize = AlignUp<u64>(width * pixelByteSize, RowPitchAlignment) * height * depth;
-            totalSize += AlignUp<u64>(regionSize, MipAlignment) * sliceCount;
+            u64 regionSize = ByteUtil::AlignUp<u64>(width * pixelByteSize, RowPitchAlignment) * height * depth;
+            totalSize += ByteUtil::AlignUp<u64>(regionSize, MipAlignment) * sliceCount;
         }
     }
 

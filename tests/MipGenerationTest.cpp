@@ -93,7 +93,7 @@ public:
 TEST_F(MipGenerationTest, Texture2DPowOfTwo)
 {
     u32 size = 512;
-    u16 numMips = ComputeMipCount({ size, size, 1 });
+    u16 numMips = ByteUtil::ComputeMipCount({ size, size, 1 });
     Texture tex = graphics.CreateTexture(
         TextureDesc::CreateTexture2DDesc("Mip0",
                                          TextureFormat::RGBA32_FLOAT,
@@ -135,7 +135,7 @@ TEST_F(MipGenerationTest, Texture2DNonPowOfTwo)
     // Use 384 = 64 * 6 for exactly 6x6 = 36 squares (18 red, 18 blue)
     // This allows us to test the non-power of two while still keeping the last mip equal to {0.5, 0, 0.5f, 1}
     u32 size = 384;
-    u16 numMips = ComputeMipCount({ size, size, 1 });
+    u16 numMips = ByteUtil::ComputeMipCount({ size, size, 1 });
     Texture tex = graphics.CreateTexture(
         TextureDesc::CreateTexture2DDesc("Mip0",
                                          TextureFormat::RGBA32_FLOAT,
@@ -176,7 +176,7 @@ TEST_F(MipGenerationTest, Texture2DNonSquare)
 {
     u32 width = 512;
     u32 height = 256;
-    u16 numMips = ComputeMipCount({ width, height, 1 });
+    u16 numMips = ByteUtil::ComputeMipCount({ width, height, 1 });
     Texture tex = graphics.CreateTexture(
         TextureDesc::CreateTexture2DDesc("NonSquare",
                                          TextureFormat::RGBA32_FLOAT,
@@ -213,7 +213,7 @@ TEST_F(MipGenerationTest, Texture2DNonSquare)
 TEST_F(MipGenerationTest, Texture2DWithSourceMipOffset)
 {
     u32 size = 8;
-    u16 numMips = ComputeMipCount({ size * 2, size * 2, 1 });
+    u16 numMips = ByteUtil::ComputeMipCount({ size * 2, size * 2, 1 });
     Texture tex = graphics.CreateTexture(
         TextureDesc::CreateTexture2DDesc("Mip1",
                                          TextureFormat::RGBA32_FLOAT,
@@ -274,7 +274,7 @@ TEST_F(MipGenerationTest, Texture2DWithSourceMipOffset)
 TEST_F(MipGenerationTest, Texture2DSingleColor)
 {
     u32 size = 256;
-    u16 numMips = ComputeMipCount({ size, size, 1 });
+    u16 numMips = ByteUtil::ComputeMipCount({ size, size, 1 });
     Texture tex = graphics.CreateTexture(
         TextureDesc::CreateTexture2DDesc("SingleColor",
                                          TextureFormat::RGBA32_FLOAT,
@@ -323,7 +323,7 @@ TEST_F(MipGenerationTest, Texture2DSingleColor)
 TEST_F(MipGenerationTest, Texture2DIntermediateMipCheck)
 {
     u32 size = 16;
-    u16 numMips = ComputeMipCount({ size, size, 1 });
+    u16 numMips = ByteUtil::ComputeMipCount({ size, size, 1 });
     EXPECT_EQ(numMips, 5) << "16x16 texture should have 5 mip levels";
 
     Texture tex = graphics.CreateTexture(
@@ -377,7 +377,7 @@ TEST_F(MipGenerationTest, Texture2DExtremeAspectRatio)
 {
     u32 width = 1024;
     u32 height = 4;
-    u16 numMips = ComputeMipCount({ width, height, 1 });
+    u16 numMips = ByteUtil::ComputeMipCount({ width, height, 1 });
 
     Texture tex = graphics.CreateTexture(
         TextureDesc::CreateTexture2DDesc("ExtremeAspect",
@@ -415,7 +415,7 @@ TEST_F(MipGenerationTest, Texture2DExtremeAspectRatio)
 TEST_F(MipGenerationTest, Texture2DSRGB)
 {
     u32 size = 512;
-    u16 numMips = ComputeMipCount({ size, size, 1 });
+    u16 numMips = ByteUtil::ComputeMipCount({ size, size, 1 });
     Texture tex = graphics.CreateTexture(
         TextureDesc::CreateTexture2DDesc("SRGB_Mip0",
                                          TextureFormat::RGBA8_UNORM,
@@ -458,7 +458,7 @@ TEST_F(MipGenerationTest, Texture2DSRGB)
 TEST_F(MipGenerationTest, Texture2DSRGBNonPowOfTwo)
 {
     u32 size = 384;
-    u16 numMips = ComputeMipCount({ size, size, 1 });
+    u16 numMips = ByteUtil::ComputeMipCount({ size, size, 1 });
     Texture tex = graphics.CreateTexture(
         TextureDesc::CreateTexture2DDesc("SRGB_NonPow2",
                                          TextureFormat::RGBA8_UNORM,
@@ -498,7 +498,7 @@ TEST_F(MipGenerationTest, Texture2DSRGBNonPowOfTwo)
 TEST_F(MipGenerationTest, Texture2DSRGBSingleColor)
 {
     u32 size = 256;
-    u16 numMips = ComputeMipCount({ size, size, 1 });
+    u16 numMips = ByteUtil::ComputeMipCount({ size, size, 1 });
     Texture tex = graphics.CreateTexture(
         TextureDesc::CreateTexture2DDesc("SRGB_SingleColor",
                                          TextureFormat::RGBA8_UNORM,
@@ -545,7 +545,7 @@ TEST_F(MipGenerationTest, Texture2DArray)
 {
     u32 size = 256;
     u32 arraySize = 4;
-    u16 numMips = ComputeMipCount({ size, size, 1 });
+    u16 numMips = ByteUtil::ComputeMipCount({ size, size, 1 });
     Texture tex = graphics.CreateTexture(
         TextureDesc::CreateTexture2DArrayDesc("Array",
                                               TextureFormat::RGBA32_FLOAT,
@@ -602,7 +602,7 @@ TEST_F(MipGenerationTest, Texture2DArray)
 TEST_F(MipGenerationTest, TextureCube)
 {
     u32 faceSize = 256;
-    u16 numMips = ComputeMipCount({ faceSize, faceSize, 1 });
+    u16 numMips = ByteUtil::ComputeMipCount({ faceSize, faceSize, 1 });
     Texture tex = graphics.CreateTexture(
         TextureDesc::CreateTextureCubeDesc("Cube",
                                            TextureFormat::RGBA32_FLOAT,
@@ -658,7 +658,7 @@ TEST_F(MipGenerationTest, TextureCubeArray)
 {
     u32 faceSize = 128;
     u32 cubeCount = 3;
-    u16 numMips = ComputeMipCount({ faceSize, faceSize, 1 });
+    u16 numMips = ByteUtil::ComputeMipCount({ faceSize, faceSize, 1 });
     Texture tex = graphics.CreateTexture(
         TextureDesc::CreateTextureCubeArrayDesc("CubeArray",
                                                 TextureFormat::RGBA32_FLOAT,
@@ -974,7 +974,7 @@ TEST_P(MipGenerationFormatTest, FinalMipAveragesCorrectly)
     // Use a size guaranteed to produce a clean 50/50 average:
     // 512 gives many mip levels and the checkerboard tiles evenly.
     constexpr u32 size = 512;
-    u16 numMips = ComputeMipCount({ size, size, 1 });
+    u16 numMips = ByteUtil::ComputeMipCount({ size, size, 1 });
 
     Texture tex = graphics.CreateTexture(
         TextureDesc::CreateTexture2DDesc(std::string(desc.name),

@@ -27,10 +27,10 @@ using vex::BufferReadbackContext;
 using vex::BufferRegion;
 using vex::BufferUsage;
 using vex::BufferUtil;
+using vex::ByteUtil;
 using vex::ColorSpace;
 using vex::CommandContext;
 using vex::CompareOp;
-using vex::ComputeMipCount;
 using vex::ConstantBinding;
 using vex::DepthStencilState;
 using vex::DrawDesc;
@@ -42,6 +42,7 @@ using vex::Graphics;
 using vex::GraphicsCreateDesc;
 using vex::Logger;
 using vex::NonNullPtr;
+using vex::PlatformUtil;
 using vex::PlatformWindow;
 using vex::PlatformWindowHandle;
 using vex::QueueType;
@@ -53,7 +54,6 @@ using vex::ShaderType;
 using vex::ShaderView;
 using vex::Span;
 using vex::StaticTextureSampler;
-using vex::StringToWString;
 using vex::SyncToken;
 using vex::Texture;
 using vex::TextureAspect;
@@ -72,7 +72,6 @@ using vex::TextureViewType;
 using vex::TLASInstanceDesc;
 using vex::TraceRaysDesc;
 using vex::VertexInputLayout;
-using vex::WStringToString;
 
 // Have to export vex::operators in order for users to get syntaxic sugar to implicitly convert a BitEnum type to Flags.
 // Eg: vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite converts to vex::Flags<vex::TextureUsage>.

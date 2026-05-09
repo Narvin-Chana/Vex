@@ -39,7 +39,7 @@ NonNullPtr<RHICommandList> DX12CommandPool::GetOrCreateCommandList(QueueType que
         cmdListPtr = pool.back().get();
 #if !VEX_SHIPPING
         chk << cmdListPtr->GetNativeCommandList()->SetName(
-            StringToWString(std::format("CommandList: {}_{}", magic_enum::enum_name(queueType), pool.size() - 1))
+            PlatformUtil::StringToWString(std::format("CommandList: {}_{}", magic_enum::enum_name(queueType), pool.size() - 1))
                 .c_str());
 #endif
         VEX_LOG(Verbose, "Created new commandlist for queue {}", magic_enum::enum_name(queueType));

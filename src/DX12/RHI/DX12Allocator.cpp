@@ -134,7 +134,7 @@ void DX12Allocator::OnPageAllocated(PageHandle pageHandle, u32 heapIndex)
     chk << device->CreateHeap(&heapDesc, IID_PPV_ARGS(&heapList[pageHandle]));
 #if !VEX_SHIPPING
     chk << heapList[pageHandle]->SetName(
-        StringToWString(std::format("AllocatorHeap: {}", magic_enum::enum_name(static_cast<HeapType>(heapIndex))))
+        PlatformUtil::StringToWString(std::format("AllocatorHeap: {}", magic_enum::enum_name(static_cast<HeapType>(heapIndex))))
             .c_str());
 #endif
 }

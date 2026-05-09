@@ -22,7 +22,7 @@ DX12PhysicalDevice::DX12PhysicalDevice(ComPtr<IDXGIAdapter4> adapter, const ComP
     DXGI_ADAPTER_DESC3 desc;
     this->adapter->GetDesc3(&desc);
 
-    info.deviceName = WStringToString(desc.Description);
+    info.deviceName = PlatformUtil::WStringToString(desc.Description);
     info.dedicatedVideoMemoryMB = static_cast<double>(desc.DedicatedVideoMemory) / (1024.0 * 1024.0);
     chk << featureSupport.Init(device.Get());
 }

@@ -56,7 +56,7 @@ static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureReg
                 const u32 mipDepth = region.extent.GetDepth(desc, mip);
 
                 // Calculate the size of this region in the staging buffer.
-                const u32 alignedRowPitch = AlignUp<u32>(mipWidth * bytesPerPixel, TextureUtil::RowPitchAlignment);
+                const u32 alignedRowPitch = ByteUtil::AlignUp<u32>(mipWidth * bytesPerPixel, TextureUtil::RowPitchAlignment);
                 const u64 regionStagingSize = static_cast<u64>(alignedRowPitch) * mipHeight * mipDepth;
 
                 BufferTextureCopyDesc copyDesc{
@@ -76,11 +76,11 @@ static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureReg
 
                 copyDescs.push_back(std::move(copyDesc));
 
-                stagingBufferOffset += AlignUp<u64>(regionStagingSize, TextureUtil::SliceAlignment);
+                stagingBufferOffset += ByteUtil::AlignUp<u64>(regionStagingSize, TextureUtil::SliceAlignment);
             }
 
             // Move to next aligned position in staging buffer.
-            stagingBufferOffset = AlignUp<u64>(stagingBufferOffset, TextureUtil::MipAlignment);
+            stagingBufferOffset = ByteUtil::AlignUp<u64>(stagingBufferOffset, TextureUtil::MipAlignment);
         }
     }
 

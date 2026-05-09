@@ -164,7 +164,7 @@ void DX12AccelerationStructure::InitRayTracingGeometryDesc(const RHIBLASBuildDes
                        "AABB stride must be 24 bytes (6 floats: MinX, MinY, MinZ, MaxX, MaxY, MaxZ)");
             D3D12_GPU_VIRTUAL_ADDRESS virtualAddress =
                 aabbBinding.buffer->GetGPUVirtualAddress() + aabbBinding.binding.offsetByteSize.value_or(0);
-            VEX_ASSERT(IsAligned<u64>(virtualAddress, D3D12_RAYTRACING_AABB_BYTE_ALIGNMENT),
+            VEX_ASSERT(ByteUtil::IsAligned<u64>(virtualAddress, D3D12_RAYTRACING_AABB_BYTE_ALIGNMENT),
                        "Virtual address for aabb buffer must be aligned to D3D12_RAYTRACING_AABB_BYTE_ALIGNMENT.");
             geometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS;
             geometryDesc.AABBs = {

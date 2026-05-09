@@ -55,7 +55,7 @@ std::optional<MemoryRange> MemoryPageInfo::FindFreeSpace(u64 size, u64 alignment
     // Check in between currently allocated ranges.
     for (auto& range : allocatedRanges)
     {
-        u64 alignedOffset = AlignUp(searchOffset, alignment);
+        u64 alignedOffset = ByteUtil::AlignUp(searchOffset, alignment);
 
         if (alignedOffset + size <= range.offset)
         {
@@ -67,7 +67,7 @@ std::optional<MemoryRange> MemoryPageInfo::FindFreeSpace(u64 size, u64 alignment
     }
 
     // Check after the last allocated range.
-    u64 alignedOffset = AlignUp(searchOffset, alignment);
+    u64 alignedOffset = ByteUtil::AlignUp(searchOffset, alignment);
     if (alignedOffset + size <= pageByteSize)
     {
         return MemoryRange{ .offset = alignedOffset, .size = size };
@@ -84,7 +84,7 @@ RHIAllocatorBase::RHIAllocatorBase(u32 memoryTypeCount)
 
 Allocation RHIAllocatorBase::Allocate(u64 size, u64 alignment, u32 memoryTypeIndex)
 {
-    u64 alignedSize = AlignUp(size, alignment);
+    u64 alignedSize = ByteUtil::AlignUp(size, alignment);
 
     auto& memoryPages = pageInfos[memoryTypeIndex];
     for (auto it = memoryPages.begin(); it != memoryPages.end(); ++it)

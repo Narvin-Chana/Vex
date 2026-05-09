@@ -22,7 +22,7 @@ namespace DXCCompiler_Internal
 static std::wstring GetTargetFromShaderType(const ShaderType type, const ShaderCompilerSettings& compilerSettings)
 {
     std::wstring highestSupportedShaderModel =
-        StringToWString(std::string(magic_enum::enum_name(compilerSettings.shaderModel)));
+        PlatformUtil::PlatformUtil::StringToWString(std::string(magic_enum::enum_name(compilerSettings.shaderModel)));
 
     using enum ShaderType;
 
@@ -61,7 +61,7 @@ std::expected<ComPtr<IDxcBlobEncoding>, std::string> LoadShaderSource(const ComP
                                                                       const std::filesystem::path& filepath)
 {
     ComPtr<IDxcBlobEncoding> shaderBlob;
-    const std::wstring shaderPath = StringToWString(filepath.string());
+    const std::wstring shaderPath = PlatformUtil::StringToWString(filepath.string());
     if (const HRESULT hr = utils->LoadFile(shaderPath.c_str(), nullptr, &shaderBlob); FAILED(hr))
     {
         return std::unexpected(std::format("Failed to load shader from filesystem at path: {}.", filepath.string()));
@@ -126,7 +126,7 @@ std::vector<std::wstring> BuildDefaultArgumentList(const ShaderCompilerSettings&
     if (compilerSettings.target == CompilationTarget::SPIRV)
     {
         std::string_view vulkanVersion;
-        switch(compilerSettings.spirvVersion)
+        switch (compilerSettings.spirvVersion)
         {
         case SpirvVersion::spirv_1_0:
         case SpirvVersion::spirv_1_1:
@@ -144,7 +144,8 @@ std::vector<std::wstring> BuildDefaultArgumentList(const ShaderCompilerSettings&
             vulkanVersion = "vulkan1.3";
             break;
         }
-        std::wstring spirvVersionFlag = std::format(L"-fspv-target-env={}", StringToWString(std::string(vulkanVersion)));
+        std::wstring spirvVersionFlag =
+            std::format(L"-fspv-target-env={}", PlatformUtil::StringToWString(std::string(vulkanVersion)));
         args.emplace_back(L"-spirv");
         args.emplace_back(L"-fvk-bind-resource-heap");
         args.emplace_back(L"0");
@@ -170,12 +171,12 @@ std::vector<std::wstring> BuildDefaultArgumentList(const ShaderCompilerSettings&
     wStringPaths.reserve(includeDirectories.size() + 1);
     for (auto& additionalIncludeFolder : includeDirectories)
     {
-        wStringPaths.emplace_back(StringToWString(additionalIncludeFolder.string()));
+        wStringPaths.emplace_back(PlatformUtil::StringToWString(additionalIncludeFolder.string()));
         args.insert(args.end(), { L"-I", wStringPaths.back().c_str() });
     }
 
     // Also adds the current working directory for the Vex.hlsli file.
-    wStringPaths.emplace_back(StringToWString(std::filesystem::current_path().string()));
+    wStringPaths.emplace_back(PlatformUtil::StringToWString(std::filesystem::current_path().string()));
     args.insert(args.end(), { L"-I", wStringPaths.back().c_str() });
 
     return args;
@@ -190,11 +191,11 @@ std::vector<std::pair<std::wstring, std::wstring>> BuildDefineList(const ShaderK
     std::ranges::transform(environment.defines,
                            std::back_inserter(defineWStrings),
                            [](const ShaderDefine& d) -> std::pair<std::wstring, std::wstring>
-                           { return { StringToWString(d.name), StringToWString(d.value) }; });
+                           { return { PlatformUtil::StringToWString(d.name), PlatformUtil::StringToWString(d.value) }; });
     std::ranges::transform(key.defines,
                            std::back_inserter(defineWStrings),
                            [](const ShaderDefine& d) -> std::pair<std::wstring, std::wstring>
-                           { return { StringToWString(d.name), StringToWString(d.value) }; });
+                           { return { PlatformUtil::StringToWString(d.name), PlatformUtil::StringToWString(d.value) }; });
 
     return defineWStrings;
 }
@@ -347,7 +348,7 @@ std::expected<ComPtr<IDxcResult>, std::string> DXCCompiler::CompileShaderFromBuf
     // RT Shaders are compiled differently to other shader types, the entry point should be null.
     if (!IsRayTracingShader(key.type))
     {
-        entryPoint = StringToWString(key.entryPoint);
+        entryPoint = PlatformUtil::StringToWString(key.entryPoint);
     }
 
     std::vector<LPCWSTR> wstrArgs;
@@ -363,7 +364,7 @@ std::expected<ComPtr<IDxcResult>, std::string> DXCCompiler::CompileShaderFromBuf
 
     ComPtr<IDxcCompilerArgs> compilerArgs;
     if (const HRESULT hr =
-            utils->BuildArguments(StringToWString(key.filepath).c_str(),
+            utils->BuildArguments(PlatformUtil::StringToWString(key.filepath).c_str(),
                                   entryPoint.empty() ? nullptr : entryPoint.c_str(),
                                   DXCCompiler_Internal::GetTargetFromShaderType(key.type, compilerSettings).c_str(),
                                   wstrArgs.data(),

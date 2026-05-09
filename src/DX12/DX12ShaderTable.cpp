@@ -25,7 +25,7 @@ DX12ShaderTable::DX12ShaderTable(ComPtr<DX12Device>& device,
     // Ensures proper alignment - shader records must be aligned to D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT (32
     // bytes)
     static constexpr u64 AlignedRecordStride =
-        AlignUp<u64>(ShaderRecordSize, std::max(D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT));
+        ByteUtil::AlignUp<u64>(ShaderRecordSize, std::max(D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT));
     recordStride = AlignedRecordStride;
 
     BufferDesc desc = BufferDesc::CreateStagingBufferDesc(std::string(name),

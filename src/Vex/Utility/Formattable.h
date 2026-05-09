@@ -45,7 +45,7 @@ struct std::formatter<std::wstring>
 
     auto format(const std::wstring& obj, std::format_context& ctx) const
     {
-        auto converted = vex::WStringToString(obj);
+        auto converted = vex::PlatformUtil::WStringToString(obj);
         return std::format_to(ctx.out(), "{}", converted);
     }
 };

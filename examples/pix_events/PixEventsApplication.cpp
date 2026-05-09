@@ -34,7 +34,7 @@ void PixEventsApplication::Run()
 
         if (!hasCaptured)
         {
-            PIX::StartCapture(vex::StringToWString("ExampleCapture.wpix"));
+            PIX::StartCapture(vex::PlatformUtil::StringToWString("ExampleCapture.wpix"));
 
             PIX::EndCapture();
             VEX_LOG(vex::Info, "Capture frame with PIX");
