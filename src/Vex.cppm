@@ -1,5 +1,11 @@
 module;
 #include <Vex.h>
+#if VEX_DX12
+#include <DX12/DX12Formats.h>
+#endif
+#if VEX_VULKAN
+#include <Vulkan/VkFormats.h>
+#endif
 export module Vex;
 
 export namespace vex
@@ -32,19 +38,30 @@ using vex::ColorSpace;
 using vex::CommandContext;
 using vex::CompareOp;
 using vex::ConstantBinding;
+using vex::CullMode;
 using vex::DepthStencilState;
 using vex::DrawDesc;
 using vex::DrawResourceBinding;
 using vex::FilterMode;
 using vex::FrameBuffering;
+using vex::FreeList;
+using vex::GInvalidASHandle;
+using vex::GInvalidBindlessHandle;
+using vex::GInvalidBufferHandle;
+using vex::GInvalidPageHandle;
+using vex::GInvalidQueryHandle;
+using vex::GInvalidTextureHandle;
 using vex::GLogger;
 using vex::Graphics;
 using vex::GraphicsCreateDesc;
+using vex::InputTopology;
 using vex::Logger;
 using vex::NonNullPtr;
 using vex::PlatformUtil;
 using vex::PlatformWindow;
 using vex::PlatformWindowHandle;
+using vex::QueryHandle;
+using vex::QueryStatus;
 using vex::QueueType;
 using vex::RayTracingShaderCollection;
 using vex::ResourceBinding;
@@ -72,6 +89,7 @@ using vex::TextureViewType;
 using vex::TLASInstanceDesc;
 using vex::TraceRaysDesc;
 using vex::VertexInputLayout;
+using vex::Winding;
 
 // Have to export vex::operators in order for users to get syntaxic sugar to implicitly convert a BitEnum type to Flags.
 // Eg: vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite converts to vex::Flags<vex::TextureUsage>.
@@ -95,6 +113,10 @@ using vex::i32;
 using vex::i64;
 // clang-format on
 
+using vex::RHI;
+using vex::RHICommandList;
+using vex::RHIDescriptorPool;
+
 #if VEX_SHADER_COMPILER
 using sc::CompilationTarget;
 using sc::HitGroupKey;
@@ -107,6 +129,22 @@ using sc::ShaderHotReloadErrorResponse;
 using sc::ShaderHotReloadErrorsCallback;
 using sc::ShaderKey;
 using sc::ShaderReflection;
+#endif
+
+#if VEX_DX12
+namespace dx12
+{
+using dx12::DXGIToTextureFormat;
+using dx12::TextureFormatToDXGI;
+} // namespace dx12
+#endif
+
+#if VEX_VULKAN
+namespace vk
+{
+using vk::TextureFormatToVulkan;
+using vk::VulkanToTextureFormat;
+} // namespace vk
 #endif
 
 } // namespace vex

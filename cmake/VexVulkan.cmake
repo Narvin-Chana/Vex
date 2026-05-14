@@ -15,6 +15,7 @@ function(setup_vulkan_backend TARGET)
             SOURCE_SUBDIR "<invalid path>" # this forces FetchContent to pull but not configure the dependency
             GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Reflect.git
             GIT_TAG vulkan-sdk-1.4.321.0
+            GIT_SUBMODULES "" # This avoids pulling in this repo's submodules (eg: GTest)
     )
     FetchContent_MakeAvailable(spirv_reflect)
 

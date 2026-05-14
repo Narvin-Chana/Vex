@@ -7,7 +7,7 @@
 namespace vex
 {
 
-static constexpr u32 GMaxBindlessSamplerCount = 2048;
+inline constexpr u32 GMaxBindlessSamplerCount = 2048;
 
 enum class FilterMode : u8
 {

@@ -42,7 +42,7 @@ static std::vector<::vk::BufferImageCopy> GetBufferImageCopyFromBufferToImageDes
             TextureUtil::GetCopyFormat(texture.GetDesc().format,
                                        textureRegion.subresource.GetSingleAspect(texture.GetDesc())));
 
-        u32 alignedRowPitch = static_cast<u32>(AlignUp<u64>(
+        u32 alignedRowPitch = static_cast<u32>(ByteUtil::AlignUp<u64>(
             textureRegion.extent.GetWidth(texture.GetDesc(), textureRegion.subresource.startMip) * pixelByteSize,
             TextureUtil::RowPitchAlignment));
 

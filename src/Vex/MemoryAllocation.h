@@ -68,11 +68,11 @@ private:
     std::vector<MemoryRange> allocatedRanges;
 };
 
-struct PageHandle : public Handle64<PageHandle>
+struct PageHandle : Handle64<PageHandle>
 {
 };
 
-static constexpr PageHandle GInvalidPageHandle;
+inline constexpr PageHandle GInvalidPageHandle;
 
 struct Allocation
 {

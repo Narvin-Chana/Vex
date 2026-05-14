@@ -12,7 +12,7 @@
 
 namespace vex::vk
 {
-static constexpr ::vk::DescriptorBufferInfo NullDescriptorBufferInfo{ .buffer = VK_NULL_HANDLE,
+inline constexpr ::vk::DescriptorBufferInfo NullDescriptorBufferInfo{ .buffer = VK_NULL_HANDLE,
                                                                       .offset = 0,
                                                                       .range = VK_WHOLE_SIZE };
 

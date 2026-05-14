@@ -9,7 +9,7 @@ namespace vex::dx12
 {
 
 // Convert from TextureFormat to DXGI_FORMAT
-constexpr inline DXGI_FORMAT TextureFormatToDXGI(TextureFormat format, bool isSRGB)
+constexpr DXGI_FORMAT TextureFormatToDXGI(TextureFormat format, bool isSRGB)
 {
     switch (format)
     {
@@ -133,7 +133,7 @@ constexpr inline DXGI_FORMAT TextureFormatToDXGI(TextureFormat format, bool isSR
 }
 
 // Convert from DXGI_FORMAT to TextureFormat
-constexpr inline TextureFormat DXGIToTextureFormat(DXGI_FORMAT format)
+constexpr TextureFormat DXGIToTextureFormat(DXGI_FORMAT format)
 {
     switch (format)
     {
@@ -262,7 +262,7 @@ constexpr inline TextureFormat DXGIToTextureFormat(DXGI_FORMAT format)
     }
 }
 
-constexpr inline DXGI_FORMAT GetTypelessFormatForSRGBCompatibleDX12Format(DXGI_FORMAT format)
+constexpr DXGI_FORMAT GetTypelessFormatForSRGBCompatibleDX12Format(DXGI_FORMAT format)
 {
     switch (format)
     {
@@ -283,7 +283,7 @@ constexpr inline DXGI_FORMAT GetTypelessFormatForSRGBCompatibleDX12Format(DXGI_F
     }
 }
 
-constexpr inline DXGI_FORMAT GetNonSRGBEquivalentForSRGBCompatibleDX12Format(DXGI_FORMAT format)
+constexpr DXGI_FORMAT GetNonSRGBEquivalentForSRGBCompatibleDX12Format(DXGI_FORMAT format)
 {
     switch (format)
     {
@@ -304,7 +304,7 @@ constexpr inline DXGI_FORMAT GetNonSRGBEquivalentForSRGBCompatibleDX12Format(DXG
     }
 }
 
-constexpr inline DXGI_FORMAT GetSRGBFormatForSRGBCompatibleDX12Format(DXGI_FORMAT format)
+constexpr DXGI_FORMAT GetSRGBFormatForSRGBCompatibleDX12Format(DXGI_FORMAT format)
 {
     switch (format)
     {
@@ -325,7 +325,7 @@ constexpr inline DXGI_FORMAT GetSRGBFormatForSRGBCompatibleDX12Format(DXGI_FORMA
     }
 }
 
-constexpr inline DXGI_FORMAT GetTypelessFormatForDepthStencilCompatibleDX12Format(DXGI_FORMAT format)
+constexpr DXGI_FORMAT GetTypelessFormatForDepthStencilCompatibleDX12Format(DXGI_FORMAT format)
 {
     switch (format)
     {
@@ -342,7 +342,7 @@ constexpr inline DXGI_FORMAT GetTypelessFormatForDepthStencilCompatibleDX12Forma
     }
 }
 
-constexpr inline DXGI_FORMAT GetDX12FormatForShaderResourceViewFormat(DXGI_FORMAT typelessFormat,
+constexpr DXGI_FORMAT GetDX12FormatForShaderResourceViewFormat(DXGI_FORMAT typelessFormat,
                                                                       TextureAspect aspect)
 {
     switch (typelessFormat)

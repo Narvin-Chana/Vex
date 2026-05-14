@@ -14,7 +14,7 @@ struct AccelerationStructureHandle : Handle64<AccelerationStructureHandle>
 {
 };
 
-static constexpr AccelerationStructureHandle GInvalidASHandle;
+inline constexpr AccelerationStructureHandle GInvalidASHandle;
 
 enum class ASType : u8
 {

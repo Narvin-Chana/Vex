@@ -6,8 +6,8 @@
 
 namespace vex
 {
-static constexpr u32 ByteAddressBufferOffsetMultiple = 16;
-static constexpr u32 ConstantBufferBindingOffsetMultiple = 256;
+inline constexpr u32 ByteAddressBufferOffsetMultiple = 16;
+inline constexpr u32 ConstantBufferBindingOffsetMultiple = 256;
 
 namespace BindingUtil
 {

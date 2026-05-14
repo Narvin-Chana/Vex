@@ -281,7 +281,15 @@ if (VEX_ENABLE_SHADER_COMPILER)
 endif()
 
 if(VEX_INTERNAL_USE_MODULES)
-    target_sources(Vex PUBLIC FILE_SET CXX_MODULES FILES "src/Vex.cppm" "${magic_enum_SOURCE_DIR}/module/magic_enum.cppm")
+    target_sources(Vex PUBLIC
+            FILE_SET CXX_MODULES
+            BASE_DIRS
+            "${CMAKE_CURRENT_SOURCE_DIR}/src"
+            "${magic_enum_SOURCE_DIR}/module"
+            FILES
+            "src/Vex.cppm"
+            "${magic_enum_SOURCE_DIR}/module/magic_enum.cppm"
+    )
 endif()
 
 set_target_properties(Vex PROPERTIES CXX_SCAN_FOR_MODULES ${VEX_INTERNAL_USE_MODULES})

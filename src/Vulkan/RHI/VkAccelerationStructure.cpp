@@ -259,7 +259,7 @@ void VkAccelerationStructure::BuildAccelerationStructure(::vk::AccelerationStruc
 
     prebuildInfo = {
         .asByteSize = asBuildSize.accelerationStructureSize,
-        .scratchByteSize = AlignUp(static_cast<u32>(asBuildSize.buildScratchSize), minASscratchAlignment),
+        .scratchByteSize = ByteUtil::AlignUp(static_cast<u32>(asBuildSize.buildScratchSize), minASscratchAlignment),
         .updateScratchByteSize = asBuildSize.updateScratchSize,
     };
 

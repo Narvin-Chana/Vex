@@ -78,7 +78,7 @@ struct TextureClearValue
     constexpr bool operator==(const TextureClearValue&) const = default;
 };
 
-static constexpr u8 GTextureCubeFaceCount = 6U;
+inline constexpr u8 GTextureCubeFaceCount = 6U;
 
 struct TextureDesc
 {
@@ -170,11 +170,11 @@ struct TextureDesc
 
 // Strongly defined type represents a texture.
 // We use a struct (instead of a typedef/using) to enforce compile-time correctness of handles.
-struct TextureHandle : public Handle64<TextureHandle>
+struct TextureHandle : Handle64<TextureHandle>
 {
 };
 
-static constexpr TextureHandle GInvalidTextureHandle;
+inline constexpr TextureHandle GInvalidTextureHandle;
 
 struct Texture final
 {
@@ -192,7 +192,7 @@ struct TextureHandleHash
     }
 };
 
-static constexpr u32 GTextureExtentMax = ~static_cast<u32>(0);
+inline constexpr u32 GTextureExtentMax = ~static_cast<u32>(0);
 
 struct TextureExtent3D
 {
@@ -216,10 +216,10 @@ struct TextureOffset3D
     constexpr bool operator==(const TextureOffset3D&) const = default;
 };
 
-static constexpr u16 GTextureAllMips = ~static_cast<u16>(0);
-static constexpr u32 GTextureAllSlices = ~static_cast<u32>(0);
+inline constexpr u16 GTextureAllMips = ~static_cast<u16>(0);
+inline constexpr u32 GTextureAllSlices = ~static_cast<u32>(0);
 
-static constexpr u32 GTextureClearRectMax = ~static_cast<u32>(0);
+inline constexpr u32 GTextureClearRectMax = ~static_cast<u32>(0);
 
 struct TextureClearRect
 {

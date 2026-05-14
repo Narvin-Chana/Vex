@@ -114,7 +114,7 @@ struct BufferHandle : public Handle64<BufferHandle>
 {
 };
 
-static constexpr BufferHandle GInvalidBufferHandle;
+inline constexpr BufferHandle GInvalidBufferHandle;
 
 struct Buffer final
 {
@@ -122,7 +122,7 @@ struct Buffer final
     BufferDesc desc;
 };
 
-static constexpr u64 GBufferWholeSize = ~static_cast<u64>(0);
+inline constexpr u64 GBufferWholeSize = ~static_cast<u64>(0);
 
 struct BufferRegion
 {
