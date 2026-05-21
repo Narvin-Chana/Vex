@@ -41,7 +41,7 @@
 #define VEX_CHECK(condition, fmt, ...)                                                                                 \
     if (!(condition))                                                                                                  \
     {                                                                                                                  \
-        VEX_LOG(vex::LogLevel::Fatal, fmt, ##__VA_ARGS__);                                                             \
+        VEX_LOG(vex::Fatal, fmt, ##__VA_ARGS__);                                                                       \
     }
 
 // Doing logging with macros instead of with a function allows for DebugBreak to break in the actual code, avoiding us
@@ -53,7 +53,7 @@
     if ((level) >= vex::Logger::GetLogLevelFilter())                                                                   \
     {                                                                                                                  \
         vex::GLogger.Log((level), message, ##__VA_ARGS__);                                                             \
-        if ((level) == vex::LogLevel::Fatal) /* Fatal error! Must exit. */                                             \
+        if ((level) == vex::Fatal) /* Fatal error! Must exit. */                                                       \
         {                                                                                                              \
             VEX_DEBUG_BREAK();                                                                                         \
             std::abort();                                                                                              \

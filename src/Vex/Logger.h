@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdlib>
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -106,9 +107,9 @@ private:
     // Closes the stream and renames the log file with the current timestamp.
     void CommitTimestampedLogFile();
 
-    static constexpr const char* LogFileName = "vex";
-    static constexpr const char* LogFileFormat = ".log";
-    static constexpr const char* LogFileNameFormat = "vex.log";
+    static constexpr auto LogFileName = "vex";
+    static constexpr auto LogFileFormat = ".log";
+    static constexpr auto LogFileNameFormat = "vex.log";
 
     // Calls to log with a lower level than this will be ignored.
     LogLevel levelFilter = Info;

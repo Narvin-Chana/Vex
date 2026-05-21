@@ -1,5 +1,9 @@
 module;
 #include <Vex.h>
+// Needed for access to RHI internals.
+#include <Vex/RHIImpl/RHI.h>
+#include <Vex/RHIImpl/RHICommandList.h>
+#include <Vex/RHIImpl/RHIDescriptorPool.h>
 #if VEX_DX12
 #include <DX12/DX12Formats.h>
 #endif
@@ -20,6 +24,7 @@ using vex::AddressMode;
 using vex::ASBuild;
 using vex::ASGeometry;
 using vex::ASGeometryType;
+using vex::ASInstance;
 using vex::ASType;
 using vex::BindlessHandle;
 using vex::BindlessTextureSampler;
@@ -54,8 +59,13 @@ using vex::GInvalidTextureHandle;
 using vex::GLogger;
 using vex::Graphics;
 using vex::GraphicsCreateDesc;
+using vex::Handle;
+using vex::Handle32;
+using vex::Handle64;
 using vex::InputTopology;
+using vex::LogDestination;
 using vex::Logger;
+using vex::LogLevelToString;
 using vex::NonNullPtr;
 using vex::PlatformUtil;
 using vex::PlatformWindow;
@@ -67,6 +77,7 @@ using vex::RayTracingShaderCollection;
 using vex::ResourceBinding;
 using vex::ResourceMemoryLocality;
 using vex::RHIAccessor;
+using vex::RHIBarrierAccess;
 using vex::ShaderType;
 using vex::ShaderView;
 using vex::Span;
@@ -86,6 +97,7 @@ using vex::TextureType;
 using vex::TextureUsage;
 using vex::TextureUtil;
 using vex::TextureViewType;
+using vex::TLASBuildDesc;
 using vex::TLASInstanceDesc;
 using vex::TraceRaysDesc;
 using vex::VertexInputLayout;
@@ -114,8 +126,13 @@ using vex::i64;
 // clang-format on
 
 using vex::RHI;
+using vex::RHIAccelerationStructure;
+using vex::RHIAllocator;
 using vex::RHICommandList;
+using vex::RHICommandPool;
 using vex::RHIDescriptorPool;
+using vex::RHIScopedGPUEvent;
+using vex::RHITimestampQueryPool;
 
 #if VEX_SHADER_COMPILER
 using sc::CompilationTarget;
