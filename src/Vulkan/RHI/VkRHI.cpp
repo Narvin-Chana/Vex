@@ -449,6 +449,12 @@ void VkRHI::Init()
     device = VEX_VK_CHECK <<= physDevice.createDeviceUnique(deviceCreateInfo);
     GDispatcherLifetime.SetDevice(*device);
 
+    VEX_LOG(Info, "Created VK device with extensions:");
+    for (auto deviceExtension : extensions)
+    {
+        VEX_LOG(Info, "\t{}", deviceExtension);
+    }
+
     if (graphicsQueueFamily != -1)
     {
         queues[QueueTypes::Graphics] = VkCommandQueue{
