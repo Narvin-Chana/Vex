@@ -4,7 +4,8 @@
 
 #include <Vex/RayTracing.h>
 #include <Vex/ShaderView.h>
-#include <Vex/Utility/Validation.h>
+#include <Vex/Logger.h>
+#include <VexMacros.h>
 
 namespace vex
 {

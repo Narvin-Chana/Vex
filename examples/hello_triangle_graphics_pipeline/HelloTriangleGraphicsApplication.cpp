@@ -1,5 +1,7 @@
 #include "HelloTriangleGraphicsApplication.h"
 
+#include <span>
+
 #include <GLFWIncludes.h>
 
 HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()

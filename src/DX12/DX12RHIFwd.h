@@ -30,7 +30,7 @@ namespace vex
 {
 
 // DX12 always has a root constants limit of 256 bytes.
-static constexpr std::size_t MaxTheoreticalLocalConstantsByteSize = 256;
+inline constexpr std::size_t MaxTheoreticalLocalConstantsByteSize = 256;
 
 using RHIAllocator = dx12::DX12Allocator;
 using RHICommandList = dx12::DX12CommandList;

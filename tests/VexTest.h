@@ -2,14 +2,21 @@
 
 #include "RenderDoc.h"
 
+#include <filesystem>
+#include <array>
+
 #include <gtest/gtest.h>
 
+#if VEX_MODULES
+#include <VexMacros.h>
+import Vex;
+import magic_enum;
+#else
 #include <Vex.h>
+#endif
 
 namespace vex
 {
-
-using namespace vex::sc;
 
 static const auto VexRootPath =
     std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path().parent_path();

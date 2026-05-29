@@ -29,7 +29,7 @@ public:
     void BuildAccelerationStructure(::vk::AccelerationStructureTypeKHR type, RHIAllocator& allocator);
 };
 
-::vk::GeometryInstanceFlagsKHR ASInstanceFlagsToVkGeometryInstanceFlags(ASInstance::Flags flags);
-::vk::GeometryFlagsKHR GeometryFlagsToVkGeometryFlags(ASGeometry::Flags flags);
-::vk::BuildAccelerationStructureFlagsKHR ASBuildFlagsToVkASBuildFlags(ASBuild::Flags flags);
+::vk::GeometryInstanceFlagsKHR ASInstanceFlagsToVkGeometryInstanceFlags(Flags<ASInstance> flags);
+::vk::GeometryFlagsKHR GeometryFlagsToVkGeometryFlags(Flags<ASGeometry> flags);
+::vk::BuildAccelerationStructureFlagsKHR ASBuildFlagsToVkASBuildFlags(Flags<ASBuild> flags);
 } // namespace vex::vk

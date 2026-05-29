@@ -1,9 +1,8 @@
 ﻿#include "VkBuffer.h"
 
-#include <magic_enum/magic_enum.hpp>
-
 #include <Vex/Bindings.h>
 #include <Vex/Buffer.h>
+#include <Vex/Utility/Formattable.h>
 
 #include <Vulkan/RHI/VkAllocator.h>
 #include <Vulkan/VkCommandQueue.h>

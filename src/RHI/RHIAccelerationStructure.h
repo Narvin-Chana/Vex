@@ -26,7 +26,7 @@ struct RHIBLASGeometryDesc
     // Buffer containing D3D12_RAYTRACING_AABB or VkAabbPositionsKHR
     std::optional<RHIBufferBinding> aabbBufferBinding;
 
-    ASGeometry::Flags flags = ASGeometry::None;
+    Flags<ASGeometry> flags = ASGeometry::None;
 };
 
 // RHI version of BLASBuildDesc

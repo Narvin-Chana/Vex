@@ -3,17 +3,15 @@
 #include <filesystem>
 #include <format>
 #include <fstream>
-#include <iostream>
 #include <optional>
-#include <print>
 #include <string>
 #include <string_view>
 
-#include <Vex/Platform/Debug.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/EnumFlags.h>
-// Keep this include, allows for implicit conversion of enums to enum string.
-#include <Vex/Utility/Formattable.h>
+#include <VexMacros.h>
+// Keep this include, allows for implicit conversion of enums to enum string when using the Logger.
+#include <Vex/Utility/MagicEnum.h>
 
 namespace vex
 {
@@ -30,7 +28,7 @@ enum LogLevel : u8
     Fatal
 };
 
-constexpr inline std::string_view LogLevelToString(LogLevel logLevel)
+constexpr std::string_view LogLevelToString(LogLevel logLevel)
 {
     switch (logLevel)
     {
@@ -50,11 +48,13 @@ constexpr inline std::string_view LogLevelToString(LogLevel logLevel)
 }
 
 /* clang-format off */
-BEGIN_VEX_ENUM_FLAGS(LogDestination, u8)
-    None = 0, 
+enum class LogDestination : u8
+{
+    None    = 0,
     Console = 1 << 0, 
-    File = 1 << 1,
-END_VEX_ENUM_FLAGS();
+    File    = 1 << 1,
+};
+VEX_ENUM_FLAG_BITS(LogDestination);
 /* clang-format on */
 
 struct Logger
@@ -69,24 +69,8 @@ struct Logger
                                                            GetTimestampString(),
                                                            LogLevelToString(level),
                                                            std::format(formatMessage, std::forward<Args>(args)...));
-
-        if (destinationFlags & LogDestination::Console)
-        {
-            std::println("{}", timeStampedFormatMessage);
-            std::flush(std::cout);
-        }
-
-        if (destinationFlags & LogDestination::File)
-        {
-            if (!logOutput)
-            {
-                OpenLogFile();
-            }
-            *logOutput << timeStampedFormatMessage << '\n';
-            // Frequent flush means that even on a crash, the log output will be present.
-            // This is obviously not great in terms of performance, but for logging this is acceptable.
-            logOutput->flush();
-        }
+        // We keep actual log logic in .cpp to reduce header bloat.
+        LogToOutput(timeStampedFormatMessage);
     }
 
     static LogLevel GetLogLevelFilter();
@@ -95,22 +79,23 @@ struct Logger
     static void SetLogLevelFilter(LogLevel newFilter);
     // Change directory in which the log file we be created. Will not change the name of the output file.
     static void SetLogFilePath(const std::filesystem::path& newLogFilePath);
-    static void SetLogDestination(LogDestination::Flags newDestinations);
+    static void SetLogDestination(Flags<LogDestination> newDestinations);
 
 private:
     void OpenLogFile();
     void CloseLogFile();
+    void LogToOutput(const std::string& logMessage);
 
     // Closes the stream and renames the log file with the current timestamp.
     void CommitTimestampedLogFile();
 
-    static constexpr const char* LogFileName = "vex";
-    static constexpr const char* LogFileFormat = ".log";
-    static constexpr const char* LogFileNameFormat = "vex.log";
+    static constexpr auto LogFileName = "vex";
+    static constexpr auto LogFileFormat = ".log";
+    static constexpr auto LogFileNameFormat = "vex.log";
 
     // Calls to log with a lower level than this will be ignored.
     LogLevel levelFilter = Info;
-    LogDestination::Flags destinationFlags = LogDestination::Console | LogDestination::File;
+    Flags<LogDestination> destinationFlags = LogDestination::Console | LogDestination::File;
 
     std::filesystem::path filePath = std::filesystem::current_path() / "logs" / LogFileNameFormat;
     std::optional<std::ofstream> logOutput;
@@ -119,19 +104,3 @@ private:
 inline Logger GLogger;
 
 } // namespace vex
-
-// Doing logging with macros instead of with a function allows for DebugBreak to break in the actual code, avoiding us
-// having to move up once in the call stack to get to the the actual code causing the error.
-
-// Logs a potentially formatted string with one of the following log levels: Info, Warning, Error, Fatal.
-// This follows std::format()'s formatting.
-#define VEX_LOG(level, message, ...)                                                                                   \
-    if ((level) >= vex::Logger::GetLogLevelFilter())                                                                   \
-    {                                                                                                                  \
-        vex::GLogger.Log((level), message, ##__VA_ARGS__);                                                             \
-        if ((level) == vex::LogLevel::Fatal) /* Fatal error! Must exit. */                                             \
-        {                                                                                                              \
-            VEX_DEBUG_BREAK();                                                                                         \
-            std::exit(1);                                                                                              \
-        }                                                                                                              \
-    }

@@ -3,7 +3,7 @@
 #include <optional>
 #include <ranges>
 
-#include <magic_enum/magic_enum.hpp>
+#include <Vex/Utility/Formattable.h>
 
 #include <Vex/Bindings.h>
 #include <Vex/Logger.h>
@@ -280,7 +280,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
 #endif
 
 #if !VEX_SHIPPING
-    chk << texture->SetName(StringToWString(std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name)).data());
+    chk << texture->SetName(PlatformUtil::StringToWString(std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name)).data());
 #endif
 }
 
@@ -341,7 +341,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID
     }
 
 #if !VEX_SHIPPING
-    chk << texture->SetName(StringToWString(std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name)).data());
+    chk << texture->SetName(PlatformUtil::StringToWString(std::format("{}: {}", magic_enum::enum_name(desc.type), desc.name)).data());
 #endif
 }
 
@@ -447,7 +447,7 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(const DX12Textu
 
 DX12TextureView::DX12TextureView(const TextureDesc& desc,
                                  const TextureSubresource& inSubresource,
-                                 TextureUsage::Type usage,
+                                 TextureUsage usage,
                                  TextureViewType dimension,
                                  DXGI_FORMAT format)
     : subresource{ inSubresource }
@@ -465,7 +465,7 @@ DX12TextureView::DX12TextureView(const TextureDesc& desc,
 
 DX12TextureView::DX12TextureView(const TextureDesc& desc,
                                  const TextureSubresource& subresource,
-                                 TextureUsage::Type usage)
+                                 TextureUsage usage)
     : DX12TextureView(desc,
                       subresource,
                       usage,
@@ -477,7 +477,7 @@ DX12TextureView::DX12TextureView(const TextureDesc& desc,
 DX12TextureView::DX12TextureView(const TextureBinding& binding)
     : DX12TextureView(binding.texture.desc,
                       binding.subresource,
-                      binding.usage != TextureBindingUsage::None ? static_cast<TextureUsage::Type>(binding.usage)
+                      binding.usage != TextureBindingUsage::None ? static_cast<TextureUsage>(binding.usage)
                                                                  : TextureUsage::None,
                       TextureUtil::GetTextureViewType(binding),
                       TextureFormatToDXGI(binding.texture.desc.format, binding.isSRGB))

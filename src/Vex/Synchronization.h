@@ -15,7 +15,7 @@ struct SyncToken
     constexpr bool operator==(const SyncToken& other) const = default;
 };
 
-static constexpr std::array GInfiniteSyncTokens{
+inline constexpr std::array GInfiniteSyncTokens{
     SyncToken{ .queueType = QueueType::Copy, .value = std::numeric_limits<u64>::max() },
     SyncToken{ .queueType = QueueType::Compute, .value = std::numeric_limits<u64>::max() },
     SyncToken{ .queueType = QueueType::Graphics, .value = std::numeric_limits<u64>::max() },

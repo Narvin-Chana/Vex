@@ -45,7 +45,7 @@ std::string DXGIFactory::GetDeviceAdapterName(const ComPtr<ID3D12Device>& device
         if (adapterDesc.AdapterLuid.LowPart == adapterLuid.LowPart &&
             adapterDesc.AdapterLuid.HighPart == adapterLuid.HighPart)
         {
-            return WStringToString(adapterDesc.Description);
+            return PlatformUtil::PlatformUtil::WStringToString(adapterDesc.Description);
         }
     }
 

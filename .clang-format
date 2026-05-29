@@ -157,7 +157,12 @@ IncludeCategories:
       Priority: 3
       SortPriority: 3
       CaseSensitive: true
-    # ShaderCompiler/ headers (BEFORE third-party includes to ensure it matches first)
+    # VexMacros.h should also be grouped with Vex/ includes
+    - Regex: '^<VexMacros.h>$'
+      Priority: 3
+      SortPriority: 3
+      CaseSensitive: true
+  # ShaderCompiler/ headers (BEFORE third-party includes to ensure it matches first)
     - Regex: '^<ShaderCompiler/.*>$'
       Priority: 4
       SortPriority: 4

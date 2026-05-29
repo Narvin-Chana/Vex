@@ -7,7 +7,7 @@
 namespace vex
 {
 
-static constexpr u32 GDefaultDescriptorPoolSize = 65536;
+inline constexpr u32 GDefaultDescriptorPoolSize = 65536;
 
 enum class DescriptorType : u8
 {

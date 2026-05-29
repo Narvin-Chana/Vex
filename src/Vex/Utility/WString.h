@@ -9,28 +9,31 @@
 namespace vex
 {
 
-inline std::string WStringToString(const std::wstring& wstr)
+struct PlatformUtil
 {
-    if (wstr.empty())
-        return "";
-    i32 size_needed = wcstombs(nullptr, wstr.c_str(), 0);
-    if (size_needed <= 0)
-        return "";
-    std::vector<char> buffer(size_needed + 1);
-    wcstombs(buffer.data(), wstr.c_str(), size_needed);
-    return std::string(buffer.data());
-}
+    static std::string WStringToString(const std::wstring& wstr)
+    {
+        if (wstr.empty())
+            return "";
+        i32 sizeNeeded = wcstombs(nullptr, wstr.c_str(), 0);
+        if (sizeNeeded <= 0)
+            return "";
+        std::vector<char> buffer(sizeNeeded + 1);
+        wcstombs(buffer.data(), wstr.c_str(), sizeNeeded);
+        return std::string(buffer.data());
+    }
 
-inline std::wstring StringToWString(const std::string& str)
-{
-    if (str.empty())
-        return L"";
-    i32 size_needed = mbstowcs(nullptr, str.c_str(), 0);
-    if (size_needed <= 0)
-        return L"";
-    std::vector<wchar_t> buffer(size_needed + 1);
-    mbstowcs(buffer.data(), str.c_str(), size_needed);
-    return std::wstring(buffer.data());
-}
+    static std::wstring StringToWString(const std::string& str)
+    {
+        if (str.empty())
+            return L"";
+        i32 sizeNeeded = mbstowcs(nullptr, str.c_str(), 0);
+        if (sizeNeeded <= 0)
+            return L"";
+        std::vector<wchar_t> buffer(sizeNeeded + 1);
+        mbstowcs(buffer.data(), str.c_str(), sizeNeeded);
+        return std::wstring(buffer.data());
+    }
+};
 
 } // namespace vex

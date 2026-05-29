@@ -1,15 +1,14 @@
 #pragma once
 
 #include <algorithm>
-#include <span>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
 #include <Vex/Containers/Span.h>
-#include <Vex/Platform/Debug.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/MaybeUninitialized.h>
+#include <VexMacros.h>
 
 namespace vex
 {

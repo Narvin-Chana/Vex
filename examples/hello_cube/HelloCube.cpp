@@ -1,5 +1,7 @@
 #include "HelloCube.h"
 
+#include <span>
+
 #include <GLFWIncludes.h>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -261,8 +263,7 @@ void HelloCubeApplication::Run()
                                     .vertexBuffers = { &vertexBufferBinding, 1 },
                                     .indexBuffer = indexBufferBinding,
                                 },
-                                vex::ConstantBinding(
-                                    UniformData{ static_cast<float>(currentTime), uvGuideHandle }),
+                                vex::ConstantBinding(UniformData{ static_cast<float>(currentTime), uvGuideHandle }),
                                 {},
                                 IndexCount);
             }

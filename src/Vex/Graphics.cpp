@@ -2,7 +2,6 @@
 
 #include <array>
 #include <functional>
-#include <thread>
 #include <utility>
 
 #include <Vex/CommandContext.h>
@@ -17,8 +16,8 @@
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/ResourceCleanup.h>
 #include <Vex/Utility/ByteUtils.h>
-#include <Vex/Utility/Validation.h>
 #include <Vex/Utility/Visitor.h>
+#include <VexMacros.h>
 
 #include <RHI/RHIAccelerationStructure.h>
 #include <RHI/RHIBarrier.h>
@@ -275,7 +274,7 @@ Texture Graphics::CreateTexture(const TextureDesc& textureDesc, ResourceLifetime
 
     if (textureDesc.mips == 0)
     {
-        texDesc.mips = ComputeMipCount(std::make_tuple(textureDesc.width, textureDesc.height, textureDesc.GetDepth()));
+        texDesc.mips = ByteUtil::ComputeMipCount(std::make_tuple(textureDesc.width, textureDesc.height, textureDesc.GetDepth()));
     }
 
     if (lifetime == ResourceLifetime::Dynamic)

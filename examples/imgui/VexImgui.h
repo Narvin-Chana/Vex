@@ -94,9 +94,8 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
 
     // Descriptors callbacks to register and unregister handles.
     initInfo.SrvDescriptorHeap = helper.descriptorPool.GetNativeDescriptorHeap().Get();
-    initInfo.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo*,
-                                       D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle,
-                                       D3D12_GPU_DESCRIPTOR_HANDLE* gpuHandle)
+    initInfo.SrvDescriptorAllocFn =
+        [](ImGui_ImplDX12_InitInfo*, D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, D3D12_GPU_DESCRIPTOR_HANDLE* gpuHandle)
     {
         vex::BindlessHandle handle = helper.descriptorPool.AllocateStaticDescriptor(vex::DescriptorType::Resource);
         *cpuHandle = helper.descriptorPool.GetCPUDescriptor(handle);
@@ -162,11 +161,10 @@ inline void Image(const vex::TextureBinding& binding,
         accessor.GetTexture(binding.texture).GetOrCreateImageView(binding, vex::TextureUsage::ShaderRead);
     if (!GImGuiVexContext.imageCache.contains(img))
     {
-        GImGuiVexContext.imageCache.insert(
-            { img,
-              (ImTextureID)ImGui_ImplVulkan_AddTexture(*GImGuiVexContext.linearSampler,
-                                                       img,
-                                                       VK_IMAGE_LAYOUT_GENERAL) });
+        GImGuiVexContext.imageCache.insert({ img,
+                                             (ImTextureID)ImGui_ImplVulkan_AddTexture(*GImGuiVexContext.linearSampler,
+                                                                                      img,
+                                                                                      VK_IMAGE_LAYOUT_GENERAL) });
     }
     registeredTexture = GImGuiVexContext.imageCache[img];
 #elif VEX_DX12

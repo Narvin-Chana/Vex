@@ -25,11 +25,11 @@ namespace vex::dx12
 
 struct DX12TextureView
 {
-    DX12TextureView(const TextureDesc& desc, const TextureSubresource& subresource, TextureUsage::Type usage);
+    DX12TextureView(const TextureDesc& desc, const TextureSubresource& subresource, TextureUsage usage);
     DX12TextureView(const TextureBinding& binding);
 
     TextureSubresource subresource;
-    TextureUsage::Type usage;
+    TextureUsage usage;
     TextureViewType dimension;
     // Uses the underlying resource's format if set to DXGI_FORMAT_UNKNOWN (and if the texture's format is not
     // TYPELESS!).
@@ -40,7 +40,7 @@ struct DX12TextureView
 private:
     DX12TextureView(const TextureDesc& desc,
                     const TextureSubresource& subresource,
-                    TextureUsage::Type usage,
+                    TextureUsage usage,
                     TextureViewType dimension,
                     DXGI_FORMAT format);
 };

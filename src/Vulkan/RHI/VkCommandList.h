@@ -43,7 +43,7 @@ public:
                                                         Span<const TextureClearRect> clearRects) override;
     virtual void ClearTexture(RHITexture& texture,
                               const TextureSubresource& subresource,
-                              TextureUsage::Type usage,
+                              TextureUsage usage,
                               const TextureClearValue& clearValue,
                               Span<const TextureClearRect> clearRects) override;
 

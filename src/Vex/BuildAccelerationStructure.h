@@ -32,20 +32,24 @@ enum class ASGeometryType : u8
 
 // clang-format off
 
-BEGIN_VEX_ENUM_FLAGS(ASGeometry, u8)
-	None						= 0,
-	Opaque						= 1 << 0,	// This means AnyHit shaders will not be invoked.
-	NoDuplicateAnyHitInvocation = 1 << 1,	// Guarantees single AnyHit invocations.
-END_VEX_ENUM_FLAGS();
+enum class ASGeometry : u8
+{
+    None						= 0,
+    Opaque						= 1 << 0,	// This means AnyHit shaders will not be invoked.
+    NoDuplicateAnyHitInvocation = 1 << 1,	// Guarantees single AnyHit invocations.
+};
+VEX_ENUM_FLAG_BITS(ASGeometry);
 
-BEGIN_VEX_ENUM_FLAGS(ASInstance, u8)
-	None						  = 0,
-	TriangleCullDisable			  = 1 << 0,
-	TriangleFrontCounterClockwise = 1 << 1,
-	ForceOpaque                   = 1 << 2,
-	ForceNonOpaque                = 1 << 3,
-	// TODO(https://trello.com/c/YPn5ypzR): Opacity Micro-Maps flags.
-END_VEX_ENUM_FLAGS();
+enum class ASInstance : u8
+{
+    None						  = 0,
+    TriangleCullDisable			  = 1 << 0,
+    TriangleFrontCounterClockwise = 1 << 1,
+    ForceOpaque                   = 1 << 2,
+    ForceNonOpaque                = 1 << 3,
+    // TODO(https://trello.com/c/YPn5ypzR): Opacity Micro-Maps flags.
+};
+VEX_ENUM_FLAG_BITS(ASInstance);
 
 // clang-format on
 
@@ -63,7 +67,7 @@ struct BLASGeometryDesc
     // Buffer containing D3D12_RAYTRACING_AABB or VkAabbPositionsKHR
     std::vector<AABB> aabbs;
 
-    ASGeometry::Flags flags = ASGeometry::Opaque;
+    Flags<ASGeometry> flags = ASGeometry::Opaque;
 };
 
 struct BLASBuildDesc
@@ -71,7 +75,7 @@ struct BLASBuildDesc
     ASGeometryType type = ASGeometryType::Triangles;
 
     // Geometry to include in this BLAS.
-    // Typically you'd have only one geometry per BLAS (one mesh or a mesh and its connected parts, eg: a car with its
+    // Typically, you'd have only one geometry per BLAS (one mesh or a mesh and its connected parts, eg: a car with its
     // wheels).
     Span<const BLASGeometryDesc> geometry;
 
@@ -96,7 +100,7 @@ struct TLASInstanceDesc
     // Shader Binding Table (SBT) offset.
     u32 instanceContributionToHitGroupIndex = 0;
     // Flags for the instance.
-    ASInstance::Flags instanceFlags = ASInstance::ForceOpaque;
+    Flags<ASInstance> instanceFlags = ASInstance::ForceOpaque;
 
     // Handle to this instance's corresponding BLAS.
     AccelerationStructure blas;

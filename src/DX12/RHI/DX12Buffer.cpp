@@ -4,12 +4,11 @@
 #include <Vex/Buffer.h>
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
-#include <Vex/Platform/Debug.h>
 #include <Vex/Platform/Platform.h>
 #include <Vex/RHIImpl/RHIAllocator.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
 #include <Vex/Utility/ByteUtils.h>
-#include <Vex/Utility/Validation.h>
+#include <VexMacros.h>
 
 namespace vex::dx12
 {
@@ -27,7 +26,7 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
         forcedAlignment = std::max<u64>(forcedAlignment, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
         // Force size to 256 alignment, in order to avoid issues later on when creating CBVs (CBVs must be 256 bytes
         // aligned).
-        size = AlignUp<u64>(size, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+        size = ByteUtil::AlignUp<u64>(size, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
     }
 
     CD3DX12_RESOURCE_DESC1 bufferDesc = CD3DX12_RESOURCE_DESC1::Buffer(size,
@@ -116,7 +115,7 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
     }
 
 #if !VEX_SHIPPING
-    chk << buffer->SetName(StringToWString(std::format("Buffer: {}", desc.name)).data());
+    chk << buffer->SetName(PlatformUtil::StringToWString(std::format("Buffer: {}", desc.name)).data());
 #endif
 }
 
@@ -171,12 +170,12 @@ void DX12Buffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
 
     if (isCBV)
     {
-        VEX_CHECK(IsAligned<u64>(viewDesc.offsetByteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT),
+        VEX_CHECK(ByteUtil::IsAligned<u64>(viewDesc.offsetByteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT),
                   "DX12 requires that constant buffer locations be aligned to 256. If you want more precise offsets, "
                   "use a raw ByteAddressBuffer to access your resource!");
         D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
         cbvDesc.BufferLocation = buffer->GetGPUVirtualAddress() + viewDesc.offsetByteSize;
-        cbvDesc.SizeInBytes = AlignUp<u64>(viewDesc.rangeByteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+        cbvDesc.SizeInBytes = ByteUtil::AlignUp<u64>(viewDesc.rangeByteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
         device->CreateConstantBufferView(&cbvDesc, cpuHandle);
     }
     else if (isSRV)

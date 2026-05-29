@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_map>
+
 #include <Vex/Containers/Span.h>
 #include <Vex/Utility/NonNullPtr.h>
 

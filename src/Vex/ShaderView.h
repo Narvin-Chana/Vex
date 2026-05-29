@@ -6,6 +6,7 @@
 #include <Vex/Types.h>
 #include <Vex/Utility/Hash.h>
 #include <Vex/Utility/NonNullPtr.h>
+#include <Vex/Utility/Formattable.h>
 
 namespace vex
 {

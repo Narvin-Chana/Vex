@@ -2,12 +2,11 @@
 
 #include <optional>
 
-#include <Vex/Bindings.h>
 #include <Vex/Logger.h>
 #include <Vex/Texture.h>
 #include <Vex/Utility/Algorithms.h>
 #include <Vex/Utility/ByteUtils.h>
-#include <Vex/Utility/Validation.h>
+#include <VexMacros.h>
 
 #include <RHI/RHIBindings.h>
 
@@ -41,7 +40,7 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(RHIBuffer& buffer,
                                                               RHITexture& texture,
                                                               const BufferTextureCopyDesc& desc)
 {
-    VEX_CHECK(IsAligned<u64>(desc.bufferRegion.offset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
+    VEX_CHECK(ByteUtil::IsAligned<u64>(desc.bufferRegion.offset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
               "Source offset should be aligned to 512 bytes!");
 
     D3D12_TEXTURE_COPY_LOCATION bufferLoc = {};
@@ -60,7 +59,7 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(RHIBuffer& buffer,
     const u32 subresourceIndex = D3D12CalcSubresource(
         desc.textureRegion.subresource.startMip,
         texture.GetDesc().type == TextureType::Texture3D ? 0 : desc.textureRegion.subresource.startSlice,
-        desc.textureRegion.subresource.GetStartPlane(texture.GetDesc()),
+        desc.textureRegion.subresource.GetStartPlane(),
         texture.GetDesc().mips,
         texture.GetDesc().GetSliceCount());
 
@@ -76,7 +75,7 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(RHIBuffer& buffer,
     bufferLoc.PlacedFootprint.Footprint.Height = std::max(height, 1u);
     bufferLoc.PlacedFootprint.Footprint.Depth = std::max(depth, 1u);
     bufferLoc.PlacedFootprint.Footprint.RowPitch =
-        AlignUp<u64>(width * TextureUtil::GetPixelByteSizeFromFormat(format), TextureUtil::RowPitchAlignment);
+        ByteUtil::AlignUp<u64>(width * TextureUtil::GetPixelByteSizeFromFormat(format), TextureUtil::RowPitchAlignment);
 
     D3D12_TEXTURE_COPY_LOCATION textureLoc = {};
     textureLoc.pResource = texture.GetRawTexture();
@@ -204,16 +203,18 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
     {
     case QueueType::Graphics:
         // Set local constants (in first slot of root signature).
-        commandList->SetGraphicsRoot32BitConstants(0,
-                                                   static_cast<u32>(DivRoundUp(localConstantsData.size(), sizeof(u32))),
-                                                   localConstantsData.data(),
-                                                   0);
+        commandList->SetGraphicsRoot32BitConstants(
+            0,
+            static_cast<u32>(ByteUtil::DivRoundUp(localConstantsData.size(), sizeof(u32))),
+            localConstantsData.data(),
+            0);
     case QueueType::Compute:
         // Set local constants (in first slot of root signature).
-        commandList->SetComputeRoot32BitConstants(0,
-                                                  static_cast<u32>(DivRoundUp(localConstantsData.size(), sizeof(u32))),
-                                                  localConstantsData.data(),
-                                                  0);
+        commandList->SetComputeRoot32BitConstants(
+            0,
+            static_cast<u32>(ByteUtil::DivRoundUp(localConstantsData.size(), sizeof(u32))),
+            localConstantsData.data(),
+            0);
     case QueueType::Copy:
     default:
         break;
@@ -222,7 +223,7 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
 
 void DX12CommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& layout)
 {
-    const std::array heaps {
+    const std::array heaps{
         descriptorPool.gpuHeap.GetNativeDescriptorHeap().Get(),
         descriptorPool.samplerHeap.GetNativeDescriptorHeap().Get(),
     };
@@ -247,7 +248,7 @@ RHITextureState DX12CommandList::GetClearTextureBarrierState(const TextureDesc& 
 
 void DX12CommandList::ClearTexture(RHITexture& texture,
                                    const TextureSubresource& subresource,
-                                   TextureUsage::Type usage,
+                                   TextureUsage usage,
                                    const TextureClearValue& clearValue,
                                    Span<const TextureClearRect> clearRects)
 {
@@ -269,7 +270,7 @@ void DX12CommandList::ClearTexture(RHITexture& texture,
                                  .bottom = clearRect.offsetY + static_cast<i32>(clearRect.extentY) });
     }
 
-    const TextureAspect::Flags clearAspect = subresource.GetAspect(texture.GetDesc());
+    const Flags<TextureAspect> clearAspect = subresource.GetAspect(texture.GetDesc());
 
     // Clearing in DX12 allows for multiple slices to be cleared, however you cannot clear multiple mips with one
     // call.
@@ -396,7 +397,7 @@ void DX12CommandList::EmitBarriers(Span<const RHIBufferBarrier> bufferBarriers,
         dx12Barrier.Subresources.NumMipLevels = tb.subresource.GetMipCount(desc);
         dx12Barrier.Subresources.FirstArraySlice = tb.subresource.startSlice;
         dx12Barrier.Subresources.NumArraySlices = tb.subresource.GetSliceCount(desc);
-        dx12Barrier.Subresources.FirstPlane = tb.subresource.GetStartPlane(desc);
+        dx12Barrier.Subresources.FirstPlane = tb.subresource.GetStartPlane();
         dx12Barrier.Subresources.NumPlanes = tb.subresource.GetPlaneCount(desc);
         dx12Barrier.Flags = D3D12_TEXTURE_BARRIER_FLAG_NONE;
         dx12TextureBarriers.push_back(std::move(dx12Barrier));

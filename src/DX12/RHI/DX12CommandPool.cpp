@@ -1,9 +1,9 @@
 #include "DX12CommandPool.h"
 
-#include <magic_enum/magic_enum.hpp>
+#include <Vex/Utility/Formattable.h>
 
 #include <Vex/Logger.h>
-#include <Vex/Platform/Debug.h>
+#include <VexMacros.h>
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/Utility/WString.h>
 
@@ -39,7 +39,7 @@ NonNullPtr<RHICommandList> DX12CommandPool::GetOrCreateCommandList(QueueType que
         cmdListPtr = pool.back().get();
 #if !VEX_SHIPPING
         chk << cmdListPtr->GetNativeCommandList()->SetName(
-            StringToWString(std::format("CommandList: {}_{}", magic_enum::enum_name(queueType), pool.size() - 1))
+            PlatformUtil::StringToWString(std::format("CommandList: {}_{}", magic_enum::enum_name(queueType), pool.size() - 1))
                 .c_str());
 #endif
         VEX_LOG(Verbose, "Created new commandlist for queue {}", magic_enum::enum_name(queueType));

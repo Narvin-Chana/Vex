@@ -1,14 +1,11 @@
 #include "VexTest.h"
 
 #include <cstddef>
+#include <format>
 #include <random>
 #include <span>
+#include <string>
 #include <vector>
-
-#include <gtest/gtest.h>
-#include <magic_enum/magic_enum.hpp>
-
-#include <Vex.h>
 
 namespace vex
 {

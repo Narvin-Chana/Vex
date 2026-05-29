@@ -1,8 +1,9 @@
 #include "DX12Allocator.h"
 
 #include <Vex/Logger.h>
-#include <Vex/Utility/WString.h>
 #include <Vex/Utility/ByteUtils.h>
+#include <Vex/Utility/Formattable.h>
+#include <Vex/Utility/WString.h>
 
 #include <DX12/HRChecker.h>
 
@@ -133,7 +134,7 @@ void DX12Allocator::OnPageAllocated(PageHandle pageHandle, u32 heapIndex)
     chk << device->CreateHeap(&heapDesc, IID_PPV_ARGS(&heapList[pageHandle]));
 #if !VEX_SHIPPING
     chk << heapList[pageHandle]->SetName(
-        StringToWString(std::format("AllocatorHeap: {}", magic_enum::enum_name(static_cast<HeapType>(heapIndex))))
+        PlatformUtil::StringToWString(std::format("AllocatorHeap: {}", magic_enum::enum_name(static_cast<HeapType>(heapIndex))))
             .c_str());
 #endif
 }

@@ -9,7 +9,7 @@
 namespace vex::vk
 {
 
-static constexpr u32 MaxSamplerCount = 1024;
+inline constexpr u32 MaxSamplerCount = 1024;
 
 // clang-format off
 
