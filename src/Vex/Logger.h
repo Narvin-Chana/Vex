@@ -1,12 +1,9 @@
 #pragma once
 
-#include <cstdlib>
 #include <filesystem>
 #include <format>
 #include <fstream>
-#include <iostream>
 #include <optional>
-#include <print>
 #include <string>
 #include <string_view>
 
@@ -72,24 +69,8 @@ struct Logger
                                                            GetTimestampString(),
                                                            LogLevelToString(level),
                                                            std::format(formatMessage, std::forward<Args>(args)...));
-
-        if (destinationFlags & LogDestination::Console)
-        {
-            std::println("{}", timeStampedFormatMessage);
-            std::flush(std::cout);
-        }
-
-        if (destinationFlags & LogDestination::File)
-        {
-            if (!logOutput)
-            {
-                OpenLogFile();
-            }
-            *logOutput << timeStampedFormatMessage << '\n';
-            // Frequent flush means that even on a crash, the log output will be present.
-            // This is obviously not great in terms of performance, but for logging this is acceptable.
-            logOutput->flush();
-        }
+        // We keep actual log logic in .cpp to reduce header bloat.
+        LogToOutput(timeStampedFormatMessage);
     }
 
     static LogLevel GetLogLevelFilter();
@@ -103,6 +84,7 @@ struct Logger
 private:
     void OpenLogFile();
     void CloseLogFile();
+    void LogToOutput(const std::string& logMessage);
 
     // Closes the stream and renames the log file with the current timestamp.
     void CommitTimestampedLogFile();

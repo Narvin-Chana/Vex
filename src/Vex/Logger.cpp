@@ -1,6 +1,9 @@
 #include "Logger.h"
 
+#include <cstdlib>
 #include <ctime>
+#include <iostream>
+#include <print>
 
 namespace vex
 {
@@ -82,6 +85,27 @@ void Logger::CloseLogFile()
     }
 
     logOutput.reset();
+}
+
+void Logger::LogToOutput(const std::string& logMessage)
+{
+    if (destinationFlags & LogDestination::Console)
+    {
+        std::println("{}", logMessage);
+        std::flush(std::cout);
+    }
+
+    if (destinationFlags & LogDestination::File)
+    {
+        if (!logOutput)
+        {
+            OpenLogFile();
+        }
+        *logOutput << logMessage << '\n';
+        // Frequent flush means that even on a crash, the log output will be present.
+        // This is obviously not great in terms of performance, but for logging this is acceptable.
+        logOutput->flush();
+    }
 }
 
 void Logger::CommitTimestampedLogFile()
