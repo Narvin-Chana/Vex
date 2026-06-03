@@ -236,6 +236,10 @@ D3D12_PRIMITIVE_TOPOLOGY GetDX12PrimitiveTopologyFromInputAssembly(const InputAs
         return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
     case InputTopology::TriangleFan:
         return D3D_PRIMITIVE_TOPOLOGY_TRIANGLEFAN;
+    case InputTopology::LineList:
+        return D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+    case InputTopology::LineStrip:
+        return D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
     default:
         return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
     }
@@ -249,6 +253,9 @@ D3D12_PRIMITIVE_TOPOLOGY_TYPE GetDX12PrimitiveTopologyTypeFromInputAssembly(cons
     case InputTopology::TriangleStrip:
     case InputTopology::TriangleFan:
         return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    case InputTopology::LineList:
+    case InputTopology::LineStrip:
+        return D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
     default:
         return D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED;
     }
@@ -265,7 +272,8 @@ std::array<DXGI_FORMAT, 8> GetRTVFormatsFromRenderTargetState(const RenderTarget
 
     for (u32 i = 0; i < std::min<u32>(static_cast<u32>(renderTargetState.colorFormats.size()), 8); ++i)
     {
-        result[i] = TextureFormatToDXGI(renderTargetState.colorFormats[i].format, renderTargetState.colorFormats[i].isSRGB);
+        result[i] =
+            TextureFormatToDXGI(renderTargetState.colorFormats[i].format, renderTargetState.colorFormats[i].isSRGB);
     }
 
     // Fill remaining slots with UNKNOWN
