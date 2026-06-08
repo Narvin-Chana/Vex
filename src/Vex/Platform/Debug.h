@@ -3,10 +3,8 @@
 // Defines platform agnostic debug macros such as assert or debug break.
 
 #if !VEX_SHIPPING
-
-#if defined(_WIN32)
-#include <windows.h>
-#define VEX_DEBUG_BREAK() DebugBreak()
+#if defined(_WIN32) && defined(_MSC_VER)
+#define VEX_DEBUG_BREAK() __debugbreak()
 #elif defined(__linux__)
 #include <signal.h>
 #define VEX_DEBUG_BREAK() raise(SIGTRAP)

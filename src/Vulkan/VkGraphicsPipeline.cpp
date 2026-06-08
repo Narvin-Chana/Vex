@@ -19,6 +19,8 @@ VEX_VK_BEGIN_ENUM_MAPPING(InputTopology, InputTopology, ::vk::PrimitiveTopology,
     VEX_VK_ENUM_MAPPING_ENTRY(TriangleFan, eTriangleFan)
     VEX_VK_ENUM_MAPPING_ENTRY(TriangleList, eTriangleList)
     VEX_VK_ENUM_MAPPING_ENTRY(TriangleStrip, eTriangleStrip)
+    VEX_VK_ENUM_MAPPING_ENTRY(LineList, eLineList)
+    VEX_VK_ENUM_MAPPING_ENTRY(LineStrip, eLineStrip)
 VEX_VK_END_ENUM_MAPPING
 
 VEX_VK_BEGIN_ENUM_MAPPING(VertexInputLayout::InputRate, InputRate, ::vk::VertexInputRate, VkInputRate)

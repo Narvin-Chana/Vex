@@ -51,6 +51,8 @@ enum class InputTopology : u8
     TriangleList,
     TriangleStrip,
     TriangleFan,
+    LineList,
+    LineStrip
 };
 
 struct InputAssembly
