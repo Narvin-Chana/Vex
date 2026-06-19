@@ -22,12 +22,16 @@ enum class Capability : u8
     PresentResetsBackBufferToUndefined,
 };
 
-// TODO(https://trello.com/c/KnVRsH9P): add more specific ray tracing support flags
+enum class GPUDeviceType : u8
+{
+    Discrete,   // A dedicated video card, i.e. NVIDIA RTX 3080.
+    Integrated, // An integrated video card, i.e. AMD Radeon Graphics.
+    Other, // Other unknown device types (ie virtual video cards or other).
+};
 
 // IMPORTANT:
 // Currently unsupported feature levels could be added later! I believe to start out its easier if we reduce the feature
-// set we support (and focus on the most recent features.
-// So no panic if the following seems overly restrictive.
+// set we support (and focus on the most recent features). So no panic if the following seems overly restrictive.
 
 enum class FeatureLevel : u8
 {
@@ -63,7 +67,8 @@ enum class ShaderModel : u8
 struct PhysicalDeviceInfo
 {
     std::string deviceName;
-    double dedicatedVideoMemoryMB;
+    GPUDeviceType deviceType;
+    double videoMemoryMB = 0;
 
     bool operator==(const PhysicalDeviceInfo& other) const
     {
@@ -90,6 +95,7 @@ struct RHIPhysicalDeviceBase
     virtual ShaderModel GetShaderModel() const = 0;
     virtual u32 GetMaxLocalConstantsByteSize() const = 0;
     virtual bool FormatSupportsLinearFiltering(TextureFormat format, bool isSRGB) const = 0;
+    virtual GPUDeviceType GetDeviceType() const = 0;
 
     virtual bool SupportsMinimalRequirements() const = 0;
 };

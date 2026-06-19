@@ -19,11 +19,11 @@ DX12PhysicalDevice::DX12PhysicalDevice(ComPtr<IDXGIAdapter4> adapter, const ComP
     : adapter(std::move(adapter))
     , device{ device }
 {
-    DXGI_ADAPTER_DESC3 desc;
-    this->adapter->GetDesc3(&desc);
+    chk << this->adapter->GetDesc3(&desc);
 
     info.deviceName = WStringToString(desc.Description);
-    info.dedicatedVideoMemoryMB = static_cast<double>(desc.DedicatedVideoMemory) / (1024.0 * 1024.0);
+    info.videoMemoryMB = static_cast<double>(desc.DedicatedVideoMemory) / (1024.0 * 1024.0);
+    info.deviceType = GetDeviceType();
     chk << featureSupport.Init(device.Get());
 }
 
@@ -91,6 +91,13 @@ bool DX12PhysicalDevice::FormatSupportsLinearFiltering(TextureFormat format, boo
 
     const bool supportsLinearFiltering = (formatSupport.Support1 & D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE) != 0;
     return supportsLinearFiltering;
+}
+
+GPUDeviceType DX12PhysicalDevice::GetDeviceType() const
+{
+    D3D12_FEATURE_DATA_ARCHITECTURE arch{};
+    chk << device->CheckFeatureSupport(D3D12_FEATURE_ARCHITECTURE, &arch, sizeof(arch));
+    return arch.UMA ? GPUDeviceType::Integrated : GPUDeviceType::Discrete;
 }
 
 bool DX12PhysicalDevice::SupportsTightAlignment() const
