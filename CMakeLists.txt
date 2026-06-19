@@ -281,6 +281,8 @@ if (VEX_ENABLE_SHADER_COMPILER)
         "src/ShaderCompiler/RayTracingShaderKey.h"
         "src/ShaderCompiler/RayTracingShaderKey.cpp"
     )
+
+    include(VexEmbedShaders)
 endif()
 
 if(VEX_INTERNAL_USE_MODULES)
