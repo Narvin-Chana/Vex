@@ -103,7 +103,6 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
     if (enableGPUBasedValidation)
     {
         layers.push_back("VK_LAYER_KHRONOS_validation");
-        layers.push_back("VK_LAYER_KHRONOS_synchronization2");
     }
 
     // Enumerate available extensions
