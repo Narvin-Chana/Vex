@@ -140,8 +140,8 @@ function(vex_setup_runtime TARGET)
         message(STATUS "D3D12 Agility SDK ${DX_AGILITY_SDK_VERSION} will be deployed with ${TARGET}")
     endif()
 
-    # Copy Vex shader files
-    if(DEFINED VEX_ROOT_DIR AND EXISTS "${VEX_ROOT_DIR}/shaders")
+    # Copy Vex shader files (skip if shaders are embedded in the Vex binary)
+    if(NOT VEX_USE_EMBEDDED_SHADERS AND DEFINED VEX_ROOT_DIR AND EXISTS "${VEX_ROOT_DIR}/shaders")
         file(GLOB VEX_SHADER_FILES
             "${VEX_ROOT_DIR}/shaders/*.hlsl"
             "${VEX_ROOT_DIR}/shaders/*.hlsli"

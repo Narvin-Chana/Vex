@@ -130,7 +130,9 @@ void ShaderCompiler::SetShaderCompilationErrorsCallback(ShaderHotReloadErrorsCal
 {
     if (!compilerSettings.enableShaderHotReload)
     {
-        VEX_LOG(Warning, "Setting the shader compilation errors callback when not in shader hot-reload mode will have no effect...");
+        VEX_LOG(
+            Warning,
+            "Setting the shader compilation errors callback when not in shader hot-reload mode will have no effect...");
         return;
     }
     errorsCallback = std::move(callback);
