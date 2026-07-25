@@ -30,6 +30,7 @@ namespace ShaderUtil
 {
 bool IsBuiltInSemantic(std::string_view name);
 bool CanReflectShaderType(ShaderType type);
+std::filesystem::path GetShaderDumpPath(const Shader& shader);
 } // namespace ShaderUtil
 
 // Determines the response when a shader compilation fails.
