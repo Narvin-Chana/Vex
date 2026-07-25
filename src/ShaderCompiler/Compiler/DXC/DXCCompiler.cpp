@@ -81,7 +81,7 @@ std::expected<ComPtr<IDxcBlobEncoding>, std::string> LoadShaderSource(const ComP
     return shaderBlob;
 }
 
-std::expected<SHA1HashDigest, std::string> HashCompiledShader(const ComPtr<IDxcResult>& compiledShader)
+std::expected<std::string, std::string> GetPreprocessedCode(const ComPtr<IDxcResult>& compiledShader)
 {
     ComPtr<IDxcBlob> shaderHLSLCode;
     const HRESULT objectResult = compiledShader->GetOutput(DXC_OUT_HLSL, IID_PPV_ARGS(&shaderHLSLCode), nullptr);
@@ -94,11 +94,7 @@ std::expected<SHA1HashDigest, std::string> HashCompiledShader(const ComPtr<IDxcR
     const char* preprocessedCode = static_cast<const char*>(shaderHLSLCode->GetBufferPointer());
     const size_t codeSize = shaderHLSLCode->GetBufferSize();
 
-    const std::string stringCode{ preprocessedCode, codeSize };
-
-    SHA1 sha1;
-    sha1.update(stringCode);
-    return sha1.final();
+    return std::string{ preprocessedCode, codeSize };
 }
 
 std::vector<std::wstring> BuildDefaultArgumentList(const ShaderCompilerSettings& compilerSettings,
@@ -127,7 +123,7 @@ std::vector<std::wstring> BuildDefaultArgumentList(const ShaderCompilerSettings&
     if (compilerSettings.target == CompilationTarget::SPIRV)
     {
         std::string_view vulkanVersion;
-        switch(compilerSettings.spirvVersion)
+        switch (compilerSettings.spirvVersion)
         {
         case SpirvVersion::spirv_1_0:
         case SpirvVersion::spirv_1_1:
@@ -145,7 +141,8 @@ std::vector<std::wstring> BuildDefaultArgumentList(const ShaderCompilerSettings&
             vulkanVersion = "vulkan1.3";
             break;
         }
-        std::wstring spirvVersionFlag = std::format(L"-fspv-target-env={}", StringToWString(std::string(vulkanVersion)));
+        std::wstring spirvVersionFlag =
+            std::format(L"-fspv-target-env={}", StringToWString(std::string(vulkanVersion)));
         args.emplace_back(L"-spirv");
         args.emplace_back(L"-fvk-bind-resource-heap");
         args.emplace_back(L"0");
@@ -257,7 +254,36 @@ std::expected<SHA1HashDigest, std::string> DXCCompiler::GetShaderCodeHash(
         DXCCompiler_Internal::BuildDefineList(shader.GetKey(), shaderEnv);
 
     return CompileShaderFromBuffer(shader.GetKey(), shaderSource, args, dxcDefines, compilerSettings)
-        .and_then(DXCCompiler_Internal::HashCompiledShader);
+        .and_then([](const ComPtr<IDxcResult>& compiledShader)
+                  { return DXCCompiler_Internal::GetPreprocessedCode(compiledShader); })
+        .transform(
+            [&](const std::string& code)
+            {
+                if (compilerSettings.dumpShaderOutputBytecode)
+                {
+                    auto dumpPath = ShaderUtil::GetShaderDumpPath(shader);
+
+                    if (!std::filesystem::exists(dumpPath.parent_path()))
+                    {
+                        std::filesystem::create_directories(dumpPath.parent_path());
+                    }
+
+                    dumpPath.replace_extension(".hlsl");
+
+                    if (std::ofstream os{ dumpPath }; os)
+                    {
+                        os << code;
+                    }
+                }
+                return code;
+            })
+        .transform(
+            [](const std::string& code) -> SHA1HashDigest
+            {
+                SHA1 sha1;
+                sha1.update(code);
+                return sha1.final();
+            });
 }
 
 std::expected<ShaderCompilationResult, std::string> DXCCompiler::CompileShaderFromBlob(
