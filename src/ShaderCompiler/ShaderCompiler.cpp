@@ -35,6 +35,48 @@ bool CanReflectShaderType(ShaderType type)
     }
     return false;
 }
+
+std::filesystem::path GetShaderDumpPath(const Shader& shader)
+{
+    static auto ShortenType = [](ShaderType type)
+    {
+        switch (type)
+        {
+        case ShaderType::VertexShader:
+            return "VS";
+        case ShaderType::PixelShader:
+            return "PS";
+        case ShaderType::ComputeShader:
+            return "CS";
+        case ShaderType::RayGenerationShader:
+            return "RayGen";
+        case ShaderType::RayMissShader:
+            return "RayMiss";
+        case ShaderType::RayClosestHitShader:
+            return "ClosestHit";
+        case ShaderType::RayAnyHitShader:
+            return "AnyHit";
+        case ShaderType::RayIntersectionShader:
+            return "RayIntersect";
+        case ShaderType::RayCallableShader:
+            return "RayCallable";
+        }
+        return "";
+    };
+
+    const std::string shortShaderType = ShortenType(shader.GetKey().type);
+
+    std::string uniqueFilename = std::format("{}_{}", shader.GetKey().entryPoint, shortShaderType);
+    // Ensure the filepath isn't too long (OS limit is usually ~250, but we also have to store the current_path()).
+    static constexpr std::size_t MaxFilenameLength = 150;
+    uniqueFilename.resize(std::min(uniqueFilename.size(), MaxFilenameLength));
+
+    std::filesystem::path basePath =
+        std::filesystem::current_path() / "VexOutput_SHADER_BYTECODE" /
+        std::format("{}/{}", shader.GetKey().compiler, std::hash<ShaderKey>{}(shader.GetKey()));
+    return basePath / uniqueFilename;
+}
+
 } // namespace ShaderUtil
 
 ShaderCompiler::ShaderCompiler(const ShaderCompilerSettings& compilerSettings)
@@ -130,7 +172,9 @@ void ShaderCompiler::SetShaderCompilationErrorsCallback(ShaderHotReloadErrorsCal
 {
     if (!compilerSettings.enableShaderHotReload)
     {
-        VEX_LOG(Warning, "Setting the shader compilation errors callback when not in shader hot-reload mode will have no effect...");
+        VEX_LOG(
+            Warning,
+            "Setting the shader compilation errors callback when not in shader hot-reload mode will have no effect...");
         return;
     }
     errorsCallback = std::move(callback);
@@ -247,42 +291,63 @@ std::optional<std::string> ShaderCompiler::HandleCompiledShader(
     if (compilerSettings.dumpShaderOutputBytecode)
     {
         const std::vector<byte>& shaderBytecode = compilationResult->compiledCode;
-        // TODO(https://trello.com/c/kQsFYUgh): Improve the debug file output (maybe an additional metadata txt file?)
-        std::string uniqueFilename = std::format("{}_{}_{}_{}_{}",
-                                                 shader.GetHash(),
-                                                 shader.GetKey().entryPoint,
-                                                 shader.GetKey().defines,
-                                                 shader.GetKey().type,
-                                                 shader.GetKey().compiler);
-        // Ensure the filepath isn't too long (OS limit is usually ~250, but we also have to store the current_path()).
-        static constexpr std::size_t MaxFilenameLength = 150;
-        uniqueFilename.resize(std::min(uniqueFilename.size(), MaxFilenameLength));
 
-        std::filesystem::path outputPath =
-            std::filesystem::current_path() / "VexOutput_SHADER_BYTECODE" / uniqueFilename;
+        std::stringstream metadataStream;
+        metadataStream << "Filepath: " << shader.GetKey().filepath << "\n";
+        metadataStream << "Hash: " << HashToString(shader.GetHash()) << "\n";
+        metadataStream << "Type: " << magic_enum::enum_name(shader.GetKey().type) << "\n";
+        metadataStream << "Defines: \n";
+        for (const auto& define : shader.GetKey().defines)
+        {
+            metadataStream << "\t" << define.name << " = " << define.value << "\n";
+        }
+
+        std::filesystem::path outputPath = ShaderUtil::GetShaderDumpPath(shader);
+        std::filesystem::path bytecodePath = outputPath;
+        std::filesystem::path metaPath = outputPath;
+        metaPath.replace_extension(".meta");
 
         if (compilerSettings.target == CompilationTarget::SPIRV)
         {
-            outputPath.replace_extension(".spv"); // or ".spirv"
+            bytecodePath.replace_extension(".spv"); // or ".spirv"
         }
         else if (compilerSettings.target == CompilationTarget::DXIL)
         {
-            outputPath.replace_extension(".dxil");
+            bytecodePath.replace_extension(".dxil");
         }
 
         if (!std::filesystem::exists(outputPath.parent_path()))
         {
             std::filesystem::create_directories(outputPath.parent_path());
         }
-        if (std::ofstream ofstream(outputPath, std::ios::binary); ofstream.is_open())
+
+        bool fileError = false;
+
+        if (std::ofstream ofstream(bytecodePath, std::ios::binary); ofstream)
         {
             ofstream.write(reinterpret_cast<const char*>(shaderBytecode.data()), shaderBytecode.size());
-            ofstream.close();
-            VEX_LOG(Info, "Shader bytecode written to: {}", outputPath.string());
         }
         else
         {
-            VEX_LOG(Error, "Failed to write shader bytecode to: {}", outputPath.string());
+            fileError = true;
+        }
+
+        if (std::ofstream ofstream(metaPath, std::ios::binary); ofstream)
+        {
+            ofstream << metadataStream.str();
+        }
+        else
+        {
+            fileError = true;
+        }
+
+        if (fileError)
+        {
+            VEX_LOG(Error, "Failed to write shader bytecode to: {}", bytecodePath.string());
+        }
+        else
+        {
+            VEX_LOG(Info, "Shader bytecode written to: {}", bytecodePath.string());
         }
     }
 
