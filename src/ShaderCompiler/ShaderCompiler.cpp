@@ -66,7 +66,7 @@ std::filesystem::path GetShaderDumpPath(const Shader& shader)
 
     const std::string shortShaderType = ShortenType(shader.GetKey().type);
 
-    std::string uniqueFilename = std::format("{}_{}", shader.GetKey().entryPoint, ShortenType(shader.GetKey().type));
+    std::string uniqueFilename = std::format("{}_{}", shader.GetKey().entryPoint, shortShaderType);
     // Ensure the filepath isn't too long (OS limit is usually ~250, but we also have to store the current_path()).
     static constexpr std::size_t MaxFilenameLength = 150;
     uniqueFilename.resize(std::min(uniqueFilename.size(), MaxFilenameLength));
@@ -293,6 +293,7 @@ std::optional<std::string> ShaderCompiler::HandleCompiledShader(
         const std::vector<byte>& shaderBytecode = compilationResult->compiledCode;
 
         std::stringstream metadataStream;
+        metadataStream << "Filepath: " << shader.GetKey().filepath << "\n";
         metadataStream << "Hash: " << HashToString(shader.GetHash()) << "\n";
         metadataStream << "Type: " << magic_enum::enum_name(shader.GetKey().type) << "\n";
         metadataStream << "Defines: \n";
