@@ -34,8 +34,8 @@ private:
     std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> geometryDescs;
 };
 
-D3D12_RAYTRACING_GEOMETRY_FLAGS ASGeometryFlagsToDX12GeometryFlags(ASGeometry::Flags flags);
-D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS ASBuildFlagsToDX12ASBuildFlags(ASBuild::Flags flags);
-u32 ASInstanceFlagsToDX12InstanceFlags(ASInstance::Flags flags);
+D3D12_RAYTRACING_GEOMETRY_FLAGS ASGeometryFlagsToDX12GeometryFlags(Flags<ASGeometry> flags);
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS ASBuildFlagsToDX12ASBuildFlags(Flags<ASBuild> flags);
+u32 ASInstanceFlagsToDX12InstanceFlags(Flags<ASInstance> flags);
 
 } // namespace vex::dx12

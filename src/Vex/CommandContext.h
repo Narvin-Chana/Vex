@@ -16,7 +16,6 @@
 #include <Vex/Types.h>
 #include <Vex/Utility/NonNullPtr.h>
 
-
 #include <RHI/RHIBarrier.h>
 #include <RHI/RHIBindings.h>
 #include <RHI/RHIFwd.h>
@@ -241,7 +240,7 @@ private:
     // Buffer creation invalidates pointers to existing RHI buffers.
     Buffer CreateTemporaryStagingBuffer(const std::string& name,
                                         u64 byteSize,
-                                        BufferUsage::Flags additionalUsages = BufferUsage::None);
+                                        Flags<BufferUsage> additionalUsages = BufferUsage::None);
 
     // Creates a temporary buffer that will be destroyed once the command context is done executing.
     // Buffer creation invalidates pointers to existing RHI buffers.

@@ -19,6 +19,9 @@
 #ifdef Success
 #undef Success
 #endif
+#ifndef Status
+#define Status int
+#endif
 #ifndef Bool
 #define Bool bool
 #endif

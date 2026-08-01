@@ -11,7 +11,6 @@
 
 namespace vex
 {
-
 struct VertexInputLayout
 {
     struct VertexAttribute
@@ -229,14 +228,16 @@ enum class BlendOp : u8
 // clang-format off
 
 // Flags for which channels are written to the render target.
-BEGIN_VEX_ENUM_FLAGS(ColorWriteMask, u8)
-    None,
-    Red = 1,
-    Green = 2,
-    Blue = 4,
-    Alpha = 8,
-    All = 0b1111,
-END_VEX_ENUM_FLAGS();
+enum class ColorWriteMask : u8
+{
+    None    = 0,
+    Red     = 1 << 0,
+    Green   = 1 << 1,
+    Blue    = 1 << 2,
+    Alpha   = 1 << 3,
+    All     = 0b1111,
+};
+VEX_ENUM_FLAG_BITS(ColorWriteMask);
 
 // clang-format on
 
@@ -254,7 +255,7 @@ struct ColorBlendState
         BlendFactor srcAlphaBlendFactor = BlendFactor::One;
         BlendFactor dstAlphaBlendFactor = BlendFactor::Zero;
         BlendOp alphaBlendOp = BlendOp::Add;
-        ColorWriteMask::Flags colorWriteMask = ColorWriteMask::All;
+        Flags<ColorWriteMask> colorWriteMask = ColorWriteMask::All;
 
         constexpr bool operator==(const ColorBlendAttachment& other) const = default;
     };

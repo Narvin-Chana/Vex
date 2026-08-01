@@ -2,7 +2,7 @@
 
 #include <Vex/PhysicalDevice.h>
 #include <Vex/Utility/Formattable.h>
-#include <Vex/Utility/Validation.h>
+#include <VexMacros.h>
 
 #include <RHI/RHIDescriptorPool.h>
 
@@ -12,7 +12,7 @@
 
 namespace vex::vk
 {
-static constexpr ::vk::DescriptorBufferInfo NullDescriptorBufferInfo{ .buffer = VK_NULL_HANDLE,
+inline constexpr ::vk::DescriptorBufferInfo NullDescriptorBufferInfo{ .buffer = VK_NULL_HANDLE,
                                                                       .offset = 0,
                                                                       .range = VK_WHOLE_SIZE };
 

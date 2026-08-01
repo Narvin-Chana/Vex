@@ -1,9 +1,5 @@
 ﻿#include "VexTest.h"
 
-#include <gtest/gtest.h>
-
-#include "ShaderCompiler/Shader.h"
-
 using namespace vex;
 
 struct BufferBindingTestData
@@ -43,9 +39,8 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
     Buffer dataBuffer = graphics.CreateBuffer(BufferDesc{
         .name = "DataBuffer",
         .byteSize = data.size() * sizeof(float),
-        .usage = usage == BufferBindingUsage::UniformBuffer
-                     ? static_cast<BufferUsage::Type>(BufferUsage::ShaderReadUniform)
-                     : static_cast<BufferUsage::Type>(BufferUsage::ShaderRead | BufferUsage::ShaderReadWrite),
+        .usage = usage == BufferBindingUsage::UniformBuffer ? BufferUsage::ShaderReadUniform
+                                                            : BufferUsage::ShaderRead | BufferUsage::ShaderReadWrite,
     });
     Buffer resultBuffer =
         graphics.CreateBuffer(BufferDesc{ .name = "ResultBuffer",

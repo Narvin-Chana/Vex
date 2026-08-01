@@ -1,4 +1,5 @@
 ﻿#pragma once
+
 #include <expected>
 
 #include <Vex/Containers/FreeList.h>
@@ -26,13 +27,13 @@ struct QueryHandle : Handle64<QueryHandle>
 {
 };
 
-static constexpr QueryHandle GInvalidQueryHandle;
+inline constexpr QueryHandle GInvalidQueryHandle;
 
 class RHITimestampQueryPoolBase
 {
 protected:
     // Increase this value if we reach the max Handle too fast.
-    // Theorethical limit on Handle is 16,777,215 values
+    // Theoretical limit on Handle is 16,777,215 values
     static constexpr u32 MaxInFlightQueriesCount = 100'000;
     // Each query has two timestamps: begin and end
     static constexpr u32 MaxInFlightTimestampCount = 2 * MaxInFlightQueriesCount;

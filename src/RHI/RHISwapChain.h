@@ -1,7 +1,6 @@
 #pragma once
 
 #include <optional>
-#include <vector>
 
 #include <Vex/Formats.h>
 #include <Vex/FrameResource.h>

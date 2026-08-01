@@ -1,7 +1,5 @@
 #pragma once
 
-#include <utility>
-
 #include <Vex/Formats.h>
 
 #include <Vulkan/VkHeaders.h>
@@ -11,7 +9,7 @@ namespace vex::vk
 
 // Certain formats require special care because they differ from DX12 to Vulkan in terms of component ordering.
 // This method returns true if the format has ordering different to what is found in vex::TextureFormat.
-constexpr inline bool IsSpecialFormat(::vk::Format format)
+constexpr bool IsSpecialFormat(::vk::Format format)
 {
     using enum ::vk::Format;
     // Packed formats
@@ -153,7 +151,7 @@ constexpr ::vk::Format TextureFormatToVulkan(TextureFormat format, bool isSRGB)
 }
 
 // Convert from VkFormat to TextureFormat
-constexpr inline TextureFormat VulkanToTextureFormat(::vk::Format format)
+constexpr TextureFormat VulkanToTextureFormat(::vk::Format format)
 {
     using enum TextureFormat;
     using enum ::vk::Format;

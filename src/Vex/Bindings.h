@@ -6,12 +6,12 @@
 #include <Vex/AccelerationStructure.h>
 #include <Vex/Buffer.h>
 #include <Vex/Containers/Span.h>
-#include <Vex/Platform/Debug.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/Concepts.h>
 #include <Vex/Utility/EnumFlags.h>
 #include <Vex/Utility/Formattable.h>
+#include <VexMacros.h>
 
 #include <RHI/RHIFwd.h>
 
@@ -57,7 +57,7 @@ struct ConstantBinding
     {
     }
 
-    constexpr bool IsValid() const
+    [[nodiscard]] constexpr bool IsValid() const
     {
         return !data.empty();
     }
@@ -192,8 +192,8 @@ struct DrawResourceBinding
 namespace BindingUtil
 {
 
-void ValidateBufferBinding(const BufferBinding& binding, BufferUsage::Flags validBufferUsageFlags);
-void ValidateTextureBinding(const TextureBinding& binding, TextureUsage::Flags validTextureUsageFlags);
+void ValidateBufferBinding(const BufferBinding& binding, Flags<BufferUsage> validBufferUsageFlags);
+void ValidateTextureBinding(const TextureBinding& binding, Flags<TextureUsage> validTextureUsageFlags);
 void ValidateDrawResource(const DrawResourceBinding& binding);
 
 } // namespace BindingUtil

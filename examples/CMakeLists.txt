@@ -74,6 +74,8 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(render_doc)
 
+set(RENDER_DOC_SOURCE_DIR ${render_doc_SOURCE_DIR})
+
 set(EXAMPLES_COMMON_LIBS Vex imguiLib glfw)
 
 include(VexDX12)
@@ -97,6 +99,8 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
     if (EXAMPLE_NAME IN_LIST DX12_ONLY_EXAMPLES AND NOT VEX_ENABLE_DX12)
         continue()
     endif()
+
+    project(${EXAMPLE_NAME} CXX)
     
     # Find the source files in the example dir
     file(GLOB EXAMPLE_SOURCES "${EXAMPLE_DIR}/*.cpp" "${EXAMPLE_DIR}/*.h")
@@ -119,7 +123,7 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
         endif()
 
         if(EXAMPLE_NAME STREQUAL "render_doc")
-            add_header_only_dependency(${EXAMPLE_NAME} render_doc "${render_doc_SOURCE_DIR}" "renderdoc/api/app" "")
+            add_header_only_dependency(${EXAMPLE_NAME} render_doc "${RENDER_DOC_SOURCE_DIR}" "renderdoc/api/app" "")
         endif()
 
         # Link the example

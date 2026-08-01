@@ -1,5 +1,7 @@
 #include "Shader.h"
 
+#include <format>
+
 namespace vex::sc
 {
 
@@ -51,8 +53,9 @@ Shader::operator ShaderView() const
     ShaderView view{ name, key.entryPoint, GetBlob(), GetHash(), key.type };
     if (isErrored)
     {
-        return ShaderView::CreateErroredShader(std::move(view));
+        return ShaderView::CreateErroredShader(view);
     }
     return view;
 }
+
 } // namespace vex::sc

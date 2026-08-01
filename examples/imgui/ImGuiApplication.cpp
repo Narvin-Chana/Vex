@@ -1,7 +1,11 @@
+#include <VexImgui.h>
+
+// Include order here is important when using C++20 modules, VexImgui.h reaches into the insides of Vex to access
+// RHI-impl specific classes/types. In order to still be able to use modules for the rest of vex, the #include should
+// come first.
 #include "ImGuiApplication.h"
 
 #include <GLFWIncludes.h>
-#include <VexImgui.h>
 #include <imgui_impl_glfw.h>
 
 ImGuiApplication::ImGuiApplication()

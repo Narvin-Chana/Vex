@@ -2,9 +2,9 @@
 
 #include <format>
 
-#include <magic_enum/magic_enum.hpp>
+#include <Vex/Utility/Formattable.h>
 
-#include <Vex/Platform/Debug.h>
+#include <VexMacros.h>
 #include <Vex/Platform/Platform.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/WString.h>
@@ -96,7 +96,7 @@ private:
         chk << device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&heap));
 
 #if !VEX_SHIPPING
-        chk << heap->SetName(StringToWString(std::format("DescriptorHeap: {} {} ({})",
+        chk << heap->SetName(PlatformUtil::StringToWString(std::format("DescriptorHeap: {} {} ({})",
                                                          name,
                                                          magic_enum::enum_name(Type),
                                                          magic_enum::enum_name(Flags)))

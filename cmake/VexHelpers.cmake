@@ -3,7 +3,7 @@
 # Function to create and link header-only libraries
 function(add_header_only_dependency TARGET DEP_NAME SOURCE_DIR INCLUDE_PATH INSTALL_PATH)
     if(NOT EXISTS "${SOURCE_DIR}")
-        message(STATUS WARNING " Source directory does not exist: ${SOURCE_DIR}")
+        message(STATUS WARNING " Source directory does not exist: ${DEP_NAME} ${SOURCE_DIR}")
         return()
     endif()
 

@@ -1,8 +1,8 @@
 ﻿#pragma once
 
+#include <memory>
+
 #include <Vex/RHIImpl/RHIPhysicalDevice.h>
-
-
 #include <RHI/RHIFwd.h>
 
 namespace vex

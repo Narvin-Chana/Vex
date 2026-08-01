@@ -4,8 +4,6 @@
 #include <string>
 #include <vector>
 
-#include <magic_enum/magic_enum.hpp>
-
 #include <Vex/ShaderView.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/Formattable.h>
@@ -82,9 +80,9 @@ VEX_FORMATTABLE(
     std::hash<vex::sc::ShaderKey>{}(obj),
     obj.filepath,
     obj.entryPoint,
-    std::string(magic_enum::enum_name(obj.type)),
+    obj.type,
     obj.defines,
-    std::string(magic_enum::enum_name(obj.compiler))
+    obj.compiler
 );
 
 // clang-format on
