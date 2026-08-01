@@ -11,7 +11,8 @@ VkPhysicalDevice::VkPhysicalDevice(const ::vk::PhysicalDevice& dev)
     : physicalDevice(dev)
 {
     info.deviceName = dev.getProperties().deviceName.data();
-    info.dedicatedVideoMemoryMB = GetDeviceVRAMSize(dev);
+    info.videoMemoryMB = GetDeviceVRAMSize(dev);
+    info.deviceType = GetDeviceType();
 
     deviceProperties = physicalDevice.getProperties();
     deviceFeatures = physicalDevice.getFeatures();
@@ -262,6 +263,19 @@ bool VkPhysicalDevice::FormatSupportsLinearFiltering(TextureFormat format, bool 
 {
     ::vk::FormatProperties formatProperties = physicalDevice.getFormatProperties(TextureFormatToVulkan(format, isSRGB));
     return !!(formatProperties.optimalTilingFeatures & ::vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
+}
+
+GPUDeviceType VkPhysicalDevice::GetDeviceType() const
+{
+    switch (deviceProperties.deviceType)
+    {
+    case ::vk::PhysicalDeviceType::eDiscreteGpu:
+        return GPUDeviceType::Discrete;
+    case ::vk::PhysicalDeviceType::eIntegratedGpu:
+        return GPUDeviceType::Integrated;
+    default:
+        return GPUDeviceType::Other;
+    }
 }
 
 } // namespace vex::vk

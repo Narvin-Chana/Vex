@@ -11,7 +11,6 @@
 #include <Vex/RHIImpl/RHIAccelerationStructure.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
-#include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHITexture.h>
 #include <Vex/ResourceCleanup.h>
@@ -67,10 +66,9 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
 
     if (desc.specifiedDevice)
     {
-        auto it = std::find_if(physicalDevices.begin(),
-                               physicalDevices.end(),
-                               [&](const std::unique_ptr<RHIPhysicalDevice>& device)
-                               { return device->info == *desc.specifiedDevice; });
+        auto it = std::ranges::find_if(physicalDevices,
+                                       [&](const std::unique_ptr<RHIPhysicalDevice>& device)
+                                       { return device->info == *desc.specifiedDevice; });
         if (it != physicalDevices.end())
         {
             GPhysicalDevice = std::move(*it);
@@ -86,7 +84,7 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
     if (!GPhysicalDevice)
     {
         // Obtain the best physical device.
-        std::sort(physicalDevices.begin(), physicalDevices.end(), [](const auto& l, const auto& r) { return *l > *r; });
+        std::ranges::sort(physicalDevices, [](const auto& l, const auto& r) { return *l > *r; });
 
         GPhysicalDevice = std::move(physicalDevices[0]);
     }

@@ -29,6 +29,7 @@ public:
     virtual ShaderModel GetShaderModel() const override;
     virtual u32 GetMaxLocalConstantsByteSize() const override;
     virtual bool FormatSupportsLinearFiltering(TextureFormat format, bool isSRGB) const override;
+    virtual GPUDeviceType GetDeviceType() const override;
 
     bool SupportsTightAlignment() const;
     bool SupportsMinimalRequirements() const override;
@@ -44,6 +45,8 @@ public:
 
     // Cached feature support data (to avoid requerying the device).
     CD3DX12FeatureSupport featureSupport;
+
+    DXGI_ADAPTER_DESC3 desc;
 };
 
 } // namespace vex::dx12

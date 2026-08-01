@@ -33,6 +33,7 @@ public:
     virtual ShaderModel GetShaderModel() const override;
     virtual u32 GetMaxLocalConstantsByteSize() const override;
     virtual bool FormatSupportsLinearFiltering(TextureFormat format, bool isSRGB) const override;
+    virtual GPUDeviceType GetDeviceType() const override;
 
     std::string_view GetMaxSupportedSpirVVersion() const;
     std::string_view GetMaxSupportedVulkanVersion() const;
