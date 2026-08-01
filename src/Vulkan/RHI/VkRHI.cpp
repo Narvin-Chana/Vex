@@ -25,7 +25,7 @@
 #include <Vex/Synchronization.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
-#include <Vex/Utility/Validation.h>
+#include <VexMacros.h>
 #include <Vex/Utility/Visitor.h>
 
 #include <RHI/RHICommandList.h>

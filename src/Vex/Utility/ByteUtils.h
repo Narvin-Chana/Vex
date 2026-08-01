@@ -10,32 +10,35 @@
 namespace vex
 {
 
-// Alignment must be power of two.
-template <class T>
-    requires std::is_integral_v<T>
-constexpr T AlignUp(T value, T alignment)
+struct ByteUtil
 {
-    return (value + alignment - 1) & ~(alignment - 1);
-}
+    // Alignment must be power of two.
+    template <class T>
+        requires std::is_integral_v<T>
+    static constexpr T AlignUp(T value, T alignment)
+    {
+        return value + alignment - 1 & ~(alignment - 1);
+    }
 
-template <class T>
-    requires std::is_integral_v<T>
-constexpr bool IsAligned(T value, T alignment)
-{
-    return value % alignment == 0;
-}
+    template <class T>
+        requires std::is_integral_v<T>
+    static constexpr bool IsAligned(T value, T alignment)
+    {
+        return value % alignment == 0;
+    }
 
-template <class T>
-    requires std::is_integral_v<T>
-constexpr T DivRoundUp(T numerator, T denominator)
-{
-    return (numerator + denominator - 1) / denominator;
-}
+    template <class T>
+        requires std::is_integral_v<T>
+    static constexpr T DivRoundUp(T numerator, T denominator)
+    {
+        return (numerator + denominator - 1) / denominator;
+    }
 
-inline u8 ComputeMipCount(std::tuple<u32, u32, u32> dimensions)
-{
-    auto [width, height, depth] = dimensions;
-    return static_cast<u8>(1 + std::floor(std::log2(std::max(std::max(width, height), depth))));
-}
+    static u8 ComputeMipCount(std::tuple<u32, u32, u32> dimensions)
+    {
+        auto [width, height, depth] = dimensions;
+        return static_cast<u8>(1 + std::floor(std::log2(std::max(std::max(width, height), depth))));
+    }
+};
 
 } // namespace vex

@@ -1,7 +1,7 @@
 #include "VkResourceLayout.h"
 
 #include <Vex/PhysicalDevice.h>
-#include <Vex/Platform/Debug.h>
+#include <VexMacros.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 
 #include <Vulkan/RHI/VkDescriptorPool.h>

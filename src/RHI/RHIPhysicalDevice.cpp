@@ -2,10 +2,7 @@
 
 #include <utility>
 
-#include <magic_enum/magic_enum.hpp>
-
 #include <Vex/Logger.h>
-#include <Vex/Utility/Formattable.h>
 
 namespace vex
 {

@@ -10,10 +10,10 @@
 namespace vex::dx12
 {
 
-static constexpr D3D_SHADER_MODEL GMinimumShaderModel = D3D_SHADER_MODEL_6_6;
-static constexpr D3D12_RAYTRACING_TIER GMinimumRayTracingTier = D3D12_RAYTRACING_TIER_1_0;
-static constexpr D3D12_MESH_SHADER_TIER GMinimumMeshShaderTier = D3D12_MESH_SHADER_TIER_1;
-static constexpr D3D_FEATURE_LEVEL GMinimumFeatureLevel = D3D_FEATURE_LEVEL_12_1;
+constexpr D3D_SHADER_MODEL GMinimumShaderModel = D3D_SHADER_MODEL_6_6;
+constexpr D3D12_RAYTRACING_TIER GMinimumRayTracingTier = D3D12_RAYTRACING_TIER_1_0;
+constexpr D3D12_MESH_SHADER_TIER GMinimumMeshShaderTier = D3D12_MESH_SHADER_TIER_1;
+constexpr D3D_FEATURE_LEVEL GMinimumFeatureLevel = D3D_FEATURE_LEVEL_12_1;
 
 DX12PhysicalDevice::DX12PhysicalDevice(ComPtr<IDXGIAdapter4> adapter, const ComPtr<ID3D12Device>& device)
     : adapter(std::move(adapter))
@@ -21,7 +21,7 @@ DX12PhysicalDevice::DX12PhysicalDevice(ComPtr<IDXGIAdapter4> adapter, const ComP
 {
     chk << this->adapter->GetDesc3(&desc);
 
-    info.deviceName = WStringToString(desc.Description);
+    info.deviceName = PlatformUtil::WStringToString(desc.Description);
     info.videoMemoryMB = static_cast<double>(desc.DedicatedVideoMemory) / (1024.0 * 1024.0);
     info.deviceType = GetDeviceType();
     chk << featureSupport.Init(device.Get());

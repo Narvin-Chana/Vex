@@ -164,7 +164,7 @@ void DX12AccelerationStructure::InitRayTracingGeometryDesc(const RHIBLASBuildDes
                        "AABB stride must be 24 bytes (6 floats: MinX, MinY, MinZ, MaxX, MaxY, MaxZ)");
             D3D12_GPU_VIRTUAL_ADDRESS virtualAddress =
                 aabbBinding.buffer->GetGPUVirtualAddress() + aabbBinding.binding.offsetByteSize.value_or(0);
-            VEX_ASSERT(IsAligned<u64>(virtualAddress, D3D12_RAYTRACING_AABB_BYTE_ALIGNMENT),
+            VEX_ASSERT(ByteUtil::IsAligned<u64>(virtualAddress, D3D12_RAYTRACING_AABB_BYTE_ALIGNMENT),
                        "Virtual address for aabb buffer must be aligned to D3D12_RAYTRACING_AABB_BYTE_ALIGNMENT.");
             geometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS;
             geometryDesc.AABBs = {
@@ -184,17 +184,17 @@ void DX12AccelerationStructure::InitRayTracingGeometryDesc(const RHIBLASBuildDes
     }
 }
 
-D3D12_RAYTRACING_GEOMETRY_FLAGS ASGeometryFlagsToDX12GeometryFlags(ASGeometry::Flags flags)
+D3D12_RAYTRACING_GEOMETRY_FLAGS ASGeometryFlagsToDX12GeometryFlags(Flags<ASGeometry> flags)
 {
-    return static_cast<D3D12_RAYTRACING_GEOMETRY_FLAGS>(flags);
+    return static_cast<D3D12_RAYTRACING_GEOMETRY_FLAGS>(flags.data);
 }
 
-D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS ASBuildFlagsToDX12ASBuildFlags(ASBuild::Flags flags)
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS ASBuildFlagsToDX12ASBuildFlags(Flags<ASBuild> flags)
 {
-    return static_cast<D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS>(flags);
+    return static_cast<D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS>(flags.data);
 }
 
-u32 ASInstanceFlagsToDX12InstanceFlags(ASInstance::Flags flags)
+u32 ASInstanceFlagsToDX12InstanceFlags(Flags<ASInstance> flags)
 {
     u32 dxFlags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
     if (flags & ASInstance::TriangleCullDisable)

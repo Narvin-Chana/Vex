@@ -1,10 +1,8 @@
 #include "ResourceCopy.h"
 
-#include <cmath>
 #include <cstring>
 
 #include <Vex/Utility/ByteUtils.h>
-#include <Vex/Utility/Validation.h>
 
 namespace vex
 {
@@ -43,9 +41,10 @@ void ReadTextureDataAligned(const TextureDesc& desc,
             const u32 mipDepth = region.extent.GetDepth(desc, region.subresource.startMip + mip);
 
             const u32 packedRowPitch = mipWidth * bytesPerPixel;
-            const u32 alignedRowPitch = AlignUp<u32>(packedRowPitch, TextureUtil::RowPitchAlignment);
+            const u32 alignedRowPitch = ByteUtil::AlignUp<u32>(packedRowPitch, TextureUtil::RowPitchAlignment);
             const u32 packedSlicePitch = packedRowPitch * mipHeight;
-            const u32 alignedSlicePitch = AlignUp<u32>(alignedRowPitch * mipHeight, TextureUtil::SliceAlignment);
+            const u32 alignedSlicePitch =
+                ByteUtil::AlignUp<u32>(alignedRowPitch * mipHeight, TextureUtil::SliceAlignment);
 
             const u32 sliceCount = region.subresource.GetSliceCount(desc);
 
@@ -70,7 +69,7 @@ void ReadTextureDataAligned(const TextureDesc& desc,
 
             // Move to next region in the packed source data.
             u64 alignedMipByteSize = static_cast<u64>(alignedSlicePitch) * (mipDepth * sliceCount);
-            srcOffset += AlignUp<u64>(alignedMipByteSize, TextureUtil::MipAlignment);
+            srcOffset += ByteUtil::AlignUp<u64>(alignedMipByteSize, TextureUtil::MipAlignment);
 
             // Move to next aligned position in staging buffer.
             dstOffset += static_cast<u64>(packedSlicePitch) * (mipDepth * sliceCount);
@@ -78,7 +77,8 @@ void ReadTextureDataAligned(const TextureDesc& desc,
     }
 }
 
-// TODO(https://trello.com/c/FS9NITw6): Add support for texture region offsets
+// TODO(https://trello.com/c/FS9NITw6): Add support for texture region offsets, and handle the fact that we return a
+// float pixel byte size!
 void WriteTextureDataAligned(const TextureDesc& desc,
                              Span<const TextureRegion> textureRegions,
                              Span<const byte> packedData,
@@ -99,9 +99,10 @@ void WriteTextureDataAligned(const TextureDesc& desc,
             const u32 mipDepth = region.extent.GetDepth(desc, region.subresource.startMip + mip);
 
             const u32 packedRowPitch = mipWidth * bytesPerPixel;
-            const u32 alignedRowPitch = AlignUp<u32>(packedRowPitch, TextureUtil::RowPitchAlignment);
+            const u32 alignedRowPitch = ByteUtil::AlignUp<u32>(packedRowPitch, TextureUtil::RowPitchAlignment);
             const u32 packedSlicePitch = packedRowPitch * mipHeight;
-            const u32 alignedSlicePitch = AlignUp<u32>(alignedRowPitch * mipHeight, TextureUtil::SliceAlignment);
+            const u32 alignedSlicePitch =
+                ByteUtil::AlignUp<u32>(alignedRowPitch * mipHeight, TextureUtil::SliceAlignment);
 
             const u32 sliceCount = region.subresource.GetSliceCount(desc);
 
@@ -134,7 +135,7 @@ void WriteTextureDataAligned(const TextureDesc& desc,
 
             // Move to next aligned position in staging buffer.
             u64 alignedMipByteSize = static_cast<u64>(alignedSlicePitch) * (mipDepth * sliceCount);
-            dstOffset += AlignUp<u64>(alignedMipByteSize, TextureUtil::MipAlignment);
+            dstOffset += ByteUtil::AlignUp<u64>(alignedMipByteSize, TextureUtil::MipAlignment);
         }
     }
 }
@@ -155,7 +156,7 @@ std::vector<BufferTextureCopyDesc> BufferTextureCopyDesc::AllMips(const TextureD
     {
         // Calculate aligned dimensions for this mip level
         const u32 packedRowSize = mipSize.width * texelByteSize;
-        const u32 alignedRowPitch = AlignUp<u32>(packedRowSize, TextureUtil::RowPitchAlignment);
+        const u32 alignedRowPitch = ByteUtil::AlignUp<u32>(packedRowSize, TextureUtil::RowPitchAlignment);
         const u32 alignedSlicePitch = alignedRowPitch * mipSize.height;
 
         u32 depthCount, sliceCount;
@@ -189,7 +190,7 @@ std::vector<BufferTextureCopyDesc> BufferTextureCopyDesc::AllMips(const TextureD
         });
 
         bufferOffset += alignedMipByteSize;
-        bufferOffset = AlignUp<u64>(bufferOffset, TextureUtil::MipAlignment);
+        bufferOffset = ByteUtil::AlignUp<u64>(bufferOffset, TextureUtil::MipAlignment);
         mipSize = TextureExtent3D{
             std::max(1u, mipSize.width / 2u),
             std::max(1u, mipSize.height / 2u),
@@ -213,7 +214,7 @@ std::vector<BufferTextureCopyDesc> BufferTextureCopyDesc::SingleMip(u16 mipIndex
 
     // Calculate aligned dimensions for this mip level
     const u32 packedRowSize = mipSize.width * texelByteSize;
-    const u32 alignedRowPitch = AlignUp<u32>(packedRowSize, TextureUtil::RowPitchAlignment);
+    const u32 alignedRowPitch = ByteUtil::AlignUp<u32>(packedRowSize, TextureUtil::RowPitchAlignment);
     const u32 alignedSlicePitch = alignedRowPitch * mipSize.height;
 
     u32 depthCount, sliceCount;

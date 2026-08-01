@@ -3,6 +3,8 @@
 #include <utility>
 
 #include <Vex/Logger.h>
+#include <Vex/Utility/Formattable.h>
+#include <VexMacros.h>
 
 namespace vex::dx12
 {

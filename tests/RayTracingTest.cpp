@@ -2,8 +2,6 @@
 
 #include <span>
 
-#include <gtest/gtest.h>
-
 using namespace vex;
 
 struct RTTestFixture : public RTVexTest

@@ -42,11 +42,11 @@ static std::vector<::vk::BufferImageCopy> GetBufferImageCopyFromBufferToImageDes
             TextureUtil::GetCopyFormat(texture.GetDesc().format,
                                        textureRegion.subresource.GetSingleAspect(texture.GetDesc())));
 
-        u32 alignedRowPitch = static_cast<u32>(AlignUp<u64>(
+        u32 alignedRowPitch = static_cast<u32>(ByteUtil::AlignUp<u64>(
             textureRegion.extent.GetWidth(texture.GetDesc(), textureRegion.subresource.startMip) * pixelByteSize,
             TextureUtil::RowPitchAlignment));
 
-        TextureAspect::Type aspect = textureRegion.subresource.GetSingleAspect(texture.GetDesc());
+        TextureAspect aspect = textureRegion.subresource.GetSingleAspect(texture.GetDesc());
 
         u32 startLayer = textureRegion.subresource.startSlice;
         u32 layerCount = textureRegion.subresource.GetSliceCount(texture.GetDesc());
@@ -206,11 +206,11 @@ RHITextureState VkCommandList::GetClearTextureBarrierState(const TextureDesc& de
 
 void VkCommandList::ClearTexture(RHITexture& texture,
                                  const TextureSubresource& subresource,
-                                 TextureUsage::Type usage,
+                                 TextureUsage usage,
                                  const TextureClearValue& clearValue,
                                  Span<const TextureClearRect> clearRects)
 {
-    const TextureAspect::Flags clearAspect = subresource.GetAspect(texture.GetDesc());
+    const Flags<TextureAspect> clearAspect = subresource.GetAspect(texture.GetDesc());
 
     ::vk::ImageAspectFlags aspect;
     if (clearAspect & TextureAspect::Color)

@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-#include <Vex/Platform/Debug.h>
+#include <VexMacros.h>
 
 namespace vex
 {

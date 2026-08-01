@@ -136,7 +136,7 @@ void VkGraphicsPipelineState::Compile(const ShaderView& vertexShader,
                 .srcAlphaBlendFactor = static_cast<::vk::BlendFactor>(attachment.srcAlphaBlendFactor),
                 .dstAlphaBlendFactor = static_cast<::vk::BlendFactor>(attachment.dstAlphaBlendFactor),
                 .alphaBlendOp = static_cast<::vk::BlendOp>(attachment.alphaBlendOp),
-                .colorWriteMask = static_cast<::vk::ColorComponentFlags>(attachment.colorWriteMask)
+                .colorWriteMask = static_cast<::vk::ColorComponentFlags>(attachment.colorWriteMask.data)
             };
         });
 
