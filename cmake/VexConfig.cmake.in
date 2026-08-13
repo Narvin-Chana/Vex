@@ -6,6 +6,7 @@ include(CMakeFindDependencyMacro)
 set(VEX_ENABLE_DX12 @VEX_ENABLE_DX12)
 set(VEX_ENABLE_VULKAN @VEX_ENABLE_VULKAN)
 set(VEX_ENABLE_SLANG @VEX_ENABLE_SLANG)
+set(VEX_USE_EMBEDDED_SHADERS @VEX_USE_EMBEDDED_SHADERS@)
 
 # Store vex's root dir for shader/runtime file access
 set(VEX_ROOT_DIR "@PACKAGE_CMAKE_INSTALL_PREFIX@/include")
