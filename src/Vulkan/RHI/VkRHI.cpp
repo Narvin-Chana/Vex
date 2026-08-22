@@ -347,29 +347,36 @@ void VkRHI::Init()
     ValidateAndAddExtension(VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME);
     ValidateAndAddExtension(VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
 
-    std::optional<::vk::PhysicalDeviceAccelerationStructureFeaturesKHR> featuresAccelerationStructure;
-    std::optional<::vk::PhysicalDeviceRayTracingPipelineFeaturesKHR> featuresRayTracingPipeline;
-    std::optional<::vk::PhysicalDeviceRayQueryFeaturesKHR> featuresRayQuery;
+    void* lastPNext = nullptr;
+
+    ::vk::PhysicalDeviceAccelerationStructureFeaturesKHR featuresAccelerationStructure;
+    ::vk::PhysicalDeviceRayTracingPipelineFeaturesKHR featuresRayTracingPipeline;
     if (GPhysicalDevice->IsFeatureSupported(Feature::RayTracing))
     {
         ValidateAndAddExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
         ValidateAndAddExtension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
         ValidateAndAddExtension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
-        ValidateAndAddExtension(VK_KHR_RAY_QUERY_EXTENSION_NAME);
 
         featuresRayTracingPipeline = { .rayTracingPipeline = true };
 
-        featuresRayQuery = { .pNext = &*featuresRayTracingPipeline, .rayQuery = true };
-
         featuresAccelerationStructure = {
-            .pNext = &*featuresRayQuery,
+            .pNext = &featuresRayTracingPipeline,
             .accelerationStructure = true,
             .descriptorBindingAccelerationStructureUpdateAfterBind = true,
         };
+        lastPNext = &featuresAccelerationStructure;
+    }
+
+    ::vk::PhysicalDeviceRayQueryFeaturesKHR featuresRayQuery;
+    if (GPhysicalDevice->IsFeatureSupported(Feature::RayQueries))
+    {
+        ValidateAndAddExtension(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+        featuresRayQuery = { .pNext = lastPNext, .rayQuery = true };
+        lastPNext = &featuresRayQuery;
     }
 
     ::vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR featuresUnifiedImageLayouts;
-    featuresUnifiedImageLayouts.pNext = featuresAccelerationStructure ? &featuresAccelerationStructure : nullptr;
+    featuresUnifiedImageLayouts.pNext = lastPNext;
     featuresUnifiedImageLayouts.unifiedImageLayouts = true;
 
     // Allows for mutable descriptors
