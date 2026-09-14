@@ -185,6 +185,7 @@ add_library(Vex STATIC
     "src/Vex/Utility/Handle.h"
     "src/Vex/Utility/Formattable.h"
     "src/Vex/Utility/Hash.h"
+    "src/Vex/Utility/Hash.cpp"
     "src/Vex/Utility/MaybeUninitialized.h"
     "src/Vex/Utility/NonNullPtr.h"
     "src/Vex/Utility/ByteUtils.h"
@@ -203,6 +204,7 @@ add_library(Vex STATIC
     "src/Vex/Platform/PlatformWindow.h"
     # Vex Containers
     "src/Vex/Containers/FreeList.h"
+    "src/Vex/Containers/InlineVector.h"
     "src/Vex/Containers/Span.h"
     # Vex Built-In Shaders
     "src/Vex/Generated/MipGeneration.h"

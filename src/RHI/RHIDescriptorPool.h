@@ -30,7 +30,7 @@ public:
     BindlessHandle AllocateStaticDescriptor(DescriptorType descriptorType);
     void FreeStaticDescriptor(DescriptorType descriptorType, BindlessHandle handle);
 
-    bool IsValid(BindlessHandle handle);
+    bool IsValid(DescriptorType descriptorType, BindlessHandle handle) const;
 
 protected:
     struct BindlessAllocation

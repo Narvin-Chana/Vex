@@ -57,8 +57,8 @@ static std::wstring GetTargetFromShaderType(const ShaderType type, const ShaderC
     return highestSupportedShaderModel;
 }
 
-std::expected<ComPtr<IDxcBlobEncoding>, std::string> LoadShaderSource(const ComPtr<IDxcUtils>& utils,
-                                                                      const std::filesystem::path& filepath)
+static std::expected<ComPtr<IDxcBlobEncoding>, std::string> LoadShaderSource(const ComPtr<IDxcUtils>& utils,
+                                                                             const std::filesystem::path& filepath)
 {
     ComPtr<IDxcBlobEncoding> shaderBlob;
     const std::wstring shaderPath = PlatformUtil::StringToWString(filepath.string());
@@ -69,8 +69,8 @@ std::expected<ComPtr<IDxcBlobEncoding>, std::string> LoadShaderSource(const ComP
     return shaderBlob;
 }
 
-std::expected<ComPtr<IDxcBlobEncoding>, std::string> LoadShaderSource(const ComPtr<IDxcUtils>& utils,
-                                                                      std::string_view sourceCode)
+static std::expected<ComPtr<IDxcBlobEncoding>, std::string> LoadShaderSource(const ComPtr<IDxcUtils>& utils,
+                                                                             std::string_view sourceCode)
 {
     ComPtr<IDxcBlobEncoding> shaderBlob;
     if (const HRESULT hr = utils->CreateBlob(sourceCode.data(), sourceCode.size(), DXC_CP_ACP, &shaderBlob); FAILED(hr))
@@ -80,7 +80,7 @@ std::expected<ComPtr<IDxcBlobEncoding>, std::string> LoadShaderSource(const ComP
     return shaderBlob;
 }
 
-std::expected<std::string, std::string> GetPreprocessedCode(const ComPtr<IDxcResult>& compiledShader)
+static std::expected<std::string, std::string> GetPreprocessedCode(const ComPtr<IDxcResult>& compiledShader)
 {
     ComPtr<IDxcBlob> shaderHLSLCode;
     const HRESULT objectResult = compiledShader->GetOutput(DXC_OUT_HLSL, IID_PPV_ARGS(&shaderHLSLCode), nullptr);
@@ -96,8 +96,8 @@ std::expected<std::string, std::string> GetPreprocessedCode(const ComPtr<IDxcRes
     return std::string{ preprocessedCode, codeSize };
 }
 
-std::vector<std::wstring> BuildDefaultArgumentList(const ShaderCompilerSettings& compilerSettings,
-                                                   const std::vector<std::filesystem::path>& includeDirectories)
+static std::vector<std::wstring> BuildDefaultArgumentList(const ShaderCompilerSettings& compilerSettings,
+                                                          const std::vector<std::filesystem::path>& includeDirectories)
 {
     std::vector<std::wstring> args{
         L"-HV 202x",
@@ -178,20 +178,22 @@ std::vector<std::wstring> BuildDefaultArgumentList(const ShaderCompilerSettings&
     return args;
 }
 
-std::vector<std::pair<std::wstring, std::wstring>> BuildDefineList(const ShaderKey& key,
-                                                                   const ShaderEnvironment& environment)
+static std::vector<std::pair<std::wstring, std::wstring>> BuildDefineList(const ShaderKey& key,
+                                                                          const ShaderEnvironment& environment)
 {
     // Fill in the defines with both the shaderEnv and the shader key's defines.
     std::vector<std::pair<std::wstring, std::wstring>> defineWStrings;
     defineWStrings.reserve(environment.defines.size() + key.defines.size());
-    std::ranges::transform(environment.defines,
-                           std::back_inserter(defineWStrings),
-                           [](const ShaderDefine& d) -> std::pair<std::wstring, std::wstring>
-                           { return { PlatformUtil::StringToWString(d.name), PlatformUtil::StringToWString(d.value) }; });
-    std::ranges::transform(key.defines,
-                           std::back_inserter(defineWStrings),
-                           [](const ShaderDefine& d) -> std::pair<std::wstring, std::wstring>
-                           { return { PlatformUtil::StringToWString(d.name), PlatformUtil::StringToWString(d.value) }; });
+    std::ranges::transform(
+        environment.defines,
+        std::back_inserter(defineWStrings),
+        [](const ShaderDefine& d) -> std::pair<std::wstring, std::wstring>
+        { return { PlatformUtil::StringToWString(d.name), PlatformUtil::StringToWString(d.value) }; });
+    std::ranges::transform(
+        key.defines,
+        std::back_inserter(defineWStrings),
+        [](const ShaderDefine& d) -> std::pair<std::wstring, std::wstring>
+        { return { PlatformUtil::StringToWString(d.name), PlatformUtil::StringToWString(d.value) }; });
 
     return defineWStrings;
 }
@@ -281,7 +283,7 @@ std::expected<SHA1HashDigest, std::string> DXCCompiler::GetShaderCodeHash(
             {
                 SHA1 sha1;
                 sha1.update(code);
-                return sha1.final();
+                return { sha1.final() };
             });
 }
 

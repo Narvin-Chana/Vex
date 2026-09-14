@@ -151,22 +151,22 @@ RHICommandPool DX12RHI::CreateCommandPool()
     return DX12CommandPool(*this, device);
 }
 
-RHIGraphicsPipelineState DX12RHI::CreateGraphicsPipelineState(const GraphicsPSOKey& key)
+RHIGraphicsPipelineState DX12RHI::CreateGraphicsPipelineState(std::string name, const GraphicsPSOKey& key)
 {
     GraphicsPSOKey keyCopy = key;
     // Will clear out unsupported fields/validate that the user is not expecting invalid features.
     DX12GraphicsPipelineState::ClearUnsupportedKeyFields(keyCopy);
-    return { device, keyCopy };
+    return { device, std::move(name), keyCopy };
 }
 
-RHIComputePipelineState DX12RHI::CreateComputePipelineState(const ComputePSOKey& key)
+RHIComputePipelineState DX12RHI::CreateComputePipelineState(std::string name, const ComputePSOKey& key)
 {
-    return { device, key };
+    return { device, std::move(name), key };
 }
 
-RHIRayTracingPipelineState DX12RHI::CreateRayTracingPipelineState(const RayTracingPSOKey& key)
+RHIRayTracingPipelineState DX12RHI::CreateRayTracingPipelineState(std::string name, const RayTracingPSOKey& key)
 {
-    return { device, key };
+    return { device, std::move(name), key };
 }
 
 RHIResourceLayout DX12RHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool)

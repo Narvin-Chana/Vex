@@ -86,7 +86,8 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
         binding,
         BufferBinding::CreateRWStructuredBuffer(resultBuffer, DataSize),
     };
-    std::vector<BindlessHandle> handles = graphics.GetBindlessHandles(bindings);
+    std::array<BindlessHandle, 2> handles;
+    graphics.GetBindlessHandles(bindings, handles);
 
     struct ShaderUniform
     {

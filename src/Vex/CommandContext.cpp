@@ -476,8 +476,7 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         {
             isLastIteration = true;
         }
-
-        std::vector<ResourceBinding> bindings{
+        std::array<ResourceBinding, 3> bindings{
             TextureBinding{
                 .texture = texture,
                 .usage = TextureBindingUsage::ShaderRead,
@@ -491,17 +490,18 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
                 .isSRGB = false,
                 .subresource = { .startMip = mip, .mipCount = 1 },
             },
-        };
-        if (!isLastIteration)
-        {
-            bindings.push_back(TextureBinding{
+            TextureBinding{
                 .texture = texture,
                 .usage = TextureBindingUsage::ShaderReadWrite,
                 .isSRGB = false,
                 .subresource = { .startMip = static_cast<u16>(mip + 1u), .mipCount = 1 },
-            });
-        }
-        auto handles = graphics->GetBindlessHandles(bindings);
+            }
+        };
+        const u32 bindingCount = isLastIteration ? 2 : 3;
+        InlineVector<BindlessHandle, 3> handles;
+        handles.resize(bindingCount);
+        const std::span<const ResourceBinding> activeBindings = std::span(bindings).first(bindingCount);
+        graphics->GetBindlessHandles(activeBindings, handles);
 
         Uniforms uniforms{
             linearSamplerHandle,
@@ -527,7 +527,7 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         // For 3D: z = depth
         u32 dispatchZ = texture.desc.type == TextureType::Texture3D ? depth : texture.desc.GetSliceCount();
         std::array dispatchGroupCount{ (width + 7u) / 8u, (height + 7u) / 8u, dispatchZ };
-        Dispatch(shaderKey, ConstantBinding(uniforms), bindings, dispatchGroupCount);
+        Dispatch(shaderKey, ConstantBinding(uniforms), activeBindings, dispatchGroupCount);
 
         width = std::max(1u, width >> (1 + !isLastIteration));
         height = std::max(1u, height >> (1 + !isLastIteration));
@@ -970,7 +970,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
             if (blasGeometry.indexBufferBinding.has_value())
             {
                 VEX_CHECK(blasGeometry.indexBufferBinding->strideByteSize == sizeof(u32),
-                          "Vex only supports 32bit index types")
+                          "Vex only supports 32bit index types");
                 rhiBLASGeometry.indexBufferBinding =
                     RHIBufferBinding(*blasGeometry.indexBufferBinding,
                                      graphics->GetRHIBuffer(blasGeometry.indexBufferBinding->buffer.handle));
@@ -1075,13 +1075,11 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
               "BuildTLAS only accepts top level acceleration structures...");
     VEX_CHECK(!desc.instances.empty(), "Cannot build an empty TLAS...");
 
-    std::unordered_set<AccelerationStructure> uniqueBLAS;
     std::vector<NonNullPtr<RHIAccelerationStructure>> perInstanceBLAS;
     perInstanceBLAS.reserve(desc.instances.size());
     for (const TLASInstanceDesc& tlasInstanceDesc : desc.instances)
     {
         perInstanceBLAS.push_back(graphics->GetRHIAccelerationStructure(tlasInstanceDesc.blas.handle));
-        uniqueBLAS.insert(tlasInstanceDesc.blas);
     }
 
     EnqueueGlobalBarrier(RHIGlobalBarrier{
@@ -1131,7 +1129,7 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
 }
 
 void CommandContext::ExecuteInDrawContext(Span<const TextureBinding> renderTargets,
-                                          std::optional<const TextureBinding> depthStencil,
+                                          std::optional<TextureBinding> depthStencil,
                                           Span<const ResourceBinding> trackedResources,
                                           const std::function<void()>& callback)
 {
@@ -1403,6 +1401,7 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
                                                                 const ConstantBinding constants,
                                                                 Span<const ResourceBinding> trackedResources)
 {
+    BindingUtil::ValidateDrawResource(drawBindings);
     InferResourceBarriers(RHIBarrierSync::AllGraphics, trackedResources);
 
     // Transition RTs/DepthStencil

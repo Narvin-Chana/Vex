@@ -272,7 +272,7 @@ void VkCommandList::ClearTexture(RHITexture& texture,
         {
             resources.depthStencil = RHITextureBinding{
                 .binding = { .texture = { .desc = texture.GetDesc() }, .isSRGB = false },
-                .texture = texture,
+                .texture = &texture,
             };
             clearAttachment.clearValue.depthStencil = ::vk::ClearDepthStencilValue{
                 .depth = clearValue.depth,
@@ -283,7 +283,7 @@ void VkCommandList::ClearTexture(RHITexture& texture,
         {
             resources.renderTargets.push_back(RHITextureBinding{
                 .binding = { .texture = { .desc = texture.GetDesc() }, .isSRGB = false },
-                .texture = texture,
+                .texture = &texture,
             });
             clearAttachment.clearValue.color = ::vk::ClearColorValue{ .float32 = clearValue.color };
         }
@@ -303,8 +303,8 @@ void VkCommandList::EmitBarriers(Span<const RHIBufferBarrier> bufferBarriers,
     ::vk::AccessFlags2 srcAccessMask;
     ::vk::AccessFlags2 dstAccessMask;
 
-    std::vector<::vk::ImageMemoryBarrier2> imageBarriers;
-    imageBarriers.reserve(textureBarriers.size());
+    scratchImageBarriers.clear();
+    scratchImageBarriers.reserve(textureBarriers.size());
 
     for (const auto& tb : textureBarriers)
     {
@@ -337,7 +337,7 @@ void VkCommandList::EmitBarriers(Span<const RHIBufferBarrier> bufferBarriers,
                 .baseArrayLayer = tb.subresource.startSlice,
                 .layerCount = tb.subresource.GetSliceCount(desc),
             };
-            imageBarriers.push_back(std::move(ib));
+            scratchImageBarriers.push_back(std::move(ib));
         }
         else
         {
@@ -375,8 +375,8 @@ void VkCommandList::EmitBarriers(Span<const RHIBufferBarrier> bufferBarriers,
     ::vk::DependencyInfo info{
         .memoryBarrierCount = useMemoryBarrier ? 1u : 0u,
         .pMemoryBarriers = useMemoryBarrier ? &memoryBarrier : nullptr,
-        .imageMemoryBarrierCount = static_cast<u32>(imageBarriers.size()),
-        .pImageMemoryBarriers = imageBarriers.data(),
+        .imageMemoryBarrierCount = static_cast<u32>(scratchImageBarriers.size()),
+        .pImageMemoryBarriers = scratchImageBarriers.data(),
     };
     commandBuffer->pipelineBarrier2(info);
 }
@@ -449,12 +449,12 @@ void VkCommandList::Draw(u32 vertexCount, u32 instanceCount, u32 vertexOffset, u
 {
     if (!cachedViewport || !cachedScissor)
     {
-        VEX_LOG(Fatal, "SetScissor and SetViewport need to be called before Draw is ever called")
+        VEX_LOG(Fatal, "SetScissor and SetViewport need to be called before Draw is ever called");
     }
 
     if (!isRendering)
     {
-        VEX_LOG(Fatal, "You need to call BeginRendering before calling any draw commands")
+        VEX_LOG(Fatal, "You need to call BeginRendering before calling any draw commands");
     }
 
     commandBuffer->setViewportWithCount(1, &*cachedViewport);
@@ -467,12 +467,12 @@ void VkCommandList::DrawIndexed(
 {
     if (!cachedViewport || !cachedScissor)
     {
-        VEX_LOG(Fatal, "SetScissor and SetViewport need to be called before Draw is ever called")
+        VEX_LOG(Fatal, "SetScissor and SetViewport need to be called before Draw is ever called");
     }
 
     if (!isRendering)
     {
-        VEX_LOG(Fatal, "You need to call BeginRendering before calling any draw commands")
+        VEX_LOG(Fatal, "You need to call BeginRendering before calling any draw commands");
     }
 
     commandBuffer->setViewportWithCount(1, &*cachedViewport);
@@ -510,6 +510,7 @@ void VkCommandList::SetIndexBuffer(const RHIBufferBinding& indexBuffer)
         VEX_LOG(Fatal,
                 "Unsupported index buffer stride byte size: {}. Vex only supports 2 and 4 byte indices.",
                 indexBuffer.binding.strideByteSize.value_or(0));
+        std::unreachable();
     }
 
     commandBuffer->bindIndexBuffer(indexBuffer.buffer->GetNativeBuffer(),

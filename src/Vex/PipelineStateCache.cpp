@@ -9,41 +9,6 @@
 namespace vex
 {
 
-namespace PipelineStateCache_Internal
-{
-
-// static void ValidateVertexInputLayoutOnShader(const Shader& shader, const VertexInputLayout& inputLayout)
-// {
-//     const ShaderReflection* reflection = shader.GetReflection();
-//     if (!reflection)
-//         return;
-//
-//     // TODO(https://trello.com/c/C9bfFI8s): Fix issue with shader validation reflection crashing when the shader has
-//     // optimized-out SV_ parameters (eg: unused vertex channels)
-//
-//     //    VEX_CHECK(reflection->inputs.size() == inputLayout.attributes.size(),
-//     //              "Error validating shader {}: Incoherent vertex input layout: size doesnt match shader",
-//     //              shader.key);
-//     //
-//     //    for (u32 i = 0; i < reflection->inputs.size(); ++i)
-//     //    {
-//     //        VEX_CHECK(reflection->inputs[i].semanticName == inputLayout.attributes[i].semanticName,
-//     //                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic
-//     name
-//     //                  " "doesn't match shader", shader.key, i);
-//     //        VEX_CHECK(reflection->inputs[i].semanticIndex == inputLayout.attributes[i].semanticIndex,
-//     //                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic
-//     index
-//     //                  " "doesn't match shader", shader.key, i);
-//     //        VEX_CHECK(reflection->inputs[i].format == inputLayout.attributes[i].format,
-//     //                  "Error validating shader {}: Vertex input layout validation error: Attribute {}'s semantic
-//     index
-//     //                  " "doesn't match shader", shader.key, i);
-//     //    }
-// }
-
-} // namespace PipelineStateCache_Internal
-
 PipelineStateCache::PipelineStateCache(NonNullPtr<RHI> rhi, RHIDescriptorPool& descriptorPool)
     : resourceLayout(rhi->CreateResourceLayout(descriptorPool))
     , rhi(rhi)
@@ -63,11 +28,14 @@ RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
     }
 
     GraphicsPSOKey key{ drawDesc, renderTargetState };
-    const auto it = graphicsPSCache.find(key);
-    RHIGraphicsPipelineState& ps =
-        it != graphicsPSCache.end()
-            ? it->second
-            : graphicsPSCache.insert({ key, rhi->CreateGraphicsPipelineState(key) }).first->second;
+    auto it = graphicsPSCache.find(key);
+    if (it == graphicsPSCache.end())
+    {
+        std::string psName =
+            PSOUtil::GetGraphicsPSOName(drawDesc, renderTargetState, graphicsPSCache.hash_function()(key));
+        it = graphicsPSCache.emplace(key, rhi->CreateGraphicsPipelineState(std::move(psName), key)).first;
+    }
+    RHIGraphicsPipelineState& ps = it->second;
 
     bool pipelineStateStale = false;
     pipelineStateStale |= resourceLayout->version > ps.rootSignatureVersion;
@@ -90,10 +58,13 @@ RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const Shade
     }
 
     ComputePSOKey key{ computeShader };
-    const auto it = computePSCache.find(key);
-    RHIComputePipelineState& ps =
-        it != computePSCache.end() ? it->second
-                                   : computePSCache.insert({ key, rhi->CreateComputePipelineState(key) }).first->second;
+    auto it = computePSCache.find(key);
+    if (it == computePSCache.end())
+    {
+        std::string psName = PSOUtil::GetComputePSOName(computeShader, computePSCache.hash_function()(key));
+        it = computePSCache.emplace(key, rhi->CreateComputePipelineState(std::move(psName), key)).first;
+    }
+    RHIComputePipelineState& ps = it->second;
 
     // Recompile PSO if any associated data has changed.
     bool pipelineStateStale = false;
@@ -133,12 +104,14 @@ RHIRayTracingPipelineState* PipelineStateCache::GetRayTracingPipelineState(
     }
 
     RayTracingPSOKey key{ shaderCollection };
-    const auto it = rayTracingPSCache.find(key);
-    RHIRayTracingPipelineState& ps =
-        it != rayTracingPSCache.end()
-            ? it->second
-            : rayTracingPSCache.insert({ key, rhi->CreateRayTracingPipelineState(key) }).first->second;
+    auto it = rayTracingPSCache.find(key);
+    if (it == rayTracingPSCache.end())
+    {
+        std::string psName = PSOUtil::GetRayTracingPSOName(shaderCollection, rayTracingPSCache.hash_function()(key));
+        it = rayTracingPSCache.emplace(key, rhi->CreateRayTracingPipelineState(std::move(psName), key)).first;
+    }
 
+    RHIRayTracingPipelineState& ps = it->second;
     // Recompile PSO if any associated data has changed.
     bool pipelineStateStale = false;
     pipelineStateStale |= resourceLayout->version > ps.rootSignatureVersion;

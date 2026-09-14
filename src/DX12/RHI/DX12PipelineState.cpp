@@ -145,8 +145,8 @@ static void PrintStateObjectDesc(const D3D12_STATE_OBJECT_DESC* desc)
 
 } // namespace DX12GraphicsPipeline_Internal
 
-DX12GraphicsPipelineState::DX12GraphicsPipelineState(const ComPtr<DX12Device>& device, const Key& key)
-    : RHIGraphicsPipelineStateBase(key)
+DX12GraphicsPipelineState::DX12GraphicsPipelineState(const ComPtr<DX12Device>& device, std::string name, const Key& key)
+    : RHIGraphicsPipelineStateBase(std::move(name), key)
     , device(device)
 {
 }
@@ -190,7 +190,7 @@ void DX12GraphicsPipelineState::Compile(const ShaderView& vertexShader,
     rootSignatureVersion = resourceLayout.version;
 
 #if !VEX_SHIPPING
-    chk << graphicsPSO->SetName(PlatformUtil::StringToWString(std::format("GraphicsPSO: {}", key)).c_str());
+    chk << graphicsPSO->SetName(PlatformUtil::StringToWString(name).c_str());
 #endif
 }
 
@@ -201,7 +201,7 @@ std::unique_ptr<RHIGraphicsPipelineState> DX12GraphicsPipelineState::Cleanup()
         return nullptr;
     }
     // Simple swap and move
-    auto cleanupPSO = std::make_unique<DX12GraphicsPipelineState>(device, key);
+    auto cleanupPSO = std::make_unique<DX12GraphicsPipelineState>(device, name, key);
     std::swap(cleanupPSO->graphicsPSO, graphicsPSO);
     return cleanupPSO;
 }
@@ -222,8 +222,8 @@ void DX12GraphicsPipelineState::ClearUnsupportedKeyFields(Key& key)
     key.colorBlendState.logicOp = LogicOp::Clear;
 }
 
-DX12ComputePipelineState::DX12ComputePipelineState(const ComPtr<DX12Device>& device, const Key& key)
-    : RHIComputePipelineStateBase(key)
+DX12ComputePipelineState::DX12ComputePipelineState(const ComPtr<DX12Device>& device, std::string name, const Key& key)
+    : RHIComputePipelineStateBase(std::move(name), key)
     , device(device)
 {
 }
@@ -243,7 +243,7 @@ void DX12ComputePipelineState::Compile(const ShaderView& computeShader, RHIResou
     rootSignatureVersion = resourceLayout.version;
 
 #if !VEX_SHIPPING
-    chk << computePSO->SetName(PlatformUtil::StringToWString(std::format("ComputePSO: {}", key)).c_str());
+    chk << computePSO->SetName(PlatformUtil::StringToWString(name).c_str());
 #endif
 }
 
@@ -254,13 +254,15 @@ std::unique_ptr<RHIComputePipelineState> DX12ComputePipelineState::Cleanup()
         return nullptr;
     }
     // Simple swap and move
-    auto cleanupPSO = std::make_unique<DX12ComputePipelineState>(device, key);
+    auto cleanupPSO = std::make_unique<DX12ComputePipelineState>(device, name, key);
     std::swap(cleanupPSO->computePSO, computePSO);
     return cleanupPSO;
 }
 
-DX12RayTracingPipelineState::DX12RayTracingPipelineState(const ComPtr<DX12Device>& device, const Key& key)
-    : RHIRayTracingPipelineStateBase(key)
+DX12RayTracingPipelineState::DX12RayTracingPipelineState(const ComPtr<DX12Device>& device,
+                                                         std::string name,
+                                                         const Key& key)
+    : RHIRayTracingPipelineStateBase(std::move(name), key)
     , device(device)
 {
 }
@@ -391,6 +393,10 @@ std::vector<MaybeUninitialized<RHIBuffer>> DX12RayTracingPipelineState::Compile(
 
     rootSignatureVersion = resourceLayout.version;
 
+#if !VEX_SHIPPING
+    chk << stateObject->SetName(PlatformUtil::StringToWString(name).c_str());
+#endif
+
     return oldShaderTables;
 }
 
@@ -404,7 +410,7 @@ std::unique_ptr<RHIRayTracingPipelineState> DX12RayTracingPipelineState::Cleanup
     }
 
     // Simple swap and move
-    auto cleanupPSO = std::make_unique<DX12RayTracingPipelineState>(device, key);
+    auto cleanupPSO = std::make_unique<DX12RayTracingPipelineState>(device, name, key);
     // State object
     std::swap(cleanupPSO->stateObject, stateObject);
     // Shader tables

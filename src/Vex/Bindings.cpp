@@ -1,5 +1,6 @@
 #include "Bindings.h"
 
+#include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
 #include <Vex/Utility/Formattable.h>
 #include <VexMacros.h>
@@ -68,7 +69,7 @@ void ValidateBufferBinding(const BufferBinding& binding, Flags<BufferUsage> vali
         VEX_CHECK(binding.offsetByteSize.value_or(0) % ConstantBufferBindingOffsetMultiple == 0,
                   "Invalid binding for resource \"{}\": "
                   "Constant buffer offsets must be a multiple of 256 bytes",
-                  buffer.desc.name)
+                  buffer.desc.name);
     }
 
     if (usage == BufferBindingUsage::ByteAddressBuffer || usage == BufferBindingUsage::RWByteAddressBuffer)
@@ -78,14 +79,14 @@ void ValidateBufferBinding(const BufferBinding& binding, Flags<BufferUsage> vali
                   "ByteAddressBuffer offsets must be a multiple of {} bytes (elements are {} bytes wide)",
                   buffer.desc.name,
                   ByteAddressBufferOffsetMultiple,
-                  ByteAddressBufferOffsetMultiple)
+                  ByteAddressBufferOffsetMultiple);
 
         VEX_CHECK(binding.rangeByteSize.value_or(0) % ByteAddressBufferOffsetMultiple == 0,
                   "Invalid binding for resource \"{}\": "
                   "ByteAddressBuffer range must be a multiple of {} bytes (elements are {} bytes wide)",
                   buffer.desc.name,
                   ByteAddressBufferOffsetMultiple,
-                  ByteAddressBufferOffsetMultiple)
+                  ByteAddressBufferOffsetMultiple);
     }
 }
 
@@ -108,13 +109,15 @@ void ValidateTextureBinding(const TextureBinding& binding, Flags<TextureUsage> v
                 texture.desc.name);
     }
 
-    if (binding.usage == TextureBindingUsage::None)
-    {
-        VEX_LOG(Fatal,
-                "Invalid binding for resource \"{}\": The binding's usage must be set to something and therefore not "
-                "be invalid",
-                texture.desc.name);
-    }
+    // TODO(https://trello.com/c/0WV7mLQq): Improve texture binding structures, a RTV currently is bound with a usage of
+    // None... meaning if we do validation we crash here. We should have more type-safe ways of binding resources.
+
+    // if (binding.usage == TextureBindingUsage::None)
+    // {
+    //     VEX_LOG(Fatal,
+    //             "Invalid binding for resource \"{}\": The binding's usage must be set to something and therefore not
+    //             " "be invalid", texture.desc.name);
+    // }
 
     TextureUtil::ValidateSubresource(texture.desc, binding.subresource);
 
@@ -159,9 +162,11 @@ void ValidateTextureBinding(const TextureBinding& binding, Flags<TextureUsage> v
 
 void ValidateDrawResource(const DrawResourceBinding& binding)
 {
-    for (const auto& binding : binding.renderTargets)
+    VEX_CHECK(binding.renderTargets.size() <= GMaxSimultaneousRenderTargetCount,
+              "Cannot bind more than 8 render targets simultaneously.");
+    for (const auto& rt : binding.renderTargets)
     {
-        ValidateTextureBinding(binding, TextureUsage::RenderTarget);
+        ValidateTextureBinding(rt, TextureUsage::RenderTarget);
     }
 
     if (binding.depthStencil)
