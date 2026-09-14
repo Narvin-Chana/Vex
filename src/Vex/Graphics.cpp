@@ -59,8 +59,7 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
     if (physicalDevices.empty())
     {
         VEX_LOG(Fatal,
-                "The underlying graphics API was unable to find atleast one physical device. Most likely due to "
-                "not "
+                "The underlying graphics API was unable to find at least one physical device. Most likely due to not "
                 "having Vex required features (see Vex documentation for required features)");
     }
 
@@ -471,11 +470,25 @@ std::vector<SyncToken> Graphics::Submit(Span<CommandContext> commandContexts, Sp
     std::vector<CleanupVariant> phaseTemporaryResources;
     for (auto& ctx : commandContexts)
     {
-        for (auto& buffer : ctx.temporaryBuffers)
+        for (const Buffer& buffer : ctx.temporaryBuffers)
         {
+            if (!buffer.handle.IsValid())
+                continue;
             phaseTemporaryResources.push_back(*bufferRegistry.ExtractElement(buffer.handle));
         }
-        for (auto& resource : ctx.temporaryResources)
+        for (const Texture& texture : ctx.temporaryTextures)
+        {
+            if (!texture.handle.IsValid())
+                continue;
+            phaseTemporaryResources.push_back(*textureRegistry.ExtractElement(texture.handle));
+        }
+        for (const AccelerationStructure& as : ctx.temporaryAccelerationStructures)
+        {
+            if (!as.handle.IsValid())
+                continue;
+            phaseTemporaryResources.push_back(*accelerationStructureRegistry.ExtractElement(as.handle));
+        }
+        for (CleanupVariant& resource : ctx.temporaryResources)
         {
             phaseTemporaryResources.push_back(std::move(resource));
         }
@@ -658,7 +671,6 @@ std::optional<SyncToken> Graphics::FlushPendingInitializations()
     CommandContext ctx = CreateCommandContext(QueueType::Graphics);
     for (auto& texture : pendingInitializations)
     {
-
         RHITextureBarrier barrier{
             .texture = GetRHITexture(texture.handle),
             .subresource = TextureSubresource{},

@@ -206,6 +206,15 @@ public:
     ScopedGPUEvent CreateScopedGPUEvent(const char* markerLabel, std::array<float, 3> color = { 1, 1, 1 });
 
     // ---------------------------------------------------------------------------------------------------------------
+
+    // Will destroy the passed in buffer once this command context's work has finished.
+    void DestroyResourceAfterExecution(const Buffer& buffer);
+    // Will destroy the passed in texture once this command context's work has finished.
+    void DestroyResourceAfterExecution(const Texture& texture);
+    // Will destroy the passed in acceleration structure once this command context's work has finished.
+    void DestroyResourceAfterExecution(const AccelerationStructure& as);
+
+    // ---------------------------------------------------------------------------------------------------------------
     // Advanced Operations, should be used with care!
     // ---------------------------------------------------------------------------------------------------------------
 
@@ -262,6 +271,8 @@ private:
     // Temporary resources (eg: staging resources) that will be marked for destruction once this command list is
     // submitted.
     std::vector<Buffer> temporaryBuffers;
+    std::vector<Texture> temporaryTextures;
+    std::vector<AccelerationStructure> temporaryAccelerationStructures;
     std::vector<CleanupVariant> temporaryResources;
 
     // Used to avoid resetting the same state multiple times which can be costly on certain hardware.

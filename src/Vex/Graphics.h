@@ -32,7 +32,6 @@ namespace vex
 {
 class TextureReadbackContext;
 class CommandContext;
-struct RHIPhysicalDeviceBase;
 struct Texture;
 struct TextureBinding;
 struct BufferBinding;
@@ -62,7 +61,7 @@ struct GraphicsCreateDesc
 class Graphics
 {
 public:
-    Graphics(const GraphicsCreateDesc& desc);
+    explicit Graphics(const GraphicsCreateDesc& desc);
     ~Graphics();
 
     Graphics(const Graphics&) = delete;
@@ -269,6 +268,8 @@ struct RHIAccessor
     explicit RHIAccessor(Graphics& graphics);
 
     RHI& GetRHI() const;
+
+
     RHIDescriptorPool& GetDescriptorPool() const;
     RHITexture& GetTexture(const Texture& texture) const;
     RHIResourceLayout& GetResourceLayout() const;

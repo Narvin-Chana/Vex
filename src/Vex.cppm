@@ -4,6 +4,7 @@ module;
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHIDescriptorPool.h>
+#include <Vex/RHIImpl/RHIResourceLayout.h>
 #if VEX_DX12
 #include <DX12/DX12Formats.h>
 #endif
@@ -69,6 +70,7 @@ using vex::LogDestination;
 using vex::Logger;
 using vex::LogLevelToString;
 using vex::NonNullPtr;
+using vex::PipelineStateCache;
 using vex::PlatformUtil;
 using vex::PlatformWindow;
 using vex::PlatformWindowHandle;
@@ -132,6 +134,7 @@ using vex::RHIAllocator;
 using vex::RHICommandList;
 using vex::RHICommandPool;
 using vex::RHIDescriptorPool;
+using vex::RHIResourceLayout;
 using vex::RHIScopedGPUEvent;
 using vex::RHITimestampQueryPool;
 

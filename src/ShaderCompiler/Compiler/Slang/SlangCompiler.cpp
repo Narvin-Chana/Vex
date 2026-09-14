@@ -422,9 +422,11 @@ std::expected<ShaderCompilationResult, std::string> SlangCompiler::CompileFromMo
     if (shader.IsValid() && programHash == shader.GetHash())
     {
         // Nothing to recompile, return the already existing shader.
-        return ShaderCompilationResult{ shader.GetHash(),
-                                        { shader.GetBlob().begin(), shader.GetBlob().end() },
-                                        *shader.GetReflection() };
+        return ShaderCompilationResult{
+            shader.GetHash(),
+            { shader.GetBlob().begin(), shader.GetBlob().end() },
+            shader.GetReflection() ? *shader.GetReflection() : std::optional<ShaderReflection>(),
+        };
     }
 
     auto bytecodeBlobRes = SlangImpl_Internal::GetByteCode(linkedShaderProgramRes.value());

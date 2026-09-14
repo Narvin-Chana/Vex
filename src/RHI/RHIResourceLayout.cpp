@@ -14,8 +14,6 @@ RHIResourceLayoutBase::RHIResourceLayoutBase()
     localConstantsData.reserve(maxLocalConstantsByteSize);
 }
 
-RHIResourceLayoutBase::~RHIResourceLayoutBase() = default;
-
 void RHIResourceLayoutBase::SetLayoutResources(const ConstantBinding& constants)
 {
     if (constants.IsValid())

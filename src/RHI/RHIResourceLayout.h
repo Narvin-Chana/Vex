@@ -14,7 +14,9 @@ class RHIResourceLayoutBase
 {
 public:
     RHIResourceLayoutBase();
-    ~RHIResourceLayoutBase();
+    RHIResourceLayoutBase(RHIResourceLayoutBase&&) = default;
+    RHIResourceLayoutBase& operator=(RHIResourceLayoutBase&&) = default;
+
     void SetLayoutResources(const ConstantBinding& constants);
 
     void SetStaticSamplers(Span<const StaticTextureSampler> newSamplers);
@@ -23,9 +25,6 @@ public:
     Span<const byte> GetLocalConstantsData() const;
 
     u32 version = 0;
-
-    RHIResourceLayoutBase(RHIResourceLayoutBase&&) = default;
-    RHIResourceLayoutBase& operator=(RHIResourceLayoutBase&&) = default;
 
 protected:
     bool isDirty = true;
