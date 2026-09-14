@@ -19,8 +19,9 @@ class RHIGraphicsPipelineStateBase
 public:
     using Key = GraphicsPSOKey;
 
-    explicit RHIGraphicsPipelineStateBase(Key key)
-        : key{ std::move(key) }
+    explicit RHIGraphicsPipelineStateBase(std::string name, Key key)
+        : name{ std::move(name) }
+        , key{ std::move(key) }
     {
     }
     virtual void Compile(const ShaderView& vertexShader,
@@ -28,6 +29,7 @@ public:
                          RHIResourceLayout& resourceLayout) = 0;
     virtual std::unique_ptr<RHIGraphicsPipelineState> Cleanup() = 0;
 
+    std::string name;
     Key key;
     u32 rootSignatureVersion = 0;
 };
@@ -37,13 +39,15 @@ class RHIComputePipelineStateBase
 public:
     using Key = ComputePSOKey;
 
-    explicit RHIComputePipelineStateBase(Key key)
-        : key{ std::move(key) }
+    explicit RHIComputePipelineStateBase(std::string name, Key key)
+        : name{ std::move(name) }
+        , key{ std::move(key) }
     {
     }
     virtual void Compile(const ShaderView& computeShader, RHIResourceLayout& resourceLayout) = 0;
     virtual std::unique_ptr<RHIComputePipelineState> Cleanup() = 0;
 
+    std::string name;
     Key key;
     u32 rootSignatureVersion = 0;
 };
@@ -53,8 +57,9 @@ class RHIRayTracingPipelineStateBase
 public:
     using Key = RayTracingPSOKey;
 
-    explicit RHIRayTracingPipelineStateBase(Key key)
-        : key{ std::move(key) }
+    explicit RHIRayTracingPipelineStateBase(std::string name, Key key)
+        : name{ std::move(name) }
+        , key{ std::move(key) }
     {
     }
     virtual std::vector<MaybeUninitialized<RHIBuffer>> Compile(const RayTracingShaderCollection& shaderCollection,
@@ -62,6 +67,7 @@ public:
                                                                RHIAllocator& allocator) = 0;
     virtual std::unique_ptr<RHIRayTracingPipelineState> Cleanup() = 0;
 
+    std::string name;
     Key key;
     u32 rootSignatureVersion = 0;
 };

@@ -87,6 +87,11 @@ private:
 
     // Underlying memory of the command list.
     ComPtr<ID3D12CommandAllocator> commandAllocator;
+
+    // Avoid re-allocating vectors on each barrier emit, instead we keep vectors here and clear/reserve.
+    std::vector<D3D12_BUFFER_BARRIER> scratchBufferBarriers;
+    std::vector<D3D12_TEXTURE_BARRIER> scratchTextureBarriers;
+    std::vector<D3D12_BARRIER_GROUP> scratchBarrierGroups;
 };
 
 } // namespace vex::dx12

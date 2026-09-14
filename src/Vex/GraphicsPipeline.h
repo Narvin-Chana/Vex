@@ -1,9 +1,9 @@
 #pragma once
 
 #include <array>
-#include <string>
 #include <vector>
 
+#include <Vex/Containers/InlineVector.h>
 #include <Vex/Formats.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/EnumFlags.h>
@@ -208,6 +208,8 @@ VEX_ENUM_FLAG_BITS(ColorWriteMask);
 
 // clang-format on
 
+static constexpr u32 GMaxSimultaneousRenderTargetCount = 8;
+
 struct ColorBlendState
 {
     bool logicOpEnabled = false;      // Vulkan only
@@ -228,7 +230,7 @@ struct ColorBlendState
     };
 
     // One blend attachment per render target.
-    std::vector<ColorBlendAttachment> attachments;
+    InlineVector<ColorBlendAttachment, GMaxSimultaneousRenderTargetCount> attachments;
     std::array<float, 4> blendConstants{};
 
     constexpr bool operator==(const ColorBlendState& other) const = default;
@@ -243,7 +245,7 @@ struct RenderTargetState
 
         constexpr bool operator==(const ColorFormat& other) const = default;
     };
-    std::vector<ColorFormat> colorFormats;
+    InlineVector<ColorFormat, GMaxSimultaneousRenderTargetCount> colorFormats;
     TextureFormat depthStencilFormat = TextureFormat::UNKNOWN;
 
     constexpr bool operator==(const RenderTargetState& other) const = default;

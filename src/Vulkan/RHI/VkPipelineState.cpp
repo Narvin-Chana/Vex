@@ -16,8 +16,11 @@
 
 namespace vex::vk
 {
-VkGraphicsPipelineState::VkGraphicsPipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache psoCache)
-    : RHIGraphicsPipelineStateBase(key)
+VkGraphicsPipelineState::VkGraphicsPipelineState(std::string name,
+                                                 const Key& key,
+                                                 ::vk::Device device,
+                                                 ::vk::PipelineCache psoCache)
+    : RHIGraphicsPipelineStateBase(std::move(name), key)
     , device{ device }
     , psoCache{ psoCache }
 {
@@ -174,7 +177,7 @@ void VkGraphicsPipelineState::Compile(const ShaderView& vertexShader,
 
     rootSignatureVersion = resourceLayout.version;
 
-    SetDebugName(device, *graphicsPipeline, std::format("GraphicsPSO: {}", key).c_str());
+    SetDebugName(device, *graphicsPipeline, name.c_str());
 }
 
 std::unique_ptr<RHIGraphicsPipelineState> VkGraphicsPipelineState::Cleanup()
@@ -183,13 +186,16 @@ std::unique_ptr<RHIGraphicsPipelineState> VkGraphicsPipelineState::Cleanup()
     {
         return nullptr;
     }
-    auto cleanupPSO = std::make_unique<VkGraphicsPipelineState>(key, device, psoCache);
+    auto cleanupPSO = std::make_unique<VkGraphicsPipelineState>(name, key, device, psoCache);
     std::swap(cleanupPSO->graphicsPipeline, graphicsPipeline);
     return cleanupPSO;
 }
 
-VkComputePipelineState::VkComputePipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache psoCache)
-    : RHIComputePipelineStateBase(key)
+VkComputePipelineState::VkComputePipelineState(std::string name,
+                                               const Key& key,
+                                               ::vk::Device device,
+                                               ::vk::PipelineCache psoCache)
+    : RHIComputePipelineStateBase(std::move(name), key)
     , device{ device }
     , psoCache{ psoCache }
 {
@@ -221,7 +227,7 @@ void VkComputePipelineState::Compile(const ShaderView& computeShader, RHIResourc
 
     rootSignatureVersion = resourceLayout.version;
 
-    SetDebugName(device, *computePipeline, std::format("ComputePSO: {}", key).c_str());
+    SetDebugName(device, *computePipeline, name.c_str());
 }
 
 std::unique_ptr<RHIComputePipelineState> VkComputePipelineState::Cleanup()
@@ -230,15 +236,16 @@ std::unique_ptr<RHIComputePipelineState> VkComputePipelineState::Cleanup()
     {
         return nullptr;
     }
-    auto cleanupPSO = std::make_unique<VkComputePipelineState>(key, device, psoCache);
+    auto cleanupPSO = std::make_unique<VkComputePipelineState>(name, key, device, psoCache);
     std::swap(cleanupPSO->computePipeline, computePipeline);
     return cleanupPSO;
 }
 
-VkRayTracingPipelineState::VkRayTracingPipelineState(const Key& key,
+VkRayTracingPipelineState::VkRayTracingPipelineState(std::string name,
+                                                     const Key& key,
                                                      NonNullPtr<VkGPUContext> ctx,
                                                      ::vk::PipelineCache psoCache)
-    : RHIRayTracingPipelineStateBase(key)
+    : RHIRayTracingPipelineStateBase(std::move(name), key)
     , ctx{ ctx }
     , psoCache{ psoCache }
 {
@@ -424,6 +431,8 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
 
     rootSignatureVersion = resourceLayout.version;
 
+    SetDebugName(ctx->device, *rtPipeline, name.c_str());
+
     return oldBuffers;
 }
 
@@ -434,7 +443,7 @@ std::unique_ptr<RHIRayTracingPipelineState> VkRayTracingPipelineState::Cleanup()
         return nullptr;
     }
 
-    auto cleanupPSO = std::make_unique<VkRayTracingPipelineState>(key, ctx, psoCache);
+    auto cleanupPSO = std::make_unique<VkRayTracingPipelineState>(name, key, ctx, psoCache);
     std::swap(cleanupPSO->rtPipeline, rtPipeline);
     std::swap(cleanupPSO->groupHitTable, groupHitTable);
     std::swap(cleanupPSO->rayCallableTable, rayCallableTable);

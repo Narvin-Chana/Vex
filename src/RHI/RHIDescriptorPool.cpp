@@ -18,8 +18,8 @@ BindlessHandle RHIDescriptorPoolBase::AllocateStaticDescriptor(DescriptorType de
     auto& [generations, handles] = descriptorType == DescriptorType::Resource ? allocator : samplerAllocator;
     if (handles.freeIndices.empty())
     {
-        // TODO(https://trello.com/c/uGignSlW): Add resizing, would require copying previous descriptors into the new heap AND making sure the heap
-        // survives for atleast FrameBuffering frames. Resize(gpuHeap.size() * 2);
+        // TODO(https://trello.com/c/uGignSlW): Add resizing, would require copying previous descriptors into the new
+        // heap AND making sure the heap survives for atleast FrameBuffering frames. Resize(gpuHeap.size() * 2);
         VEX_LOG(Fatal, "Ran out of static descriptors...");
     }
 
@@ -37,8 +37,9 @@ void RHIDescriptorPoolBase::FreeStaticDescriptor(DescriptorType descriptorType, 
     CopyNullDescriptor(descriptorType, index);
 }
 
-bool RHIDescriptorPoolBase::IsValid(BindlessHandle handle)
+bool RHIDescriptorPoolBase::IsValid(DescriptorType descriptorType, BindlessHandle handle) const
 {
-    return handle.GetGeneration() == allocator.generations[handle.GetIndex()];
+    return handle.GetGeneration() ==
+           (descriptorType == DescriptorType::Resource ? allocator : samplerAllocator).generations[handle.GetIndex()];
 }
 } // namespace vex

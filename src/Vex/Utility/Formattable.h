@@ -3,50 +3,26 @@
 #include <format>
 #include <vector>
 
-#include <Vex/Utility/MagicEnum.h>
 #include <Vex/Utility/WString.h>
 #include <VexMacros.h>
 
-// Generic formatter for std::vector<T> where T is formattable
-template <typename T>
-struct std::formatter<std::vector<T>>
+// We do not override std::formatter with std::wstring as it would be IFNDR due to this rule from the STD:
+// "[namespace.std]/2 permits specialising standard templates only if the declaration depends on a program-defined
+// type."
+// Instead we provide a wrapper with non-explicit constructor allowing for automatic formatting.
+
+namespace vex
 {
-    constexpr auto parse(std::format_parse_context& ctx)
+
+struct WStringView
+{
+    WStringView(const std::wstring& s)
+        : str(s)
     {
-        return ctx.begin();
     }
-
-    auto format(const std::vector<T>& vec, std::format_context& ctx) const
-    {
-        auto out = ctx.out();
-        *out++ = '[';
-
-        for (size_t i = 0; i < vec.size(); ++i)
-        {
-            if (i > 0)
-            {
-                *out++ = ',';
-                *out++ = ' ';
-            }
-            out = std::format_to(out, "{}", vec[i]);
-        }
-
-        *out++ = ']';
-        return out;
-    }
+    const std::wstring& str;
 };
 
-template <>
-struct std::formatter<std::wstring>
-{
-    constexpr auto parse(std::format_parse_context& ctx)
-    {
-        return ctx.begin();
-    }
+} // namespace vex
 
-    auto format(const std::wstring& obj, std::format_context& ctx) const
-    {
-        auto converted = vex::PlatformUtil::WStringToString(obj);
-        return std::format_to(ctx.out(), "{}", converted);
-    }
-};
+VEX_FORMATTABLE(vex::WStringView, "{}", vex::PlatformUtil::WStringToString(obj.str));

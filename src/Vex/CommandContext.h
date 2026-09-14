@@ -194,7 +194,7 @@ public:
     // Useful for calling native API draws when wanting to render to a specific Render Target. Allows the passed in
     // lambda to be executed in a draw scope.
     void ExecuteInDrawContext(Span<const TextureBinding> renderTargets,
-                              std::optional<const TextureBinding> depthStencil,
+                              std::optional<TextureBinding> depthStencil,
                               Span<const ResourceBinding> trackedResources,
                               const std::function<void()>& callback);
 

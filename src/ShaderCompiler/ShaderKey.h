@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <format>
 #include <string>
 #include <vector>
 
@@ -8,6 +9,8 @@
 #include <Vex/Types.h>
 #include <Vex/Utility/Formattable.h>
 #include <Vex/Utility/Hash.h>
+#include <Vex/Utility/MagicEnum.h>
+#include <VexMacros.h>
 
 namespace vex::sc
 {
@@ -47,6 +50,23 @@ struct ShaderKey
     std::vector<ShaderDefine> defines;
     // Determines which compilation backend to use in the shader compiler.
     ShaderCompilerBackend compiler = ShaderCompilerBackend::Auto;
+
+    [[nodiscard]] std::string GetDebugName() const
+    {
+        std::string result = std::format("{}:{}", std::filesystem::path(filepath).filename().string(), entryPoint);
+        if (!defines.empty())
+        {
+            result += '{';
+            for (size_t i = 0; i < defines.size(); ++i)
+            {
+                result += (i ? "," : "");
+                result += defines[i].value.empty() ? defines[i].name
+                                                   : std::format("{}={}", defines[i].name, defines[i].value);
+            }
+            result += '}';
+        }
+        return result;
+    }
 
     constexpr bool operator==(const ShaderKey& other) const = default;
 };

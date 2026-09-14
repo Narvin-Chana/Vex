@@ -6,7 +6,6 @@
 #include <Vex/DrawHelpers.h>
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Types.h>
-#include <Vex/Utility/Formattable.h>
 #include <Vex/Utility/Hash.h>
 
 namespace vex
@@ -14,12 +13,21 @@ namespace vex
 
 struct RayTracingShaderCollection;
 
+struct PSOUtil
+{
+    // We avoid using direct std::formatter specializations for these as their data is complex and never stored inside
+    // one singular object. It is easier to instead just have a few free functions for this purpose.
+
+    static std::string GetGraphicsPSOName(const DrawDesc& drawDesc,
+                                          const RenderTargetState& renderTargetState,
+                                          std::size_t keyHash);
+    static std::string GetComputePSOName(const ShaderView& computeShader, std::size_t keyHash);
+    static std::string GetRayTracingPSOName(const RayTracingShaderCollection& shaderCollection, std::size_t keyHash);
+};
+
 struct GraphicsPSOKey
 {
     GraphicsPSOKey(const DrawDesc& drawDesc, const RenderTargetState& renderTargetState);
-
-    // Name used for identifying the PSO in graphics debuggers/error messages.
-    std::string name;
 
     SHA1HashDigest vertexShader;
     SHA1HashDigest pixelShader;
@@ -36,9 +44,6 @@ struct ComputePSOKey
 {
     ComputePSOKey(const ShaderView& computeShader);
 
-    // Name used for identifying the PSO in graphics debuggers/error messages.
-    std::string name;
-
     SHA1HashDigest computeShader;
     constexpr bool operator==(const ComputePSOKey& other) const = default;
 };
@@ -46,9 +51,6 @@ struct ComputePSOKey
 struct RayTracingPSOKey
 {
     RayTracingPSOKey(const RayTracingShaderCollection& shaderCollection);
-
-    // Name used for identifying the PSO in graphics debuggers/error messages.
-    std::string name;
 
     // Max recursion of traced rays.
     // 31 is the API defined max.
@@ -104,19 +106,6 @@ VEX_MAKE_HASHABLE(vex::RayTracingPSOKey,
     VEX_HASH_COMBINE(seed, obj.maxRecursionDepth);
     VEX_HASH_COMBINE(seed, obj.maxPayloadByteSize);
     VEX_HASH_COMBINE(seed, obj.maxAttributeByteSize);
-);
-
-VEX_FORMATTABLE(vex::GraphicsPSOKey,
-    "GraphicsPSO({}\n\tVSHash: \"{}\", PSHash: \"{}\")",
-    obj.name,
-    obj.vertexShader,
-    obj.pixelShader
-);
-
-VEX_FORMATTABLE(vex::ComputePSOKey,
-    "ComputePSO({}\n\tHash: \"{}\")",
-    obj.name,
-    obj.computeShader
 );
 
 // clang-format on

@@ -1,8 +1,8 @@
 #pragma once
 
 #include <array>
-#include <iomanip>
-#include <sstream>
+#include <string>
+#include <utility>
 
 #include <Vex/Types.h>
 #include <Vex/Utility/Formattable.h>
@@ -12,7 +12,7 @@ namespace vex
 {
 
 template <typename T>
-constexpr auto PurifyHashValue(const T& obj) -> auto
+constexpr auto PurifyHashValue(const T& obj)
 {
     if constexpr (std::is_enum_v<T>)
     {
@@ -26,18 +26,12 @@ constexpr auto PurifyHashValue(const T& obj) -> auto
     }
 }
 
-using SHA1HashDigest = std::array<u32, 5>;
-
-inline std::string HashToString(const SHA1HashDigest& hash)
+struct SHA1HashDigest
 {
-    std::ostringstream result;
-    for (size_t i = 0; i < sizeof(hash) / sizeof(hash[0]); i++)
-    {
-        result << std::hex << std::setfill('0') << std::setw(8);
-        result << hash[i];
-    }
-    return result.str();
-}
+    std::array<u32, 5> value{};
+    constexpr bool operator==(const SHA1HashDigest&) const = default;
+};
+std::string HashToString(const SHA1HashDigest& hash);
 
 } // namespace vex
 
@@ -66,4 +60,5 @@ inline std::string HashToString(const SHA1HashDigest& hash)
         }                                                                                                              \
     };
 
-VEX_MAKE_HASHABLE(vex::SHA1HashDigest, VEX_HASH_COMBINE_CONTAINER(seed, obj););
+VEX_MAKE_HASHABLE(vex::SHA1HashDigest, VEX_HASH_COMBINE_CONTAINER(seed, obj.value););
+VEX_FORMATTABLE(vex::SHA1HashDigest, "{}", vex::HashToString(obj));

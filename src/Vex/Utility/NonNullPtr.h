@@ -2,6 +2,7 @@
 
 #include <cstddef>
 
+#include <Vex/Logger.h>
 #include <VexMacros.h>
 
 namespace vex

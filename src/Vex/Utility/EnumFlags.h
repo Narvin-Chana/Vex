@@ -31,7 +31,7 @@ struct Flags
     constexpr Flags& operator=(Flags&& other) = default;
     constexpr ~Flags() = default;
 
-    constexpr Flags& operator=(E other) { data = static_cast<Flags>(other); return *this; }
+    constexpr Flags& operator=(E other) { data = static_cast<Underlying>(other); return *this; }
 
     [[nodiscard]] constexpr Flags operator|(Flags other) const { return Flags{static_cast<Underlying>(data | other.data)}; }
     [[nodiscard]] constexpr Flags operator&(Flags other) const { return Flags{static_cast<Underlying>(data & other.data)}; }
@@ -54,9 +54,9 @@ struct Flags
 
     constexpr Flags& Clear() { data = {}; return *this; }
 
-    constexpr Flags& Set(E bit)   { data |= bit.data; return *this; }
-    constexpr Flags& Clear(E bit) { data &= ~bit.data; return *this; }
-    constexpr Flags& Flip(E bit)  { data ^= bit.data; return *this; }
+    constexpr Flags& Set(E bit)   { data |= static_cast<Underlying>(bit); return *this; }
+    constexpr Flags& Clear(E bit) { data &= ~static_cast<Underlying>(bit); return *this; }
+    constexpr Flags& Flip(E bit)  { data ^= static_cast<Underlying>(bit); return *this; }
 
     [[nodiscard]] constexpr bool operator==(const Flags& other) const = default;
     constexpr operator bool() const { return !IsEmpty(); }
