@@ -39,6 +39,8 @@ public:
     std::string_view GetMaxSupportedVulkanVersion() const;
     bool SupportsMinimalRequirements() const override;
 
+    u32 GetVulkanInstanceVersion() const;
+
 private:
     ::vk::PhysicalDeviceProperties deviceProperties;
     ::vk::PhysicalDeviceFeatures deviceFeatures;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <expected>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -265,32 +266,16 @@ private:
 
 struct RHIAccessor
 {
-    explicit RHIAccessor(Graphics& graphics)
-        : graphics{ &graphics }
-    {
-    }
+    explicit RHIAccessor(Graphics& graphics);
 
-    RHI& GetRHI() const
-    {
-        return graphics->rhi;
-    }
-    RHIDescriptorPool& GetDescriptorPool() const
-    {
-        return *graphics->descriptorPool;
-    };
+    RHI& GetRHI() const;
+    RHIDescriptorPool& GetDescriptorPool() const;
+    RHITexture& GetTexture(const Texture& texture) const;
+    RHIResourceLayout& GetResourceLayout() const;
+    RHIPhysicalDevice& GetPhysicalDevice() const;
 
-    RHITexture& GetTexture(const vex::Texture& texture) const
-    {
-        return graphics->GetRHITexture(texture.handle);
-    }
-
-    RHIResourceLayout& GetResourceLayout() const
-    {
-        return graphics->psCache->resourceLayout.value();
-    }
-    // Add getters if needed...
 private:
-    Graphics* graphics;
+    NonNullPtr<Graphics> graphics;
 };
 
 } // namespace vex
