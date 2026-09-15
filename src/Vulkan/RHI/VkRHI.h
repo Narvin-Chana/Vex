@@ -102,6 +102,7 @@ private:
     } dispatch;
 
     ::vk::UniqueInstance instance;
+    ::vk::UniqueDebugUtilsMessengerEXT debugUtilsMessenger;
     ::vk::UniqueSurfaceKHR surface;
     ::vk::UniqueDevice device;
     ::vk::PhysicalDevice physDevice;
