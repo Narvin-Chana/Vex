@@ -13,11 +13,7 @@ if (VEX_USE_EMBEDDED_SHADERS)
     # Re-configure when any shader source changes
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${_vex_shader_deps})
 
-    file(READ "${VEX_ROOT_DIR}/shaders/MipGeneration.hlsl" _vex_mip_gen_src)
-
     set(_vex_embedded_header "#pragma once\n\nnamespace vex::embedded\n{\n\n")
-    string(APPEND _vex_embedded_header
-        "inline constexpr const char* MipGenerationHLSL = R\"VEX_SHADER_DELIM(\n${_vex_mip_gen_src}\n)VEX_SHADER_DELIM\";\n\n")
 
     if (VEX_ENABLE_DXC)
         file(READ "${VEX_ROOT_DIR}/shaders/Vex.hlsli" _vex_hlsl_src)
