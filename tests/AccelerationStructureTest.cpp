@@ -23,7 +23,6 @@ struct AccelerationStructureTest : RTVexTest
 
         const BufferDesc vbDesc = BufferDesc::CreateVertexBufferDesc("RT Triangle Vertex Buffer",
                                                                      sizeof(Vertex) * TriangleVerts.size(),
-                                                                     false,
                                                                      true);
         triangleVertexBuffer = graphics.CreateBuffer(vbDesc);
 

@@ -2,11 +2,18 @@
 
 struct UniformStruct
 {
+    uint vertexBufferHandle;
     float time;
     uint uvGuideTextureHandle;
 };
 
 VEX_UNIFORMS(UniformStruct, Uniforms);
+
+struct Vertex
+{
+    float3 position;
+    float2 uv;
+};
 
 struct VSOutput
 {
@@ -14,10 +21,13 @@ struct VSOutput
     float2 uv : TEXCOORD0;
 };
 
-VSOutput VSMain(in float3 position : POSITION, in float2 uv : TEXCOORD)
+VSOutput VSMain(in uint vertexID: SV_VertexID)
 {
+    StructuredBuffer<Vertex> vertexBuffer = GetBindlessResource(Uniforms.vertexBufferHandle);
+    Vertex vertex = vertexBuffer[vertexID];
+
     VSOutput vs;
-    vs.uv = uv;
+    vs.uv = vertex.uv;
 
     float timeScale = Uniforms.time * 0.5f;
     
@@ -51,7 +61,7 @@ VSOutput VSMain(in float3 position : POSITION, in float2 uv : TEXCOORD)
         0, 0, offsetPosition.z
     );
 
-    float3 scaledPosition = mul(scaleMatrix, position);
+    float3 scaledPosition = mul(scaleMatrix, vertex.position);
     
     float3x3 finalRotation = mul(rotationY, rotationX);
     float3 rotatedPosition = mul(finalRotation, scaledPosition);

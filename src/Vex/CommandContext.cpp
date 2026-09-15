@@ -12,7 +12,6 @@
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/RHIImpl/RHIAccelerationStructure.h>
-#include <Vex/RHIImpl/RHIBuffer.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHIPipelineState.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
@@ -890,15 +889,15 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
 
     if (desc.type == ASGeometryType::Triangles)
     {
-        for (const BLASGeometryDesc& desc : desc.geometry)
+        for (const BLASGeometryDesc& geometryDesc : desc.geometry)
         {
-            if (desc.indexBufferBinding)
+            if (geometryDesc.indexBufferBinding)
             {
-                VEX_CHECK(desc.indexBufferBinding->buffer.desc.usage & BufferUsage::BuildAccelerationStructure,
+                VEX_CHECK(geometryDesc.indexBufferBinding->buffer.desc.usage & BufferUsage::BuildAccelerationStructure,
                           "Index buffer binding must have the BuildAccelerationStructure usage to be used as source "
                           "for building a BLAS");
             }
-            VEX_CHECK(desc.vertexBufferBinding.buffer.desc.usage & BufferUsage::BuildAccelerationStructure,
+            VEX_CHECK(geometryDesc.vertexBufferBinding.buffer.desc.usage & BufferUsage::BuildAccelerationStructure,
                       "Vertex buffer binding must have the BuildAccelerationStructure usage to be used as source for "
                       "building a BLAS");
         }
@@ -1459,9 +1458,6 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
                            .srcAccess = RHIBarrierAccess::MemoryWrite,
                            .dstAccess = RHIBarrierAccess::VertexInputRead });
 
-    // Bind Vertex Buffer(s)
-    SetVertexBuffers(drawBindings.vertexBuffersFirstSlot, drawBindings.vertexBuffers);
-
     // Bind Index Buffer.
     if (drawBindings.indexBuffer.has_value())
     {
@@ -1483,28 +1479,7 @@ void CommandContext::CheckViewportAndScissor() const
               "No scissor rect was set! Remember to call CommandContext::SetScissor before performing a draw call!");
 }
 
-void CommandContext::SetVertexBuffers(u32 vertexBuffersFirstSlot, Span<const BufferBinding> vertexBuffers)
-{
-    if (vertexBuffers.empty())
-    {
-        return;
-    }
-
-    std::vector<RHIBufferBinding> rhiBindings;
-    rhiBindings.reserve(vertexBuffers.size());
-    for (const auto& vertexBuffer : vertexBuffers)
-    {
-        if (!vertexBuffer.strideByteSize.has_value())
-        {
-            VEX_LOG(Fatal, "A vertex buffer must have a valid strideByteSize!");
-        }
-        RHIBuffer& buffer = graphics->GetRHIBuffer(vertexBuffer.buffer.handle);
-        rhiBindings.emplace_back(vertexBuffer, NonNullPtr(buffer));
-    }
-    cmdList->SetVertexBuffers(vertexBuffersFirstSlot, rhiBindings);
-}
-
-void CommandContext::SetIndexBuffer(const BufferBinding& indexBuffer)
+void CommandContext::SetIndexBuffer(const BufferBinding& indexBuffer) const
 {
     RHIBuffer& buffer = graphics->GetRHIBuffer(indexBuffer.buffer.handle);
     RHIBufferBinding binding{ indexBuffer, NonNullPtr(buffer) };

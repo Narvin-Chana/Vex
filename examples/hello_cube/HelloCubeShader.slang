@@ -1,5 +1,11 @@
 import Vex;
 
+struct Vertex
+{
+    float3 position;
+    float2 uv;
+};
+
 struct VSOutput
 {
     float4 position : SV_POSITION;
@@ -7,10 +13,13 @@ struct VSOutput
 };
 
 [shader("vertex")]
-VSOutput VSMain(in float3 position : POSITION, in float2 uv : TEXCOORD0, uniform float time)
+VSOutput VSMain(in uint vertexID: SV_VertexID, uniform uint vertexBufferHandle, uniform float time)
 {
+    let vertexBuffer = GetBindlessResource<StructuredBuffer<Vertex>>(vertexBufferHandle);
+    Vertex vertex = vertexBuffer[vertexID];
+
     VSOutput vs;
-    vs.uv = uv;
+    vs.uv = vertex.uv;
 
     float timeScale = -time * 0.5f;
     
@@ -37,7 +46,7 @@ VSOutput VSMain(in float3 position : POSITION, in float2 uv : TEXCOORD0, uniform
         0, 0, scale
     );
     
-    float3 scaledPosition = mul(scaleMatrix, position);
+    float3 scaledPosition = mul(scaleMatrix, vertex.position);
     
     float3x3 finalRotation = mul(rotationY, rotationX);
     float3 rotatedPosition = mul(finalRotation, scaledPosition);
@@ -67,7 +76,7 @@ VSOutput VSMain(in float3 position : POSITION, in float2 uv : TEXCOORD0, uniform
 [vk::binding(0, 1)] SamplerState LinearSampler : register(s0, space1);
 
 [shader("pixel")]
-float4 PSMain(VSOutput input, uniform float time, uniform uint uvGuideTextureHandle)
+float4 PSMain(VSOutput input, uniform uint unusedVertexBufferHandle, uniform float time, uniform uint uvGuideTextureHandle)
     : SV_Target
 {
     let UVGuideTexture = GetBindlessResource<Texture2D<float4>>(uvGuideTextureHandle);

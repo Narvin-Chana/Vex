@@ -10,7 +10,6 @@ struct DrawDesc
 {
     ShaderView vertexShader;
     ShaderView pixelShader;
-    VertexInputLayout vertexInputLayout;
     InputAssembly inputAssembly;
     RasterizerState rasterizerState;
     DepthStencilState depthStencilState;

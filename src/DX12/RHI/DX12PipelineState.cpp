@@ -159,10 +159,9 @@ void DX12GraphicsPipelineState::Compile(const ShaderView& vertexShader,
 
     const auto vsBlob = vertexShader.bytecode;
     const auto psBlob = pixelShader.bytecode;
-    std::vector<D3D12_INPUT_ELEMENT_DESC> inputElementDesc =
-        GetDX12InputElementDescFromVertexInputAssembly(key.vertexInputLayout);
-    D3D12_INPUT_LAYOUT_DESC layoutDesc{ .pInputElementDescs = inputElementDesc.data(),
-                                        .NumElements = static_cast<u32>(inputElementDesc.size()) };
+    D3D12_INPUT_LAYOUT_DESC layoutDesc{
+        // Vex does not support input layouts, use bindless to decode vertices instead.
+    };
     std::array<DXGI_FORMAT, 8> rtvFormats = GetRTVFormatsFromRenderTargetState(key.renderTargetState);
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC desc{
@@ -313,7 +312,8 @@ std::vector<MaybeUninitialized<RHIBuffer>> DX12RayTracingPipelineState::Compile(
             D3D12_SHADER_BYTECODE closestHitBC = { rayClosestHitShader.bytecode.data(),
                                                    rayClosestHitShader.bytecode.size() };
             closestHitLib->SetDXILLibrary(&closestHitBC);
-            closestHitLib->DefineExport(PlatformUtil::StringToWString(std::string(rayClosestHitShader.entryPoint)).c_str());
+            closestHitLib->DefineExport(
+                PlatformUtil::StringToWString(std::string(rayClosestHitShader.entryPoint)).c_str());
             hitGroupSubObj->SetClosestHitShaderImport(
                 PlatformUtil::StringToWString(std::string(rayClosestHitShader.entryPoint)).c_str());
         }
@@ -326,7 +326,8 @@ std::vector<MaybeUninitialized<RHIBuffer>> DX12RayTracingPipelineState::Compile(
             D3D12_SHADER_BYTECODE anyHitBC = { rayAnyHitShader.value().bytecode.data(),
                                                rayAnyHitShader.value().bytecode.size() };
             anyHitLib->SetDXILLibrary(&anyHitBC);
-            anyHitLib->DefineExport(PlatformUtil::StringToWString(std::string(rayAnyHitShader.value().entryPoint)).c_str());
+            anyHitLib->DefineExport(
+                PlatformUtil::StringToWString(std::string(rayAnyHitShader.value().entryPoint)).c_str());
             hitGroupSubObj->SetAnyHitShaderImport(
                 PlatformUtil::StringToWString(std::string(rayAnyHitShader.value().entryPoint)).c_str());
         }
@@ -447,31 +448,32 @@ void DX12RayTracingPipelineState::GenerateIdentifiers(const RayTracingShaderColl
 
     for (const ShaderView& rayGenShader : shaderCollection.rayGenerationShaders)
     {
-        void* identifier =
-            stateObjectProperties->GetShaderIdentifier(PlatformUtil::StringToWString(std::string(rayGenShader.entryPoint)).c_str());
+        void* identifier = stateObjectProperties->GetShaderIdentifier(
+            PlatformUtil::StringToWString(std::string(rayGenShader.entryPoint)).c_str());
         VEX_ASSERT(identifier != nullptr, "Unable to use null RTPSO shader identifier...");
         rayGenerationIdentifiers.push_back(identifier);
     }
 
     for (const ShaderView& missShader : shaderCollection.rayMissShaders)
     {
-        void* identifier =
-            stateObjectProperties->GetShaderIdentifier(PlatformUtil::StringToWString(std::string(missShader.entryPoint)).c_str());
+        void* identifier = stateObjectProperties->GetShaderIdentifier(
+            PlatformUtil::StringToWString(std::string(missShader.entryPoint)).c_str());
         VEX_ASSERT(identifier != nullptr, "Unable to use null RTPSO shader identifier...");
         rayMissIdentifiers.push_back(identifier);
     }
 
     for (const HitGroup& hitGroupData : shaderCollection.hitGroups)
     {
-        void* identifier = stateObjectProperties->GetShaderIdentifier(PlatformUtil::StringToWString(hitGroupData.name).c_str());
+        void* identifier =
+            stateObjectProperties->GetShaderIdentifier(PlatformUtil::StringToWString(hitGroupData.name).c_str());
         VEX_ASSERT(identifier != nullptr, "Unable to use null RTPSO shader identifier...");
         hitGroupIdentifiers.push_back(identifier);
     }
 
     for (const ShaderView& callableShader : shaderCollection.rayCallableShaders)
     {
-        void* identifier =
-            stateObjectProperties->GetShaderIdentifier(PlatformUtil::StringToWString(std::string(callableShader.entryPoint)).c_str());
+        void* identifier = stateObjectProperties->GetShaderIdentifier(
+            PlatformUtil::StringToWString(std::string(callableShader.entryPoint)).c_str());
         VEX_ASSERT(identifier != nullptr, "Unable to use null RTPSO shader identifier...");
         rayCallableIdentifiers.push_back(identifier);
     }

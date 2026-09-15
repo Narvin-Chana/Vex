@@ -23,7 +23,6 @@ struct GraphicsPSOKey
 
     SHA1HashDigest vertexShader;
     SHA1HashDigest pixelShader;
-    VertexInputLayout vertexInputLayout;
     InputAssembly inputAssembly;
     RasterizerState rasterizerState;
     DepthStencilState depthStencilState;

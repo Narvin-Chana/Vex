@@ -252,8 +252,7 @@ private:
                                                     Span<const ResourceBinding> trackedResources);
     void CheckViewportAndScissor() const;
 
-    void SetVertexBuffers(u32 vertexBuffersFirstSlot, Span<const BufferBinding> vertexBuffers);
-    void SetIndexBuffer(const BufferBinding& indexBuffer);
+    void SetIndexBuffer(const BufferBinding& indexBuffer) const;
 
     NonNullPtr<Graphics> graphics;
     NonNullPtr<RHICommandList> cmdList;

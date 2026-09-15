@@ -171,32 +171,6 @@ void HelloCubeApplication::Run()
             // Clear depth texture.
             ctx.ClearTexture(depthTexture);
 
-            vex::VertexInputLayout vertexLayout{
-                .attributes = {
-                    {
-                        .semanticName = "POSITION",
-                        .semanticIndex = 0,
-                        .binding = 0,
-                        .format = vex::TextureFormat::RGB32_FLOAT,
-                        .offset = 0,
-                    },
-                    {
-                        .semanticName = "TEXCOORD",
-                        .semanticIndex = 0,
-                        .binding = 0,
-                        .format = vex::TextureFormat::RG32_FLOAT,
-                        .offset = sizeof(float) * 3,
-                    }
-                },
-                .bindings = {
-                    {
-                        .binding = 0,
-                        .strideByteSize = static_cast<vex::u32>(sizeof(Vertex)),
-                        .inputRate = vex::VertexInputLayout::InputRate::PerVertex,
-                    },
-                },
-            };
-
             vex::DepthStencilState depthStencilState{
                 .depthTestEnabled = true,
                 .depthWriteEnabled = true,
@@ -207,22 +181,16 @@ void HelloCubeApplication::Run()
             vex::DrawDesc hlslDrawDesc{
                 .vertexShader = shaderCompiler.GetShaderView(HLSLVertexShaderKey),
                 .pixelShader = shaderCompiler.GetShaderView(HLSLPixelShaderKey),
-                .vertexInputLayout = vertexLayout,
                 .depthStencilState = depthStencilState,
             };
 
             vex::DrawDesc slangDrawDesc{
                 .vertexShader = shaderCompiler.GetShaderView(SlangVertexShaderKey),
                 .pixelShader = shaderCompiler.GetShaderView(SlangPixelShaderKey),
-                .vertexInputLayout = vertexLayout,
                 .depthStencilState = depthStencilState,
             };
 
             // ...and resources.
-            vex::BufferBinding vertexBufferBinding{
-                .buffer = vertexBuffer,
-                .strideByteSize = static_cast<vex::u32>(sizeof(Vertex)),
-            };
             vex::BufferBinding indexBufferBinding{
                 .buffer = indexBuffer,
                 .strideByteSize = static_cast<vex::u32>(sizeof(vex::u32)),
@@ -233,13 +201,23 @@ void HelloCubeApplication::Run()
                 .texture = graphics->GetCurrentPresentTexture(),
             } };
 
+            vex::BindlessHandle vertexBufferHandle = graphics->GetBindlessHandle(
+                vex::BufferBinding{ .buffer = vertexBuffer,
+                                    .usage = vex::BufferBindingUsage::StructuredBuffer,
+                                    .strideByteSize = static_cast<vex::u32>(sizeof(Vertex)) });
             vex::BindlessHandle uvGuideHandle = graphics->GetBindlessHandle(
                 vex::TextureBinding{ .texture = uvGuideTexture, .usage = vex::TextureBindingUsage::ShaderRead });
 
             struct UniformData
             {
+                vex::BindlessHandle vertexBufferHandle;
                 float currentTime{};
                 vex::BindlessHandle uvGuideHandle;
+            };
+            UniformData data{
+                .vertexBufferHandle = vertexBufferHandle,
+                .currentTime = static_cast<float>(currentTime),
+                .uvGuideHandle = uvGuideHandle,
             };
             {
                 VEX_GPU_SCOPED_EVENT(ctx, "HLSL Cube");
@@ -247,10 +225,9 @@ void HelloCubeApplication::Run()
                                 {
                                     .renderTargets = renderTargets,
                                     .depthStencil = vex::TextureBinding(depthTexture),
-                                    .vertexBuffers = { &vertexBufferBinding, 1 },
                                     .indexBuffer = indexBufferBinding,
                                 },
-                                vex::ConstantBinding(UniformData{ static_cast<float>(currentTime), uvGuideHandle }),
+                                vex::ConstantBinding(data),
                                 {},
                                 IndexCount);
             }
@@ -260,10 +237,9 @@ void HelloCubeApplication::Run()
                                 {
                                     .renderTargets = renderTargets,
                                     .depthStencil = vex::TextureBinding(depthTexture),
-                                    .vertexBuffers = { &vertexBufferBinding, 1 },
                                     .indexBuffer = indexBufferBinding,
                                 },
-                                vex::ConstantBinding(UniformData{ static_cast<float>(currentTime), uvGuideHandle }),
+                                vex::ConstantBinding(data),
                                 {},
                                 IndexCount);
             }

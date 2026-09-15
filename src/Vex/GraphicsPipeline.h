@@ -11,39 +11,6 @@
 
 namespace vex
 {
-struct VertexInputLayout
-{
-    struct VertexAttribute
-    {
-        std::string semanticName; // eg: "TEXCOORD", "POSITION", "NORMAL", etc...
-        u32 semanticIndex;        // 0, 1, 2, etc...
-        u32 binding;
-        TextureFormat format;
-        u32 offset;
-
-        constexpr bool operator==(const VertexAttribute& other) const = default;
-    };
-
-    enum InputRate : u8
-    {
-        PerVertex,
-        PerInstance,
-    };
-
-    struct VertexBinding
-    {
-        u32 binding;
-        u32 strideByteSize;
-        InputRate inputRate;
-
-        constexpr bool operator==(const VertexBinding& other) const = default;
-    };
-
-    std::vector<VertexAttribute> attributes;
-    std::vector<VertexBinding> bindings;
-
-    constexpr bool operator==(const VertexInputLayout& other) const = default;
-};
 
 enum class InputTopology : u8
 {
@@ -286,28 +253,8 @@ struct RenderTargetState
 
 // clang-format off
 
-VEX_MAKE_HASHABLE(vex::VertexInputLayout::VertexAttribute,
-    VEX_HASH_COMBINE(seed, obj.binding);
-    VEX_HASH_COMBINE(seed, obj.format);
-    VEX_HASH_COMBINE(seed, obj.offset);
-    VEX_HASH_COMBINE(seed, obj.semanticName);
-    VEX_HASH_COMBINE(seed, obj.semanticIndex);
-);
-
-VEX_MAKE_HASHABLE(vex::VertexInputLayout::VertexBinding,
-    VEX_HASH_COMBINE(seed, obj.binding);
-    VEX_HASH_COMBINE(seed, obj.strideByteSize);
-    VEX_HASH_COMBINE(seed, obj.inputRate);
-);
-
-VEX_MAKE_HASHABLE(vex::VertexInputLayout,
-    VEX_HASH_COMBINE_CONTAINER(seed, obj.attributes);
-    VEX_HASH_COMBINE_CONTAINER(seed, obj.bindings);
-);
-
 VEX_MAKE_HASHABLE(vex::InputAssembly,
     VEX_HASH_COMBINE(seed, obj.topology);
-    VEX_HASH_COMBINE(seed, obj.primitiveRestartEnabled);
 );
 
 VEX_MAKE_HASHABLE(vex::RasterizerState,

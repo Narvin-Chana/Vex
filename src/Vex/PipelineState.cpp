@@ -14,7 +14,6 @@ GraphicsPSOKey::GraphicsPSOKey(const DrawDesc& drawDesc, const RenderTargetState
     : name(std::format("VS: {}, PS: {}", drawDesc.vertexShader.name, drawDesc.pixelShader.name))
     , vertexShader(drawDesc.vertexShader.hash)
     , pixelShader(drawDesc.pixelShader.hash)
-    , vertexInputLayout(drawDesc.vertexInputLayout)
     , inputAssembly(drawDesc.inputAssembly)
     , rasterizerState(drawDesc.rasterizerState)
     , depthStencilState(drawDesc.depthStencilState)

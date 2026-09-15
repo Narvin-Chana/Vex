@@ -23,11 +23,6 @@ VEX_VK_BEGIN_ENUM_MAPPING(InputTopology, InputTopology, ::vk::PrimitiveTopology,
     VEX_VK_ENUM_MAPPING_ENTRY(LineStrip, eLineStrip)
 VEX_VK_END_ENUM_MAPPING
 
-VEX_VK_BEGIN_ENUM_MAPPING(VertexInputLayout::InputRate, InputRate, ::vk::VertexInputRate, VkInputRate)
-    VEX_VK_ENUM_MAPPING_ENTRY(PerInstance, eInstance)
-    VEX_VK_ENUM_MAPPING_ENTRY(PerVertex, eVertex)
-VEX_VK_END_ENUM_MAPPING
-
 VEX_VK_BEGIN_ENUM_MAPPING_FLAGS(CullMode, CullMode, ::vk::CullMode, VkCullMode)
     VEX_VK_ENUM_MAPPING_ENTRY(Back, eBack)
     VEX_VK_ENUM_MAPPING_ENTRY(Front, eFront)

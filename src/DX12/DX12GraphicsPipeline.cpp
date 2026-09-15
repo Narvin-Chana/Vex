@@ -183,49 +183,6 @@ D3D12_DEPTH_STENCIL_DESC GetDX12DepthStencilStateFromDepthStencilState(const Dep
     return desc;
 }
 
-std::vector<D3D12_INPUT_ELEMENT_DESC> GetDX12InputElementDescFromVertexInputAssembly(
-    const VertexInputLayout& vertexInputLayout)
-{
-    std::vector<D3D12_INPUT_ELEMENT_DESC> inputElements;
-    inputElements.reserve(vertexInputLayout.attributes.size());
-
-    for (const auto& attr : vertexInputLayout.attributes)
-    {
-        D3D12_INPUT_ELEMENT_DESC elementDesc = {};
-        elementDesc.SemanticName = attr.semanticName.c_str();
-        elementDesc.SemanticIndex = attr.semanticIndex;
-        // SRGB vertex format makes no sense. Force to false (which gives us non-SRGB formats).
-        static constexpr bool UseSRGBForVertexPixelFormat = false;
-        elementDesc.Format = TextureFormatToDXGI(attr.format, UseSRGBForVertexPixelFormat);
-        elementDesc.InputSlot = attr.binding;
-        elementDesc.AlignedByteOffset = attr.offset;
-
-        // Find the corresponding binding to determine input slot class
-        auto bindingIt = std::find_if(vertexInputLayout.bindings.begin(),
-                                      vertexInputLayout.bindings.end(),
-                                      [&](const VertexInputLayout::VertexBinding& binding)
-                                      { return binding.binding == attr.binding; });
-
-        if (bindingIt != vertexInputLayout.bindings.end())
-        {
-            elementDesc.InputSlotClass = (bindingIt->inputRate == VertexInputLayout::InputRate::PerInstance)
-                                             ? D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA
-                                             : D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
-            elementDesc.InstanceDataStepRate =
-                (bindingIt->inputRate == VertexInputLayout::InputRate::PerInstance) ? 1 : 0;
-        }
-        else
-        {
-            elementDesc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
-            elementDesc.InstanceDataStepRate = 0;
-        }
-
-        inputElements.push_back(elementDesc);
-    }
-
-    return inputElements;
-}
-
 D3D12_PRIMITIVE_TOPOLOGY GetDX12PrimitiveTopologyFromInputAssembly(const InputAssembly& inputAssembly)
 {
     switch (inputAssembly.topology)
