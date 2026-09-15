@@ -1,8 +1,8 @@
 ﻿#pragma once
 #include <variant>
 
-#include <Vex/Utility/NonNullPtr.h>
 #include <Vex/Resource.h>
+#include <Vex/Utility/NonNullPtr.h>
 
 #include <Vulkan/VkHeaders.h>
 
@@ -19,9 +19,9 @@ class VkDescriptorSet final
 
 public:
     void UpdateDescriptor(u32 index, ::vk::DescriptorImageInfo createInfo);
-    void UpdateDescriptors(u32 startIndex, Span<const ::vk::DescriptorImageInfo> createInfo);
+    void UpdateDescriptors(u32 startIndex, Span<const ::vk::DescriptorImageInfo> createInfos);
     void UpdateDescriptor(u32 index, ::vk::DescriptorBufferInfo createInfo);
-    void UpdateDescriptors(u32 startIndex, Span<const ::vk::DescriptorBufferInfo> createInfo);
+    void UpdateDescriptors(u32 startIndex, Span<const ::vk::DescriptorBufferInfo> createInfos);
 
 private:
     ::vk::UniqueDescriptorSet descriptorSet;
@@ -43,7 +43,9 @@ public:
     void UpdateDescriptor(BindlessHandle targetDescriptor,
                           ::vk::DescriptorType descType,
                           ::vk::DescriptorBufferInfo createInfo);
-    void UpdateDescriptor(BindlessHandle targetDescriptor, ::vk::DescriptorImageInfo createInfo, ::vk::DescriptorType descType);
+    void UpdateDescriptor(BindlessHandle targetDescriptor,
+                          ::vk::DescriptorImageInfo createInfo,
+                          ::vk::DescriptorType descType);
     void SetDescriptorToNull(u32 index);
 
     ::vk::UniqueDescriptorSet descriptorSet;

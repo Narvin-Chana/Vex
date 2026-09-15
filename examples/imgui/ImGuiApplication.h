@@ -2,7 +2,7 @@
 
 #include <ExampleApplication.h>
 
-struct ImGuiApplication : public ExampleApplication
+struct ImGuiApplication : ExampleApplication
 {
     ImGuiApplication();
     virtual ~ImGuiApplication() override;

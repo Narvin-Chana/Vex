@@ -272,7 +272,8 @@ Texture Graphics::CreateTexture(const TextureDesc& textureDesc, ResourceLifetime
 
     if (textureDesc.mips == 0)
     {
-        texDesc.mips = ByteUtil::ComputeMipCount(std::make_tuple(textureDesc.width, textureDesc.height, textureDesc.GetDepth()));
+        texDesc.mips =
+            ByteUtil::ComputeMipCount(std::make_tuple(textureDesc.width, textureDesc.height, textureDesc.GetDepth()));
     }
 
     if (lifetime == ResourceLifetime::Dynamic)
@@ -805,6 +806,36 @@ void Graphics::RecreatePresentTextures()
         presentTextures[presentTextureIndex] = CreateTexture(presentTextureDesc);
         // Present texture will be initialized when pendingInitializations are flushed on next submit.
     }
+}
+
+RHIAccessor::RHIAccessor(Graphics& graphics)
+    : graphics{ &graphics }
+{
+}
+
+RHI& RHIAccessor::GetRHI() const
+{
+    return graphics->rhi;
+}
+
+RHIDescriptorPool& RHIAccessor::GetDescriptorPool() const
+{
+    return *graphics->descriptorPool;
+}
+
+RHITexture& RHIAccessor::GetTexture(const Texture& texture) const
+{
+    return graphics->GetRHITexture(texture.handle);
+}
+
+RHIResourceLayout& RHIAccessor::GetResourceLayout() const
+{
+    return graphics->psCache->resourceLayout.value();
+}
+
+RHIPhysicalDevice& RHIAccessor::GetPhysicalDevice() const
+{
+    return *GPhysicalDevice;
 }
 
 } // namespace vex

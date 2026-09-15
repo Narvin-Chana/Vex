@@ -21,7 +21,8 @@ struct ImGui_ImplVex_InitInfo
 {
     vex::NonNullPtr<vex::Graphics> graphics;
     vex::FrameBuffering buffering;
-    vex::TextureFormat swapchainFormat;
+    vex::TextureFormat renderTargetFormat;
+    bool useSRGBOutputRenderTarget = false;
     vex::TextureFormat depthStencilFormat = vex::TextureFormat::UNKNOWN;
 };
 
@@ -44,6 +45,7 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
     GImGuiVexContext.graphics = data.graphics;
 #if VEX_VULKAN
     ImGui_ImplVulkan_InitInfo initInfo{};
+    initInfo.ApiVersion = accessor.GetPhysicalDevice().GetVulkanInstanceVersion();
     initInfo.Device = rhi->GetNativeDevice();
     initInfo.Instance = rhi->GetNativeInstance();
     initInfo.PhysicalDevice = rhi->GetNativePhysicalDevice();
@@ -53,11 +55,13 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
     initInfo.QueueFamily = commandQueue.family;
     initInfo.ImageCount = std::to_underlying(data.buffering);
     initInfo.MinImageCount = initInfo.ImageCount;
-    initInfo.DescriptorPool = descriptorPool->GetNativeDescriptorPool();
     initInfo.PipelineCache = rhi->GetNativePSOCache();
+    initInfo.DescriptorPool = VK_NULL_HANDLE;
+    initInfo.DescriptorPoolSize = IMGUI_IMPL_VULKAN_MINIMUM_SAMPLED_IMAGE_POOL_SIZE;
 
     initInfo.UseDynamicRendering = true;
-    ::vk::Format colorAttachmentFormat = vex::vk::TextureFormatToVulkan(data.swapchainFormat, false);
+    ::vk::Format colorAttachmentFormat =
+        vex::vk::TextureFormatToVulkan(data.renderTargetFormat, data.useSRGBOutputRenderTarget);
     ::vk::Format depthStencilFormat = vex::vk::TextureFormatToVulkan(data.depthStencilFormat, false);
     initInfo.PipelineInfoMain.PipelineRenderingCreateInfo =
         ::vk::PipelineRenderingCreateInfo{ .colorAttachmentCount = 1,
@@ -89,7 +93,7 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
     initInfo.Device = rhi->GetNativeDevice().Get();
     initInfo.CommandQueue = rhi->GetNativeQueue(vex::QueueType::Graphics).Get();
     initInfo.NumFramesInFlight = std::to_underlying(data.buffering);
-    initInfo.RTVFormat = vex::dx12::TextureFormatToDXGI(data.swapchainFormat, false);
+    initInfo.RTVFormat = vex::dx12::TextureFormatToDXGI(data.renderTargetFormat, data.useSRGBOutputRenderTarget);
     initInfo.DSVFormat = vex::dx12::TextureFormatToDXGI(data.depthStencilFormat, false);
 
     // Descriptors callbacks to register and unregister handles.
@@ -124,12 +128,12 @@ inline void ImGui_ImplVex_Shutdown()
 #endif
 }
 
-inline void ImGui_ImplVex_RenderDrawData(vex::CommandContext& ctx)
+inline void ImGui_ImplVex_RenderDrawData(ImDrawData* drawData, vex::CommandContext& ctx)
 {
 #if VEX_VULKAN
-    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), ctx.GetRHICommandList().GetNativeCommandList());
+    ImGui_ImplVulkan_RenderDrawData(drawData, ctx.GetRHICommandList().GetNativeCommandList());
 #elif VEX_DX12
-    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), ctx.GetRHICommandList().GetNativeCommandList().Get());
+    ImGui_ImplDX12_RenderDrawData(drawData, ctx.GetRHICommandList().GetNativeCommandList().Get());
 #endif
 }
 
@@ -142,20 +146,13 @@ inline void ImGui_ImplVex_NewFrame()
 #endif
 }
 
-namespace ImGui
-{
-
-inline void Image(const vex::TextureBinding& binding,
-                  const ImVec2& image_size,
-                  const ImVec2& uv0 = ImVec2(0, 0),
-                  const ImVec2& uv1 = ImVec2(1, 1))
+inline ImTextureID ImGui_ImplVex_ResolveTextureId(const vex::TextureBinding& binding)
 {
     VEX_CHECK(GImGuiVexContext.graphics, "ImGui_ImplVex_Init must be called prior to this");
     VEX_CHECK(binding.texture.handle != vex::GInvalidTextureHandle,
               "Vex Imgui: Texture handle need to be valid to draw");
 
     vex::RHIAccessor accessor{ *GImGuiVexContext.graphics };
-    ImTextureID registeredTexture;
 #if VEX_VULKAN
     ::vk::ImageView img =
         accessor.GetTexture(binding.texture).GetOrCreateImageView(binding, vex::TextureUsage::ShaderRead);
@@ -166,12 +163,22 @@ inline void Image(const vex::TextureBinding& binding,
                                                                                       img,
                                                                                       VK_IMAGE_LAYOUT_GENERAL) });
     }
-    registeredTexture = GImGuiVexContext.imageCache[img];
+    return GImGuiVexContext.imageCache[img];
 #elif VEX_DX12
     vex::BindlessHandle handle = GImGuiVexContext.graphics->GetBindlessHandle(binding);
-    CD3DX12_GPU_DESCRIPTOR_HANDLE descriptorHandle = accessor.GetDescriptorPool().GetGPUDescriptor(handle);
-    registeredTexture = descriptorHandle.ptr;
+    return static_cast<ImTextureID>(accessor.GetDescriptorPool().GetGPUDescriptor(handle).ptr);
 #endif
+}
+
+namespace ImGui
+{
+
+inline void Image(const vex::TextureBinding& binding,
+                  const ImVec2& image_size,
+                  const ImVec2& uv0 = ImVec2(0, 0),
+                  const ImVec2& uv1 = ImVec2(1, 1))
+{
+    ImTextureID registeredTexture = ImGui_ImplVex_ResolveTextureId(binding);
     Image(registeredTexture, image_size, uv0, uv1);
 }
 

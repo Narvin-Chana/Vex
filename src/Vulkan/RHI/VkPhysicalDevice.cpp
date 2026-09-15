@@ -259,6 +259,11 @@ bool VkPhysicalDevice::SupportsMinimalRequirements() const
     return true;
 }
 
+u32 VkPhysicalDevice::GetVulkanInstanceVersion() const
+{
+    return deviceProperties.apiVersion;
+}
+
 bool VkPhysicalDevice::FormatSupportsLinearFiltering(TextureFormat format, bool isSRGB) const
 {
     ::vk::FormatProperties formatProperties = physicalDevice.getFormatProperties(TextureFormatToVulkan(format, isSRGB));

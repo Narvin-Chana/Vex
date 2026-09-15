@@ -31,7 +31,7 @@ ImGuiApplication::ImGuiApplication()
     ImGui_ImplVex_InitInfo initInfo{
         .graphics = vex::NonNullPtr{ graphics.get() },
         .buffering = FrameBuffering,
-        .swapchainFormat = SwapchainFormat,
+        .renderTargetFormat = graphics->GetCurrentPresentTexture().desc.format,
     };
     ImGui_ImplVex_Init(initInfo);
 }
@@ -71,7 +71,8 @@ void ImGuiApplication::RenderImGui()
 
     if (ImGui::Begin("Last Frame"))
     {
-        ImGui::Image(lastFrameTexture, ImVec2(100, 100));
+        const ImVec2 size = ImGui::GetContentRegionAvail();
+        ImGui::Image(lastFrameTexture, size);
     }
     ImGui::End();
 
@@ -95,7 +96,7 @@ void ImGuiApplication::RenderImGui()
     ctx.ExecuteInDrawContext({ &presentBinding, 1 },
                              std::nullopt,
                              { vex::TextureBinding{ lastFrameTexture, vex::TextureBindingUsage::ShaderRead } },
-                             [&ctx]() { ImGui_ImplVex_RenderDrawData(ctx); });
+                             [&ctx]() { ImGui_ImplVex_RenderDrawData(ImGui::GetDrawData(), ctx); });
 
     // Submit our command context.
     graphics->Submit(ctx);
