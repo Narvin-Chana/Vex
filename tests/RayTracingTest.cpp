@@ -38,7 +38,6 @@ struct RTTestFixture : public RTVexTest
         auto ctx = graphics.CreateCommandContext(QueueType::Compute);
         const BufferDesc vbDesc = BufferDesc::CreateVertexBufferDesc("RT Triangle Vertex Buffer",
                                                                      sizeof(Vertex) * TriangleVerts.size(),
-                                                                     false,
                                                                      true);
         triangleVertexBuffer = graphics.CreateBuffer(vbDesc);
 

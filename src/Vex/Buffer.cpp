@@ -69,16 +69,9 @@ BufferDesc BufferDesc::CreateUniformBufferDesc(std::string name, u64 byteSize)
     };
 }
 
-BufferDesc BufferDesc::CreateVertexBufferDesc(std::string name,
-                                              u64 byteSize,
-                                              bool allowShaderRead,
-                                              bool canBeAccelerationStructureSource)
+BufferDesc BufferDesc::CreateVertexBufferDesc(std::string name, u64 byteSize, bool canBeAccelerationStructureSource)
 {
-    Flags usageFlags = BufferUsage::VertexBuffer;
-    if (allowShaderRead)
-    {
-        usageFlags |= BufferUsage::ShaderRead;
-    }
+    Flags usageFlags = BufferUsage::VertexBuffer | BufferUsage::ShaderRead;
     if (canBeAccelerationStructureSource)
     {
         usageFlags |= BufferUsage::BuildAccelerationStructure;

@@ -89,7 +89,6 @@ struct BufferDesc
     // Creates a GPUOnly buffer useable as an Vertex Buffer.
     static BufferDesc CreateVertexBufferDesc(std::string name,
                                              u64 byteSize,
-                                             bool allowShaderRead = false,
                                              bool canBeAccelerationStructureSource = false);
     // Creates a GPUOnly buffer useable as an Index Buffer.
     static BufferDesc CreateIndexBufferDesc(std::string name,

@@ -50,7 +50,7 @@ HelloRayTracing::HelloRayTracing()
 
     // Create vertex and index buffers
     const vex::BufferDesc vbDesc =
-        vex::BufferDesc::CreateVertexBufferDesc("RT Vertex Buffer", sizeof(Vertex) * TriangleVerts.size(), false, true);
+        vex::BufferDesc::CreateVertexBufferDesc("RT Vertex Buffer", sizeof(Vertex) * TriangleVerts.size(), true);
     vex::Buffer vertexBuffer = graphics->CreateBuffer(vbDesc);
 
     const vex::BufferDesc ibDesc = vex::BufferDesc::CreateIndexBufferDesc("RT Index Buffer",

@@ -20,8 +20,6 @@ D3D12_BLEND_OP GetDX12BlendOpFromBlendOp(BlendOp blendOp);
 CD3DX12_RASTERIZER_DESC GetDX12RasterizerStateFromRasterizerState(const RasterizerState& rasterizerState);
 CD3DX12_BLEND_DESC GetDX12BlendStateFromColorBlendState(const ColorBlendState& blendState);
 D3D12_DEPTH_STENCIL_DESC GetDX12DepthStencilStateFromDepthStencilState(const DepthStencilState& depthStencilState);
-std::vector<D3D12_INPUT_ELEMENT_DESC> GetDX12InputElementDescFromVertexInputAssembly(
-    const VertexInputLayout& vertexInputLayout);
 D3D12_PRIMITIVE_TOPOLOGY GetDX12PrimitiveTopologyFromInputAssembly(const InputAssembly& inputAssembly);
 D3D12_PRIMITIVE_TOPOLOGY_TYPE GetDX12PrimitiveTopologyTypeFromInputAssembly(const InputAssembly& inputAssembly);
 u32 GetNumRenderTargetsFromRenderTargetState(const RenderTargetState& renderTargetState);

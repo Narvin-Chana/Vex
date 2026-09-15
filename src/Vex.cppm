@@ -102,7 +102,6 @@ using vex::TextureViewType;
 using vex::TLASBuildDesc;
 using vex::TLASInstanceDesc;
 using vex::TraceRaysDesc;
-using vex::VertexInputLayout;
 using vex::Winding;
 
 // Have to export vex::operators in order for users to get syntaxic sugar to implicitly convert a BitEnum type to Flags.

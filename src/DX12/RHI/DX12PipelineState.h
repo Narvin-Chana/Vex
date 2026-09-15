@@ -22,7 +22,6 @@ public:
         std::size_t seed = 0;
         VEX_HASH_COMBINE(seed, key.vertexShader);
         VEX_HASH_COMBINE(seed, key.pixelShader);
-        VEX_HASH_COMBINE(seed, key.vertexInputLayout);
         VEX_HASH_COMBINE(seed, key.inputAssembly);
         VEX_HASH_COMBINE(seed, key.rasterizerState);
         VEX_HASH_COMBINE(seed, key.depthStencilState);

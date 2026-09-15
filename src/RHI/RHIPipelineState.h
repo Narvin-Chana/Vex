@@ -19,7 +19,7 @@ class RHIGraphicsPipelineStateBase
 public:
     using Key = GraphicsPSOKey;
 
-    RHIGraphicsPipelineStateBase(Key key)
+    explicit RHIGraphicsPipelineStateBase(Key key)
         : key{ std::move(key) }
     {
     }
@@ -37,7 +37,7 @@ class RHIComputePipelineStateBase
 public:
     using Key = ComputePSOKey;
 
-    RHIComputePipelineStateBase(Key key)
+    explicit RHIComputePipelineStateBase(Key key)
         : key{ std::move(key) }
     {
     }
@@ -53,7 +53,7 @@ class RHIRayTracingPipelineStateBase
 public:
     using Key = RayTracingPSOKey;
 
-    RHIRayTracingPipelineStateBase(Key key)
+    explicit RHIRayTracingPipelineStateBase(Key key)
         : key{ std::move(key) }
     {
     }

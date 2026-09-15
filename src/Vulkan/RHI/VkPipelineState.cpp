@@ -9,7 +9,6 @@
 #include <Vulkan/RHI/VkAccelerationStructure.h>
 #include <Vulkan/RHI/VkBuffer.h>
 #include <Vulkan/RHI/VkResourceLayout.h>
-#include <Vulkan/RHI/VkTexture.h>
 #include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkFormats.h>
@@ -54,34 +53,7 @@ void VkGraphicsPipelineState::Compile(const ShaderView& vertexShader,
                                                             .module = *psShaderModule,
                                                             .pName = pixelShaderEntryPoint.c_str() } };
 
-    std::vector<::vk::VertexInputBindingDescription> bindings{ key.vertexInputLayout.bindings.size() };
-    std::ranges::transform(key.vertexInputLayout.bindings,
-                           bindings.begin(),
-                           [](const VertexInputLayout::VertexBinding& binding)
-                           {
-                               return ::vk::VertexInputBindingDescription{
-                                   .binding = binding.binding,
-                                   .stride = binding.strideByteSize,
-                                   .inputRate = GraphicsPiplineUtils::InputRateToVkInputRate(binding.inputRate)
-                               };
-                           });
-
-    std::vector<::vk::VertexInputAttributeDescription> attributes{ key.vertexInputLayout.attributes.size() };
-    for (u32 i = 0; i < attributes.size(); ++i)
-    {
-        const VertexInputLayout::VertexAttribute& attribute = key.vertexInputLayout.attributes[i];
-        attributes[i] = ::vk::VertexInputAttributeDescription{ .location = i,
-                                                               .binding = attribute.binding,
-                                                               .format = TextureFormatToVulkan(attribute.format, false),
-                                                               .offset = attribute.offset };
-    }
-
-    ::vk::PipelineVertexInputStateCreateInfo pipelineVertexInputStateCI{
-        .vertexBindingDescriptionCount = static_cast<u32>(bindings.size()),
-        .pVertexBindingDescriptions = bindings.data(),
-        .vertexAttributeDescriptionCount = static_cast<u32>(attributes.size()),
-        .pVertexAttributeDescriptions = attributes.data()
-    };
+    ::vk::PipelineVertexInputStateCreateInfo pipelineVertexInputStateCI{};
 
     ::vk::PipelineInputAssemblyStateCreateInfo inputAssemblyState{
         .topology = GraphicsPiplineUtils::InputTopologyToVkTopology(key.inputAssembly.topology),

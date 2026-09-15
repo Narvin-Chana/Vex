@@ -180,11 +180,6 @@ struct DrawResourceBinding
     Span<const TextureBinding> renderTargets;
     std::optional<const TextureBinding> depthStencil;
 
-    u32 vertexBuffersFirstSlot = 0;
-    // Vertex buffers to be bound starting at the above slot.
-    // You can bind no vertex buffer and instead depend on SV_VertexID in your Vertex Shader.
-    Span<const BufferBinding> vertexBuffers;
-
     // Index buffer used for DrawIndexed.
     std::optional<BufferBinding> indexBuffer;
 };
