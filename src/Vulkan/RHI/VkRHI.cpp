@@ -25,8 +25,8 @@
 #include <Vex/Synchronization.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
-#include <VexMacros.h>
 #include <Vex/Utility/Visitor.h>
+#include <VexMacros.h>
 
 #include <RHI/RHICommandList.h>
 #include <RHI/RHIPhysicalDevice.h>
@@ -198,6 +198,11 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
         VEX_LOG(Info, "\t{}", instanceExtension);
     }
     GDispatcherLifetime.SetInstance(*instance);
+
+    if (enableGPUDebugLayer)
+    {
+        debugUtilsMessenger = VEX_VK_CHECK <<= instance->createDebugUtilsMessengerEXTUnique(debugCreateInfo);
+    }
 
     // Only activate setting debug names if the debug layer is active. Otherwise Vulkan will error out.
     GEnableDebugName = enableGPUDebugLayer;
