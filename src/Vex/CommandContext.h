@@ -79,7 +79,7 @@ public:
                      u32 indexCount,
                      u32 instanceCount = 1,
                      u32 indexOffset = 0,
-                     u32 vertexOffset = 0,
+                     i32 vertexOffset = 0,
                      u32 instanceOffset = 0);
 
     // Not yet implemented
