@@ -260,7 +260,7 @@ std::expected<SHA1HashDigest, std::string> DXCCompiler::GetShaderCodeHash(
             {
                 if (compilerSettings.dumpShaderOutputBytecode)
                 {
-                    auto dumpPath = ShaderUtil::GetShaderDumpPath(shader);
+                    auto dumpPath = ShaderUtil::GetShaderDumpPath(shader, compilerSettings.shaderDumpRootPath);
 
                     if (!std::filesystem::exists(dumpPath.parent_path()))
                     {

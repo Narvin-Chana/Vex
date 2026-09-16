@@ -36,7 +36,30 @@ bool CanReflectShaderType(ShaderType type)
     return false;
 }
 
-std::filesystem::path GetShaderDumpPath(const Shader& shader)
+std::optional<std::filesystem::path> TryGetFilepathFromVirtualFilepath(const ShaderKey& key)
+{
+    std::filesystem::path filepath{ key.filepath };
+    if (!std::filesystem::exists(filepath))
+    {
+        return std::nullopt;
+    }
+    return filepath;
+}
+
+ShaderCompilerBackend ResolveCompilerAutoBackend(const ShaderKey& key)
+{
+    if (key.compiler != ShaderCompilerBackend::Auto)
+        return key.compiler;
+
+    const std::optional<std::filesystem::path> filepath = TryGetFilepathFromVirtualFilepath(key);
+
+    // Default is DXC, unless VEX_SLANG and the shader file has .slang extension.
+    if (filepath.has_value() && filepath->extension().string() == ".slang")
+        return ShaderCompilerBackend::Slang;
+    return ShaderCompilerBackend::DXC;
+}
+
+std::filesystem::path GetShaderDumpPath(const Shader& shader, const std::filesystem::path& outputPath)
 {
     static auto ShortenType = [](ShaderType type)
     {
@@ -64,16 +87,14 @@ std::filesystem::path GetShaderDumpPath(const Shader& shader)
         return "";
     };
 
-    const std::string shortShaderType = ShortenType(shader.GetKey().type);
-
-    std::string uniqueFilename = std::format("{}_{}", shader.GetKey().entryPoint, shortShaderType);
+    std::string uniqueFilename = std::format("{}_{}", shader.GetKey().entryPoint, ShortenType(shader.GetKey().type));
     // Ensure the filepath isn't too long (OS limit is usually ~250, but we also have to store the current_path()).
     static constexpr std::size_t MaxFilenameLength = 150;
     uniqueFilename.resize(std::min(uniqueFilename.size(), MaxFilenameLength));
 
     std::filesystem::path basePath =
-        std::filesystem::current_path() / "VexOutput_SHADER_BYTECODE" /
-        std::format("{}/{}", shader.GetKey().compiler, std::hash<ShaderKey>{}(shader.GetKey()));
+        outputPath /
+        std::format("{}/{}", ResolveCompilerAutoBackend(shader.GetKey()), std::hash<ShaderKey>{}(shader.GetKey()));
     return basePath / uniqueFilename;
 }
 
@@ -145,7 +166,7 @@ std::optional<std::string> ShaderCompiler::CompileShaderFromFilepath(const Shade
     VEX_CHECK(!key.filepath.empty(),
               "Error compiling shader {} from filepath: Cannot compile from an empty filepath.",
               key);
-    const std::optional<std::filesystem::path> filepathString = TryGetFilepathFromVirtualFilepath(key);
+    const std::optional<std::filesystem::path> filepathString = ShaderUtil::TryGetFilepathFromVirtualFilepath(key);
     VEX_CHECK(filepathString.has_value(), "Unable to find shader at filepath: {}", key.filepath);
     Shader& shader = *GetShader(key, false);
     CompilerBase& compiler = GetCompiler(key);
@@ -206,16 +227,6 @@ void ShaderCompiler::RecompileShaders(const Span<const ShaderKey> shaderKeys)
     VEX_LOG(Info, "Recompiled the passed-in filepath-based shaders ({})...", numRecompiledShaders);
 }
 
-std::optional<std::filesystem::path> ShaderCompiler::TryGetFilepathFromVirtualFilepath(const ShaderKey& key)
-{
-    std::filesystem::path filepath{ key.filepath };
-    if (!std::filesystem::exists(filepath))
-    {
-        return std::nullopt;
-    }
-    return filepath;
-}
-
 ShaderEnvironment ShaderCompiler::CreateShaderEnvironment(const ShaderCompilerSettings& compilerSettings)
 {
     ShaderEnvironment env;
@@ -226,17 +237,9 @@ ShaderEnvironment ShaderCompiler::CreateShaderEnvironment(const ShaderCompilerSe
 
 CompilerBase& ShaderCompiler::GetCompiler(const ShaderKey& key)
 {
-    const std::optional<std::filesystem::path> filepath = TryGetFilepathFromVirtualFilepath(key);
-    const std::string extension = filepath.has_value() ? filepath->extension().string() : "NONE";
-    switch (key.compiler)
+    const ShaderCompilerBackend backend = ShaderUtil::ResolveCompilerAutoBackend(key);
+    switch (backend)
     {
-    case ShaderCompilerBackend::Auto:
-#if VEX_SLANG
-        // Default is DXC, unless VEX_SLANG and the shader file has .slang extension.
-        if (extension == ".slang")
-            return slangCompiler;
-        // Intentional fallthrough...
-#endif
 #if VEX_DXC
     case ShaderCompilerBackend::DXC:
         return dxcCompiler;
@@ -247,8 +250,8 @@ CompilerBase& ShaderCompiler::GetCompiler(const ShaderKey& key)
 #endif
     default:
         VEX_LOG(Fatal,
-                "Invalid shader compiler backend when attempting to obtain compiler, extension: {} with key: {}.",
-                extension,
+                "Invalid shader compiler backend when attempting to obtain compiler, backend: {} and path: {}.",
+                backend,
                 key.filepath);
         std::unreachable();
     }
@@ -302,7 +305,7 @@ std::optional<std::string> ShaderCompiler::HandleCompiledShader(
             metadataStream << "\t" << define.name << " = " << define.value << "\n";
         }
 
-        std::filesystem::path outputPath = ShaderUtil::GetShaderDumpPath(shader);
+        std::filesystem::path outputPath = ShaderUtil::GetShaderDumpPath(shader, compilerSettings.shaderDumpRootPath);
         std::filesystem::path bytecodePath = outputPath;
         std::filesystem::path metaPath = outputPath;
         metaPath.replace_extension(".meta");
