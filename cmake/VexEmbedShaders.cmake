@@ -33,7 +33,7 @@ if (VEX_USE_EMBEDDED_SHADERS)
     file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/gen/ShaderCompiler/Generated/EmbeddedShaders.h" "${_vex_embedded_header}")
 
     target_include_directories(Vex PUBLIC 
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/gen/ShaderCompiler/Generated>"
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/gen>"
     $<INSTALL_INTERFACE:include/vex/ShaderCompiler/Generated>)
 
     target_compile_definitions(Vex PRIVATE VEX_EMBEDDED_SHADERS=1)
