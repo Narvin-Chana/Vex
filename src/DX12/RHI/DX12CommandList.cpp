@@ -500,7 +500,7 @@ void DX12CommandList::Draw(u32 vertexCount, u32 instanceCount, u32 vertexOffset,
 }
 
 void DX12CommandList::DrawIndexed(
-    u32 indexCount, u32 instanceCount, u32 indexOffset, u32 vertexOffset, u32 instanceOffset)
+    u32 indexCount, u32 instanceCount, u32 indexOffset, i32 vertexOffset, u32 instanceOffset)
 {
     if (type != QueueType::Graphics)
     {

@@ -55,7 +55,8 @@ static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureReg
                 const u32 mipDepth = region.extent.GetDepth(desc, mip);
 
                 // Calculate the size of this region in the staging buffer.
-                const u32 alignedRowPitch = ByteUtil::AlignUp<u32>(mipWidth * bytesPerPixel, TextureUtil::RowPitchAlignment);
+                const u32 alignedRowPitch =
+                    ByteUtil::AlignUp<u32>(mipWidth * bytesPerPixel, TextureUtil::RowPitchAlignment);
                 const u64 regionStagingSize = static_cast<u64>(alignedRowPitch) * mipHeight * mipDepth;
 
                 BufferTextureCopyDesc copyDesc{
@@ -218,7 +219,7 @@ void CommandContext::DrawIndexed(const DrawDesc& drawDesc,
                                  u32 indexCount,
                                  u32 instanceCount,
                                  u32 indexOffset,
-                                 u32 vertexOffset,
+                                 i32 vertexOffset,
                                  u32 instanceOffset)
 {
     CheckViewportAndScissor();

@@ -75,7 +75,7 @@ public:
 
     virtual void Draw(u32 vertexCount, u32 instanceCount = 1, u32 vertexOffset = 0, u32 instanceOffset = 0) = 0;
     virtual void DrawIndexed(
-        u32 indexCount, u32 instanceCount = 1, u32 indexOffset = 0, u32 vertexOffset = 0, u32 instanceOffset = 0) = 0;
+        u32 indexCount, u32 instanceCount = 1, u32 indexOffset = 0, i32 vertexOffset = 0, u32 instanceOffset = 0) = 0;
 
     virtual void SetVertexBuffers(u32 startSlot, Span<const RHIBufferBinding> vertexBuffers) = 0;
     virtual void SetIndexBuffer(const RHIBufferBinding& indexBuffer) = 0;
