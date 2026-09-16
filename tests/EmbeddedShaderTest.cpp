@@ -3,6 +3,7 @@
 #include <cctype>
 #include <fstream>
 #include <sstream>
+#include <string>
 
 #if __has_include(<ShaderCompiler/Generated/EmbeddedShaders.h>)
 #include <ShaderCompiler/Generated/EmbeddedShaders.h>
@@ -35,12 +36,16 @@ std::string_view Trim(std::string_view str)
     return str;
 }
 
+// Reads the file and normalizes CRLF line endings to LF, matching how CMake's file(READ)/file(WRITE) commands
+// normalize line endings when generating the embedded shader header.
 std::string ReadFileToString(const std::filesystem::path& path)
 {
     std::ifstream file(path, std::ios::binary);
     std::ostringstream contents;
     contents << file.rdbuf();
-    return contents.str();
+    std::string str = contents.str();
+    std::erase(str, '\r');
+    return str;
 }
 
 #endif // VEX_HAS_EMBEDDED_SHADERS
