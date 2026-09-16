@@ -33,7 +33,8 @@ struct ShaderCompilerSettings
     // Determines the shader model to use, uses the minimum required Vex shader model by default.
     ShaderModel shaderModel = ShaderModel::SM_6_7;
 
-    // When compiling to spirv, defines the spirv version to use, uses the minimum required Vex spirv version by default.
+    // When compiling to spirv, defines the spirv version to use, uses the minimum required Vex spirv version by
+    // default.
     SpirvVersion spirvVersion = SpirvVersion::spirv_1_6;
 
     // Additional directories in which to search for shaders (on top of the current working directory).
@@ -49,6 +50,9 @@ struct ShaderCompilerSettings
     // Outputs the shader bytecode (spirv or DXIL) to a directory when a shader is compiled, warning: this will fill up
     // your drive will lots of small files if left on for too long!
     bool dumpShaderOutputBytecode = false;
+
+    // This determines where the dumped shader will be written to
+    std::filesystem::path shaderDumpRootPath = std::filesystem::current_path() / "VexOutput_SHADER_BYTECODE";
 };
 
 } // namespace vex::sc
