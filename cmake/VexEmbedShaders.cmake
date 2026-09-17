@@ -2,7 +2,7 @@ option(VEX_USE_EMBEDDED_SHADERS "Whether Vex should embed helper shaders in its 
 
 if (VEX_USE_EMBEDDED_SHADERS)
 
-    set(_vex_shader_deps "${VEX_ROOT_DIR}/shaders/MipGeneration.hlsl")
+    set(_vex_shader_deps "")
     if (VEX_ENABLE_DXC)
         list(APPEND _vex_shader_deps "${VEX_ROOT_DIR}/shaders/Vex.hlsli")
     endif()
