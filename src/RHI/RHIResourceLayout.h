@@ -5,6 +5,7 @@
 #include <Vex/Containers/Span.h>
 #include <Vex/TextureSampler.h>
 #include <Vex/Types.h>
+#include <Vex/PipelineState.h>
 
 namespace vex
 {
@@ -13,14 +14,14 @@ struct ConstantBinding;
 class RHIResourceLayoutBase
 {
 public:
-    RHIResourceLayoutBase();
+    RHIResourceLayoutBase(Span<const PipelineStage> stageConstants);
     ~RHIResourceLayoutBase();
-    void SetLayoutResources(const ConstantBinding& constants);
+    void SetLayoutResources(Span<const std::byte> constants, Flags<PipelineStage> stageFlags);
 
     void SetStaticSamplers(Span<const StaticTextureSampler> newSamplers);
-    Span<const StaticTextureSampler> GetStaticSamplers() const;
-
-    Span<const byte> GetLocalConstantsData() const;
+    [[nodiscard]] Span<const StaticTextureSampler> GetStaticSamplers() const;
+    [[nodiscard]] Span<const byte> GetLocalConstantsData(u32 stageIndex) const;
+    [[nodiscard]] u32 GetSupportedPipelineStagesCount() const { return supportedStages.size(); }
 
     u32 version = 0;
 
@@ -28,12 +29,12 @@ public:
     RHIResourceLayoutBase& operator=(RHIResourceLayoutBase&&) = default;
 
 protected:
-    bool isDirty = true;
+    bool isDirty{};
+
+    std::vector<PipelineStage> supportedStages;
+    std::vector<std::vector<byte>> stageLocalConstants;
 
     u32 maxLocalConstantsByteSize;
-
-    // Constant data remains always allocated, avoiding reallocations on successive draw calls.
-    std::vector<byte> localConstantsData;
 
     std::vector<StaticTextureSampler> staticSamplers;
 };

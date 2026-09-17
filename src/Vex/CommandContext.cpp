@@ -121,7 +121,7 @@ CommandContext::CommandContext(NonNullPtr<Graphics> graphics,
     cmdList->SetTimestampQueryPool(queryPool);
     if (cmdList->GetQueue() != QueueType::Copy)
     {
-        cmdList->SetDescriptorPool(*graphics->descriptorPool, graphics->psCache->resourceLayout.value());
+        cmdList->SetDescriptorPool(*graphics->descriptorPool, graphics->psCache->graphicsResourceLayout.value());
     }
 }
 
@@ -178,10 +178,31 @@ void CommandContext::ClearTexture(const Texture& texture,
                           std::move(clearValue),
                           clearRects);
 }
+void CommandContext::SetUniforms(Span<const std::byte> data, Flags<PipelineStage> stageFlags)
+{
+    if (data.empty())
+        return;
+
+    VEX_CHECK(!stageFlags.IsEmpty(), "Stage flags must be valid before calling SetUniforms");
+
+    if (stageFlags.IsSet(PipelineStage::Graphics))
+    {
+        graphics->psCache->graphicsResourceLayout->SetLayoutResources(data, stageFlags);
+    }
+
+    if (stageFlags.IsSet(PipelineStage::Compute))
+    {
+        graphics->psCache->computeResourceLayout->SetLayoutResources(data, stageFlags);
+    }
+
+    if (stageFlags.IsSet(PipelineStage::RayTracing))
+    {
+        graphics->psCache->rayTracingResourceLayout->SetLayoutResources(data, stageFlags);
+    }
+}
 
 void CommandContext::Draw(const DrawDesc& drawDesc,
                           const DrawResourceBinding& drawBindings,
-                          ConstantBinding constants,
                           Span<const ResourceBinding> trackedResources,
                           u32 vertexCount,
                           u32 instanceCount,
@@ -198,7 +219,7 @@ void CommandContext::Draw(const DrawDesc& drawDesc,
                 "to use the index buffer, call CommandContext::DrawIndexed instead.");
     }
 
-    auto drawResources = PrepareDrawCall(drawDesc, drawBindings, constants, trackedResources);
+    auto drawResources = PrepareDrawCall(drawDesc, drawBindings, trackedResources);
     FlushBarriers();
     if (!drawResources.has_value())
     {
@@ -214,7 +235,6 @@ void CommandContext::Draw(const DrawDesc& drawDesc,
 
 void CommandContext::DrawIndexed(const DrawDesc& drawDesc,
                                  const DrawResourceBinding& drawBindings,
-                                 ConstantBinding constants,
                                  Span<const ResourceBinding> trackedResources,
                                  u32 indexCount,
                                  u32 instanceCount,
@@ -223,7 +243,7 @@ void CommandContext::DrawIndexed(const DrawDesc& drawDesc,
                                  u32 instanceOffset)
 {
     CheckViewportAndScissor();
-    auto drawResources = PrepareDrawCall(drawDesc, drawBindings, constants, trackedResources);
+    auto drawResources = PrepareDrawCall(drawDesc, drawBindings, trackedResources);
     FlushBarriers();
     if (!drawResources.has_value())
     {
@@ -253,7 +273,6 @@ void CommandContext::DrawIndexedIndirect()
 }
 
 void CommandContext::Dispatch(const ShaderView& computeShader,
-                              const ConstantBinding constants,
                               const Span<const ResourceBinding> trackedResources,
                               const std::array<u32, 3> groupCount)
 {
@@ -263,9 +282,7 @@ void CommandContext::Dispatch(const ShaderView& computeShader,
     FlushBarriers();
 
     // Setup the layout for our pass (must be done before PSO handling).
-    RHIResourceLayout& resourceLayout = *graphics->psCache->resourceLayout;
-    resourceLayout.SetLayoutResources(constants);
-    cmdList->SetLayout(resourceLayout);
+    cmdList->SetLayout(*graphics->psCache->graphicsResourceLayout);
 
     std::unique_ptr<RHIComputePipelineState> oldPSO;
     // Register shader and get Pipeline if exists (if not create it).
@@ -298,7 +315,6 @@ void CommandContext::DispatchIndirect()
 }
 
 void CommandContext::TraceRays(const RayTracingShaderCollection& rayTracingShaderCollection,
-                               ConstantBinding constants,
                                Span<const ResourceBinding> trackedResources,
                                const TraceRaysDesc& rayTracingArgs)
 {
@@ -309,9 +325,7 @@ void CommandContext::TraceRays(const RayTracingShaderCollection& rayTracingShade
     FlushBarriers();
 
     // Setup the layout for our pass (must be done before PSO handling).
-    RHIResourceLayout& resourceLayout = graphics->psCache->resourceLayout.value();
-    resourceLayout.SetLayoutResources(constants);
-    cmdList->SetLayout(resourceLayout);
+    cmdList->SetLayout(graphics->psCache->graphicsResourceLayout.value());
 
     std::unique_ptr<RHIRayTracingPipelineState> oldPSO;
     std::vector<MaybeUninitialized<RHIBuffer>> oldSBTs;
@@ -527,7 +541,8 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         // For 3D: z = depth
         u32 dispatchZ = texture.desc.type == TextureType::Texture3D ? depth : texture.desc.GetSliceCount();
         std::array dispatchGroupCount{ (width + 7u) / 8u, (height + 7u) / 8u, dispatchZ };
-        Dispatch(shaderKey, ConstantBinding(uniforms), bindings, dispatchGroupCount);
+        SetUniforms(std::as_bytes(std::span{ &uniforms, 1 }), PipelineStage::Compute);
+        Dispatch(shaderKey, bindings, dispatchGroupCount);
 
         width = std::max(1u, width >> (1 + !isLastIteration));
         height = std::max(1u, height >> (1 + !isLastIteration));
@@ -1382,7 +1397,6 @@ Buffer CommandContext::CreateTemporaryBuffer(const BufferDesc& desc)
 
 std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& drawDesc,
                                                                 const DrawResourceBinding& drawBindings,
-                                                                const ConstantBinding constants,
                                                                 Span<const ResourceBinding> trackedResources)
 {
     InferResourceBarriers(RHIBarrierSync::AllGraphics, trackedResources);
@@ -1426,9 +1440,7 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
         CommandContext_Internal::CreateRenderTargetStateFromBindings(drawDesc, drawResources);
 
     // Setup the layout for our pass (must be done before PSO handling).
-    RHIResourceLayout& resourceLayout = graphics->psCache->resourceLayout.value();
-    resourceLayout.SetLayoutResources(constants);
-    cmdList->SetLayout(resourceLayout);
+    cmdList->SetLayout(graphics->psCache->graphicsResourceLayout.value());
 
     std::unique_ptr<RHIGraphicsPipelineState> oldPSO;
     RHIGraphicsPipelineState* pipelineState =

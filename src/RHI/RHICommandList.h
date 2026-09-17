@@ -10,6 +10,7 @@
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/NonNullPtr.h>
+#include <Vex/PipelineState.h>
 
 #include <RHI/RHIBarrier.h>
 #include <RHI/RHIFwd.h>

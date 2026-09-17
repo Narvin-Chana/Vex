@@ -4,6 +4,7 @@
 #include <optional>
 
 #include <Vex/RHIImpl/RHIFence.h>
+#include <Vex/PipelineState.h>
 
 #include <RHI/RHI.h>
 #include <RHI/RHIFwd.h>
@@ -37,7 +38,7 @@ public:
     virtual RHIGraphicsPipelineState CreateGraphicsPipelineState(const GraphicsPSOKey& key) override;
     virtual RHIComputePipelineState CreateComputePipelineState(const ComputePSOKey& key) override;
     virtual RHIRayTracingPipelineState CreateRayTracingPipelineState(const RayTracingPSOKey& key) override;
-    virtual RHIResourceLayout CreateResourceLayout(RHIDescriptorPool& descriptorPool) override;
+    virtual RHIResourceLayout CreateResourceLayout(RHIDescriptorPool& descriptorPool, Span<const PipelineStage> supportedStages) override;
 
     virtual RHITexture CreateTexture(RHIAllocator& allocator, const TextureDesc& desc) override;
     virtual RHIBuffer CreateBuffer(RHIAllocator& allocator, const BufferDesc& desc) override;

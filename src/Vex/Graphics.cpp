@@ -432,7 +432,7 @@ BindlessHandle Graphics::GetBindlessSampler(const BindlessTextureSampler& sample
 
 void Graphics::SetStaticSamplers(Span<const StaticTextureSampler> staticSamplers)
 {
-    psCache->resourceLayout->SetStaticSamplers(staticSamplers);
+    psCache->graphicsResourceLayout->SetStaticSamplers(staticSamplers);
 }
 
 SyncToken Graphics::Submit(CommandContext& ctx, Span<const SyncToken> dependencies)
@@ -830,7 +830,7 @@ RHITexture& RHIAccessor::GetTexture(const Texture& texture) const
 
 RHIResourceLayout& RHIAccessor::GetResourceLayout() const
 {
-    return graphics->psCache->resourceLayout.value();
+    return graphics->psCache->graphicsResourceLayout.value();
 }
 
 RHIPhysicalDevice& RHIAccessor::GetPhysicalDevice() const

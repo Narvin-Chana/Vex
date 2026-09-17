@@ -18,53 +18,6 @@
 namespace vex
 {
 
-struct ConstantBinding
-{
-    constexpr ConstantBinding() = default;
-
-    // Construct from raw ptr and size.
-    constexpr explicit ConstantBinding(const void* data, Span<const byte>::size_type size)
-        : data{ reinterpret_cast<const byte*>(data), size }
-    {
-        VEX_ASSERT(
-            size <= MaxTheoreticalLocalConstantsByteSize,
-            "Size cannot surpass the max theoretical limit for local constants as defined by your graphics api.");
-    }
-
-    // Construct from vex::Span.
-    template <typename T>
-        requires(sizeof(T) <= MaxTheoreticalLocalConstantsByteSize)
-    explicit ConstantBinding(Span<T> data)
-        : data(std::as_bytes(data))
-    {
-    }
-
-    // Construct from std::span.
-    template <typename T>
-        requires(sizeof(T) <= MaxTheoreticalLocalConstantsByteSize)
-    explicit ConstantBinding(std::span<T> data)
-        : data(std::as_bytes(data))
-    {
-    }
-
-    // Construct constant binding from any non-container T.
-    // This constructor's concepts are here to avoid taking in a container, and thus polluting constant data with the
-    // container's data (eg: a vector's size/capacity).
-    template <typename T>
-        requires(sizeof(T) <= MaxTheoreticalLocalConstantsByteSize and not IsContainer<T>)
-    explicit ConstantBinding(const T& data)
-        : ConstantBinding(static_cast<const void*>(&data), sizeof(T))
-    {
-    }
-
-    [[nodiscard]] constexpr bool IsValid() const
-    {
-        return !data.empty();
-    }
-
-    Span<const byte> data;
-};
-
 struct BufferBinding
 {
     // The buffer to bind

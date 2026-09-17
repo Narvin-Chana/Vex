@@ -46,7 +46,9 @@ namespace PipelineStateCache_Internal
 } // namespace PipelineStateCache_Internal
 
 PipelineStateCache::PipelineStateCache(NonNullPtr<RHI> rhi, RHIDescriptorPool& descriptorPool)
-    : resourceLayout(rhi->CreateResourceLayout(descriptorPool))
+    : graphicsResourceLayout(rhi->CreateResourceLayout(descriptorPool, { PipelineStage::Graphics }))
+    , computeResourceLayout(rhi->CreateResourceLayout(descriptorPool, { PipelineStage::Compute }))
+    , rayTracingResourceLayout(rhi->CreateResourceLayout(descriptorPool, { PipelineStage::RayTracing }))
     , rhi(rhi)
 {
 }
@@ -71,12 +73,12 @@ RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
             : graphicsPSCache.insert({ key, rhi->CreateGraphicsPipelineState(key) }).first->second;
 
     bool pipelineStateStale = false;
-    pipelineStateStale |= resourceLayout->version > ps.rootSignatureVersion;
+    pipelineStateStale |= graphicsResourceLayout->version > ps.rootSignatureVersion;
     if (pipelineStateStale)
     {
         // Avoid PSO being destroyed while frame is in flight.
         oldPSO = ps.Cleanup();
-        ps.Compile(drawDesc.vertexShader, drawDesc.pixelShader, *resourceLayout);
+        ps.Compile(drawDesc.vertexShader, drawDesc.pixelShader, *graphicsResourceLayout);
     }
 
     return &ps;
@@ -98,12 +100,12 @@ RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const Shade
 
     // Recompile PSO if any associated data has changed.
     bool pipelineStateStale = false;
-    pipelineStateStale |= resourceLayout->version > ps.rootSignatureVersion;
+    pipelineStateStale |= graphicsResourceLayout->version > ps.rootSignatureVersion;
     if (pipelineStateStale)
     {
         // Avoids PSO being destroyed while frame is in flight.
         oldPSO = ps.Cleanup();
-        ps.Compile(computeShader, *resourceLayout);
+        ps.Compile(computeShader, *graphicsResourceLayout);
     }
 
     return &ps;
@@ -142,12 +144,12 @@ RHIRayTracingPipelineState* PipelineStateCache::GetRayTracingPipelineState(
 
     // Recompile PSO if any associated data has changed.
     bool pipelineStateStale = false;
-    pipelineStateStale |= resourceLayout->version > ps.rootSignatureVersion;
+    pipelineStateStale |= graphicsResourceLayout->version > ps.rootSignatureVersion;
     if (pipelineStateStale)
     {
         // Avoids PSO being destroyed while frame is in flight.
         oldPSO = ps.Cleanup();
-        oldBuffers = ps.Compile(shaderCollection, *resourceLayout, allocator);
+        oldBuffers = ps.Compile(shaderCollection, *graphicsResourceLayout, allocator);
     }
 
     return &ps;

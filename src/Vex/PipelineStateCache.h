@@ -31,7 +31,9 @@ public:
                                                            std::unique_ptr<RHIRayTracingPipelineState>& oldPSO,
                                                            std::vector<MaybeUninitialized<RHIBuffer>>& oldBuffers);
 
-    MaybeUninitialized<RHIResourceLayout> resourceLayout;
+    MaybeUninitialized<RHIResourceLayout> graphicsResourceLayout;
+    MaybeUninitialized<RHIResourceLayout> computeResourceLayout;
+    MaybeUninitialized<RHIResourceLayout> rayTracingResourceLayout;
 
 private:
     RHI* rhi;

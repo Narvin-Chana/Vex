@@ -12,6 +12,18 @@
 namespace vex
 {
 
+enum class PipelineStage : u8
+{
+    Compute     = 1 << 0,
+    Vertex      = 1 << 1,
+    Pixel       = 1 << 2,
+    RayTracing  = 1 << 3,
+
+    Graphics = Vertex | Pixel,
+    All = RayTracing | Compute | Graphics,
+};
+VEX_ENUM_FLAG_BITS(PipelineStage);
+
 struct RayTracingShaderCollection;
 
 struct GraphicsPSOKey

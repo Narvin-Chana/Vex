@@ -16,7 +16,7 @@ struct VkGPUContext;
 class VkResourceLayout final : public RHIResourceLayoutBase
 {
 public:
-    VkResourceLayout(NonNullPtr<VkGPUContext> ctx, NonNullPtr<VkDescriptorPool> descriptorPool);
+    VkResourceLayout(NonNullPtr<VkGPUContext> ctx, NonNullPtr<VkDescriptorPool> descriptorPool, Span<const PipelineStage> supportedStages);
 
     ::vk::PipelineLayout GetPipelineLayout();
     ::vk::DescriptorSet GetStaticSamplerDescriptorSet();

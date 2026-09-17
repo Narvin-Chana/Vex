@@ -9,11 +9,14 @@
 #include <DX12/DX12Sampler.h>
 #include <DX12/HRChecker.h>
 
+#include "Vex/RHIImpl/RHIResourceLayout.h"
+
 namespace vex::dx12
 {
 
-DX12ResourceLayout::DX12ResourceLayout(ComPtr<DX12Device>& device)
-    : device(device)
+DX12ResourceLayout::DX12ResourceLayout(ComPtr<DX12Device>& device, Span<const PipelineStage> supportedStages)
+    : RHIResourceLayoutBase{ supportedStages }
+    , device{ device }
 {
 }
 
@@ -33,12 +36,33 @@ ComPtr<ID3D12RootSignature>& DX12ResourceLayout::GetRootSignature()
 void DX12ResourceLayout::CompileRootSignature()
 {
     const u32 rootSignatureDWORDCount = GPhysicalDevice->GetMaxLocalConstantsByteSize() / sizeof(DWORD);
+    const u32 dwordPerStage = rootSignatureDWORDCount / supportedStages.size();
 
     std::vector<CD3DX12_ROOT_PARAMETER> rootParameters;
-    CD3DX12_ROOT_PARAMETER rootConstants{};
-    // Root constants are always bound at slot 0 of the root parameters (in space 0).
-    rootConstants.InitAsConstants(rootSignatureDWORDCount, 0, 0);
-    rootParameters.push_back(std::move(rootConstants));
+
+    if (supportedStages.size() == 1)
+    {
+        CD3DX12_ROOT_PARAMETER rootConstants{};
+        rootConstants.InitAsConstants(rootSignatureDWORDCount, 0, D3D12_SHADER_VISIBILITY_ALL);
+        rootParameters.push_back(std::move(rootConstants));
+    }
+    else
+    {
+        for (PipelineStage stage : supportedStages)
+        {
+            D3D12_SHADER_VISIBILITY visibility{};
+            switch (stage)
+            {
+                case PipelineStage::Vertex: visibility = D3D12_SHADER_VISIBILITY_VERTEX; break;
+                case PipelineStage::Pixel: visibility = D3D12_SHADER_VISIBILITY_PIXEL; break;
+                default: VEX_ASSERT(false);
+            }
+
+            CD3DX12_ROOT_PARAMETER rootConstants{};
+            rootConstants.InitAsConstants(dwordPerStage, 0, visibility);
+            rootParameters.push_back(std::move(rootConstants));
+        }
+    }
 
     std::vector<D3D12_STATIC_SAMPLER_DESC> dxSamplers =
         GraphicsPipeline::GetDX12StaticSamplersFromTextureSamplers(staticSamplers);

@@ -193,31 +193,32 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
         break;
     }
 
-    Span<const byte> localConstantsData = layout.GetLocalConstantsData();
-    if (localConstantsData.empty())
+    for (int i = 0; i < layout.GetSupportedPipelineStagesCount(); ++i)
     {
-        return;
-    }
+        Span<const byte> localConstantsData = layout.GetLocalConstantsData(i);
+        if (localConstantsData.empty())
+        {
+            continue;
+        }
 
-    switch (type)
-    {
-    case QueueType::Graphics:
-        // Set local constants (in first slot of root signature).
-        commandList->SetGraphicsRoot32BitConstants(
-            0,
-            static_cast<u32>(ByteUtil::DivRoundUp(localConstantsData.size(), sizeof(u32))),
-            localConstantsData.data(),
-            0);
-    case QueueType::Compute:
-        // Set local constants (in first slot of root signature).
-        commandList->SetComputeRoot32BitConstants(
-            0,
-            static_cast<u32>(ByteUtil::DivRoundUp(localConstantsData.size(), sizeof(u32))),
-            localConstantsData.data(),
-            0);
-    case QueueType::Copy:
-    default:
-        break;
+        switch (type)
+        {
+        case QueueType::Graphics:
+            commandList->SetGraphicsRoot32BitConstants(
+                i,
+                static_cast<u32>(ByteUtil::DivRoundUp(localConstantsData.size(), sizeof(u32))),
+                localConstantsData.data(),
+                0);
+        case QueueType::Compute:
+            commandList->SetComputeRoot32BitConstants(
+                i,
+                static_cast<u32>(ByteUtil::DivRoundUp(localConstantsData.size(), sizeof(u32))),
+                localConstantsData.data(),
+                0);
+        case QueueType::Copy:
+        default:
+            break;
+        }
     }
 }
 

@@ -541,9 +541,9 @@ RHIRayTracingPipelineState VkRHI::CreateRayTracingPipelineState(const RayTracing
     return { key, GetGPUContext(), *PSOCache };
 }
 
-RHIResourceLayout VkRHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool)
+RHIResourceLayout VkRHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool, Span<const PipelineStage> supportedStages)
 {
-    return { GetGPUContext(), descriptorPool };
+    return { GetGPUContext(), descriptorPool, supportedStages };
 }
 
 RHITexture VkRHI::CreateTexture(RHIAllocator& allocator, const TextureDesc& desc)

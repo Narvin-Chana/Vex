@@ -10,7 +10,7 @@ namespace vex::dx12
 class DX12ResourceLayout final : public RHIResourceLayoutBase
 {
 public:
-    DX12ResourceLayout(ComPtr<DX12Device>& device);
+    DX12ResourceLayout(ComPtr<DX12Device>& device, Span<const PipelineStage> supportedStages);
     ~DX12ResourceLayout();
 
     ComPtr<ID3D12RootSignature>& GetRootSignature();

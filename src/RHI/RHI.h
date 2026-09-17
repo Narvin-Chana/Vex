@@ -32,7 +32,7 @@ struct RHIBase
     virtual RHIGraphicsPipelineState CreateGraphicsPipelineState(const GraphicsPSOKey& key) = 0;
     virtual RHIComputePipelineState CreateComputePipelineState(const ComputePSOKey& key) = 0;
     virtual RHIRayTracingPipelineState CreateRayTracingPipelineState(const RayTracingPSOKey& key) = 0;
-    virtual RHIResourceLayout CreateResourceLayout(RHIDescriptorPool& descriptorPool) = 0;
+    virtual RHIResourceLayout CreateResourceLayout(RHIDescriptorPool& descriptorPool, Span<const PipelineStage> supportedStages) = 0;
 
     virtual RHITexture CreateTexture(RHIAllocator& allocator, const TextureDesc& desc) = 0;
     virtual RHIBuffer CreateBuffer(RHIAllocator& allocator, const BufferDesc& desc) = 0;

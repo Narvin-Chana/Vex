@@ -12,8 +12,9 @@
 namespace vex::vk
 {
 
-VkResourceLayout::VkResourceLayout(NonNullPtr<VkGPUContext> ctx, NonNullPtr<VkDescriptorPool> descriptorPool)
-    : ctx{ ctx }
+VkResourceLayout::VkResourceLayout(NonNullPtr<VkGPUContext> ctx, NonNullPtr<VkDescriptorPool> descriptorPool, Span<const PipelineStage> supportedStages)
+    : RHIResourceLayoutBase{ supportedStages }
+    , ctx{ ctx }
     , descriptorPool{ descriptorPool }
 {
     std::array<::vk::DescriptorType, MaxSamplerCount> descriptorTypes{};

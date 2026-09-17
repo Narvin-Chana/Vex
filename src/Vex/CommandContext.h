@@ -61,10 +61,12 @@ public:
                       const TextureSubresource& subresource = {},
                       Span<const TextureClearRect> clearRects = {});
 
+    // Sets the uniform data for a set of stage flags
+    void SetUniforms(Span<const std::byte> data, Flags<PipelineStage> stageFlags);
+
     // Performs a draw call.
     void Draw(const DrawDesc& drawDesc,
               const DrawResourceBinding& drawBindings,
-              ConstantBinding constants,
               Span<const ResourceBinding> trackedResources,
               u32 vertexCount,
               u32 instanceCount = 1,
@@ -74,7 +76,6 @@ public:
     // Performs an indexed draw call.
     void DrawIndexed(const DrawDesc& drawDesc,
                      const DrawResourceBinding& drawBindings,
-                     ConstantBinding constants,
                      Span<const ResourceBinding> trackedResources,
                      u32 indexCount,
                      u32 instanceCount = 1,
@@ -90,7 +91,6 @@ public:
 
     // Dispatches a compute shader.
     void Dispatch(const ShaderView& computeShader,
-                  ConstantBinding constants,
                   Span<const ResourceBinding> trackedResources,
                   std::array<u32, 3> groupCount);
 
@@ -99,7 +99,6 @@ public:
 
     // Dispatches a ray tracing pass.
     void TraceRays(const RayTracingShaderCollection& rayTracingShaderCollection,
-                   ConstantBinding constants,
                    Span<const ResourceBinding> trackedResources,
                    const TraceRaysDesc& rayTracingArgs);
 
@@ -248,7 +247,6 @@ private:
 
     std::optional<RHIDrawResources> PrepareDrawCall(const DrawDesc& drawDesc,
                                                     const DrawResourceBinding& drawBindings,
-                                                    ConstantBinding constants,
                                                     Span<const ResourceBinding> trackedResources);
     void CheckViewportAndScissor() const;
 
