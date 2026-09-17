@@ -32,9 +32,16 @@ if (VEX_USE_EMBEDDED_SHADERS)
     file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/gen/ShaderCompiler/Generated")
     file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/gen/ShaderCompiler/Generated/EmbeddedShaders.h" "${_vex_embedded_header}")
 
-    target_include_directories(Vex PUBLIC 
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/gen>"
-    $<INSTALL_INTERFACE:include/vex/ShaderCompiler/Generated>)
+    # Vex's regular headers are installed from src/ straight into <prefix>/include (see the top-level
+    # `install(DIRECTORY src/ DESTINATION include ...)` and the `$<INSTALL_INTERFACE:include>` on Vex's own include
+    # directories), so the generated header needs to land at the same include root to be found the same way, both
+    # in-tree (as <ShaderCompiler/Generated/EmbeddedShaders.h>) and once installed.
+    target_include_directories(Vex PUBLIC
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/gen>"
+        $<INSTALL_INTERFACE:include>)
+
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/gen/ShaderCompiler/Generated/EmbeddedShaders.h"
+        DESTINATION include/ShaderCompiler/Generated)
 
     target_compile_definitions(Vex PRIVATE VEX_EMBEDDED_SHADERS=1)
 else()
