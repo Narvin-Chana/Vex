@@ -1,7 +1,5 @@
 ﻿#include "VexTest.h"
 
-#include "Vex/Texture.h"
-
 namespace vex
 {
 struct ClearTest : VexTest
