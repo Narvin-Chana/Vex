@@ -422,6 +422,8 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
         rayCallableTable = VkShaderTable(ctx, allocator, "Ray Callable shader Table", handlesPerShaderType[3]);
     }
 
+    rootSignatureVersion = resourceLayout.version;
+
     return oldBuffers;
 }
 
