@@ -16,12 +16,14 @@ struct VkGPUContext;
 class VkResourceLayout final : public RHIResourceLayoutBase
 {
 public:
-    VkResourceLayout(NonNullPtr<VkGPUContext> ctx, NonNullPtr<VkDescriptorPool> descriptorPool, Span<const PipelineStage> supportedStages);
+    VkResourceLayout(NonNullPtr<VkGPUContext> ctx,
+                     NonNullPtr<VkDescriptorPool> descriptorPool,
+                     Span<const PipelineStage> supportedStages);
 
     ::vk::PipelineLayout GetPipelineLayout();
     ::vk::DescriptorSet GetStaticSamplerDescriptorSet();
 
-    static ::vk::ShaderStageFlags GetPushConstantStageFlags();
+    u32 GetBytesPerStage();
 
 private:
     ::vk::UniquePipelineLayout CreateLayout();

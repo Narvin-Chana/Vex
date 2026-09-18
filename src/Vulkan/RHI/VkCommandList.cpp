@@ -134,25 +134,22 @@ void VkCommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTracin
 
 void VkCommandList::SetLayout(RHIResourceLayout& layout)
 {
-    Span<const byte> localConstantsData = layout.GetLocalConstantsData(pipelineStage);
-    if (localConstantsData.empty())
+    const auto& supportedStages = layout.GetSupportedPipelineStages();
+    const u32 bytesPerStage = layout.GetBytesPerStage();
+    for (u32 i = 0; i < supportedStages.size(); i++)
     {
-        return;
+        Span<const byte> localConstantsData = layout.GetLocalConstantsData(i);
+        if (localConstantsData.empty())
+        {
+            return;
+        }
+
+        commandBuffer->pushConstants(layout.GetPipelineLayout(),
+                                     PipelineStageToShaderStageFlags(supportedStages[i]),
+                                     i * bytesPerStage,
+                                     localConstantsData.size(),
+                                     localConstantsData.data());
     }
-
-    ::vk::ShaderStageFlags shaderStageFlags;
-    if (pipelineStage.IsSet(PipelineStage::Pixel))
-        shaderStageFlags |= ::vk::ShaderStageFlagBits::eFragment;
-    if (pipelineStage.IsSet(PipelineStage::Compute))
-        shaderStageFlags |= ::vk::ShaderStageFlagBits::eCompute;
-    if (pipelineStage.IsSet(PipelineStage::Vertex))
-        shaderStageFlags |= ::vk::ShaderStageFlagBits::eVertex;
-
-    commandBuffer->pushConstants(layout.GetPipelineLayout(),
-                                 shaderStageFlags,
-                                 0,
-                                 localConstantsData.size(),
-                                 localConstantsData.data());
 }
 
 void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)

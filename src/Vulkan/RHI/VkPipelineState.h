@@ -83,4 +83,6 @@ private:
     ::vk::PipelineCache psoCache;
 };
 
+::vk::ShaderStageFlags PipelineStageToShaderStageFlags(PipelineStage stage);
+
 } // namespace vex::vk

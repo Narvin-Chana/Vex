@@ -441,4 +441,19 @@ std::unique_ptr<RHIRayTracingPipelineState> VkRayTracingPipelineState::Cleanup()
     return cleanupPSO;
 }
 
+::vk::ShaderStageFlags PipelineStageToShaderStageFlags(PipelineStage stage)
+{
+    ::vk::ShaderStageFlags vkStageFlags{};
+    if (stage & PipelineStage::Pixel)
+        vkStageFlags |= ::vk::ShaderStageFlagBits::eFragment;
+    if (stage & PipelineStage::Vertex)
+        vkStageFlags |= ::vk::ShaderStageFlagBits::eVertex;
+    if (stage & PipelineStage::Compute)
+        vkStageFlags |= ::vk::ShaderStageFlagBits::eCompute;
+    if (stage & PipelineStage::RayTracing)
+        vkStageFlags |= ::vk::ShaderStageFlagBits::eRaygenKHR;
+    VEX_ASSERT(vkStageFlags != ::vk::ShaderStageFlags{}, "Unable to convert pipeline stage to VkShaderStageFlags");
+    return vkStageFlags;
+}
+
 } // namespace vex::vk

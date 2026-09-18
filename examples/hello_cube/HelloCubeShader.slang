@@ -76,7 +76,7 @@ VSOutput VSMain(in uint vertexID: SV_VertexID, uniform uint vertexBufferHandle, 
 [vk::binding(0, 1)] SamplerState LinearSampler : register(s0, space1);
 
 [shader("pixel")]
-float4 PSMain(VSOutput input, uniform uint unusedVertexBufferHandle, uniform float time, uniform uint uvGuideTextureHandle)
+float4 PSMain(VSOutput input, uniform uint uvGuideTextureHandle)
     : SV_Target
 {
     let UVGuideTexture = GetBindlessResource<Texture2D<float4>>(uvGuideTextureHandle);

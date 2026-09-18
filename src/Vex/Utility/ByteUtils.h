@@ -39,6 +39,12 @@ struct ByteUtil
         auto [width, height, depth] = dimensions;
         return static_cast<u8>(1 + std::floor(std::log2(std::max(std::max(width, height), depth))));
     }
+
+    template <class T>
+    static Span<const std::byte> AsBytes(const T& obj)
+    {
+        return std::as_bytes(std::span{ &obj, 1 });
+    }
 };
 
 } // namespace vex

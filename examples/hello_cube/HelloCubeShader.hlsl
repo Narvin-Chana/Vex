@@ -1,13 +1,12 @@
 #include <Vex.hlsli>
 
-struct UniformStruct
+struct VertexUniformStruct
 {
     uint vertexBufferHandle;
     float time;
-    uint uvGuideTextureHandle;
 };
 
-VEX_UNIFORMS(UniformStruct, Uniforms);
+VEX_UNIFORMS(VertexUniformStruct, VsUniforms);
 
 struct Vertex
 {
@@ -23,13 +22,13 @@ struct VSOutput
 
 VSOutput VSMain(in uint vertexID: SV_VertexID)
 {
-    StructuredBuffer<Vertex> vertexBuffer = GetBindlessResource(Uniforms.vertexBufferHandle);
+    StructuredBuffer<Vertex> vertexBuffer = GetBindlessResource(VsUniforms.vertexBufferHandle);
     Vertex vertex = vertexBuffer[vertexID];
 
     VSOutput vs;
     vs.uv = vertex.uv;
 
-    float timeScale = Uniforms.time * 0.5f;
+    float timeScale = VsUniforms.time * 0.5f;
     
     float cosY = cos(timeScale);
     float sinY = sin(timeScale);
@@ -86,7 +85,16 @@ VSOutput VSMain(in uint vertexID: SV_VertexID)
     return vs;
 }
 
-static const Texture2D<float4> UVGuideTexture = GetBindlessResource(Uniforms.uvGuideTextureHandle);
+// ----- Pixel Shader -----
+
+struct PixelUniformStruct
+{
+    uint uvGuideTextureHandle;
+};
+
+VEX_UNIFORMS(PixelUniformStruct, PsUniforms);
+
+static const Texture2D<float4> UVGuideTexture = GetBindlessResource(PsUniforms.uvGuideTextureHandle);
 
 VEX_STATIC_SAMPLER(LinearSampler, 0);
 

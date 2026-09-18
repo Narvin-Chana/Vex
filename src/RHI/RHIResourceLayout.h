@@ -3,9 +3,9 @@
 #include <vector>
 
 #include <Vex/Containers/Span.h>
+#include <Vex/PipelineState.h>
 #include <Vex/TextureSampler.h>
 #include <Vex/Types.h>
-#include <Vex/PipelineState.h>
 
 namespace vex
 {
@@ -21,7 +21,10 @@ public:
     void SetStaticSamplers(Span<const StaticTextureSampler> newSamplers);
     [[nodiscard]] Span<const StaticTextureSampler> GetStaticSamplers() const;
     [[nodiscard]] Span<const byte> GetLocalConstantsData(u32 stageIndex) const;
-    [[nodiscard]] u32 GetSupportedPipelineStagesCount() const { return supportedStages.size(); }
+    [[nodiscard]] const std::vector<PipelineStage>& GetSupportedPipelineStages() const
+    {
+        return supportedStages;
+    }
 
     u32 version = 0;
 

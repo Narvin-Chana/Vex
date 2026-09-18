@@ -119,10 +119,6 @@ CommandContext::CommandContext(NonNullPtr<Graphics> graphics,
 {
     cmdList->Open();
     cmdList->SetTimestampQueryPool(queryPool);
-    if (cmdList->GetQueue() != QueueType::Copy)
-    {
-        cmdList->SetDescriptorPool(*graphics->descriptorPool, graphics->psCache->graphicsResourceLayout.value());
-    }
 }
 
 CommandContext::~CommandContext()
@@ -282,7 +278,12 @@ void CommandContext::Dispatch(const ShaderView& computeShader,
     FlushBarriers();
 
     // Setup the layout for our pass (must be done before PSO handling).
-    cmdList->SetLayout(*graphics->psCache->graphicsResourceLayout);
+
+    if (cmdList->GetQueue() != QueueType::Copy)
+    {
+        cmdList->SetDescriptorPool(*graphics->descriptorPool, *graphics->psCache->computeResourceLayout);
+    }
+    cmdList->SetLayout(*graphics->psCache->computeResourceLayout);
 
     std::unique_ptr<RHIComputePipelineState> oldPSO;
     // Register shader and get Pipeline if exists (if not create it).
@@ -325,7 +326,11 @@ void CommandContext::TraceRays(const RayTracingShaderCollection& rayTracingShade
     FlushBarriers();
 
     // Setup the layout for our pass (must be done before PSO handling).
-    cmdList->SetLayout(graphics->psCache->graphicsResourceLayout.value());
+    if (cmdList->GetQueue() != QueueType::Copy)
+    {
+        cmdList->SetDescriptorPool(*graphics->descriptorPool, *graphics->psCache->rayTracingResourceLayout);
+    }
+    cmdList->SetLayout(graphics->psCache->rayTracingResourceLayout.value());
 
     std::unique_ptr<RHIRayTracingPipelineState> oldPSO;
     std::vector<MaybeUninitialized<RHIBuffer>> oldSBTs;
@@ -1440,6 +1445,10 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
         CommandContext_Internal::CreateRenderTargetStateFromBindings(drawDesc, drawResources);
 
     // Setup the layout for our pass (must be done before PSO handling).
+    if (cmdList->GetQueue() != QueueType::Copy)
+    {
+        cmdList->SetDescriptorPool(*graphics->descriptorPool, *graphics->psCache->graphicsResourceLayout);
+    }
     cmdList->SetLayout(graphics->psCache->graphicsResourceLayout.value());
 
     std::unique_ptr<RHIGraphicsPipelineState> oldPSO;

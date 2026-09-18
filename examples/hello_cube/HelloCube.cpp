@@ -208,17 +208,18 @@ void HelloCubeApplication::Run()
             vex::BindlessHandle uvGuideHandle = graphics->GetBindlessHandle(
                 vex::TextureBinding{ .texture = uvGuideTexture, .usage = vex::TextureBindingUsage::ShaderRead });
 
-            struct UniformData
+            struct VertexShaderUniformData
             {
                 vex::BindlessHandle vertexBufferHandle;
                 float currentTime{};
-                vex::BindlessHandle uvGuideHandle;
             };
-            UniformData data{
+            VertexShaderUniformData vertexUniforms{
                 .vertexBufferHandle = vertexBufferHandle,
                 .currentTime = static_cast<float>(currentTime),
-                .uvGuideHandle = uvGuideHandle,
             };
+            ctx.SetUniforms(vex::ByteUtil::AsBytes(vertexUniforms), vex::PipelineStage::Vertex);
+            ctx.SetUniforms(vex::ByteUtil::AsBytes(uvGuideHandle), vex::PipelineStage::Pixel);
+
             {
                 VEX_GPU_SCOPED_EVENT(ctx, "HLSL Cube");
                 ctx.DrawIndexed(hlslDrawDesc,
@@ -227,7 +228,6 @@ void HelloCubeApplication::Run()
                                     .depthStencil = vex::TextureBinding(depthTexture),
                                     .indexBuffer = indexBufferBinding,
                                 },
-                                vex::ConstantBinding(data),
                                 {},
                                 IndexCount);
             }
@@ -239,7 +239,6 @@ void HelloCubeApplication::Run()
                                     .depthStencil = vex::TextureBinding(depthTexture),
                                     .indexBuffer = indexBufferBinding,
                                 },
-                                vex::ConstantBinding(data),
                                 {},
                                 IndexCount);
             }

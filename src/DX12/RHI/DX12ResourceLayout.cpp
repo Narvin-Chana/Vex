@@ -43,7 +43,7 @@ void DX12ResourceLayout::CompileRootSignature()
     if (supportedStages.size() == 1)
     {
         CD3DX12_ROOT_PARAMETER rootConstants{};
-        rootConstants.InitAsConstants(rootSignatureDWORDCount, 0, D3D12_SHADER_VISIBILITY_ALL);
+        rootConstants.InitAsConstants(rootSignatureDWORDCount, 0, 0, D3D12_SHADER_VISIBILITY_ALL);
         rootParameters.push_back(std::move(rootConstants));
     }
     else
@@ -53,13 +53,18 @@ void DX12ResourceLayout::CompileRootSignature()
             D3D12_SHADER_VISIBILITY visibility{};
             switch (stage)
             {
-                case PipelineStage::Vertex: visibility = D3D12_SHADER_VISIBILITY_VERTEX; break;
-                case PipelineStage::Pixel: visibility = D3D12_SHADER_VISIBILITY_PIXEL; break;
-                default: VEX_ASSERT(false);
+            case PipelineStage::Vertex:
+                visibility = D3D12_SHADER_VISIBILITY_VERTEX;
+                break;
+            case PipelineStage::Pixel:
+                visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+                break;
+            default:
+                VEX_ASSERT(false);
             }
 
             CD3DX12_ROOT_PARAMETER rootConstants{};
-            rootConstants.InitAsConstants(dwordPerStage, 0, visibility);
+            rootConstants.InitAsConstants(dwordPerStage, 0, 0, visibility);
             rootParameters.push_back(std::move(rootConstants));
         }
     }

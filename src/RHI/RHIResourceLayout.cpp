@@ -16,7 +16,7 @@ RHIResourceLayoutBase::RHIResourceLayoutBase(Span<const PipelineStage> stageCons
 {
     for (auto _ : supportedStages)
     {
-        stageLocalConstants.resize(maxLocalConstantsByteSize / supportedStages.size());
+        stageLocalConstants.emplace_back().resize(maxLocalConstantsByteSize / supportedStages.size());
     }
 }
 
@@ -26,7 +26,7 @@ void RHIResourceLayoutBase::SetLayoutResources(Span<const std::byte> constants, 
 {
     Flags<PipelineStage> supportedStageFlags;
     for (const PipelineStage stage : supportedStages)
-         supportedStageFlags |= stage;
+        supportedStageFlags |= stage;
 
     stageFlags &= supportedStageFlags;
 

@@ -193,7 +193,8 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
         break;
     }
 
-    for (int i = 0; i < layout.GetSupportedPipelineStagesCount(); ++i)
+    u32 stagesCount = layout.GetSupportedPipelineStagesCount();
+    for (u32 i = 0; i < stagesCount; ++i)
     {
         Span<const byte> localConstantsData = layout.GetLocalConstantsData(i);
         if (localConstantsData.empty())
@@ -210,11 +211,12 @@ void DX12CommandList::SetLayout(RHIResourceLayout& layout)
                 localConstantsData.data(),
                 0);
         case QueueType::Compute:
-            commandList->SetComputeRoot32BitConstants(
-                i,
-                static_cast<u32>(ByteUtil::DivRoundUp(localConstantsData.size(), sizeof(u32))),
-                localConstantsData.data(),
-                0);
+            if (stagesCount == 1) // Compute only supports ALL visibility
+                commandList->SetComputeRoot32BitConstants(
+                    i,
+                    static_cast<u32>(ByteUtil::DivRoundUp(localConstantsData.size(), sizeof(u32))),
+                    localConstantsData.data(),
+                    0);
         case QueueType::Copy:
         default:
             break;
