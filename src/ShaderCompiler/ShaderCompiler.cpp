@@ -7,6 +7,7 @@
 
 #include <Vex/Logger.h>
 #include <Vex/RayTracing.h>
+#include <Vex/Utility/MagicEnum.h>
 #include <VexMacros.h>
 
 #include <ShaderCompiler/RayTracingShaderKey.h>
@@ -53,10 +54,19 @@ ShaderCompilerBackend ResolveCompilerAutoBackend(const ShaderKey& key)
 
     const std::optional<std::filesystem::path> filepath = TryGetFilepathFromVirtualFilepath(key);
 
+#if !VEX_DXC && VEX_SLANG
+    return ShaderCompilerBackend::Slang;
+#elif VEX_DXC && !VEX_SLANG
+    return ShaderCompilerBackend::DXC;
+#elif VEX_DXC && VEX_SLANG
     // Default is DXC, unless VEX_SLANG and the shader file has .slang extension.
     if (filepath.has_value() && filepath->extension().string() == ".slang")
         return ShaderCompilerBackend::Slang;
     return ShaderCompilerBackend::DXC;
+#else
+    VEX_ASSERT(false, "Cannot resolve compiler auto backend...no shader compiler backends exist.");
+    return ShaderCompilerBackend::Auto;
+#endif
 }
 
 std::filesystem::path GetShaderDumpPath(const Shader& shader, const std::filesystem::path& outputPath)
