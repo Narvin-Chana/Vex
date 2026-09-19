@@ -2,7 +2,6 @@
 
 #include <Vex/RHIImpl/RHI.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
-#include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RayTracing.h>
 #include <Vex/ShaderView.h>
 #include <VexMacros.h>

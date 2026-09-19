@@ -808,7 +808,7 @@ void CommandContext::EnqueueDataUpload(const Texture& texture,
     VEX_CHECK(packedData.size_bytes() == packedDataByteSize,
               "Cannot enqueue a data upload: The passed in packed data's size ({}) must be equal to the total texture "
               "size computed from your specified upload regions ({}). Make sure you are correctly uploading the data "
-              "you are specifying in your texture regions and that your data is tightly packed (no alignement "
+              "you are specifying in your texture regions and that your data is tightly packed (no alignment "
               "per-mip/per-slice/...).",
               packedData.size_bytes(),
               packedDataByteSize);
@@ -944,13 +944,16 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
         {
             // TODO(https://trello.com/c/srGndUSP): Handle other vertex formats, this should be cross-referenced
             // with Vulkan to make sure only formats supported by both APIs are accepted.
-            if (*blasGeometry.vertexBufferBinding.strideByteSize > sizeof(float) * 3)
+            static bool warnVertexStride = true;
+            if (warnVertexStride && *blasGeometry.vertexBufferBinding.strideByteSize > sizeof(float) * 3)
             {
                 VEX_LOG(
                     Warning,
                     "Vex currently does not support acceleration structure geometry whose vertices have a format "
                     "different to 12 bytes (RGB32). Your vertex buffer binding has a different stride than this, this "
-                    "is ok as long as the user is aware that elements outside the first 12 bytes will be ignored.");
+                    "is ok as long as the user is aware that elements outside the first 12 bytes will be ignored. This "
+                    "warning will only be logged once.");
+                warnVertexStride = false;
             }
 
             VEX_ASSERT(*blasGeometry.vertexBufferBinding.strideByteSize >= sizeof(float) * 3,
@@ -1178,7 +1181,22 @@ ScopedGPUEvent CommandContext::CreateScopedGPUEvent(const char* markerLabel, std
     return { cmdList->CreateScopedMarker(markerLabel, color) };
 }
 
-void CommandContext::Barrier(const Buffer& buffer, RHIBarrierAccess access)
+void CommandContext::DestroyResourceAfterExecution(const Buffer& buffer)
+{
+    temporaryBuffers.emplace_back(buffer);
+}
+
+void CommandContext::DestroyResourceAfterExecution(const Texture& texture)
+{
+    temporaryTextures.emplace_back(texture);
+}
+
+void CommandContext::DestroyResourceAfterExecution(const AccelerationStructure& as)
+{
+    temporaryAccelerationStructures.emplace_back(as);
+}
+
+void CommandContext::Barrier(const Buffer&, RHIBarrierAccess access)
 {
     EnqueueGlobalBarrier({
         .srcSync = RHIBarrierSync::AllCommands,
