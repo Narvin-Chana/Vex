@@ -3,6 +3,7 @@
 #include <type_traits>
 
 #include <Vex/Types.h>
+#include <Vex/Utility/Formattable.h>
 #include <Vex/Utility/Hash.h>
 
 namespace vex
@@ -45,7 +46,7 @@ struct Handle
     {
         return value >> IndexBitSize;
     }
-    constexpr operator ValueType() const
+    explicit constexpr operator ValueType() const
     {
         return value;
     }
@@ -73,7 +74,7 @@ using Handle64 = Handle<Derived, u64, 32>;
 } // namespace vex
 
 template <class T>
-    requires std::derived_from<T, vex::Handle32<T>>
+    requires(std::derived_from<T, vex::Handle32<T>> or std::derived_from<T, vex::Handle64<T>>)
 struct std::hash<T>
 {
     size_t operator()(const T& obj) const
@@ -85,13 +86,16 @@ struct std::hash<T>
 };
 
 template <class T>
-    requires std::derived_from<T, vex::Handle64<T>>
-struct std::hash<T>
+    requires(std::derived_from<T, vex::Handle32<T>> || std::derived_from<T, vex::Handle64<T>>)
+struct std::formatter<T>
 {
-    size_t operator()(const T& obj) const
+    constexpr auto parse(std::format_parse_context& ctx)
     {
-        size_t seed = 0;
-        VEX_HASH_COMBINE(seed, obj.value);
-        return seed;
+        return ctx.begin();
+    }
+
+    auto format(const T& obj, auto& ctx) const
+    {
+        return std::format_to(ctx.out(), "{}", obj.value);
     }
 };

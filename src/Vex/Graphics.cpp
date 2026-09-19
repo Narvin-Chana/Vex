@@ -76,7 +76,7 @@ Graphics::Graphics(const GraphicsCreateDesc& desc)
         {
             VEX_LOG(Fatal,
                     "Provided device to graphics was not found internally. The device specified should be valid when "
-                    "creating the Graphics.")
+                    "creating the Graphics.");
         }
     }
 
@@ -396,18 +396,23 @@ BindlessHandle Graphics::GetBindlessHandle(const AccelerationStructure& accelera
 std::vector<BindlessHandle> Graphics::GetBindlessHandles(Span<const ResourceBinding> bindlessResources)
 {
     std::vector<BindlessHandle> handles;
-    handles.reserve(bindlessResources.size());
-    for (const auto& binding : bindlessResources)
-    {
-        std::visit(Visitor{ [&handles, this](const BufferBinding& bufferBinding)
-                            { handles.emplace_back(GetBindlessHandle(bufferBinding)); },
-                            [&handles, this](const TextureBinding& texBinding)
-                            { handles.emplace_back(GetBindlessHandle(texBinding)); },
-                            [&handles, this](const AccelerationStructureBinding& asBinding)
-                            { handles.emplace_back(GetBindlessHandle(asBinding)); } },
-                   binding.binding);
-    }
+    handles.resize(bindlessResources.size());
+    GetBindlessHandles(bindlessResources, handles);
     return handles;
+}
+
+void Graphics::GetBindlessHandles(Span<const ResourceBinding> bindlessResources, Span<BindlessHandle> out)
+{
+    VEX_ASSERT(bindlessResources.size() == out.size());
+    for (u32 i = 0; i < bindlessResources.size(); ++i)
+    {
+        std::visit(
+            Visitor{ [&out, i, this](const BufferBinding& bufferBinding) { out[i] = GetBindlessHandle(bufferBinding); },
+                     [&out, i, this](const TextureBinding& texBinding) { out[i] = GetBindlessHandle(texBinding); },
+                     [&out, i, this](const AccelerationStructureBinding& asBinding)
+                     { out[i] = GetBindlessHandle(asBinding); } },
+            bindlessResources[i].binding);
+    }
 }
 
 BindlessHandle Graphics::GetBindlessSampler(const BindlessTextureSampler& sampler)
@@ -436,7 +441,7 @@ void Graphics::SetStaticSamplers(Span<const StaticTextureSampler> staticSamplers
 
 SyncToken Graphics::Submit(CommandContext& ctx, Span<const SyncToken> dependencies)
 {
-    auto tokens = Submit(std::span(&ctx, 1), dependencies);
+    std::vector<SyncToken> tokens = Submit(std::span(&ctx, 1), dependencies);
     VEX_ASSERT(tokens.size() == 1);
     return tokens[0];
 }

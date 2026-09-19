@@ -38,9 +38,10 @@ public:
 
     virtual RHICommandPool CreateCommandPool() override;
 
-    virtual RHIGraphicsPipelineState CreateGraphicsPipelineState(const GraphicsPSOKey& key) override;
-    virtual RHIComputePipelineState CreateComputePipelineState(const ComputePSOKey& key) override;
-    virtual RHIRayTracingPipelineState CreateRayTracingPipelineState(const RayTracingPSOKey& key) override;
+    virtual RHIGraphicsPipelineState CreateGraphicsPipelineState(std::string name, const GraphicsPSOKey& key) override;
+    virtual RHIComputePipelineState CreateComputePipelineState(std::string name, const ComputePSOKey& key) override;
+    virtual RHIRayTracingPipelineState CreateRayTracingPipelineState(std::string name,
+                                                                     const RayTracingPSOKey& key) override;
     virtual RHIResourceLayout CreateResourceLayout(RHIDescriptorPool& descriptorPool) override;
 
     virtual RHITexture CreateTexture(RHIAllocator& allocator, const TextureDesc& desc) override;

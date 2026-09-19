@@ -30,7 +30,7 @@ public:
         return seed;
     });
 
-    DX12GraphicsPipelineState(const ComPtr<DX12Device>& device, const Key& key);
+    DX12GraphicsPipelineState(const ComPtr<DX12Device>& device, std::string name, const Key& key);
 
     virtual void Compile(const ShaderView& vertexShader,
                          const ShaderView& pixelShader,
@@ -50,7 +50,7 @@ private:
 class DX12ComputePipelineState final : public RHIComputePipelineStateBase
 {
 public:
-    DX12ComputePipelineState(const ComPtr<DX12Device>& device, const Key& key);
+    DX12ComputePipelineState(const ComPtr<DX12Device>& device, std::string name, const Key& key);
 
     virtual void Compile(const ShaderView& computeShader, RHIResourceLayout& resourceLayout) override;
     virtual std::unique_ptr<RHIComputePipelineState> Cleanup() override;
@@ -64,7 +64,7 @@ private:
 class DX12RayTracingPipelineState final : public RHIRayTracingPipelineStateBase
 {
 public:
-    DX12RayTracingPipelineState(const ComPtr<DX12Device>& device, const Key& key);
+    DX12RayTracingPipelineState(const ComPtr<DX12Device>& device, std::string name, const Key& key);
 
     virtual std::vector<MaybeUninitialized<RHIBuffer>> Compile(const RayTracingShaderCollection& shaderCollection,
                                                                RHIResourceLayout& resourceLayout,

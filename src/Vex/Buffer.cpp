@@ -9,7 +9,7 @@ namespace vex
 void BufferUtil::ValidateBufferDesc(const BufferDesc& desc)
 {
     VEX_CHECK(!desc.name.empty(), "The buffer needs a name on creation.");
-    VEX_CHECK(desc.byteSize != 0, "Buffer \"{}\" must have a size greater than 0", desc.name)
+    VEX_CHECK(desc.byteSize != 0, "Buffer \"{}\" must have a size greater than 0", desc.name);
 }
 
 void BufferUtil::ValidateBufferCopyDesc(const BufferDesc& srcDesc,

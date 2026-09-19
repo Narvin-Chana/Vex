@@ -30,7 +30,7 @@
             return ctx.begin();                                                                                        \
         }                                                                                                              \
                                                                                                                        \
-        auto format(const type& obj, std::format_context& ctx) const                                                   \
+        auto format(const type& obj, auto& ctx) const                                                                  \
         {                                                                                                              \
             return std::format_to(ctx.out(), formatStr, __VA_ARGS__);                                                  \
         }                                                                                                              \
@@ -39,10 +39,14 @@
 // Runtime validation, this is always performed (no matter the optimization level) compared to VEX_ASSERT which is
 // stripped out when not in Debug.
 #define VEX_CHECK(condition, fmt, ...)                                                                                 \
-    if (!(condition))                                                                                                  \
+    do                                                                                                                 \
     {                                                                                                                  \
-        VEX_LOG(vex::Fatal, fmt, ##__VA_ARGS__);                                                                       \
-    }
+        if (!(condition))                                                                                              \
+        {                                                                                                              \
+            VEX_LOG(vex::Fatal, fmt, ##__VA_ARGS__);                                                                   \
+        }                                                                                                              \
+    }                                                                                                                  \
+    while (0)
 
 // Doing logging with macros instead of with a function allows for DebugBreak to break in the actual code, avoiding us
 // having to move up once in the call stack to get to the actual code causing the error.
@@ -50,12 +54,49 @@
 // Logs a potentially formatted string with one of the following log levels: Info, Warning, Error, Fatal.
 // This follows std::format()'s formatting.
 #define VEX_LOG(level, message, ...)                                                                                   \
-    if ((level) >= vex::Logger::GetLogLevelFilter())                                                                   \
+    do                                                                                                                 \
     {                                                                                                                  \
-        vex::GLogger.Log((level), message, ##__VA_ARGS__);                                                             \
-        if ((level) == vex::Fatal) /* Fatal error! Must exit. */                                                       \
+        if ((level) >= vex::Logger::GetLogLevelFilter())                                                               \
+        {                                                                                                              \
+            vex::GLogger.Log((level), message, ##__VA_ARGS__);                                                         \
+            if ((level) == vex::Fatal) /* Fatal error! Must exit. */                                                   \
+            {                                                                                                          \
+                VEX_DEBUG_BREAK();                                                                                     \
+                std::abort();                                                                                          \
+            }                                                                                                          \
+        }                                                                                                              \
+    }                                                                                                                  \
+    while (0)
+
+#if !VEX_SHIPPING
+
+// Asserts are non-shipping checks.
+#define VEX_ASSERT(cond, ...)                                                                                          \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if (!(cond))                                                                                                   \
         {                                                                                                              \
             VEX_DEBUG_BREAK();                                                                                         \
-            std::abort();                                                                                              \
+            VEX_LOG(vex::Error, "Assertion `{}` failed at {}:{}", #cond, __FILE__, __LINE__);                          \
+            VEX_LOG(vex::Error, "Assert message: " __VA_ARGS__);                                                       \
         }                                                                                                              \
-    }
+    }                                                                                                                  \
+    while (0)
+
+#define VEX_NOT_YET_IMPLEMENTED() VEX_ASSERT(false, "Not yet implemented...")
+
+#else
+
+#define VEX_ASSERT(cond, ...)                                                                                          \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        (void)sizeof(cond);                                                                                            \
+    }                                                                                                                  \
+    while (0)
+#define VEX_NOT_YET_IMPLEMENTED()                                                                                      \
+    do                                                                                                                 \
+    {                                                                                                                  \
+    }                                                                                                                  \
+    while (0)
+
+#endif

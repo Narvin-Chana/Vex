@@ -495,7 +495,8 @@ TEST_P(ScalarBlockLayoutTests, ComputeMisalignedData)
             .strideByteSize = static_cast<u32>(3 * sizeof(float)),
         },
     };
-    std::vector<BindlessHandle> handles = graphics.GetBindlessHandles(bindings);
+    std::array<BindlessHandle, 2> handles;
+    graphics.GetBindlessHandles(bindings, handles);
 
     ctx.Dispatch(shaderCompiler.GetShaderView({
                      .filepath = (GetParam() == ShaderCompilerBackend::DXC

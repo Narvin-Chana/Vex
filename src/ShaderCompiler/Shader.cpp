@@ -1,13 +1,11 @@
 #include "Shader.h"
 
-#include <format>
-
 namespace vex::sc
 {
 
 Shader::Shader(const ShaderKey& key)
     : key{ key }
-    , name{ std::format("{}", key) }
+    , name{ key.GetDebugName() }
 {
 }
 

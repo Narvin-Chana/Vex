@@ -12,9 +12,9 @@
 
 namespace vex::vk
 {
-inline constexpr ::vk::DescriptorBufferInfo NullDescriptorBufferInfo{ .buffer = VK_NULL_HANDLE,
-                                                                      .offset = 0,
-                                                                      .range = VK_WHOLE_SIZE };
+constexpr ::vk::DescriptorBufferInfo GNullDescriptorBufferInfo{ .buffer = VK_NULL_HANDLE,
+                                                                .offset = 0,
+                                                                .range = VK_WHOLE_SIZE };
 
 static void ValidateImageDescriptorType(::vk::DescriptorType type)
 {
@@ -22,21 +22,23 @@ static void ValidateImageDescriptorType(::vk::DescriptorType type)
                   type == ::vk::DescriptorType::eSampler,
               "Tried to set descriptor of type {} with a Image descriptor info. Must be a Image or Sampler "
               "compatible one",
-              type)
+              type);
 }
+
 static void ValidateImageDescriptor(::vk::DescriptorType type, const ::vk::DescriptorImageInfo& createInfo)
 {
     ValidateImageDescriptorType(type);
 
     VEX_CHECK(!(type == ::vk::DescriptorType::eSampler && !createInfo.sampler),
               "Tried to set descriptor of type Sampler with a Image descriptor info that doesnt have sampler set. "
-              "Sampler must be set")
+              "Sampler must be set");
 }
 
-static void ValidateBufferDescriptor(::vk::DescriptorType type){
+static void ValidateBufferDescriptor(::vk::DescriptorType type)
+{
     VEX_CHECK(type == ::vk::DescriptorType::eUniformBuffer || type == ::vk::DescriptorType::eStorageBuffer,
               "Tried to set descriptor of type {} with a buffer descriptor info. Must be a buffer compatible one",
-              type)
+              type);
 }
 
 VkDescriptorSet::VkDescriptorSet(NonNullPtr<VkGPUContext> ctx,
@@ -299,7 +301,7 @@ void VkBindlessDescriptorSet::SetDescriptorToNull(u32 index)
         .descriptorCount = 1,
         .descriptorType = ::vk::DescriptorType::eStorageBuffer,
         .pImageInfo = nullptr,
-        .pBufferInfo = &NullDescriptorBufferInfo,
+        .pBufferInfo = &GNullDescriptorBufferInfo,
         .pTexelBufferView = nullptr,
     };
     ctx->device.updateDescriptorSets(1, &nullWriteDescriptorSet, 0, nullptr);

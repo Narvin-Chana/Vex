@@ -29,9 +29,9 @@ struct RHIBase
 
     virtual RHICommandPool CreateCommandPool() = 0;
 
-    virtual RHIGraphicsPipelineState CreateGraphicsPipelineState(const GraphicsPSOKey& key) = 0;
-    virtual RHIComputePipelineState CreateComputePipelineState(const ComputePSOKey& key) = 0;
-    virtual RHIRayTracingPipelineState CreateRayTracingPipelineState(const RayTracingPSOKey& key) = 0;
+    virtual RHIGraphicsPipelineState CreateGraphicsPipelineState(std::string name, const GraphicsPSOKey& key) = 0;
+    virtual RHIComputePipelineState CreateComputePipelineState(std::string name, const ComputePSOKey& key) = 0;
+    virtual RHIRayTracingPipelineState CreateRayTracingPipelineState(std::string name, const RayTracingPSOKey& key) = 0;
     virtual RHIResourceLayout CreateResourceLayout(RHIDescriptorPool& descriptorPool) = 0;
 
     virtual RHITexture CreateTexture(RHIAllocator& allocator, const TextureDesc& desc) = 0;

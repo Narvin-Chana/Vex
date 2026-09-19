@@ -283,7 +283,7 @@ void DX12CommandList::ClearTexture(RHITexture& texture,
             dxTextureView.subresource.startMip = mip;
             VEX_ASSERT(clearAspect & TextureAspect::Color,
                        "Clearing the color requires the TextureClear::ClearColor flag for texture: {}.",
-                       desc.name);
+                       texture.GetDesc().name);
             commandList->ClearRenderTargetView(texture.GetOrCreateRTVDSVView(dxTextureView),
                                                clearValue.color.data(),
                                                dxClearRects.size(),
@@ -308,7 +308,7 @@ void DX12CommandList::ClearTexture(RHITexture& texture,
             VEX_ASSERT(std::to_underlying(clearFlags) != 0,
                        "Clear flags for the depth-stencil cannot be 0, you must either clear depth, stencil, or both "
                        "for texture: {}!",
-                       binding.texture->GetDesc().name);
+                       texture.GetDesc().name);
 
             commandList->ClearDepthStencilView(texture.GetOrCreateRTVDSVView(dxTextureView),
                                                clearFlags,
@@ -331,8 +331,8 @@ void DX12CommandList::EmitBarriers(Span<const RHIBufferBarrier> bufferBarriers,
                                    Span<const RHITextureBarrier> textureBarriers,
                                    Span<const RHIGlobalBarrier> globalBarriers)
 {
-    std::vector<D3D12_BUFFER_BARRIER> dx12BufferBarriers;
-    dx12BufferBarriers.reserve(bufferBarriers.size());
+    scratchBufferBarriers.clear();
+    scratchBufferBarriers.reserve(bufferBarriers.size());
     for (const auto& bb : bufferBarriers)
     {
         const bool bufferAllowsUnorderedAccess = bb.buffer->GetDesc().usage & BufferUsage::ShaderReadWrite;
@@ -346,11 +346,11 @@ void DX12CommandList::EmitBarriers(Span<const RHIBufferBarrier> bufferBarriers,
         // Buffer range - for now, barrier entire buffer.
         dx12Barrier.Offset = 0;
         dx12Barrier.Size = std::numeric_limits<u64>::max();
-        dx12BufferBarriers.push_back(std::move(dx12Barrier));
+        scratchBufferBarriers.push_back(std::move(dx12Barrier));
     }
 
-    std::vector<D3D12_TEXTURE_BARRIER> dx12TextureBarriers;
-    dx12TextureBarriers.reserve(textureBarriers.size());
+    scratchTextureBarriers.clear();
+    scratchTextureBarriers.reserve(textureBarriers.size());
     for (const auto& tb : textureBarriers)
     {
         const bool textureAllowsUnorderedAccess = tb.texture->GetDesc().usage & TextureUsage::ShaderReadWrite;
@@ -368,7 +368,7 @@ void DX12CommandList::EmitBarriers(Span<const RHIBufferBarrier> bufferBarriers,
         // Copy queues only support UNDEFINED and COMMON layouts.
         if (type == QueueType::Copy)
         {
-            static auto SanitizeForCopy = [](D3D12_BARRIER_LAYOUT& layout)
+            static constexpr auto SanitizeForCopy = [](D3D12_BARRIER_LAYOUT& layout)
             {
                 if (layout != D3D12_BARRIER_LAYOUT_UNDEFINED && layout != D3D12_BARRIER_LAYOUT_COMMON)
                 {
@@ -400,7 +400,7 @@ void DX12CommandList::EmitBarriers(Span<const RHIBufferBarrier> bufferBarriers,
         dx12Barrier.Subresources.FirstPlane = tb.subresource.GetStartPlane();
         dx12Barrier.Subresources.NumPlanes = tb.subresource.GetPlaneCount(desc);
         dx12Barrier.Flags = D3D12_TEXTURE_BARRIER_FLAG_NONE;
-        dx12TextureBarriers.push_back(std::move(dx12Barrier));
+        scratchTextureBarriers.push_back(std::move(dx12Barrier));
     }
 
     D3D12_GLOBAL_BARRIER dx12GlobalBarrier{
@@ -425,29 +425,29 @@ void DX12CommandList::EmitBarriers(Span<const RHIBufferBarrier> bufferBarriers,
     }
 
     // Take our barriers and now insert them into groups to be sent to the command list.
-    std::vector<D3D12_BARRIER_GROUP> barrierGroups;
-    barrierGroups.reserve(dx12TextureBarriers.size() + dx12BufferBarriers.size() + 1);
+    scratchBarrierGroups.clear();
+    scratchBarrierGroups.reserve(!scratchTextureBarriers.empty() + !scratchBufferBarriers.empty() + 1);
 
-    if (!dx12TextureBarriers.empty())
+    if (!scratchTextureBarriers.empty())
     {
-        barrierGroups.push_back(
-            CD3DX12_BARRIER_GROUP{ static_cast<UINT>(dx12TextureBarriers.size()), dx12TextureBarriers.data() });
+        scratchBarrierGroups.push_back(
+            CD3DX12_BARRIER_GROUP{ static_cast<UINT>(scratchTextureBarriers.size()), scratchTextureBarriers.data() });
     }
 
-    if (!dx12BufferBarriers.empty())
+    if (!scratchBufferBarriers.empty())
     {
-        barrierGroups.push_back(
-            CD3DX12_BARRIER_GROUP{ static_cast<UINT>(dx12BufferBarriers.size()), dx12BufferBarriers.data() });
+        scratchBarrierGroups.push_back(
+            CD3DX12_BARRIER_GROUP{ static_cast<UINT>(scratchBufferBarriers.size()), scratchBufferBarriers.data() });
     }
 
     if (!!dx12GlobalBarrier.SyncBefore || !!dx12GlobalBarrier.SyncAfter || !!dx12GlobalBarrier.AccessBefore ||
         !!dx12GlobalBarrier.AccessAfter)
     {
-        barrierGroups.push_back(CD3DX12_BARRIER_GROUP{ 1, &dx12GlobalBarrier });
+        scratchBarrierGroups.push_back(CD3DX12_BARRIER_GROUP{ 1, &dx12GlobalBarrier });
     }
 
-    VEX_ASSERT(!barrierGroups.empty(), "BarrierGroups cannot be empty...");
-    commandList->Barrier(barrierGroups.size(), barrierGroups.data());
+    VEX_ASSERT(!scratchBarrierGroups.empty(), "BarrierGroups cannot be empty...");
+    commandList->Barrier(scratchBarrierGroups.size(), scratchBarrierGroups.data());
 }
 
 void DX12CommandList::BeginRendering(const RHIDrawResources& resources)

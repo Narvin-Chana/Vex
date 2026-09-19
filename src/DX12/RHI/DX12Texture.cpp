@@ -358,7 +358,7 @@ BindlessHandle DX12Texture::GetOrCreateBindlessView(const TextureBinding& bindin
                "Texture view requested must be of type SRV or UAV AND the underlying texture must support this usage.");
 
     // Check cache first
-    if (auto it = viewCache.find(view); it != viewCache.end() && descriptorPool.IsValid(it->second.bindlessHandle))
+    if (auto it = viewCache.find(view); it != viewCache.end() && descriptorPool.IsValid(DescriptorType::Resource, it->second.bindlessHandle))
     {
         return it->second.bindlessHandle;
     }

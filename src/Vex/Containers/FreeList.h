@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <Vex/Containers/Span.h>
+#include <Vex/Logger.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/MaybeUninitialized.h>
 #include <VexMacros.h>
@@ -18,7 +19,7 @@ template <class IndexT = u32>
     requires std::is_integral_v<IndexT>
 struct FreeListAllocator
 {
-    FreeListAllocator(IndexT size = 0)
+    explicit FreeListAllocator(IndexT size = 0)
         : size{ size }
     {
         freeIndices.reserve(size);
@@ -95,7 +96,7 @@ class FreeList
 public:
     using IndexT = HandleT::ValueType;
 
-    FreeList(IndexT size = 0)
+    explicit FreeList(IndexT size = 0)
         : values(size)
         , generations(size)
         , allocator(size)
@@ -146,7 +147,7 @@ public:
             IndexT idx = handle.GetIndex();
             VEX_ASSERT(values[idx].has_value(), "Error: trying to free an element which does not exist.");
             values[idx].reset();
-            generations[idx]++;
+            ++generations[idx];
             indices.push_back(idx);
         }
         allocator.DeallocateBatch(indices);
@@ -158,7 +159,7 @@ public:
         IndexT idx = handle.GetIndex();
         VEX_ASSERT(values[idx].has_value(), "Error: trying to free an element which does not exist.");
         values[idx].reset();
-        generations[idx]++;
+        ++generations[idx];
         allocator.Deallocate(idx);
     }
 
@@ -166,7 +167,7 @@ public:
     MaybeUninitialized<T> ExtractElement(HandleT handle)
     {
         IndexT idx = handle.GetIndex();
-        generations[idx]++;
+        ++generations[idx];
         allocator.Deallocate(idx);
         VEX_ASSERT(values[idx].has_value(), "Error: trying to extract an element which does not exist.");
         return std::exchange(values[idx], std::nullopt);
@@ -217,7 +218,7 @@ public:
         }
         pointer operator->() const
         {
-            return &(*list->values[index]);
+            return &*list->values[index];
         }
 
         Iterator& operator++()

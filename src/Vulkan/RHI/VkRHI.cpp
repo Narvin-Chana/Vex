@@ -526,19 +526,19 @@ RHICommandPool VkRHI::CreateCommandPool()
     return { *this, GetGPUContext(), queues };
 }
 
-RHIGraphicsPipelineState VkRHI::CreateGraphicsPipelineState(const GraphicsPSOKey& key)
+RHIGraphicsPipelineState VkRHI::CreateGraphicsPipelineState(std::string name, const GraphicsPSOKey& key)
 {
-    return { key, *device, *PSOCache };
+    return { std::move(name), key, *device, *PSOCache };
 }
 
-RHIComputePipelineState VkRHI::CreateComputePipelineState(const ComputePSOKey& key)
+RHIComputePipelineState VkRHI::CreateComputePipelineState(std::string name, const ComputePSOKey& key)
 {
-    return { key, *device, *PSOCache };
+    return { std::move(name), key, *device, *PSOCache };
 }
 
-RHIRayTracingPipelineState VkRHI::CreateRayTracingPipelineState(const RayTracingPSOKey& key)
+RHIRayTracingPipelineState VkRHI::CreateRayTracingPipelineState(std::string name, const RayTracingPSOKey& key)
 {
-    return { key, GetGPUContext(), *PSOCache };
+    return { std::move(name), key, GetGPUContext(), *PSOCache };
 }
 
 RHIResourceLayout VkRHI::CreateResourceLayout(RHIDescriptorPool& descriptorPool)
@@ -735,7 +735,7 @@ void VkRHI::FlushGPU()
 
         if (!queue.queue)
         {
-            VEX_LOG(Warning, "VkQueue was invalid on flush, skipping flush operations on it")
+            VEX_LOG(Warning, "VkQueue was invalid on flush, skipping flush operations on it");
             continue;
         }
 

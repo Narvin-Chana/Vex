@@ -43,7 +43,7 @@ static std::string GenerateCppHeaderForShaders(const Span<const NonNullPtr<Shade
             output += std::format("\t{}Bytecode{},\n", shader->GetKey().entryPoint, i);
 
             output += "\t{";
-            for (auto& num : shader->GetHash())
+            for (auto& num : shader->GetHash().value)
             {
                 output += std::format("{}u,", num);
             }

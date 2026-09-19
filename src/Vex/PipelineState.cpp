@@ -2,17 +2,121 @@
 
 #include <algorithm>
 
+#include <Vex/Logger.h>
 #include <Vex/RayTracing.h>
 #include <Vex/ShaderView.h>
-#include <Vex/Logger.h>
 #include <VexMacros.h>
 
 namespace vex
 {
 
+namespace PipelineState_Internal
+{
+// Appends " | <label>: <value>" to the name.
+static void AppendLabelValueSection(std::string& name, std::string_view label, std::string_view value)
+{
+    std::format_to(std::back_inserter(name), " | {}: {}", label, value);
+}
+
+// Appends " #<8 hex digits>" to the name and returns it.
+static std::string FinalizeName(std::string name, std::size_t keyHash)
+{
+    std::format_to(std::back_inserter(name), " #{:08x}", static_cast<u32>(keyHash));
+    return name;
+}
+
+static std::string FormatColorFormats(const RenderTargetState& renderTargetState)
+{
+    std::string formats;
+    for (const auto& [format, isSRGB] : renderTargetState.colorFormats)
+    {
+        std::format_to(std::back_inserter(formats),
+                       "{}{}{}",
+                       formats.empty() ? "" : ", ",
+                       format,
+                       isSRGB ? "_SRGB" : "");
+    }
+    return formats;
+}
+} // namespace PipelineState_Internal
+
+std::string PSOUtil::GetGraphicsPSOName(const DrawDesc& drawDesc,
+                                        const RenderTargetState& renderTargetState,
+                                        std::size_t keyHash)
+{
+    using namespace PipelineState_Internal;
+    std::string name = "Graphics";
+    AppendLabelValueSection(name, "VS", drawDesc.vertexShader.name);
+    AppendLabelValueSection(name, "PS", drawDesc.pixelShader.name);
+    if (!renderTargetState.colorFormats.empty())
+    {
+        AppendLabelValueSection(name, "RT", FormatColorFormats(renderTargetState));
+    }
+    if (renderTargetState.depthStencilFormat != TextureFormat::UNKNOWN)
+    {
+        AppendLabelValueSection(name, "DS", magic_enum::enum_name(renderTargetState.depthStencilFormat));
+    }
+    return FinalizeName(std::move(name), keyHash);
+}
+
+std::string PSOUtil::GetComputePSOName(const ShaderView& computeShader, std::size_t keyHash)
+{
+    using namespace PipelineState_Internal;
+    std::string name = "Compute";
+    AppendLabelValueSection(name, "CS", computeShader.name);
+    return FinalizeName(std::move(name), keyHash);
+}
+
+std::string PSOUtil::GetRayTracingPSOName(const RayTracingShaderCollection& shaderCollection, std::size_t keyHash)
+{
+    using namespace PipelineState_Internal;
+    std::string name = "RayTracing";
+
+    if (!shaderCollection.rayGenerationShaders.empty())
+    {
+        std::string rayGenerationShaders;
+        for (const ShaderView& shader : shaderCollection.rayGenerationShaders)
+        {
+            rayGenerationShaders += rayGenerationShaders.empty() ? "" : ", ";
+            rayGenerationShaders += shader.name;
+        }
+        AppendLabelValueSection(name, "RGen", rayGenerationShaders);
+    }
+
+    // Miss and callable shaders are only counted to keep the name short, hit groups are listed as they are named.
+    if (!shaderCollection.rayMissShaders.empty())
+    {
+        AppendLabelValueSection(name, "Miss", std::to_string(shaderCollection.rayMissShaders.size()));
+    }
+
+    if (!shaderCollection.hitGroups.empty())
+    {
+        std::string hitGroups;
+        for (const HitGroup& hitGroup : shaderCollection.hitGroups)
+        {
+            hitGroups += hitGroups.empty() ? "" : ", ";
+            hitGroups += hitGroup.name;
+        }
+        AppendLabelValueSection(name, "Hit", hitGroups);
+    }
+
+    if (!shaderCollection.rayCallableShaders.empty())
+    {
+        AppendLabelValueSection(name, "Callable", std::to_string(shaderCollection.rayCallableShaders.size()));
+    }
+
+    AppendLabelValueSection(name,
+                            "Recursion",
+                            std::format("{}, Payload: {}B, Attr: {}B",
+                                        shaderCollection.maxRecursionDepth,
+                                        shaderCollection.maxPayloadByteSize,
+                                        shaderCollection.maxAttributeByteSize));
+
+    return FinalizeName(std::move(name), keyHash);
+}
+
 GraphicsPSOKey::GraphicsPSOKey(const DrawDesc& drawDesc, const RenderTargetState& renderTargetState)
-    : name(std::format("VS: {}, PS: {}", drawDesc.vertexShader.name, drawDesc.pixelShader.name))
-    , vertexShader(drawDesc.vertexShader.hash)
+    : vertexShader(drawDesc.vertexShader.hash)
     , pixelShader(drawDesc.pixelShader.hash)
     , inputAssembly(drawDesc.inputAssembly)
     , rasterizerState(drawDesc.rasterizerState)
@@ -31,8 +135,7 @@ GraphicsPSOKey::GraphicsPSOKey(const DrawDesc& drawDesc, const RenderTargetState
 }
 
 ComputePSOKey::ComputePSOKey(const ShaderView& computeShader)
-    : name(computeShader.name)
-    , computeShader(computeShader.hash)
+    : computeShader(computeShader.hash)
 {
     VEX_CHECK(computeShader.IsValid(), "Invalid shader for ComputePSO: {}", computeShader.name);
     VEX_CHECK(computeShader.type == ShaderType::ComputeShader,
@@ -45,7 +148,7 @@ RayTracingPSOKey::RayTracingPSOKey(const RayTracingShaderCollection& shaderColle
     , maxPayloadByteSize(shaderCollection.maxPayloadByteSize)
     , maxAttributeByteSize(shaderCollection.maxAttributeByteSize)
 {
-    static auto ValidateAndExtractHash = [](ShaderType expectedType)
+    static constexpr auto ValidateAndExtractHash = [](ShaderType expectedType)
     {
         return [expectedType](const ShaderView& shaderView)
         {

@@ -100,6 +100,8 @@ private:
     std::optional<::vk::Viewport> cachedViewport{};
     std::optional<::vk::Rect2D> cachedScissor{};
 
+    std::vector<::vk::ImageMemoryBarrier2> scratchImageBarriers;
+
     friend class VkRHI;
 };
 
