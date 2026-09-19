@@ -58,6 +58,7 @@ inline void ImGui_ImplVex_Init(ImGui_ImplVex_InitInfo& data)
     initInfo.PipelineCache = rhi->GetNativePSOCache();
     initInfo.DescriptorPool = VK_NULL_HANDLE;
     initInfo.DescriptorPoolSize = IMGUI_IMPL_VULKAN_MINIMUM_SAMPLED_IMAGE_POOL_SIZE;
+    initInfo.MinAllocationSize = 1024 * 1024;
 
     initInfo.UseDynamicRendering = true;
     ::vk::Format colorAttachmentFormat =
