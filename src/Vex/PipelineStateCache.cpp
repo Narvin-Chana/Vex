@@ -22,7 +22,7 @@ RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
     const RenderTargetState& renderTargetState,
     std::unique_ptr<RHIGraphicsPipelineState>& oldPSO)
 {
-    if (drawDesc.vertexShader.IsErrored() || drawDesc.pixelShader.IsErrored())
+    if ((drawDesc.pixelShader && drawDesc.pixelShader->IsErrored()) || drawDesc.vertexShader.IsErrored())
     {
         return nullptr;
     }
@@ -43,7 +43,41 @@ RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
     {
         // Avoid PSO being destroyed while frame is in flight.
         oldPSO = ps.Cleanup();
-        ps.Compile(drawDesc.vertexShader, drawDesc.pixelShader, *resourceLayout);
+        ps.Compile(drawDesc.vertexShader, drawDesc.pixelShader ? &*drawDesc.pixelShader : nullptr, *resourceLayout);
+    }
+
+    return &ps;
+}
+
+RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
+    const DispatchMeshDesc& drawDesc,
+    const RenderTargetState& renderTargetState,
+    std::unique_ptr<RHIGraphicsPipelineState>& oldPSO)
+{
+    if (drawDesc.meshShader.IsErrored() ||
+        (drawDesc.amplificationShader && drawDesc.amplificationShader->IsErrored()) ||
+        (drawDesc.pixelShader && drawDesc.pixelShader->IsErrored()))
+    {
+        return nullptr;
+    }
+
+    GraphicsPSOKey key{ drawDesc, renderTargetState };
+    const auto it = graphicsPSCache.find(key);
+    RHIGraphicsPipelineState& ps =
+        it != graphicsPSCache.end()
+            ? it->second
+            : graphicsPSCache.insert({ key, rhi->CreateGraphicsPipelineState(key) }).first->second;
+
+    bool pipelineStateStale = false;
+    pipelineStateStale |= resourceLayout->version > ps.rootSignatureVersion;
+    if (pipelineStateStale)
+    {
+        // Avoid PSO being destroyed while frame is in flight.
+        oldPSO = ps.Cleanup();
+        ps.Compile(drawDesc.meshShader,
+                   drawDesc.amplificationShader ? &*drawDesc.amplificationShader : nullptr,
+                   drawDesc.pixelShader ? &*drawDesc.pixelShader : nullptr,
+                   *resourceLayout);
     }
 
     return &ps;

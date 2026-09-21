@@ -2,8 +2,8 @@
 
 #include "RenderDoc.h"
 
-#include <filesystem>
 #include <array>
+#include <filesystem>
 
 #include <gtest/gtest.h>
 
@@ -20,6 +20,7 @@ namespace vex
 
 static const auto VexRootPath =
     std::filesystem::current_path().parent_path().parent_path().parent_path().parent_path().parent_path();
+const std::filesystem::path TestShaderPath = VexRootPath / "tests/shaders";
 
 // Tests are ran in Development, in Debug we should enable GPU validation to ease test development.
 
@@ -154,5 +155,14 @@ const auto QueueTypeValue = testing::Values(QueueType::Graphics, QueueType::Comp
 
 #define INSTANTIATE_PER_QUEUE_TEST_SUITE_P(name, type, values)                                                         \
     INSTANTIATE_TEST_SUITE_P(name, type, testing::Combine(QueueTypeValue, values));
+
+template <class T>
+bool ValidateTextureValue(const TextureReadbackContext& ctx, T expectedValue)
+{
+    std::vector<T> texels;
+    texels.resize(ctx.GetDataByteSize() / sizeof(T));
+    ctx.ReadData(std::as_writable_bytes(std::span{ texels }));
+    return std::ranges::all_of(texels, [&](auto v) { return v == expectedValue; });
+}
 
 } // namespace vex

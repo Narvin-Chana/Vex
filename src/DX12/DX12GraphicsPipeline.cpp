@@ -12,7 +12,7 @@ D3D12_COMPARISON_FUNC GetDX12ComparisonFuncFromCompareOp(CompareOp compareOp)
 {
     if (compareOp == CompareOp::None)
     {
-        return D3D12_COMPARISON_FUNC_NONE;
+        return D3D12_COMPARISON_FUNC_NEVER;
     }
     return static_cast<D3D12_COMPARISON_FUNC>(static_cast<int>(compareOp) + 1);
 }

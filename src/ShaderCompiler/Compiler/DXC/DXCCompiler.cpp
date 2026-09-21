@@ -32,6 +32,12 @@ static std::wstring GetTargetFromShaderType(const ShaderType type, const ShaderC
     case VertexShader:
         highestSupportedShaderModel[0] = L'v';
         break;
+    case MeshShader:
+        highestSupportedShaderModel[0] = L'm';
+        break;
+    case AmplificationShader:
+        highestSupportedShaderModel[0] = L'a';
+        break;
     case PixelShader:
         highestSupportedShaderModel[0] = L'p';
         break;
