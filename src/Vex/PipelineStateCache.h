@@ -24,6 +24,9 @@ public:
     RHIGraphicsPipelineState* GetGraphicsPipelineState(const DrawDesc& drawDesc,
                                                        const RenderTargetState& renderTargetState,
                                                        std::unique_ptr<RHIGraphicsPipelineState>& oldPSO);
+    RHIGraphicsPipelineState* GetGraphicsPipelineState(const DispatchMeshDesc& drawDesc,
+                                                       const RenderTargetState& renderTargetState,
+                                                       std::unique_ptr<RHIGraphicsPipelineState>& oldPSO);
     RHIComputePipelineState* GetComputePipelineState(const ShaderView& computeShader,
                                                      std::unique_ptr<RHIComputePipelineState>& oldPSO);
     RHIRayTracingPipelineState* GetRayTracingPipelineState(const RayTracingShaderCollection& shaderCollection,

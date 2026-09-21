@@ -28,8 +28,11 @@ struct PSOUtil
 struct GraphicsPSOKey
 {
     GraphicsPSOKey(const DrawDesc& drawDesc, const RenderTargetState& renderTargetState);
+    GraphicsPSOKey(const DispatchMeshDesc& drawDesc, const RenderTargetState& renderTargetState);
 
     SHA1HashDigest vertexShader;
+    SHA1HashDigest meshShader;
+    SHA1HashDigest amplificationShader;
     SHA1HashDigest pixelShader;
     InputAssembly inputAssembly;
     RasterizerState rasterizerState;

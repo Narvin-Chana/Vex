@@ -81,6 +81,7 @@ public:
     virtual void SetIndexBuffer(const RHIBufferBinding& indexBuffer) = 0;
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount) = 0;
+    virtual void DispatchMesh(const std::array<u32, 3>& groupCount) = 0;
 
     virtual void TraceRays(const TraceRaysDesc& rayTracingArgs,
                            const RHIRayTracingPipelineState& rayTracingPipelineState) = 0;

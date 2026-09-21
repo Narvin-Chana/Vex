@@ -16,6 +16,7 @@
 
 namespace vex::vk
 {
+
 VkGraphicsPipelineState::VkGraphicsPipelineState(std::string name,
                                                  const Key& key,
                                                  ::vk::Device device,
@@ -28,34 +29,138 @@ VkGraphicsPipelineState::VkGraphicsPipelineState(std::string name,
 }
 
 void VkGraphicsPipelineState::Compile(const ShaderView& vertexShader,
-                                      const ShaderView& pixelShader,
+                                      const ShaderView* pixelShader,
                                       RHIResourceLayout& resourceLayout)
 {
-    Span<const byte> vsCode = vertexShader.bytecode;
-    ::vk::ShaderModuleCreateInfo vsShaderModuleCreateInfo{
-        .codeSize = vsCode.size(),
-        .pCode = reinterpret_cast<const u32*>(&vsCode[0]),
+    ::vk::ShaderModuleCreateInfo vsShaderModuleCreateInfo = {
+        .codeSize = vertexShader.bytecode.size(),
+        .pCode = reinterpret_cast<const u32*>(vertexShader.bytecode.data()),
     };
 
-    Span<const byte> psCode = pixelShader.bytecode;
-    ::vk::ShaderModuleCreateInfo psShaderModuleCreateInfo{
-        .codeSize = psCode.size(),
-        .pCode = reinterpret_cast<const u32*>(&psCode[0]),
-    };
+    std::optional<::vk::ShaderModuleCreateInfo> psShaderModuleCreateInfo;
+
+    if (pixelShader)
+    {
+        psShaderModuleCreateInfo = {
+            .codeSize = pixelShader->bytecode.size(),
+            .pCode = reinterpret_cast<const u32*>(pixelShader->bytecode.data()),
+        };
+    }
 
     auto vsShaderModule = VEX_VK_CHECK <<= device.createShaderModuleUnique(vsShaderModuleCreateInfo);
-    auto psShaderModule = VEX_VK_CHECK <<= device.createShaderModuleUnique(psShaderModuleCreateInfo);
+    auto psShaderModule = pixelShader ? VEX_VK_CHECK <<= device.createShaderModuleUnique(*psShaderModuleCreateInfo)
+                                      : ::vk::UniqueShaderModule{};
 
     std::string vertexShaderEntryPoint{ vertexShader.entryPoint };
-    std::string pixelShaderEntryPoint{ pixelShader.entryPoint };
+    std::optional<std::string> pixelShaderEntryPoint{ pixelShader ? std::optional{ pixelShader->entryPoint }
+                                                                  : std::nullopt };
 
-    std::array stages{ ::vk::PipelineShaderStageCreateInfo{ .stage = ::vk::ShaderStageFlagBits::eVertex,
-                                                            .module = *vsShaderModule,
-                                                            .pName = vertexShaderEntryPoint.c_str() },
-                       ::vk::PipelineShaderStageCreateInfo{ .stage = ::vk::ShaderStageFlagBits::eFragment,
-                                                            .module = *psShaderModule,
-                                                            .pName = pixelShaderEntryPoint.c_str() } };
+    // TODO: replace by inline vector
+    std::vector<::vk::PipelineShaderStageCreateInfo> stages;
+    stages.reserve(2);
 
+    stages.push_back(::vk::PipelineShaderStageCreateInfo{ .stage = ::vk::ShaderStageFlagBits::eVertex,
+                                                          .module = *vsShaderModule,
+                                                          .pName = vertexShaderEntryPoint.c_str() });
+    if (pixelShader)
+    {
+        stages.push_back(::vk::PipelineShaderStageCreateInfo{ .stage = ::vk::ShaderStageFlagBits::eFragment,
+                                                              .module = *psShaderModule,
+                                                              .pName = pixelShaderEntryPoint->c_str() });
+    }
+
+    std::vector dynamicStates = { ::vk::DynamicState::eViewportWithCount,
+                                  ::vk::DynamicState::eScissorWithCount,
+                                  ::vk::DynamicState::ePrimitiveTopology,
+                                  ::vk::DynamicState::ePrimitiveRestartEnable };
+
+    CreateGraphicsPipeline(resourceLayout, stages, dynamicStates);
+}
+
+void VkGraphicsPipelineState::Compile(const ShaderView& meshShader,
+                                      const ShaderView* amplificationShader,
+                                      const ShaderView* pixelShader,
+                                      RHIResourceLayout& resourceLayout)
+{
+    ::vk::ShaderModuleCreateInfo msShaderModuleCreateInfo{
+        .codeSize = meshShader.bytecode.size(),
+        .pCode = reinterpret_cast<const u32*>(meshShader.bytecode.data()),
+    };
+
+    std::optional<::vk::ShaderModuleCreateInfo> asShaderModuleCreateInfo;
+    if (amplificationShader != nullptr)
+    {
+        asShaderModuleCreateInfo = ::vk::ShaderModuleCreateInfo{
+            .codeSize = amplificationShader->bytecode.size(),
+            .pCode = reinterpret_cast<const u32*>(amplificationShader->bytecode.data()),
+        };
+    }
+
+    std::optional<::vk::ShaderModuleCreateInfo> psShaderModuleCreateInfo;
+    if (pixelShader)
+    {
+        psShaderModuleCreateInfo = ::vk::ShaderModuleCreateInfo{
+            .codeSize = pixelShader->bytecode.size(),
+            .pCode = reinterpret_cast<const u32*>(pixelShader->bytecode.data()),
+        };
+    };
+
+    auto msShaderModule = VEX_VK_CHECK <<= device.createShaderModuleUnique(msShaderModuleCreateInfo);
+    auto asShaderModule = asShaderModuleCreateInfo
+                              ? VEX_VK_CHECK <<= device.createShaderModuleUnique(*asShaderModuleCreateInfo)
+                              : ::vk::UniqueShaderModule{};
+    auto psShaderModule = psShaderModuleCreateInfo
+                              ? VEX_VK_CHECK <<= device.createShaderModuleUnique(*psShaderModuleCreateInfo)
+                              : ::vk::UniqueShaderModule{};
+
+    std::string meshShaderEntryPoint{ meshShader.entryPoint };
+    std::optional<std::string> amplificationShaderEntryPoint{ amplificationShader != nullptr
+                                                                  ? std::optional{ amplificationShader->entryPoint }
+                                                                  : std::nullopt };
+    std::optional<std::string> pixelShaderEntryPoint{ pixelShader != nullptr ? std::optional{ pixelShader->entryPoint }
+                                                                             : std::nullopt };
+
+    // TODO: replace by inline vector
+    std::vector stages{
+        ::vk::PipelineShaderStageCreateInfo{ .stage = ::vk::ShaderStageFlagBits::eMeshEXT,
+                                             .module = *msShaderModule,
+                                             .pName = meshShaderEntryPoint.c_str() },
+    };
+    stages.reserve(3);
+
+    if (pixelShader != nullptr)
+    {
+        stages.push_back(::vk::PipelineShaderStageCreateInfo{ .stage = ::vk::ShaderStageFlagBits::eFragment,
+                                                              .module = *psShaderModule,
+                                                              .pName = pixelShaderEntryPoint->c_str() });
+    }
+
+    if (amplificationShader != nullptr)
+    {
+        stages.push_back(::vk::PipelineShaderStageCreateInfo{ .stage = ::vk::ShaderStageFlagBits::eTaskEXT,
+                                                              .module = *asShaderModule,
+                                                              .pName = amplificationShaderEntryPoint->c_str() });
+    }
+
+    std::vector dynamicStates = { ::vk::DynamicState::eViewportWithCount, ::vk::DynamicState::eScissorWithCount };
+
+    CreateGraphicsPipeline(resourceLayout, stages, dynamicStates);
+}
+
+std::unique_ptr<RHIGraphicsPipelineState> VkGraphicsPipelineState::Cleanup()
+{
+    if (!graphicsPipeline)
+    {
+        return nullptr;
+    }
+    auto cleanupPSO = std::make_unique<VkGraphicsPipelineState>(key, device, psoCache);
+    std::swap(cleanupPSO->graphicsPipeline, graphicsPipeline);
+    return cleanupPSO;
+}
+void VkGraphicsPipelineState::CreateGraphicsPipeline(RHIResourceLayout& resourceLayout,
+                                                     std::span<const ::vk::PipelineShaderStageCreateInfo> stages,
+                                                     std::span<const ::vk::DynamicState> dynamicStates)
+{
     ::vk::PipelineVertexInputStateCreateInfo pipelineVertexInputStateCI{};
 
     ::vk::PipelineInputAssemblyStateCreateInfo inputAssemblyState{
@@ -123,16 +228,6 @@ void VkGraphicsPipelineState::Compile(const ShaderView& vertexShader,
         .blendConstants = key.colorBlendState.blendConstants,
     };
 
-    std::array dynamicStates = { ::vk::DynamicState::eViewportWithCount,
-                                 ::vk::DynamicState::eScissorWithCount,
-                                 ::vk::DynamicState::ePrimitiveTopology,
-                                 ::vk::DynamicState::ePrimitiveRestartEnable };
-
-    ::vk::PipelineDynamicStateCreateInfo dynamicStateInfo{
-        .dynamicStateCount = static_cast<u32>(dynamicStates.size()),
-        .pDynamicStates = dynamicStates.data(),
-    };
-
     std::vector<::vk::Format> attachmentFormats;
     attachmentFormats.reserve(key.renderTargetState.colorFormats.size());
     for (const auto& [format, isSRGB] : key.renderTargetState.colorFormats)
@@ -156,8 +251,13 @@ void VkGraphicsPipelineState::Compile(const ShaderView& vertexShader,
         .pScissors = nullptr,
     };
 
+    ::vk::PipelineDynamicStateCreateInfo dynamicStateInfo{
+        .dynamicStateCount = static_cast<u32>(dynamicStates.size()),
+        .pDynamicStates = dynamicStates.data(),
+    };
+
     ::vk::GraphicsPipelineCreateInfo graphicsPipelineCI{ .pNext = &pipelineRenderingCI,
-                                                         .stageCount = stages.size(),
+                                                         .stageCount = static_cast<u32>(stages.size()),
                                                          .pStages = stages.data(),
                                                          .pVertexInputState = &pipelineVertexInputStateCI,
                                                          .pInputAssemblyState = &inputAssemblyState,
@@ -180,21 +280,7 @@ void VkGraphicsPipelineState::Compile(const ShaderView& vertexShader,
     SetDebugName(device, *graphicsPipeline, name.c_str());
 }
 
-std::unique_ptr<RHIGraphicsPipelineState> VkGraphicsPipelineState::Cleanup()
-{
-    if (!graphicsPipeline)
-    {
-        return nullptr;
-    }
-    auto cleanupPSO = std::make_unique<VkGraphicsPipelineState>(name, key, device, psoCache);
-    std::swap(cleanupPSO->graphicsPipeline, graphicsPipeline);
-    return cleanupPSO;
-}
-
-VkComputePipelineState::VkComputePipelineState(std::string name,
-                                               const Key& key,
-                                               ::vk::Device device,
-                                               ::vk::PipelineCache psoCache)
+VkComputePipelineState::VkComputePipelineState(std::string name, const Key& key, ::vk::Device device, ::vk::PipelineCache psoCache)
     : RHIComputePipelineStateBase(std::move(name), key)
     , device{ device }
     , psoCache{ psoCache }

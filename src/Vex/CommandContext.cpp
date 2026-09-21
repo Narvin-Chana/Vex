@@ -87,8 +87,7 @@ static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureReg
     return copyDescs;
 }
 
-static std::pair<DrawDesc, RenderTargetState> CreateRenderTargetStateFromBindings(const DrawDesc& drawDesc,
-                                                                                  const RHIDrawResources& rhiDrawRes)
+static RenderTargetState CreateRenderTargetStateFromBindings(const RHIDrawResources& rhiDrawRes)
 {
     RenderTargetState rtState;
 
@@ -102,11 +101,7 @@ static std::pair<DrawDesc, RenderTargetState> CreateRenderTargetStateFromBinding
         rtState.depthStencilFormat = rhiDrawRes.depthStencil->binding.texture.desc.format;
     }
 
-    // Ensure each render target has at least a default color attachment (no blending, write all).
-    DrawDesc newDrawDesc = drawDesc;
-    newDrawDesc.colorBlendState.attachments.resize(rhiDrawRes.renderTargets.size());
-
-    return { newDrawDesc, rtState };
+    return rtState;
 }
 
 } // namespace CommandContext_Internal
@@ -190,14 +185,6 @@ void CommandContext::Draw(const DrawDesc& drawDesc,
 {
     CheckViewportAndScissor();
 
-    // Index buffers are not used in Draw, warn the user if they have still bound one.
-    if (drawBindings.indexBuffer.has_value())
-    {
-        VEX_LOG(Warning,
-                "Your CommandContext::Draw call resources contain an index buffer which will be ignored. If you wish "
-                "to use the index buffer, call CommandContext::DrawIndexed instead.");
-    }
-
     auto drawResources = PrepareDrawCall(drawDesc, drawBindings, constants, trackedResources);
     FlushBarriers();
     if (!drawResources.has_value())
@@ -213,7 +200,7 @@ void CommandContext::Draw(const DrawDesc& drawDesc,
 }
 
 void CommandContext::DrawIndexed(const DrawDesc& drawDesc,
-                                 const DrawResourceBinding& drawBindings,
+                                 const DrawIndexedResourceBinding& drawBindings,
                                  ConstantBinding constants,
                                  Span<const ResourceBinding> trackedResources,
                                  u32 indexCount,
@@ -223,12 +210,17 @@ void CommandContext::DrawIndexed(const DrawDesc& drawDesc,
                                  u32 instanceOffset)
 {
     CheckViewportAndScissor();
-    auto drawResources = PrepareDrawCall(drawDesc, drawBindings, constants, trackedResources);
+
+    DrawResourceBinding bindings = { .renderTargets = drawBindings.renderTargets,
+                                     .depthStencil = drawBindings.depthStencil };
+    auto drawResources = PrepareDrawCall(drawDesc, bindings, constants, trackedResources);
     FlushBarriers();
     if (!drawResources.has_value())
     {
         return;
     }
+
+    SetIndexBuffer(drawBindings.indexBuffer);
 
     cmdList->BeginRendering(*drawResources);
     // TODO(https://trello.com/c/IGxuLci9): Validate draw index count (eg: versus the currently used index buffer size)
@@ -295,6 +287,24 @@ void CommandContext::Dispatch(const ShaderView& computeShader,
 void CommandContext::DispatchIndirect()
 {
     VEX_NOT_YET_IMPLEMENTED();
+}
+void CommandContext::DispatchMesh(const DispatchMeshDesc& drawDesc,
+                                  const DrawResourceBinding& drawBindings,
+                                  const std::array<u32, 3>& groupCount,
+                                  ConstantBinding constants,
+                                  Span<const ResourceBinding> trackedResources)
+{
+    CheckViewportAndScissor();
+    auto drawResources = PrepareDispatchMeshCall(drawDesc, drawBindings, constants, trackedResources);
+    FlushBarriers();
+    if (!drawResources.has_value())
+    {
+        return;
+    }
+
+    cmdList->BeginRendering(*drawResources);
+    cmdList->DispatchMesh(groupCount);
+    cmdList->EndRendering();
 }
 
 void CommandContext::TraceRays(const RayTracingShaderCollection& rayTracingShaderCollection,
@@ -1376,6 +1386,40 @@ void CommandContext::InferResourceBarriers(RHIBarrierSync syncStage, Span<const 
             rb.binding);
     }
 }
+void CommandContext::TransitionDrawResources(const RHIDrawResources& drawResources,
+                                             const DepthStencilState& depthStencilState)
+{
+    for (const auto& [binding, _] : drawResources.renderTargets)
+    {
+        EnqueueTextureBarrier(binding.texture,
+                              binding.subresource,
+                              RHIBarrierSync::RenderTarget,
+                              RHIBarrierAccess::RenderTarget,
+                              RHITextureLayout::RenderTarget);
+    }
+    if (drawResources.depthStencil.has_value())
+    {
+        // Start with the most restrictive access.
+        RHIBarrierAccess depthAccess;
+        if (!depthStencilState.depthWriteEnabled)
+        {
+            depthAccess = RHIBarrierAccess::DepthStencilRead;
+        }
+        else
+        {
+            // We always use readwrite because of vulkans loading requirements
+            depthAccess = RHIBarrierAccess::DepthStencilReadWrite;
+        }
+        const RHITextureLayout depthLayout = depthStencilState.depthWriteEnabled ? RHITextureLayout::DepthStencilWrite
+                                                                                 : RHITextureLayout::DepthStencilRead;
+
+        EnqueueTextureBarrier(drawResources.depthStencil->binding.texture,
+                              drawResources.depthStencil->binding.subresource,
+                              RHIBarrierSync::DepthStencil,
+                              depthAccess,
+                              depthLayout);
+    }
+}
 
 Buffer CommandContext::CreateTemporaryStagingBuffer(const std::string& name,
                                                     u64 byteSize,
@@ -1396,7 +1440,7 @@ Buffer CommandContext::CreateTemporaryBuffer(const BufferDesc& desc)
     return buf;
 }
 
-std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& drawDesc,
+std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(DrawDesc desc,
                                                                 const DrawResourceBinding& drawBindings,
                                                                 const ConstantBinding constants,
                                                                 Span<const ResourceBinding> trackedResources)
@@ -1407,49 +1451,26 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
     // Transition RTs/DepthStencil
     RHIDrawResources drawResources =
         ResourceBindingUtils::CollectRHIDrawResources(*graphics, drawBindings.renderTargets, drawBindings.depthStencil);
-    for (const auto& [binding, _] : drawResources.renderTargets)
-    {
-        EnqueueTextureBarrier(binding.texture,
-                              binding.subresource,
-                              RHIBarrierSync::RenderTarget,
-                              RHIBarrierAccess::RenderTarget,
-                              RHITextureLayout::RenderTarget);
-    }
-    if (drawResources.depthStencil.has_value())
-    {
-        // Start with the most restrictive access.
-        RHIBarrierAccess depthAccess;
-        if (!drawDesc.depthStencilState.depthWriteEnabled)
-        {
-            depthAccess = RHIBarrierAccess::DepthStencilRead;
-        }
-        else
-        {
-            depthAccess = drawDesc.depthStencilState.depthTestEnabled ? RHIBarrierAccess::DepthStencilReadWrite
-                                                                      : RHIBarrierAccess::DepthStencilWrite;
-        }
-        const RHITextureLayout depthLayout = drawDesc.depthStencilState.depthWriteEnabled
-                                                 ? RHITextureLayout::DepthStencilWrite
-                                                 : RHITextureLayout::DepthStencilRead;
 
-        EnqueueTextureBarrier(drawResources.depthStencil->binding.texture,
-                              drawResources.depthStencil->binding.subresource,
-                              RHIBarrierSync::DepthStencil,
-                              depthAccess,
-                              depthLayout);
-    }
+    TransitionDrawResources(drawResources, desc.depthStencilState);
 
-    auto [newDrawDesc, renderTargetState] =
-        CommandContext_Internal::CreateRenderTargetStateFromBindings(drawDesc, drawResources);
+    auto renderTargetState = CommandContext_Internal::CreateRenderTargetStateFromBindings(drawResources);
+
+    desc.colorBlendState.attachments.resize(drawResources.renderTargets.size());
 
     // Setup the layout for our pass (must be done before PSO handling).
     RHIResourceLayout& resourceLayout = graphics->psCache->resourceLayout.value();
     resourceLayout.SetLayoutResources(constants);
     cmdList->SetLayout(resourceLayout);
 
+    EnqueueGlobalBarrier({ .srcSync = RHIBarrierSync::AllCommands,
+                           .dstSync = RHIBarrierSync::AllGraphics,
+                           .srcAccess = RHIBarrierAccess::MemoryWrite,
+                           .dstAccess = RHIBarrierAccess::VertexInputRead });
+
     std::unique_ptr<RHIGraphicsPipelineState> oldPSO;
     RHIGraphicsPipelineState* pipelineState =
-        graphics->psCache->GetGraphicsPipelineState(newDrawDesc, renderTargetState, oldPSO);
+        graphics->psCache->GetGraphicsPipelineState(desc, renderTargetState, oldPSO);
     if (oldPSO)
     {
         temporaryResources.emplace_back(std::move(oldPSO));
@@ -1465,21 +1486,58 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
         cachedGraphicsPSO = pipelineState;
     }
 
-    if (!cachedInputAssembly || drawDesc.inputAssembly != cachedInputAssembly)
+    if (!cachedInputAssembly || desc.inputAssembly != cachedInputAssembly)
     {
-        cmdList->SetInputAssembly(drawDesc.inputAssembly);
-        cachedInputAssembly = drawDesc.inputAssembly;
+        cmdList->SetInputAssembly(desc.inputAssembly);
+        cachedInputAssembly = desc.inputAssembly;
     }
+
+    return drawResources;
+}
+
+std::optional<RHIDrawResources> CommandContext::PrepareDispatchMeshCall(DispatchMeshDesc desc,
+                                                                        const DrawResourceBinding& drawBindings,
+                                                                        ConstantBinding constants,
+                                                                        Span<const ResourceBinding> trackedResources)
+{
+    InferResourceBarriers(RHIBarrierSync::AllGraphics, trackedResources);
+
+    // Transition RTs/DepthStencil
+    RHIDrawResources drawResources =
+        ResourceBindingUtils::CollectRHIDrawResources(*graphics, drawBindings.renderTargets, drawBindings.depthStencil);
+
+    TransitionDrawResources(drawResources, desc.depthStencilState);
+
+    auto renderTargetState = CommandContext_Internal::CreateRenderTargetStateFromBindings(drawResources);
+
+    desc.colorBlendState.attachments.resize(drawResources.renderTargets.size());
+
+    // Setup the layout for our pass (must be done before PSO handling).
+    RHIResourceLayout& resourceLayout = graphics->psCache->resourceLayout.value();
+    resourceLayout.SetLayoutResources(constants);
+    cmdList->SetLayout(resourceLayout);
 
     EnqueueGlobalBarrier({ .srcSync = RHIBarrierSync::AllCommands,
                            .dstSync = RHIBarrierSync::AllGraphics,
                            .srcAccess = RHIBarrierAccess::MemoryWrite,
                            .dstAccess = RHIBarrierAccess::VertexInputRead });
 
-    // Bind Index Buffer.
-    if (drawBindings.indexBuffer.has_value())
+    std::unique_ptr<RHIGraphicsPipelineState> oldPSO;
+    RHIGraphicsPipelineState* pipelineState =
+        graphics->psCache->GetGraphicsPipelineState(desc, renderTargetState, oldPSO);
+    if (oldPSO)
     {
-        SetIndexBuffer(*drawBindings.indexBuffer);
+        temporaryResources.emplace_back(std::move(oldPSO));
+    }
+    if (!pipelineState)
+    {
+        return std::nullopt;
+    }
+
+    if (!cachedGraphicsPSO || cachedGraphicsPSO != pipelineState)
+    {
+        cmdList->SetPipelineState(*pipelineState);
+        cachedGraphicsPSO = pipelineState;
     }
 
     return drawResources;

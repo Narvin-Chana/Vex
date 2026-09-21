@@ -22,6 +22,8 @@ public:
         std::size_t seed = 0;
         VEX_HASH_COMBINE(seed, key.vertexShader);
         VEX_HASH_COMBINE(seed, key.pixelShader);
+        VEX_HASH_COMBINE(seed, key.meshShader);
+        VEX_HASH_COMBINE(seed, key.amplificationShader);
         VEX_HASH_COMBINE(seed, key.inputAssembly);
         VEX_HASH_COMBINE(seed, key.rasterizerState);
         VEX_HASH_COMBINE(seed, key.depthStencilState);
@@ -32,9 +34,14 @@ public:
 
     DX12GraphicsPipelineState(const ComPtr<DX12Device>& device, std::string name, const Key& key);
 
-    virtual void Compile(const ShaderView& vertexShader,
-                         const ShaderView& pixelShader,
+    virtual void Compile(const ShaderView& vertexOrMeshShader,
+                         const ShaderView* pixelShader,
                          RHIResourceLayout& resourceLayout) override;
+    virtual void Compile(const ShaderView& meshShader,
+                         const ShaderView* amplificationShader,
+                         const ShaderView* pixelShader,
+                         RHIResourceLayout& resourceLayout) override;
+
     virtual std::unique_ptr<RHIGraphicsPipelineState> Cleanup() override;
 
     // Verifies that the key does not contain fields with non-default values for features which DX12 does not support.

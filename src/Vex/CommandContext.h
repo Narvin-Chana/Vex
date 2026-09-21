@@ -33,7 +33,6 @@ struct ResourceBinding;
 struct Texture;
 struct Buffer;
 struct TextureClearValue;
-struct DrawDesc;
 
 class CommandContext
 {
@@ -73,7 +72,7 @@ public:
 
     // Performs an indexed draw call.
     void DrawIndexed(const DrawDesc& drawDesc,
-                     const DrawResourceBinding& drawBindings,
+                     const DrawIndexedResourceBinding& drawBindings,
                      ConstantBinding constants,
                      Span<const ResourceBinding> trackedResources,
                      u32 indexCount,
@@ -96,6 +95,13 @@ public:
 
     // Not yet implemented
     void DispatchIndirect();
+
+    // Dispatches a mesh shader draw call.
+    void DispatchMesh(const DispatchMeshDesc& drawDesc,
+                      const DrawResourceBinding& drawBindings,
+                      const std::array<u32, 3>& groupCount,
+                      ConstantBinding constants,
+                      Span<const ResourceBinding> trackedResources);
 
     // Dispatches a ray tracing pass.
     void TraceRays(const RayTracingShaderCollection& rayTracingShaderCollection,
@@ -244,6 +250,7 @@ private:
     void EnqueueGlobalBarrier(const RHIGlobalBarrier& globalBarrier);
 
     void InferResourceBarriers(RHIBarrierSync syncStage, Span<const ResourceBinding> resources);
+    void TransitionDrawResources(const RHIDrawResources& drawResources, const DepthStencilState& depthStencilState);
 
     // Creates a temporary staging buffer that will be destroyed once the command context is done executing.
     // Buffer creation invalidates pointers to existing RHI buffers.
@@ -255,10 +262,16 @@ private:
     // Buffer creation invalidates pointers to existing RHI buffers.
     Buffer CreateTemporaryBuffer(const BufferDesc& desc);
 
-    std::optional<RHIDrawResources> PrepareDrawCall(const DrawDesc& drawDesc,
+    std::optional<RHIDrawResources> PrepareDrawCall(DrawDesc desc,
                                                     const DrawResourceBinding& drawBindings,
                                                     ConstantBinding constants,
                                                     Span<const ResourceBinding> trackedResources);
+
+    std::optional<RHIDrawResources> PrepareDispatchMeshCall(DispatchMeshDesc desc,
+                                                            const DrawResourceBinding& drawBindings,
+                                                            ConstantBinding constants,
+                                                            Span<const ResourceBinding> trackedResources);
+
     void CheckViewportAndScissor() const;
 
     void SetIndexBuffer(const BufferBinding& indexBuffer) const;
