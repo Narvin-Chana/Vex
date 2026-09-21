@@ -8,6 +8,22 @@
 namespace vex
 {
 
+template <class ValueT,
+          std::size_t IndexBitSize,
+          std::size_t GenerationBitSize,
+          bool HasGeneration = (GenerationBitSize > 0)>
+struct DebugHandleInfo
+{
+    ValueT index : IndexBitSize;
+};
+
+template <class ValueT, std::size_t IndexBitSize, std::size_t GenerationBitSize>
+struct DebugHandleInfo<ValueT, IndexBitSize, GenerationBitSize, true>
+{
+    ValueT index : IndexBitSize;
+    ValueT generation : GenerationBitSize;
+};
+
 template <class Derived, class ValueT, std::size_t IndexBitSize>
     requires((sizeof(ValueT) * 8 >= IndexBitSize) and std::unsigned_integral<ValueT>)
 struct Handle
@@ -16,7 +32,15 @@ struct Handle
     static constexpr std::size_t GenerationBitSize = sizeof(ValueT) * 8 - IndexBitSize;
     static constexpr bool HasGeneration = GenerationBitSize > 0;
 
-    ValueType value = MaxValue;
+    union
+    {
+        ValueType value = MaxValue;
+#if !VEX_SHIPPING
+        // Should just be used for debugging purposes, bitfield packing order is implementation-defined. Meaning no
+        // actual logic should ever directly access these fields.
+        DebugHandleInfo<ValueT, IndexBitSize, GenerationBitSize> debugHandleInfo;
+#endif
+    };
 
     constexpr static Derived CreateHandle(ValueType index, ValueType generation)
         requires(HasGeneration)
@@ -53,7 +77,7 @@ struct Handle
     {
         return value == other.value;
     }
-    constexpr bool IsValid() const
+    [[nodiscard]] constexpr bool IsValid() const
     {
         return value != MaxValue;
     }
