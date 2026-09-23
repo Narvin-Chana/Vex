@@ -29,7 +29,8 @@ TEST_F(GraphicsPipelineTests, DepthOnlyDraw)
         },
     };
 
-    DrawResourceBinding drawRes{ .depthStencil = TextureBinding{ texture } };
+    DepthStencilBinding dsBinding{ .texture = texture };
+    DrawResourceBinding drawRes{ .depthStencil = &dsBinding };
 
     ctx.SetScissor(0, 0, 10, 10);
     ctx.SetViewport(0, 0, 10, 10);

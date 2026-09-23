@@ -358,7 +358,6 @@ constexpr DXGI_FORMAT GetDX12FormatForShaderResourceViewFormat(DXGI_FORMAT typel
     case DXGI_FORMAT_R32G8X24_TYPELESS:
         return aspect == TextureAspect::Depth ? DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS
                                               : DXGI_FORMAT_X32_TYPELESS_G8X24_UINT;
-        return DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
     case DXGI_FORMAT_R10G10B10A2_TYPELESS:
         return DXGI_FORMAT_R10G10B10A2_UNORM;
     case DXGI_FORMAT_R8G8B8A8_TYPELESS:

@@ -59,11 +59,11 @@
         if ((level) >= vex::Logger::GetLogLevelFilter())                                                               \
         {                                                                                                              \
             vex::GLogger.Log((level), message, ##__VA_ARGS__);                                                         \
-            if ((level) == vex::Fatal) /* Fatal error! Must exit. */                                                   \
-            {                                                                                                          \
-                VEX_DEBUG_BREAK();                                                                                     \
-                std::abort();                                                                                          \
-            }                                                                                                          \
+        }                                                                                                              \
+        if ((level) == vex::Fatal) /* Fatal error! Must exit (we do this regardless of the filter). */                 \
+        {                                                                                                              \
+            VEX_DEBUG_BREAK();                                                                                         \
+            std::abort();                                                                                              \
         }                                                                                                              \
     }                                                                                                                  \
     while (0)

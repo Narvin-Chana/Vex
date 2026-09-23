@@ -190,18 +190,19 @@ void HelloCubeApplication::Run()
             };
 
             // ...and resources.
-            vex::BufferBinding indexBufferBinding{
+            vex::IndexBufferBinding indexBufferBinding{
                 .buffer = indexBuffer,
-                .strideByteSize = static_cast<vex::u32>(sizeof(vex::u32)),
+                .format = vex::IndexFormat::U32,
             };
+            vex::DepthStencilBinding depthStencilBinding{ .texture = depthTexture };
 
             // Setup our rendering pass.
-            std::array renderTargets = { vex::TextureBinding{
+            std::array renderTargets = { vex::RenderTargetBinding{
                 .texture = graphics->GetCurrentPresentTexture(),
             } };
 
             vex::BindlessHandle vertexBufferHandle =
-                graphics->GetBindlessHandle(vex::BufferBinding::CreateStructuredBuffer(vertexBuffer, sizeof(Vertex)));
+                graphics->GetBindlessHandle(vex::BufferBinding::CreateStructured<Vertex>(vertexBuffer));
             vex::BindlessHandle uvGuideHandle = graphics->GetBindlessHandle(
                 vex::TextureBinding{ .texture = uvGuideTexture, .usage = vex::TextureBindingUsage::ShaderRead });
 
@@ -220,7 +221,7 @@ void HelloCubeApplication::Run()
                 VEX_GPU_SCOPED_EVENT(ctx, "HLSL Cube");
                 ctx.DrawIndexed(hlslDrawDesc,
                                 { .renderTargets = renderTargets,
-                                  .depthStencil = vex::TextureBinding(depthTexture),
+                                  .depthStencil = &depthStencilBinding,
                                   .indexBuffer = indexBufferBinding },
                                 vex::ConstantBinding(data),
                                 {},
@@ -230,7 +231,7 @@ void HelloCubeApplication::Run()
                 VEX_GPU_SCOPED_EVENT(ctx, "Slang Cube");
                 ctx.DrawIndexed(slangDrawDesc,
                                 { .renderTargets = renderTargets,
-                                  .depthStencil = vex::TextureBinding(depthTexture),
+                                  .depthStencil = &depthStencilBinding,
                                   .indexBuffer = indexBufferBinding },
                                 vex::ConstantBinding(data),
                                 {},
