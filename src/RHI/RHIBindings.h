@@ -1,10 +1,10 @@
 #pragma once
 
 #include <optional>
-#include <vector>
 
 #include <Vex/Bindings.h>
-#include <Vex/Buffer.h>
+#include <Vex/Containers/InlineVector.h>
+#include <Vex/GraphicsPipeline.h>
 #include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIFwd.h>
@@ -15,7 +15,7 @@ namespace vex
 struct RHITextureBinding
 {
     TextureBinding binding;
-    NonNullPtr<RHITexture> texture;
+    RHITexture* texture;
 };
 
 struct RHIBufferBinding
@@ -26,7 +26,7 @@ struct RHIBufferBinding
 
 struct RHIDrawResources
 {
-    std::vector<RHITextureBinding> renderTargets;
+    InlineVector<RHITextureBinding, GMaxSimultaneousRenderTargetCount> renderTargets;
     std::optional<RHITextureBinding> depthStencil;
 };
 

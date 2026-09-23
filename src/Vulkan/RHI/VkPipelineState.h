@@ -29,7 +29,7 @@ public:
         return seed;
     });
 
-    VkGraphicsPipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache psoCache);
+    VkGraphicsPipelineState(std::string name, const Key& key, ::vk::Device device, ::vk::PipelineCache psoCache);
     VkGraphicsPipelineState(VkGraphicsPipelineState&&) = default;
     VkGraphicsPipelineState& operator=(VkGraphicsPipelineState&&) = default;
     virtual void Compile(const ShaderView& vertexShader,
@@ -47,7 +47,7 @@ private:
 class VkComputePipelineState final : public RHIComputePipelineStateBase
 {
 public:
-    VkComputePipelineState(const Key& key, ::vk::Device device, ::vk::PipelineCache psoCache);
+    VkComputePipelineState(std::string name, const Key& key, ::vk::Device device, ::vk::PipelineCache psoCache);
     VkComputePipelineState(VkComputePipelineState&&) = default;
     VkComputePipelineState& operator=(VkComputePipelineState&&) = default;
     virtual void Compile(const ShaderView& computeShader, RHIResourceLayout& resourceLayout) override;
@@ -63,7 +63,7 @@ private:
 class VkRayTracingPipelineState final : public RHIRayTracingPipelineStateBase
 {
 public:
-    VkRayTracingPipelineState(const Key& key, NonNullPtr<VkGPUContext> ctx, ::vk::PipelineCache psoCache);
+    VkRayTracingPipelineState(std::string name, const Key& key, NonNullPtr<VkGPUContext> ctx, ::vk::PipelineCache psoCache);
     VkRayTracingPipelineState(VkRayTracingPipelineState&&) = default;
     VkRayTracingPipelineState& operator=(VkRayTracingPipelineState&&) = default;
     virtual std::vector<MaybeUninitialized<RHIBuffer>> Compile(const RayTracingShaderCollection& shaderCollection,

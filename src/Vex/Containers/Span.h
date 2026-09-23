@@ -14,7 +14,7 @@ template <class T, std::size_t Extent = static_cast<size_t>(-1)>
 #else
 template <class T, std::size_t Extent = std::dynamic_extent>
 #endif
-struct Span : public std::span<T, Extent>
+struct Span : std::span<T, Extent>
 {
     using Base = std::span<T, Extent>;
     using Base::Base; // Inherit base constructors

@@ -67,8 +67,8 @@ public:
     Graphics(const Graphics&) = delete;
     Graphics& operator=(const Graphics&) = delete;
 
-    Graphics(Graphics&&) = default;
-    Graphics& operator=(Graphics&&) = default;
+    Graphics(Graphics&&) = delete;
+    Graphics& operator=(Graphics&&) = delete;
 
     // Presents the current presentTexture to the swapchain. Will stall if the GPU's next backbuffer is not yet ready
     // (depends on your FrameBuffering). If you use an HDR swapchain, this will apply HDR conversions, if necessary,
@@ -120,7 +120,7 @@ public:
 
     // Allows users to fetch the bindless handles for multiple resource bindings. These bindless handles remain valid as
     // long as the resources themselves are alive.
-    [[nodiscard]] std::vector<BindlessHandle> GetBindlessHandles(Span<const ResourceBinding> bindlessResources);
+    void GetBindlessHandles(Span<const ResourceBinding> bindlessResources, Span<BindlessHandle> out);
 
     // Obtains the specified sampler (creating it if it doesn't yet exist) for use as a bindless sampler in a shader.
     [[nodiscard]] BindlessHandle GetBindlessSampler(const BindlessTextureSampler& sampler);

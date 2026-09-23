@@ -6,11 +6,11 @@
 #include <Vex/AccelerationStructure.h>
 #include <Vex/Buffer.h>
 #include <Vex/Containers/Span.h>
+#include <Vex/Logger.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
 #include <Vex/Utility/Concepts.h>
 #include <Vex/Utility/EnumFlags.h>
-#include <Vex/Utility/Formattable.h>
 #include <VexMacros.h>
 
 #include <RHI/RHIFwd.h>
@@ -24,7 +24,7 @@ struct ConstantBinding
 
     // Construct from raw ptr and size.
     constexpr explicit ConstantBinding(const void* data, Span<const byte>::size_type size)
-        : data{ reinterpret_cast<const byte*>(data), size }
+        : data{ static_cast<const byte*>(data), size }
     {
         VEX_ASSERT(
             size <= MaxTheoreticalLocalConstantsByteSize,
@@ -32,17 +32,17 @@ struct ConstantBinding
     }
 
     // Construct from vex::Span.
-    template <typename T>
+    template <typename T, std::size_t N>
         requires(sizeof(T) <= MaxTheoreticalLocalConstantsByteSize)
-    explicit ConstantBinding(Span<T> data)
+    explicit ConstantBinding(Span<T, N> data)
         : data(std::as_bytes(data))
     {
     }
 
     // Construct from std::span.
-    template <typename T>
+    template <typename T, std::size_t N>
         requires(sizeof(T) <= MaxTheoreticalLocalConstantsByteSize)
-    explicit ConstantBinding(std::span<T> data)
+    explicit ConstantBinding(std::span<T, N> data)
         : data(std::as_bytes(data))
     {
     }
@@ -51,7 +51,8 @@ struct ConstantBinding
     // This constructor's concepts are here to avoid taking in a container, and thus polluting constant data with the
     // container's data (eg: a vector's size/capacity).
     template <typename T>
-        requires(sizeof(T) <= MaxTheoreticalLocalConstantsByteSize and not IsContainer<T>)
+        requires(sizeof(T) <= MaxTheoreticalLocalConstantsByteSize and not IsContainer<T> and
+                 std::is_trivially_copyable_v<T>)
     explicit ConstantBinding(const T& data)
         : ConstantBinding(static_cast<const void*>(&data), sizeof(T))
     {
@@ -178,7 +179,7 @@ struct ResourceBinding
 struct DrawResourceBinding
 {
     Span<const TextureBinding> renderTargets;
-    std::optional<const TextureBinding> depthStencil;
+    std::optional<TextureBinding> depthStencil;
 
     // Index buffer used for DrawIndexed.
     std::optional<BufferBinding> indexBuffer;

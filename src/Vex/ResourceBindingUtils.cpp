@@ -36,16 +36,15 @@ RHIDrawResources ResourceBindingUtils::CollectRHIDrawResources(Graphics& graphic
                                                                std::optional<TextureBinding> depthStencil)
 {
     RHIDrawResources drawResources;
-    drawResources.renderTargets.reserve(renderTargets.size());
     for (const auto& renderTarget : renderTargets)
     {
         auto& texture = graphics.GetRHITexture(renderTarget.texture.handle);
-        drawResources.renderTargets.emplace_back(renderTarget, texture);
+        drawResources.renderTargets.emplace_back(renderTarget, &texture);
     }
     if (depthStencil.has_value())
     {
         auto& texture = graphics.GetRHITexture(depthStencil->texture.handle);
-        drawResources.depthStencil = RHITextureBinding{ .binding = *depthStencil, .texture = texture };
+        drawResources.depthStencil = RHITextureBinding{ .binding = *depthStencil, .texture = &texture };
     }
     return drawResources;
 }

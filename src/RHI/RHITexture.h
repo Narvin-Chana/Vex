@@ -2,10 +2,8 @@
 
 #include <Vex/MemoryAllocation.h>
 #include <Vex/Texture.h>
-#include <Vex/Types.h>
 
 #include <RHI/RHIBarrier.h>
-#include <RHI/RHIBindings.h>
 #include <RHI/RHIFwd.h>
 
 namespace vex
@@ -16,7 +14,7 @@ class RHITextureBase
 {
 public:
     RHITextureBase() = default;
-    RHITextureBase(RHIAllocator& allocator)
+    explicit RHITextureBase(RHIAllocator& allocator)
         : allocator{ &allocator } {};
     RHITextureBase(const RHITextureBase&) = delete;
     RHITextureBase& operator=(const RHITextureBase&) = delete;

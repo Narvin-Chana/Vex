@@ -106,7 +106,7 @@ D3D12_BARRIER_ACCESS RHIBarrierAccessToDX12(RHIBarrierAccess barrierAccess,
         // Certain states are only valid when not using a copy queue.
         if (queueType != QueueType::Copy)
         {
-            // Cannot use D3D12_BARRIER_ACCESS_UNORDERED_ACCESS if the resource is does not have UNORDERED_ACCESS usage.
+            // Cannot use D3D12_BARRIER_ACCESS_UNORDERED_ACCESS if the resource does not have UNORDERED_ACCESS usage.
             if (allowsShaderReadWriteUsage && !isTexture)
             {
                 validAccess |= D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;

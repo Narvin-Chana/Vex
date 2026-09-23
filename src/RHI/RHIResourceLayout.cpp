@@ -24,7 +24,7 @@ void RHIResourceLayoutBase::SetLayoutResources(const ConstantBinding& constants)
                     "Cannot pass in more bytes as local constants versus what your platform allows. You passed in {} "
                     "bytes, your graphics API allows for {} bytes.",
                     constants.data.size_bytes(),
-                    maxLocalConstantsByteSize)
+                    maxLocalConstantsByteSize);
             return;
         }
 

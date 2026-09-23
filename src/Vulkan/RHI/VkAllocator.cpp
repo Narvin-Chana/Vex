@@ -45,7 +45,7 @@ u32 GetBestSuitedMemoryTypeIndex(::vk::PhysicalDevice device, u32 typeFilter, ::
         }
     }
 
-    VEX_LOG(Fatal, "Unsuitable memory found for flags {:x}", static_cast<u32>(flags))
+    VEX_LOG(Fatal, "Unsuitable memory found for flags {:x}", static_cast<u32>(flags));
     return 0;
 }
 

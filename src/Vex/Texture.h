@@ -1,7 +1,6 @@
 #pragma once
 
 #include <array>
-#include <functional>
 #include <string>
 
 #include <Vex/Formats.h>
@@ -181,7 +180,10 @@ struct Texture final
     TextureHandle handle;
     TextureDesc desc;
 
-    constexpr bool operator==(const Texture&) const = default;
+    constexpr bool operator==(const Texture& other) const
+    {
+        return handle == other.handle;
+    }
 };
 
 struct TextureHandleHash
@@ -306,9 +308,23 @@ struct TextureUtil
 
     static bool IsBindingUsageCompatibleWithUsage(Flags<TextureUsage> usages, TextureBindingUsage bindingUsage);
 
-    static void ForEachSubresourceIndices(const TextureSubresource& subresource,
-                                          const TextureDesc& desc,
-                                          const std::function<void(u16 mip, u32 slice, u32 plane)>& func);
+    template <class Func>
+    static void ForEachSubresourceIndices(const TextureSubresource& subresource, const TextureDesc& desc, Func&& func)
+    {
+        for (u16 mip = subresource.startMip; mip < subresource.startMip + subresource.GetMipCount(desc); ++mip)
+        {
+            for (u32 slice = subresource.startSlice; slice < subresource.startSlice + subresource.GetSliceCount(desc);
+                 ++slice)
+            {
+                for (u32 plane = subresource.GetStartPlane();
+                     plane < subresource.GetStartPlane() + subresource.GetPlaneCount(desc);
+                     ++plane)
+                {
+                    func(mip, slice, plane);
+                }
+            }
+        }
+    }
 
     static void ValidateSubresource(const TextureDesc& desc, const TextureSubresource& subresource);
     static void ValidateRegion(const TextureDesc& desc, const TextureRegion& region);

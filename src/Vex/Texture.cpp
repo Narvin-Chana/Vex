@@ -310,25 +310,6 @@ bool TextureUtil::IsBindingUsageCompatibleWithUsage(Flags<TextureUsage> usages, 
     return true;
 }
 
-void TextureUtil::ForEachSubresourceIndices(const TextureSubresource& subresource,
-                                            const TextureDesc& desc,
-                                            const std::function<void(u16 mip, u32 slice, u32 plane)>& func)
-{
-    for (u16 mip = subresource.startMip; mip < subresource.startMip + subresource.GetMipCount(desc); ++mip)
-    {
-        for (u32 slice = subresource.startSlice; slice < subresource.startSlice + subresource.GetSliceCount(desc);
-             ++slice)
-        {
-            for (u32 plane = subresource.GetStartPlane();
-                 plane < subresource.GetStartPlane() + subresource.GetPlaneCount(desc);
-                 ++plane)
-            {
-                func(mip, slice, plane);
-            }
-        }
-    }
-}
-
 void TextureUtil::ValidateSubresource(const TextureDesc& desc, const TextureSubresource& subresource)
 {
     VEX_CHECK(subresource.startMip < desc.mips,
@@ -458,12 +439,13 @@ void TextureUtil::ValidateCopyDesc(const TextureDesc& srcDesc,
               "A texture copy's src and dst extents should match!");
 }
 
-void TextureUtil::ValidateCompatibleTextureDescs(const TextureDesc& srcDesc, const TextureDesc& dstDesc){
+void TextureUtil::ValidateCompatibleTextureDescs(const TextureDesc& srcDesc, const TextureDesc& dstDesc)
+{
     VEX_CHECK(srcDesc.depthOrSliceCount == dstDesc.depthOrSliceCount && srcDesc.width == dstDesc.width &&
                   srcDesc.height == dstDesc.height && srcDesc.mips == dstDesc.mips &&
                   srcDesc.format == dstDesc.format && srcDesc.type == dstDesc.type,
               "Textures must have the same width, height, depth/array size, mips, format and type to be able to do a "
-              "simple copy")
+              "simple copy");
 }
 
 TextureDesc TextureDesc::CreateTexture2DDesc(std::string name,

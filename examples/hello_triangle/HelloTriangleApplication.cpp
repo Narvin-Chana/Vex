@@ -70,7 +70,8 @@ void HelloTriangleApplication::Run()
                     .usage = vex::TextureBindingUsage::ShaderReadWrite,
                 },
             };
-            std::vector<vex::BindlessHandle> pass1Handles = graphics->GetBindlessHandles(pass1Bindings);
+            std::array<vex::BindlessHandle, 3> pass1Handles;
+            graphics->GetBindlessHandles(pass1Bindings, pass1Handles);
 
             std::array<vex::ResourceBinding, 3> pass2Bindings{
                 vex::TextureBinding{
@@ -87,7 +88,8 @@ void HelloTriangleApplication::Run()
                     .usage = vex::TextureBindingUsage::ShaderRead,
                 },
             };
-            std::vector<vex::BindlessHandle> pass2Handles = graphics->GetBindlessHandles(pass2Bindings);
+            std::array<vex::BindlessHandle, 3> pass2Handles;
+            graphics->GetBindlessHandles(pass2Bindings, pass2Handles);
 
             ctx.EnqueueDataUpload(colorBuffer, std::as_bytes(std::span(color)));
 

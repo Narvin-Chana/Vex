@@ -10,13 +10,13 @@ namespace vex::dx12
 class DX12ResourceLayout final : public RHIResourceLayoutBase
 {
 public:
-    DX12ResourceLayout(ComPtr<DX12Device>& device);
+    explicit DX12ResourceLayout(ComPtr<DX12Device>& device);
     ~DX12ResourceLayout();
-
-    ComPtr<ID3D12RootSignature>& GetRootSignature();
 
     DX12ResourceLayout(DX12ResourceLayout&&) = default;
     DX12ResourceLayout& operator=(DX12ResourceLayout&&) = default;
+
+    ComPtr<ID3D12RootSignature>& GetRootSignature();
 
 private:
     void CompileRootSignature();

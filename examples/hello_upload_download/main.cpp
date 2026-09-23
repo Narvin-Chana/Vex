@@ -81,7 +81,8 @@ int main()
             .subresource = { .startMip = 1, .mipCount = 1 },
         },
     };
-    std::vector<vex::BindlessHandle> handles = graphics.GetBindlessHandles(bindings);
+    std::array<vex::BindlessHandle, 2> handles;
+    graphics.GetBindlessHandles(bindings, handles);
 
     ctx.Dispatch(shaderCompiler.GetShaderView(vex::ShaderKey{
                      .filepath = (WorkingDir / "BoxBlur.hlsl").string(),

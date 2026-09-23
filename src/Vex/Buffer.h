@@ -29,7 +29,6 @@ enum class BufferUsage : u16
     IndexBuffer                 = 1 << 4,
     // Buffers used as parameters for an indirect dispatch.
     IndirectArgs                = 1 << 5,
-    // TODO(https://trello.com/c/92AYN8Oz): check/rework this, error prone
     // Buffers used as a HWRT Acceleration Structure, these also require the ShaderReadWrite usage.
     AccelerationStructure       = (1 << 6) | ShaderReadWrite,
     // Buffers used as a scratch buffer for building HWRT Acceleration Structures, these also require the ShaderReadWrite usage.
@@ -84,13 +83,13 @@ struct BufferDesc
 
     // Helpers to create a buffer description.
 
-    // Creates a CPUWrite buffer useable as a Uniform (/constant) Buffer.
+    // Creates a CPUWrite buffer usable as a Uniform (/constant) Buffer.
     static BufferDesc CreateUniformBufferDesc(std::string name, u64 byteSize);
-    // Creates a GPUOnly buffer useable as an Vertex Buffer.
+    // Creates a GPUOnly buffer usable as an Vertex Buffer.
     static BufferDesc CreateVertexBufferDesc(std::string name,
                                              u64 byteSize,
                                              bool canBeAccelerationStructureSource = false);
-    // Creates a GPUOnly buffer useable as an Index Buffer.
+    // Creates a GPUOnly buffer usable as an Index Buffer.
     static BufferDesc CreateIndexBufferDesc(std::string name,
                                             u64 byteSize,
                                             bool allowShaderRead = false,
@@ -103,13 +102,13 @@ struct BufferDesc
     static BufferDesc CreateReadbackBufferDesc(std::string name,
                                                u64 byteSize,
                                                Flags<BufferUsage> usageFlags = BufferUsage::None);
-    // Creates a GPUOnly buffer useable as a StructuredBuffer or ByteAddressBuffer.
+    // Creates a GPUOnly buffer usable as a StructuredBuffer or ByteAddressBuffer.
     static BufferDesc CreateGenericBufferDesc(std::string name, u64 byteSize, bool readWrite = false);
 };
 
 // Strongly defined type represents a buffer.
 // We use a struct (instead of a typedef/using) to enforce compile-time correctness of handles.
-struct BufferHandle : public Handle64<BufferHandle>
+struct BufferHandle : Handle64<BufferHandle>
 {
 };
 
@@ -119,6 +118,11 @@ struct Buffer final
 {
     BufferHandle handle;
     BufferDesc desc;
+
+    constexpr bool operator==(const Buffer& other) const
+    {
+        return handle == other.handle;
+    }
 };
 
 inline constexpr u64 GBufferWholeSize = ~static_cast<u64>(0);

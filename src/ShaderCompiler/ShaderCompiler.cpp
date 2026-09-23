@@ -1,9 +1,8 @@
 #include "ShaderCompiler.h"
 
 #include <ranges>
+#include <sstream>
 #include <string>
-
-#include <Vex/Utility/Formattable.h>
 
 #include <Vex/Logger.h>
 #include <Vex/RayTracing.h>

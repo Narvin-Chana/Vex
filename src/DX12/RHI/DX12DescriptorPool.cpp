@@ -60,7 +60,8 @@ void DX12DescriptorPool::CopyNullDescriptor(DescriptorType descriptorType, u32 s
 BindlessHandle DX12DescriptorPool::CreateBindlessSampler(const BindlessTextureSampler& textureSampler)
 {
     const BindlessHandle bindlessHandle = AllocateStaticDescriptor(DescriptorType::Sampler);
-    const D3D12_SAMPLER_DESC samplerDesc = GraphicsPipeline::GetDX12SamplerDescFromBindlessTextureSampler(textureSampler);
+    const D3D12_SAMPLER_DESC samplerDesc =
+        GraphicsPipeline::GetDX12SamplerDescFromBindlessTextureSampler(textureSampler);
     device->CreateSampler(&samplerDesc, samplerHeap.GetCPUDescriptorHandle(bindlessHandle.GetIndex()));
     return bindlessHandle;
 }
@@ -72,13 +73,13 @@ void DX12DescriptorPool::FreeBindlessSampler(BindlessHandle handle)
 
 void DX12DescriptorPool::CopyDescriptor(BindlessHandle handle, CD3DX12_CPU_DESCRIPTOR_HANDLE descriptor)
 {
-    VEX_ASSERT(IsValid(handle), "Invalid handle passed to DX12 Descriptor Pool.");
+    VEX_ASSERT(IsValid(DescriptorType::Resource, handle), "Invalid handle passed to DX12 Descriptor Pool.");
     device->CopyDescriptorsSimple(1, GetCPUDescriptor(handle), descriptor, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 }
 
 CD3DX12_CPU_DESCRIPTOR_HANDLE DX12DescriptorPool::GetCPUDescriptor(BindlessHandle handle)
 {
-    VEX_ASSERT(IsValid(handle), "Invalid handle passed to DX12 Descriptor Pool.");
+    VEX_ASSERT(IsValid(DescriptorType::Resource, handle), "Invalid handle passed to DX12 Descriptor Pool.");
     return gpuHeap.GetCPUDescriptorHandle(handle.GetIndex());
 }
 
@@ -92,9 +93,9 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12DescriptorPool::GetNullSamplerDescriptor()
     return samplerNullHeap.GetCPUDescriptorHandle(0);
 }
 
-CD3DX12_GPU_DESCRIPTOR_HANDLE DX12DescriptorPool::GetGPUDescriptor(BindlessHandle handle)
+CD3DX12_GPU_DESCRIPTOR_HANDLE DX12DescriptorPool::GetGPUDescriptor(BindlessHandle handle) const
 {
-    VEX_ASSERT(IsValid(handle), "Invalid handle passed to DX12 Descriptor Pool.");
+    VEX_ASSERT(IsValid(DescriptorType::Resource, handle), "Invalid handle passed to DX12 Descriptor Pool.");
     return gpuHeap.GetGPUDescriptorHandle(handle.GetIndex());
 }
 

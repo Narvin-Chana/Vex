@@ -139,9 +139,7 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, TextureDesc&& inDescription, 
     , image{ backbufferImage }
 {
     desc = std::move(inDescription);
-    SetDebugName(ctx->device,
-                 backbufferImage,
-                 std::format("{}: {}", desc.type, desc.name).c_str());
+    SetDebugName(ctx->device, backbufferImage, std::format("{}: {}", desc.type, desc.name).c_str());
 }
 
 VkTexture::VkTexture(const NonNullPtr<VkGPUContext> ctx, const TextureDesc& inDescription, ::vk::UniqueImage rawImage)
@@ -198,7 +196,8 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, RHIAllocator& allocator, Text
 BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding, RHIDescriptorPool& descriptorPool)
 {
     VkTextureView view{ binding };
-    if (auto it = bindlessCache.find(view); it != bindlessCache.end() && descriptorPool.IsValid(it->second.handle))
+    if (auto it = bindlessCache.find(view);
+        it != bindlessCache.end() && descriptorPool.IsValid(DescriptorType::Resource, it->second.handle))
     {
         return it->second.handle;
     }
@@ -397,9 +396,7 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
     SetDebugName(ctx->device, *memory, std::format("Memory: {}", desc.name).c_str());
     VEX_VK_CHECK << ctx->device.bindImageMemory(*imageTmp, *memory, 0);
 #endif
-    SetDebugName(ctx->device,
-                 imageTmp.get(),
-                 std::format("{}: {}", desc.type, desc.name).c_str());
+    SetDebugName(ctx->device, imageTmp.get(), std::format("{}: {}", desc.type, desc.name).c_str());
 
     image = std::move(imageTmp);
 }

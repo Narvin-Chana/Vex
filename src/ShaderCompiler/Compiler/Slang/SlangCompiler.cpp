@@ -17,7 +17,7 @@ namespace vex::sc
 namespace SlangImpl_Internal
 {
 
-std::expected<Slang::ComPtr<slang::IBlob>, std::string> GetByteCode(slang::IComponentType* linkedProgram)
+static std::expected<Slang::ComPtr<slang::IBlob>, std::string> GetByteCode(slang::IComponentType* linkedProgram)
 {
     // Get the compiled bytecode
     static constexpr i32 EntryPointIndex = 0; // only one entry point
@@ -49,17 +49,17 @@ std::expected<Slang::ComPtr<slang::IBlob>, std::string> GetByteCode(slang::IComp
     return bytecodeBlob;
 }
 
-SHA1HashDigest GetProgramHash(slang::IComponentType* linkedProgram)
+static SHA1HashDigest GetProgramHash(slang::IComponentType* linkedProgram)
 {
-    slang::IBlob* blob;
-    linkedProgram->getEntryPointHash(0, 0, &blob);
+    Slang::ComPtr<slang::IBlob> blob;
+    linkedProgram->getEntryPointHash(0, 0, blob.writeRef());
     SHA1HashDigest hash{};
-    std::uninitialized_copy_n(static_cast<const u32*>(blob->getBufferPointer()), 5, hash.data());
+    std::uninitialized_copy_n(static_cast<const u32*>(blob->getBufferPointer()), 5, hash.value.data());
     return hash;
 }
 
-std::expected<NonNullPtr<slang::IModule>, std::string> LoadModule(const Slang::ComPtr<slang::ISession>& session,
-                                                                  const std::filesystem::path& filepath)
+static std::expected<NonNullPtr<slang::IModule>, std::string> LoadModule(const Slang::ComPtr<slang::ISession>& session,
+                                                                         const std::filesystem::path& filepath)
 {
     Slang::ComPtr<ISlangBlob> diagnostics;
 
@@ -86,9 +86,9 @@ std::expected<NonNullPtr<slang::IModule>, std::string> LoadModule(const Slang::C
     return NonNullPtr{ slangModule };
 }
 
-std::expected<NonNullPtr<slang::IModule>, std::string> LoadModule(const Slang::ComPtr<slang::ISession>& session,
-                                                                  const ShaderKey& shaderKey,
-                                                                  const std::string_view sourceCode)
+static std::expected<NonNullPtr<slang::IModule>, std::string> LoadModule(const Slang::ComPtr<slang::ISession>& session,
+                                                                         const ShaderKey& shaderKey,
+                                                                         const std::string_view sourceCode)
 {
     Slang::ComPtr<ISlangBlob> diagnostics;
     slang::IModule* slangModule = session->loadModuleFromSourceString(shaderKey.filepath.c_str(),
@@ -115,8 +115,8 @@ std::expected<NonNullPtr<slang::IModule>, std::string> LoadModule(const Slang::C
     return NonNullPtr{ slangModule };
 }
 
-std::expected<Slang::ComPtr<slang::IEntryPoint>, std::string> FindEntryPoint(slang::IModule* module,
-                                                                             const std::string& entryPointName)
+static std::expected<Slang::ComPtr<slang::IEntryPoint>, std::string> FindEntryPoint(slang::IModule* module,
+                                                                                    const std::string& entryPointName)
 {
     // Obtain the entry point corresponding to our shader.
     Slang::ComPtr<slang::IEntryPoint> entryPoint;
@@ -127,7 +127,7 @@ std::expected<Slang::ComPtr<slang::IEntryPoint>, std::string> FindEntryPoint(sla
     return entryPoint;
 }
 
-std::expected<Slang::ComPtr<slang::IComponentType>, std::string> LinkProgram(
+static std::expected<Slang::ComPtr<slang::IComponentType>, std::string> LinkProgram(
     const Slang::ComPtr<slang::IComponentType>& program)
 {
     Slang::ComPtr<ISlangBlob> diagnostics = nullptr;
@@ -152,7 +152,7 @@ std::expected<Slang::ComPtr<slang::IComponentType>, std::string> LinkProgram(
     return linkedProgram;
 }
 
-std::expected<Slang::ComPtr<slang::IComponentType>, std::string> GetShaderProgram(
+static std::expected<Slang::ComPtr<slang::IComponentType>, std::string> GetShaderProgram(
     const Slang::ComPtr<slang::ISession>& session,
     const NonNullPtr<slang::IModule> module,
     const Slang::ComPtr<slang::IEntryPoint>& entryPoint)
@@ -167,7 +167,7 @@ std::expected<Slang::ComPtr<slang::IComponentType>, std::string> GetShaderProgra
     return program;
 }
 
-std::expected<Slang::ComPtr<slang::IComponentType>, std::string> GetLinkedShaderProgram(
+static std::expected<Slang::ComPtr<slang::IComponentType>, std::string> GetLinkedShaderProgram(
     const ShaderKey& key, const Slang::ComPtr<slang::ISession>& session, const NonNullPtr<slang::IModule> module)
 {
     std::expected<Slang::ComPtr<slang::IEntryPoint>, std::string> entryPointRes =
@@ -405,7 +405,7 @@ SHA1HashDigest SlangCompiler::GetShaderCodeHash(const Slang::ComPtr<slang::IComp
     slang::IBlob* blob;
     linkedShaderProgram->getEntryPointHash(0, 0, &blob);
     SHA1HashDigest hash{};
-    std::uninitialized_copy_n(static_cast<const u32*>(blob->getBufferPointer()), 5, hash.data());
+    std::uninitialized_copy_n(static_cast<const u32*>(blob->getBufferPointer()), 5, hash.value.data());
     return hash;
 }
 
