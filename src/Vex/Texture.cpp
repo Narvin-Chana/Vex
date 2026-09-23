@@ -24,11 +24,25 @@ std::tuple<u32, u32, u32> TextureUtil::GetMipSize(const TextureDesc& desc, u32 m
     return { std::max(desc.width >> mip, 1u), std::max(desc.height >> mip, 1u), std::max(desc.GetDepth() >> mip, 1u) };
 }
 
-TextureViewType TextureUtil::GetTextureViewType(const TextureDesc& desc, bool textureCubeAsTexture2DArray)
+TextureViewType TextureUtil::GetTextureViewType(const TextureDesc& desc, const std::optional<TextureViewType>& viewTypeOverride)
 {
-    if (textureCubeAsTexture2DArray && desc.type == TextureType::TextureCube)
+    if (viewTypeOverride)
     {
-        return TextureViewType::Texture2DArray;
+        // TODO: make sure the viewTypeOverride is valid depending on texture type.
+        switch (*viewTypeOverride)
+        {
+        case TextureViewType::Texture2D:
+            break;
+        case TextureViewType::Texture2DArray:
+            break;
+        case TextureViewType::TextureCube:
+            break;
+        case TextureViewType::TextureCubeArray:
+            break;
+        case TextureViewType::Texture3D:
+            break;
+        }
+        return *viewTypeOverride;
     }
 
     switch (desc.type)
@@ -47,7 +61,7 @@ TextureViewType TextureUtil::GetTextureViewType(const TextureDesc& desc, bool te
 
 TextureViewType TextureUtil::GetTextureViewType(const TextureBinding& binding)
 {
-    return GetTextureViewType(binding.texture.desc, binding.textureCubeAsTexture2DArray);
+    return GetTextureViewType(binding.texture.desc, binding.viewTypeOverride);
 }
 
 TextureFormat TextureUtil::GetCopyFormat(TextureFormat format, TextureAspect aspect)

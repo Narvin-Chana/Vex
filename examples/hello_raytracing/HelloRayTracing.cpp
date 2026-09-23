@@ -66,8 +66,8 @@ HelloRayTracing::HelloRayTracing()
 
     ctx.BuildBLAS(triangleBLAS,
                   { .geometry = { vex::BLASGeometryDesc{
-                        .vertexBufferBinding = vex::BufferBinding::CreateStructuredBuffer(vertexBuffer, sizeof(Vertex)),
-                        .indexBufferBinding = vex::BufferBinding::CreateStructuredBuffer(indexBuffer, sizeof(vex::u32)),
+                        .vertexBufferBinding = vex::BufferBinding::CreateStructured(vertexBuffer, sizeof(Vertex)),
+                        .indexBufferBinding = vex::BufferBinding::CreateStructured(indexBuffer, sizeof(vex::u32)),
                         .transform = std::nullopt,
                         .flags = vex::ASGeometry::Opaque,
                     } } });

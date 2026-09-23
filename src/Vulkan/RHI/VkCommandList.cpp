@@ -270,8 +270,8 @@ void VkCommandList::ClearTexture(RHITexture& texture,
 
         if (isDepthStencilClear)
         {
-            resources.depthStencil = RHITextureBinding{
-                .binding = { .texture = { .desc = texture.GetDesc() }, .isSRGB = false },
+            resources.depthStencil = RHIDepthStencilBinding{
+                .binding = { .texture = { .desc = texture.GetDesc() } },
                 .texture = &texture,
             };
             clearAttachment.clearValue.depthStencil = ::vk::ClearDepthStencilValue{
@@ -281,7 +281,7 @@ void VkCommandList::ClearTexture(RHITexture& texture,
         }
         else
         {
-            resources.renderTargets.push_back(RHITextureBinding{
+            resources.renderTargets.push_back(RHIRenderTargetBinding{
                 .binding = { .texture = { .desc = texture.GetDesc() }, .isSRGB = false },
                 .texture = &texture,
             });
@@ -398,25 +398,35 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
         maxArea.extent.height = std::min(resources.depthStencil->texture->GetDesc().height, maxArea.extent.height);
     }
 
-    std::vector<::vk::RenderingAttachmentInfo> colorAttachmentsInfo(resources.renderTargets.size());
+    InlineVector<::vk::RenderingAttachmentInfo, GMaxSimultaneousRenderTargetCount> colorAttachmentsInfo(
+        resources.renderTargets.size());
 
-    std::ranges::transform(
-        resources.renderTargets,
-        colorAttachmentsInfo.begin(),
-        [](const RHITextureBinding& rtBindings)
-        {
-            return ::vk::RenderingAttachmentInfo{
-                .imageView = rtBindings.texture->GetOrCreateImageView(rtBindings.binding, TextureUsage::RenderTarget),
-                .imageLayout = ::vk::ImageLayout::eGeneral,
-            };
-        });
+    std::ranges::transform(resources.renderTargets,
+                           colorAttachmentsInfo.begin(),
+                           [](const RHIRenderTargetBinding& rtBindings)
+                           {
+                               return ::vk::RenderingAttachmentInfo{
+                                   .imageView = rtBindings.texture->GetOrCreateImageView(
+                                       {
+                                           .texture = rtBindings.binding.texture,
+                                           .isSRGB = rtBindings.binding.isSRGB,
+                                           .subresource = rtBindings.binding.subresource,
+                                       },
+                                       TextureUsage::RenderTarget),
+                                   .imageLayout = ::vk::ImageLayout::eGeneral,
+                               };
+                           });
 
     std::optional<::vk::RenderingAttachmentInfo> depthInfo;
     if (resources.depthStencil && resources.depthStencil->texture->GetDesc().usage & TextureUsage::DepthStencil)
     {
         depthInfo = ::vk::RenderingAttachmentInfo{
-            .imageView = resources.depthStencil->texture->GetOrCreateImageView(resources.depthStencil->binding,
-                                                                               TextureUsage::DepthStencil),
+            .imageView = resources.depthStencil->texture->GetOrCreateImageView(
+                {
+                    .texture = resources.depthStencil->binding.texture,
+                    .subresource = resources.depthStencil->binding.subresource,
+                },
+                TextureUsage::DepthStencil),
             .imageLayout = ::vk::ImageLayout::eGeneral,
         };
     };
@@ -495,27 +505,25 @@ void VkCommandList::SetVertexBuffers(u32 startSlot, Span<const RHIBufferBinding>
     commandBuffer->bindVertexBuffers(startSlot, static_cast<u32>(vkBuffers.size()), vkBuffers.data(), vkOffsets.data());
 }
 
-void VkCommandList::SetIndexBuffer(const RHIBufferBinding& indexBuffer)
+void VkCommandList::SetIndexBuffer(const RHIIndexBufferBinding& indexBuffer)
 {
     ::vk::IndexType indexType;
-    switch (indexBuffer.binding.strideByteSize.value_or(0))
+    switch (indexBuffer.binding.format)
     {
-    case 2:
+    case IndexFormat::U16:
         indexType = ::vk::IndexType::eUint16;
         break;
-    case 4:
+    case IndexFormat::U32:
         indexType = ::vk::IndexType::eUint32;
         break;
     default:
         VEX_LOG(Fatal,
-                "Unsupported index buffer stride byte size: {}. Vex only supports 2 and 4 byte indices.",
-                indexBuffer.binding.strideByteSize.value_or(0));
+                "Unsupported index buffer format: {}. Vex only supports u16 and u32 index formats.",
+                indexBuffer.binding.format);
         std::unreachable();
     }
 
-    commandBuffer->bindIndexBuffer(indexBuffer.buffer->GetNativeBuffer(),
-                                   indexBuffer.binding.offsetByteSize.value_or(0),
-                                   indexType);
+    commandBuffer->bindIndexBuffer(indexBuffer.buffer->GetNativeBuffer(), indexBuffer.binding.offset, indexType);
 }
 
 void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount)

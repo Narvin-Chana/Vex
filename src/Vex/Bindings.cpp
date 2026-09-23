@@ -7,8 +7,8 @@
 
 namespace vex
 {
-inline constexpr u32 ByteAddressBufferOffsetMultiple = 16;
-inline constexpr u32 ConstantBufferBindingOffsetMultiple = 256;
+static constexpr u32 ByteAddressBufferOffsetMultiple = 16;
+static constexpr u32 ConstantBufferBindingOffsetMultiple = 256;
 
 namespace BindingUtil
 {
@@ -17,29 +17,21 @@ void ValidateBufferBinding(const BufferBinding& binding, Flags<BufferUsage> vali
 {
     const auto& buffer = binding.buffer;
     const auto& usage = binding.usage;
-    if (!(buffer.desc.usage & validBufferUsageFlags))
-    {
-        VEX_LOG(Fatal,
-                "Invalid binding for resource \"{}\": The specified buffer cannot be bound for this type of "
-                "operation. Check the usage flags of your resource at creation.",
-                buffer.desc.name);
-    }
 
-    if (!IsBindingUsageCompatibleWithBufferUsage(buffer.desc.usage, usage))
-    {
-        VEX_LOG(Fatal,
-                "Invalid binding for resource \"{}\": Binding usage must be compatible with buffer description "
-                "usage.",
-                buffer.desc.name);
-    }
+    VEX_CHECK(buffer.desc.usage & validBufferUsageFlags,
+              "Invalid binding for resource \"{}\": The specified buffer cannot be bound for this type of "
+              "operation. Check the usage flags of your resource at creation.",
+              buffer.desc.name);
 
-    if (usage == BufferBindingUsage::Invalid)
-    {
-        VEX_LOG(Fatal,
-                "Invalid binding for resource \"{}\": The binding's usage must be set to something and therefore not "
-                "be invalid",
-                buffer.desc.name);
-    }
+    VEX_CHECK(IsBindingUsageCompatibleWithBufferUsage(buffer.desc.usage, usage),
+              "Invalid binding for resource \"{}\": Binding usage must be compatible with buffer description "
+              "usage.",
+              buffer.desc.name);
+
+    VEX_CHECK(usage != BufferBindingUsage::Invalid,
+              "Invalid binding for resource \"{}\": The binding's usage must be set to something and therefore not "
+              "be invalid",
+              buffer.desc.name);
 
     if (usage == BufferBindingUsage::StructuredBuffer || usage == BufferBindingUsage::RWStructuredBuffer)
     {
@@ -90,151 +82,177 @@ void ValidateBufferBinding(const BufferBinding& binding, Flags<BufferUsage> vali
     }
 }
 
+void ValidateIndexBufferBinding(const IndexBufferBinding& binding)
+{
+    const auto& buffer = binding.buffer;
+
+    VEX_CHECK(binding.offset < buffer.desc.byteSize,
+              "Invalid binding for index buffer \"{}\": Buffer cannot have an offset larger than the buffer size.",
+              buffer.desc.name);
+
+    VEX_CHECK(
+        buffer.desc.usage.IsSet(BufferUsage::IndexBuffer),
+        "Invalid binding for index buffer \"{}\": Buffer must have the usage BufferUsage::IndexBuffer at creation.",
+        buffer.desc.name);
+}
+
 void ValidateTextureBinding(const TextureBinding& binding, Flags<TextureUsage> validTextureUsageFlags)
 {
     const auto& texture = binding.texture;
-    if (!(texture.desc.usage & validTextureUsageFlags))
-    {
-        VEX_LOG(Fatal,
-                "Invalid binding for resource \"{}\": The specified texture cannot be bound for this type of "
-                "operation. Check the usage flags of your resource at creation.",
-                texture.desc.name);
-    }
 
-    if ((validTextureUsageFlags & TextureUsage::DepthStencil) &&
-        !FormatUtil::IsDepthOrDepthStencilFormat(texture.desc.format))
-    {
-        VEX_LOG(Fatal,
-                "Invalid binding for resource \"{}\": texture cannot be bound as depth stencil",
-                texture.desc.name);
-    }
+    VEX_CHECK(texture.desc.usage & validTextureUsageFlags,
+              "Invalid binding for resource \"{}\": The specified texture cannot be bound for this type of "
+              "operation. Check the usage flags of your resource at creation.",
+              texture.desc.name);
 
-    // TODO(https://trello.com/c/0WV7mLQq): Improve texture binding structures, a RTV currently is bound with a usage of
-    // None... meaning if we do validation we crash here. We should have more type-safe ways of binding resources.
-
-    // if (binding.usage == TextureBindingUsage::None)
-    // {
-    //     VEX_LOG(Fatal,
-    //             "Invalid binding for resource \"{}\": The binding's usage must be set to something and therefore not
-    //             " "be invalid", texture.desc.name);
-    // }
+    VEX_CHECK(binding.usage != TextureBindingUsage::None,
+              "Invalid binding for resource \"{}\": The binding's usage must be set to something and therefore not "
+              "be invalid",
+              texture.desc.name);
 
     TextureUtil::ValidateSubresource(texture.desc, binding.subresource);
 
     if (binding.isSRGB)
     {
-        if (!FormatUtil::HasSRGBEquivalent(texture.desc.format))
-        {
-            VEX_LOG(Fatal,
-                    "Invalid binding for resource \"{}\": Texture's format ({}) does not allow for an SRGB binding.",
-                    texture.desc.name,
-                    texture.desc.format);
-        }
+        VEX_CHECK(FormatUtil::HasSRGBEquivalent(texture.desc.format),
+                  "Invalid binding for resource \"{}\": Texture's format ({}) does not allow for an SRGB binding.",
+                  texture.desc.name,
+                  texture.desc.format);
 
-        if (binding.usage == TextureBindingUsage::ShaderReadWrite)
-        {
-            VEX_LOG(Fatal,
-                    "Invalid binding for resource \"{}\": ShaderReadWrite usage cannot be SRGB! This is an API "
-                    "limitation, use a non-SRGB binding and convert manually or write to the texture as a RenderTarget "
-                    "in order to have SRGB conversion handled automatically.",
-                    texture.desc.name);
-        }
+        VEX_CHECK(binding.usage != TextureBindingUsage::ShaderReadWrite,
+                  "Invalid binding for resource \"{}\": ShaderReadWrite usage cannot be SRGB! This is an API "
+                  "limitation, use a non-SRGB binding and convert manually or write to the texture as a RenderTarget "
+                  "in order to have SRGB conversion handled automatically.",
+                  texture.desc.name);
     }
 
-    if (FormatUtil::IsDepthOrDepthStencilFormat(texture.desc.format) &&
-        !(texture.desc.usage & TextureUsage::DepthStencil))
-    {
-        VEX_LOG(Fatal,
-                "Invalid binding for resource \"{}\": Texture's format ({}) requires the depth stencil usage "
-                "upon creation.",
-                texture.desc.name,
-                texture.desc.format);
-    }
+    VEX_CHECK(!FormatUtil::IsDepthOrDepthStencilFormat(texture.desc.format) ||
+                  texture.desc.usage & TextureUsage::DepthStencil,
+              "Invalid binding for resource \"{}\": Texture's format ({}) requires the depth stencil usage "
+              "upon creation.",
+              texture.desc.name,
+              texture.desc.format);
 
-    if (!TextureUtil::IsBindingUsageCompatibleWithUsage(texture.desc.usage, binding.usage))
-    {
-        VEX_LOG(Fatal,
-                "Invalid binding for resource \"{}\": Binding usage must be compatible with texture description's"
-                "usage.",
-                texture.desc.name);
-    }
+    VEX_CHECK(TextureUtil::IsBindingUsageCompatibleWithUsage(texture.desc.usage, binding.usage),
+              "Invalid binding for resource \"{}\": Binding usage must be compatible with texture description's"
+              "usage.",
+              texture.desc.name);
+}
+
+void ValidateRenderTargetBinding(const RenderTargetBinding& binding)
+{
+    const auto& texture = binding.texture;
+
+    TextureUtil::ValidateSubresource(texture.desc, binding.subresource);
+
+    VEX_CHECK(
+        binding.subresource.mipCount == 1,
+        "Invalid render target binding for texture \"{}\": Texture subresource cannot have a mip count different to 1.",
+        texture.desc.name,
+        texture.desc.format);
+
+    VEX_CHECK(
+        !binding.isSRGB || FormatUtil::HasSRGBEquivalent(texture.desc.format),
+        "Invalid render target binding for texture \"{}\": Texture format ({}) does not allow for an SRGB binding.",
+        texture.desc.name,
+        texture.desc.format);
+}
+
+void ValidateDepthStencilBinding(const DepthStencilBinding& binding)
+{
+    const auto& texture = binding.texture;
+
+    VEX_CHECK(FormatUtil::IsDepthOrDepthStencilFormat(texture.desc.format),
+              "Invalid depth stencil binding for texture \"{}\": Texture cannot be bound as depth stencil due to it "
+              "not having a depth or depth-stencil format.",
+              texture.desc.name);
+
+    VEX_CHECK(texture.desc.usage & TextureUsage::DepthStencil,
+              "Invalid depth stencil binding for texture \"{}\": Texture format ({}) requires the depth stencil "
+              "usage upon creation.",
+              texture.desc.name,
+              texture.desc.format);
 }
 
 void ValidateDrawResource(const DrawResourceBinding& binding)
 {
     VEX_CHECK(binding.renderTargets.size() <= GMaxSimultaneousRenderTargetCount,
               "Cannot bind more than 8 render targets simultaneously.");
-    for (const auto& rt : binding.renderTargets)
+    for (const RenderTargetBinding& rt : binding.renderTargets)
     {
-        ValidateTextureBinding(rt, TextureUsage::RenderTarget);
+        ValidateRenderTargetBinding(rt);
     }
 
     if (binding.depthStencil)
     {
-        ValidateTextureBinding(*binding.depthStencil, TextureUsage::DepthStencil);
+        ValidateDepthStencilBinding(*binding.depthStencil);
     }
+
+    ValidateIndexBufferBinding(*binding.indexBuffer);
 }
 
 } // namespace BindingUtil
 
-BufferBinding BufferBinding::CreateStructuredBuffer(const Buffer& buffer,
-                                                    u32 strideByteSize,
-                                                    u32 firstElement,
-                                                    std::optional<u32> elementCount)
+BufferBinding BufferBinding::CreateStructured(const Buffer& buffer,
+                                              u32 strideByteSize,
+                                              u32 firstElement,
+                                              std::optional<u32> elementCount)
 {
-    return { .buffer = buffer,
-             .usage = BufferBindingUsage::StructuredBuffer,
-             .strideByteSize = strideByteSize,
-             .offsetByteSize = firstElement * strideByteSize,
-             .rangeByteSize =
-                 elementCount.value_or((buffer.desc.byteSize / strideByteSize) - firstElement) * strideByteSize };
+    return {
+        .buffer = buffer,
+        .usage = BufferBindingUsage::StructuredBuffer,
+        .strideByteSize = strideByteSize,
+        .offsetByteSize = static_cast<u64>(firstElement) * static_cast<u64>(strideByteSize),
+        .rangeByteSize = elementCount.value_or(buffer.desc.byteSize / strideByteSize - firstElement) * strideByteSize,
+    };
 }
 
-BufferBinding BufferBinding::CreateRWStructuredBuffer(const Buffer& buffer,
-                                                      u32 strideByteSize,
-                                                      u32 firstElement,
-                                                      std::optional<u32> elementCount)
+BufferBinding BufferBinding::CreateRWStructured(const Buffer& buffer,
+                                                u32 strideByteSize,
+                                                u32 firstElement,
+                                                std::optional<u32> elementCount)
 {
-    return { .buffer = buffer,
-             .usage = BufferBindingUsage::RWStructuredBuffer,
-             .strideByteSize = strideByteSize,
-             .offsetByteSize = firstElement * strideByteSize,
-             .rangeByteSize =
-                 elementCount.value_or((buffer.desc.byteSize / strideByteSize) - firstElement) * strideByteSize };
+    return {
+        .buffer = buffer,
+        .usage = BufferBindingUsage::RWStructuredBuffer,
+        .strideByteSize = strideByteSize,
+        .offsetByteSize = firstElement * strideByteSize,
+        .rangeByteSize = elementCount.value_or((buffer.desc.byteSize / strideByteSize) - firstElement) * strideByteSize,
+    };
 }
 
-BufferBinding BufferBinding::CreateRWByteAddressBuffer(const Buffer& buffer,
-                                                       u32 firstElement,
-                                                       std::optional<u64> elementCount)
+BufferBinding BufferBinding::CreateRWByteAddress(const Buffer& buffer,
+                                                 u32 firstElement,
+                                                 std::optional<u64> elementCount)
 {
-    return { .buffer = buffer,
-             .usage = BufferBindingUsage::RWByteAddressBuffer,
-             .offsetByteSize = firstElement * ByteAddressBufferOffsetMultiple,
-             .rangeByteSize =
-                 elementCount.value_or(buffer.desc.byteSize / ByteAddressBufferOffsetMultiple - firstElement) *
-                 ByteAddressBufferOffsetMultiple };
+    return {
+        .buffer = buffer,
+        .usage = BufferBindingUsage::RWByteAddressBuffer,
+        .offsetByteSize = firstElement * ByteAddressBufferOffsetMultiple,
+        .rangeByteSize = elementCount.value_or(buffer.desc.byteSize / ByteAddressBufferOffsetMultiple - firstElement) *
+                         ByteAddressBufferOffsetMultiple,
+    };
 }
 
-BufferBinding BufferBinding::CreateByteAddressBuffer(const Buffer& buffer,
-                                                     u32 firstElement,
-                                                     std::optional<u64> elementCount)
+BufferBinding BufferBinding::CreateByteAddress(const Buffer& buffer, u32 firstElement, std::optional<u64> elementCount)
 {
-    return { .buffer = buffer,
-             .usage = BufferBindingUsage::ByteAddressBuffer,
-             .offsetByteSize = firstElement * ByteAddressBufferOffsetMultiple,
-             .rangeByteSize =
-                 elementCount.value_or(buffer.desc.byteSize / ByteAddressBufferOffsetMultiple - firstElement) *
-                 ByteAddressBufferOffsetMultiple };
+    return {
+        .buffer = buffer,
+        .usage = BufferBindingUsage::ByteAddressBuffer,
+        .offsetByteSize = firstElement * ByteAddressBufferOffsetMultiple,
+        .rangeByteSize = elementCount.value_or(buffer.desc.byteSize / ByteAddressBufferOffsetMultiple - firstElement) *
+                         ByteAddressBufferOffsetMultiple,
+    };
 }
 
-BufferBinding BufferBinding::CreateConstantBuffer(const Buffer& buffer,
-                                                  u32 offsetByteSize,
-                                                  std::optional<u64> rangeByteSize)
+BufferBinding BufferBinding::CreateUniform(const Buffer& buffer, u32 offsetByteSize, std::optional<u64> rangeByteSize)
 {
-    return { .buffer = buffer,
-             .usage = BufferBindingUsage::UniformBuffer,
-             .offsetByteSize = offsetByteSize,
-             .rangeByteSize = rangeByteSize.value_or(buffer.desc.byteSize - offsetByteSize) };
+    return {
+        .buffer = buffer,
+        .usage = BufferBindingUsage::UniformBuffer,
+        .offsetByteSize = offsetByteSize,
+        .rangeByteSize = rangeByteSize.value_or(buffer.desc.byteSize - offsetByteSize),
+    };
 }
 
 } // namespace vex

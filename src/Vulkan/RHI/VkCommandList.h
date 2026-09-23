@@ -59,7 +59,7 @@ public:
         u32 indexCount, u32 instanceCount, u32 indexOffset, i32 vertexOffset, u32 instanceOffset) override;
 
     virtual void SetVertexBuffers(u32 startSlot, Span<const RHIBufferBinding> vertexBuffers) override;
-    virtual void SetIndexBuffer(const RHIBufferBinding& indexBuffer) override;
+    virtual void SetIndexBuffer(const RHIIndexBufferBinding& indexBuffer) override;
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount) override;
 

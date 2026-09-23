@@ -103,7 +103,7 @@ public:
                    Span<const ResourceBinding> trackedResources,
                    const TraceRaysDesc& rayTracingArgs);
 
-    // Fills in all lower resolution mips with downsampled version of the source mip.
+    // Fills in mipCount lower resolution mips with downsampled version of the start mip.
     void GenerateMips(const TextureBinding& textureBinding);
 
     // ---------------------------------------------------------------------------------------------------------------
@@ -193,8 +193,8 @@ public:
 
     // Useful for calling native API draws when wanting to render to a specific Render Target. Allows the passed in
     // lambda to be executed in a draw scope.
-    void ExecuteInDrawContext(Span<const TextureBinding> renderTargets,
-                              std::optional<TextureBinding> depthStencil,
+    void ExecuteInDrawContext(Span<const RenderTargetBinding> renderTargets,
+                              const std::optional<DepthStencilBinding>& depthStencil,
                               Span<const ResourceBinding> trackedResources,
                               const std::function<void()>& callback);
 
@@ -261,7 +261,7 @@ private:
                                                     Span<const ResourceBinding> trackedResources);
     void CheckViewportAndScissor() const;
 
-    void SetIndexBuffer(const BufferBinding& indexBuffer) const;
+    void SetIndexBuffer(const IndexBufferBinding& indexBuffer) const;
 
     NonNullPtr<Graphics> graphics;
     NonNullPtr<RHICommandList> cmdList;

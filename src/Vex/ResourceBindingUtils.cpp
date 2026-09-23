@@ -32,19 +32,20 @@ void ResourceBindingUtils::CollectRHIResources(Graphics& graphics,
 }
 
 RHIDrawResources ResourceBindingUtils::CollectRHIDrawResources(Graphics& graphics,
-                                                               Span<const TextureBinding> renderTargets,
-                                                               std::optional<TextureBinding> depthStencil)
+                                                               Span<const RenderTargetBinding> renderTargets,
+                                                               const std::optional<DepthStencilBinding>& depthStencil)
 {
-    RHIDrawResources drawResources;
+    RHIDrawResources drawResources{
+        .renderTargets = {},
+        .depthStencil = depthStencil.has_value()
+                            ? RHIDepthStencilBinding{ .binding = *depthStencil,
+                                                      .texture = &graphics.GetRHITexture(depthStencil->texture.handle), }
+                            : std::optional<RHIDepthStencilBinding>{},
+    };
     for (const auto& renderTarget : renderTargets)
     {
         auto& texture = graphics.GetRHITexture(renderTarget.texture.handle);
         drawResources.renderTargets.emplace_back(renderTarget, &texture);
-    }
-    if (depthStencil.has_value())
-    {
-        auto& texture = graphics.GetRHITexture(depthStencil->texture.handle);
-        drawResources.depthStencil = RHITextureBinding{ .binding = *depthStencil, .texture = &texture };
     }
     return drawResources;
 }

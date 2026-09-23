@@ -191,13 +191,13 @@ void HelloCubeApplication::Run()
             };
 
             // ...and resources.
-            vex::BufferBinding indexBufferBinding{
+            vex::IndexBufferBinding indexBufferBinding{
                 .buffer = indexBuffer,
-                .strideByteSize = static_cast<vex::u32>(sizeof(vex::u32)),
+                .format = vex::IndexFormat::U32,
             };
 
             // Setup our rendering pass.
-            std::array renderTargets = { vex::TextureBinding{
+            std::array renderTargets = { vex::RenderTargetBinding{
                 .texture = graphics->GetCurrentPresentTexture(),
             } };
 
@@ -224,7 +224,7 @@ void HelloCubeApplication::Run()
                 ctx.DrawIndexed(hlslDrawDesc,
                                 {
                                     .renderTargets = renderTargets,
-                                    .depthStencil = vex::TextureBinding(depthTexture),
+                                    .depthStencil = vex::DepthStencilBinding(depthTexture),
                                     .indexBuffer = indexBufferBinding,
                                 },
                                 vex::ConstantBinding(data),
@@ -236,7 +236,7 @@ void HelloCubeApplication::Run()
                 ctx.DrawIndexed(slangDrawDesc,
                                 {
                                     .renderTargets = renderTargets,
-                                    .depthStencil = vex::TextureBinding(depthTexture),
+                                    .depthStencil = vex::DepthStencilBinding(depthTexture),
                                     .indexBuffer = indexBufferBinding,
                                 },
                                 vex::ConstantBinding(data),

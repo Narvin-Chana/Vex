@@ -407,6 +407,7 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         case TextureType::Texture3D:
             return TextureViewType::Texture3D;
         default:
+            VEX_ASSERT(false);
             std::unreachable();
         }
     };
@@ -504,20 +505,20 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         graphics->GetBindlessHandles(activeBindings, handles);
 
         Uniforms uniforms{
-            linearSamplerHandle,
-            {
+            .linearSamplerHandle = linearSamplerHandle,
+            .texelSize = {
                 2.0f / width,
                 2.0f / height,
                 2.0f / depth,
             },
-            handles[0],
-            mip - 1u,
-            1u + !isLastIteration,
-            handles[1],
-            !isLastIteration ? handles[2] : BindlessHandle{},
-            ComputeNPOTFlag(width, height, depth, texture.desc.type == TextureType::Texture3D),
-            textureBinding.isSRGB,
-            FormatUtil::GetNumChannels(texture.desc.format),
+            .sourceMipHandle = handles[0],
+            .sourceMipLevel = mip - 1u,
+            .numMips = 1u + !isLastIteration,
+            .destinationMip0 = handles[1],
+            .destinationMip1 = !isLastIteration ? handles[2] : BindlessHandle{},
+            .npotFlag = ComputeNPOTFlag(width, height, depth, texture.desc.type == TextureType::Texture3D),
+            .convertToSRGB = textureBinding.isSRGB,
+            .numChannels = FormatUtil::GetNumChannels(texture.desc.format),
         };
 
         // For 2D: z = 1
@@ -1105,8 +1106,7 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
     RHIBuffer& rhiInstanceBuffer = graphics->GetRHIBuffer(instanceBuffer.handle);
     EnqueueDataUpload(instanceBuffer, instanceData);
 
-    BufferBinding binding =
-        BufferBinding::CreateStructuredBuffer(instanceBuffer, accelStruct.GetInstanceBufferStride());
+    BufferBinding binding = BufferBinding::CreateStructured(instanceBuffer, accelStruct.GetInstanceBufferStride());
     rhiTLASDesc.instancesBinding = RHIBufferBinding{ binding, rhiInstanceBuffer };
 
     const RHIAccelerationStructureBuildInfo& buildInfo = accelStruct.SetupTLASBuild(*graphics->allocator, rhiTLASDesc);
@@ -1128,8 +1128,8 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
                        rhiTLASDesc);
 }
 
-void CommandContext::ExecuteInDrawContext(Span<const TextureBinding> renderTargets,
-                                          std::optional<TextureBinding> depthStencil,
+void CommandContext::ExecuteInDrawContext(Span<const RenderTargetBinding> renderTargets,
+                                          const std::optional<DepthStencilBinding>& depthStencil,
                                           Span<const ResourceBinding> trackedResources,
                                           const std::function<void()>& callback)
 {
@@ -1497,10 +1497,10 @@ void CommandContext::CheckViewportAndScissor() const
               "No scissor rect was set! Remember to call CommandContext::SetScissor before performing a draw call!");
 }
 
-void CommandContext::SetIndexBuffer(const BufferBinding& indexBuffer) const
+void CommandContext::SetIndexBuffer(const IndexBufferBinding& indexBuffer) const
 {
     RHIBuffer& buffer = graphics->GetRHIBuffer(indexBuffer.buffer.handle);
-    RHIBufferBinding binding{ indexBuffer, NonNullPtr(buffer) };
+    RHIIndexBufferBinding binding{ indexBuffer, NonNullPtr(buffer) };
     cmdList->SetIndexBuffer(binding);
 }
 

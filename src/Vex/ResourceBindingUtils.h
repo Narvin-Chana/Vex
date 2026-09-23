@@ -24,8 +24,8 @@ struct ResourceBindingUtils
 
     // Collects draw textures from a set of render targets and a depth stencil
     static RHIDrawResources CollectRHIDrawResources(Graphics& graphics,
-                                                    Span<const TextureBinding> renderTargets,
-                                                    std::optional<TextureBinding> depthStencil);
+                                                    Span<const RenderTargetBinding> renderTargets,
+                                                    const std::optional<DepthStencilBinding>& depthStencil);
 };
 
 } // namespace vex

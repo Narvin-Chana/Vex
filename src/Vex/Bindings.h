@@ -87,32 +87,66 @@ struct BufferBinding
     std::optional<u64> rangeByteSize;
 
     // firstElement and elementCount represent strideByteSize multiples on the buffer
-    static BufferBinding CreateStructuredBuffer(const Buffer& buffer,
-                                                u32 strideByteSize,
-                                                u32 firstElement = 0,
-                                                std::optional<u32> elementCount = {});
+    static BufferBinding CreateStructured(const Buffer& buffer,
+                                          u32 strideByteSize,
+                                          u32 firstElement = 0,
+                                          std::optional<u32> elementCount = {});
+
+    template <class T>
+    static BufferBinding CreateStructured(const Buffer& buffer,
+                                          u32 firstElement = 0,
+                                          std::optional<u32> elementCount = {});
 
     // firstElement and elementCount represent strideByteSize multiples on the buffer
-    static BufferBinding CreateRWStructuredBuffer(const Buffer& buffer,
-                                                  u32 strideByteSize,
-                                                  u32 firstElement = 0,
-                                                  std::optional<u32> elementCount = {});
+    static BufferBinding CreateRWStructured(const Buffer& buffer,
+                                            u32 strideByteSize,
+                                            u32 firstElement = 0,
+                                            std::optional<u32> elementCount = {});
 
     // First element and element count represent 16 byte elements on the ByteAddressBuffer
     // example: FirstElement = 1, ElementCount = 10 represents a view on bytes [16, 176] in the buffer
     // example: FirstElement = 0, ElementCount = 2 represents a view on bytes [0, 32] in the buffer
-    static BufferBinding CreateByteAddressBuffer(const Buffer& buffer,
-                                                 u32 firstElement = 0,
-                                                 std::optional<u64> elementCount = {});
+    static BufferBinding CreateByteAddress(const Buffer& buffer,
+                                           u32 firstElement = 0,
+                                           std::optional<u64> elementCount = {});
 
-    static BufferBinding CreateRWByteAddressBuffer(const Buffer& buffer,
-                                                   u32 firstElement = 0,
-                                                   std::optional<u64> elementCount = {});
+    static BufferBinding CreateRWByteAddress(const Buffer& buffer,
+                                             u32 firstElement = 0,
+                                             std::optional<u64> elementCount = {});
 
     // offsetByteSize must be a multiple of 128 bytes
-    static BufferBinding CreateConstantBuffer(const Buffer& buffer,
-                                              u32 offsetByteSize = 0,
-                                              std::optional<u64> rangeByteSize = {});
+    static BufferBinding CreateUniform(const Buffer& buffer,
+                                       u32 offsetByteSize = 0,
+                                       std::optional<u64> rangeByteSize = {});
+};
+
+template <class T>
+BufferBinding BufferBinding::CreateStructured(const Buffer& buffer, u32 firstElement, std::optional<u32> elementCount)
+{
+    return {
+        .buffer = buffer,
+        .usage = BufferBindingUsage::StructuredBuffer,
+        .strideByteSize = sizeof(T),
+        .offsetByteSize = firstElement * sizeof(T),
+        .rangeByteSize = elementCount.value_or(buffer.desc.byteSize / sizeof(T) - firstElement) * sizeof(T),
+    };
+}
+
+enum class IndexFormat : u8
+{
+    // TODO(https://trello.com/c/Hqp2C5DI): Add U16 index format support.
+    U16 = 16,
+    U32 = 32,
+};
+
+struct IndexBufferBinding
+{
+    // The buffer to bind.
+    Buffer buffer;
+    // Format of the index.
+    IndexFormat format = IndexFormat::U32;
+    // Offset (in bytes) to apply to the binding.
+    u64 offset = 0;
 };
 
 struct TextureBinding
@@ -125,8 +159,27 @@ struct TextureBinding
     bool isSRGB = false;
     // Subresource of the texture, defaults to all mips and all slices (so the entirety of the resource).
     TextureSubresource subresource;
-    // Force view type of TextureCube to Texture2DArray (or Texture2D if only one slice in subresource)
-    bool textureCubeAsTexture2DArray = false;
+    // Force view type of the texture to another type (eg: TextureCube to Texture2DArray (or Texture2D if only one slice
+    // in subresource)).
+    std::optional<TextureViewType> viewTypeOverride = std::nullopt;
+};
+
+struct RenderTargetBinding
+{
+    // The texture to bind.
+    Texture texture;
+    // Subresource of the texture, defaults to the first mip and the first slice.
+    TextureSubresource subresource{ .startMip = 0, .mipCount = 1, .startSlice = 0, .sliceCount = 1 };
+    // Determines if the render target output should use the hardware SRGB format.
+    bool isSRGB = false;
+};
+
+struct DepthStencilBinding
+{
+    // The texture to bind.
+    Texture texture;
+    // Subresource of the texture, defaults to the first mip and the first slice.
+    TextureSubresource subresource{ .startMip = 0, .mipCount = 1, .startSlice = 0, .sliceCount = 1 };
 };
 
 using AccelerationStructureBinding = AccelerationStructure;
@@ -178,18 +231,22 @@ struct ResourceBinding
 
 struct DrawResourceBinding
 {
-    Span<const TextureBinding> renderTargets;
-    std::optional<TextureBinding> depthStencil;
-
+    // Which textures to render-to.
+    Span<const RenderTargetBinding> renderTargets;
+    // Depth(-stencil) buffer to use for depth testing.
+    const std::optional<DepthStencilBinding>& depthStencil = std::nullopt;
     // Index buffer used for DrawIndexed.
-    std::optional<BufferBinding> indexBuffer;
+    const std::optional<IndexBufferBinding>& indexBuffer = std::nullopt;
 };
 
 namespace BindingUtil
 {
 
 void ValidateBufferBinding(const BufferBinding& binding, Flags<BufferUsage> validBufferUsageFlags);
+void ValidateIndexBufferBinding(const IndexBufferBinding& binding);
 void ValidateTextureBinding(const TextureBinding& binding, Flags<TextureUsage> validTextureUsageFlags);
+void ValidateRenderTargetBinding(const RenderTargetBinding& binding);
+void ValidateDepthStencilBinding(const DepthStencilBinding& binding);
 void ValidateDrawResource(const DrawResourceBinding& binding);
 
 } // namespace BindingUtil

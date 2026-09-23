@@ -24,10 +24,28 @@ struct RHIBufferBinding
     NonNullPtr<RHIBuffer> buffer;
 };
 
+struct RHIIndexBufferBinding
+{
+    IndexBufferBinding binding;
+    NonNullPtr<RHIBuffer> buffer;
+};
+
+struct RHIRenderTargetBinding
+{
+    RenderTargetBinding binding;
+    RHITexture* texture;
+};
+
+struct RHIDepthStencilBinding
+{
+    DepthStencilBinding binding;
+    RHITexture* texture;
+};
+
 struct RHIDrawResources
 {
-    InlineVector<RHITextureBinding, GMaxSimultaneousRenderTargetCount> renderTargets;
-    std::optional<RHITextureBinding> depthStencil;
+    InlineVector<RHIRenderTargetBinding, GMaxSimultaneousRenderTargetCount> renderTargets;
+    std::optional<RHIDepthStencilBinding> depthStencil = std::nullopt;
 };
 
 } // namespace vex

@@ -7,7 +7,6 @@
 #include <Vex/Texture.h>
 #include <Vex/Utility/Hash.h>
 
-#include <RHI/RHIAllocator.h>
 #include <RHI/RHIFwd.h>
 #include <RHI/RHITexture.h>
 
@@ -71,7 +70,7 @@ public:
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
     virtual void FreeAllocation(RHIAllocator& allocator) override;
 
-    ID3D12Resource* GetRawTexture()
+    ID3D12Resource* GetRawTexture() const
     {
         return texture.Get();
     }

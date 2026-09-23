@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <optional>
 #include <string>
 
 #include <Vex/Formats.h>
@@ -34,7 +35,7 @@ enum class TextureType : u8
     Texture3D,
 };
 
-// Used internally for views (eg: a cubemap can either be interpreted as a 6 slice Texture2DArray or a TextureCube).
+// Used for views (eg: a cubemap can either be interpreted as a 6 slice Texture2DArray or a TextureCube).
 enum class TextureViewType : u8
 {
     Texture2D,
@@ -291,7 +292,8 @@ struct TextureUtil
     static u32 GetSubresourceIndex(const TextureDesc& desc, u16 mip, u32 slice, u32 plane);
 
     static std::tuple<u32, u32, u32> GetMipSize(const TextureDesc& desc, u32 mip);
-    static TextureViewType GetTextureViewType(const TextureDesc& desc, bool textureCubeAsTexture2DArray);
+    static TextureViewType GetTextureViewType(const TextureDesc& desc,
+                                              const std::optional<TextureViewType>& viewTypeOverride);
     static TextureViewType GetTextureViewType(const TextureBinding& binding);
     // This provides the correct format on which the data should be interpreted when copying data from and to a texture.
     // This applies mostly to depth/stencil formats that are read separately from their original format. (It applies to

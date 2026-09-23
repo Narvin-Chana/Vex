@@ -452,8 +452,7 @@ void DX12CommandList::EmitBarriers(Span<const RHIBufferBarrier> bufferBarriers,
 
 void DX12CommandList::BeginRendering(const RHIDrawResources& resources)
 {
-    std::vector<CD3DX12_CPU_DESCRIPTOR_HANDLE> rtvHandles;
-    rtvHandles.reserve(D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT);
+    InlineVector<CD3DX12_CPU_DESCRIPTOR_HANDLE, GMaxSimultaneousRenderTargetCount> rtvHandles;
 
     std::optional<CD3DX12_CPU_DESCRIPTOR_HANDLE> dsvHandle;
 
@@ -526,7 +525,7 @@ void DX12CommandList::SetVertexBuffers(u32 startSlot, Span<const RHIBufferBindin
     commandList->IASetVertexBuffers(startSlot, views.size(), views.data());
 }
 
-void DX12CommandList::SetIndexBuffer(const RHIBufferBinding& indexBuffer)
+void DX12CommandList::SetIndexBuffer(const RHIIndexBufferBinding& indexBuffer)
 {
     if (type != QueueType::Graphics)
     {
