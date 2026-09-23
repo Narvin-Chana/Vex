@@ -7,7 +7,7 @@
 
 #include <RHI/RHIFwd.h>
 
-#ifndef VEX_USE_CUSTOM_RESOURCE_ALLOCATOR 
+#ifndef VEX_USE_CUSTOM_RESOURCE_ALLOCATOR
 #define VEX_USE_CUSTOM_RESOURCE_ALLOCATOR 1
 #endif
 
@@ -38,7 +38,7 @@ inline constexpr BindlessHandle GInvalidBindlessHandle;
 class MappedMemory
 {
 public:
-    MappedMemory(RHIBuffer& buffer);
+    explicit MappedMemory(const RHIBuffer& buffer);
 
     MappedMemory() = delete;
     MappedMemory(const MappedMemory&) = delete;
@@ -49,8 +49,8 @@ public:
     ~MappedMemory() = default;
 
     void WriteData(Span<const byte> inData);
-    void WriteData(Span<const byte> inData, u32 offset);
-    void ReadData(u32 offset, Span<byte> outData);
+    void WriteData(Span<const byte> inData, u64 byteOffset);
+    void ReadData(u64 byteOffset, Span<byte> outData);
     void ReadData(Span<byte> outData);
 
     template <class T>

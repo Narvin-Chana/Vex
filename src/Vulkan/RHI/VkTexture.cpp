@@ -39,7 +39,7 @@ static ::vk::ImageViewType TextureTypeToVulkan(TextureViewType type)
     std::unreachable();
 }
 
-static ::vk::ImageUsageFlags GetImageUsage(const TextureDesc& desc)
+static ::vk::ImageUsageFlags GetImageUsageFromDesc(const TextureDesc& desc)
 {
     ::vk::ImageUsageFlags usageFlags{};
     if (desc.usage & TextureUsage::DepthStencil)
@@ -61,6 +61,32 @@ static ::vk::ImageUsageFlags GetImageUsage(const TextureDesc& desc)
     usageFlags |= ::vk::ImageUsageFlagBits::eTransferDst;
     usageFlags |= ::vk::ImageUsageFlagBits::eTransferSrc;
     return usageFlags;
+}
+
+static ::vk::ImageUsageFlags GetImageUsageFromView(const TextureViewDesc& view)
+{
+    switch (view.usage)
+    {
+    case TextureUsage::ShaderRead:
+        return ::vk::ImageUsageFlagBits::eSampled;
+    case TextureUsage::ShaderReadWrite:
+        return ::vk::ImageUsageFlagBits::eStorage;
+    case TextureUsage::RenderTarget:
+        return ::vk::ImageUsageFlagBits::eColorAttachment;
+    case TextureUsage::DepthStencil:
+        return ::vk::ImageUsageFlagBits::eDepthStencilAttachment;
+    default:
+        VEX_ASSERT(false, "Invalid view usage: {}", view.usage);
+        std::unreachable();
+    }
+}
+
+static ::vk::ImageViewType GetVkImageViewType(const TextureViewDesc& view)
+{
+    // 3D render targets are bound as a 2D array over the depth slices (D3D12: TEXTURE3D RTV with a W range).
+    if (view.viewType == TextureViewType::Texture3D && view.usage == TextureUsage::RenderTarget)
+        return ::vk::ImageViewType::e2DArray;
+    return TextureTypeToVulkan(view.viewType);
 }
 
 namespace VkTextureUtil
@@ -193,35 +219,30 @@ VkTexture::VkTexture(NonNullPtr<VkGPUContext> ctx, RHIAllocator& allocator, Text
     return returnVal;
 }
 
-BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding, RHIDescriptorPool& descriptorPool)
+BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureViewDesc& view, RHIDescriptorPool& descriptorPool)
 {
-    VkTextureView view{ binding };
     if (auto it = bindlessCache.find(view);
         it != bindlessCache.end() && descriptorPool.IsValid(DescriptorType::Resource, it->second.handle))
     {
         return it->second.handle;
     }
 
-    ::vk::ImageViewUsageCreateInfo viewUsageInfo{};
-    ::vk::ImageUsageFlags viewUsage = GetImageUsage(desc);
-    // If creating an sRGB view, it can't have storage usage
-    if (binding.isSRGB)
-    {
-        viewUsage &= ~::vk::ImageUsageFlagBits::eStorage;
-    }
-    viewUsageInfo.usage = viewUsage;
+    ::vk::ImageViewUsageCreateInfo viewUsageInfo{ .usage = GetImageUsageFromView(view) };
+    // If creating an sRGB view, it can't have storage usage.
+    VEX_ASSERT(!view.isSRGB || !(viewUsageInfo.usage & ::vk::ImageUsageFlagBits::eStorage),
+               "An sRGB view cannot have storage usage (aka UAV usage).");
 
     const ::vk::ImageViewCreateInfo viewCreate{
         .pNext = &viewUsageInfo, 
         .image = GetRawTexture(),
-        .viewType = TextureTypeToVulkan(view.viewType),
-        .format = view.format,
+        .viewType = GetVkImageViewType(view),
+        .format = TextureFormatToVulkan(view.format, view.isSRGB),
         .subresourceRange = {
-            .aspectMask = VkTextureUtil::BindingAspectToVkAspectFlags(binding.subresource.GetSingleAspect(binding.texture.desc)),
+            .aspectMask = VkTextureUtil::BindingAspectToVkAspectFlags(view.subresource.GetSingleAspect(desc)),
             .baseMipLevel = view.subresource.startMip,
-            .levelCount = view.subresource.GetMipCount(binding.texture.desc),
+            .levelCount = view.subresource.GetMipCount(desc),
             .baseArrayLayer = view.subresource.startSlice,
-            .layerCount = view.subresource.GetSliceCount(binding.texture.desc),
+            .layerCount = view.subresource.GetSliceCount(desc),
         },
     };
 
@@ -240,25 +261,18 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
     return handle;
 }
 
-::vk::ImageView VkTexture::GetOrCreateImageView(const TextureBinding& binding, TextureUsage)
+::vk::ImageView VkTexture::GetOrCreateImageView(const TextureViewDesc& view)
 {
-    VkTextureView view{ binding };
+    const auto& subresource = view.subresource;
     if (auto it = viewCache.find(view); it != viewCache.end())
     {
         return *it->second;
     }
 
-    ::vk::ImageViewUsageCreateInfo viewUsageInfo{};
-    ::vk::ImageUsageFlags viewUsage = GetImageUsage(desc);
-    // If creating an sRGB view, it can't have storage usage.
-    if (binding.isSRGB)
-    {
-        viewUsage &= ~::vk::ImageUsageFlagBits::eStorage;
-    }
-    viewUsageInfo.usage = viewUsage;
+    ::vk::ImageViewUsageCreateInfo viewUsageInfo{ .usage = GetImageUsageFromView(view) };
 
     ::vk::ImageAspectFlags aspectFlags;
-    Flags subresourceAspects = binding.subresource.GetAspect(binding.texture.desc);
+    Flags subresourceAspects = subresource.GetAspect(desc);
     if (subresourceAspects & TextureAspect::Color)
         aspectFlags |= ::vk::ImageAspectFlagBits::eColor;
     if (subresourceAspects & TextureAspect::Depth)
@@ -266,17 +280,21 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureBinding& binding,
     if (subresourceAspects & TextureAspect::Stencil)
         aspectFlags |= ::vk::ImageAspectFlagBits::eStencil;
 
+    // If creating an sRGB view, it can't have storage usage.
+    VEX_ASSERT(!view.isSRGB || !(viewUsageInfo.usage & ::vk::ImageUsageFlagBits::eStorage),
+               "An sRGB view cannot have storage usage (aka UAV usage).");
+
     const ::vk::ImageViewCreateInfo viewCreate{ 
         .pNext = &viewUsageInfo, 
         .image = GetRawTexture(),
-        .viewType = TextureTypeToVulkan(view.viewType),
-        .format = view.format,
+        .viewType = GetVkImageViewType(view),
+        .format = TextureFormatToVulkan(view.format, view.isSRGB),
         .subresourceRange = {
             .aspectMask = aspectFlags,
-            .baseMipLevel = view.subresource.startMip,
-            .levelCount = view.subresource.GetMipCount(binding.texture.desc),
-            .baseArrayLayer = view.subresource.startSlice,
-            .layerCount = view.subresource.GetSliceCount(binding.texture.desc),
+            .baseMipLevel = subresource.startMip,
+            .levelCount = subresource.GetMipCount(desc),
+            .baseArrayLayer = subresource.startSlice,
+            .layerCount = subresource.GetSliceCount(desc),
         }, 
     };
 
@@ -339,6 +357,11 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
     {
         flags |= ::vk::ImageCreateFlagBits::eCubeCompatible;
     }
+    // This flag allows for 2D-array views over a 3D render target (eg: binding slice 4 -> 12).
+    if (desc.type == TextureType::Texture3D && desc.usage.IsSet(TextureUsage::RenderTarget))
+    {
+        flags |= ::vk::ImageCreateFlagBits::e2DArrayCompatible;
+    }
 
     const bool needsConcurrent = ctx->queueFamilyIndices.size() > 1;
     ::vk::ImageCreateInfo createInfo{
@@ -349,7 +372,7 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
         .mipLevels = desc.mips,
         .samples = ::vk::SampleCountFlagBits::e1,
         .tiling = ::vk::ImageTiling::eOptimal,
-        .usage = GetImageUsage(desc),
+        .usage = GetImageUsageFromDesc(desc),
         .sharingMode = needsConcurrent ? ::vk::SharingMode::eConcurrent : ::vk::SharingMode::eExclusive,
         .queueFamilyIndexCount = needsConcurrent ? static_cast<u32>(ctx->queueFamilyIndices.size()) : 0,
         .pQueueFamilyIndices = needsConcurrent ? ctx->queueFamilyIndices.data() : nullptr,
@@ -399,17 +422,6 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
     SetDebugName(ctx->device, imageTmp.get(), std::format("{}: {}", desc.type, desc.name).c_str());
 
     image = std::move(imageTmp);
-}
-
-VkTextureView::VkTextureView(const TextureBinding& binding)
-    : viewType{ TextureUtil::GetTextureViewType(binding) }
-    , format{ TextureFormatToVulkan(binding.texture.desc.format, binding.isSRGB) }
-    , usage{ static_cast<TextureUsage>(binding.usage) }
-    , subresource{ binding.subresource }
-{
-    // Resolve subresource (replacing MAX values with the actual value).
-    subresource.mipCount = subresource.GetMipCount(binding.texture.desc);
-    subresource.sliceCount = subresource.GetSliceCount(binding.texture.desc);
 }
 
 } // namespace vex::vk

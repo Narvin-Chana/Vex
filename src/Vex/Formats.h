@@ -10,6 +10,9 @@ namespace vex
 
 enum class TextureFormat : u8
 {
+    // Error format (value of 0)
+    UNKNOWN = 0,
+
     // Standard formats
     R8_UNORM,
     R8_SNORM,
@@ -72,9 +75,6 @@ enum class TextureFormat : u8
     BC6H_UF16,
     BC6H_SF16,
     BC7_UNORM,
-
-    // Error format
-    UNKNOWN,
 };
 
 namespace FormatUtil

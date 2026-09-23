@@ -56,7 +56,7 @@ struct RTTestFixture : public RTVexTest
         ctx.BuildBLAS(triangleBLAS,
                   { .geometry = { BLASGeometryDesc{
                         .vertexBufferBinding = { .buffer = triangleVertexBuffer, .strideByteSize = static_cast<u32>(sizeof(Vertex)), },
-                        .indexBufferBinding = BufferBinding{ .buffer = triangleIndexBuffer, .strideByteSize = static_cast<u32>(sizeof(u32)), },
+                        .indexBufferBinding = IndexBufferBinding{ .buffer = triangleIndexBuffer, .format = IndexFormat::U32, },
                         .transform = std::nullopt,
                         .flags = ASGeometry::Opaque,
                     } } });

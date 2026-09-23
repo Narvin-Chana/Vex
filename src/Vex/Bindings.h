@@ -6,6 +6,7 @@
 #include <Vex/AccelerationStructure.h>
 #include <Vex/Buffer.h>
 #include <Vex/Containers/Span.h>
+#include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
@@ -70,50 +71,101 @@ struct BufferBinding
 {
     // The buffer to bind
     Buffer buffer;
-    // The usage to use in this binding. Needs to be part of the usages of the buffer description
+    // The usage to use in this binding. Needs to be part of the usages of the buffer description.
     BufferBindingUsage usage = BufferBindingUsage::Invalid;
-
-    // Optional: Stride of the buffer in bytes when using StructuredBuffer usage
-    std::optional<u32> strideByteSize;
-
-    // Optional: The offset to apply when binding the buffer (in bytes).
-    // When using UniformBuffer usage the offset must be a multiple of 256 bytes
-    // When using (RW)ByteAddressBuffer usage the offset must be a multiple of 16 bytes
-    std::optional<u64> offsetByteSize;
-
-    // Optional: The range in bytes starting from the offset to bind.
-    // If not specified the remaining range past the offset is bound
-    // When using (RW)ByteAddressBuffer usage the range must be a multiple of 16 bytes
-    std::optional<u64> rangeByteSize;
+    // Byte region to bind, defaults to the entire buffer.
+    // Note for the offset field:
+    //  - When using UniformBuffer usage the offset must be a multiple of 256 bytes
+    //  - When using (RW)ByteAddressBuffer usage the offset must be a multiple of 16 bytes.
+    // Note for the byteSize field:
+    //  - When using (RW)ByteAddressBuffer usage the range must be a multiple of 16 bytes
+    BufferRegion region;
+    // Optional: Stride of the buffer in bytes, required when using (RW)StructuredBuffer usage.
+    u32 strideByteSize = 0;
 
     // firstElement and elementCount represent strideByteSize multiples on the buffer
-    static BufferBinding CreateStructuredBuffer(const Buffer& buffer,
-                                                u32 strideByteSize,
-                                                u32 firstElement = 0,
-                                                std::optional<u32> elementCount = {});
+    static BufferBinding CreateStructured(const Buffer& buffer,
+                                          u32 strideByteSize,
+                                          u64 firstElement = 0,
+                                          std::optional<u64> elementCount = {});
+
+    template <class T>
+    static BufferBinding CreateStructured(const Buffer& buffer,
+                                          u64 firstElement = 0,
+                                          std::optional<u64> elementCount = {});
 
     // firstElement and elementCount represent strideByteSize multiples on the buffer
-    static BufferBinding CreateRWStructuredBuffer(const Buffer& buffer,
-                                                  u32 strideByteSize,
-                                                  u32 firstElement = 0,
-                                                  std::optional<u32> elementCount = {});
+    static BufferBinding CreateRWStructured(const Buffer& buffer,
+                                            u32 strideByteSize,
+                                            u64 firstElement = 0,
+                                            std::optional<u64> elementCount = {});
 
     // First element and element count represent 16 byte elements on the ByteAddressBuffer
     // example: FirstElement = 1, ElementCount = 10 represents a view on bytes [16, 176] in the buffer
     // example: FirstElement = 0, ElementCount = 2 represents a view on bytes [0, 32] in the buffer
-    static BufferBinding CreateByteAddressBuffer(const Buffer& buffer,
-                                                 u32 firstElement = 0,
-                                                 std::optional<u64> elementCount = {});
+    static BufferBinding CreateByteAddress(const Buffer& buffer,
+                                           u64 firstElement = 0,
+                                           std::optional<u64> elementCount = {});
 
-    static BufferBinding CreateRWByteAddressBuffer(const Buffer& buffer,
-                                                   u32 firstElement = 0,
-                                                   std::optional<u64> elementCount = {});
+    static BufferBinding CreateRWByteAddress(const Buffer& buffer,
+                                             u64 firstElement = 0,
+                                             std::optional<u64> elementCount = {});
 
-    // offsetByteSize must be a multiple of 128 bytes
-    static BufferBinding CreateConstantBuffer(const Buffer& buffer,
-                                              u32 offsetByteSize = 0,
-                                              std::optional<u64> rangeByteSize = {});
+    // offsetByteSize must be a multiple of 256 bytes.
+    static BufferBinding CreateUniform(const Buffer& buffer,
+                                       u64 offsetByteSize = 0,
+                                       std::optional<u64> rangeByteSize = {});
 };
+
+template <class T>
+BufferBinding BufferBinding::CreateStructured(const Buffer& buffer, u64 firstElement, std::optional<u64> elementCount)
+{
+    static_assert(sizeof(T) <= std::numeric_limits<u32>::max(), "Type must be smaller than MAX_U32.");
+    return {
+        .buffer = buffer,
+        .usage = BufferBindingUsage::StructuredBuffer,
+        .region =
+            BufferRegion{
+                .byteOffset = firstElement * sizeof(T),
+                .byteSize = elementCount ? *elementCount * sizeof(T) : GBufferWholeSize,
+            },
+        .strideByteSize = static_cast<u32>(sizeof(T)),
+    };
+}
+
+struct IndexBufferBinding
+{
+    // The buffer to bind.
+    Buffer buffer;
+    // Region of the index buffer to bind.
+    BufferRegion region;
+    // Format of the index.
+    IndexFormat format = IndexFormat::U32;
+
+    static IndexBufferBinding Create(const Buffer& buffer,
+                                     IndexFormat format,
+                                     u64 firstElement = 0,
+                                     std::optional<u64> elementCount = std::nullopt);
+    template <class T>
+    static IndexBufferBinding Create(const Buffer& buffer,
+                                     u64 firstElement = 0,
+                                     std::optional<u64> elementCount = std::nullopt);
+};
+
+template <class T>
+IndexBufferBinding IndexBufferBinding::Create(const Buffer& buffer, u64 firstElement, std::optional<u64> elementCount)
+{
+    static_assert(sizeof(T) == sizeof(u16) || sizeof(T) == sizeof(u32), "Type must be a supported index type.");
+    return {
+        .buffer = buffer,
+        .region =
+            BufferRegion{
+                .byteOffset = firstElement * sizeof(T),
+                .byteSize = elementCount ? *elementCount * sizeof(T) : GBufferWholeSize,
+            },
+        .format = static_cast<IndexFormat>(sizeof(T) * 8),
+    };
+}
 
 struct TextureBinding
 {
@@ -125,8 +177,43 @@ struct TextureBinding
     bool isSRGB = false;
     // Subresource of the texture, defaults to all mips and all slices (so the entirety of the resource).
     TextureSubresource subresource;
-    // Force view type of TextureCube to Texture2DArray (or Texture2D if only one slice in subresource)
-    bool textureCubeAsTexture2DArray = false;
+    // Force view type of the texture to another type (eg: TextureCube to Texture2DArray (or Texture2D if only one slice
+    // in subresource)).
+    std::optional<TextureViewType> viewTypeOverride = std::nullopt;
+};
+
+struct RenderTargetBinding
+{
+    // The texture to bind.
+    Texture texture;
+    // Which mip to write-to.
+    u16 mip = 0;
+    // Offset to apply to the start depth/slice (depends on if the texture is 2DArray/Cube/CubeArray or 3D).
+    u32 startDepthSlice = 0;
+    // Number of depth/slices to bind.
+    u32 depthSliceCount = 1;
+    // Determines if the render target output should use the hardware SRGB format.
+    bool isSRGB = false;
+
+    // Returns the subresource to use for barrier purposes.
+    TextureSubresource GetSubresourceForBarrier() const;
+};
+
+struct DepthStencilBinding
+{
+    // The texture to bind.
+    Texture texture;
+    // Which mip to write-to.
+    u16 mip = 0;
+    // Offset to apply to the start depth/slice (depends on if the texture is 2DArray/Cube/CubeArray or 3D).
+    u32 startDepthSlice = 0;
+    // Number of depth/slices to bind.
+    u32 depthSliceCount = 1;
+    // Which depth-stencil aspects to bind.
+    Flags<TextureAspect> aspect = TextureAspect::All;
+
+    // Returns the subresource to use for barrier purposes.
+    TextureSubresource GetSubresourceForBarrier() const;
 };
 
 using AccelerationStructureBinding = AccelerationStructure;
@@ -178,19 +265,23 @@ struct ResourceBinding
 
 struct DrawResourceBinding
 {
-    Span<const TextureBinding> renderTargets;
-    std::optional<TextureBinding> depthStencil;
-
-    // Index buffer used for DrawIndexed.
-    std::optional<BufferBinding> indexBuffer;
+    // Which textures to render-to.
+    Span<const RenderTargetBinding> renderTargets;
+    // Depth(-stencil) buffer to use for depth testing (optional).
+    const DepthStencilBinding* depthStencil = nullptr;
+    // Index buffer used for DrawIndexed (optional).
+    const IndexBufferBinding* indexBuffer = nullptr;
 };
 
 namespace BindingUtil
 {
 
 void ValidateBufferBinding(const BufferBinding& binding, Flags<BufferUsage> validBufferUsageFlags);
+void ValidateIndexBufferBinding(const IndexBufferBinding& binding);
 void ValidateTextureBinding(const TextureBinding& binding, Flags<TextureUsage> validTextureUsageFlags);
-void ValidateDrawResource(const DrawResourceBinding& binding);
+void ValidateRenderTargetBinding(const RenderTargetBinding& binding);
+void ValidateDepthStencilBinding(const DepthStencilBinding& binding);
+void ValidateDrawResourceBindings(const DrawResourceBinding& binding);
 
 } // namespace BindingUtil
 
