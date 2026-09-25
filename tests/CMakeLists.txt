@@ -23,6 +23,7 @@ add_executable(vex_tests
 	"SynchronizationTest.cpp"
 	"UploadReadbackTest.cpp"
     "MipGenerationTest.cpp"
+    "EmbeddedShaderTest.cpp"
     "BufferViewTest.cpp"
     "GraphicsBackendTest.cpp"
 	"ReflectionTest.cpp"
