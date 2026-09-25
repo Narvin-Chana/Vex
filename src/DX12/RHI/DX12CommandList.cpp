@@ -37,10 +37,10 @@ struct DX12BufferTextureCopyDesc
 };
 
 static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(RHIBuffer& buffer,
-                                                              RHITexture& texture,
+                                                              const RHITexture& texture,
                                                               const BufferTextureCopyDesc& desc)
 {
-    VEX_CHECK(ByteUtil::IsAligned<u64>(desc.bufferRegion.offset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
+    VEX_CHECK(ByteUtil::IsAligned<u64>(desc.bufferRegion.byteOffset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
               "Source offset should be aligned to 512 bytes!");
 
     D3D12_TEXTURE_COPY_LOCATION bufferLoc = {};
@@ -66,7 +66,7 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(RHIBuffer& buffer,
     auto [width, height, depth] =
         desc.textureRegion.GetExtents(texture.GetDesc(), desc.textureRegion.subresource.startMip);
     bufferLoc.SubresourceIndex = subresourceIndex;
-    bufferLoc.PlacedFootprint.Offset = desc.bufferRegion.offset;
+    bufferLoc.PlacedFootprint.Offset = desc.bufferRegion.byteOffset;
 
     bufferLoc.PlacedFootprint.Footprint.Format = TextureFormatToDXGI(
         TextureUtil::GetCopyFormat(format, desc.textureRegion.subresource.GetSingleAspect(texture.GetDesc())),
@@ -77,7 +77,7 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(RHIBuffer& buffer,
     bufferLoc.PlacedFootprint.Footprint.RowPitch =
         ByteUtil::AlignUp<u64>(width * TextureUtil::GetPixelByteSizeFromFormat(format), TextureUtil::RowPitchAlignment);
 
-    D3D12_TEXTURE_COPY_LOCATION textureLoc = {};
+    D3D12_TEXTURE_COPY_LOCATION textureLoc{};
     textureLoc.pResource = texture.GetRawTexture();
     textureLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
     textureLoc.SubresourceIndex = subresourceIndex;
@@ -90,7 +90,7 @@ static DX12BufferTextureCopyDesc GetCopyLocationsFromCopyDesc(RHIBuffer& buffer,
     box.bottom = desc.textureRegion.offset.y + height;
     box.back = desc.textureRegion.offset.z + depth;
 
-    return { bufferLoc, textureLoc, box };
+    return { .bufferLoc = bufferLoc, .textureLoc = textureLoc, .box = box };
 }
 
 } // namespace CommandList_Internal
@@ -103,19 +103,17 @@ DX12CommandList::DX12CommandList(const ComPtr<DX12Device>& device, QueueType typ
     switch (type)
     {
     case QueueType::Copy:
-        d3dType = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COPY;
+        d3dType = D3D12_COMMAND_LIST_TYPE_COPY;
         break;
-
     case QueueType::Compute:
-        d3dType = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COMPUTE;
+        d3dType = D3D12_COMMAND_LIST_TYPE_COMPUTE;
         break;
-
     case QueueType::Graphics:
-        d3dType = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT;
+        d3dType = D3D12_COMMAND_LIST_TYPE_DIRECT;
         break;
-
     default:
         VEX_LOG(Fatal, "Invalid command queue type passed to command list creation.");
+        std::unreachable();
     }
 
     // Create CommandList1 creates the command list closed by default.
@@ -253,11 +251,19 @@ void DX12CommandList::ClearTexture(RHITexture& texture,
                                    Span<const TextureClearRect> clearRects)
 {
 
-    DX12TextureView dxTextureView{ texture.GetDesc(), subresource, usage };
+    RHITextureView textureView{ .texture = texture,
+                                .view = TextureViewDesc{
+                                    .viewType = TextureUtil::GetTextureViewType(texture.GetDesc(), std::nullopt),
+                                    .format = texture.GetDesc().format,
+                                    .isSRGB = false,
+                                    .usage = usage,
+                                    .subresource = subresource,
+                                } };
+    TextureViewDesc& view = textureView.view;
 
-    const u32 maxMip = dxTextureView.subresource.startMip + dxTextureView.subresource.GetMipCount(texture.GetDesc());
+    const u32 maxMip = view.subresource.startMip + view.subresource.GetMipCount(texture.GetDesc());
     // We'll be creating a RTV/DSV view per-mip.
-    dxTextureView.subresource.mipCount = 1;
+    view.subresource.mipCount = 1;
 
     std::vector<D3D12_RECT> dxClearRects;
     dxClearRects.reserve(clearRects.size());
@@ -277,14 +283,14 @@ void DX12CommandList::ClearTexture(RHITexture& texture,
     // Instead we iterate on the mips passed in by the user.
     if (usage == TextureUsage::RenderTarget)
     {
-        dxTextureView.usage = TextureUsage::RenderTarget;
-        for (u32 mip = dxTextureView.subresource.startMip; mip < maxMip; ++mip)
+        textureView.view.usage = TextureUsage::RenderTarget;
+        for (u32 mip = view.subresource.startMip; mip < maxMip; ++mip)
         {
-            dxTextureView.subresource.startMip = mip;
+            view.subresource.startMip = mip;
             VEX_ASSERT(clearAspect & TextureAspect::Color,
                        "Clearing the color requires the TextureClear::ClearColor flag for texture: {}.",
                        texture.GetDesc().name);
-            commandList->ClearRenderTargetView(texture.GetOrCreateRTVDSVView(dxTextureView),
+            commandList->ClearRenderTargetView(texture.GetOrCreateRTVDSVView(view),
                                                clearValue.color.data(),
                                                dxClearRects.size(),
                                                !dxClearRects.empty() ? dxClearRects.data() : nullptr);
@@ -292,10 +298,10 @@ void DX12CommandList::ClearTexture(RHITexture& texture,
     }
     else if (usage == TextureUsage::DepthStencil)
     {
-        dxTextureView.usage = TextureUsage::DepthStencil;
-        for (u32 mip = dxTextureView.subresource.startMip; mip < maxMip; ++mip)
+        view.usage = TextureUsage::DepthStencil;
+        for (u32 mip = view.subresource.startMip; mip < maxMip; ++mip)
         {
-            dxTextureView.subresource.startMip = mip;
+            view.subresource.startMip = mip;
             D3D12_CLEAR_FLAGS clearFlags = static_cast<D3D12_CLEAR_FLAGS>(0);
             if (clearAspect & TextureAspect::Depth)
             {
@@ -310,7 +316,7 @@ void DX12CommandList::ClearTexture(RHITexture& texture,
                        "for texture: {}!",
                        texture.GetDesc().name);
 
-            commandList->ClearDepthStencilView(texture.GetOrCreateRTVDSVView(dxTextureView),
+            commandList->ClearDepthStencilView(texture.GetOrCreateRTVDSVView(view),
                                                clearFlags,
                                                clearValue.depth,
                                                clearValue.stencil,
@@ -456,18 +462,14 @@ void DX12CommandList::BeginRendering(const RHIDrawResources& resources)
 
     std::optional<CD3DX12_CPU_DESCRIPTOR_HANDLE> dsvHandle;
 
-    for (const auto& [binding, texture] : resources.renderTargets)
+    for (const auto& [texture, view] : resources.renderTargets)
     {
-        DX12TextureView rtvView{ binding };
-        rtvView.usage = TextureUsage::RenderTarget;
-        rtvHandles.emplace_back(texture->GetOrCreateRTVDSVView(rtvView));
+        rtvHandles.emplace_back(texture->GetOrCreateRTVDSVView(view));
     }
 
     if (resources.depthStencil)
     {
-        DX12TextureView dsvView{ resources.depthStencil->binding };
-        dsvView.usage = TextureUsage::DepthStencil;
-        dsvHandle = resources.depthStencil->texture->GetOrCreateRTVDSVView(dsvView);
+        dsvHandle = resources.depthStencil->texture->GetOrCreateRTVDSVView(resources.depthStencil->view);
     }
 
     // Bind RTV and DSVs
@@ -509,7 +511,7 @@ void DX12CommandList::DrawIndexed(
     commandList->DrawIndexedInstanced(indexCount, instanceCount, indexOffset, vertexOffset, instanceOffset);
 }
 
-void DX12CommandList::SetVertexBuffers(u32 startSlot, Span<const RHIBufferBinding> vertexBuffers)
+void DX12CommandList::SetVertexBuffers(u32 startSlot, Span<const RHIBufferView> vertexBuffers)
 {
     if (type != QueueType::Graphics)
     {
@@ -518,21 +520,21 @@ void DX12CommandList::SetVertexBuffers(u32 startSlot, Span<const RHIBufferBindin
 
     std::vector<D3D12_VERTEX_BUFFER_VIEW> views;
     views.reserve(vertexBuffers.size());
-    for (auto& [binding, buffer] : vertexBuffers)
+    for (auto& [buffer, view] : vertexBuffers)
     {
-        views.push_back(buffer->GetVertexBufferView(binding));
+        views.push_back(buffer->GetVertexBufferView(view));
     }
     commandList->IASetVertexBuffers(startSlot, views.size(), views.data());
 }
 
-void DX12CommandList::SetIndexBuffer(const RHIIndexBufferBinding& indexBuffer)
+void DX12CommandList::SetIndexBuffer(const RHIIndexBufferView& indexBuffer)
 {
     if (type != QueueType::Graphics)
     {
         VEX_LOG(Fatal, "Cannot use draw calls with a non-graphics command queue.");
     }
 
-    D3D12_INDEX_BUFFER_VIEW indexBufferView = indexBuffer.buffer->GetIndexBufferView(indexBuffer.binding);
+    D3D12_INDEX_BUFFER_VIEW indexBufferView = indexBuffer.buffer->GetIndexBufferView(indexBuffer);
     commandList->IASetIndexBuffer(&indexBufferView);
 }
 
@@ -638,9 +640,10 @@ void DX12CommandList::Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDesc&
 
 void DX12CommandList::Copy(RHIBuffer& src, RHITexture& dst, Span<const BufferTextureCopyDesc> copyDescriptions)
 {
+    using namespace CommandList_Internal;
     for (const BufferTextureCopyDesc& copyDesc : copyDescriptions)
     {
-        auto locations = CommandList_Internal::GetCopyLocationsFromCopyDesc(src, dst, copyDesc);
+        DX12BufferTextureCopyDesc locations = GetCopyLocationsFromCopyDesc(src, dst, copyDesc);
         commandList->CopyTextureRegion(&locations.textureLoc,
                                        copyDesc.textureRegion.offset.x,
                                        copyDesc.textureRegion.offset.y,

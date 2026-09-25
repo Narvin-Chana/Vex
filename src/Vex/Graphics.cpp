@@ -13,6 +13,7 @@
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHITexture.h>
+#include <Vex/ResourceBindingUtils.h>
 #include <Vex/ResourceCleanup.h>
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Visitor.h>
@@ -374,16 +375,16 @@ BindlessHandle Graphics::GetBindlessHandle(const TextureBinding& bindlessResourc
 {
     BindingUtil::ValidateTextureBinding(bindlessResource, bindlessResource.texture.desc.usage);
 
-    auto& texture = GetRHITexture(bindlessResource.texture.handle);
-    return texture.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
+    const auto [texture, view] = ResourceBindingUtils::GetRHITextureView(*this, bindlessResource);
+    return texture->GetOrCreateBindlessView(view, *descriptorPool);
 }
 
 BindlessHandle Graphics::GetBindlessHandle(const BufferBinding& bindlessResource)
 {
     BindingUtil::ValidateBufferBinding(bindlessResource, bindlessResource.buffer.desc.usage);
 
-    auto& buffer = GetRHIBuffer(bindlessResource.buffer.handle);
-    return buffer.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
+    const auto [buffer, view] = ResourceBindingUtils::GetRHIBufferView(*this, bindlessResource);
+    return buffer->GetOrCreateBindlessView(view, *descriptorPool);
 }
 
 BindlessHandle Graphics::GetBindlessHandle(const AccelerationStructure& accelerationStructure)

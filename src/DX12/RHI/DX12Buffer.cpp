@@ -119,33 +119,34 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
 #endif
 }
 
-D3D12_VERTEX_BUFFER_VIEW DX12Buffer::GetVertexBufferView(const BufferBinding& binding) const
+D3D12_VERTEX_BUFFER_VIEW DX12Buffer::GetVertexBufferView(const BufferViewDesc& view) const
 {
     return D3D12_VERTEX_BUFFER_VIEW{
-        .BufferLocation = GetGPUVirtualAddress() + binding.offsetByteSize.value_or(0),
-        .SizeInBytes = static_cast<u32>(binding.rangeByteSize.value_or(desc.byteSize)),
-        .StrideInBytes = *binding.strideByteSize,
+        .BufferLocation = GetGPUVirtualAddress() + view.region.byteOffset,
+        .SizeInBytes = static_cast<u32>(view.region.GetByteSize(desc)),
+        .StrideInBytes = view.strideByteSize,
     };
 }
 
-D3D12_INDEX_BUFFER_VIEW DX12Buffer::GetIndexBufferView(const BufferBinding& binding) const
+D3D12_INDEX_BUFFER_VIEW DX12Buffer::GetIndexBufferView(const RHIIndexBufferView& view) const
 {
     DXGI_FORMAT format;
-    switch (*binding.strideByteSize)
+    switch (view.format)
     {
-    case 2:
+    case IndexFormat::U16:
         format = DXGI_FORMAT_R16_UINT;
         break;
-    case 4:
+    case IndexFormat::U32:
         format = DXGI_FORMAT_R32_UINT;
         break;
     default:
         VEX_LOG(Fatal,
                 "DX12RHI: DX12Buffer's IndexBufferView cannot be created with a stride different than 2 or 4 bytes.");
+        std::unreachable();
     }
     return D3D12_INDEX_BUFFER_VIEW{
-        .BufferLocation = GetGPUVirtualAddress() + binding.offsetByteSize.value_or(0),
-        .SizeInBytes = static_cast<u32>(binding.rangeByteSize.value_or(desc.byteSize)),
+        .BufferLocation = GetGPUVirtualAddress() + view.region.byteOffset,
+        .SizeInBytes = static_cast<u32>(view.region.GetByteSize(desc)),
         .Format = format,
     };
 }
@@ -170,12 +171,13 @@ void DX12Buffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
 
     if (isCBV)
     {
-        VEX_CHECK(ByteUtil::IsAligned<u64>(viewDesc.offsetByteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT),
+        VEX_CHECK(ByteUtil::IsAligned<u64>(viewDesc.region.byteOffset, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT),
                   "DX12 requires that constant buffer locations be aligned to 256. If you want more precise offsets, "
                   "use a raw ByteAddressBuffer to access your resource!");
         D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
-        cbvDesc.BufferLocation = buffer->GetGPUVirtualAddress() + viewDesc.offsetByteSize;
-        cbvDesc.SizeInBytes = ByteUtil::AlignUp<u64>(viewDesc.rangeByteSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+        cbvDesc.BufferLocation = buffer->GetGPUVirtualAddress() + viewDesc.region.byteOffset;
+        cbvDesc.SizeInBytes =
+            ByteUtil::AlignUp<u64>(viewDesc.region.GetByteSize(desc), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
         device->CreateConstantBufferView(&cbvDesc, cpuHandle);
     }
     else if (isSRV)
@@ -189,7 +191,7 @@ void DX12Buffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.Buffer.FirstElement = viewDesc.GetFirstElement();
-            srvDesc.Buffer.NumElements = viewDesc.GetElementCount();
+            srvDesc.Buffer.NumElements = viewDesc.GetElementCount(desc);
             srvDesc.Buffer.StructureByteStride = viewDesc.strideByteSize;
             srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
             break;
@@ -198,7 +200,7 @@ void DX12Buffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.Buffer.FirstElement = viewDesc.GetFirstElement();
-            srvDesc.Buffer.NumElements = viewDesc.GetElementCount();
+            srvDesc.Buffer.NumElements = viewDesc.GetElementCount(desc);
             srvDesc.Buffer.StructureByteStride = 0;
             srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
             break;
@@ -228,7 +230,7 @@ void DX12Buffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
             uavDesc.Format = DXGI_FORMAT_UNKNOWN;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
             uavDesc.Buffer.FirstElement = viewDesc.GetFirstElement();
-            uavDesc.Buffer.NumElements = viewDesc.GetElementCount();
+            uavDesc.Buffer.NumElements = viewDesc.GetElementCount(desc);
             uavDesc.Buffer.StructureByteStride = viewDesc.strideByteSize;
             uavDesc.Buffer.CounterOffsetInBytes = 0;
             uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
@@ -237,7 +239,7 @@ void DX12Buffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
             uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
             uavDesc.Buffer.FirstElement = viewDesc.GetFirstElement();
-            uavDesc.Buffer.NumElements = viewDesc.GetElementCount();
+            uavDesc.Buffer.NumElements = viewDesc.GetElementCount(desc);
             uavDesc.Buffer.StructureByteStride = 0;
             uavDesc.Buffer.CounterOffsetInBytes = 0;
             uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;

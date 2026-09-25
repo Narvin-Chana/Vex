@@ -47,8 +47,8 @@ public:
     virtual void DrawIndexed(
         u32 indexCount, u32 instanceCount, u32 indexOffset, i32 vertexOffset, u32 instanceOffset) override;
 
-    virtual void SetVertexBuffers(u32 startSlot, Span<const RHIBufferBinding> vertexBuffers) override;
-    virtual void SetIndexBuffer(const RHIIndexBufferBinding& indexBuffer) override;
+    virtual void SetVertexBuffers(u32 startSlot, Span<const RHIBufferView> vertexBuffers) override;
+    virtual void SetIndexBuffer(const RHIIndexBufferView& indexBuffer) override;
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount) override;
 
@@ -59,7 +59,7 @@ public:
 
     using RHICommandListBase::Copy;
     virtual void Copy(RHITexture& src, RHITexture& dst) override;
-    virtual void Copy(RHITexture& src, RHITexture& dst, Span<const TextureCopyDesc> textureCopyDescriptions) override;
+    virtual void Copy(RHITexture& src, RHITexture& dst, Span<const TextureCopyDesc> textureCopyDescs) override;
     virtual void Copy(RHIBuffer& src, RHIBuffer& dst, const BufferCopyDesc& bufferCopyDescription) override;
     virtual void Copy(RHIBuffer& src, RHITexture& dst, Span<const BufferTextureCopyDesc> copyDescriptions) override;
     virtual void Copy(RHITexture& src, RHIBuffer& dst, Span<const BufferTextureCopyDesc> copyDescriptions) override;

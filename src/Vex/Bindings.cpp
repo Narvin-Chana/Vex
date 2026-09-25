@@ -7,8 +7,8 @@
 
 namespace vex
 {
-static constexpr u32 ByteAddressBufferOffsetMultiple = 16;
-static constexpr u32 ConstantBufferBindingOffsetMultiple = 256;
+static constexpr u64 ByteAddressBufferOffsetMultiple = 16;
+static constexpr u64 ConstantBufferBindingOffsetMultiple = 256;
 
 namespace BindingUtil
 {
@@ -44,21 +44,19 @@ void ValidateBufferBinding(const BufferBinding& binding, Flags<BufferUsage> vali
                   "Invalid binding for resource \"{}\": Stride for structured buffers must not be 0.",
                   buffer.desc.name);
 
-        u64 offsetByteSize = binding.offsetByteSize.value_or(0);
+        u64 offsetByteSize = binding.region.byteOffset;
         VEX_CHECK(offsetByteSize % *binding.strideByteSize == 0,
                   "Invalid binding for resource \"{}\": Offset must be a multiple of the stride.",
                   buffer.desc.name);
 
-        VEX_CHECK(
-            binding.rangeByteSize.value_or(binding.buffer.desc.byteSize - offsetByteSize) % *binding.strideByteSize ==
-                0,
-            "Invalid binding for resource \"{}\": Range must be a multiple of the stride.",
-            buffer.desc.name);
+        VEX_CHECK(binding.region.GetByteSize(buffer.desc) % *binding.strideByteSize == 0,
+                  "Invalid binding for resource \"{}\": Range must be a multiple of the stride.",
+                  buffer.desc.name);
     }
 
     if (usage == BufferBindingUsage::UniformBuffer)
     {
-        VEX_CHECK(binding.offsetByteSize.value_or(0) % ConstantBufferBindingOffsetMultiple == 0,
+        VEX_CHECK(binding.region.byteOffset % ConstantBufferBindingOffsetMultiple == 0,
                   "Invalid binding for resource \"{}\": "
                   "Constant buffer offsets must be a multiple of 256 bytes",
                   buffer.desc.name);
@@ -66,14 +64,14 @@ void ValidateBufferBinding(const BufferBinding& binding, Flags<BufferUsage> vali
 
     if (usage == BufferBindingUsage::ByteAddressBuffer || usage == BufferBindingUsage::RWByteAddressBuffer)
     {
-        VEX_CHECK(binding.offsetByteSize.value_or(0) % ByteAddressBufferOffsetMultiple == 0,
+        VEX_CHECK(binding.region.byteOffset % ByteAddressBufferOffsetMultiple == 0,
                   "Invalid binding for resource \"{}\": "
                   "ByteAddressBuffer offsets must be a multiple of {} bytes (elements are {} bytes wide)",
                   buffer.desc.name,
                   ByteAddressBufferOffsetMultiple,
                   ByteAddressBufferOffsetMultiple);
 
-        VEX_CHECK(binding.rangeByteSize.value_or(0) % ByteAddressBufferOffsetMultiple == 0,
+        VEX_CHECK(binding.region.GetByteSize(buffer.desc) % ByteAddressBufferOffsetMultiple == 0,
                   "Invalid binding for resource \"{}\": "
                   "ByteAddressBuffer range must be a multiple of {} bytes (elements are {} bytes wide)",
                   buffer.desc.name,
@@ -86,7 +84,7 @@ void ValidateIndexBufferBinding(const IndexBufferBinding& binding)
 {
     const auto& buffer = binding.buffer;
 
-    VEX_CHECK(binding.offset < buffer.desc.byteSize,
+    VEX_CHECK(binding.region.byteOffset < buffer.desc.byteSize,
               "Invalid binding for index buffer \"{}\": Buffer cannot have an offset larger than the buffer size.",
               buffer.desc.name);
 
@@ -188,70 +186,108 @@ void ValidateDrawResource(const DrawResourceBinding& binding)
         ValidateDepthStencilBinding(*binding.depthStencil);
     }
 
-    ValidateIndexBufferBinding(*binding.indexBuffer);
+    if (binding.indexBuffer)
+    {
+        ValidateIndexBufferBinding(*binding.indexBuffer);
+    }
 }
 
 } // namespace BindingUtil
 
 BufferBinding BufferBinding::CreateStructured(const Buffer& buffer,
-                                              u32 strideByteSize,
-                                              u32 firstElement,
-                                              std::optional<u32> elementCount)
+                                              u64 strideByteSize,
+                                              u64 firstElement,
+                                              std::optional<u64> elementCount)
 {
     return {
         .buffer = buffer,
         .usage = BufferBindingUsage::StructuredBuffer,
-        .strideByteSize = strideByteSize,
-        .offsetByteSize = static_cast<u64>(firstElement) * static_cast<u64>(strideByteSize),
-        .rangeByteSize = elementCount.value_or(buffer.desc.byteSize / strideByteSize - firstElement) * strideByteSize,
+        .region =
+            BufferRegion{
+                .byteOffset = firstElement * strideByteSize,
+                .byteSize =
+                    elementCount.value_or(buffer.desc.byteSize / strideByteSize - firstElement) * strideByteSize,
+            },
+        .strideByteSize = static_cast<u32>(strideByteSize),
     };
 }
 
 BufferBinding BufferBinding::CreateRWStructured(const Buffer& buffer,
-                                                u32 strideByteSize,
-                                                u32 firstElement,
-                                                std::optional<u32> elementCount)
+                                                u64 strideByteSize,
+                                                u64 firstElement,
+                                                std::optional<u64> elementCount)
 {
     return {
         .buffer = buffer,
         .usage = BufferBindingUsage::RWStructuredBuffer,
-        .strideByteSize = strideByteSize,
-        .offsetByteSize = firstElement * strideByteSize,
-        .rangeByteSize = elementCount.value_or((buffer.desc.byteSize / strideByteSize) - firstElement) * strideByteSize,
+        .region =
+            BufferRegion{
+                .byteOffset = firstElement * strideByteSize,
+                .byteSize =
+                    elementCount.value_or((buffer.desc.byteSize / strideByteSize) - firstElement) * strideByteSize,
+            },
+        .strideByteSize = static_cast<u32>(strideByteSize),
     };
 }
 
 BufferBinding BufferBinding::CreateRWByteAddress(const Buffer& buffer,
-                                                 u32 firstElement,
+                                                 u64 firstElement,
                                                  std::optional<u64> elementCount)
 {
     return {
         .buffer = buffer,
         .usage = BufferBindingUsage::RWByteAddressBuffer,
-        .offsetByteSize = firstElement * ByteAddressBufferOffsetMultiple,
-        .rangeByteSize = elementCount.value_or(buffer.desc.byteSize / ByteAddressBufferOffsetMultiple - firstElement) *
-                         ByteAddressBufferOffsetMultiple,
+        .region =
+            BufferRegion{
+                .byteOffset = firstElement * ByteAddressBufferOffsetMultiple,
+                .byteSize =
+                    elementCount.value_or(buffer.desc.byteSize / ByteAddressBufferOffsetMultiple - firstElement) *
+                    ByteAddressBufferOffsetMultiple,
+            },
     };
 }
 
-BufferBinding BufferBinding::CreateByteAddress(const Buffer& buffer, u32 firstElement, std::optional<u64> elementCount)
+BufferBinding BufferBinding::CreateByteAddress(const Buffer& buffer, u64 firstElement, std::optional<u64> elementCount)
 {
     return {
         .buffer = buffer,
         .usage = BufferBindingUsage::ByteAddressBuffer,
-        .offsetByteSize = firstElement * ByteAddressBufferOffsetMultiple,
-        .rangeByteSize = elementCount.value_or(buffer.desc.byteSize / ByteAddressBufferOffsetMultiple - firstElement) *
-                         ByteAddressBufferOffsetMultiple,
+        .region =
+            BufferRegion{
+                .byteOffset = firstElement * ByteAddressBufferOffsetMultiple,
+                .byteSize =
+                    elementCount.value_or(buffer.desc.byteSize / ByteAddressBufferOffsetMultiple - firstElement) *
+                    ByteAddressBufferOffsetMultiple,
+            },
     };
 }
 
-BufferBinding BufferBinding::CreateUniform(const Buffer& buffer, u32 offsetByteSize, std::optional<u64> rangeByteSize)
+BufferBinding BufferBinding::CreateUniform(const Buffer& buffer, u64 offsetByteSize, std::optional<u64> rangeByteSize)
 {
     return {
         .buffer = buffer,
         .usage = BufferBindingUsage::UniformBuffer,
-        .offsetByteSize = offsetByteSize,
-        .rangeByteSize = rangeByteSize.value_or(buffer.desc.byteSize - offsetByteSize),
+        .region =
+            BufferRegion{
+                .byteOffset = offsetByteSize,
+                .byteSize = rangeByteSize.value_or(buffer.desc.byteSize - offsetByteSize),
+            },
+    };
+}
+
+IndexBufferBinding IndexBufferBinding::Create(const Buffer& buffer,
+                                              IndexFormat format,
+                                              u64 firstElement,
+                                              std::optional<u64> elementCount)
+{
+    return {
+        .buffer = buffer,
+        .region =
+            BufferRegion{
+                .byteOffset = firstElement * std::to_underlying(format),
+                .byteSize = elementCount ? *elementCount * std::to_underlying(format) : GBufferWholeSize,
+            },
+        .format = format,
     };
 }
 

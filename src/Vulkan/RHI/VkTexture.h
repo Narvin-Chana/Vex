@@ -22,32 +22,9 @@ namespace VkTextureUtil
 ::vk::ImageAspectFlags BindingAspectToVkAspectFlags(TextureAspect aspect);
 ::vk::ImageAspectFlags GetFormatAspectFlags(TextureFormat format);
 ::vk::ImageAspectFlags AspectFlagFromPlaneIndex(TextureFormat format, u32 plane);
-
 } // namespace VkTextureUtil
 
-struct VkTextureView
-{
-    VkTextureView(const TextureBinding& binding);
-
-    TextureViewType viewType = TextureViewType::Texture2D;
-    ::vk::Format format;
-    TextureUsage usage = TextureUsage::None;
-
-    TextureSubresource subresource;
-
-    bool operator==(const VkTextureView&) const = default;
-};
-
 } // namespace vex::vk
-
-// clang-format off
-VEX_MAKE_HASHABLE(vex::vk::VkTextureView,
-    VEX_HASH_COMBINE(seed, obj.viewType);
-    VEX_HASH_COMBINE(seed, obj.format);
-    VEX_HASH_COMBINE(seed, obj.usage);
-    VEX_HASH_COMBINE(seed, obj.subresource);
-);
-// clang-format on
 
 namespace vex::vk
 {
@@ -75,10 +52,10 @@ public:
         return isBackBuffer;
     }
 
-    virtual BindlessHandle GetOrCreateBindlessView(const TextureBinding& binding,
+    virtual BindlessHandle GetOrCreateBindlessView(const TextureViewDesc& view,
                                                    RHIDescriptorPool& descriptorPool) override;
 
-    ::vk::ImageView GetOrCreateImageView(const TextureBinding& binding, TextureUsage usage);
+    ::vk::ImageView GetOrCreateImageView(const TextureViewDesc& view);
 
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
     virtual void FreeAllocation(RHIAllocator& allocator) override;
@@ -89,8 +66,8 @@ public:
         ::vk::UniqueImageView view;
     };
     // TODO: could potentially combine these?
-    std::unordered_map<VkTextureView, CacheEntry> bindlessCache;
-    std::unordered_map<VkTextureView, ::vk::UniqueImageView> viewCache;
+    std::unordered_map<TextureViewDesc, CacheEntry> bindlessCache;
+    std::unordered_map<TextureViewDesc, ::vk::UniqueImageView> viewCache;
 
 private:
     void CreateImage(RHIAllocator& allocator);
@@ -105,7 +82,7 @@ private:
 #endif
     std::variant<::vk::Image, ::vk::UniqueImage> image;
 
-    std::unordered_map<VkTextureView, CacheEntry> cache;
+    std::unordered_map<TextureViewDesc, CacheEntry> cache;
 
     friend class VkCommandList;
 };

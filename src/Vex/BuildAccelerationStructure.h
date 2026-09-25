@@ -59,7 +59,7 @@ struct BLASGeometryDesc
     // Geometry vertices.
     BufferBinding vertexBufferBinding;
     // Optional index buffer for the geometry.
-    std::optional<BufferBinding> indexBufferBinding;
+    std::optional<IndexBufferBinding> indexBufferBinding;
     // Optional 3x4 transform matrix to apply to vertices before building the BLAS.
     std::optional<std::array<float, 3 * 4>> transform;
 

@@ -230,7 +230,7 @@ public:
 
     // Returns the RHI command list associated with this context allowing for access to the native
     // CommandList/CommandContext (you should avoid using this unless you know what you are doing).
-    RHICommandList& GetRHICommandList();
+    RHICommandList& GetRHICommandList() const;
 
 private:
     TextureStateMap& GetOrFetchTextureState(TextureHandle handle);

@@ -55,25 +55,21 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
         break;
     case BufferBindingUsage::StructuredBuffer:
         binding = BufferBinding::CreateStructured(dataBuffer,
-                                                        DataSize,
-                                                        testData.firstElement.value_or(0),
-                                                        testData.elementCount);
+                                                  DataSize,
+                                                  testData.firstElement.value_or(0),
+                                                  testData.elementCount);
         break;
     case BufferBindingUsage::RWStructuredBuffer:
         binding = BufferBinding::CreateRWStructured(dataBuffer,
-                                                          DataSize,
-                                                          testData.firstElement.value_or(0),
-                                                          testData.elementCount);
+                                                    DataSize,
+                                                    testData.firstElement.value_or(0),
+                                                    testData.elementCount);
         break;
     case BufferBindingUsage::ByteAddressBuffer:
-        binding = BufferBinding::CreateByteAddress(dataBuffer,
-                                                         testData.firstElement.value_or(0),
-                                                         testData.elementCount);
+        binding = BufferBinding::CreateByteAddress(dataBuffer, testData.firstElement.value_or(0), testData.elementCount);
         break;
     case BufferBindingUsage::RWByteAddressBuffer:
-        binding = BufferBinding::CreateRWByteAddress(dataBuffer,
-                                                           testData.firstElement.value_or(0),
-                                                           testData.elementCount);
+        binding = BufferBinding::CreateRWByteAddress(dataBuffer, testData.firstElement.value_or(0), testData.elementCount);
         break;
     default:
         ADD_FAILURE() << "Unsupported buffer binding usage!";

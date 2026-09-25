@@ -12,6 +12,13 @@
 namespace vex
 {
 
+enum class IndexFormat : u8
+{
+    // TODO(https://trello.com/c/Hqp2C5DI): Add U16 index format support.
+    U16 = 16,
+    U32 = 32,
+};
+
 enum class InputTopology : u8
 {
     TriangleList,

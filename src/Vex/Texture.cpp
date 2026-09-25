@@ -24,24 +24,37 @@ std::tuple<u32, u32, u32> TextureUtil::GetMipSize(const TextureDesc& desc, u32 m
     return { std::max(desc.width >> mip, 1u), std::max(desc.height >> mip, 1u), std::max(desc.GetDepth() >> mip, 1u) };
 }
 
-TextureViewType TextureUtil::GetTextureViewType(const TextureDesc& desc, const std::optional<TextureViewType>& viewTypeOverride)
+namespace Texture_Internal
+{
+
+static bool IsViewTypeCompatibleWithTextureType(TextureType type, TextureViewType viewType)
+{
+    switch (type)
+    {
+    case TextureType::Texture2D:
+        return viewType == TextureViewType::Texture2D || viewType == TextureViewType::Texture2DArray;
+    case TextureType::TextureCube:
+        // Cubes are 2D arrays of 6 * cubeCount slices, so they can be viewed as any 2D or cube type.
+        return viewType != TextureViewType::Texture3D;
+    case TextureType::Texture3D:
+        // 2D views of 3D textures are not portable.
+        return viewType == TextureViewType::Texture3D;
+    }
+    return false;
+}
+
+} // namespace Texture_Internal
+
+TextureViewType TextureUtil::GetTextureViewType(const TextureDesc& desc,
+                                                std::optional<TextureViewType> viewTypeOverride)
 {
     if (viewTypeOverride)
     {
-        // TODO: make sure the viewTypeOverride is valid depending on texture type.
-        switch (*viewTypeOverride)
-        {
-        case TextureViewType::Texture2D:
-            break;
-        case TextureViewType::Texture2DArray:
-            break;
-        case TextureViewType::TextureCube:
-            break;
-        case TextureViewType::TextureCubeArray:
-            break;
-        case TextureViewType::Texture3D:
-            break;
-        }
+        VEX_CHECK(Texture_Internal::IsViewTypeCompatibleWithTextureType(desc.type, *viewTypeOverride),
+                  "Invalid view type override for texture \"{}\": a texture of type {} cannot be viewed as {}.",
+                  desc.name,
+                  desc.type,
+                  *viewTypeOverride);
         return *viewTypeOverride;
     }
 

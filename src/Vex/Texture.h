@@ -14,20 +14,6 @@
 namespace vex
 {
 
-// clang-format off
-
-enum class TextureUsage : u8
-{
-    None            = 0,
-    ShaderRead      = 1 << 0, // SRV in DX12, Sampled/Combined Image in Vulkan
-    ShaderReadWrite = 1 << 1, // UAV in DX12, Storage Image in Vulkan
-    RenderTarget    = 1 << 2, // RTV in DX12, Color Attachment in Vulkan
-    DepthStencil    = 1 << 3, // DSV in DX12, Depth/Stencil Attachment in Vulkan
-};
-VEX_ENUM_FLAG_BITS(TextureUsage);
-
-// clang-format on
-
 enum class TextureType : u8
 {
     Texture2D,
@@ -44,6 +30,20 @@ enum class TextureViewType : u8
     TextureCubeArray,
     Texture3D,
 };
+
+// clang-format off
+
+enum class TextureUsage : u8
+{
+    None            = 0,
+    ShaderRead      = 1 << 0, // SRV in DX12, Sampled/Combined Image in Vulkan
+    ShaderReadWrite = 1 << 1, // UAV in DX12, Storage Image in Vulkan
+    RenderTarget    = 1 << 2, // RTV in DX12, Color Attachment in Vulkan
+    DepthStencil    = 1 << 3, // DSV in DX12, Depth/Stencil Attachment in Vulkan
+};
+VEX_ENUM_FLAG_BITS(TextureUsage);
+
+// clang-format on
 
 enum class TextureBindingUsage : u8
 {
@@ -292,8 +292,7 @@ struct TextureUtil
     static u32 GetSubresourceIndex(const TextureDesc& desc, u16 mip, u32 slice, u32 plane);
 
     static std::tuple<u32, u32, u32> GetMipSize(const TextureDesc& desc, u32 mip);
-    static TextureViewType GetTextureViewType(const TextureDesc& desc,
-                                              const std::optional<TextureViewType>& viewTypeOverride);
+    static TextureViewType GetTextureViewType(const TextureDesc& desc, std::optional<TextureViewType> viewTypeOverride);
     static TextureViewType GetTextureViewType(const TextureBinding& binding);
     // This provides the correct format on which the data should be interpreted when copying data from and to a texture.
     // This applies mostly to depth/stencil formats that are read separately from their original format. (It applies to

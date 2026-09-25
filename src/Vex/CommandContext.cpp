@@ -60,7 +60,7 @@ static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureReg
                 const u64 regionStagingSize = static_cast<u64>(alignedRowPitch) * mipHeight * mipDepth;
 
                 BufferTextureCopyDesc copyDesc{
-                    .bufferRegion = { .offset = stagingBufferOffset, .byteSize = regionStagingSize, },
+                    .bufferRegion = { .byteOffset = stagingBufferOffset, .byteSize = regionStagingSize, },
                     .textureRegion = {
                         .subresource = {
                             .startMip = mip,
@@ -87,19 +87,19 @@ static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureReg
     return copyDescs;
 }
 
-static std::pair<DrawDesc, RenderTargetState> CreateRenderTargetStateFromBindings(const DrawDesc& drawDesc,
-                                                                                  const RHIDrawResources& rhiDrawRes)
+static std::pair<DrawDesc, RenderTargetState> CreateRenderTargetState(const DrawDesc& drawDesc,
+                                                                      const RHIDrawResources& rhiDrawRes)
 {
     RenderTargetState rtState;
 
-    for (const auto& [binding, _] : rhiDrawRes.renderTargets)
+    for (const auto& [rhiTexture, view] : rhiDrawRes.renderTargets)
     {
-        rtState.colorFormats.emplace_back(binding.texture.desc.format, binding.isSRGB);
+        rtState.colorFormats.emplace_back(rhiTexture->GetDesc().format, view.isSRGB);
     }
 
     if (rhiDrawRes.depthStencil)
     {
-        rtState.depthStencilFormat = rhiDrawRes.depthStencil->binding.texture.desc.format;
+        rtState.depthStencilFormat = rhiDrawRes.depthStencil->texture->GetDesc().format;
     }
 
     // Ensure each render target has at least a default color attachment (no blending, write all).
@@ -191,7 +191,7 @@ void CommandContext::Draw(const DrawDesc& drawDesc,
     CheckViewportAndScissor();
 
     // Index buffers are not used in Draw, warn the user if they have still bound one.
-    if (drawBindings.indexBuffer.has_value())
+    if (drawBindings.indexBuffer)
     {
         VEX_LOG(Warning,
                 "Your CommandContext::Draw call resources contain an index buffer which will be ignored. If you wish "
@@ -754,7 +754,7 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, Span<const byte> da
     if (buffer.desc.memoryLocality == ResourceMemoryLocality::CPUWrite)
     {
         RHIBuffer& rhiDestBuffer = graphics->GetRHIBuffer(buffer.handle);
-        MappedMemory(rhiDestBuffer).WriteData(data, region.offset);
+        MappedMemory(rhiDestBuffer).WriteData(data, region.byteOffset);
         return;
     }
 
@@ -769,7 +769,7 @@ void CommandContext::EnqueueDataUpload(const Buffer& buffer, Span<const byte> da
          buffer,
          BufferCopyDesc{
              .srcOffset = 0,
-             .dstOffset = region.offset,
+             .dstOffset = region.byteOffset,
              .byteSize = region.GetByteSize(buffer.desc),
          });
 }
@@ -789,7 +789,7 @@ BufferReadbackContext CommandContext::EnqueueDataReadback(const Buffer& srcBuffe
     }
     else
     {
-        Copy(srcBuffer, stagingBuffer, BufferCopyDesc{ region.offset, 0, region.GetByteSize(srcBuffer.desc) });
+        Copy(srcBuffer, stagingBuffer, BufferCopyDesc{ region.byteOffset, 0, region.GetByteSize(srcBuffer.desc) });
     }
 
     return { stagingBuffer, *graphics };
@@ -962,29 +962,23 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
                        "smaller than 12 bytes.");
 
             RHIBLASGeometryDesc rhiBLASGeometry{
-                .vertexBufferBinding =
-                    RHIBufferBinding(blasGeometry.vertexBufferBinding,
-                                     graphics->GetRHIBuffer(blasGeometry.vertexBufferBinding.buffer.handle)),
+                .vertexBufferView = ResourceBindingUtils::GetRHIBufferView(*graphics, blasGeometry.vertexBufferBinding),
                 .flags = blasGeometry.flags,
             };
 
             if (blasGeometry.indexBufferBinding.has_value())
             {
-                VEX_CHECK(blasGeometry.indexBufferBinding->strideByteSize == sizeof(u32),
-                          "Vex only supports 32bit index types");
-                rhiBLASGeometry.indexBufferBinding =
-                    RHIBufferBinding(*blasGeometry.indexBufferBinding,
-                                     graphics->GetRHIBuffer(blasGeometry.indexBufferBinding->buffer.handle));
+                VEX_CHECK(blasGeometry.indexBufferBinding->format == IndexFormat::U32,
+                          "Vex only supports 32bit index types (for now)...");
+                rhiBLASGeometry.indexBufferView =
+                    ResourceBindingUtils::GetRHIIndexBufferView(*graphics, *blasGeometry.indexBufferBinding);
             }
 
             if (blasGeometry.transform.has_value())
             {
-                rhiBLASGeometry.transformBufferBinding = RHIBufferBinding{
-                    .binding = { .buffer = transformBuffer,
-                                 .offsetByteSize = TransformMatrixSize * transformIndex,
-                                 .rangeByteSize = TransformMatrixSize },
-                    .buffer = graphics->GetRHIBuffer(transformBuffer.handle),
-                };
+                rhiBLASGeometry.transformBufferView = ResourceBindingUtils::GetRHIBufferView(
+                    *graphics,
+                    BufferBinding::CreateStructured(transformBuffer, TransformMatrixSize, transformIndex, 1u));
                 ++transformIndex;
             }
 
@@ -1030,14 +1024,9 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
         for (const BLASGeometryDesc& blasGeometry : desc.geometry)
         {
             RHIBLASGeometryDesc rhiBLASGeometry{
-                .aabbBufferBinding =
-                    RHIBufferBinding{
-                        .binding = { .buffer = aabbBuffer,
-                                     .strideByteSize = static_cast<u32>(sizeof(AABB)),
-                                     .offsetByteSize = sizeof(AABB) * aabbIndex,
-                                     .rangeByteSize = sizeof(AABB) * blasGeometry.aabbs.size() },
-                        .buffer = graphics->GetRHIBuffer(aabbBuffer.handle),
-                    },
+                .aabbBufferView = ResourceBindingUtils::GetRHIBufferView(
+                    *graphics,
+                    BufferBinding::CreateStructured<AABB>(aabbBuffer, aabbIndex, blasGeometry.aabbs.size())),
                 .flags = blasGeometry.flags,
             };
             aabbIndex += blasGeometry.aabbs.size();
@@ -1103,11 +1092,10 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
         .byteSize = instanceData.size(),
         .usage = BufferUsage::BuildAccelerationStructure,
     });
-    RHIBuffer& rhiInstanceBuffer = graphics->GetRHIBuffer(instanceBuffer.handle);
     EnqueueDataUpload(instanceBuffer, instanceData);
 
     BufferBinding binding = BufferBinding::CreateStructured(instanceBuffer, accelStruct.GetInstanceBufferStride());
-    rhiTLASDesc.instancesBinding = RHIBufferBinding{ binding, rhiInstanceBuffer };
+    rhiTLASDesc.instancesView = ResourceBindingUtils::GetRHIBufferView(*graphics, binding);
 
     const RHIAccelerationStructureBuildInfo& buildInfo = accelStruct.SetupTLASBuild(*graphics->allocator, rhiTLASDesc);
     Buffer scratchBuffer = CreateTemporaryBuffer({
@@ -1133,30 +1121,32 @@ void CommandContext::ExecuteInDrawContext(Span<const RenderTargetBinding> render
                                           Span<const ResourceBinding> trackedResources,
                                           const std::function<void()>& callback)
 {
-    RHIDrawResources drawResources =
-        ResourceBindingUtils::CollectRHIDrawResources(*graphics, renderTargets, depthStencil);
-    for (const auto& rt : drawResources.renderTargets)
+    InferResourceBarriers(RHIBarrierSync::AllGraphics, trackedResources);
+
+    for (const auto& rt : renderTargets)
     {
-        EnqueueTextureBarrier(rt.binding.texture,
-                              rt.binding.subresource,
+        EnqueueTextureBarrier(rt.texture,
+                              rt.subresource,
                               RHIBarrierSync::RenderTarget,
                               RHIBarrierAccess::RenderTarget,
                               RHITextureLayout::RenderTarget);
     }
-    if (drawResources.depthStencil.has_value())
+    if (depthStencil.has_value())
     {
         // Use the most restrictive access, since we don't know how the caller will use the depth stencil texture.
         RHIBarrierAccess depthAccess = RHIBarrierAccess::DepthStencilReadWrite;
         RHITextureLayout depthLayout = RHITextureLayout::DepthStencilWrite;
-        EnqueueTextureBarrier(drawResources.depthStencil->binding.texture,
-                              drawResources.depthStencil->binding.subresource,
+        EnqueueTextureBarrier(depthStencil->texture,
+                              depthStencil->subresource,
                               RHIBarrierSync::DepthStencil,
                               depthAccess,
                               depthLayout);
     }
 
-    InferResourceBarriers(RHIBarrierSync::AllGraphics, trackedResources);
-
+    RHIDrawResources drawResources =
+        ResourceBindingUtils::CollectRHIDrawResources(*graphics,
+                                                      renderTargets,
+                                                      depthStencil ? &*depthStencil : nullptr);
     FlushBarriers();
     cmdList->BeginRendering(drawResources);
     callback();
@@ -1222,7 +1212,7 @@ void CommandContext::Barrier(const AccelerationStructure& as, RHIBarrierAccess a
     });
 }
 
-RHICommandList& CommandContext::GetRHICommandList()
+RHICommandList& CommandContext::GetRHICommandList() const
 {
     return *cmdList;
 }
@@ -1232,7 +1222,9 @@ TextureStateMap& CommandContext::GetOrFetchTextureState(TextureHandle handle)
     auto [it, inserted] = textureStates.try_emplace(handle, TextureStateMap{});
     if (inserted)
     {
-        it->second.SetUniform({ RHIBarrierSync::None, RHIBarrierAccess::NoAccess, RHITextureLayout::Common });
+        it->second.SetUniform(RHITextureState{ .sync = RHIBarrierSync::None,
+                                               .access = RHIBarrierAccess::NoAccess,
+                                               .layout = RHITextureLayout::Common });
     }
     return it->second;
 }
@@ -1258,14 +1250,14 @@ void CommandContext::EnqueueTextureBarrier(const Texture& texture,
                                            RHITextureLayout dstLayout)
 {
     TextureStateMap& textureStateMap = GetOrFetchTextureState(texture.handle);
-
+    RHITexture& rhiTexture = graphics->GetRHITexture(texture.handle);
     // Iterate on subresource sections which have the same source state.
     textureStateMap.ForEachStateSection(texture.desc,
                                         subresource,
                                         [&](const TextureSubresource& section, RHITextureState srcState)
                                         {
                                             RHITextureBarrier barrier{
-                                                .texture = graphics->GetRHITexture(texture.handle),
+                                                .texture = rhiTexture,
                                                 .subresource = section,
                                                 .srcSync = srcState.sync,
                                                 .dstSync = dstSync,
@@ -1298,7 +1290,13 @@ void CommandContext::EnqueueTextureBarrier(const Texture& texture,
 
     // Set the new state in the texture state map, no matter the previous codepath we end up with the entire passed in
     // subresource in a uniform state.
-    textureStateMap.Set(texture.desc, subresource, { dstSync, dstAccess, dstLayout });
+    textureStateMap.Set(texture.desc,
+                        subresource,
+                        RHITextureState{
+                            .sync = dstSync,
+                            .access = dstAccess,
+                            .layout = dstLayout,
+                        });
 }
 
 void CommandContext::EnqueueGlobalBarrier(const RHIGlobalBarrier& globalBarrier)
@@ -1405,17 +1403,15 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
     InferResourceBarriers(RHIBarrierSync::AllGraphics, trackedResources);
 
     // Transition RTs/DepthStencil
-    RHIDrawResources drawResources =
-        ResourceBindingUtils::CollectRHIDrawResources(*graphics, drawBindings.renderTargets, drawBindings.depthStencil);
-    for (const auto& [binding, _] : drawResources.renderTargets)
+    for (const auto& rt : drawBindings.renderTargets)
     {
-        EnqueueTextureBarrier(binding.texture,
-                              binding.subresource,
+        EnqueueTextureBarrier(rt.texture,
+                              rt.subresource,
                               RHIBarrierSync::RenderTarget,
                               RHIBarrierAccess::RenderTarget,
                               RHITextureLayout::RenderTarget);
     }
-    if (drawResources.depthStencil.has_value())
+    if (drawBindings.depthStencil)
     {
         // Start with the most restrictive access.
         RHIBarrierAccess depthAccess;
@@ -1432,15 +1428,16 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
                                                  ? RHITextureLayout::DepthStencilWrite
                                                  : RHITextureLayout::DepthStencilRead;
 
-        EnqueueTextureBarrier(drawResources.depthStencil->binding.texture,
-                              drawResources.depthStencil->binding.subresource,
+        EnqueueTextureBarrier(drawBindings.depthStencil->texture,
+                              drawBindings.depthStencil->subresource,
                               RHIBarrierSync::DepthStencil,
                               depthAccess,
                               depthLayout);
     }
 
-    auto [newDrawDesc, renderTargetState] =
-        CommandContext_Internal::CreateRenderTargetStateFromBindings(drawDesc, drawResources);
+    RHIDrawResources drawResources =
+        ResourceBindingUtils::CollectRHIDrawResources(*graphics, drawBindings.renderTargets, drawBindings.depthStencil);
+    auto [newDrawDesc, renderTargetState] = CommandContext_Internal::CreateRenderTargetState(drawDesc, drawResources);
 
     // Setup the layout for our pass (must be done before PSO handling).
     RHIResourceLayout& resourceLayout = graphics->psCache->resourceLayout.value();
@@ -1477,7 +1474,7 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
                            .dstAccess = RHIBarrierAccess::VertexInputRead });
 
     // Bind Index Buffer.
-    if (drawBindings.indexBuffer.has_value())
+    if (drawBindings.indexBuffer)
     {
         SetIndexBuffer(*drawBindings.indexBuffer);
     }
@@ -1499,9 +1496,8 @@ void CommandContext::CheckViewportAndScissor() const
 
 void CommandContext::SetIndexBuffer(const IndexBufferBinding& indexBuffer) const
 {
-    RHIBuffer& buffer = graphics->GetRHIBuffer(indexBuffer.buffer.handle);
-    RHIIndexBufferBinding binding{ indexBuffer, NonNullPtr(buffer) };
-    cmdList->SetIndexBuffer(binding);
+    RHIIndexBufferView view = ResourceBindingUtils::GetRHIIndexBufferView(*graphics, indexBuffer);
+    cmdList->SetIndexBuffer(view);
 }
 
 } // namespace vex

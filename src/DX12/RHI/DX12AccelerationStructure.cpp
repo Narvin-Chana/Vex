@@ -124,8 +124,8 @@ void DX12AccelerationStructure::InitRayTracingGeometryDesc(const RHIBLASBuildDes
         {
             geometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
 
-            const D3D12_VERTEX_BUFFER_VIEW vbView = rhiGeometryDesc.vertexBufferBinding->buffer->GetVertexBufferView(
-                rhiGeometryDesc.vertexBufferBinding->binding);
+            const D3D12_VERTEX_BUFFER_VIEW vbView =
+                rhiGeometryDesc.vertexBufferView->buffer->GetVertexBufferView(rhiGeometryDesc.vertexBufferView->view);
             geometryDesc.Triangles.VertexBuffer = {
                 .StartAddress = vbView.BufferLocation,
                 .StrideInBytes = vbView.StrideInBytes,
@@ -133,13 +133,13 @@ void DX12AccelerationStructure::InitRayTracingGeometryDesc(const RHIBLASBuildDes
             geometryDesc.Triangles.VertexCount = vbView.SizeInBytes / vbView.StrideInBytes;
             geometryDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
 
-            if (rhiGeometryDesc.indexBufferBinding.has_value())
+            if (rhiGeometryDesc.indexBufferView.has_value())
             {
-                const D3D12_INDEX_BUFFER_VIEW ibView = rhiGeometryDesc.indexBufferBinding->buffer->GetIndexBufferView(
-                    rhiGeometryDesc.indexBufferBinding->binding);
+                const D3D12_INDEX_BUFFER_VIEW ibView =
+                    rhiGeometryDesc.indexBufferView->buffer->GetIndexBufferView(*rhiGeometryDesc.indexBufferView);
                 geometryDesc.Triangles.IndexBuffer = ibView.BufferLocation;
                 geometryDesc.Triangles.IndexCount =
-                    ibView.SizeInBytes / *rhiGeometryDesc.indexBufferBinding->binding.strideByteSize;
+                    ibView.SizeInBytes / std::to_underlying(rhiGeometryDesc.indexBufferView->format);
                 geometryDesc.Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
             }
             else
@@ -147,23 +147,23 @@ void DX12AccelerationStructure::InitRayTracingGeometryDesc(const RHIBLASBuildDes
                 geometryDesc.Triangles.IndexFormat = DXGI_FORMAT_UNKNOWN;
             }
 
-            if (rhiGeometryDesc.transformBufferBinding.has_value())
+            if (rhiGeometryDesc.transformBufferView.has_value())
             {
                 geometryDesc.Triangles.Transform3x4 =
-                    rhiGeometryDesc.transformBufferBinding->buffer->GetGPUVirtualAddress() +
-                    rhiGeometryDesc.transformBufferBinding->binding.offsetByteSize.value_or(0);
+                    rhiGeometryDesc.transformBufferView->buffer->GetGPUVirtualAddress() +
+                    rhiGeometryDesc.transformBufferView->view.region.byteOffset;
             }
         }
         else if (desc.type == ASGeometryType::AABBs)
         {
-            const RHIBufferBinding& aabbBinding = *rhiGeometryDesc.aabbBufferBinding;
-            const u32 aabbCount = *aabbBinding.binding.rangeByteSize / *aabbBinding.binding.strideByteSize;
+            const RHIBufferView& aabbView = *rhiGeometryDesc.aabbBufferView;
+            const BufferDesc& aabbDesc = aabbView.buffer->GetDesc();
+            const u32 aabbCount = aabbView.view.GetElementCount(aabbDesc);
             VEX_ASSERT(aabbCount > 0, "AABB geometry must have atleast one AABB.");
-            VEX_ASSERT(aabbBinding.binding.strideByteSize.value_or(sizeof(D3D12_RAYTRACING_AABB)) ==
-                           sizeof(D3D12_RAYTRACING_AABB),
+            VEX_ASSERT(aabbView.view.strideByteSize == sizeof(D3D12_RAYTRACING_AABB),
                        "AABB stride must be 24 bytes (6 floats: MinX, MinY, MinZ, MaxX, MaxY, MaxZ)");
             D3D12_GPU_VIRTUAL_ADDRESS virtualAddress =
-                aabbBinding.buffer->GetGPUVirtualAddress() + aabbBinding.binding.offsetByteSize.value_or(0);
+                aabbView.buffer->GetGPUVirtualAddress() + aabbView.view.region.byteOffset;
             VEX_ASSERT(ByteUtil::IsAligned<u64>(virtualAddress, D3D12_RAYTRACING_AABB_BYTE_ALIGNMENT),
                        "Virtual address for aabb buffer must be aligned to D3D12_RAYTRACING_AABB_BYTE_ALIGNMENT.");
             geometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS;

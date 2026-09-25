@@ -195,6 +195,7 @@ void HelloCubeApplication::Run()
                 .buffer = indexBuffer,
                 .format = vex::IndexFormat::U32,
             };
+            vex::DepthStencilBinding depthStencilBinding{ .texture = depthTexture };
 
             // Setup our rendering pass.
             std::array renderTargets = { vex::RenderTargetBinding{
@@ -224,8 +225,8 @@ void HelloCubeApplication::Run()
                 ctx.DrawIndexed(hlslDrawDesc,
                                 {
                                     .renderTargets = renderTargets,
-                                    .depthStencil = vex::DepthStencilBinding(depthTexture),
-                                    .indexBuffer = indexBufferBinding,
+                                    .depthStencil = &depthStencilBinding,
+                                    .indexBuffer = &indexBufferBinding,
                                 },
                                 vex::ConstantBinding(data),
                                 {},
@@ -236,8 +237,8 @@ void HelloCubeApplication::Run()
                 ctx.DrawIndexed(slangDrawDesc,
                                 {
                                     .renderTargets = renderTargets,
-                                    .depthStencil = vex::DepthStencilBinding(depthTexture),
-                                    .indexBuffer = indexBufferBinding,
+                                    .depthStencil = &depthStencilBinding,
+                                    .indexBuffer = &indexBufferBinding,
                                 },
                                 vex::ConstantBinding(data),
                                 {},

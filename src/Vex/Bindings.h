@@ -6,6 +6,7 @@
 #include <Vex/AccelerationStructure.h>
 #include <Vex/Buffer.h>
 #include <Vex/Containers/Span.h>
+#include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
 #include <Vex/Texture.h>
 #include <Vex/Types.h>
@@ -70,84 +71,101 @@ struct BufferBinding
 {
     // The buffer to bind
     Buffer buffer;
-    // The usage to use in this binding. Needs to be part of the usages of the buffer description
+    // The usage to use in this binding. Needs to be part of the usages of the buffer description.
     BufferBindingUsage usage = BufferBindingUsage::Invalid;
-
-    // Optional: Stride of the buffer in bytes when using StructuredBuffer usage
+    // Byte region to bind, defaults to the entire buffer.
+    // Note for the offset field:
+    //  - When using UniformBuffer usage the offset must be a multiple of 256 bytes
+    //  - When using (RW)ByteAddressBuffer usage the offset must be a multiple of 16 bytes.
+    // Note for the byteSize field:
+    //  - When using (RW)ByteAddressBuffer usage the range must be a multiple of 16 bytes
+    BufferRegion region;
+    // Optional: Stride of the buffer in bytes, required when using (RW)StructuredBuffer usage.
     std::optional<u32> strideByteSize;
-
-    // Optional: The offset to apply when binding the buffer (in bytes).
-    // When using UniformBuffer usage the offset must be a multiple of 256 bytes
-    // When using (RW)ByteAddressBuffer usage the offset must be a multiple of 16 bytes
-    std::optional<u64> offsetByteSize;
-
-    // Optional: The range in bytes starting from the offset to bind.
-    // If not specified the remaining range past the offset is bound
-    // When using (RW)ByteAddressBuffer usage the range must be a multiple of 16 bytes
-    std::optional<u64> rangeByteSize;
 
     // firstElement and elementCount represent strideByteSize multiples on the buffer
     static BufferBinding CreateStructured(const Buffer& buffer,
-                                          u32 strideByteSize,
-                                          u32 firstElement = 0,
-                                          std::optional<u32> elementCount = {});
+                                          u64 strideByteSize,
+                                          u64 firstElement = 0,
+                                          std::optional<u64> elementCount = {});
 
     template <class T>
     static BufferBinding CreateStructured(const Buffer& buffer,
-                                          u32 firstElement = 0,
-                                          std::optional<u32> elementCount = {});
+                                          u64 firstElement = 0,
+                                          std::optional<u64> elementCount = {});
 
     // firstElement and elementCount represent strideByteSize multiples on the buffer
     static BufferBinding CreateRWStructured(const Buffer& buffer,
-                                            u32 strideByteSize,
-                                            u32 firstElement = 0,
-                                            std::optional<u32> elementCount = {});
+                                            u64 strideByteSize,
+                                            u64 firstElement = 0,
+                                            std::optional<u64> elementCount = {});
 
     // First element and element count represent 16 byte elements on the ByteAddressBuffer
     // example: FirstElement = 1, ElementCount = 10 represents a view on bytes [16, 176] in the buffer
     // example: FirstElement = 0, ElementCount = 2 represents a view on bytes [0, 32] in the buffer
     static BufferBinding CreateByteAddress(const Buffer& buffer,
-                                           u32 firstElement = 0,
+                                           u64 firstElement = 0,
                                            std::optional<u64> elementCount = {});
 
     static BufferBinding CreateRWByteAddress(const Buffer& buffer,
-                                             u32 firstElement = 0,
+                                             u64 firstElement = 0,
                                              std::optional<u64> elementCount = {});
 
     // offsetByteSize must be a multiple of 128 bytes
     static BufferBinding CreateUniform(const Buffer& buffer,
-                                       u32 offsetByteSize = 0,
+                                       u64 offsetByteSize = 0,
                                        std::optional<u64> rangeByteSize = {});
 };
 
 template <class T>
-BufferBinding BufferBinding::CreateStructured(const Buffer& buffer, u32 firstElement, std::optional<u32> elementCount)
+BufferBinding BufferBinding::CreateStructured(const Buffer& buffer, u64 firstElement, std::optional<u64> elementCount)
 {
+    static_assert(sizeof(T) <= std::numeric_limits<u32>::max(), "Type must be smaller than MAX_U32.");
     return {
         .buffer = buffer,
         .usage = BufferBindingUsage::StructuredBuffer,
-        .strideByteSize = sizeof(T),
-        .offsetByteSize = firstElement * sizeof(T),
-        .rangeByteSize = elementCount.value_or(buffer.desc.byteSize / sizeof(T) - firstElement) * sizeof(T),
+        .region =
+            BufferRegion{
+                .byteOffset = firstElement * sizeof(T),
+                .byteSize = elementCount.value_or(buffer.desc.byteSize / sizeof(T) - firstElement) * sizeof(T),
+            },
+        .strideByteSize = static_cast<u32>(sizeof(T)),
     };
 }
-
-enum class IndexFormat : u8
-{
-    // TODO(https://trello.com/c/Hqp2C5DI): Add U16 index format support.
-    U16 = 16,
-    U32 = 32,
-};
 
 struct IndexBufferBinding
 {
     // The buffer to bind.
     Buffer buffer;
+    // Region of the index buffer to bind.
+    BufferRegion region;
     // Format of the index.
     IndexFormat format = IndexFormat::U32;
-    // Offset (in bytes) to apply to the binding.
-    u64 offset = 0;
+
+    static IndexBufferBinding Create(const Buffer& buffer,
+                                     IndexFormat format,
+                                     u64 firstElement = 0,
+                                     std::optional<u64> elementCount = std::nullopt);
+    template <class T>
+    static IndexBufferBinding Create(const Buffer& buffer,
+                                     u64 firstElement = 0,
+                                     std::optional<u64> elementCount = std::nullopt);
 };
+
+template <class T>
+IndexBufferBinding IndexBufferBinding::Create(const Buffer& buffer, u64 firstElement, std::optional<u64> elementCount)
+{
+    static_assert(sizeof(T) == sizeof(u16) || sizeof(T) == sizeof(u32), "Type must be a supported index type.");
+    return {
+        .buffer = buffer,
+        .region =
+            BufferRegion{
+                .byteOffset = firstElement * sizeof(T),
+                .byteSize = elementCount ? *elementCount * sizeof(T) : GBufferWholeSize,
+            },
+        .format = static_cast<IndexFormat>(sizeof(T)),
+    };
+}
 
 struct TextureBinding
 {
@@ -233,10 +251,10 @@ struct DrawResourceBinding
 {
     // Which textures to render-to.
     Span<const RenderTargetBinding> renderTargets;
-    // Depth(-stencil) buffer to use for depth testing.
-    const std::optional<DepthStencilBinding>& depthStencil = std::nullopt;
-    // Index buffer used for DrawIndexed.
-    const std::optional<IndexBufferBinding>& indexBuffer = std::nullopt;
+    // Depth(-stencil) buffer to use for depth testing (optional).
+    const DepthStencilBinding* depthStencil = nullptr;
+    // Index buffer used for DrawIndexed (optional).
+    const IndexBufferBinding* indexBuffer = nullptr;
 };
 
 namespace BindingUtil

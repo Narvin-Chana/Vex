@@ -77,84 +77,82 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
     ranges.reserve(desc.geometries.size());
     geometryCount.reserve(desc.geometries.size());
 
-    auto BindingToOffsetCount = [](const std::optional<RHIBufferBinding>& binding,
-                                   u32 stride) -> std::pair<u32, u32> // offset, count
-    {
-        if (!binding)
-            return {};
-
-        return { static_cast<u32>(binding->binding.offsetByteSize.value_or(0) / stride),
-                 static_cast<u32>(binding->binding.rangeByteSize.value_or(binding->buffer->GetDesc().byteSize) /
-                                  stride) };
-    };
-
     for (const RHIBLASGeometryDesc& geom : desc.geometries)
     {
         ::vk::AccelerationStructureGeometryKHR geometry{};
         if (desc.type == ASGeometryType::Triangles)
         {
-            VEX_ASSERT(geom.vertexBufferBinding);
-            VEX_ASSERT(geom.vertexBufferBinding->binding.strideByteSize);
+            VEX_ASSERT(geom.vertexBufferView);
+            VEX_ASSERT(geom.vertexBufferView->view.strideByteSize);
 
-            auto [firstVertex, vertexCount] =
-                BindingToOffsetCount(geom.vertexBufferBinding, *geom.vertexBufferBinding->binding.strideByteSize);
+            // ?? FirstVertex is unused after here?
+            // There's a firstVertex field in AccelerationStructureBuildRangeInfoKHR, maybe there?
+            const u32 vertexCount =
+                static_cast<u32>(geom.vertexBufferView->view.GetElementCount(geom.vertexBufferView->buffer->GetDesc()));
 
+            ::vk::IndexType indexType = ::vk::IndexType::eNoneKHR;
             u32 triangleCount = vertexCount / 3;
-            if (geom.indexBufferBinding)
+            if (geom.indexBufferView)
             {
-                triangleCount = BindingToOffsetCount(geom.indexBufferBinding, sizeof(u32)).second / 3;
+                switch (geom.indexBufferView->format)
+                {
+                case IndexFormat::U16:
+                    indexType = ::vk::IndexType::eUint16;
+                    break;
+                case IndexFormat::U32:
+                    indexType = ::vk::IndexType::eUint32;
+                    break;
+                default:
+                    VEX_ASSERT(false, "Unsupported index format");
+                }
+                const u32 indexCount = geom.indexBufferView->buffer->GetDesc().byteSize - geom.indexBufferView->offsetByteSize;
+                triangleCount = indexCount / 3;
             }
 
             geometryCount.push_back(triangleCount);
-
-            BufferBinding vertexBufferBinding = geom.vertexBufferBinding->binding;
 
             geometry = ::vk::AccelerationStructureGeometryKHR{
                 .geometryType = ::vk::GeometryTypeKHR::eTriangles,
                 .geometry = {
                     .triangles = {
                         .vertexFormat = ::vk::Format::eR32G32B32Sfloat,
-                        .vertexData = { geom.vertexBufferBinding->buffer->GetDeviceAddress() + geom.vertexBufferBinding->binding.offsetByteSize.value_or(0) },
-                        .vertexStride = *geom.vertexBufferBinding->binding.strideByteSize,
+                        .vertexData = { geom.vertexBufferView->buffer->GetDeviceAddress() + geom.vertexBufferView->view.offsetByteSize },
+                        .vertexStride = geom.vertexBufferView->view.strideByteSize,
                         .maxVertex = vertexCount - 1,
-                        .indexType = geom.indexBufferBinding ? ::vk::IndexType::eUint32 : ::vk::IndexType::eNoneKHR,
-                        .indexData = { geom.indexBufferBinding ? geom.indexBufferBinding->buffer->GetDeviceAddress() : ::vk::DeviceAddress{} },
-                        .transformData = { geom.transformBufferBinding ? geom.transformBufferBinding->buffer->GetDeviceAddress() : ::vk::DeviceAddress{} },
+                        .indexType = indexType,
+                        .indexData = { geom.indexBufferView ? geom.indexBufferView->buffer->GetDeviceAddress() : ::vk::DeviceAddress{} },
+                        .transformData = { geom.transformBufferView ? geom.transformBufferView->buffer->GetDeviceAddress() : ::vk::DeviceAddress{} },
                     },
                 },
             };
 
             ranges.push_back(::vk::AccelerationStructureBuildRangeInfoKHR{
                 .primitiveCount = triangleCount,
-                .primitiveOffset = static_cast<u32>(
-                    geom.indexBufferBinding ? geom.indexBufferBinding->binding.offsetByteSize.value_or(0) : 0),
+                .primitiveOffset = static_cast<u32>(geom.indexBufferView ? geom.indexBufferView->offsetByteSize : 0),
                 .firstVertex = 0,
                 .transformOffset =
-                    geom.transformBufferBinding
-                        ? static_cast<u32>(geom.transformBufferBinding->binding.offsetByteSize.value_or(0))
-                        : 0,
+                    geom.transformBufferView ? static_cast<u32>(geom.transformBufferView->view.offsetByteSize) : 0,
             });
         }
         else if (desc.type == ASGeometryType::AABBs)
         {
-            VEX_ASSERT(geom.aabbBufferBinding);
+            VEX_ASSERT(geom.aabbBufferView);
 
             geometry = ::vk::AccelerationStructureGeometryKHR{
                 .geometryType = ::vk::GeometryTypeKHR::eAabbs,
                 .geometry = {
                     .aabbs = {
-                        .data = { geom.aabbBufferBinding->buffer->GetDeviceAddress() },
+                        .data = { geom.aabbBufferView->buffer->GetDeviceAddress() },
                         .stride = sizeof(VkAabbPositionsKHR),
                     },
                 },
             };
 
-            auto [firstAabb, aabbCount] = BindingToOffsetCount(geom.aabbBufferBinding, sizeof(float) * 6);
-
+            const u32 aabbCount = geom.aabbBufferView->view.GetElementCount(geom.aabbBufferView->buffer->GetDesc());
             geometryCount.push_back(aabbCount);
             ranges.push_back(::vk::AccelerationStructureBuildRangeInfoKHR{
                 .primitiveCount = aabbCount,
-                .primitiveOffset = static_cast<u32>(geom.aabbBufferBinding->binding.offsetByteSize.value_or(0)),
+                .primitiveOffset = static_cast<u32>(geom.aabbBufferView->view.GetFirstElement()),
             });
         }
 
@@ -175,13 +173,13 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupTLASBuild
     ranges.clear();
     geometryCount.clear();
 
-    VEX_ASSERT(desc.instancesBinding);
+    VEX_ASSERT(desc.instancesView);
 
     geometries.push_back(::vk::AccelerationStructureGeometryKHR{
         .geometryType = ::vk::GeometryTypeKHR::eInstances,
         .geometry = {
             .instances = {
-                .data = { desc.instancesBinding->buffer->GetDeviceAddress() }
+                .data = { desc.instancesView->buffer->GetDeviceAddress() }
             },
         },
     });

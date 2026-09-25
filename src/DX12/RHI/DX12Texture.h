@@ -5,7 +5,6 @@
 #include <Vex/Containers/FreeList.h>
 #include <Vex/Resource.h>
 #include <Vex/Texture.h>
-#include <Vex/Utility/Hash.h>
 
 #include <RHI/RHIFwd.h>
 #include <RHI/RHITexture.h>
@@ -13,50 +12,11 @@
 #include <DX12/DX12DescriptorHeap.h>
 #include <DX12/DX12Headers.h>
 
-namespace vex
-{
-struct TextureBinding;
-struct ResourceBinding;
-} // namespace vex
-
 namespace vex::dx12
 {
 
-struct DX12TextureView
-{
-    DX12TextureView(const TextureDesc& desc, const TextureSubresource& subresource, TextureUsage usage);
-    DX12TextureView(const TextureBinding& binding);
-
-    TextureSubresource subresource;
-    TextureUsage usage;
-    TextureViewType dimension;
-    // Uses the underlying resource's format if set to DXGI_FORMAT_UNKNOWN (and if the texture's format is not
-    // TYPELESS!).
-    DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
-
-    constexpr bool operator==(const DX12TextureView&) const = default;
-
-private:
-    DX12TextureView(const TextureDesc& desc,
-                    const TextureSubresource& subresource,
-                    TextureUsage usage,
-                    TextureViewType dimension,
-                    DXGI_FORMAT format);
-};
-
-} // namespace vex::dx12
-
-// clang-format off
-VEX_MAKE_HASHABLE(vex::dx12::DX12TextureView,
-    VEX_HASH_COMBINE(seed, obj.subresource);
-    VEX_HASH_COMBINE(seed, obj.usage);
-    VEX_HASH_COMBINE(seed, obj.dimension);
-    VEX_HASH_COMBINE(seed, obj.format);
-)
-// clang-format on
-
-namespace vex::dx12
-{
+// Uses the underlying resource's format if set to DXGI_FORMAT_UNKNOWN (and if the texture's format is not TYPELESS).
+DXGI_FORMAT TextureViewToDXGIFormat(const TextureDesc& desc, const TextureViewDesc& view);
 
 class DX12Texture final : public RHITextureBase
 {
@@ -65,7 +25,7 @@ public:
     // Takes ownership of the passed in texture.
     DX12Texture(ComPtr<DX12Device>& device, std::string name, ComPtr<ID3D12Resource> rawTex);
 
-    virtual BindlessHandle GetOrCreateBindlessView(const TextureBinding& binding,
+    virtual BindlessHandle GetOrCreateBindlessView(const TextureViewDesc& view,
                                                    RHIDescriptorPool& descriptorPool) override;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) override;
     virtual void FreeAllocation(RHIAllocator& allocator) override;
@@ -75,7 +35,7 @@ public:
         return texture.Get();
     }
 
-    CD3DX12_CPU_DESCRIPTOR_HANDLE GetOrCreateRTVDSVView(const DX12TextureView& view);
+    CD3DX12_CPU_DESCRIPTOR_HANDLE GetOrCreateRTVDSVView(const TextureViewDesc& view);
 
 private:
     ComPtr<ID3D12Resource> texture;
@@ -88,7 +48,7 @@ private:
         BindlessHandle bindlessHandle = GInvalidBindlessHandle;
     };
 
-    std::unordered_map<DX12TextureView, CacheEntry> viewCache;
+    std::unordered_map<TextureViewDesc, CacheEntry> viewCache;
 
     static constexpr u32 InitialViewCountPerRTVHeap = 2;
     static constexpr u32 InitialViewCountPerDSVHeap = 1;
