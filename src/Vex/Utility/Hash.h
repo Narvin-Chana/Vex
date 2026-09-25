@@ -62,5 +62,3 @@ std::string HashToString(const SHA1HashDigest& hash);
 
 VEX_MAKE_HASHABLE(vex::SHA1HashDigest, VEX_HASH_COMBINE_CONTAINER(seed, obj.value););
 VEX_FORMATTABLE(vex::SHA1HashDigest, "{}", vex::HashToString(obj));
-
-VEX_FORMATTABLE(vex::SHA1HashDigest, "{:02x}{:02x}{:02x}{:02x}{:02x}", obj[0], obj[1], obj[2], obj[3], obj[4]);

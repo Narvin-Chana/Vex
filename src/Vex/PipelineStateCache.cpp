@@ -62,11 +62,14 @@ RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
     }
 
     GraphicsPSOKey key{ drawDesc, renderTargetState };
-    const auto it = graphicsPSCache.find(key);
-    RHIGraphicsPipelineState& ps =
-        it != graphicsPSCache.end()
-            ? it->second
-            : graphicsPSCache.insert({ key, rhi->CreateGraphicsPipelineState(key) }).first->second;
+    auto it = graphicsPSCache.find(key);
+    if (it == graphicsPSCache.end())
+    {
+        std::string psName =
+            PSOUtil::GetGraphicsPSOName(drawDesc, renderTargetState, graphicsPSCache.hash_function()(key));
+        it = graphicsPSCache.emplace(key, rhi->CreateGraphicsPipelineState(std::move(psName), key)).first;
+    }
+    RHIGraphicsPipelineState& ps = it->second;
 
     bool pipelineStateStale = false;
     pipelineStateStale |= resourceLayout->version > ps.rootSignatureVersion;

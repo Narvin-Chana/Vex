@@ -47,7 +47,35 @@ std::string PSOUtil::GetGraphicsPSOName(const DrawDesc& drawDesc,
     using namespace PipelineState_Internal;
     std::string name = "Graphics";
     AppendLabelValueSection(name, "VS", drawDesc.vertexShader.name);
-    AppendLabelValueSection(name, "PS", drawDesc.pixelShader.name);
+    if (drawDesc.pixelShader)
+    {
+        AppendLabelValueSection(name, "PS", drawDesc.pixelShader->name);
+    }
+    if (!renderTargetState.colorFormats.empty())
+    {
+        AppendLabelValueSection(name, "RT", FormatColorFormats(renderTargetState));
+    }
+    if (renderTargetState.depthStencilFormat != TextureFormat::UNKNOWN)
+    {
+        AppendLabelValueSection(name, "DS", magic_enum::enum_name(renderTargetState.depthStencilFormat));
+    }
+    return FinalizeName(std::move(name), keyHash);
+}
+std::string PSOUtil::GetGraphicsPSOName(const DispatchMeshDesc& drawDesc,
+                                        const RenderTargetState& renderTargetState,
+                                        std::size_t keyHash)
+{
+    using namespace PipelineState_Internal;
+    std::string name = "Graphics";
+    AppendLabelValueSection(name, "MS", drawDesc.meshShader.name);
+    if (drawDesc.pixelShader)
+    {
+        AppendLabelValueSection(name, "PS", drawDesc.pixelShader->name);
+    }
+    if (drawDesc.amplificationShader)
+    {
+        AppendLabelValueSection(name, "AS", drawDesc.amplificationShader->name);
+    }
     if (!renderTargetState.colorFormats.empty())
     {
         AppendLabelValueSection(name, "RT", FormatColorFormats(renderTargetState));
@@ -135,12 +163,9 @@ GraphicsPSOKey::GraphicsPSOKey(const DrawDesc& drawDesc, const RenderTargetState
               "Invalid ShaderType for pixel shader: {}",
               drawDesc.pixelShader->type);
 }
+
 GraphicsPSOKey::GraphicsPSOKey(const DispatchMeshDesc& drawDesc, const RenderTargetState& renderTargetState)
-    : name(std::format("MS: {}, AS: {}, PS: {}",
-                       drawDesc.meshShader.name,
-                       drawDesc.amplificationShader ? drawDesc.amplificationShader->name : "<not set>",
-                       drawDesc.pixelShader ? drawDesc.pixelShader->name : "<not set>"))
-    , meshShader(drawDesc.meshShader.hash)
+    : meshShader(drawDesc.meshShader.hash)
     , amplificationShader(drawDesc.amplificationShader ? drawDesc.amplificationShader->hash : SHA1HashDigest{})
     , pixelShader(drawDesc.pixelShader ? drawDesc.pixelShader->hash : SHA1HashDigest{})
     , rasterizerState(drawDesc.rasterizerState)
