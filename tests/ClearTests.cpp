@@ -6,15 +6,6 @@ struct ClearTest : VexTest
 {
 };
 
-template <class T>
-bool ValidateTextureValue(const TextureReadbackContext& ctx, T expectedValue)
-{
-    std::vector<T> texels;
-    texels.resize(ctx.GetDataByteSize() / sizeof(T));
-    ctx.ReadData(std::as_writable_bytes(std::span{ texels }));
-    return std::ranges::all_of(texels, [&](auto v) { return v == expectedValue; });
-}
-
 TEST_F(ClearTest, ClearRenderTargetDefaultAspect)
 {
     auto texture =

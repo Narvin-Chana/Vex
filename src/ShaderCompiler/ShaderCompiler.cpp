@@ -6,6 +6,7 @@
 
 #include <Vex/Logger.h>
 #include <Vex/RayTracing.h>
+#include <Vex/Utility/Formattable.h>
 #include <Vex/Utility/MagicEnum.h>
 #include <VexMacros.h>
 
@@ -76,6 +77,10 @@ std::filesystem::path GetShaderDumpPath(const Shader& shader, const std::filesys
         {
         case ShaderType::VertexShader:
             return "VS";
+        case ShaderType::MeshShader:
+            return "MS";
+        case ShaderType::AmplificationShader:
+            return "AS";
         case ShaderType::PixelShader:
             return "PS";
         case ShaderType::ComputeShader:
@@ -141,11 +146,11 @@ RayTracingShaderCollection ShaderCompiler::GetRayTracingShaderCollection(const R
         .maxAttributeByteSize = rtShaderKey.maxAttributeByteSize,
     };
 
-    for (auto& rayGenKey : rtShaderKey.rayGenerationShaders)
+    for (const auto& rayGenKey : rtShaderKey.rayGenerationShaders)
     {
         shaderCollection.rayGenerationShaders.push_back(GetShaderView(rayGenKey));
     }
-    for (auto& rayMissKey : rtShaderKey.rayMissShaders)
+    for (const auto& rayMissKey : rtShaderKey.rayMissShaders)
     {
         shaderCollection.rayMissShaders.push_back(GetShaderView(rayMissKey));
     }
@@ -159,7 +164,7 @@ RayTracingShaderCollection ShaderCompiler::GetRayTracingShaderCollection(const R
                 rayIntersectionKey ? std::optional{ GetShaderView(*rayIntersectionKey) } : std::nullopt,
         });
     }
-    for (auto& rayCallableKey : rtShaderKey.rayCallableShaders)
+    for (const auto& rayCallableKey : rtShaderKey.rayCallableShaders)
     {
         shaderCollection.rayCallableShaders.push_back(GetShaderView(rayCallableKey));
     }

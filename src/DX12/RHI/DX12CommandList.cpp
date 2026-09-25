@@ -552,6 +552,21 @@ void DX12CommandList::Dispatch(const std::array<u32, 3>& groupCount)
     }
 }
 
+void DX12CommandList::DispatchMesh(const std::array<u32, 3>& groupCount)
+{
+    switch (type)
+    {
+    case QueueType::Graphics:
+        commandList->DispatchMesh(groupCount[0], groupCount[1], groupCount[2]);
+        break;
+    case QueueType::Compute:
+    case QueueType::Copy:
+    default:
+        VEX_LOG(Fatal, "Cannot use mesh shading with a non-graphics capable command queue.");
+        break;
+    }
+}
+
 void DX12CommandList::TraceRays(const TraceRaysDesc& rayTracingArgs,
                                 const RHIRayTracingPipelineState& rayTracingPipelineState)
 {

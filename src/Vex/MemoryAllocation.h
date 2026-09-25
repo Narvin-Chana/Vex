@@ -3,8 +3,8 @@
 #include <optional>
 #include <vector>
 
-#include <Vex/Utility/Handle.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/Handle.h>
 
 #if defined(_WIN32)
 #ifdef GetFreeSpace
@@ -72,7 +72,7 @@ struct PageHandle : Handle64<PageHandle>
 {
 };
 
-inline constexpr PageHandle GInvalidPageHandle;
+inline constexpr PageHandle GInvalidPageHandle{};
 
 struct Allocation
 {

@@ -24,10 +24,17 @@ public:
         , key{ std::move(key) }
     {
     }
-    virtual void Compile(const ShaderView& vertexShader,
-                         const ShaderView& pixelShader,
-                         RHIResourceLayout& resourceLayout) = 0;
+
     virtual std::unique_ptr<RHIGraphicsPipelineState> Cleanup() = 0;
+
+    virtual void Compile(const ShaderView& vertexShader,
+                         const ShaderView* pixelShader,
+                         RHIResourceLayout& resourceLayout) = 0;
+
+    virtual void Compile(const ShaderView& meshShader,
+                         const ShaderView* amplificationShader,
+                         const ShaderView* pixelShader,
+                         RHIResourceLayout& resourceLayout) = 0;
 
     std::string name;
     Key key;

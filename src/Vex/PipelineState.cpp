@@ -47,7 +47,35 @@ std::string PSOUtil::GetGraphicsPSOName(const DrawDesc& drawDesc,
     using namespace PipelineState_Internal;
     std::string name = "Graphics";
     AppendLabelValueSection(name, "VS", drawDesc.vertexShader.name);
-    AppendLabelValueSection(name, "PS", drawDesc.pixelShader.name);
+    if (drawDesc.pixelShader)
+    {
+        AppendLabelValueSection(name, "PS", drawDesc.pixelShader->name);
+    }
+    if (!renderTargetState.colorFormats.empty())
+    {
+        AppendLabelValueSection(name, "RT", FormatColorFormats(renderTargetState));
+    }
+    if (renderTargetState.depthStencilFormat != TextureFormat::UNKNOWN)
+    {
+        AppendLabelValueSection(name, "DS", magic_enum::enum_name(renderTargetState.depthStencilFormat));
+    }
+    return FinalizeName(std::move(name), keyHash);
+}
+std::string PSOUtil::GetGraphicsPSOName(const DispatchMeshDesc& drawDesc,
+                                        const RenderTargetState& renderTargetState,
+                                        std::size_t keyHash)
+{
+    using namespace PipelineState_Internal;
+    std::string name = "Graphics";
+    AppendLabelValueSection(name, "MS", drawDesc.meshShader.name);
+    if (drawDesc.pixelShader)
+    {
+        AppendLabelValueSection(name, "PS", drawDesc.pixelShader->name);
+    }
+    if (drawDesc.amplificationShader)
+    {
+        AppendLabelValueSection(name, "AS", drawDesc.amplificationShader->name);
+    }
     if (!renderTargetState.colorFormats.empty())
     {
         AppendLabelValueSection(name, "RT", FormatColorFormats(renderTargetState));
@@ -117,7 +145,7 @@ std::string PSOUtil::GetRayTracingPSOName(const RayTracingShaderCollection& shad
 
 GraphicsPSOKey::GraphicsPSOKey(const DrawDesc& drawDesc, const RenderTargetState& renderTargetState)
     : vertexShader(drawDesc.vertexShader.hash)
-    , pixelShader(drawDesc.pixelShader.hash)
+    , pixelShader(drawDesc.pixelShader ? drawDesc.pixelShader->hash : SHA1HashDigest{})
     , inputAssembly(drawDesc.inputAssembly)
     , rasterizerState(drawDesc.rasterizerState)
     , depthStencilState(drawDesc.depthStencilState)
@@ -125,13 +153,42 @@ GraphicsPSOKey::GraphicsPSOKey(const DrawDesc& drawDesc, const RenderTargetState
     , renderTargetState(renderTargetState)
 {
     VEX_CHECK(drawDesc.vertexShader.IsValid(), "Invalid shader for GraphicsPSO: {}", drawDesc.vertexShader.name);
-    VEX_CHECK(drawDesc.pixelShader.IsValid(), "Invalid shader for GraphicsPSO: {}", drawDesc.pixelShader.name);
+    VEX_CHECK(!drawDesc.pixelShader || drawDesc.pixelShader->IsValid(),
+              "Invalid shader for GraphicsPSO: {}",
+              drawDesc.pixelShader->name);
     VEX_CHECK(drawDesc.vertexShader.type == ShaderType::VertexShader,
               "Invalid ShaderType for vertex shader: {}",
               drawDesc.vertexShader.type);
-    VEX_CHECK(drawDesc.pixelShader.type == ShaderType::PixelShader,
+    VEX_CHECK(!drawDesc.pixelShader || drawDesc.pixelShader->type == ShaderType::PixelShader,
               "Invalid ShaderType for pixel shader: {}",
-              drawDesc.pixelShader.type);
+              drawDesc.pixelShader->type);
+}
+
+GraphicsPSOKey::GraphicsPSOKey(const DispatchMeshDesc& drawDesc, const RenderTargetState& renderTargetState)
+    : meshShader(drawDesc.meshShader.hash)
+    , amplificationShader(drawDesc.amplificationShader ? drawDesc.amplificationShader->hash : SHA1HashDigest{})
+    , pixelShader(drawDesc.pixelShader ? drawDesc.pixelShader->hash : SHA1HashDigest{})
+    , rasterizerState(drawDesc.rasterizerState)
+    , depthStencilState(drawDesc.depthStencilState)
+    , colorBlendState(drawDesc.colorBlendState)
+    , renderTargetState(renderTargetState)
+{
+    VEX_CHECK(drawDesc.meshShader.IsValid(), "Invalid shader for GraphicsPSO: {}", drawDesc.meshShader.name);
+    VEX_CHECK(!drawDesc.amplificationShader || drawDesc.amplificationShader->IsValid(),
+              "Invalid shader for GraphicsPSO: {}",
+              drawDesc.amplificationShader->name);
+    VEX_CHECK(!drawDesc.pixelShader || drawDesc.pixelShader->IsValid(),
+              "Invalid shader for GraphicsPSO: {}",
+              drawDesc.pixelShader->name);
+    VEX_CHECK(drawDesc.meshShader.type == ShaderType::MeshShader,
+              "Invalid ShaderType for mesh shader: {}",
+              drawDesc.meshShader.type);
+    VEX_CHECK(!drawDesc.amplificationShader || drawDesc.amplificationShader->type == ShaderType::AmplificationShader,
+              "Invalid ShaderType for amplification shader: {}",
+              drawDesc.meshShader.type);
+    VEX_CHECK(!drawDesc.pixelShader || drawDesc.pixelShader->type == ShaderType::PixelShader,
+              "Invalid ShaderType for pixel shader: {}",
+              drawDesc.pixelShader->type);
 }
 
 ComputePSOKey::ComputePSOKey(const ShaderView& computeShader)

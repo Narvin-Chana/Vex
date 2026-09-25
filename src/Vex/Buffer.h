@@ -112,7 +112,7 @@ struct BufferHandle : Handle64<BufferHandle>
 {
 };
 
-inline constexpr BufferHandle GInvalidBufferHandle;
+inline constexpr BufferHandle GInvalidBufferHandle{};
 
 struct Buffer final
 {

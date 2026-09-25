@@ -21,6 +21,8 @@ public:
         std::size_t seed = 0;
         VEX_HASH_COMBINE(seed, key.vertexShader);
         VEX_HASH_COMBINE(seed, key.pixelShader);
+        VEX_HASH_COMBINE(seed, key.meshShader);
+        VEX_HASH_COMBINE(seed, key.amplificationShader);
         // Input assembly is bound dynamically.
         VEX_HASH_COMBINE(seed, key.rasterizerState);
         VEX_HASH_COMBINE(seed, key.depthStencilState);
@@ -33,9 +35,19 @@ public:
     VkGraphicsPipelineState(VkGraphicsPipelineState&&) = default;
     VkGraphicsPipelineState& operator=(VkGraphicsPipelineState&&) = default;
     virtual void Compile(const ShaderView& vertexShader,
-                         const ShaderView& pixelShader,
+                         const ShaderView* pixelShader,
                          RHIResourceLayout& resourceLayout) override;
+
+    virtual void Compile(const ShaderView& meshShader,
+                         const ShaderView* amplificationShader,
+                         const ShaderView* pixelShader,
+                         RHIResourceLayout& resourceLayout) override;
+
     virtual std::unique_ptr<RHIGraphicsPipelineState> Cleanup() override;
+
+    void CreateGraphicsPipeline(RHIResourceLayout& resourceLayout,
+                                std::span<const ::vk::PipelineShaderStageCreateInfo> stages,
+                                std::span<const ::vk::DynamicState> dynamicStates);
 
     ::vk::UniquePipeline graphicsPipeline;
 

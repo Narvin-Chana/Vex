@@ -62,6 +62,7 @@ public:
     virtual void SetIndexBuffer(const RHIBufferBinding& indexBuffer) override;
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount) override;
+    virtual void DispatchMesh(const std::array<u32, 3>& groupCount) override;
 
     virtual void TraceRays(const TraceRaysDesc& rayTracingArgs,
                            const RHIRayTracingPipelineState& rayTracingPipelineState) override;

@@ -29,6 +29,7 @@ add_executable(vex_tests
     "ClearTests.cpp"
     "AccelerationStructureTest.cpp"
  	"RayTracingTest.cpp"
+	"GraphicsPipelineTests.cpp"
 )
 
 target_compile_definitions(Vex PUBLIC VEX_TESTS=1)
