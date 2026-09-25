@@ -82,8 +82,6 @@ private:
 #endif
     std::variant<::vk::Image, ::vk::UniqueImage> image;
 
-    std::unordered_map<TextureViewDesc, CacheEntry> cache;
-
     friend class VkCommandList;
 };
 

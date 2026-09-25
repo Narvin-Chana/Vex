@@ -23,7 +23,9 @@ namespace vex::dx12
 namespace Texture_Internal
 {
 
-static D3D12_RENDER_TARGET_VIEW_DESC CreateRenderTargetViewDesc(const TextureViewDesc& view, DXGI_FORMAT format)
+static D3D12_RENDER_TARGET_VIEW_DESC CreateRenderTargetViewDesc(const TextureDesc& textureDesc,
+                                                                const TextureViewDesc& view,
+                                                                DXGI_FORMAT format)
 {
     D3D12_RENDER_TARGET_VIEW_DESC desc{ .Format = format };
 
@@ -43,7 +45,7 @@ static D3D12_RENDER_TARGET_VIEW_DESC CreateRenderTargetViewDesc(const TextureVie
         desc.Texture2DArray = {
             .MipSlice = view.subresource.startMip,
             .FirstArraySlice = view.subresource.startSlice,
-            .ArraySize = view.subresource.sliceCount,
+            .ArraySize = view.subresource.GetSliceCount(textureDesc),
             .PlaneSlice = 0,
         };
         break;
@@ -52,11 +54,11 @@ static D3D12_RENDER_TARGET_VIEW_DESC CreateRenderTargetViewDesc(const TextureVie
         desc.Texture3D = {
             .MipSlice = view.subresource.startMip,
             .FirstWSlice = view.subresource.startSlice,
-            .WSize = view.subresource.sliceCount,
+            .WSize = view.subresource.GetSliceCount(textureDesc),
         };
         break;
     default:
-        VEX_LOG(Fatal, "Unsupported texture dimension type for RTV creation: %d", view.viewType);
+        VEX_LOG(Fatal, "Unsupported texture dimension type for RTV creation: {}", view.viewType);
         std::unreachable();
     }
 
@@ -130,7 +132,7 @@ static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const Textur
         };
         break;
     default:
-        VEX_LOG(Fatal, "Unsupported texture dimension type for SRV creation: %d", view.viewType);
+        VEX_LOG(Fatal, "Unsupported texture dimension type for SRV creation: {}", view.viewType);
         std::unreachable();
     }
 
@@ -175,7 +177,7 @@ static D3D12_UNORDERED_ACCESS_VIEW_DESC CreateUnorderedAccessViewDesc(const Text
         };
         break;
     default:
-        VEX_LOG(Fatal, "Unsupported texture dimension type for UAV creation: %d", view.viewType);
+        VEX_LOG(Fatal, "Unsupported texture dimension type for UAV creation: {}", view.viewType);
         std::unreachable();
     }
 
@@ -221,7 +223,7 @@ DX12Texture::DX12Texture(ComPtr<DX12Device>& device, RHIAllocator& allocator, co
                                                 desc.mips);
         break;
     default:
-        VEX_LOG(Fatal, "Unsupported texture dimension type for texture creation: %d", desc.type);
+        VEX_LOG(Fatal, "Unsupported texture dimension type for texture creation: {}", desc.type);
         std::unreachable();
     }
 
@@ -446,7 +448,7 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE DX12Texture::GetOrCreateRTVDSVView(const TextureVi
     {
         auto idx = rtvHeapAllocator.Allocate();
         viewCache[view] = { .heapSlot = idx };
-        auto rtvDesc = CreateRenderTargetViewDesc(view, TextureViewToDXGIFormat(desc, view));
+        auto rtvDesc = CreateRenderTargetViewDesc(desc, view, TextureViewToDXGIFormat(desc, view));
         auto rtvDescriptor = rtvHeap.GetCPUDescriptorHandle(idx);
         device->CreateRenderTargetView(texture.Get(), &rtvDesc, rtvDescriptor);
         return rtvDescriptor;

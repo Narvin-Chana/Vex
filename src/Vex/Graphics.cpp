@@ -373,7 +373,7 @@ MappedMemory Graphics::MapResource(const Buffer& buffer)
 
 BindlessHandle Graphics::GetBindlessHandle(const TextureBinding& bindlessResource)
 {
-    BindingUtil::ValidateTextureBinding(bindlessResource, bindlessResource.texture.desc.usage);
+    BindingUtil::ValidateTextureBinding(bindlessResource, TextureUsage::ShaderRead | TextureUsage::ShaderReadWrite);
 
     const auto [texture, view] = ResourceBindingUtils::GetRHITextureView(*this, bindlessResource);
     return texture->GetOrCreateBindlessView(view, *descriptorPool);
@@ -381,7 +381,9 @@ BindlessHandle Graphics::GetBindlessHandle(const TextureBinding& bindlessResourc
 
 BindlessHandle Graphics::GetBindlessHandle(const BufferBinding& bindlessResource)
 {
-    BindingUtil::ValidateBufferBinding(bindlessResource, bindlessResource.buffer.desc.usage);
+    BindingUtil::ValidateBufferBinding(
+        bindlessResource,
+        BufferUsage::ShaderRead | BufferUsage::ShaderReadUniform | BufferUsage::ShaderReadWrite);
 
     const auto [buffer, view] = ResourceBindingUtils::GetRHIBufferView(*this, bindlessResource);
     return buffer->GetOrCreateBindlessView(view, *descriptorPool);
@@ -391,7 +393,7 @@ BindlessHandle Graphics::GetBindlessHandle(const AccelerationStructure& accelera
 {
     return GetRHIAccelerationStructure(accelerationStructure.handle)
         .GetRHIBuffer()
-        .GetOrCreateBindlessView({}, *descriptorPool);
+        .GetOrCreateBindlessView({ .isAccelerationStructure = true }, *descriptorPool);
 }
 
 void Graphics::GetBindlessHandles(Span<const ResourceBinding> bindlessResources, Span<BindlessHandle> out)

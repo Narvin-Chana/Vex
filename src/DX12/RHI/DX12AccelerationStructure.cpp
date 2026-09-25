@@ -139,7 +139,7 @@ void DX12AccelerationStructure::InitRayTracingGeometryDesc(const RHIBLASBuildDes
                     rhiGeometryDesc.indexBufferView->buffer->GetIndexBufferView(*rhiGeometryDesc.indexBufferView);
                 geometryDesc.Triangles.IndexBuffer = ibView.BufferLocation;
                 geometryDesc.Triangles.IndexCount =
-                    ibView.SizeInBytes / std::to_underlying(rhiGeometryDesc.indexBufferView->format);
+                    ibView.SizeInBytes / (std::to_underlying(rhiGeometryDesc.indexBufferView->format) / 8);
                 geometryDesc.Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
             }
             else

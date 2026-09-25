@@ -17,7 +17,14 @@ RHITextureView ResourceBindingUtils::GetRHITextureView(Graphics& graphics, const
                 .format = texture.GetDesc().format,
                 .isSRGB = textureBinding.isSRGB,
                 .usage = static_cast<TextureUsage>(textureBinding.usage),
-                .subresource = textureBinding.subresource,
+                .subresource =
+                    TextureSubresource{
+                        .startMip = textureBinding.subresource.startMip,
+                        .mipCount = textureBinding.subresource.GetMipCount(texture.GetDesc()),
+                        .startSlice = textureBinding.subresource.startSlice,
+                        .sliceCount = textureBinding.subresource.GetSliceCount(texture.GetDesc()),
+                        .aspect = textureBinding.subresource.GetAspect(texture.GetDesc()),
+                    },
             },
     };
 }
@@ -30,7 +37,11 @@ RHIBufferView ResourceBindingUtils::GetRHIBufferView(Graphics& graphics, const B
         .view =
             BufferViewDesc{
                 .usage = bufferBinding.usage,
-                .region = bufferBinding.region,
+                .region =
+                    BufferRegion{
+                        .byteOffset = bufferBinding.region.byteOffset,
+                        .byteSize = bufferBinding.region.GetByteSize(buffer.GetDesc()),
+                    },
                 .strideByteSize = bufferBinding.strideByteSize.value_or(0),
                 .isAccelerationStructure = buffer.GetDesc().usage.IsSet(BufferUsage::AccelerationStructure),
             },
@@ -46,28 +57,6 @@ RHIIndexBufferView ResourceBindingUtils::GetRHIIndexBufferView(Graphics& graphic
         .region = indexBufferBinding.region,
         .format = indexBufferBinding.format,
     };
-}
-
-void ResourceBindingUtils::CollectRHIViews(Graphics& graphics,
-                                           Span<const ResourceBinding> resources,
-                                           Span<RHITextureView>& textureViews,
-                                           Span<RHIBufferView>& bufferViews)
-{
-    VEX_ASSERT(textureViews.size() + bufferViews.size() >= resources.size(),
-               "Texture and buffer view spans must be large enough to gather resources.");
-    for (u64 i = 0; i < resources.size(); ++i)
-    {
-        const auto& binding = resources[i];
-        std::visit(Visitor{ [&](const BufferBinding& bufferBinding)
-                            { bufferViews[i] = GetRHIBufferView(graphics, bufferBinding); },
-                            [&](const TextureBinding& textureBinding)
-                            { textureViews[i] = GetRHITextureView(graphics, textureBinding); },
-                            [](const AccelerationStructureBinding&)
-                            {
-                                // no-op
-                            } },
-                   binding.binding);
-    }
 }
 
 RHIDrawResources ResourceBindingUtils::CollectRHIDrawResources(Graphics& graphics,
@@ -86,7 +75,14 @@ RHIDrawResources ResourceBindingUtils::CollectRHIDrawResources(Graphics& graphic
                     .format = rhiTexture.GetDesc().format,
                     .isSRGB = isSRGB,
                     .usage = TextureUsage::RenderTarget,
-                    .subresource = subresource,
+                    .subresource =
+                        TextureSubresource{
+                            .startMip = subresource.startMip,
+                            .mipCount = subresource.GetMipCount(rhiTexture.GetDesc()),
+                            .startSlice = subresource.startSlice,
+                            .sliceCount = subresource.GetSliceCount(rhiTexture.GetDesc()),
+                            .aspect = subresource.GetAspect(rhiTexture.GetDesc()),
+                        },
                 },
         });
     }
@@ -101,7 +97,14 @@ RHIDrawResources ResourceBindingUtils::CollectRHIDrawResources(Graphics& graphic
                     .format = texture.GetDesc().format,
                     .isSRGB = false,
                     .usage = TextureUsage::DepthStencil,
-                    .subresource = depthStencil->subresource,
+                    .subresource =
+                        TextureSubresource{
+                            .startMip = depthStencil->subresource.startMip,
+                            .mipCount = depthStencil->subresource.GetMipCount(texture.GetDesc()),
+                            .startSlice = depthStencil->subresource.startSlice,
+                            .sliceCount = depthStencil->subresource.GetSliceCount(texture.GetDesc()),
+                            .aspect = depthStencil->subresource.GetAspect(texture.GetDesc()),
+                        },
                 },
         };
     }

@@ -270,7 +270,17 @@ void VkCommandList::ClearTexture(RHITexture& texture,
 
         if (isDepthStencilClear)
         {
-            resources.depthStencil = RHIDepthStencilView{ .texture = texture };
+            resources.depthStencil = RHIDepthStencilView{
+                .texture = texture,
+                .view =
+                    TextureViewDesc{
+                        .viewType = TextureUtil::GetTextureViewType(texture.GetDesc(), std::nullopt),
+                        .format = texture.GetDesc().format,
+                        .isSRGB = false,
+                        .usage = TextureUsage::DepthStencil,
+                        .subresource = {},
+                    },
+            };
             clearAttachment.clearValue.depthStencil = ::vk::ClearDepthStencilValue{
                 .depth = clearValue.depth,
                 .stencil = clearValue.stencil,
@@ -278,7 +288,17 @@ void VkCommandList::ClearTexture(RHITexture& texture,
         }
         else
         {
-            resources.renderTargets.push_back(RHIRenderTargetView{ .texture = texture });
+            resources.renderTargets.push_back(RHIRenderTargetView{
+                .texture = texture,
+                .view =
+                    TextureViewDesc{
+                        .viewType = TextureUtil::GetTextureViewType(texture.GetDesc(), std::nullopt),
+                        .format = texture.GetDesc().format,
+                        .isSRGB = false,
+                        .usage = TextureUsage::RenderTarget,
+                        .subresource = {},
+                    },
+            });
             clearAttachment.clearValue.color = ::vk::ClearColorValue{ .float32 = clearValue.color };
         }
 

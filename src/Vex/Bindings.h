@@ -163,7 +163,7 @@ IndexBufferBinding IndexBufferBinding::Create(const Buffer& buffer, u64 firstEle
                 .byteOffset = firstElement * sizeof(T),
                 .byteSize = elementCount ? *elementCount * sizeof(T) : GBufferWholeSize,
             },
-        .format = static_cast<IndexFormat>(sizeof(T)),
+        .format = static_cast<IndexFormat>(sizeof(T) * 8),
     };
 }
 

@@ -109,12 +109,14 @@ void VkBuffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
                                       const BufferViewDesc& viewDesc)
 {
     descriptorPool.GetBindlessSet().UpdateDescriptor(handle,
-                                                     desc.usage == BufferUsage::ShaderReadUniform
+                                                     viewDesc.usage == BufferBindingUsage::UniformBuffer
                                                          ? ::vk::DescriptorType::eUniformBuffer
                                                          : ::vk::DescriptorType::eStorageBuffer,
-                                                     ::vk::DescriptorBufferInfo{ .buffer = *buffer,
-                                                                                 .offset = viewDesc.offsetByteSize,
-                                                                                 .range = viewDesc.rangeByteSize });
+                                                     ::vk::DescriptorBufferInfo{
+                                                         .buffer = *buffer,
+                                                         .offset = viewDesc.region.byteOffset,
+                                                         .range = viewDesc.region.GetByteSize(desc),
+                                                     });
 }
 
 ::vk::Buffer VkBuffer::GetNativeBuffer()

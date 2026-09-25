@@ -246,13 +246,11 @@ private:
     void InferResourceBarriers(RHIBarrierSync syncStage, Span<const ResourceBinding> resources);
 
     // Creates a temporary staging buffer that will be destroyed once the command context is done executing.
-    // Buffer creation invalidates pointers to existing RHI buffers.
     Buffer CreateTemporaryStagingBuffer(const std::string& name,
                                         u64 byteSize,
                                         Flags<BufferUsage> additionalUsages = BufferUsage::None);
 
     // Creates a temporary buffer that will be destroyed once the command context is done executing.
-    // Buffer creation invalidates pointers to existing RHI buffers.
     Buffer CreateTemporaryBuffer(const BufferDesc& desc);
 
     std::optional<RHIDrawResources> PrepareDrawCall(const DrawDesc& drawDesc,

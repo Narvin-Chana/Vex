@@ -129,7 +129,7 @@ inline constexpr u64 GBufferWholeSize = ~static_cast<u64>(0);
 
 struct BufferRegion
 {
-    // Byte offset from the start of the buffer.
+    // Offset in bytes from the start of the buffer.
     u64 byteOffset = 0;
     // Size in bytes of the region.
     u64 byteSize = GBufferWholeSize;
@@ -164,7 +164,4 @@ struct BufferUtil
 
 } // namespace vex
 
-VEX_MAKE_HASHABLE(vex::BufferRegion,
-    VEX_HASH_COMBINE(seed, obj.byteOffset);
-    VEX_HASH_COMBINE(seed, obj.byteSize);
-);
+VEX_MAKE_HASHABLE(vex::BufferRegion, VEX_HASH_COMBINE(seed, obj.byteOffset); VEX_HASH_COMBINE(seed, obj.byteSize););

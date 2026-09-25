@@ -105,7 +105,9 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
                 default:
                     VEX_ASSERT(false, "Unsupported index format");
                 }
-                const u32 indexCount = geom.indexBufferView->buffer->GetDesc().byteSize - geom.indexBufferView->offsetByteSize;
+                const u32 indexCount =
+                    geom.indexBufferView->region.GetByteSize(geom.indexBufferView->buffer->GetDesc()) /
+                    (std::to_underlying(geom.indexBufferView->format) / 8);
                 triangleCount = indexCount / 3;
             }
 
@@ -116,22 +118,22 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
                 .geometry = {
                     .triangles = {
                         .vertexFormat = ::vk::Format::eR32G32B32Sfloat,
-                        .vertexData = { geom.vertexBufferView->buffer->GetDeviceAddress() + geom.vertexBufferView->view.offsetByteSize },
+                        .vertexData = { geom.vertexBufferView->buffer->GetDeviceAddress() + geom.vertexBufferView->view.region.byteOffset },
                         .vertexStride = geom.vertexBufferView->view.strideByteSize,
                         .maxVertex = vertexCount - 1,
                         .indexType = indexType,
-                        .indexData = { geom.indexBufferView ? geom.indexBufferView->buffer->GetDeviceAddress() : ::vk::DeviceAddress{} },
-                        .transformData = { geom.transformBufferView ? geom.transformBufferView->buffer->GetDeviceAddress() : ::vk::DeviceAddress{} },
+                        .indexData = { geom.indexBufferView ? geom.indexBufferView->buffer->GetDeviceAddress() + geom.indexBufferView->region.byteOffset : ::vk::DeviceAddress{} },
+                        .transformData = { geom.transformBufferView ? geom.transformBufferView->buffer->GetDeviceAddress() + geom.transformBufferView->view.region.byteOffset : ::vk::DeviceAddress{} },
                     },
                 },
             };
 
             ranges.push_back(::vk::AccelerationStructureBuildRangeInfoKHR{
                 .primitiveCount = triangleCount,
-                .primitiveOffset = static_cast<u32>(geom.indexBufferView ? geom.indexBufferView->offsetByteSize : 0),
+                .primitiveOffset = static_cast<u32>(geom.indexBufferView ? geom.indexBufferView->region.byteOffset : 0),
                 .firstVertex = 0,
                 .transformOffset =
-                    geom.transformBufferView ? static_cast<u32>(geom.transformBufferView->view.offsetByteSize) : 0,
+                    geom.transformBufferView ? static_cast<u32>(geom.transformBufferView->view.region.byteOffset) : 0,
             });
         }
         else if (desc.type == ASGeometryType::AABBs)
@@ -152,7 +154,7 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
             geometryCount.push_back(aabbCount);
             ranges.push_back(::vk::AccelerationStructureBuildRangeInfoKHR{
                 .primitiveCount = aabbCount,
-                .primitiveOffset = static_cast<u32>(geom.aabbBufferView->view.GetFirstElement()),
+                .primitiveOffset = static_cast<u32>(geom.aabbBufferView->view.region.byteOffset),
             });
         }
 

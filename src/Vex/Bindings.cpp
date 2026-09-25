@@ -18,6 +18,8 @@ void ValidateBufferBinding(const BufferBinding& binding, Flags<BufferUsage> vali
     const auto& buffer = binding.buffer;
     const auto& usage = binding.usage;
 
+    BufferUtil::ValidateBufferRegion(buffer.desc, binding.region);
+
     VEX_CHECK(buffer.desc.usage & validBufferUsageFlags,
               "Invalid binding for resource \"{}\": The specified buffer cannot be bound for this type of "
               "operation. Check the usage flags of your resource at creation.",
@@ -84,6 +86,8 @@ void ValidateIndexBufferBinding(const IndexBufferBinding& binding)
 {
     const auto& buffer = binding.buffer;
 
+    BufferUtil::ValidateBufferRegion(buffer.desc, binding.region);
+
     VEX_CHECK(binding.region.byteOffset < buffer.desc.byteSize,
               "Invalid binding for index buffer \"{}\": Buffer cannot have an offset larger than the buffer size.",
               buffer.desc.name);
@@ -92,6 +96,10 @@ void ValidateIndexBufferBinding(const IndexBufferBinding& binding)
         buffer.desc.usage.IsSet(BufferUsage::IndexBuffer),
         "Invalid binding for index buffer \"{}\": Buffer must have the usage BufferUsage::IndexBuffer at creation.",
         buffer.desc.name);
+
+    VEX_CHECK(binding.format == IndexFormat::U16 || binding.format == IndexFormat::U32,
+              "Invalid binding for index buffer \"{}\": Buffer must have a valid index format (u16 or u32).",
+              buffer.desc.name);
 }
 
 void ValidateTextureBinding(const TextureBinding& binding, Flags<TextureUsage> validTextureUsageFlags)
@@ -143,8 +151,13 @@ void ValidateRenderTargetBinding(const RenderTargetBinding& binding)
 
     TextureUtil::ValidateSubresource(texture.desc, binding.subresource);
 
+    VEX_CHECK(binding.texture.desc.usage.IsSet(TextureUsage::RenderTarget),
+              "Invalid render target binding for texture \"{}\": Texture must have been created with flag "
+              "TextureUsage::RenderTarget.",
+              texture.desc.name);
+
     VEX_CHECK(
-        binding.subresource.mipCount == 1,
+        binding.subresource.GetMipCount(texture.desc) == 1,
         "Invalid render target binding for texture \"{}\": Texture subresource cannot have a mip count different to 1.",
         texture.desc.name,
         texture.desc.format);
@@ -170,6 +183,12 @@ void ValidateDepthStencilBinding(const DepthStencilBinding& binding)
               "usage upon creation.",
               texture.desc.name,
               texture.desc.format);
+
+    VEX_CHECK(
+        binding.subresource.GetMipCount(texture.desc) == 1,
+        "Invalid depth stencil binding for texture \"{}\": Texture subresource cannot have a mip count different to 1.",
+        texture.desc.name,
+        texture.desc.format);
 }
 
 void ValidateDrawResource(const DrawResourceBinding& binding)
@@ -284,8 +303,8 @@ IndexBufferBinding IndexBufferBinding::Create(const Buffer& buffer,
         .buffer = buffer,
         .region =
             BufferRegion{
-                .byteOffset = firstElement * std::to_underlying(format),
-                .byteSize = elementCount ? *elementCount * std::to_underlying(format) : GBufferWholeSize,
+                .byteOffset = firstElement * (std::to_underlying(format) / 8),
+                .byteSize = elementCount ? *elementCount * (std::to_underlying(format) / 8) : GBufferWholeSize,
             },
         .format = format,
     };
