@@ -153,7 +153,7 @@ std::unique_ptr<RHIGraphicsPipelineState> VkGraphicsPipelineState::Cleanup()
     {
         return nullptr;
     }
-    auto cleanupPSO = std::make_unique<VkGraphicsPipelineState>(key, device, psoCache);
+    auto cleanupPSO = std::make_unique<VkGraphicsPipelineState>(name, key, device, psoCache);
     std::swap(cleanupPSO->graphicsPipeline, graphicsPipeline);
     return cleanupPSO;
 }
@@ -280,7 +280,10 @@ void VkGraphicsPipelineState::CreateGraphicsPipeline(RHIResourceLayout& resource
     SetDebugName(device, *graphicsPipeline, name.c_str());
 }
 
-VkComputePipelineState::VkComputePipelineState(std::string name, const Key& key, ::vk::Device device, ::vk::PipelineCache psoCache)
+VkComputePipelineState::VkComputePipelineState(std::string name,
+                                               const Key& key,
+                                               ::vk::Device device,
+                                               ::vk::PipelineCache psoCache)
     : RHIComputePipelineStateBase(std::move(name), key)
     , device{ device }
     , psoCache{ psoCache }

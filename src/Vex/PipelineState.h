@@ -21,6 +21,9 @@ struct PSOUtil
     static std::string GetGraphicsPSOName(const DrawDesc& drawDesc,
                                           const RenderTargetState& renderTargetState,
                                           std::size_t keyHash);
+    static std::string GetGraphicsPSOName(const DispatchMeshDesc& drawDesc,
+                                          const RenderTargetState& renderTargetState,
+                                          std::size_t keyHash);
     static std::string GetComputePSOName(const ShaderView& computeShader, std::size_t keyHash);
     static std::string GetRayTracingPSOName(const RayTracingShaderCollection& shaderCollection, std::size_t keyHash);
 };
