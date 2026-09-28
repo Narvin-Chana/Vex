@@ -180,9 +180,13 @@ struct DrawResourceBinding
 {
     Span<const TextureBinding> renderTargets;
     std::optional<TextureBinding> depthStencil;
+};
 
-    // Index buffer used for DrawIndexed.
-    std::optional<BufferBinding> indexBuffer;
+struct DrawIndexedResourceBinding
+{
+    Span<const TextureBinding> renderTargets;
+    std::optional<const TextureBinding> depthStencil;
+    BufferBinding indexBuffer;
 };
 
 namespace BindingUtil

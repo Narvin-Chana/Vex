@@ -352,6 +352,8 @@ void VkRHI::Init()
     ValidateAndAddExtension(VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME);
     ValidateAndAddExtension(VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
 
+    void* lastPNext{};
+
     std::optional<::vk::PhysicalDeviceAccelerationStructureFeaturesKHR> featuresAccelerationStructure;
     std::optional<::vk::PhysicalDeviceRayTracingPipelineFeaturesKHR> featuresRayTracingPipeline;
     std::optional<::vk::PhysicalDeviceRayQueryFeaturesKHR> featuresRayQuery;
@@ -362,7 +364,7 @@ void VkRHI::Init()
         ValidateAndAddExtension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
         ValidateAndAddExtension(VK_KHR_RAY_QUERY_EXTENSION_NAME);
 
-        featuresRayTracingPipeline = { .rayTracingPipeline = true };
+        featuresRayTracingPipeline = { .pNext = lastPNext, .rayTracingPipeline = true };
 
         featuresRayQuery = { .pNext = &*featuresRayTracingPipeline, .rayQuery = true };
 
@@ -371,10 +373,25 @@ void VkRHI::Init()
             .accelerationStructure = true,
             .descriptorBindingAccelerationStructureUpdateAfterBind = true,
         };
+        lastPNext = &*featuresAccelerationStructure;
+    }
+
+    std::optional<::vk::PhysicalDeviceMeshShaderFeaturesEXT> featuresMeshShader;
+    if (GPhysicalDevice->IsFeatureSupported(Feature::MeshShader))
+    {
+        ValidateAndAddExtension(VK_EXT_MESH_SHADER_EXTENSION_NAME);
+
+        featuresMeshShader = {
+            .pNext = lastPNext,
+            .taskShader = true,
+            .meshShader = true,
+            .meshShaderQueries = true,
+        };
+        lastPNext = &*featuresMeshShader;
     }
 
     ::vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR featuresUnifiedImageLayouts;
-    featuresUnifiedImageLayouts.pNext = featuresAccelerationStructure ? &featuresAccelerationStructure : nullptr;
+    featuresUnifiedImageLayouts.pNext = lastPNext;
     featuresUnifiedImageLayouts.unifiedImageLayouts = true;
 
     // Allows for mutable descriptors

@@ -6,7 +6,7 @@ if(NOT VEX_ENABLE_SHADER_COMPILER OR NOT VEX_ENABLE_SLANG)
     return()
 endif()
 
-set(SLANG_VERSION "2026.7")
+set(SLANG_VERSION "2026.18")
 set(SLANG_NAME slang_${SLANG_VERSION})
 
 # Choose URLs based on platform

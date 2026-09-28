@@ -1,4 +1,4 @@
-#include "HelloCube.h"
+#include "HelloMeshCube.h"
 
 #include <span>
 
@@ -16,23 +16,34 @@ struct Vertex
 static constexpr vex::u32 VertexCount = 8;
 static constexpr vex::u32 IndexCount = 36;
 
-static const vex::ShaderKey HLSLVertexShaderKey{
-    .filepath = (ExamplesDir / "hello_cube" / "HelloCubeShader.hlsl").string(),
-    .entryPoint = "VSMain",
-    .type = vex::ShaderType::VertexShader,
+static const vex::ShaderKey HLSLAmplificationShaderKey{
+    .filepath = (ExamplesDir / "hello_mesh_cube" / "HelloCubeShader.hlsl").string(),
+    .entryPoint = "ASMain",
+    .type = vex::ShaderType::AmplificationShader,
+};
+static const vex::ShaderKey HLSLMeshShaderKey{
+    .filepath = (ExamplesDir / "hello_mesh_cube" / "HelloCubeShader.hlsl").string(),
+    .entryPoint = "MSMain",
+    .type = vex::ShaderType::MeshShader,
 };
 static const vex::ShaderKey HLSLPixelShaderKey{
-    .filepath = (ExamplesDir / "hello_cube" / "HelloCubeShader.hlsl").string(),
+    .filepath = (ExamplesDir / "hello_mesh_cube" / "HelloCubeShader.hlsl").string(),
     .entryPoint = "PSMain",
     .type = vex::ShaderType::PixelShader,
 };
-static const vex::ShaderKey SlangVertexShaderKey{
-    .filepath = (ExamplesDir / "hello_cube" / "HelloCubeShader.slang").string(),
-    .entryPoint = "VSMain",
-    .type = vex::ShaderType::VertexShader,
+
+static const vex::ShaderKey SlangAmplificationShaderKey{
+    .filepath = (ExamplesDir / "hello_mesh_cube" / "HelloCubeShader.slang").string(),
+    .entryPoint = "ASMain",
+    .type = vex::ShaderType::AmplificationShader,
+};
+static const vex::ShaderKey SlangMeshShaderKey{
+    .filepath = (ExamplesDir / "hello_mesh_cube" / "HelloCubeShader.slang").string(),
+    .entryPoint = "MSMain",
+    .type = vex::ShaderType::MeshShader,
 };
 static const vex::ShaderKey SlangPixelShaderKey{
-    .filepath = (ExamplesDir / "hello_cube" / "HelloCubeShader.slang").string(),
+    .filepath = (ExamplesDir / "hello_mesh_cube" / "HelloCubeShader.slang").string(),
     .entryPoint = "PSMain",
     .type = vex::ShaderType::PixelShader,
 };
@@ -63,8 +74,8 @@ HelloCubeApplication::HelloCubeApplication()
     vertexBuffer =
         graphics->CreateBuffer(vex::BufferDesc::CreateVertexBufferDesc("Vertex Buffer", sizeof(Vertex) * VertexCount));
     // Index buffer
-    indexBuffer =
-        graphics->CreateBuffer(vex::BufferDesc::CreateIndexBufferDesc("Index Buffer", sizeof(vex::u32) * IndexCount));
+    indexBuffer = graphics->CreateBuffer(
+        vex::BufferDesc::CreateIndexBufferDesc("Index Buffer", sizeof(vex::u32) * IndexCount, true));
 
     {
         // Immediate submission means the commands are instantly submitted upon destruction.
@@ -107,41 +118,7 @@ HelloCubeApplication::HelloCubeApplication()
         ctx.EnqueueDataUpload(vertexBuffer, std::as_bytes(std::span(cubeVertices)));
         ctx.EnqueueDataUpload(indexBuffer, std::as_bytes(std::span(cubeIndices)));
 
-        // Use the loaded image for mip index 0.
-        const std::filesystem::path uvImagePath = ExamplesDir / "uv-guide.png";
-        vex::i32 width, height, channels;
-        vex::u8* imageData = stbi_load(uvImagePath.string().c_str(), &width, &height, &channels, 4);
-        if (!imageData)
-        {
-            const char* error = stbi_failure_reason();
-            VEX_LOG(vex::Fatal, "Failed to load uv-guide.png: {}", error);
-        }
-
-        // Vex requires that the upload data for textures be tightly packed together! This shouldn't be an issue as most
-        // file formats tightly pack data to avoid wasting space with padding.
-        std::vector<vex::u8> fullImageData;
-        fullImageData.reserve(width * height * channels);
-        std::copy_n(imageData, width * height * channels, std::back_inserter(fullImageData));
-
-        uvGuideTexture =
-            graphics->CreateTexture({ .name = "UV Guide",
-                                      .type = vex::TextureType::Texture2D,
-                                      .format = vex::TextureFormat::RGBA8_UNORM,
-                                      .width = static_cast<vex::u32>(width),
-                                      .height = static_cast<vex::u32>(height),
-                                      .depthOrSliceCount = 1,
-                                      .mips = 0, // 0 means max mips (down to 1x1)
-                                      .usage = vex::TextureUsage::ShaderRead | vex::TextureUsage::ShaderReadWrite });
-
-        // Upload only to the first mip
-        ctx.EnqueueDataUpload(
-            uvGuideTexture,
-            std::as_bytes(std::span(fullImageData.begin(), fullImageData.begin() + width * height * channels)),
-            vex::TextureRegion::SingleMip(0));
-
         graphics->Submit(ctx);
-
-        stbi_image_free(imageData);
     }
 }
 
@@ -156,10 +133,6 @@ void HelloCubeApplication::Run()
 
             // Scoped command context will submit commands automatically upon destruction.
             vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
-
-            // Fill in all mips using the first one, the underlying texture is encoded in SRGB so be sure to do an
-            // SRGB-aware downscale!
-            ctx.GenerateMips({ .texture = uvGuideTexture, .isSRGB = true });
 
             ctx.SetScissor(0, 0, width, height);
             ctx.SetViewport(0, 0, static_cast<float>(width), static_cast<float>(height));
@@ -178,17 +151,19 @@ void HelloCubeApplication::Run()
             };
 
             // Setup our draw call's description...
-            vex::DrawDesc hlslDrawDesc{
-                .vertexShader = shaderCompiler.GetShaderView(HLSLVertexShaderKey),
+            vex::DispatchMeshDesc hlslDrawDesc{
                 .pixelShader = shaderCompiler.GetShaderView(HLSLPixelShaderKey),
                 .depthStencilState = depthStencilState,
             };
+            hlslDrawDesc.amplificationShader = shaderCompiler.GetShaderView(HLSLAmplificationShaderKey);
+            hlslDrawDesc.meshShader = shaderCompiler.GetShaderView(HLSLMeshShaderKey);
 
-            vex::DrawDesc slangDrawDesc{
-                .vertexShader = shaderCompiler.GetShaderView(SlangVertexShaderKey),
+            vex::DispatchMeshDesc slangDrawDesc{
                 .pixelShader = shaderCompiler.GetShaderView(SlangPixelShaderKey),
                 .depthStencilState = depthStencilState,
             };
+            slangDrawDesc.amplificationShader = shaderCompiler.GetShaderView(SlangAmplificationShaderKey);
+            slangDrawDesc.meshShader = shaderCompiler.GetShaderView(SlangMeshShaderKey);
 
             // ...and resources.
             vex::BufferBinding indexBufferBinding{
@@ -203,39 +178,41 @@ void HelloCubeApplication::Run()
 
             vex::BindlessHandle vertexBufferHandle =
                 graphics->GetBindlessHandle(vex::BufferBinding::CreateStructuredBuffer(vertexBuffer, sizeof(Vertex)));
-            vex::BindlessHandle uvGuideHandle = graphics->GetBindlessHandle(
-                vex::TextureBinding{ .texture = uvGuideTexture, .usage = vex::TextureBindingUsage::ShaderRead });
+            vex::BindlessHandle indexBufferHandle =
+                graphics->GetBindlessHandle(vex::BufferBinding::CreateStructuredBuffer(indexBuffer, sizeof(vex::u32)));
 
             struct UniformData
             {
                 vex::BindlessHandle vertexBufferHandle;
+                vex::BindlessHandle indexBufferHandle;
                 float currentTime{};
-                vex::BindlessHandle uvGuideHandle;
             };
             UniformData data{
                 .vertexBufferHandle = vertexBufferHandle,
+                .indexBufferHandle = indexBufferHandle,
                 .currentTime = static_cast<float>(currentTime),
-                .uvGuideHandle = uvGuideHandle,
             };
             {
                 VEX_GPU_SCOPED_EVENT(ctx, "HLSL Cube");
-                ctx.DrawIndexed(hlslDrawDesc,
-                                { .renderTargets = renderTargets,
-                                  .depthStencil = vex::TextureBinding(depthTexture),
-                                  .indexBuffer = indexBufferBinding },
-                                vex::ConstantBinding(data),
-                                {},
-                                IndexCount);
+                ctx.DispatchMesh(hlslDrawDesc,
+                                 {
+                                     .renderTargets = renderTargets,
+                                     .depthStencil = vex::TextureBinding(depthTexture),
+                                 },
+                                 { 2, 1, 1 },
+                                 vex::ConstantBinding(data),
+                                 {});
             }
             {
                 VEX_GPU_SCOPED_EVENT(ctx, "Slang Cube");
-                ctx.DrawIndexed(slangDrawDesc,
-                                { .renderTargets = renderTargets,
-                                  .depthStencil = vex::TextureBinding(depthTexture),
-                                  .indexBuffer = indexBufferBinding },
-                                vex::ConstantBinding(data),
-                                {},
-                                IndexCount);
+                ctx.DispatchMesh(slangDrawDesc,
+                                 {
+                                     .renderTargets = renderTargets,
+                                     .depthStencil = vex::TextureBinding(depthTexture),
+                                 },
+                                 { 2, 1, 1 },
+                                 vex::ConstantBinding(data),
+                                 {});
             }
             graphics->Submit(ctx);
         }
