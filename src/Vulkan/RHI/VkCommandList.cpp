@@ -253,16 +253,32 @@ void VkCommandList::ClearTexture(RHITexture& texture,
     }
     else
     {
+        // Validation guarantees rects imply a single mip (startMip).
+        const u16 startMip = subresource.startMip;
+        const TextureDesc& desc = texture.GetDesc();
+        const bool is3D = desc.type == TextureType::Texture3D;
+        TextureSubresource viewSubresource{
+            .startMip = startMip,
+            .mipCount = 1,
+            .startSlice = is3D ? 0u : subresource.startSlice,
+            .sliceCount = is3D ? std::get<2>(TextureUtil::GetMipSize(desc, startMip)) : subresource.GetSliceCount(desc),
+        };
+
         RHIDrawResources resources;
 
         std::vector<::vk::ClearRect> rects;
-        for (auto rect : clearRects)
+        for (const TextureClearRect& rect : clearRects)
         {
-            rects.push_back({ .rect = ::vk::Rect2D{ .offset = { rect.offsetX, rect.offsetY },
-                                                    .extent = { rect.GetExtentX(texture.GetDesc()),
-                                                                rect.GetExtentY(texture.GetDesc()) } },
-                              .baseArrayLayer = ranges.baseArrayLayer,
-                              .layerCount = ranges.layerCount });
+            rects.push_back({
+                .rect =
+                    ::vk::Rect2D{
+                        .offset = ::vk::Offset2D{ .x = rect.offsetX, .y = rect.offsetY },
+                        .extent = ::vk::Extent2D{ .width = rect.GetExtentX(texture.GetDesc(), startMip),
+                                                  .height = rect.GetExtentY(texture.GetDesc(), startMip) },
+                    },
+                .baseArrayLayer = 0,
+                .layerCount = viewSubresource.sliceCount,
+            });
         }
 
         ::vk::ClearAttachment clearAttachment{};
@@ -272,14 +288,7 @@ void VkCommandList::ClearTexture(RHITexture& texture,
         {
             resources.depthStencil = RHIDepthStencilView{
                 .texture = texture,
-                .view =
-                    TextureViewDesc{
-                        .viewType = TextureUtil::GetTextureViewType(texture.GetDesc(), std::nullopt),
-                        .format = texture.GetDesc().format,
-                        .isSRGB = false,
-                        .usage = TextureUsage::DepthStencil,
-                        .subresource = {},
-                    },
+                .view = TextureViewDesc::Create(desc, viewSubresource, TextureUsage::DepthStencil),
             };
             clearAttachment.clearValue.depthStencil = ::vk::ClearDepthStencilValue{
                 .depth = clearValue.depth,
@@ -290,14 +299,7 @@ void VkCommandList::ClearTexture(RHITexture& texture,
         {
             resources.renderTargets.push_back(RHIRenderTargetView{
                 .texture = texture,
-                .view =
-                    TextureViewDesc{
-                        .viewType = TextureUtil::GetTextureViewType(texture.GetDesc(), std::nullopt),
-                        .format = texture.GetDesc().format,
-                        .isSRGB = false,
-                        .usage = TextureUsage::RenderTarget,
-                        .subresource = {},
-                    },
+                .view = TextureViewDesc::Create(desc, viewSubresource, TextureUsage::RenderTarget),
             });
             clearAttachment.clearValue.color = ::vk::ClearColorValue{ .float32 = clearValue.color };
         }
@@ -401,15 +403,18 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
                "Cannot call BeginRendering when already rendering, you must have forgotten to call EndRendering!");
 
     ::vk::Rect2D maxArea{ { 0, 0 }, { std::numeric_limits<u32>::max(), std::numeric_limits<u32>::max() } };
-    for (auto& renderTargets : resources.renderTargets)
+    for (const auto& [texture, view] : resources.renderTargets)
     {
-        maxArea.extent.width = std::min(renderTargets.texture->GetDesc().width, maxArea.extent.width);
-        maxArea.extent.height = std::min(renderTargets.texture->GetDesc().height, maxArea.extent.height);
+        const auto [w, h, d] = TextureUtil::GetMipSize(texture->GetDesc(), view.subresource.startMip);
+        maxArea.extent.width = std::min(w, maxArea.extent.width);
+        maxArea.extent.height = std::min(h, maxArea.extent.height);
     }
     if (resources.depthStencil)
     {
-        maxArea.extent.width = std::min(resources.depthStencil->texture->GetDesc().width, maxArea.extent.width);
-        maxArea.extent.height = std::min(resources.depthStencil->texture->GetDesc().height, maxArea.extent.height);
+        const auto [w, h, d] = TextureUtil::GetMipSize(resources.depthStencil->texture->GetDesc(),
+                                                       resources.depthStencil->view.subresource.startMip);
+        maxArea.extent.width = std::min(w, maxArea.extent.width);
+        maxArea.extent.height = std::min(h, maxArea.extent.height);
     }
 
     InlineVector<::vk::RenderingAttachmentInfo, GMaxSimultaneousRenderTargetCount> colorAttachmentsInfo(
@@ -432,11 +437,21 @@ void VkCommandList::BeginRendering(const RHIDrawResources& resources)
             .imageView = resources.depthStencil->texture->GetOrCreateImageView(resources.depthStencil->view),
             .imageLayout = ::vk::ImageLayout::eGeneral,
         };
-    };
+    }
+
+    u32 layerCount = 1;
+    if (!resources.renderTargets.empty())
+    {
+        layerCount = resources.renderTargets[0].view.subresource.sliceCount;
+    }
+    else if (resources.depthStencil)
+    {
+        layerCount = resources.depthStencil->view.subresource.sliceCount;
+    }
 
     const ::vk::RenderingInfo info{
         .renderArea = maxArea,
-        .layerCount = 1,
+        .layerCount = layerCount,
         .viewMask = 0,
         .colorAttachmentCount = static_cast<u32>(colorAttachmentsInfo.size()),
         .pColorAttachments = colorAttachmentsInfo.data(),
@@ -502,7 +517,7 @@ void VkCommandList::SetVertexBuffers(u32 startSlot, Span<const RHIBufferView> ve
     for (auto& [buffer, view] : vertexBuffers)
     {
         vkBuffers.emplace_back(buffer->GetNativeBuffer());
-        vkOffsets.push_back(view.offsetByteSize);
+        vkOffsets.push_back(view.region.byteOffset);
     }
 
     commandBuffer->bindVertexBuffers(startSlot, static_cast<u32>(vkBuffers.size()), vkBuffers.data(), vkOffsets.data());
@@ -526,7 +541,7 @@ void VkCommandList::SetIndexBuffer(const RHIIndexBufferView& indexBuffer)
         std::unreachable();
     }
 
-    commandBuffer->bindIndexBuffer(indexBuffer.buffer->GetNativeBuffer(), indexBuffer.offsetByteSize, indexType);
+    commandBuffer->bindIndexBuffer(indexBuffer.buffer->GetNativeBuffer(), indexBuffer.region.byteOffset, indexType);
 }
 
 void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount)

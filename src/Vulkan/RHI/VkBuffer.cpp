@@ -20,7 +20,8 @@ static ::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDesc& desc)
     {
         flags |= eUniformBuffer;
     }
-    if (desc.usage & (BufferUsage::ShaderReadWrite | BufferUsage::ShaderRead))
+    if (desc.usage & (BufferUsage::ShaderReadWrite | BufferUsage::ShaderRead | BufferUsage::AccelerationStructure |
+                      BufferUsage::Scratch))
     {
         flags |= eStorageBuffer;
     }
@@ -36,7 +37,7 @@ static ::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDesc& desc)
     {
         flags |= eIndirectBuffer;
     }
-    if ((desc.usage & BufferUsage::AccelerationStructure) == BufferUsage::AccelerationStructure)
+    if (desc.usage & BufferUsage::AccelerationStructure)
     {
         flags |= eAccelerationStructureStorageKHR;
     }

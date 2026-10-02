@@ -81,11 +81,11 @@ struct BufferBinding
     //  - When using (RW)ByteAddressBuffer usage the range must be a multiple of 16 bytes
     BufferRegion region;
     // Optional: Stride of the buffer in bytes, required when using (RW)StructuredBuffer usage.
-    std::optional<u32> strideByteSize;
+    u32 strideByteSize = 0;
 
     // firstElement and elementCount represent strideByteSize multiples on the buffer
     static BufferBinding CreateStructured(const Buffer& buffer,
-                                          u64 strideByteSize,
+                                          u32 strideByteSize,
                                           u64 firstElement = 0,
                                           std::optional<u64> elementCount = {});
 
@@ -96,7 +96,7 @@ struct BufferBinding
 
     // firstElement and elementCount represent strideByteSize multiples on the buffer
     static BufferBinding CreateRWStructured(const Buffer& buffer,
-                                            u64 strideByteSize,
+                                            u32 strideByteSize,
                                             u64 firstElement = 0,
                                             std::optional<u64> elementCount = {});
 
@@ -127,7 +127,7 @@ BufferBinding BufferBinding::CreateStructured(const Buffer& buffer, u64 firstEle
         .region =
             BufferRegion{
                 .byteOffset = firstElement * sizeof(T),
-                .byteSize = elementCount.value_or(buffer.desc.byteSize / sizeof(T) - firstElement) * sizeof(T),
+                .byteSize = elementCount ? *elementCount * sizeof(T) : GBufferWholeSize,
             },
         .strideByteSize = static_cast<u32>(sizeof(T)),
     };
@@ -186,18 +186,34 @@ struct RenderTargetBinding
 {
     // The texture to bind.
     Texture texture;
-    // Subresource of the texture, defaults to the first mip and the first slice.
-    TextureSubresource subresource{ .startMip = 0, .mipCount = 1, .startSlice = 0, .sliceCount = 1 };
+    // Which mip to write-to.
+    u16 mip = 0;
+    // Offset to apply to the start depth/slice (depends on if the texture is 2DArray/Cube/CubeArray or 3D).
+    u32 startDepthSlice = 0;
+    // Number of depth/slices to bind.
+    u32 depthSliceCount = 1;
     // Determines if the render target output should use the hardware SRGB format.
     bool isSRGB = false;
+
+    // Returns the subresource to use for barrier purposes.
+    TextureSubresource GetSubresourceForBarrier() const;
 };
 
 struct DepthStencilBinding
 {
     // The texture to bind.
     Texture texture;
-    // Subresource of the texture, defaults to the first mip and the first slice.
-    TextureSubresource subresource{ .startMip = 0, .mipCount = 1, .startSlice = 0, .sliceCount = 1 };
+    // Which mip to write-to.
+    u16 mip = 0;
+    // Offset to apply to the start depth/slice (depends on if the texture is 2DArray/Cube/CubeArray or 3D).
+    u32 startDepthSlice = 0;
+    // Number of depth/slices to bind.
+    u32 depthSliceCount = 1;
+    // Which depth-stencil aspects to bind.
+    Flags<TextureAspect> aspect = TextureAspect::All;
+
+    // Returns the subresource to use for barrier purposes.
+    TextureSubresource GetSubresourceForBarrier() const;
 };
 
 using AccelerationStructureBinding = AccelerationStructure;
@@ -265,7 +281,7 @@ void ValidateIndexBufferBinding(const IndexBufferBinding& binding);
 void ValidateTextureBinding(const TextureBinding& binding, Flags<TextureUsage> validTextureUsageFlags);
 void ValidateRenderTargetBinding(const RenderTargetBinding& binding);
 void ValidateDepthStencilBinding(const DepthStencilBinding& binding);
-void ValidateDrawResource(const DrawResourceBinding& binding);
+void ValidateDrawResourceBindings(const DrawResourceBinding& binding);
 
 } // namespace BindingUtil
 

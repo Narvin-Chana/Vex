@@ -11,21 +11,11 @@ RHITextureView ResourceBindingUtils::GetRHITextureView(Graphics& graphics, const
     RHITexture& texture = graphics.GetRHITexture(textureBinding.texture.handle);
     return RHITextureView{
         .texture = texture,
-        .view =
-            TextureViewDesc{
-                .viewType = TextureUtil::GetTextureViewType(textureBinding),
-                .format = texture.GetDesc().format,
-                .isSRGB = textureBinding.isSRGB,
-                .usage = static_cast<TextureUsage>(textureBinding.usage),
-                .subresource =
-                    TextureSubresource{
-                        .startMip = textureBinding.subresource.startMip,
-                        .mipCount = textureBinding.subresource.GetMipCount(texture.GetDesc()),
-                        .startSlice = textureBinding.subresource.startSlice,
-                        .sliceCount = textureBinding.subresource.GetSliceCount(texture.GetDesc()),
-                        .aspect = textureBinding.subresource.GetAspect(texture.GetDesc()),
-                    },
-            },
+        .view = TextureViewDesc::Create(texture.GetDesc(),
+                                        textureBinding.subresource,
+                                        static_cast<TextureUsage>(textureBinding.usage),
+                                        textureBinding.isSRGB,
+                                        textureBinding.viewTypeOverride),
     };
 }
 
@@ -42,7 +32,7 @@ RHIBufferView ResourceBindingUtils::GetRHIBufferView(Graphics& graphics, const B
                         .byteOffset = bufferBinding.region.byteOffset,
                         .byteSize = bufferBinding.region.GetByteSize(buffer.GetDesc()),
                     },
-                .strideByteSize = bufferBinding.strideByteSize.value_or(0),
+                .strideByteSize = bufferBinding.strideByteSize,
                 .isAccelerationStructure = buffer.GetDesc().usage.IsSet(BufferUsage::AccelerationStructure),
             },
     };
@@ -54,7 +44,11 @@ RHIIndexBufferView ResourceBindingUtils::GetRHIIndexBufferView(Graphics& graphic
     RHIBuffer& buffer = graphics.GetRHIBuffer(indexBufferBinding.buffer.handle);
     return RHIIndexBufferView{
         .buffer = buffer,
-        .region = indexBufferBinding.region,
+        .region =
+            BufferRegion{
+                .byteOffset = indexBufferBinding.region.byteOffset,
+                .byteSize = indexBufferBinding.region.GetByteSize(buffer.GetDesc()),
+            },
         .format = indexBufferBinding.format,
     };
 }
@@ -64,26 +58,21 @@ RHIDrawResources ResourceBindingUtils::CollectRHIDrawResources(Graphics& graphic
                                                                const DepthStencilBinding* depthStencil)
 {
     RHIDrawResources drawResources;
-    for (const auto& [texture, subresource, isSRGB] : renderTargets)
+    for (const auto& rt : renderTargets)
     {
-        RHITexture& rhiTexture = graphics.GetRHITexture(texture.handle);
+        RHITexture& rhiTexture = graphics.GetRHITexture(rt.texture.handle);
         drawResources.renderTargets.push_back(RHIRenderTargetView{
             .texture = rhiTexture,
-            .view =
-                TextureViewDesc{
-                    .viewType = TextureUtil::GetTextureViewType(rhiTexture.GetDesc(), std::nullopt),
-                    .format = rhiTexture.GetDesc().format,
-                    .isSRGB = isSRGB,
-                    .usage = TextureUsage::RenderTarget,
-                    .subresource =
-                        TextureSubresource{
-                            .startMip = subresource.startMip,
-                            .mipCount = subresource.GetMipCount(rhiTexture.GetDesc()),
-                            .startSlice = subresource.startSlice,
-                            .sliceCount = subresource.GetSliceCount(rhiTexture.GetDesc()),
-                            .aspect = subresource.GetAspect(rhiTexture.GetDesc()),
-                        },
-                },
+            .view = TextureViewDesc::Create(rhiTexture.GetDesc(),
+                                            TextureSubresource{
+                                                .startMip = rt.mip,
+                                                .mipCount = 1,
+                                                .startSlice = rt.startDepthSlice,
+                                                .sliceCount = rt.depthSliceCount,
+                                                .aspect = TextureAspect::Color,
+                                            },
+                                            TextureUsage::RenderTarget,
+                                            rt.isSRGB),
         });
     }
     if (depthStencil)
@@ -91,21 +80,15 @@ RHIDrawResources ResourceBindingUtils::CollectRHIDrawResources(Graphics& graphic
         RHITexture& texture = graphics.GetRHITexture(depthStencil->texture.handle);
         drawResources.depthStencil = RHIDepthStencilView{
             .texture = texture,
-            .view =
-                TextureViewDesc{
-                    .viewType = TextureUtil::GetTextureViewType(texture.GetDesc(), std::nullopt),
-                    .format = texture.GetDesc().format,
-                    .isSRGB = false,
-                    .usage = TextureUsage::DepthStencil,
-                    .subresource =
-                        TextureSubresource{
-                            .startMip = depthStencil->subresource.startMip,
-                            .mipCount = depthStencil->subresource.GetMipCount(texture.GetDesc()),
-                            .startSlice = depthStencil->subresource.startSlice,
-                            .sliceCount = depthStencil->subresource.GetSliceCount(texture.GetDesc()),
-                            .aspect = depthStencil->subresource.GetAspect(texture.GetDesc()),
-                        },
-                },
+            .view = TextureViewDesc::Create(texture.GetDesc(),
+                                            TextureSubresource{
+                                                .startMip = depthStencil->mip,
+                                                .mipCount = 1,
+                                                .startSlice = depthStencil->startDepthSlice,
+                                                .sliceCount = depthStencil->depthSliceCount,
+                                                .aspect = depthStencil->aspect,
+                                            },
+                                            TextureUsage::DepthStencil),
         };
     }
     return drawResources;

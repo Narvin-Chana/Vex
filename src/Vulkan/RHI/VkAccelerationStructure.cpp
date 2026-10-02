@@ -122,8 +122,8 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
                         .vertexStride = geom.vertexBufferView->view.strideByteSize,
                         .maxVertex = vertexCount - 1,
                         .indexType = indexType,
-                        .indexData = { geom.indexBufferView ? geom.indexBufferView->buffer->GetDeviceAddress() + geom.indexBufferView->region.byteOffset : ::vk::DeviceAddress{} },
-                        .transformData = { geom.transformBufferView ? geom.transformBufferView->buffer->GetDeviceAddress() + geom.transformBufferView->view.region.byteOffset : ::vk::DeviceAddress{} },
+                        .indexData = { geom.indexBufferView ? geom.indexBufferView->buffer->GetDeviceAddress(): ::vk::DeviceAddress{} },
+                        .transformData = { geom.transformBufferView ? geom.transformBufferView->buffer->GetDeviceAddress() : ::vk::DeviceAddress{} },
                     },
                 },
             };

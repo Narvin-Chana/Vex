@@ -10,6 +10,61 @@ namespace vex
 static constexpr u64 ByteAddressBufferOffsetMultiple = 16;
 static constexpr u64 ConstantBufferBindingOffsetMultiple = 256;
 
+namespace Bindings_Internal
+{
+
+static void ValidateRTDSBinding(const TextureDesc& desc, u16 mip, u32 startDepthSlice, u32 depthSliceCount)
+{
+    VEX_CHECK(mip < desc.mips,
+              "Invalid binding for texture \"{}\": Cannot bind a mip ({}) greater than the actual "
+              "texture's mip "
+              "count ({}).",
+              desc.name,
+              mip,
+              desc.mips);
+
+    if (desc.type != TextureType::Texture3D)
+    {
+        VEX_CHECK(startDepthSlice < desc.GetSliceCount(),
+                  "Invalid binding for texture \"{}\": The start slice ({}) cannot be larger than the "
+                  "actual texture's array size ({}).",
+                  desc.name,
+                  startDepthSlice,
+                  desc.GetSliceCount());
+        VEX_CHECK(startDepthSlice + depthSliceCount <= desc.GetSliceCount(),
+                  "Invalid binding for texture \"{}\": The subresource accesses more slices than "
+                  "available, startDepthSlice: {}, depthSliceCount: {},  texture slice count {}",
+                  desc.name,
+                  startDepthSlice,
+                  depthSliceCount,
+                  desc.GetSliceCount());
+    }
+    else
+    {
+        VEX_CHECK(depthSliceCount != 0,
+                  "Invalid binding for texture \"{}\": Must bind at least one depth slice...",
+                  desc.name);
+        const u32 mipDepth = std::get<2>(TextureUtil::GetMipSize(desc, mip));
+        VEX_CHECK(startDepthSlice < mipDepth,
+                  "Invalid binding for texture \"{}\": The start depth slice ({}) cannot be larger than the "
+                  "actual texture's depth ({}) for mip ({}).",
+                  desc.name,
+                  startDepthSlice,
+                  mipDepth,
+                  mip);
+        VEX_CHECK(startDepthSlice + depthSliceCount <= mipDepth,
+                  "Invalid binding for texture \"{}\": The subresource accesses more depth slices than "
+                  "available, startDepthSlice: {}, depthSliceCount: {},  texture depth {} for mip {}",
+                  desc.name,
+                  startDepthSlice,
+                  depthSliceCount,
+                  mipDepth,
+                  mip);
+    }
+}
+
+} // namespace Bindings_Internal
+
 namespace BindingUtil
 {
 
@@ -37,21 +92,16 @@ void ValidateBufferBinding(const BufferBinding& binding, Flags<BufferUsage> vali
 
     if (usage == BufferBindingUsage::StructuredBuffer || usage == BufferBindingUsage::RWStructuredBuffer)
     {
-        VEX_CHECK(binding.strideByteSize.has_value(),
-                  "Invalid binding for resource \"{}\": In order to use a binding as a structured buffer, you must "
-                  "pass in a valid stride.",
-                  buffer.desc.name);
-
-        VEX_CHECK(*binding.strideByteSize > 0,
-                  "Invalid binding for resource \"{}\": Stride for structured buffers must not be 0.",
+        VEX_CHECK(binding.strideByteSize > 0,
+                  "Invalid binding for resource \"{}\": Stride for structured buffers must not be valid (non-zero).",
                   buffer.desc.name);
 
         u64 offsetByteSize = binding.region.byteOffset;
-        VEX_CHECK(offsetByteSize % *binding.strideByteSize == 0,
+        VEX_CHECK(offsetByteSize % binding.strideByteSize == 0,
                   "Invalid binding for resource \"{}\": Offset must be a multiple of the stride.",
                   buffer.desc.name);
 
-        VEX_CHECK(binding.region.GetByteSize(buffer.desc) % *binding.strideByteSize == 0,
+        VEX_CHECK(binding.region.GetByteSize(buffer.desc) % binding.strideByteSize == 0,
                   "Invalid binding for resource \"{}\": Range must be a multiple of the stride.",
                   buffer.desc.name);
     }
@@ -87,10 +137,6 @@ void ValidateIndexBufferBinding(const IndexBufferBinding& binding)
     const auto& buffer = binding.buffer;
 
     BufferUtil::ValidateBufferRegion(buffer.desc, binding.region);
-
-    VEX_CHECK(binding.region.byteOffset < buffer.desc.byteSize,
-              "Invalid binding for index buffer \"{}\": Buffer cannot have an offset larger than the buffer size.",
-              buffer.desc.name);
 
     VEX_CHECK(
         buffer.desc.usage.IsSet(BufferUsage::IndexBuffer),
@@ -148,61 +194,88 @@ void ValidateTextureBinding(const TextureBinding& binding, Flags<TextureUsage> v
 void ValidateRenderTargetBinding(const RenderTargetBinding& binding)
 {
     const auto& texture = binding.texture;
-
-    TextureUtil::ValidateSubresource(texture.desc, binding.subresource);
-
-    VEX_CHECK(binding.texture.desc.usage.IsSet(TextureUsage::RenderTarget),
+    const auto& desc = texture.desc;
+    Bindings_Internal::ValidateRTDSBinding(desc, binding.mip, binding.startDepthSlice, binding.depthSliceCount);
+    VEX_CHECK(desc.usage.IsSet(TextureUsage::RenderTarget),
               "Invalid render target binding for texture \"{}\": Texture must have been created with flag "
               "TextureUsage::RenderTarget.",
-              texture.desc.name);
+              desc.name);
+
+    VEX_CHECK(!FormatUtil::IsDepthOrDepthStencilFormat(desc.format),
+              "Invalid render target binding for texture \"{}\": Depth-stencil formats must use a DepthStencilBinding.",
+              desc.name);
 
     VEX_CHECK(
-        binding.subresource.GetMipCount(texture.desc) == 1,
-        "Invalid render target binding for texture \"{}\": Texture subresource cannot have a mip count different to 1.",
-        texture.desc.name,
-        texture.desc.format);
-
-    VEX_CHECK(
-        !binding.isSRGB || FormatUtil::HasSRGBEquivalent(texture.desc.format),
+        !binding.isSRGB || FormatUtil::HasSRGBEquivalent(desc.format),
         "Invalid render target binding for texture \"{}\": Texture format ({}) does not allow for an SRGB binding.",
-        texture.desc.name,
-        texture.desc.format);
+        desc.name,
+        desc.format);
 }
 
 void ValidateDepthStencilBinding(const DepthStencilBinding& binding)
 {
     const auto& texture = binding.texture;
+    const auto& desc = texture.desc;
+    Bindings_Internal::ValidateRTDSBinding(desc, binding.mip, binding.startDepthSlice, binding.depthSliceCount);
+    VEX_CHECK(binding.mip < desc.mips,
+              "Invalid render target binding for texture \"{}\": Cannot bind a mip ({}) greater than the actual "
+              "texture's mip "
+              "count ({}).",
+              desc.name,
+              binding.mip,
+              desc.mips);
 
-    VEX_CHECK(FormatUtil::IsDepthOrDepthStencilFormat(texture.desc.format),
+    VEX_CHECK(FormatUtil::IsDepthOrDepthStencilFormat(desc.format),
               "Invalid depth stencil binding for texture \"{}\": Texture cannot be bound as depth stencil due to it "
               "not having a depth or depth-stencil format.",
-              texture.desc.name);
+              desc.name);
 
-    VEX_CHECK(texture.desc.usage & TextureUsage::DepthStencil,
+    VEX_CHECK(desc.usage & TextureUsage::DepthStencil,
               "Invalid depth stencil binding for texture \"{}\": Texture format ({}) requires the depth stencil "
               "usage upon creation.",
-              texture.desc.name,
-              texture.desc.format);
+              desc.name,
+              desc.format);
 
-    VEX_CHECK(
-        binding.subresource.GetMipCount(texture.desc) == 1,
-        "Invalid depth stencil binding for texture \"{}\": Texture subresource cannot have a mip count different to 1.",
-        texture.desc.name,
-        texture.desc.format);
+    VEX_CHECK(binding.aspect.IsSet(TextureAspect::Depth) ||
+                  (FormatUtil::IsDepthAndStencilFormat(desc.format) && binding.aspect.IsSet(TextureAspect::Stencil)),
+              "Invalid depth stencil binding for texture \"{}\": Invalid aspect flags, a depth stencil binding can "
+              "only have depth, stencil or depth-stencil aspects.",
+              desc.name);
 }
 
-void ValidateDrawResource(const DrawResourceBinding& binding)
+void ValidateDrawResourceBindings(const DrawResourceBinding& binding)
 {
     VEX_CHECK(binding.renderTargets.size() <= GMaxSimultaneousRenderTargetCount,
-              "Cannot bind more than 8 render targets simultaneously.");
+              "Invalid draw resource bindings: Cannot bind more than 8 render targets simultaneously. You attempted to "
+              "bind {} render targets.",
+              binding.renderTargets.size());
+
+    // Every bound texture and depth-stencil must have the same sliceCount (this is considered as a multi-render target
+    // binding).
+    std::optional<u32> sliceCount = std::nullopt;
     for (const RenderTargetBinding& rt : binding.renderTargets)
     {
+        if (!sliceCount)
+        {
+            sliceCount = rt.depthSliceCount;
+        }
         ValidateRenderTargetBinding(rt);
+        VEX_CHECK(*sliceCount == rt.depthSliceCount,
+                  "Invalid draw resource bindings: All textures in the binding (Render targets and depth-stencils) "
+                  "must have the same slice counts.");
     }
 
     if (binding.depthStencil)
     {
+        u32 depthStencilSliceCount = binding.depthStencil->depthSliceCount;
+        if (!sliceCount)
+        {
+            sliceCount = depthStencilSliceCount;
+        }
         ValidateDepthStencilBinding(*binding.depthStencil);
+        VEX_CHECK(*sliceCount == depthStencilSliceCount,
+                  "Invalid draw resource bindings: All textures in the binding (Render targets and depth-stencils) "
+                  "must have the same slice counts.");
     }
 
     if (binding.indexBuffer)
@@ -214,38 +287,58 @@ void ValidateDrawResource(const DrawResourceBinding& binding)
 } // namespace BindingUtil
 
 BufferBinding BufferBinding::CreateStructured(const Buffer& buffer,
-                                              u64 strideByteSize,
+                                              u32 strideByteSize,
                                               u64 firstElement,
                                               std::optional<u64> elementCount)
 {
+    VEX_ASSERT(strideByteSize != 0, "Cannot have a stride of 0.");
+    const u64 totalElements = buffer.desc.byteSize / strideByteSize;
+    const u64 actualElementCount = elementCount.value_or(totalElements - firstElement);
+    VEX_ASSERT(firstElement < totalElements,
+               "Cannot bind a firstElement ({}) larger than the total elementCount ({}).",
+               firstElement,
+               totalElements);
+    VEX_ASSERT(firstElement + actualElementCount <= totalElements,
+               "Cannot bind more elements ({}) than the total elementCount ({}).",
+               firstElement + actualElementCount,
+               totalElements);
     return {
         .buffer = buffer,
         .usage = BufferBindingUsage::StructuredBuffer,
         .region =
             BufferRegion{
-                .byteOffset = firstElement * strideByteSize,
-                .byteSize =
-                    elementCount.value_or(buffer.desc.byteSize / strideByteSize - firstElement) * strideByteSize,
+                .byteOffset = firstElement * static_cast<u64>(strideByteSize),
+                .byteSize = actualElementCount * static_cast<u64>(strideByteSize),
             },
-        .strideByteSize = static_cast<u32>(strideByteSize),
+        .strideByteSize = strideByteSize,
     };
 }
 
 BufferBinding BufferBinding::CreateRWStructured(const Buffer& buffer,
-                                                u64 strideByteSize,
+                                                u32 strideByteSize,
                                                 u64 firstElement,
                                                 std::optional<u64> elementCount)
 {
+    VEX_ASSERT(strideByteSize != 0, "Cannot have a stride of 0.");
+    const u64 totalElements = buffer.desc.byteSize / strideByteSize;
+    const u64 actualElementCount = elementCount.value_or(totalElements - firstElement);
+    VEX_ASSERT(firstElement < totalElements,
+               "Cannot bind a firstElement ({}) larger than the total elementCount ({}).",
+               firstElement,
+               totalElements);
+    VEX_ASSERT(firstElement + actualElementCount <= totalElements,
+               "Cannot bind more elements ({}) than the total elementCount ({}).",
+               firstElement + actualElementCount,
+               totalElements);
     return {
         .buffer = buffer,
         .usage = BufferBindingUsage::RWStructuredBuffer,
         .region =
             BufferRegion{
-                .byteOffset = firstElement * strideByteSize,
-                .byteSize =
-                    elementCount.value_or((buffer.desc.byteSize / strideByteSize) - firstElement) * strideByteSize,
+                .byteOffset = firstElement * static_cast<u64>(strideByteSize),
+                .byteSize = actualElementCount * static_cast<u64>(strideByteSize),
             },
-        .strideByteSize = static_cast<u32>(strideByteSize),
+        .strideByteSize = strideByteSize,
     };
 }
 
@@ -307,6 +400,28 @@ IndexBufferBinding IndexBufferBinding::Create(const Buffer& buffer,
                 .byteSize = elementCount ? *elementCount * (std::to_underlying(format) / 8) : GBufferWholeSize,
             },
         .format = format,
+    };
+}
+
+TextureSubresource RenderTargetBinding::GetSubresourceForBarrier() const
+{
+    return {
+        .startMip = mip,
+        .mipCount = 1,
+        .startSlice = texture.desc.type != TextureType::Texture3D ? startDepthSlice : 0,
+        .sliceCount = texture.desc.type != TextureType::Texture3D ? depthSliceCount : 1,
+        .aspect = TextureAspect::Color,
+    };
+}
+
+TextureSubresource DepthStencilBinding::GetSubresourceForBarrier() const
+{
+    return {
+        .startMip = mip,
+        .mipCount = 1,
+        .startSlice = texture.desc.type != TextureType::Texture3D ? startDepthSlice : 0,
+        .sliceCount = texture.desc.type != TextureType::Texture3D ? depthSliceCount : 1,
+        .aspect = aspect,
     };
 }
 

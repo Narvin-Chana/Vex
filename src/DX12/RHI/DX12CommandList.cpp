@@ -251,29 +251,35 @@ void DX12CommandList::ClearTexture(RHITexture& texture,
                                    Span<const TextureClearRect> clearRects)
 {
 
-    RHITextureView textureView{ .texture = texture,
-                                .view = TextureViewDesc{
-                                    .viewType = TextureUtil::GetTextureViewType(texture.GetDesc(), std::nullopt),
-                                    .format = texture.GetDesc().format,
-                                    .isSRGB = false,
-                                    .usage = usage,
-                                    .subresource = subresource,
-                                } };
-    TextureViewDesc& view = textureView.view;
-
-    const u32 maxMip = view.subresource.startMip + view.subresource.GetMipCount(texture.GetDesc());
-    // We'll be creating a RTV/DSV view per-mip.
-    view.subresource.mipCount = 1;
+    const TextureDesc& desc = texture.GetDesc();
+    const u16 startMip = subresource.startMip;
+    const u16 endMip = startMip + subresource.GetMipCount(desc);
+    auto MakeClearView = [&](u16 mip)
+    {
+        const bool is3D = desc.type == TextureType::Texture3D;
+        return TextureViewDesc::Create(
+            desc,
+            TextureSubresource{
+                .startMip = mip,
+                .mipCount = 1,
+                .startSlice = is3D ? 0u : subresource.startSlice,
+                .sliceCount = is3D ? std::get<2>(TextureUtil::GetMipSize(desc, mip)) : subresource.GetSliceCount(desc),
+            },
+            usage);
+    };
 
     std::vector<D3D12_RECT> dxClearRects;
     dxClearRects.reserve(clearRects.size());
 
     for (const TextureClearRect& clearRect : clearRects)
     {
-        dxClearRects.push_back({ .left = clearRect.offsetX,
-                                 .top = clearRect.offsetY,
-                                 .right = clearRect.offsetX + static_cast<i32>(clearRect.extentX),
-                                 .bottom = clearRect.offsetY + static_cast<i32>(clearRect.extentY) });
+        // Validation guarantees rects imply a single mip (startMip).
+        dxClearRects.push_back({
+            .left = clearRect.offsetX,
+            .top = clearRect.offsetY,
+            .right = static_cast<i32>(clearRect.offsetX + clearRect.GetExtentX(desc, startMip)),
+            .bottom = static_cast<i32>(clearRect.offsetY + clearRect.GetExtentY(desc, startMip)),
+        });
     }
 
     const Flags<TextureAspect> clearAspect = subresource.GetAspect(texture.GetDesc());
@@ -283,14 +289,12 @@ void DX12CommandList::ClearTexture(RHITexture& texture,
     // Instead we iterate on the mips passed in by the user.
     if (usage == TextureUsage::RenderTarget)
     {
-        textureView.view.usage = TextureUsage::RenderTarget;
-        for (u32 mip = view.subresource.startMip; mip < maxMip; ++mip)
+        for (u16 mip = startMip; mip < endMip; ++mip)
         {
-            view.subresource.startMip = mip;
             VEX_ASSERT(clearAspect & TextureAspect::Color,
                        "Clearing the color requires the TextureClear::ClearColor flag for texture: {}.",
                        texture.GetDesc().name);
-            commandList->ClearRenderTargetView(texture.GetOrCreateRTVDSVView(view),
+            commandList->ClearRenderTargetView(texture.GetOrCreateRTVDSVView(MakeClearView(mip)),
                                                clearValue.color.data(),
                                                dxClearRects.size(),
                                                !dxClearRects.empty() ? dxClearRects.data() : nullptr);
@@ -298,10 +302,8 @@ void DX12CommandList::ClearTexture(RHITexture& texture,
     }
     else if (usage == TextureUsage::DepthStencil)
     {
-        view.usage = TextureUsage::DepthStencil;
-        for (u32 mip = view.subresource.startMip; mip < maxMip; ++mip)
+        for (u16 mip = startMip; mip < endMip; ++mip)
         {
-            view.subresource.startMip = mip;
             D3D12_CLEAR_FLAGS clearFlags = static_cast<D3D12_CLEAR_FLAGS>(0);
             if (clearAspect & TextureAspect::Depth)
             {
@@ -316,7 +318,7 @@ void DX12CommandList::ClearTexture(RHITexture& texture,
                        "for texture: {}!",
                        texture.GetDesc().name);
 
-            commandList->ClearDepthStencilView(texture.GetOrCreateRTVDSVView(view),
+            commandList->ClearDepthStencilView(texture.GetOrCreateRTVDSVView(MakeClearView(mip)),
                                                clearFlags,
                                                clearValue.depth,
                                                clearValue.stencil,
@@ -341,7 +343,9 @@ void DX12CommandList::EmitBarriers(Span<const RHIBufferBarrier> bufferBarriers,
     scratchBufferBarriers.reserve(bufferBarriers.size());
     for (const auto& bb : bufferBarriers)
     {
-        const bool bufferAllowsUnorderedAccess = bb.buffer->GetDesc().usage & BufferUsage::ShaderReadWrite;
+        const bool bufferAllowsUnorderedAccess =
+            bb.buffer->GetDesc().usage &
+            (BufferUsage::ShaderReadWrite | BufferUsage::AccelerationStructure | BufferUsage::Scratch);
 
         D3D12_BUFFER_BARRIER dx12Barrier = {};
         dx12Barrier.SyncBefore = RHIBarrierSyncToDX12(bb.srcSync);

@@ -29,15 +29,15 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
         size = ByteUtil::AlignUp<u64>(size, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
     }
 
-    CD3DX12_RESOURCE_DESC1 bufferDesc = CD3DX12_RESOURCE_DESC1::Buffer(size,
-                                                                       (desc.usage & BufferUsage::ShaderReadWrite)
-                                                                           ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
-                                                                           : D3D12_RESOURCE_FLAG_NONE);
+    CD3DX12_RESOURCE_DESC1 bufferDesc = CD3DX12_RESOURCE_DESC1::Buffer(
+        size,
+        desc.usage.IsSet(BufferUsage::ShaderReadWrite) || desc.usage.IsSet(BufferUsage::AccelerationStructure) ||
+                desc.usage.IsSet(BufferUsage::Scratch)
+            ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
+            : D3D12_RESOURCE_FLAG_NONE);
     if (desc.usage & BufferUsage::AccelerationStructure)
     {
         bufferDesc.Flags |= D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE;
-        VEX_ASSERT(desc.usage & BufferUsage::ShaderReadWrite,
-                   "Acceleration Structure usage requires the ShaderReadWrite usage flag.");
         VEX_ASSERT(bufferDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
                    "Acceleration Structure buffer usage flag also requires the ShaderReadWrite flag!");
 
@@ -48,8 +48,6 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
 
     if (desc.usage & BufferUsage::Scratch)
     {
-        VEX_ASSERT(desc.usage & BufferUsage::ShaderReadWrite,
-                   "Scratch buffer usage requires the ShaderReadWrite usage flag.");
         VEX_ASSERT(bufferDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
                    "Scratch buffer usage flag also requires the ShaderReadWrite flag!");
 

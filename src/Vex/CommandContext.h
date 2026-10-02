@@ -57,7 +57,7 @@ public:
 
     // Clears a texture, by default will use the texture's ClearColor and clear the entire texture.
     void ClearTexture(const Texture& texture,
-                      std::optional<TextureClearValue> textureClearValue = std::nullopt,
+                      const std::optional<TextureClearValue>& textureClearValue = std::nullopt,
                       const TextureSubresource& subresource = {},
                       Span<const TextureClearRect> clearRects = {});
 
@@ -193,8 +193,7 @@ public:
 
     // Useful for calling native API draws when wanting to render to a specific Render Target. Allows the passed in
     // lambda to be executed in a draw scope.
-    void ExecuteInDrawContext(Span<const RenderTargetBinding> renderTargets,
-                              const std::optional<DepthStencilBinding>& depthStencil,
+    void ExecuteInDrawContext(const DrawResourceBinding& drawBindings,
                               Span<const ResourceBinding> trackedResources,
                               const std::function<void()>& callback);
 
@@ -257,6 +256,8 @@ private:
                                                     const DrawResourceBinding& drawBindings,
                                                     ConstantBinding constants,
                                                     Span<const ResourceBinding> trackedResources);
+    void BarrierDrawResources(const DrawResourceBinding& drawBindings, const DrawDesc* drawDesc = nullptr);
+
     void CheckViewportAndScissor() const;
 
     void SetIndexBuffer(const IndexBufferBinding& indexBuffer) const;

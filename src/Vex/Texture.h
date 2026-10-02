@@ -229,8 +229,8 @@ struct TextureClearRect
     i32 offsetX = 0, offsetY = 0;
     u32 extentX = GTextureClearRectMax, extentY = GTextureClearRectMax;
 
-    u32 GetExtentX(const TextureDesc& desc) const;
-    u32 GetExtentY(const TextureDesc& desc) const;
+    u32 GetExtentX(const TextureDesc& desc, u16 mip) const;
+    u32 GetExtentY(const TextureDesc& desc, u16 mip) const;
 
     constexpr bool operator==(const TextureClearRect&) const = default;
 };
@@ -244,7 +244,9 @@ struct TextureSubresource
     // Refers to the plane in DX12 and the aspect mask in Vulkan
     Flags<TextureAspect> aspect = TextureAspect::All;
 
-    bool IsFullResource(const TextureDesc& desc) const;
+    [[nodiscard]] bool IsFullResource(const TextureDesc& desc) const;
+    // Returns a copy with GTextureAllMips/GTextureAllSlices and TextureAspect::All replaced with concrete values.
+    [[nodiscard]] TextureSubresource Resolve(const TextureDesc& desc) const;
 
     u16 GetMipCount(const TextureDesc& desc) const;
     u32 GetSliceCount(const TextureDesc& desc) const;
@@ -292,8 +294,11 @@ struct TextureUtil
     static u32 GetSubresourceIndex(const TextureDesc& desc, u16 mip, u32 slice, u32 plane);
 
     static std::tuple<u32, u32, u32> GetMipSize(const TextureDesc& desc, u32 mip);
-    static TextureViewType GetTextureViewType(const TextureDesc& desc, std::optional<TextureViewType> viewTypeOverride);
-    static TextureViewType GetTextureViewType(const TextureBinding& binding);
+    static TextureViewType ResolveViewType(const TextureDesc& desc,
+                                           const TextureSubresource& resolvedSubresource,
+                                           TextureUsage usage,
+                                           std::optional<TextureViewType> viewTypeOverride = std::nullopt);
+
     // This provides the correct format on which the data should be interpreted when copying data from and to a texture.
     // This applies mostly to depth/stencil formats that are read separately from their original format. (It applies to
     // any multi planar format)
@@ -333,6 +338,7 @@ struct TextureUtil
                                  const TextureDesc& dstDesc,
                                  const TextureCopyDesc& copyDesc);
     static void ValidateCompatibleTextureDescs(const TextureDesc& srcDesc, const TextureDesc& dstDesc);
+    static void ValidateTextureClear(const TextureDesc& desc, const TextureSubresource& subresource, Span<const TextureClearRect> clearRects);
 };
 
 } // namespace vex

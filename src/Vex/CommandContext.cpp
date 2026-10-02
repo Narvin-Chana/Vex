@@ -154,14 +154,11 @@ void CommandContext::SetScissor(i32 x, i32 y, u32 width, u32 height)
 }
 
 void CommandContext::ClearTexture(const Texture& texture,
-                                  std::optional<TextureClearValue> textureClearValue,
+                                  const std::optional<TextureClearValue>& textureClearValue,
                                   const TextureSubresource& subresource,
                                   Span<const TextureClearRect> clearRects)
 {
-    VEX_CHECK(
-        texture.desc.usage & (TextureUsage::RenderTarget | TextureUsage::DepthStencil),
-        "ClearUsage not supported on this texture, it must be either usable as a render target or as a depth stencil!");
-    TextureUtil::ValidateSubresource(texture.desc, subresource);
+    TextureUtil::ValidateTextureClear(texture.desc, subresource, clearRects);
 
     RHITexture& rhiTexture = graphics->GetRHITexture(texture.handle);
 
@@ -353,7 +350,8 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
 {
     const Texture& texture = textureBinding.texture;
 
-    VEX_CHECK(textureBinding.subresource.startSlice == 0 && textureBinding.subresource.GetSliceCount(texture.desc),
+    VEX_CHECK(textureBinding.subresource.startSlice == 0 &&
+                  textureBinding.subresource.GetSliceCount(texture.desc) == texture.desc.GetSliceCount(),
               "Mip Generation must take into account all slices.");
     VEX_CHECK(texture.desc.mips > 1,
               "The texture must have more than atleast 1 mip in order to have the other mips generated.");
@@ -394,30 +392,17 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
         return;
     }
 
-    auto GetTextureDimension = [desc = &texture.desc](const TextureType type) -> TextureViewType
-    {
-        switch (type)
-        {
-        case TextureType::Texture2D:
-            return desc->GetSliceCount() > 1 ? TextureViewType::Texture2DArray
-                                             : TextureViewType::Texture2D; // 2DArray or 2D
-        case TextureType::TextureCube:
-            return desc->GetSliceCount() > 6 ? TextureViewType::TextureCubeArray
-                                             : TextureViewType::TextureCube; // CubeArray or Cube
-        case TextureType::Texture3D:
-            return TextureViewType::Texture3D;
-        default:
-            VEX_ASSERT(false);
-            std::unreachable();
-        }
-    };
-
     // We have to perform manual mip generation if not supported by the graphics API.
+
+    const TextureViewType mipGenViewType =
+        TextureUtil::ResolveViewType(texture.desc,
+                                     TextureSubresource{ .startMip = 0, .mipCount = 1 }.Resolve(texture.desc),
+                                     TextureUsage::ShaderRead);
     const ShaderView shaderKey =
 #if VEX_DX12
-        dxil::GetMipGenerationShader(GetTextureDimension(texture.desc.type));
+        dxil::GetMipGenerationShader(mipGenViewType);
 #elif VEX_VULKAN
-        spirv::GetMipGenerationShader(GetTextureDimension(texture.desc.type));
+        spirv::GetMipGenerationShader(mipGenViewType);
 #endif
 
     static auto ComputeNPOTFlag = [](u32 srcWidth, u32 srcHeight, u32 srcDepth, bool is3D) -> u32
@@ -466,9 +451,7 @@ void CommandContext::GenerateMips(const TextureBinding& textureBinding)
                           RHIBarrierAccess::ShaderReadWrite,
                           RHITextureLayout::ShaderReadWrite);
 
-    u32 width = texture.desc.width;
-    u32 height = texture.desc.height;
-    u32 depth = texture.desc.GetDepth();
+    auto [width, height, depth] = TextureUtil::GetMipSize(texture.desc, sourceMip);
     bool isLastIteration = false;
 
     for (u16 mip = sourceMip + 1; mip <= lastDestMip;)
@@ -946,7 +929,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
             // TODO(https://trello.com/c/srGndUSP): Handle other vertex formats, this should be cross-referenced
             // with Vulkan to make sure only formats supported by both APIs are accepted.
             static bool warnVertexStride = true;
-            if (warnVertexStride && *blasGeometry.vertexBufferBinding.strideByteSize > sizeof(float) * 3)
+            if (warnVertexStride && blasGeometry.vertexBufferBinding.strideByteSize > sizeof(float) * 3)
             {
                 VEX_LOG(
                     Warning,
@@ -957,7 +940,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
                 warnVertexStride = false;
             }
 
-            VEX_ASSERT(*blasGeometry.vertexBufferBinding.strideByteSize >= sizeof(float) * 3,
+            VEX_ASSERT(blasGeometry.vertexBufferBinding.strideByteSize >= sizeof(float) * 3,
                        "Vex currently does not support acceleration structure geometry whose vertices have a stride "
                        "smaller than 12 bytes.");
 
@@ -1047,7 +1030,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
         .name =
             graphics->GetRHIAccelerationStructure(accelerationStructure.handle).GetDesc().name + "_build_blas_scratch",
         .byteSize = buildInfo.scratchByteSize,
-        .usage = BufferUsage::Scratch | BufferUsage::ShaderReadWrite,
+        .usage = BufferUsage::Scratch,
     };
     Buffer scratchBuffer = CreateTemporaryBuffer(scratchBufferDesc);
 
@@ -1101,7 +1084,7 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
     Buffer scratchBuffer = CreateTemporaryBuffer({
         .name = accelStruct.GetDesc().name + "_build_tlas_scratch",
         .byteSize = buildInfo.scratchByteSize,
-        .usage = BufferUsage::Scratch | BufferUsage::ShaderReadWrite,
+        .usage = BufferUsage::Scratch,
     });
 
     EnqueueGlobalBarrier({ .srcSync = RHIBarrierSync::Copy,
@@ -1116,41 +1099,37 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
                        rhiTLASDesc);
 }
 
-void CommandContext::ExecuteInDrawContext(Span<const RenderTargetBinding> renderTargets,
-                                          const std::optional<DepthStencilBinding>& depthStencil,
+void CommandContext::ExecuteInDrawContext(const DrawResourceBinding& drawBindings,
                                           Span<const ResourceBinding> trackedResources,
                                           const std::function<void()>& callback)
 {
     InferResourceBarriers(RHIBarrierSync::AllGraphics, trackedResources);
-
-    for (const auto& rt : renderTargets)
-    {
-        EnqueueTextureBarrier(rt.texture,
-                              rt.subresource,
-                              RHIBarrierSync::RenderTarget,
-                              RHIBarrierAccess::RenderTarget,
-                              RHITextureLayout::RenderTarget);
-    }
-    if (depthStencil.has_value())
-    {
-        // Use the most restrictive access, since we don't know how the caller will use the depth stencil texture.
-        RHIBarrierAccess depthAccess = RHIBarrierAccess::DepthStencilReadWrite;
-        RHITextureLayout depthLayout = RHITextureLayout::DepthStencilWrite;
-        EnqueueTextureBarrier(depthStencil->texture,
-                              depthStencil->subresource,
-                              RHIBarrierSync::DepthStencil,
-                              depthAccess,
-                              depthLayout);
-    }
+    BarrierDrawResources(drawBindings, nullptr);
 
     RHIDrawResources drawResources =
-        ResourceBindingUtils::CollectRHIDrawResources(*graphics,
-                                                      renderTargets,
-                                                      depthStencil ? &*depthStencil : nullptr);
+        ResourceBindingUtils::CollectRHIDrawResources(*graphics, drawBindings.renderTargets, drawBindings.depthStencil);
+    if (drawBindings.indexBuffer)
+    {
+        EnqueueGlobalBarrier({
+            .srcSync = RHIBarrierSync::AllCommands,
+            .dstSync = RHIBarrierSync::AllGraphics,
+            .srcAccess = RHIBarrierAccess::MemoryWrite,
+            .dstAccess = RHIBarrierAccess::VertexInputRead,
+        });
+        SetIndexBuffer(*drawBindings.indexBuffer);
+    }
     FlushBarriers();
     cmdList->BeginRendering(drawResources);
     callback();
     cmdList->EndRendering();
+
+    // Reset cached states as the callback could have changed the pipeline.
+    cachedGraphicsPSO = {};
+    cachedInputAssembly = {};
+
+    // Reset viewport and scissor rect since the callback could have changed it.
+    hasInitializedViewport = false;
+    hasInitializedScissor = false;
 }
 
 QueryHandle CommandContext::BeginTimestampQuery()
@@ -1399,41 +1378,8 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
                                                                 const ConstantBinding constants,
                                                                 Span<const ResourceBinding> trackedResources)
 {
-    BindingUtil::ValidateDrawResource(drawBindings);
     InferResourceBarriers(RHIBarrierSync::AllGraphics, trackedResources);
-
-    // Transition RTs/DepthStencil
-    for (const auto& rt : drawBindings.renderTargets)
-    {
-        EnqueueTextureBarrier(rt.texture,
-                              rt.subresource,
-                              RHIBarrierSync::RenderTarget,
-                              RHIBarrierAccess::RenderTarget,
-                              RHITextureLayout::RenderTarget);
-    }
-    if (drawBindings.depthStencil)
-    {
-        // Start with the most restrictive access.
-        RHIBarrierAccess depthAccess;
-        if (!drawDesc.depthStencilState.depthWriteEnabled)
-        {
-            depthAccess = RHIBarrierAccess::DepthStencilRead;
-        }
-        else
-        {
-            depthAccess = drawDesc.depthStencilState.depthTestEnabled ? RHIBarrierAccess::DepthStencilReadWrite
-                                                                      : RHIBarrierAccess::DepthStencilWrite;
-        }
-        const RHITextureLayout depthLayout = drawDesc.depthStencilState.depthWriteEnabled
-                                                 ? RHITextureLayout::DepthStencilWrite
-                                                 : RHITextureLayout::DepthStencilRead;
-
-        EnqueueTextureBarrier(drawBindings.depthStencil->texture,
-                              drawBindings.depthStencil->subresource,
-                              RHIBarrierSync::DepthStencil,
-                              depthAccess,
-                              depthLayout);
-    }
+    BarrierDrawResources(drawBindings, &drawDesc);
 
     RHIDrawResources drawResources =
         ResourceBindingUtils::CollectRHIDrawResources(*graphics, drawBindings.renderTargets, drawBindings.depthStencil);
@@ -1468,18 +1414,58 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
         cachedInputAssembly = drawDesc.inputAssembly;
     }
 
-    EnqueueGlobalBarrier({ .srcSync = RHIBarrierSync::AllCommands,
-                           .dstSync = RHIBarrierSync::AllGraphics,
-                           .srcAccess = RHIBarrierAccess::MemoryWrite,
-                           .dstAccess = RHIBarrierAccess::VertexInputRead });
-
     // Bind Index Buffer.
     if (drawBindings.indexBuffer)
     {
+        EnqueueGlobalBarrier({
+            .srcSync = RHIBarrierSync::AllCommands,
+            .dstSync = RHIBarrierSync::AllGraphics,
+            .srcAccess = RHIBarrierAccess::MemoryWrite,
+            .dstAccess = RHIBarrierAccess::VertexInputRead,
+        });
         SetIndexBuffer(*drawBindings.indexBuffer);
     }
 
     return drawResources;
+}
+
+void CommandContext::BarrierDrawResources(const DrawResourceBinding& drawBindings, const DrawDesc* drawDesc)
+{
+    BindingUtil::ValidateDrawResourceBindings(drawBindings);
+    // Transition RTs/DepthStencil
+    for (const auto& rt : drawBindings.renderTargets)
+    {
+        EnqueueTextureBarrier(rt.texture,
+                              rt.GetSubresourceForBarrier(),
+                              RHIBarrierSync::RenderTarget,
+                              RHIBarrierAccess::RenderTarget,
+                              RHITextureLayout::RenderTarget);
+    }
+    if (drawBindings.depthStencil)
+    {
+        // Use the draw desc (we use it to deduce the strictest access/layout the barrier needs).
+        // If no draw desc was passed, we use the most conservative access/layout.
+        RHIBarrierAccess depthAccess;
+        if (drawDesc && !drawDesc->depthStencilState.depthWriteEnabled)
+        {
+            depthAccess = RHIBarrierAccess::DepthStencilRead;
+        }
+        else
+        {
+            depthAccess = !drawDesc || drawDesc->depthStencilState.depthTestEnabled
+                              ? RHIBarrierAccess::DepthStencilReadWrite
+                              : RHIBarrierAccess::DepthStencilWrite;
+        }
+        const RHITextureLayout depthLayout = !drawDesc || drawDesc->depthStencilState.depthWriteEnabled
+                                                 ? RHITextureLayout::DepthStencilWrite
+                                                 : RHITextureLayout::DepthStencilRead;
+
+        EnqueueTextureBarrier(drawBindings.depthStencil->texture,
+                              drawBindings.depthStencil->GetSubresourceForBarrier(),
+                              RHIBarrierSync::DepthStencil,
+                              depthAccess,
+                              depthLayout);
+    }
 }
 
 void CommandContext::CheckViewportAndScissor() const

@@ -33,19 +33,14 @@ static D3D12_RENDER_TARGET_VIEW_DESC CreateRenderTargetViewDesc(const TextureDes
     {
     case TextureViewType::Texture2D:
         desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-        desc.Texture2D = {
-            .MipSlice = view.subresource.startMip,
-            .PlaneSlice = view.subresource.startSlice,
-        };
+        desc.Texture2D = { .MipSlice = view.subresource.startMip, .PlaneSlice = 0 };
         break;
     case TextureViewType::Texture2DArray:
-    case TextureViewType::TextureCube:
-    case TextureViewType::TextureCubeArray:
         desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
         desc.Texture2DArray = {
             .MipSlice = view.subresource.startMip,
             .FirstArraySlice = view.subresource.startSlice,
-            .ArraySize = view.subresource.GetSliceCount(textureDesc),
+            .ArraySize = view.subresource.sliceCount,
             .PlaneSlice = 0,
         };
         break;
@@ -54,11 +49,16 @@ static D3D12_RENDER_TARGET_VIEW_DESC CreateRenderTargetViewDesc(const TextureDes
         desc.Texture3D = {
             .MipSlice = view.subresource.startMip,
             .FirstWSlice = view.subresource.startSlice,
-            .WSize = view.subresource.GetSliceCount(textureDesc),
+            .WSize = view.subresource.sliceCount,
         };
         break;
+    case TextureViewType::TextureCube:
+    case TextureViewType::TextureCubeArray:
     default:
-        VEX_LOG(Fatal, "Unsupported texture dimension type for RTV creation: {}", view.viewType);
+        VEX_LOG(Fatal,
+                "Unsupported texture dimension type for RTV creation: {} for resource \"{}\"",
+                view.viewType,
+                textureDesc.name);
         std::unreachable();
     }
 
@@ -68,9 +68,25 @@ static D3D12_RENDER_TARGET_VIEW_DESC CreateRenderTargetViewDesc(const TextureDes
 static D3D12_DEPTH_STENCIL_VIEW_DESC CreateDepthStencilViewDesc(const TextureViewDesc& view, DXGI_FORMAT format)
 {
     // TODO: could eventually investigate setting the DepthRead / StencilRead flags for further optimization.
-    D3D12_DEPTH_STENCIL_VIEW_DESC desc{ .Format = format,
-                                        .ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D,
-                                        .Texture2D = { .MipSlice = view.subresource.startMip } };
+    D3D12_DEPTH_STENCIL_VIEW_DESC desc{ .Format = format };
+    switch (view.viewType)
+    {
+    case TextureViewType::Texture2D:
+        desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+        desc.Texture2D = { .MipSlice = view.subresource.startMip };
+        break;
+    case TextureViewType::Texture2DArray:
+        desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+        desc.Texture2DArray = {
+            .MipSlice = view.subresource.startMip,
+            .FirstArraySlice = view.subresource.startSlice,
+            .ArraySize = view.subresource.sliceCount,
+        };
+        break;
+    default:
+        VEX_LOG(Fatal, "Unsupported texture dimension type for DSV creation: {}", view.viewType);
+        std::unreachable();
+    }
     return desc;
 }
 
@@ -87,9 +103,10 @@ static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const Textur
     {
     case TextureViewType::Texture2D:
         desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        VEX_ASSERT(view.subresource.startSlice == 0, "D3D12 Texture2D SRVs cannot address slices > 0.");
         desc.Texture2D = {
             .MostDetailedMip = view.subresource.startMip,
-            .MipLevels = view.subresource.GetMipCount(textureDesc),
+            .MipLevels = view.subresource.mipCount,
             .PlaneSlice = view.subresource.GetSingleAspect(textureDesc) == TextureAspect::Stencil ? 1u : 0u,
             .ResourceMinLODClamp = 0,
         };
@@ -98,18 +115,19 @@ static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const Textur
         desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
         desc.Texture2DArray = {
             .MostDetailedMip = view.subresource.startMip,
-            .MipLevels = view.subresource.GetMipCount(textureDesc),
+            .MipLevels = view.subresource.mipCount,
             .FirstArraySlice = view.subresource.startSlice,
-            .ArraySize = view.subresource.GetSliceCount(textureDesc),
+            .ArraySize = view.subresource.sliceCount,
             .PlaneSlice = view.subresource.GetSingleAspect(textureDesc) == TextureAspect::Stencil ? 1u : 0u,
             .ResourceMinLODClamp = 0,
         };
         break;
     case TextureViewType::TextureCube:
         desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+        VEX_ASSERT(view.subresource.startSlice == 0, "D3D12 TextureCube SRVs cannot address cubes > 0.");
         desc.TextureCube = {
             .MostDetailedMip = view.subresource.startMip,
-            .MipLevels = view.subresource.GetMipCount(textureDesc),
+            .MipLevels = view.subresource.mipCount,
             .ResourceMinLODClamp = 0,
         };
         break;
@@ -117,9 +135,9 @@ static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const Textur
         desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
         desc.TextureCubeArray = {
             .MostDetailedMip = view.subresource.startMip,
-            .MipLevels = view.subresource.GetMipCount(textureDesc),
+            .MipLevels = view.subresource.mipCount,
             .First2DArrayFace = view.subresource.startSlice,
-            .NumCubes = view.subresource.GetSliceCount(textureDesc) / GTextureCubeFaceCount,
+            .NumCubes = view.subresource.sliceCount / GTextureCubeFaceCount,
             .ResourceMinLODClamp = 0,
         };
         break;
@@ -127,7 +145,7 @@ static D3D12_SHADER_RESOURCE_VIEW_DESC CreateShaderResourceViewDesc(const Textur
         desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
         desc.Texture3D = {
             .MostDetailedMip = view.subresource.startMip,
-            .MipLevels = view.subresource.GetMipCount(textureDesc),
+            .MipLevels = view.subresource.mipCount,
             .ResourceMinLODClamp = 0,
         };
         break;
@@ -149,6 +167,7 @@ static D3D12_UNORDERED_ACCESS_VIEW_DESC CreateUnorderedAccessViewDesc(const Text
     {
     case TextureViewType::Texture2D:
         desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+        VEX_ASSERT(view.subresource.startSlice == 0, "D3D12 Texture2D SRVs cannot address slices > 0.");
         // Write to first mip slice
         desc.Texture2D = {
             .MipSlice = view.subresource.startMip,
@@ -156,15 +175,13 @@ static D3D12_UNORDERED_ACCESS_VIEW_DESC CreateUnorderedAccessViewDesc(const Text
         };
         break;
     case TextureViewType::Texture2DArray:
-    case TextureViewType::TextureCube:
-    case TextureViewType::TextureCubeArray:
         // UAVs for TextureCube and TextureCubeArray do not exist in D3D12, instead the user is expected to bind their
         // texture cube as a RWTexture2DArray.
         desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
         desc.Texture2DArray = {
             .MipSlice = view.subresource.startMip,
             .FirstArraySlice = view.subresource.startSlice,
-            .ArraySize = view.subresource.GetSliceCount(textureDesc),
+            .ArraySize = view.subresource.sliceCount,
             .PlaneSlice = 0,
         };
         break;
@@ -172,8 +189,8 @@ static D3D12_UNORDERED_ACCESS_VIEW_DESC CreateUnorderedAccessViewDesc(const Text
         desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
         desc.Texture3D = {
             .MipSlice = view.subresource.startMip,
-            .FirstWSlice = view.subresource.startSlice,
-            .WSize = view.subresource.GetSliceCount(textureDesc),
+            .FirstWSlice = 0,
+            .WSize = UINT_MAX,
         };
         break;
     default:

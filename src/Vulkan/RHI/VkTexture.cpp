@@ -39,7 +39,7 @@ static ::vk::ImageViewType TextureTypeToVulkan(TextureViewType type)
     std::unreachable();
 }
 
-static ::vk::ImageUsageFlags GetImageUsage(const TextureDesc& desc)
+static ::vk::ImageUsageFlags GetImageUsageFromDesc(const TextureDesc& desc)
 {
     ::vk::ImageUsageFlags usageFlags{};
     if (desc.usage & TextureUsage::DepthStencil)
@@ -61,6 +61,32 @@ static ::vk::ImageUsageFlags GetImageUsage(const TextureDesc& desc)
     usageFlags |= ::vk::ImageUsageFlagBits::eTransferDst;
     usageFlags |= ::vk::ImageUsageFlagBits::eTransferSrc;
     return usageFlags;
+}
+
+static ::vk::ImageUsageFlags GetImageUsageFromView(const TextureViewDesc& view)
+{
+    switch (view.usage)
+    {
+    case TextureUsage::ShaderRead:
+        return ::vk::ImageUsageFlagBits::eSampled;
+    case TextureUsage::ShaderReadWrite:
+        return ::vk::ImageUsageFlagBits::eStorage;
+    case TextureUsage::RenderTarget:
+        return ::vk::ImageUsageFlagBits::eColorAttachment;
+    case TextureUsage::DepthStencil:
+        return ::vk::ImageUsageFlagBits::eDepthStencilAttachment;
+    default:
+        VEX_ASSERT(false, "Invalid view usage: {}", view.usage);
+        std::unreachable();
+    }
+}
+
+static ::vk::ImageViewType GetVkImageViewType(const TextureViewDesc& view)
+{
+    // 3D render targets are bound as a 2D array over the depth slices (D3D12: TEXTURE3D RTV with a W range).
+    if (view.viewType == TextureViewType::Texture3D && view.usage == TextureUsage::RenderTarget)
+        return ::vk::ImageViewType::e2DArray;
+    return TextureTypeToVulkan(view.viewType);
 }
 
 namespace VkTextureUtil
@@ -201,19 +227,15 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureViewDesc& view, R
         return it->second.handle;
     }
 
-    ::vk::ImageViewUsageCreateInfo viewUsageInfo{};
-    ::vk::ImageUsageFlags viewUsage = GetImageUsage(desc);
-    // If creating an sRGB view, it can't have storage usage
-    if (view.isSRGB)
-    {
-        viewUsage &= ~::vk::ImageUsageFlagBits::eStorage;
-    }
-    viewUsageInfo.usage = viewUsage;
+    ::vk::ImageViewUsageCreateInfo viewUsageInfo{ .usage = GetImageUsageFromView(view) };
+    // If creating an sRGB view, it can't have storage usage.
+    VEX_ASSERT(!view.isSRGB || !(viewUsageInfo.usage & ::vk::ImageUsageFlagBits::eStorage),
+               "An sRGB view cannot have storage usage (aka UAV usage).");
 
     const ::vk::ImageViewCreateInfo viewCreate{
         .pNext = &viewUsageInfo, 
         .image = GetRawTexture(),
-        .viewType = TextureTypeToVulkan(view.viewType),
+        .viewType = GetVkImageViewType(view),
         .format = TextureFormatToVulkan(view.format, view.isSRGB),
         .subresourceRange = {
             .aspectMask = VkTextureUtil::BindingAspectToVkAspectFlags(view.subresource.GetSingleAspect(desc)),
@@ -247,14 +269,7 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureViewDesc& view, R
         return *it->second;
     }
 
-    ::vk::ImageViewUsageCreateInfo viewUsageInfo{};
-    ::vk::ImageUsageFlags viewUsage = GetImageUsage(desc);
-    // If creating an sRGB view, it can't have storage usage.
-    if (view.isSRGB)
-    {
-        viewUsage &= ~::vk::ImageUsageFlagBits::eStorage;
-    }
-    viewUsageInfo.usage = viewUsage;
+    ::vk::ImageViewUsageCreateInfo viewUsageInfo{ .usage = GetImageUsageFromView(view) };
 
     ::vk::ImageAspectFlags aspectFlags;
     Flags subresourceAspects = subresource.GetAspect(desc);
@@ -265,10 +280,14 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureViewDesc& view, R
     if (subresourceAspects & TextureAspect::Stencil)
         aspectFlags |= ::vk::ImageAspectFlagBits::eStencil;
 
+    // If creating an sRGB view, it can't have storage usage.
+    VEX_ASSERT(!view.isSRGB || !(viewUsageInfo.usage & ::vk::ImageUsageFlagBits::eStorage),
+               "An sRGB view cannot have storage usage (aka UAV usage).");
+
     const ::vk::ImageViewCreateInfo viewCreate{ 
         .pNext = &viewUsageInfo, 
         .image = GetRawTexture(),
-        .viewType = TextureTypeToVulkan(view.viewType),
+        .viewType = GetVkImageViewType(view),
         .format = TextureFormatToVulkan(view.format, view.isSRGB),
         .subresourceRange = {
             .aspectMask = aspectFlags,
@@ -338,6 +357,11 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
     {
         flags |= ::vk::ImageCreateFlagBits::eCubeCompatible;
     }
+    // This flag allows for 2D-array views over a 3D render target (eg: binding slice 4 -> 12).
+    if (desc.type == TextureType::Texture3D && desc.usage.IsSet(TextureUsage::RenderTarget))
+    {
+        flags |= ::vk::ImageCreateFlagBits::e2DArrayCompatible;
+    }
 
     const bool needsConcurrent = ctx->queueFamilyIndices.size() > 1;
     ::vk::ImageCreateInfo createInfo{
@@ -348,7 +372,7 @@ void VkTexture::CreateImage(RHIAllocator& allocator)
         .mipLevels = desc.mips,
         .samples = ::vk::SampleCountFlagBits::e1,
         .tiling = ::vk::ImageTiling::eOptimal,
-        .usage = GetImageUsage(desc),
+        .usage = GetImageUsageFromDesc(desc),
         .sharingMode = needsConcurrent ? ::vk::SharingMode::eConcurrent : ::vk::SharingMode::eExclusive,
         .queueFamilyIndexCount = needsConcurrent ? static_cast<u32>(ctx->queueFamilyIndices.size()) : 0,
         .pQueueFamilyIndices = needsConcurrent ? ctx->queueFamilyIndices.data() : nullptr,

@@ -95,6 +95,7 @@ using vex::Texture;
 using vex::TextureAspect;
 using vex::TextureBinding;
 using vex::TextureBindingUsage;
+using vex::TextureClearRect;
 using vex::TextureClearValue;
 using vex::TextureDesc;
 using vex::TextureFormat;

@@ -11,6 +11,76 @@
 namespace vex
 {
 
+namespace Texture_Internal
+{
+
+static bool IsWholeCubeRange(const TextureSubresource& sub)
+{
+    return sub.sliceCount > 0 && sub.startSlice % GTextureCubeFaceCount == 0 &&
+           sub.sliceCount % GTextureCubeFaceCount == 0;
+}
+
+static TextureViewType GetDefaultViewType(const TextureDesc& desc, const TextureSubresource& sub, TextureUsage usage)
+{
+    const bool isArrayTexture = desc.depthOrSliceCount > 1; // For cubes: more than one cube.
+    switch (desc.type)
+    {
+    case TextureType::Texture2D:
+        return isArrayTexture ? TextureViewType::Texture2DArray : TextureViewType::Texture2D;
+    case TextureType::TextureCube:
+        if (usage == TextureUsage::ShaderRead && IsWholeCubeRange(sub))
+        {
+            return isArrayTexture ? TextureViewType::TextureCubeArray : TextureViewType::TextureCube;
+        }
+        // Shader languages have no RWTextureCube and no cube RenderTargets. Partial face ranges are viewed as a 2D
+        // array.
+        return TextureViewType::Texture2DArray;
+    case TextureType::Texture3D:
+        return TextureViewType::Texture3D;
+    }
+    std::unreachable();
+}
+
+static void ValidateViewTypeOverride(const TextureDesc& desc,
+                                     const TextureSubresource& sub,
+                                     TextureUsage usage,
+                                     TextureViewType viewTypeOverride)
+{
+    const bool isShaderRead = usage == TextureUsage::ShaderRead;
+    switch (viewTypeOverride)
+    {
+    case TextureViewType::Texture2D:
+        // DX12 Texture2D views cannot address an array slice.
+        VEX_CHECK(desc.type != TextureType::Texture3D && sub.startSlice == 0 && sub.sliceCount == 1,
+                  "Texture \"{}\": a Texture2D view must cover exactly slice 0.",
+                  desc.name);
+        break;
+    case TextureViewType::Texture2DArray:
+        VEX_CHECK(desc.type != TextureType::Texture3D,
+                  "Texture \"{}\": a 3D texture cannot be viewed as a Texture2DArray.",
+                  desc.name);
+        break;
+    case TextureViewType::TextureCube:
+        // DX12 TextureCube views cannot address a cube other than the first.
+        VEX_CHECK(desc.type == TextureType::TextureCube && isShaderRead && sub.startSlice == 0 &&
+                      sub.sliceCount == GTextureCubeFaceCount,
+                  "Texture \"{}\": a TextureCube view must be a ShaderRead of the first cube's 6 faces.",
+                  desc.name);
+        break;
+    case TextureViewType::TextureCubeArray:
+        VEX_CHECK(desc.type == TextureType::TextureCube && isShaderRead && IsWholeCubeRange(sub),
+                  "Texture \"{}\": a TextureCubeArray view must be a ShaderRead of whole, cube-aligned faces.",
+                  desc.name);
+        break;
+    case TextureViewType::Texture3D:
+        VEX_CHECK(desc.type == TextureType::Texture3D,
+                  "Texture \"{}\": only 3D textures can be viewed as Texture3D.",
+                  desc.name);
+        break;
+    }
+}
+} // namespace Texture_Internal
+
 u32 TextureUtil::GetSubresourceIndex(const TextureDesc& desc, u16 mip, u32 slice, u32 plane)
 {
     VEX_ASSERT(mip < desc.mips && slice < desc.GetSliceCount() && plane < desc.GetPlaneCount());
@@ -24,57 +94,21 @@ std::tuple<u32, u32, u32> TextureUtil::GetMipSize(const TextureDesc& desc, u32 m
     return { std::max(desc.width >> mip, 1u), std::max(desc.height >> mip, 1u), std::max(desc.GetDepth() >> mip, 1u) };
 }
 
-namespace Texture_Internal
+TextureViewType TextureUtil::ResolveViewType(const TextureDesc& desc,
+                                             const TextureSubresource& resolvedSubresource,
+                                             TextureUsage usage,
+                                             std::optional<TextureViewType> viewTypeOverride)
 {
-
-static bool IsViewTypeCompatibleWithTextureType(TextureType type, TextureViewType viewType)
-{
-    switch (type)
-    {
-    case TextureType::Texture2D:
-        return viewType == TextureViewType::Texture2D || viewType == TextureViewType::Texture2DArray;
-    case TextureType::TextureCube:
-        // Cubes are 2D arrays of 6 * cubeCount slices, so they can be viewed as any 2D or cube type.
-        return viewType != TextureViewType::Texture3D;
-    case TextureType::Texture3D:
-        // 2D views of 3D textures are not portable.
-        return viewType == TextureViewType::Texture3D;
-    }
-    return false;
-}
-
-} // namespace Texture_Internal
-
-TextureViewType TextureUtil::GetTextureViewType(const TextureDesc& desc,
-                                                std::optional<TextureViewType> viewTypeOverride)
-{
+    VEX_ASSERT(resolvedSubresource.mipCount != GTextureAllMips && resolvedSubresource.sliceCount != GTextureAllSlices,
+               "ResolveViewType requires a resolved subresource.");
     if (viewTypeOverride)
     {
-        VEX_CHECK(Texture_Internal::IsViewTypeCompatibleWithTextureType(desc.type, *viewTypeOverride),
-                  "Invalid view type override for texture \"{}\": a texture of type {} cannot be viewed as {}.",
-                  desc.name,
-                  desc.type,
-                  *viewTypeOverride);
+        VEX_ASSERT(usage == TextureUsage::ShaderRead || usage == TextureUsage::ShaderReadWrite,
+                   "View type overrides are only meaningful for shader views.");
+        Texture_Internal::ValidateViewTypeOverride(desc, resolvedSubresource, usage, *viewTypeOverride);
         return *viewTypeOverride;
     }
-
-    switch (desc.type)
-    {
-    case TextureType::Texture2D:
-        return (desc.depthOrSliceCount > 1) ? TextureViewType::Texture2DArray : TextureViewType::Texture2D;
-    case TextureType::TextureCube:
-        return (desc.depthOrSliceCount > 1) ? TextureViewType::TextureCubeArray : TextureViewType::TextureCube;
-    case TextureType::Texture3D:
-        return TextureViewType::Texture3D;
-    default:
-        VEX_LOG(Fatal, "Unrecognized texture type for texture: {}.", desc.name);
-    }
-    std::unreachable();
-}
-
-TextureViewType TextureUtil::GetTextureViewType(const TextureBinding& binding)
-{
-    return GetTextureViewType(binding.texture.desc, binding.viewTypeOverride);
+    return Texture_Internal::GetDefaultViewType(desc, resolvedSubresource, usage);
 }
 
 TextureFormat TextureUtil::GetCopyFormat(TextureFormat format, TextureAspect aspect)
@@ -419,7 +453,9 @@ void TextureUtil::ValidateRegion(const TextureDesc& desc, const TextureRegion& r
     }
 
     auto [mipWidth, mipHeight, mipDepth] = TextureUtil::GetMipSize(desc, region.subresource.startMip);
-    for (u32 mip = region.subresource.startMip; mip < region.subresource.GetMipCount(desc); ++mip)
+    for (u32 mip = region.subresource.startMip;
+         mip < region.subresource.startMip + region.subresource.GetMipCount(desc);
+         ++mip)
     {
         VEX_CHECK(region.offset.x < mipWidth && region.offset.y < mipHeight && region.offset.z < mipDepth,
                   "Invalid region for resource \"{}\": Region offset is beyond the mip's resource size. Mip size: "
@@ -473,6 +509,58 @@ void TextureUtil::ValidateCompatibleTextureDescs(const TextureDesc& srcDesc, con
                   srcDesc.format == dstDesc.format && srcDesc.type == dstDesc.type,
               "Textures must have the same width, height, depth/array size, mips, format and type to be able to do a "
               "simple copy");
+}
+
+void TextureUtil::ValidateTextureClear(const TextureDesc& desc,
+                                       const TextureSubresource& subresource,
+                                       Span<const TextureClearRect> clearRects)
+{
+    VEX_CHECK(
+        desc.usage & (TextureUsage::RenderTarget | TextureUsage::DepthStencil),
+        "ClearUsage not supported on texture {}, it must be either usable as a render target or as a depth stencil!",
+        desc.name);
+
+    ValidateSubresource(desc, subresource);
+
+    if (!clearRects.empty())
+    {
+        VEX_CHECK(subresource.GetMipCount(desc) == 1,
+                  "Erroring clearing texture {}: ClearTexture with clearRects requires a single mip: rect coordinates "
+                  "are in that mip's pixel space. "
+                  "If you need to clear rects on multiple mips, call ClearTexture multiple times.",
+                  desc.name);
+
+        // Ensure that the requested offset+extent don't surpass the texture's size.
+        const u16 clearMip = subresource.startMip;
+        const auto [mipW, mipH, mipD] = GetMipSize(desc, clearMip);
+        for (const auto& rect : clearRects)
+        {
+            {
+                u32 extentX = rect.GetExtentX(desc, clearMip);
+                VEX_CHECK(extentX + rect.offsetX <= mipW,
+                          "Error clearing texture {}: ExtentX ({}) + OffsetX ({}), aka {}, would surpass the texture's "
+                          "width ({}) at mip {}.",
+                          desc.name,
+                          extentX,
+                          rect.offsetX,
+                          extentX + rect.offsetX,
+                          mipW,
+                          clearMip);
+            }
+            {
+                u32 extentY = rect.GetExtentY(desc, clearMip);
+                VEX_CHECK(extentY + rect.offsetY <= mipH,
+                          "Error clearing texture {}: ExtentY ({}) + OffsetY ({}), aka {}, would surpass the texture's "
+                          "height ({}) at mip {}.",
+                          desc.name,
+                          extentY,
+                          rect.offsetY,
+                          extentY + rect.offsetY,
+                          mipH,
+                          clearMip);
+            }
+        }
+    }
 }
 
 TextureDesc TextureDesc::CreateTexture2DDesc(std::string name,
@@ -596,14 +684,14 @@ TextureDesc TextureDesc::CreateTexture3DDesc(std::string name,
     return desc;
 }
 
-u32 TextureClearRect::GetExtentX(const TextureDesc& desc) const
+u32 TextureClearRect::GetExtentX(const TextureDesc& desc, u16 mip) const
 {
-    return extentX == GTextureClearRectMax ? desc.width - offsetX : extentX;
+    return extentX == GTextureClearRectMax ? std::get<0>(TextureUtil::GetMipSize(desc, mip)) - offsetX : extentX;
 }
 
-u32 TextureClearRect::GetExtentY(const TextureDesc& desc) const
+u32 TextureClearRect::GetExtentY(const TextureDesc& desc, u16 mip) const
 {
-    return extentY == GTextureClearRectMax ? desc.height - offsetY : extentY;
+    return extentY == GTextureClearRectMax ? std::get<1>(TextureUtil::GetMipSize(desc, mip)) - offsetY : extentY;
 }
 
 u16 TextureSubresource::GetMipCount(const TextureDesc& desc) const
@@ -623,7 +711,7 @@ u32 TextureSubresource::GetStartPlane() const
         return 0;
     }
 
-    if (aspect & TextureAspect::Color || aspect & TextureAspect::Depth)
+    if (aspect.IsSet(TextureAspect::Color) || aspect.IsSet(TextureAspect::Depth))
     {
         return 0;
     }
@@ -687,8 +775,19 @@ Flags<TextureAspect> TextureSubresource::GetDefaultAspect(const TextureDesc& des
 bool TextureSubresource::IsFullResource(const TextureDesc& desc) const
 {
     return startMip == 0 && (mipCount == GTextureAllMips || mipCount == desc.mips) && startSlice == 0 &&
-           (sliceCount == GTextureAllSlices || sliceCount == desc.depthOrSliceCount) &&
+           (sliceCount == GTextureAllSlices || sliceCount == desc.GetSliceCount()) &&
            desc.GetPlaneCount() == GetPlaneCount(desc);
+}
+
+TextureSubresource TextureSubresource::Resolve(const TextureDesc& desc) const
+{
+    return TextureSubresource{
+        .startMip = startMip,
+        .mipCount = GetMipCount(desc),
+        .startSlice = startSlice,
+        .sliceCount = GetSliceCount(desc),
+        .aspect = GetAspect(desc),
+    };
 }
 
 std::tuple<u32, u32, u32> TextureRegion::GetExtents(const TextureDesc& desc, u16 mip) const

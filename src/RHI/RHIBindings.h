@@ -16,13 +16,31 @@ namespace vex
 
 struct TextureViewDesc
 {
-    TextureViewType viewType;
-    TextureFormat format;
+    TextureViewType viewType = TextureViewType::Texture2D;
+    TextureFormat format = TextureFormat::UNKNOWN;
     bool isSRGB = false;
     TextureUsage usage = TextureUsage::None;
     TextureSubresource subresource;
 
     constexpr bool operator==(const TextureViewDesc&) const = default;
+
+    // Resolves the subresource (replaces sentinel values with the actual value).
+    // Validates and determines the final API-agnostic view type to use.
+    static TextureViewDesc Create(const TextureDesc& desc,
+                                  const TextureSubresource& subresource,
+                                  TextureUsage usage,
+                                  bool isSRGB = false,
+                                  std::optional<TextureViewType> viewTypeOverride = std::nullopt)
+    {
+        const TextureSubresource resolved = subresource.Resolve(desc);
+        return {
+            .viewType = TextureUtil::ResolveViewType(desc, resolved, usage, viewTypeOverride),
+            .format = desc.format,
+            .isSRGB = isSRGB,
+            .usage = usage,
+            .subresource = resolved,
+        };
+    }
 };
 
 struct BufferViewDesc
