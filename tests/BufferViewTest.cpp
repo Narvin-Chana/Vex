@@ -51,29 +51,25 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
     switch (usage)
     {
     case BufferBindingUsage::UniformBuffer:
-        binding = BufferBinding::CreateConstantBuffer(dataBuffer, testData.offset.value_or(0), DataSize);
+        binding = BufferBinding::CreateUniform(dataBuffer, testData.offset.value_or(0), DataSize);
         break;
     case BufferBindingUsage::StructuredBuffer:
-        binding = BufferBinding::CreateStructuredBuffer(dataBuffer,
-                                                        DataSize,
-                                                        testData.firstElement.value_or(0),
-                                                        testData.elementCount);
+        binding = BufferBinding::CreateStructured(dataBuffer,
+                                                  DataSize,
+                                                  testData.firstElement.value_or(0),
+                                                  testData.elementCount);
         break;
     case BufferBindingUsage::RWStructuredBuffer:
-        binding = BufferBinding::CreateRWStructuredBuffer(dataBuffer,
-                                                          DataSize,
-                                                          testData.firstElement.value_or(0),
-                                                          testData.elementCount);
+        binding = BufferBinding::CreateRWStructured(dataBuffer,
+                                                    DataSize,
+                                                    testData.firstElement.value_or(0),
+                                                    testData.elementCount);
         break;
     case BufferBindingUsage::ByteAddressBuffer:
-        binding = BufferBinding::CreateByteAddressBuffer(dataBuffer,
-                                                         testData.firstElement.value_or(0),
-                                                         testData.elementCount);
+        binding = BufferBinding::CreateByteAddress(dataBuffer, testData.firstElement.value_or(0), testData.elementCount);
         break;
     case BufferBindingUsage::RWByteAddressBuffer:
-        binding = BufferBinding::CreateRWByteAddressBuffer(dataBuffer,
-                                                           testData.firstElement.value_or(0),
-                                                           testData.elementCount);
+        binding = BufferBinding::CreateRWByteAddress(dataBuffer, testData.firstElement.value_or(0), testData.elementCount);
         break;
     default:
         ADD_FAILURE() << "Unsupported buffer binding usage!";
@@ -84,7 +80,7 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
 
     std::array<ResourceBinding, 2> bindings{
         binding,
-        BufferBinding::CreateRWStructuredBuffer(resultBuffer, DataSize),
+        BufferBinding::CreateRWStructured(resultBuffer, DataSize),
     };
     std::array<BindlessHandle, 2> handles;
     graphics.GetBindlessHandles(bindings, handles);

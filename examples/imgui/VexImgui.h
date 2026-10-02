@@ -155,8 +155,12 @@ inline ImTextureID ImGui_ImplVex_ResolveTextureId(const vex::TextureBinding& bin
 
     vex::RHIAccessor accessor{ *GImGuiVexContext.graphics };
 #if VEX_VULKAN
-    ::vk::ImageView img =
-        accessor.GetTexture(binding.texture).GetOrCreateImageView(binding, vex::TextureUsage::ShaderRead);
+    ::vk::ImageView img = accessor.GetTexture(binding.texture)
+                              .GetOrCreateImageView(vex::TextureViewDesc::Create(binding.texture.desc,
+                                                                                 binding.subresource,
+                                                                                 vex::TextureUsage::ShaderRead,
+                                                                                 binding.isSRGB,
+                                                                                 binding.viewTypeOverride));
     if (!GImGuiVexContext.imageCache.contains(img))
     {
         GImGuiVexContext.imageCache.insert({ img,

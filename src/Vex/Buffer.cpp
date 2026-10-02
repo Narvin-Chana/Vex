@@ -31,21 +31,21 @@ void BufferUtil::ValidateBufferCopyDesc(const BufferDesc& srcDesc,
 
 void BufferUtil::ValidateBufferRegion(const BufferDesc& desc, const BufferRegion& region)
 {
-    VEX_CHECK(region.offset < desc.byteSize,
+    VEX_CHECK(region.byteOffset < desc.byteSize,
               "Invalid region for resource \"{}\": The buffer's offset ({}) cannot be larger than the "
               "actual buffer's byte size ({}).",
               desc.name,
-              region.offset,
+              region.byteOffset,
               desc.byteSize);
 
     if (region.byteSize != GBufferWholeSize)
     {
-        VEX_CHECK(region.offset + region.GetByteSize(desc) <= desc.byteSize,
+        VEX_CHECK(region.byteOffset + region.GetByteSize(desc) <= desc.byteSize,
                   "Invalid region for resource \"{}\": The region accesses more bytes than available, "
                   "region offset: {}, region byteSize: {}, "
                   " buffer byteSize {}",
                   desc.name,
-                  region.offset,
+                  region.byteOffset,
                   region.GetByteSize(desc),
                   desc.byteSize);
     }

@@ -6,6 +6,7 @@
 
 #include <Vex/Logger.h>
 #include <Vex/RayTracing.h>
+#include <Vex/Utility/Hash.h>
 #include <Vex/Utility/MagicEnum.h>
 #include <VexMacros.h>
 

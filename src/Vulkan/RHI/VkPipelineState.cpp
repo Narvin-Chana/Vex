@@ -24,7 +24,6 @@ VkGraphicsPipelineState::VkGraphicsPipelineState(std::string name,
     , device{ device }
     , psoCache{ psoCache }
 {
-    GraphicsPiplineUtils::ValidateGraphicsPipeline(key);
 }
 
 void VkGraphicsPipelineState::Compile(const ShaderView& vertexShader,

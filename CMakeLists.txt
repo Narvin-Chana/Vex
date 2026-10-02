@@ -206,6 +206,7 @@ add_library(Vex STATIC
     "src/Vex/Containers/FreeList.h"
     "src/Vex/Containers/InlineVector.h"
     "src/Vex/Containers/Span.h"
+    "src/Vex/Containers/beman/inplace_vector.hpp"
     # Vex Built-In Shaders
     "src/Vex/Generated/MipGeneration.h"
     # Vex API
@@ -252,7 +253,6 @@ add_library(Vex STATIC
     "src/Vex/RayTracing.h"
     "src/Vex/PipelineState.cpp"
     "src/Vex/PipelineState.h"
-    "src/Vex/Containers/beman/inplace_vector.hpp"
 )
 
 if(WIN32)

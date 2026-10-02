@@ -31,8 +31,8 @@ public:
         return buffer->GetGPUVirtualAddress();
     }
 
-    D3D12_VERTEX_BUFFER_VIEW GetVertexBufferView(const BufferBinding& binding) const;
-    D3D12_INDEX_BUFFER_VIEW GetIndexBufferView(const BufferBinding& binding) const;
+    D3D12_VERTEX_BUFFER_VIEW GetVertexBufferView(const BufferViewDesc& view) const;
+    D3D12_INDEX_BUFFER_VIEW GetIndexBufferView(const RHIIndexBufferView& view) const;
 
 private:
     ComPtr<DX12Device> device;

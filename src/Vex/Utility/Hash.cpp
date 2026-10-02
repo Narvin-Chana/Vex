@@ -2,7 +2,10 @@
 
 #include <format>
 
-std::string vex::HashToString(const SHA1HashDigest& hash)
+namespace vex
+{
+
+std::string HashToString(const SHA1HashDigest& hash)
 {
     std::string result;
     result.reserve(hash.value.size() * 8);
@@ -12,3 +15,5 @@ std::string vex::HashToString(const SHA1HashDigest& hash)
     }
     return result;
 }
+
+} // namespace vex

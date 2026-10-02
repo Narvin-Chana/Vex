@@ -255,7 +255,7 @@ TEST_F(SynchronizationTest, ResourceUploadTorture)
 
         // Generate dummy data and upload a 1024 section of the buffer.
         std::vector<byte> dummyData(1024, static_cast<byte>(i));
-        ctx.EnqueueDataUpload(uploadBuffer, dummyData, BufferRegion{ .offset = 1024ull * i, .byteSize = 1024 });
+        ctx.EnqueueDataUpload(uploadBuffer, dummyData, BufferRegion{ .byteOffset = 1024ull * i, .byteSize = 1024 });
         ctx.Copy(uploadBuffer, targetTexture);
 
         uploadTokens.push_back(graphics.Submit(ctx, deps));

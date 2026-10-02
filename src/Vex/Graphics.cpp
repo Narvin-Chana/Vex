@@ -13,6 +13,7 @@
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHIResourceLayout.h>
 #include <Vex/RHIImpl/RHITexture.h>
+#include <Vex/ResourceBindingUtils.h>
 #include <Vex/ResourceCleanup.h>
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/Visitor.h>
@@ -372,25 +373,27 @@ MappedMemory Graphics::MapResource(const Buffer& buffer)
 
 BindlessHandle Graphics::GetBindlessHandle(const TextureBinding& bindlessResource)
 {
-    BindingUtil::ValidateTextureBinding(bindlessResource, bindlessResource.texture.desc.usage);
+    BindingUtil::ValidateTextureBinding(bindlessResource, TextureUsage::ShaderRead | TextureUsage::ShaderReadWrite);
 
-    auto& texture = GetRHITexture(bindlessResource.texture.handle);
-    return texture.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
+    const auto [texture, view] = ResourceBindingUtils::GetRHITextureView(*this, bindlessResource);
+    return texture->GetOrCreateBindlessView(view, *descriptorPool);
 }
 
 BindlessHandle Graphics::GetBindlessHandle(const BufferBinding& bindlessResource)
 {
-    BindingUtil::ValidateBufferBinding(bindlessResource, bindlessResource.buffer.desc.usage);
+    BindingUtil::ValidateBufferBinding(
+        bindlessResource,
+        BufferUsage::ShaderRead | BufferUsage::ShaderReadUniform | BufferUsage::ShaderReadWrite);
 
-    auto& buffer = GetRHIBuffer(bindlessResource.buffer.handle);
-    return buffer.GetOrCreateBindlessView(bindlessResource, *descriptorPool);
+    const auto [buffer, view] = ResourceBindingUtils::GetRHIBufferView(*this, bindlessResource);
+    return buffer->GetOrCreateBindlessView(view, *descriptorPool);
 }
 
 BindlessHandle Graphics::GetBindlessHandle(const AccelerationStructure& accelerationStructure)
 {
     return GetRHIAccelerationStructure(accelerationStructure.handle)
         .GetRHIBuffer()
-        .GetOrCreateBindlessView({}, *descriptorPool);
+        .GetOrCreateBindlessView({ .isAccelerationStructure = true }, *descriptorPool);
 }
 
 void Graphics::GetBindlessHandles(Span<const ResourceBinding> bindlessResources, Span<BindlessHandle> out)

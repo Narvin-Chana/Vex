@@ -12,6 +12,7 @@
 #include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIBarrier.h>
+#include <RHI/RHIBindings.h>
 #include <RHI/RHIFwd.h>
 #include <RHI/RHITexture.h>
 #include <RHI/RHITimestampQueryPool.h>
@@ -19,9 +20,6 @@
 namespace vex
 {
 
-struct RHIDrawResources;
-struct RHIBufferBinding;
-struct RHITextureBinding;
 struct InputAssembly;
 struct RHIBLASBuildDesc;
 struct RHITLASBuildDesc;
@@ -37,7 +35,7 @@ enum class RHICommandListState : u8
 class RHICommandListBase
 {
 public:
-    RHICommandListBase(QueueType type)
+    explicit RHICommandListBase(QueueType type)
         : type(type)
     {
     }
@@ -77,8 +75,8 @@ public:
     virtual void DrawIndexed(
         u32 indexCount, u32 instanceCount = 1, u32 indexOffset = 0, i32 vertexOffset = 0, u32 instanceOffset = 0) = 0;
 
-    virtual void SetVertexBuffers(u32 startSlot, Span<const RHIBufferBinding> vertexBuffers) = 0;
-    virtual void SetIndexBuffer(const RHIBufferBinding& indexBuffer) = 0;
+    virtual void SetVertexBuffers(u32 startSlot, Span<const RHIBufferView> vertexBuffers) = 0;
+    virtual void SetIndexBuffer(const RHIIndexBufferView& indexBuffer) = 0;
 
     virtual void Dispatch(const std::array<u32, 3>& groupCount) = 0;
 

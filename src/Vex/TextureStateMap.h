@@ -17,7 +17,7 @@ struct TextureStateMap
     constexpr bool operator==(const TextureStateMap&) const = default;
 
     RHITextureState Get(const TextureDesc& desc, const TextureSubresource& subresource) const;
-    void Set(const TextureDesc& desc, const TextureSubresource& subresource, RHITextureState state);
+    void Set(const TextureDesc& desc, const TextureSubresource& subresource, RHITextureState newState);
     void SetUniform(RHITextureState state);
 
     bool IsUniform() const

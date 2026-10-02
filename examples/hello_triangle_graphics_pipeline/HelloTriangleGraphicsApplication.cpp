@@ -94,7 +94,7 @@ void HelloTriangleGraphicsApplication::Run()
             };
 
             // Setup our rendering pass.
-            std::array renderTargets = { vex::TextureBinding{
+            std::array renderTargets = { vex::RenderTargetBinding{
                 .texture = graphics->GetCurrentPresentTexture(),
             } };
 
