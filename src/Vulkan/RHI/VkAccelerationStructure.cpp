@@ -85,8 +85,6 @@ const RHIAccelerationStructureBuildInfo& VkAccelerationStructure::SetupBLASBuild
             VEX_ASSERT(geom.vertexBufferView);
             VEX_ASSERT(geom.vertexBufferView->view.strideByteSize);
 
-            // ?? FirstVertex is unused after here?
-            // There's a firstVertex field in AccelerationStructureBuildRangeInfoKHR, maybe there?
             const u32 vertexCount =
                 static_cast<u32>(geom.vertexBufferView->view.GetElementCount(geom.vertexBufferView->buffer->GetDesc()));
 

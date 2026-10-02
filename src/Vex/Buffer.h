@@ -29,9 +29,9 @@ enum class BufferUsage : u16
     IndexBuffer                 = 1 << 4,
     // Buffers used as parameters for an indirect dispatch.
     IndirectArgs                = 1 << 5,
-    // Buffers used as a HWRT Acceleration Structure, these also require the ShaderReadWrite usage.
+    // Buffers used as a HWRT Acceleration Structure.
     AccelerationStructure       = 1 << 6,
-    // Buffers used as a scratch buffer for building HWRT Acceleration Structures, these also require the ShaderReadWrite usage.
+    // Buffers used as a scratch buffer for building HWRT Acceleration Structures.
     Scratch                     = 1 << 7,
     // Buffers used as inputs to acceleration structure builds (i.e. vertex, index buffers)
     BuildAccelerationStructure  = 1 << 8,

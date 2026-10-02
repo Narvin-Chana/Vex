@@ -167,7 +167,7 @@ static D3D12_UNORDERED_ACCESS_VIEW_DESC CreateUnorderedAccessViewDesc(const Text
     {
     case TextureViewType::Texture2D:
         desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-        VEX_ASSERT(view.subresource.startSlice == 0, "D3D12 Texture2D SRVs cannot address slices > 0.");
+        VEX_ASSERT(view.subresource.startSlice == 0, "D3D12 Texture2D UAVs cannot address slices > 0.");
         // Write to first mip slice
         desc.Texture2D = {
             .MipSlice = view.subresource.startMip,

@@ -111,7 +111,7 @@ struct BufferBinding
                                              u64 firstElement = 0,
                                              std::optional<u64> elementCount = {});
 
-    // offsetByteSize must be a multiple of 128 bytes
+    // offsetByteSize must be a multiple of 256 bytes.
     static BufferBinding CreateUniform(const Buffer& buffer,
                                        u64 offsetByteSize = 0,
                                        std::optional<u64> rangeByteSize = {});

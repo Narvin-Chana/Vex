@@ -1103,8 +1103,8 @@ void CommandContext::ExecuteInDrawContext(const DrawResourceBinding& drawBinding
                                           Span<const ResourceBinding> trackedResources,
                                           const std::function<void()>& callback)
 {
-    InferResourceBarriers(RHIBarrierSync::AllGraphics, trackedResources);
     BarrierDrawResources(drawBindings, nullptr);
+    InferResourceBarriers(RHIBarrierSync::AllGraphics, trackedResources);
 
     RHIDrawResources drawResources =
         ResourceBindingUtils::CollectRHIDrawResources(*graphics, drawBindings.renderTargets, drawBindings.depthStencil);
@@ -1126,10 +1126,6 @@ void CommandContext::ExecuteInDrawContext(const DrawResourceBinding& drawBinding
     // Reset cached states as the callback could have changed the pipeline.
     cachedGraphicsPSO = {};
     cachedInputAssembly = {};
-
-    // Reset viewport and scissor rect since the callback could have changed it.
-    hasInitializedViewport = false;
-    hasInitializedScissor = false;
 }
 
 QueryHandle CommandContext::BeginTimestampQuery()
@@ -1378,8 +1374,8 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(const DrawDesc& 
                                                                 const ConstantBinding constants,
                                                                 Span<const ResourceBinding> trackedResources)
 {
-    InferResourceBarriers(RHIBarrierSync::AllGraphics, trackedResources);
     BarrierDrawResources(drawBindings, &drawDesc);
+    InferResourceBarriers(RHIBarrierSync::AllGraphics, trackedResources);
 
     RHIDrawResources drawResources =
         ResourceBindingUtils::CollectRHIDrawResources(*graphics, drawBindings.renderTargets, drawBindings.depthStencil);

@@ -23,6 +23,10 @@ static void ValidateRTDSBinding(const TextureDesc& desc, u16 mip, u32 startDepth
               mip,
               desc.mips);
 
+    VEX_CHECK(depthSliceCount > 0,
+              "Invalid binding for texture \"{}\": Must bind at least one depth slice...",
+              desc.name);
+
     if (desc.type != TextureType::Texture3D)
     {
         VEX_CHECK(startDepthSlice < desc.GetSliceCount(),
@@ -41,9 +45,6 @@ static void ValidateRTDSBinding(const TextureDesc& desc, u16 mip, u32 startDepth
     }
     else
     {
-        VEX_CHECK(depthSliceCount != 0,
-                  "Invalid binding for texture \"{}\": Must bind at least one depth slice...",
-                  desc.name);
         const u32 mipDepth = std::get<2>(TextureUtil::GetMipSize(desc, mip));
         VEX_CHECK(startDepthSlice < mipDepth,
                   "Invalid binding for texture \"{}\": The start depth slice ({}) cannot be larger than the "
@@ -86,14 +87,14 @@ void ValidateBufferBinding(const BufferBinding& binding, Flags<BufferUsage> vali
               buffer.desc.name);
 
     VEX_CHECK(usage != BufferBindingUsage::Invalid,
-              "Invalid binding for resource \"{}\": The binding's usage must be set to something and therefore not "
-              "be invalid",
+              "Invalid binding for resource \"{}\": The binding's usage must be set to something other than "
+              "BufferBindingUsage::Invalid.",
               buffer.desc.name);
 
     if (usage == BufferBindingUsage::StructuredBuffer || usage == BufferBindingUsage::RWStructuredBuffer)
     {
         VEX_CHECK(binding.strideByteSize > 0,
-                  "Invalid binding for resource \"{}\": Stride for structured buffers must not be valid (non-zero).",
+                  "Invalid binding for resource \"{}\": Stride for structured buffers must be non-zero.",
                   buffer.desc.name);
 
         u64 offsetByteSize = binding.region.byteOffset;
@@ -123,7 +124,8 @@ void ValidateBufferBinding(const BufferBinding& binding, Flags<BufferUsage> vali
                   ByteAddressBufferOffsetMultiple,
                   ByteAddressBufferOffsetMultiple);
 
-        VEX_CHECK(binding.region.GetByteSize(buffer.desc) % ByteAddressBufferOffsetMultiple == 0,
+        VEX_CHECK(binding.region.byteSize == GBufferWholeSize ||
+                      binding.region.byteSize % ByteAddressBufferOffsetMultiple == 0,
                   "Invalid binding for resource \"{}\": "
                   "ByteAddressBuffer range must be a multiple of {} bytes (elements are {} bytes wide)",
                   buffer.desc.name,
@@ -217,13 +219,6 @@ void ValidateDepthStencilBinding(const DepthStencilBinding& binding)
     const auto& texture = binding.texture;
     const auto& desc = texture.desc;
     Bindings_Internal::ValidateRTDSBinding(desc, binding.mip, binding.startDepthSlice, binding.depthSliceCount);
-    VEX_CHECK(binding.mip < desc.mips,
-              "Invalid render target binding for texture \"{}\": Cannot bind a mip ({}) greater than the actual "
-              "texture's mip "
-              "count ({}).",
-              desc.name,
-              binding.mip,
-              desc.mips);
 
     VEX_CHECK(FormatUtil::IsDepthOrDepthStencilFormat(desc.format),
               "Invalid depth stencil binding for texture \"{}\": Texture cannot be bound as depth stencil due to it "
