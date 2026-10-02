@@ -48,6 +48,7 @@ private:
     ::vk::PhysicalDeviceVulkan13Features vulkan13Features;
     ::vk::PhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures;
     ::vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingFeatures;
+    ::vk::PhysicalDeviceRayQueryFeaturesKHR rayQueryFeature;
     ::vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures;
 };
 

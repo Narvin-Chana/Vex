@@ -13,6 +13,7 @@ enum class Feature : u8
 {
     MeshShader,
     RayTracing,
+    RayQueries
 };
 
 // Graphics API implementation differences, depends on what the API allows for.
