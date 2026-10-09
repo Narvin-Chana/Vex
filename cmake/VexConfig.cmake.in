@@ -1,33 +1,31 @@
 @PACKAGE_INIT@
 
-include(CMakeFindDependencyMacro)
-
-# Propagate the backend configuration
-set(VEX_ENABLE_DX12 @VEX_ENABLE_DX12)
-set(VEX_ENABLE_VULKAN @VEX_ENABLE_VULKAN)
-set(VEX_ENABLE_SLANG @VEX_ENABLE_SLANG)
+# Configuration Vex was built with.
+set(VEX_ENABLE_DX12 @VEX_ENABLE_DX12@)
+set(VEX_ENABLE_VULKAN @VEX_ENABLE_VULKAN@)
+set(VEX_ENABLE_SHADER_COMPILER @VEX_ENABLE_SHADER_COMPILER@)
+set(VEX_ENABLE_DXC @VEX_ENABLE_DXC@)
+set(VEX_ENABLE_SLANG @VEX_ENABLE_SLANG@)
 set(VEX_USE_EMBEDDED_SHADERS @VEX_USE_EMBEDDED_SHADERS@)
 
-# Store vex's root dir for shader/runtime file access
-set(VEX_ROOT_DIR "@PACKAGE_CMAKE_INSTALL_PREFIX@/include")
-
-find_dependency(magic_enum REQUIRED)
-if (VEX_ENABLE_VULKAN)
-	find_dependency(Vulkan REQUIRED)
-endif()
+# Dependencies are either found again, or taken from the copy that was installed alongside Vex.
+set(VEX_DEPS_BUNDLE_ROOT "${CMAKE_CURRENT_LIST_DIR}/deps")
+@VEX_DEPS_BUNDLED@
+include("${CMAKE_CURRENT_LIST_DIR}/VexDependencies.cmake")
+vex_resolve_dependencies()
 
 include("${CMAKE_CURRENT_LIST_DIR}/VexTargets.cmake")
-include("${CMAKE_CURRENT_LIST_DIR}/VexHelpers.cmake")
 
+set_property(GLOBAL PROPERTY VEX_SHADER_DIR "@PACKAGE_VEX_INSTALL_SHADERDIR@")
+set_property(GLOBAL PROPERTY VEX_AGILITY_SDK_SOURCE "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@/DX12/DX12AgilitySDK.cpp")
+include("${CMAKE_CURRENT_LIST_DIR}/VexRuntime.cmake")
+
+set(Vex_ShaderCompiler_FOUND ${VEX_ENABLE_SHADER_COMPILER})
 check_required_components(Vex)
 
-# To use Vex in another project using CMake's FetchContent:
-# FetchContent_Declare(
-#   Vex
-#   ...
-# )
-# FetchContent_MakeAvailable(Vex)
+# To use an installed Vex in another project:
+# find_package(Vex REQUIRED COMPONENTS ShaderCompiler)
 # ...
 # # Later on once your target executable has been created:
-# target_link_libraries(YourTarget PRIVATE Vex::Vex)
+# target_link_libraries(YourTarget PRIVATE Vex::Vex Vex::ShaderCompiler)
 # vex_setup_runtime(YourTarget)

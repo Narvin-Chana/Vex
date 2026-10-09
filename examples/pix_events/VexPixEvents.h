@@ -11,9 +11,9 @@
 
 #if VEX_MODULES
 #include <VexMacros.h>
-import Vex;
+import Vex.ShaderCompiler;
 #else
-#include <Vex.h>
+#include <VexShaderCompiler.h>
 #endif
 
 namespace PIX
