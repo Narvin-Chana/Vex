@@ -88,7 +88,8 @@ D3D12_BARRIER_ACCESS RHIBarrierAccessToDX12(RHIBarrierAccess barrierAccess,
     case DepthStencilWrite:
         return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
     case DepthStencilReadWrite:
-        return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ | D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
+        // DEPTH_STENCIL_READ is incompatible with the DEPTH_STENCIL_WRITE layout; write access already allows reads.
+        return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
     case CopySource:
         return D3D12_BARRIER_ACCESS_COPY_SOURCE;
     case CopyDest:
