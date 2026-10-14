@@ -177,7 +177,7 @@ std::vector<BufferTextureCopyDesc> BufferTextureCopyDesc::AllMips(const TextureD
         const u64 alignedMipByteSize = static_cast<u64>(alignedSlicePitch) * totalSlices;
 
         bufferTextureCopyDescriptions.push_back(BufferTextureCopyDesc{
-            .bufferRegion = BufferRegion{ .offset = bufferOffset, .byteSize = alignedMipByteSize },
+            .bufferRegion = BufferRegion{ .byteOffset = bufferOffset, .byteSize = alignedMipByteSize },
             .textureRegion =
                 TextureRegion{
                     .subresource = { .startMip = mip,
@@ -235,7 +235,7 @@ std::vector<BufferTextureCopyDesc> BufferTextureCopyDesc::SingleMip(u16 mipIndex
     const u64 alignedMipByteSize = static_cast<u64>(alignedSlicePitch) * totalSlices;
 
     bufferTextureCopyDescriptions.push_back(BufferTextureCopyDesc{
-        .bufferRegion = BufferRegion{ .offset = 0, .byteSize = alignedMipByteSize },
+        .bufferRegion = BufferRegion{ .byteOffset = 0, .byteSize = alignedMipByteSize },
         .textureRegion =
             TextureRegion{
                 .subresource = { .startMip = mipIndex,

@@ -20,7 +20,8 @@ static ::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDesc& desc)
     {
         flags |= eUniformBuffer;
     }
-    if (desc.usage & (BufferUsage::ShaderReadWrite | BufferUsage::ShaderRead))
+    if (desc.usage & (BufferUsage::ShaderReadWrite | BufferUsage::ShaderRead | BufferUsage::AccelerationStructure |
+                      BufferUsage::Scratch))
     {
         flags |= eStorageBuffer;
     }
@@ -36,7 +37,7 @@ static ::vk::BufferUsageFlags GetVkBufferUsageFromDesc(const BufferDesc& desc)
     {
         flags |= eIndirectBuffer;
     }
-    if ((desc.usage & BufferUsage::AccelerationStructure) == BufferUsage::AccelerationStructure)
+    if (desc.usage & BufferUsage::AccelerationStructure)
     {
         flags |= eAccelerationStructureStorageKHR;
     }
@@ -109,12 +110,14 @@ void VkBuffer::AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
                                       const BufferViewDesc& viewDesc)
 {
     descriptorPool.GetBindlessSet().UpdateDescriptor(handle,
-                                                     desc.usage == BufferUsage::ShaderReadUniform
+                                                     viewDesc.usage == BufferBindingUsage::UniformBuffer
                                                          ? ::vk::DescriptorType::eUniformBuffer
                                                          : ::vk::DescriptorType::eStorageBuffer,
-                                                     ::vk::DescriptorBufferInfo{ .buffer = *buffer,
-                                                                                 .offset = viewDesc.offsetByteSize,
-                                                                                 .range = viewDesc.rangeByteSize });
+                                                     ::vk::DescriptorBufferInfo{
+                                                         .buffer = *buffer,
+                                                         .offset = viewDesc.region.byteOffset,
+                                                         .range = viewDesc.region.GetByteSize(desc),
+                                                     });
 }
 
 ::vk::Buffer VkBuffer::GetNativeBuffer()

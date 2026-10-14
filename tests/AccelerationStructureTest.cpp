@@ -86,7 +86,7 @@ TEST_F(AccelerationStructureTest, CreateSimpleTriangleBLAS_VertexAndIndex)
     ctx.BuildBLAS(blas,
                   { .geometry = { BLASGeometryDesc{
                         .vertexBufferBinding = { .buffer = triangleVertexBuffer, .strideByteSize = static_cast<u32>(sizeof(Vertex)), },
-                        .indexBufferBinding = BufferBinding{ .buffer = triangleIndexBuffer, .strideByteSize = static_cast<u32>(sizeof(u32)), },
+                        .indexBufferBinding = IndexBufferBinding{ .buffer = triangleIndexBuffer, .format = IndexFormat::U32, },
                         .transform = std::nullopt,
                         .flags = ASGeometry::Opaque,
                     } } });
@@ -105,7 +105,7 @@ TEST_F(AccelerationStructureTest, CreateMultipleTriangleBLAS_VertexAndIndex_Tran
     ctx.BuildBLAS(blas1,
                   { .geometry = { BLASGeometryDesc{
                         .vertexBufferBinding = { .buffer = triangleVertexBuffer, .strideByteSize = static_cast<u32>(sizeof(Vertex)), },
-                        .indexBufferBinding = BufferBinding{ .buffer = triangleIndexBuffer, .strideByteSize = static_cast<u32>(sizeof(u32)), },
+                        .indexBufferBinding = IndexBufferBinding{ .buffer = triangleIndexBuffer, .format = IndexFormat::U32, },
                         .transform = {{ 
                                 1, 0, 0, 1,
                                 0, 1, 0, 5,
@@ -116,7 +116,7 @@ TEST_F(AccelerationStructureTest, CreateMultipleTriangleBLAS_VertexAndIndex_Tran
     ctx.BuildBLAS(blas2,
                   { .geometry = { BLASGeometryDesc{
                         .vertexBufferBinding = { .buffer = triangleVertexBuffer, .strideByteSize = static_cast<u32>(sizeof(Vertex)), },
-                        .indexBufferBinding = BufferBinding{ .buffer = triangleIndexBuffer, .strideByteSize = static_cast<u32>(sizeof(u32)), },
+                        .indexBufferBinding = IndexBufferBinding{ .buffer = triangleIndexBuffer, .format = IndexFormat::U32, },
                         .transform = {{ 
                                 1, 0, 0, 10,
                                 0, 1, 0, -5,
@@ -215,7 +215,7 @@ TEST_P(BLASFlagTest, BLASFlagPermutations)
     ctx.BuildBLAS(blas,
                   { .geometry = { BLASGeometryDesc{
                         .vertexBufferBinding = { .buffer = triangleVertexBuffer, .strideByteSize = static_cast<u32>(sizeof(Vertex)), },
-                        .indexBufferBinding = BufferBinding{ .buffer = triangleIndexBuffer, .strideByteSize = static_cast<u32>(sizeof(u32)), },
+                        .indexBufferBinding = IndexBufferBinding{ .buffer = triangleIndexBuffer, .format = IndexFormat::U32, },
                         .transform = std::nullopt,
                         .flags = testData.geometryFlags,
                     } } });
@@ -251,7 +251,7 @@ struct TLASAccelerationStructureTest : public AccelerationStructureTest
         ctx.BuildBLAS(triangleBLAS,
                   { .geometry = { BLASGeometryDesc{
                         .vertexBufferBinding = { .buffer = triangleVertexBuffer, .strideByteSize = static_cast<u32>(sizeof(Vertex)), },
-                        .indexBufferBinding = BufferBinding{ .buffer = triangleIndexBuffer, .strideByteSize = static_cast<u32>(sizeof(u32)), },
+                        .indexBufferBinding = IndexBufferBinding{ .buffer = triangleIndexBuffer, .format = IndexFormat::U32, },
                         .transform = std::nullopt,
                         .flags = ASGeometry::Opaque,
                     } } });
