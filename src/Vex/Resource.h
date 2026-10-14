@@ -7,7 +7,7 @@
 
 #include <RHI/RHIFwd.h>
 
-#ifndef VEX_USE_CUSTOM_RESOURCE_ALLOCATOR 
+#ifndef VEX_USE_CUSTOM_RESOURCE_ALLOCATOR
 #define VEX_USE_CUSTOM_RESOURCE_ALLOCATOR 1
 #endif
 
@@ -33,7 +33,7 @@ struct BindlessHandle : Handle32<BindlessHandle>
 {
 };
 
-inline constexpr BindlessHandle GInvalidBindlessHandle;
+inline constexpr BindlessHandle GInvalidBindlessHandle{};
 
 class MappedMemory
 {

@@ -523,6 +523,13 @@ void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount)
     commandBuffer->dispatch(groupCount[0], groupCount[1], groupCount[2]);
 }
 
+void VkCommandList::DispatchMesh(const std::array<u32, 3>& groupCount)
+{
+    commandBuffer->setViewportWithCount(1, &*cachedViewport);
+    commandBuffer->setScissorWithCount(1, &*cachedScissor);
+    commandBuffer->drawMeshTasksEXT(groupCount[0], groupCount[1], groupCount[2]);
+}
+
 void VkCommandList::TraceRays(const TraceRaysDesc& rayTracingArgs,
                               const RHIRayTracingPipelineState& rayTracingPipelineState)
 {
