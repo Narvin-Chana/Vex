@@ -40,6 +40,11 @@ VkPhysicalDevice::VkPhysicalDevice(const ::vk::PhysicalDevice& dev)
     ::vk::PhysicalDeviceFeatures2 descriptorIndexingFeatures2;
     descriptorIndexingFeatures2.setPNext(&descriptorIndexingFeatures);
     physicalDevice.getFeatures2(&descriptorIndexingFeatures2);
+
+    // Get ray query features
+    ::vk::PhysicalDeviceFeatures2 rayQueryFeatures2;
+    rayQueryFeatures2.setPNext(&rayQueryFeature);
+    physicalDevice.getFeatures2(&rayQueryFeatures2);
 }
 
 double VkPhysicalDevice::GetDeviceVRAMSize(const ::vk::PhysicalDevice& physicalDevice)
@@ -69,6 +74,8 @@ bool VkPhysicalDevice::IsFeatureSupported(Feature feature) const
         return meshShaderFeatures.meshShader && meshShaderFeatures.taskShader;
     case Feature::RayTracing:
         return rayTracingFeatures.rayTracingPipeline;
+    case Feature::RayQueries:
+        return rayQueryFeature.rayQuery;
     default:
         VEX_LOG(Fatal, "Unable to determine feature support for {}", feature);
         return false;
