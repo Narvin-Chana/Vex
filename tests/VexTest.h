@@ -2,17 +2,20 @@
 
 #include "RenderDoc.h"
 
-#include <filesystem>
 #include <array>
+#include <filesystem>
+#include <fstream>
+#include <random>
+#include <sstream>
 
 #include <gtest/gtest.h>
 
 #if VEX_MODULES
 #include <VexMacros.h>
-import Vex;
+import Vex.ShaderCompiler;
 import magic_enum;
 #else
-#include <Vex.h>
+#include <VexShaderCompiler.h>
 #endif
 
 namespace vex

@@ -1,127 +1,84 @@
-﻿cmake_minimum_required(VERSION 4.2.2)
-include(CMakePackageConfigHelpers)
+cmake_minimum_required(VERSION 4.2.2)
+project(Vex VERSION 0.0.5 LANGUAGES CXX C)
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-project(Vex VERSION 0.0.5 LANGUAGES CXX C)
-
-# Store the root directory of Vex
-set(VEX_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
-# Make VEX_ROOT_DIR available to downstream projects that use this library
-set(VEX_ROOT_DIR "${VEX_ROOT_DIR}" CACHE INTERNAL "Path to Vex's library root directory")
+if(PROJECT_IS_TOP_LEVEL)
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
+set(VEX_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/Vex")
+set(VEX_INSTALL_SHADERDIR "${CMAKE_INSTALL_DATADIR}/Vex/shaders")
+
+# =========================================
+# OPTIONS
+# =========================================
 # Examples, tests and tools are used to develop Vex, they should not be used or included in projects that use Vex (to enable them modify your CMakePresets.json).
 option(VEX_BUILD_EXAMPLES "Build the example programs" OFF)
 option(VEX_BUILD_TESTS "Build Vex tests" OFF)
 option(VEX_BUILD_TOOLS "Build Vex tools" OFF)
 
-# Detect clang-cl (Clang frontend with MSVC ABI has no module scanning support)
-# This is fixed in CMake 4.4.0.
-# See https://gitlab.kitware.com/cmake/cmake/-/merge_requests/11875
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC" AND CMAKE_VERSION VERSION_LESS "4.4")
-    set(VEX_COMPILER_SUPPORTS_MODULES OFF)
-    message(STATUS "Detected clang-cl: C++20 module scanning not supported, disabling modules. This will be fixed in CMake 4.4.0.")
-else()
-     set(VEX_COMPILER_SUPPORTS_MODULES ON)
-endif()
-
-# Side-note regarding CMake modules support, if you wish to use "import std;" in your project, you must set the CMAKE_EXPERIMENTAL_CXX_IMPORT_STD variable to the value indicated here:
-# https://github.com/Kitware/CMake/blob/v4.4.0-rc2/Help/dev/experimental.rst
-# This feature flag depends on your CMake version, so make sure to select the appropriate branch.
-option(VEX_USE_MODULES "Determines whether to generate and export the Vex cpp20 module (experimental due to flaky compiler/build-system support)." OFF)
-
-# Modules could be unsupported with the current compiler.
-set(VEX_INTERNAL_USE_MODULES OFF)
-if(VEX_COMPILER_SUPPORTS_MODULES AND VEX_USE_MODULES)
-    set(VEX_INTERNAL_USE_MODULES ON)
-endif()
-
-# CMake Helpers
-include(VexHelpers)
-
-# Will correctly install our custom githook to run clang-format on staged files when committing
-include(GitHooks)
+set(VEX_GRAPHICS_BACKEND "AUTO" CACHE STRING "Graphics backend to use (AUTO, DX12, VULKAN)")
+set_property(CACHE VEX_GRAPHICS_BACKEND PROPERTY STRINGS "AUTO" "DX12" "VULKAN")
 
 set(VEX_ENABLE_SLANG_DEFAULT OFF)
 if(VEX_BUILD_EXAMPLES OR VEX_BUILD_TESTS)
     set(VEX_ENABLE_SLANG_DEFAULT ON)
 endif()
-
-option(VEX_ENABLE_SHADER_COMPILER "Enables the possibility to use Vex's built-in ShaderCompiler." ON)
+option(VEX_ENABLE_SHADER_COMPILER "Builds Vex's ShaderCompiler library (Vex::ShaderCompiler)." ON)
 option(VEX_ENABLE_DXC "Enables the possibility to use the DXC shader compiler backend." ON)
 option(VEX_ENABLE_SLANG "Enables the possibility to use the Slang shader compiler backend." ${VEX_ENABLE_SLANG_DEFAULT})
 
-# Contains all logic to fetch and include shader compiler backends.
-include(VexDXC)
-include(VexSlang)
+option(VEX_FIND_DEPENDENCIES "Use installed copies of Vex's dependencies (find_package) when available, instead of always downloading the pinned ones." ON)
+set(VEX_AGILITY_SDK_ROOT "" CACHE PATH "Extracted Microsoft.Direct3D.D3D12 NuGet package to use, downloaded when empty.")
 
-# =========================================
-# Graphics Backend Selection
-# =========================================
-message(STATUS "Configuring graphics backend...")
+# Side-note regarding CMake modules support, if you wish to use "import std;" in your project, you must set the CMAKE_EXPERIMENTAL_CXX_IMPORT_STD variable to the value indicated here:
+# https://github.com/Kitware/CMake/blob/v4.4.0-rc2/Help/dev/experimental.rst
+# This feature flag depends on your CMake version, so make sure to select the appropriate branch.
+option(VEX_USE_MODULES "Determines whether to generate and export the Vex cpp20 modules (experimental due to flaky compiler/build-system support)." OFF)
 
-# Define backend options
-set(VEX_GRAPHICS_BACKEND "AUTO" CACHE STRING "Graphics backend to use (AUTO, DX12, VULKAN)")
-set_property(CACHE VEX_GRAPHICS_BACKEND PROPERTY STRINGS "AUTO" "DX12" "VULKAN")
+# Detect clang-cl (Clang frontend with MSVC ABI has no module scanning support)
+# This is fixed in CMake 4.4.0.
+# See https://gitlab.kitware.com/cmake/cmake/-/merge_requests/11875
+set(VEX_INTERNAL_USE_MODULES ${VEX_USE_MODULES})
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC" AND CMAKE_VERSION VERSION_LESS "4.4")
+    set(VEX_INTERNAL_USE_MODULES OFF)
+    message(STATUS "Detected clang-cl: C++20 module scanning not supported, disabling modules. This will be fixed in CMake 4.4.0.")
+endif()
 
-# Determine which backend to use
-set(VEX_SELECTED_BACKEND "")
-
-if(VEX_GRAPHICS_BACKEND STREQUAL "AUTO")
-    # Auto-detect best available backend
+# Resolve the graphics backend, AUTO selects DX12 on Windows and Vulkan elsewhere.
+set(VEX_SELECTED_BACKEND "${VEX_GRAPHICS_BACKEND}")
+if(VEX_SELECTED_BACKEND STREQUAL "AUTO")
     if(WIN32)
         set(VEX_SELECTED_BACKEND "DX12")
-        message(STATUS "Auto-selected DirectX 12 backend for Windows")
     else()
-        find_package(Vulkan 1.4 REQUIRED QUIET)
-        if(Vulkan_FOUND)
-            set(VEX_SELECTED_BACKEND "VULKAN")
-            message(STATUS "Auto-selected Vulkan backend")
-        else()
-            message(FATAL_ERROR "No suitable graphics backend found. Vulkan SDK is required on non-Windows platforms.")
-        endif()
+        set(VEX_SELECTED_BACKEND "VULKAN")
     endif()
-elseif(VEX_GRAPHICS_BACKEND STREQUAL "DX12")
-    if(NOT WIN32)
-        message(FATAL_ERROR "DirectX 12 backend is only available on Windows")
-    endif()
-    set(VEX_SELECTED_BACKEND "DX12")
-    message(STATUS "Explicitly selected DirectX 12 backend")
-elseif(VEX_GRAPHICS_BACKEND STREQUAL "VULKAN")
-    find_package(Vulkan 1.4 REQUIRED QUIET)
-    if(NOT Vulkan_FOUND)
-        message(FATAL_ERROR "Vulkan SDK not found, cannot use Vulkan backend")
-    endif()
-    set(VEX_SELECTED_BACKEND "VULKAN")
-    message(STATUS "Explicitly selected Vulkan backend")
-else()
+endif()
+if(NOT VEX_SELECTED_BACKEND MATCHES "^(DX12|VULKAN)$")
     message(FATAL_ERROR "Invalid VEX_GRAPHICS_BACKEND: ${VEX_GRAPHICS_BACKEND}. Must be AUTO, DX12, or VULKAN")
+elseif(VEX_SELECTED_BACKEND STREQUAL "DX12" AND NOT WIN32)
+    message(FATAL_ERROR "DirectX 12 backend is only available on Windows")
 endif()
-
-# Set backend flags
-set(VEX_ENABLE_DX12 OFF CACHE INTERNAL "DirectX 12 backend enabled")
-set(VEX_ENABLE_VULKAN OFF CACHE INTERNAL "Vulkan backend enabled")
-
-if(VEX_SELECTED_BACKEND STREQUAL "DX12")
-    set(VEX_ENABLE_DX12 ON CACHE INTERNAL "DirectX 12 backend enabled" FORCE)
-elseif(VEX_SELECTED_BACKEND STREQUAL "VULKAN")
-    set(VEX_ENABLE_VULKAN ON CACHE INTERNAL "Vulkan backend enabled" FORCE)
-else()
-    message(FATAL_ERROR "No graphics backend was selected, please check your configuration.")
-endif()
-
 message(STATUS "Selected graphics backend: ${VEX_SELECTED_BACKEND}")
 
+# Kept in the cache so that projects embedding Vex can query the selected backend.
+string(COMPARE EQUAL "${VEX_SELECTED_BACKEND}" "DX12" VEX_ENABLE_DX12)
+string(COMPARE EQUAL "${VEX_SELECTED_BACKEND}" "VULKAN" VEX_ENABLE_VULKAN)
+set(VEX_ENABLE_DX12 ${VEX_ENABLE_DX12} CACHE INTERNAL "DirectX 12 backend enabled")
+set(VEX_ENABLE_VULKAN ${VEX_ENABLE_VULKAN} CACHE INTERNAL "Vulkan backend enabled")
+
 # =========================================
-# DEPENDENCIES FETCHING
+# DEPENDENCIES
 # =========================================
-# Dependencies fetching uses the FetchContent module
 include(FetchContent)
 
-# Fetch magic_enum dependency
+# magic_enum is always fetched and shipped with Vex.
 message(STATUS "Fetching magic_enum...")
 FetchContent_Declare(
     magic_enum
@@ -129,307 +86,151 @@ FetchContent_Declare(
     GIT_TAG b233b96e49d371bad00300f59b5ba581100b8745 # Use hash to select the specific commit we require (C++20 module support).
 )
 FetchContent_MakeAvailable(magic_enum)
-# =========================================
 
-# Set static library output
-add_library(Vex STATIC
-    # Platform
-    "src/Vex/Platform/Platform.h"
-    "src/Vex/Platform/Debug.h"
-    # RHI
-    "src/RHI/RHIFwd.h"
-    "src/RHI/RHI.h"
-    "src/RHI/RHICommandPool.h"
-    "src/RHI/RHICommandPool.cpp"
-    "src/RHI/RHISwapChain.h"
-    "src/RHI/RHITexture.h"
-    "src/RHI/RHIBuffer.h"
-    "src/RHI/RHIBuffer.cpp"
-    "src/RHI/RHIPipelineState.h"
-    "src/RHI/RHIResourceLayout.cpp"
-    "src/RHI/RHIBindings.h"
-    "src/RHI/RHIBarrier.h"
-    "src/RHI/RHIResourceLayout.h"
-    "src/RHI/RHIDescriptorPool.h"
-    "src/RHI/RHIDescriptorPool.cpp"
-    "src/RHI/RHIAccelerationStructure.h"
-    "src/RHI/RHIAccelerationStructure.cpp"
-    "src/RHI/RHICommandList.h"
-    "src/RHI/RHICommandList.cpp"
-    "src/RHI/RHIAllocator.h"
-    "src/RHI/RHIAllocator.cpp"
-    "src/RHI/RHIFence.h"
-    "src/RHI/RHITimestampQueryPool.cpp"
-    "src/RHI/RHITimestampQueryPool.h"
-    "src/RHI/RHIScopedGPUEvent.h"
-    "src/RHI/RHIScopedGPUEvent.cpp"
-    "src/RHI/RHIPhysicalDevice.h"
-    "src/RHI/RHIPhysicalDevice.cpp"
-    "src/Vex/RHIImpl/RHIFence.h"
-    "src/Vex/RHIImpl/RHICommandList.h"
-    "src/Vex/RHIImpl/RHICommandPool.h"
-    "src/Vex/RHIImpl/RHIDescriptorPool.h"
-    "src/Vex/RHIImpl/RHIPipelineState.h"
-    "src/Vex/RHIImpl/RHISwapChain.h"
-    "src/Vex/RHIImpl/RHIResourceLayout.h"
-    "src/Vex/RHIImpl/RHITexture.h"
-    "src/Vex/RHIImpl/RHI.h"
-    "src/Vex/RHIImpl/RHIBuffer.h"
-    "src/Vex/RHIImpl/RHIAllocator.h"
-    "src/Vex/RHIImpl/RHITimestampQueryPool.h"
-    "src/Vex/RHIImpl/RHIAccelerationStructure.h"
-    "src/Vex/RHIImpl/RHIPhysicalDevice.h"
-    # Vex Utilities
-    "src/Vex/Utility/Concepts.h"
-    "src/Vex/Utility/EnumFlags.h"
-    "src/Vex/Utility/Handle.h"
-    "src/Vex/Utility/Formattable.h"
-    "src/Vex/Utility/Hash.h"
-    "src/Vex/Utility/Hash.cpp"
-    "src/Vex/Utility/MaybeUninitialized.h"
-    "src/Vex/Utility/NonNullPtr.h"
-    "src/Vex/Utility/ByteUtils.h"
-    "src/Vex/Utility/WString.h"
-    "src/Vex/Utility/Visitor.h"
-    "src/Vex/Utility/Algorithms.h"
-    "src/Vex/Utility/SHA1.h"
-    "src/Vex/Utility/SHA1.cpp"
-    "src/Vex/Utility/Functional/__functional_base.h"
-    "src/Vex/Utility/Functional/function.h"
-    "src/Vex/Utility/Functional/function_ref.h"
-    "src/Vex/Utility/Functional/move_only_function.h"
-    "src/Vex/Utility/MoveOnlyFunction.h"
-    "src/Vex/Utility/MagicEnum.h"
-    # Vex Platform
-    "src/Vex/Platform/PlatformWindow.h"
-    # Vex Containers
-    "src/Vex/Containers/FreeList.h"
-    "src/Vex/Containers/InlineVector.h"
-    "src/Vex/Containers/Span.h"
-    # Vex Built-In Shaders
-    "src/Vex/Generated/MipGeneration.h"
-    # Vex API
-    "src/Vex.h"
-    "src/VexMacros.h"
-    "src/Vex/Graphics.h"
-    "src/Vex/Graphics.cpp"
-    "src/Vex/Formats.h"
-    "src/Vex/Types.h"
-    "src/Vex/Logger.h"
-    "src/Vex/Logger.cpp"
-    "src/Vex/FrameResource.h"
-    "src/Vex/Formats.cpp"
-    "src/Vex/Texture.h"
-    "src/Vex/Texture.cpp"
-    "src/Vex/Buffer.h"
-    "src/Vex/Buffer.cpp"
-    "src/Vex/ResourceCleanup.h"
-    "src/Vex/ResourceCleanup.cpp"
-    "src/Vex/QueueType.h"
-    "src/Vex/CommandContext.h"
-    "src/Vex/CommandContext.cpp"
-    "src/Vex/Bindings.h"
-    "src/Vex/Bindings.cpp"
-    "src/Vex/PipelineStateCache.h"
-    "src/Vex/PipelineStateCache.cpp"
-    "src/Vex/Resource.cpp"
-    "src/Vex/Resource.h"
-    "src/Vex/TextureSampler.h"
-    "src/Vex/GraphicsPipeline.h"
-    "src/Vex/DrawHelpers.h"
-    "src/Vex/ResourceBindingUtils.cpp"
-    "src/Vex/Synchronization.h"
-    "src/Vex/ResourceCopy.h"
-    "src/Vex/ResourceCopy.cpp"
-    "src/Vex/ResourceReadbackContext.cpp"
-    "src/Vex/ResourceReadbackContext.h"
-    "src/Vex/AccelerationStructure.h"
-    "src/Vex/PhysicalDevice.h"
-    "src/Vex/TextureStateMap.h"
-    "src/Vex/TextureStateMap.cpp"
-    "src/Vex/BuildAccelerationStructure.h"
-    "src/Vex/ShaderView.h"
-    "src/Vex/RayTracing.h"
-    "src/Vex/PipelineState.cpp"
-    "src/Vex/PipelineState.h"
-    "src/Vex/Containers/beman/inplace_vector.hpp"
-)
-
-if(WIN32)
-    target_sources(Vex PRIVATE
-        "src/Vex/Platform/Windows/HResult.h"
-    )
-endif()
-
-if(LINUX)
-    target_sources(Vex PRIVATE
-    # Nothing for now...
-    )
-endif()
-
-# Vex Shader Compiler
-if (VEX_ENABLE_SHADER_COMPILER)
-    target_sources(Vex PRIVATE
-        "src/ShaderCompiler/ShaderKey.h"
-        "src/ShaderCompiler/Shader.h"
-        "src/ShaderCompiler/Shader.cpp"
-        "src/ShaderCompiler/ShaderCompiler.h"
-        "src/ShaderCompiler/ShaderCompiler.cpp"
-        "src/ShaderCompiler/ShaderCompilerSettings.h"
-        "src/ShaderCompiler/Compiler/DXC/DXCCompiler.h"
-        "src/ShaderCompiler/Compiler/DXC/DXCCompiler.cpp"
-        "src/ShaderCompiler/Compiler/DXC/DXCReflection.cpp"
-        "src/ShaderCompiler/ShaderEnvironment.h"
-        "src/ShaderCompiler/Compiler/CompilerBase.h"
-        "src/ShaderCompiler/RayTracingShaderKey.h"
-        "src/ShaderCompiler/RayTracingShaderKey.cpp"
-    )
-
-    include(VexEmbedShaders)
-endif()
-
-if(VEX_INTERNAL_USE_MODULES)
-    target_sources(Vex PUBLIC
-            FILE_SET CXX_MODULES
-            BASE_DIRS
-            "${CMAKE_CURRENT_SOURCE_DIR}/src"
-            "${magic_enum_SOURCE_DIR}/module"
-            FILES
-            "src/Vex.cppm"
-            "${magic_enum_SOURCE_DIR}/module/magic_enum.cppm"
-    )
-endif()
-
-set_target_properties(Vex PROPERTIES CXX_SCAN_FOR_MODULES ${VEX_INTERNAL_USE_MODULES})
-
-target_include_directories(Vex PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
-    $<INSTALL_INTERFACE:include>
-)
+# Every other dependency is looked up first, and only downloaded when missing (creates the VexDeps:: targets).
+include(VexDependencies)
+vex_resolve_dependencies()
 
 # =========================================
-# REGISTER DEPENDENCIES
+# VEX
 # =========================================
-message(STATUS "Setting up Vex headers...")
-
-# Configure selected backend
+file(GLOB_RECURSE VEX_SOURCES CONFIGURE_DEPENDS "src/Vex/*.cpp" "src/RHI/*.cpp")
+file(GLOB_RECURSE VEX_HEADERS CONFIGURE_DEPENDS "src/Vex/*.h" "src/Vex/*.hpp" "src/RHI/*.h")
 if(VEX_ENABLE_DX12)
-    include(VexDX12)
-    setup_dx12_backend(Vex)
-elseif(VEX_ENABLE_VULKAN)
-    include(VexVulkan)
-    setup_vulkan_backend(Vex)
+    file(GLOB_RECURSE VEX_BACKEND_SOURCES CONFIGURE_DEPENDS "src/DX12/*.cpp")
+    file(GLOB_RECURSE VEX_BACKEND_HEADERS CONFIGURE_DEPENDS "src/DX12/*.h")
+    # Compiled by executables using Vex instead (see vex_setup_runtime).
+    list(FILTER VEX_BACKEND_SOURCES EXCLUDE REGEX "DX12AgilitySDK\\.cpp$")
+else()
+    file(GLOB_RECURSE VEX_BACKEND_SOURCES CONFIGURE_DEPENDS "src/Vulkan/*.cpp")
+    file(GLOB_RECURSE VEX_BACKEND_HEADERS CONFIGURE_DEPENDS "src/Vulkan/*.h")
 endif()
 
-# Static linking with DXC.
-build_with_dxc(Vex)
+add_library(Vex STATIC ${VEX_SOURCES} ${VEX_BACKEND_SOURCES})
+add_library(Vex::Vex ALIAS Vex)
+target_sources(Vex PUBLIC FILE_SET HEADERS BASE_DIRS "src"
+    FILES "src/Vex.h" "src/VexMacros.h" ${VEX_HEADERS} ${VEX_BACKEND_HEADERS})
+if(VEX_INTERNAL_USE_MODULES)
+    target_sources(Vex PUBLIC FILE_SET CXX_MODULES
+        BASE_DIRS "src" "${magic_enum_SOURCE_DIR}/module"
+        FILES "src/Vex.cppm" "${magic_enum_SOURCE_DIR}/module/magic_enum.cppm")
+endif()
+set_target_properties(Vex PROPERTIES CXX_SCAN_FOR_MODULES ${VEX_INTERNAL_USE_MODULES})
+target_compile_features(Vex PUBLIC cxx_std_23)
 
-# Static linking with Slang.
-build_with_slang(Vex)
+# magic_enum's headers are installed with Vex's own.
+target_link_libraries(Vex PUBLIC $<BUILD_INTERFACE:magic_enum::magic_enum>)
+if(VEX_ENABLE_DX12)
+    target_link_libraries(Vex PUBLIC VexDeps::agility d3d12 dxgi dxguid PRIVATE VexDeps::pix)
+    get_target_property(VEX_AGILITY_SDK_VERSION VexDeps::agility VEX_SDK_VERSION)
+    target_compile_definitions(Vex PRIVATE DIRECTX_AGILITY_SDK_VERSION=${VEX_AGILITY_SDK_VERSION} D3D12_AGILITY_SDK_ENABLED)
+else()
+    target_link_libraries(Vex PUBLIC Vulkan::Vulkan)
+endif()
 
-# Static linking to magic_enum
-add_header_only_dependency(Vex magic_enum "${magic_enum_SOURCE_DIR}" "include" "magic_enum")
-
-# =========================================
-# DEFINES
-# =========================================
-
-# =========================================
-# Set configuration defines
 # Debug: Full debug symbols
 # Development: Optimizations with some debug symbols
 # Shipping: Fully optimized build without debug symbols
-# =========================================
 target_compile_definitions(Vex PUBLIC
     $<$<CONFIG:Debug>:VEX_DEBUG=1 VEX_DEVELOPMENT=0 VEX_SHIPPING=0>
     $<$<CONFIG:RelWithDebInfo>:VEX_DEBUG=0 VEX_DEVELOPMENT=1 VEX_SHIPPING=0>
     $<$<CONFIG:Release>:VEX_DEBUG=0 VEX_DEVELOPMENT=0 VEX_SHIPPING=1>
+    VEX_DX12=$<BOOL:${VEX_ENABLE_DX12}>
+    VEX_VULKAN=$<BOOL:${VEX_ENABLE_VULKAN}>
+    VEX_MODULES=$<BOOL:${VEX_INTERNAL_USE_MODULES}>
+    # Avoid windows polluting the code with macros and allow for typically "unsafe" C functions.
+    $<$<PLATFORM_ID:Windows>:NOMINMAX WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS>
+)
+target_compile_definitions(Vex PRIVATE $<$<BOOL:${VEX_BUILD_TESTS}>:VEX_TESTS=1>)
+
+# Standards conformance: MSVC's non-conforming behaviors are opt-out, GCC/Clang are already strict via CMAKE_CXX_EXTENSIONS OFF.
+target_compile_options(Vex PRIVATE
+    $<$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>:/permissive- /Zc:__cplusplus /Zc:preprocessor>
+    $<$<CXX_COMPILER_FRONTEND_VARIANT:GNU>:-pedantic>
 )
 
-# Graphics API defines
-target_compile_definitions(Vex PUBLIC VEX_DX12=$<BOOL:${VEX_ENABLE_DX12}> VEX_VULKAN=$<BOOL:${VEX_ENABLE_VULKAN}>)
+# =========================================
+# VEX SHADER COMPILER
+# =========================================
+if(VEX_ENABLE_SHADER_COMPILER)
+    file(GLOB VEX_SHADER_COMPILER_SOURCES CONFIGURE_DEPENDS "src/ShaderCompiler/*.cpp")
+    file(GLOB_RECURSE VEX_SHADER_COMPILER_HEADERS CONFIGURE_DEPENDS "src/ShaderCompiler/*.h")
 
-if(WIN32)
-    # Avoid windows polluting the code with macros.
-    # Allow for typically "unsafe" C functions.
-    target_compile_definitions(Vex PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS)
+    add_library(VexShaderCompiler STATIC ${VEX_SHADER_COMPILER_SOURCES}
+        "src/ShaderCompiler/Compiler/DXC/DXCReflection.cpp")
+    add_library(Vex::ShaderCompiler ALIAS VexShaderCompiler)
+    target_sources(VexShaderCompiler PUBLIC FILE_SET HEADERS BASE_DIRS "src"
+        FILES "src/VexShaderCompiler.h" ${VEX_SHADER_COMPILER_HEADERS})
+    if(VEX_INTERNAL_USE_MODULES)
+        target_sources(VexShaderCompiler PUBLIC FILE_SET CXX_MODULES BASE_DIRS "src" FILES "src/VexShaderCompiler.cppm")
+    endif()
+    set_target_properties(VexShaderCompiler PROPERTIES
+        EXPORT_NAME ShaderCompiler
+        CXX_SCAN_FOR_MODULES ${VEX_INTERNAL_USE_MODULES}
+    )
+
+    target_link_libraries(VexShaderCompiler PUBLIC Vex)
+    target_compile_definitions(VexShaderCompiler PUBLIC
+        VEX_SHADER_COMPILER=1
+        VEX_DXC=$<BOOL:${VEX_ENABLE_DXC}>
+        VEX_SLANG=$<BOOL:${VEX_ENABLE_SLANG}>
+    )
+    if(VEX_ENABLE_DXC)
+        target_sources(VexShaderCompiler PRIVATE "src/ShaderCompiler/Compiler/DXC/DXCCompiler.cpp")
+        target_link_libraries(VexShaderCompiler PUBLIC VexDeps::dxc)
+    endif()
+    if(VEX_ENABLE_SLANG)
+        target_sources(VexShaderCompiler PRIVATE "src/ShaderCompiler/Compiler/Slang/SlangCompiler.cpp")
+        target_link_libraries(VexShaderCompiler PUBLIC VexDeps::slang)
+    endif()
+    if(VEX_SPIRV_REFLECT_DIR)
+        target_sources(VexShaderCompiler PRIVATE "${VEX_SPIRV_REFLECT_DIR}/spirv_reflect.c")
+        target_include_directories(VexShaderCompiler PRIVATE "${VEX_SPIRV_REFLECT_DIR}")
+    elseif(VEX_ENABLE_VULKAN)
+        target_link_libraries(VexShaderCompiler PRIVATE VexDeps::spirv_reflect)
+    endif()
+
+    include(VexEmbedShaders)
+    list(APPEND VEX_TARGETS VexShaderCompiler)
 endif()
 
-target_compile_definitions(Vex PUBLIC VEX_MODULES=$<BOOL:${VEX_INTERNAL_USE_MODULES}>)
-
-# Shader compiler defines
-target_compile_definitions(Vex PUBLIC VEX_SHADER_COMPILER=$<BOOL:${VEX_ENABLE_SHADER_COMPILER}>)
-target_compile_definitions(Vex PUBLIC VEX_DXC=$<BOOL:${VEX_ENABLE_DXC}>)
-target_compile_definitions(Vex PUBLIC VEX_SLANG=$<BOOL:${VEX_ENABLE_SLANG}>)
+# =========================================
+# RUNTIME SETUP (vex_setup_runtime)
+# =========================================
+set_property(GLOBAL PROPERTY VEX_SHADER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/shaders")
+set_property(GLOBAL PROPERTY VEX_AGILITY_SDK_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/DX12/DX12AgilitySDK.cpp")
+include(VexRuntime)
 
 # =========================================
 # INSTALLATION
 # =========================================
-message(STATUS "Installing Vex...")
-# Gets the list of registered header dependencies (previous sections)
-get_property(HEADER_DEPS_TO_INSTALL GLOBAL PROPERTY HEADER_DEPS_TO_INSTALL)
-
-# Installation rules
 if(VEX_INTERNAL_USE_MODULES)
-    install(TARGETS Vex ${HEADER_DEPS_TO_INSTALL}
-            EXPORT VexTargets
-            ARCHIVE DESTINATION lib
-            LIBRARY DESTINATION lib
-            RUNTIME DESTINATION bin
-            FILE_SET CXX_MODULES DESTINATION modules
-    )
-else()
-    install(TARGETS Vex ${HEADER_DEPS_TO_INSTALL}
-            EXPORT VexTargets
-            ARCHIVE DESTINATION lib
-            LIBRARY DESTINATION lib
-            RUNTIME DESTINATION bin
-    )
+    set(VEX_INSTALL_MODULES FILE_SET CXX_MODULES DESTINATION "${CMAKE_INSTALL_DATADIR}/Vex/modules")
+endif()
+install(TARGETS Vex ${VEX_TARGETS}
+    EXPORT VexTargets
+    FILE_SET HEADERS
+    ${VEX_INSTALL_MODULES}
+)
+install(EXPORT VexTargets NAMESPACE Vex:: DESTINATION "${VEX_INSTALL_CMAKEDIR}")
+
+install(DIRECTORY "${magic_enum_SOURCE_DIR}/include/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+install(DIRECTORY "shaders/" DESTINATION "${VEX_INSTALL_SHADERDIR}")
+if(VEX_ENABLE_DX12)
+    install(FILES "src/DX12/DX12AgilitySDK.cpp" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/DX12")
 endif()
 
-# Install Vex headers
-install(DIRECTORY src/ DESTINATION include FILES_MATCHING PATTERN "*.h")
-
-# Install the headers of our dependencies
-get_property(HEADER_DIRS_TO_INSTALL GLOBAL PROPERTY HEADER_DIRS_TO_INSTALL)
-list(LENGTH HEADER_DIRS_TO_INSTALL NUM_ITEMS)
-math(EXPR NUM_PAIRS "${NUM_ITEMS} / 2")
-foreach(INDEX RANGE ${NUM_PAIRS})
-    if(INDEX LESS ${NUM_PAIRS})
-        math(EXPR SRC_INDEX "${INDEX} * 2")
-        math(EXPR DST_INDEX "${SRC_INDEX} + 1")
-        list(GET HEADER_DIRS_TO_INSTALL ${SRC_INDEX} SRC_DIR)
-        list(GET HEADER_DIRS_TO_INSTALL ${DST_INDEX} DST_DIR)
-        if(EXISTS "${SRC_DIR}")
-            install(DIRECTORY "${SRC_DIR}/" DESTINATION "${DST_DIR}" FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
-        endif()
+# Tells the package config which dependencies were installed alongside Vex, and which ones have to be found again.
+set(VEX_DEPS_BUNDLED "")
+foreach(DEP agility pix dxc slang spirv_reflect)
+    get_property(DEP_IS_RESOLVED GLOBAL PROPERTY VEX_DEP_${DEP}_BUNDLED SET)
+    if(DEP_IS_RESOLVED)
+        get_property(DEP_IS_BUNDLED GLOBAL PROPERTY VEX_DEP_${DEP}_BUNDLED)
+        string(APPEND VEX_DEPS_BUNDLED "set(VEX_DEP_${DEP}_BUNDLED ${DEP_IS_BUNDLED})\n")
     endif()
 endforeach()
 
-# Add the examples projects.
-if(VEX_BUILD_EXAMPLES)
-    message(STATUS "Building Vex examples...")
-    add_subdirectory(examples)
-endif()
-# Add the tests project.
-if (VEX_BUILD_TESTS)
-    message(STATUS "Building Vex tests...")
-    add_subdirectory(tests)
-endif()
-# Add the tools projects.
-if (VEX_BUILD_TOOLS)
-    message(STATUS "Building Vex tools...")
-    add_subdirectory(tools/GenerateBuiltInShaders)
-endif()
-
-install(EXPORT VexTargets
-    FILE VexTargets.cmake
-    NAMESPACE Vex::
-    DESTINATION lib/cmake/Vex
-)
-
-# Config file for find_package()
+# Config files for find_package()
 write_basic_package_version_file(
     "${CMAKE_CURRENT_BINARY_DIR}/VexConfigVersion.cmake"
     VERSION ${PROJECT_VERSION}
@@ -438,18 +239,33 @@ write_basic_package_version_file(
 configure_package_config_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/VexConfig.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/VexConfig.cmake"
-    INSTALL_DESTINATION lib/cmake/Vex
+    INSTALL_DESTINATION "${VEX_INSTALL_CMAKEDIR}"
+    PATH_VARS VEX_INSTALL_SHADERDIR CMAKE_INSTALL_INCLUDEDIR
 )
-
-configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/VexHelpers.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/VexHelpers.cmake"
-    COPYONLY
-)
-
 install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/VexConfig.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/VexConfigVersion.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/VexHelpers.cmake"
-    DESTINATION lib/cmake/Vex
+    "cmake/VexDependencies.cmake"
+    "cmake/VexRuntime.cmake"
+    DESTINATION "${VEX_INSTALL_CMAKEDIR}"
 )
+
+# =========================================
+# DEVELOPMENT (examples, tests, tools)
+# =========================================
+if(PROJECT_IS_TOP_LEVEL)
+    # Will correctly install our custom githook to run clang-format on staged files when committing
+    include(GitHooks)
+endif()
+if(VEX_BUILD_EXAMPLES OR VEX_BUILD_TESTS)
+    include(VexDevDependencies)
+endif()
+if(VEX_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
+if(VEX_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
+if(VEX_BUILD_TOOLS)
+    add_subdirectory(tools/GenerateBuiltInShaders)
+endif()

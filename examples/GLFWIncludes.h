@@ -1,30 +1,5 @@
 #pragma once
 
+// Only the portable GLFW API. The native (glfw3native.h) part is confined to ExampleApplication.cpp, since its
+// platform headers (X11 especially) define macros that collide with Vex identifiers.
 #include <GLFW/glfw3.h>
-#include <math.h>
-#if defined(_WIN32)
-#define GLFW_EXPOSE_NATIVE_WIN32
-#elif defined(__linux__)
-#define GLFW_EXPOSE_NATIVE_X11
-#endif
-
-#if defined(__linux__)
-// Undefine/define problematic X11 macros
-#ifdef Always
-#undef Always
-#endif
-#ifdef None
-#undef None
-#endif
-#ifdef Success
-#undef Success
-#endif
-#ifndef Status
-#define Status int
-#endif
-#ifndef Bool
-#define Bool bool
-#endif
-#endif
-
-#include <GLFW/glfw3native.h>
