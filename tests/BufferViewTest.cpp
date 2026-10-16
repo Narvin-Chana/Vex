@@ -1,5 +1,7 @@
 ﻿#include "VexTest.h"
 
+#include <algorithm>
+
 using namespace vex;
 
 struct BufferBindingTestData
