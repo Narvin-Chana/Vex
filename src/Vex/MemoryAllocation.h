@@ -72,7 +72,7 @@ struct PageHandle : Handle64<PageHandle>
 {
 };
 
-inline constexpr PageHandle GInvalidPageHandle;
+inline constexpr PageHandle GInvalidPageHandle{};
 
 struct Allocation
 {

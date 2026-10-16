@@ -9,7 +9,8 @@
 #include <WinPixEventRuntime/pix3.h>
 // clang-format on
 
-#if VEX_MODULES
+// GCC can't mix the module import with textual Vex includes.
+#if VEX_MODULES && !(__GNUC__ && !__clang__)
 #include <VexMacros.h>
 import Vex.ShaderCompiler;
 #else

@@ -20,9 +20,6 @@ target_sources(VexExamplesCommon INTERFACE
 )
 target_include_directories(VexExamplesCommon INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(VexExamplesCommon INTERFACE Vex::Vex Vex::ShaderCompiler imguiLib glfw VexDev::stb)
-if(LINUX)
-    target_compile_definitions(VexExamplesCommon INTERFACE GLFW_EXPOSE_NATIVE_WAYLAND)
-endif()
 
 # Each directory containing sources is an example.
 file(GLOB EXAMPLE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/*")

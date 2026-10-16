@@ -143,6 +143,12 @@ target_compile_definitions(Vex PUBLIC
 )
 target_compile_definitions(Vex PRIVATE $<$<BOOL:${VEX_BUILD_TESTS}>:VEX_TESTS=1>)
 
+# Standards conformance: MSVC's non-conforming behaviors are opt-out, GCC/Clang are already strict via CMAKE_CXX_EXTENSIONS OFF.
+target_compile_options(Vex PRIVATE
+    $<$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>:/permissive- /Zc:__cplusplus /Zc:preprocessor>
+    $<$<CXX_COMPILER_FRONTEND_VARIANT:GNU>:-pedantic>
+)
+
 # =========================================
 # VEX SHADER COMPILER
 # =========================================

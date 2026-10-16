@@ -2,13 +2,16 @@
 
 #include <filesystem>
 #include <functional>
+#include <span>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <variant>
 
 #include <ExamplePaths.h>
 
-#if VEX_MODULES
+// importing in a header file can cause mangling issues in GCC
+#if VEX_MODULES && !(__GNUC__ && !__clang__)
 import Vex.ShaderCompiler;
 #else
 #include <VexShaderCompiler.h>

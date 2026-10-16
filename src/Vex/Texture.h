@@ -173,7 +173,7 @@ struct TextureHandle : Handle64<TextureHandle>
 {
 };
 
-inline constexpr TextureHandle GInvalidTextureHandle;
+inline constexpr TextureHandle GInvalidTextureHandle{};
 
 struct Texture final
 {

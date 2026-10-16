@@ -14,7 +14,8 @@ if(VEX_BUILD_EXAMPLES)
     FetchContent_Declare(glfw
         GIT_REPOSITORY https://github.com/glfw/glfw.git
         GIT_TAG 3.4
-        FIND_PACKAGE_ARGS NAMES glfw3
+        # 3.4 is the minimum: the examples rely on glfwGetPlatform() to pick between X11 and Wayland.
+        FIND_PACKAGE_ARGS 3.4 NAMES glfw3
     )
 
     # STB Image
