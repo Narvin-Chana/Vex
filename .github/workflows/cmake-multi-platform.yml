@@ -189,6 +189,24 @@ jobs:
       # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
+    # Checks that an installed Vex can be found and linked by another project.
+    - name: Install
+      run: cmake --install ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} --prefix ${{ github.workspace }}/install
+
+    - name: Configure package consumer
+      run: >
+        cmake -B ${{ github.workspace }}/build-package
+        -G Ninja
+        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -DCMAKE_PREFIX_PATH=${{ github.workspace }}/install
+        ${{ matrix.cpp_library == 'libc++' && '-DCMAKE_CXX_FLAGS=-stdlib=libc++' || '' }}
+        -S ${{ github.workspace }}/tests/package
+
+    - name: Build package consumer
+      run: cmake --build ${{ github.workspace }}/build-package --config ${{ matrix.build_type }}
+
     - name: Build Failure Reporting
       if: failure()
       run: |

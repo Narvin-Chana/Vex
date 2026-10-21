@@ -8,10 +8,11 @@
 
 #include <renderdoc_app.h>
 
-#if VEX_MODULES
-import Vex;
+// GCC can't mix the module import with textual Vex includes.
+#if VEX_MODULES && !(__GNUC__ && !__clang__)
+import Vex.ShaderCompiler;
 #else
-#include <Vex.h>
+#include <VexShaderCompiler.h>
 #endif
 #include <VexMacros.h>
 

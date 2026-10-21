@@ -1,6 +1,7 @@
 ﻿#pragma once
 
-#include <Vex.h>
+#include <VexShaderCompiler.h>
+
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHITexture.h>
 

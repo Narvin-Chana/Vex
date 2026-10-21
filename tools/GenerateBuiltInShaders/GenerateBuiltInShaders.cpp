@@ -1,12 +1,13 @@
 #include <filesystem>
 #include <string>
+#include <utility>
 
 #if VEX_MODULES
 #include <VexMacros.h>
-import Vex;
+import Vex.ShaderCompiler;
 import magic_enum;
 #else
-#include <Vex.h>
+#include <VexShaderCompiler.h>
 #include <magic_enum/magic_enum.hpp>
 #endif
 using namespace vex;

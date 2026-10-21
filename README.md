@@ -41,7 +41,7 @@ subject to risk.
 - Clang 20.1.8
 - GCC 14
 
-**CMake**: 3.28+
+**CMake**: 4.2.2+
 
 **Git** (for using CMake's FetchContent)
 
@@ -76,20 +76,44 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Vex)
 
 # Later on once your target executable has been created:
-target_link_libraries(YourTarget PRIVATE Vex)
+target_link_libraries(YourTarget PRIVATE Vex::Vex Vex::ShaderCompiler)
 vex_setup_runtime(YourTarget)
 ```
 
 `vex_setup_runtime` must be called to correctly setup the runtime dependencies of Vex.
+
+Vex is made of two libraries:
+
+- `Vex::Vex`: the graphics runtime, `#include <Vex.h>` (or `import Vex;`).
+- `Vex::ShaderCompiler`: the optional shader compiler (DXC and/or Slang), `#include <VexShaderCompiler.h>` (or
+  `import Vex.ShaderCompiler;`), both of which also give access to the runtime. Applications which only ship
+  precompiled shaders do not need to link it.
+
+Vex can also be installed (`cmake --install`) and consumed with
+`find_package(Vex REQUIRED COMPONENTS ShaderCompiler)`, which provides the same targets and `vex_setup_runtime`.
+
+### Dependencies
+
+Vex first looks for its dependencies with `find_package`, so that copies provided by your package manager (eg: vcpkg's
+`directx-dxc`, `shader-slang`, `winpixevent`, `spirv-reflect`) or by your own project are used. Dependencies which are
+not found are downloaded at a pinned version, and installed alongside Vex. Set `VEX_FIND_DEPENDENCIES` to `OFF` to
+always use the pinned versions, or `VEX_DOWNLOAD_DEPENDENCIES` to `OFF` to make configuring fail instead of downloading
+anything. `magic_enum` is always built from source and shipped with Vex (`FETCHCONTENT_SOURCE_DIR_MAGIC_ENUM` can point
+to a local checkout), and the DirectX 12 Agility SDK is downloaded unless `VEX_AGILITY_SDK_ROOT` points to an extracted
+`Microsoft.Direct3D.D3D12` NuGet package.
 
 Vex provides several configuration options that can be set when configuring the project with CMake:
 
 | Option                 | Type   | Default                                         | Description                                                                                                                                                         |
 |------------------------|--------|-------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `VEX_GRAPHICS_BACKEND` | STRING | `AUTO`                                          | Graphics backend to use. Options: `AUTO`, `DX12`, `VULKAN`. `AUTO` selects DX12 on Windows, Vulkan elsewhere.                                                       |
+| `VEX_ENABLE_SHADER_COMPILER` | BOOL | `ON`                                      | Build the `Vex::ShaderCompiler` library.                                                                                                                            |
 | `VEX_ENABLE_DXC`       | BOOL   | `ON`                                            | Enable DXC shader compiler backend support.                                                                                                                         |
 | `VEX_ENABLE_SLANG`     | BOOL   | `OFF` (or `ON` when building examples or tests) | Enable Slang shader compiler backend support.                                                                                                                       |
 | `VEX_USE_MODULES`      | BOOL   | `OFF`                                           | Will build the Vex.cppm C++20 module. When using this option your parent CMake file must set CMAKE_CXX_SCAN_FOR_MODULES to ON: "set(CMAKE_CXX_SCAN_FOR_MODULES ON)" |
+| `VEX_FIND_DEPENDENCIES` | BOOL  | `ON`                                            | Use installed copies of Vex's dependencies when available, instead of always downloading the pinned versions.                                                       |
+| `VEX_DOWNLOAD_DEPENDENCIES` | BOOL | `ON`                                      | Download the pinned version of dependencies which are not found. When `OFF`, a missing dependency fails the configure step. |
+| `VEX_AGILITY_SDK_ROOT` | PATH   | empty                                           | Extracted `Microsoft.Direct3D.D3D12` NuGet package to use, downloaded when empty.                                                                                   |
 | `VEX_BUILD_EXAMPLES`   | BOOL   | `OFF`                                           | Advanced: Build example programs.                                                                                                                                   |
 | `VEX_BUILD_TESTS`      | BOOL   | `OFF`                                           | Advanced: Build test suite.                                                                                                                                                   |
 | `VEX_BUILD_TOOLS`      | BOOL   | `OFF`                                           | Advanced: Build internal Vex tool suite.                                                                                                                                      |

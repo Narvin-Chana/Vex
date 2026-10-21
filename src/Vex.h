@@ -14,14 +14,3 @@
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/NonNullPtr.h>
 #include <VexMacros.h>
-
-#if VEX_SHADER_COMPILER
-#include <ShaderCompiler/RayTracingShaderKey.h>
-#include <ShaderCompiler/Shader.h>
-#include <ShaderCompiler/ShaderCompiler.h>
-#include <ShaderCompiler/ShaderKey.h>
-namespace vex
-{
-using namespace sc;
-} // namespace vex
-#endif

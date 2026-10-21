@@ -2,6 +2,31 @@
 
 #include <GLFWIncludes.h>
 
+// Native GLFW access must stay the last include: the platform headers it pulls in (X11 especially) define macros such
+// as None, Bool or Status that would break any Vex header included after it.
+#if defined(_WIN32)
+#define GLFW_EXPOSE_NATIVE_WIN32
+#elif defined(__linux__)
+#define GLFW_EXPOSE_NATIVE_X11
+#define GLFW_EXPOSE_NATIVE_WAYLAND
+// When Vex is included textually, its Vulkan headers have already included Xlib.h and then undefined some of its macros.
+// Xlib's include guard prevents them from coming back, yet the X11 headers glfw3native.h includes still rely on them, so
+// restore Xlib's own definitions.
+#ifndef Bool
+#define Bool int
+#endif
+#ifndef Status
+#define Status int
+#endif
+#ifndef True
+#define True 1
+#endif
+#ifndef False
+#define False 0
+#endif
+#endif
+#include <GLFW/glfw3native.h>
+
 ExampleApplication::ExampleApplication(std::string_view windowName,
                                        int defaultWidth,
                                        int defaultHeight,
@@ -150,16 +175,21 @@ vex::PlatformWindowHandle ExampleApplication::GetPlatformWindowHandle() const
         .window = glfwGetWin32Window(window) } };
 #elif defined(__linux__)
 
+    // Ask GLFW which backend it picked instead of probing: the native getters of an inactive backend raise errors.
     vex::PlatformWindowHandle platformWindow;
-    if (auto x11Window = glfwGetX11Window(window))
+    switch (glfwGetPlatform())
     {
-        platformWindow = { vex::PlatformWindowHandle::X11Handle{ .window = x11Window,
+    case GLFW_PLATFORM_X11:
+        platformWindow = { vex::PlatformWindowHandle::X11Handle{ .window = glfwGetX11Window(window),
                                                                  .display = glfwGetX11Display() } };
-    }
-    else if (auto waylandWindow = glfwGetWaylandWindow(window))
-    {
-        platformWindow = { vex::PlatformWindowHandle::WaylandHandle{ .window = waylandWindow,
+        break;
+    case GLFW_PLATFORM_WAYLAND:
+        platformWindow = { vex::PlatformWindowHandle::WaylandHandle{ .window = glfwGetWaylandWindow(window),
                                                                      .display = glfwGetWaylandDisplay() } };
+        break;
+    default:
+        VEX_LOG(vex::Fatal, "Unsupported GLFW platform, only X11 and Wayland are supported on Linux.");
+        break;
     }
 #endif
 

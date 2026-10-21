@@ -91,6 +91,7 @@ using vex::Texture;
 using vex::TextureAspect;
 using vex::TextureBinding;
 using vex::TextureBindingUsage;
+using vex::TextureClearRect;
 using vex::TextureClearValue;
 using vex::TextureDesc;
 using vex::TextureFormat;
@@ -137,20 +138,6 @@ using vex::RHIDescriptorPool;
 using vex::RHIResourceLayout;
 using vex::RHIScopedGPUEvent;
 using vex::RHITimestampQueryPool;
-
-#if VEX_SHADER_COMPILER
-using sc::CompilationTarget;
-using sc::HitGroupKey;
-using sc::RayTracingShaderKey;
-using sc::Shader;
-using sc::ShaderCompiler;
-using sc::ShaderCompilerBackend;
-using sc::ShaderDefine;
-using sc::ShaderHotReloadErrorResponse;
-using sc::ShaderHotReloadErrorsCallback;
-using sc::ShaderKey;
-using sc::ShaderReflection;
-#endif
 
 #if VEX_DX12
 namespace dx12

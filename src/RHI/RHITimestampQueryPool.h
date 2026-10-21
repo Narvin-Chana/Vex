@@ -27,7 +27,7 @@ struct QueryHandle : Handle64<QueryHandle>
 {
 };
 
-inline constexpr QueryHandle GInvalidQueryHandle;
+inline constexpr QueryHandle GInvalidQueryHandle{};
 
 class RHITimestampQueryPoolBase
 {

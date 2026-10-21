@@ -1,9 +1,9 @@
 #include <ExamplePaths.h>
 
 #if VEX_MODULES
-import Vex;
+import Vex.ShaderCompiler;
 #else
-#include <Vex.h>
+#include <VexShaderCompiler.h>
 #endif
 
 int main()

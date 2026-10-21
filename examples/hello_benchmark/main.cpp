@@ -1,6 +1,6 @@
 #include "ExamplePaths.h"
 
-#include <Vex.h>
+#include <VexShaderCompiler.h>
 
 static constexpr vex::u32 N = 10;
 static constexpr vex::u32 M = 1024;
