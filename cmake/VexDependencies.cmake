@@ -13,8 +13,8 @@ else()
     set(_VEX_IMPORTED_SCOPE GLOBAL)
 endif()
 
-# Wraps an installed package as VexDeps::<name>, provided one of its targets exposes HEADER under the spelling
-# used by Vex's sources. Does nothing otherwise, the caller then falls back to the pinned download.
+# Wraps an installed package as VexDeps::<name>, provided it is at least VERSION (the pinned one) and one of its
+# targets exposes HEADER under the spelling used by Vex's sources. Otherwise the caller falls back to the download.
 function(_vex_find_dependency name)
     cmake_parse_arguments(PARSE_ARGV 1 arg "" "PACKAGE;VERSION;HEADER" "TARGETS;PATH_SUFFIXES")
     if(DEFINED VEX_DEPS_BUNDLE_ROOT)
@@ -26,6 +26,18 @@ function(_vex_find_dependency name)
     endif()
 
     find_package(${arg_PACKAGE} ${arg_VERSION} CONFIG QUIET ${_VEX_IMPORTED_SCOPE})
+    # Packages without a version file (e.g. most vcpkg ports of Vex's dependencies) are rejected by a versioned
+    # find_package, so the unversioned candidate is retried on its own: an outdated versioned one must not be picked.
+    list(FIND ${arg_PACKAGE}_CONSIDERED_VERSIONS unknown unversioned)
+    if(NOT ${arg_PACKAGE}_FOUND AND unversioned GREATER_EQUAL 0)
+        list(GET ${arg_PACKAGE}_CONSIDERED_CONFIGS ${unversioned} config_file)
+        cmake_path(GET config_file PARENT_PATH config_dir)
+        find_package(${arg_PACKAGE} CONFIG QUIET ${_VEX_IMPORTED_SCOPE} PATHS "${config_dir}" NO_DEFAULT_PATH)
+        if(${arg_PACKAGE}_FOUND)
+            message(WARNING "Vex: ${config_file} does not report its version, it is used without checking that it is "
+                "at least ${arg_VERSION}.")
+        endif()
+    endif()
     foreach(candidate IN LISTS arg_TARGETS)
         if(NOT TARGET ${candidate})
             continue()
@@ -48,6 +60,9 @@ function(_vex_find_dependency name)
         message(FATAL_ERROR "Vex was built against the '${arg_PACKAGE}' package, which could not be found.")
     elseif(${arg_PACKAGE}_FOUND)
         message(STATUS "Vex: found ${arg_PACKAGE} but it does not provide <${arg_HEADER}>, using the pinned download.")
+    elseif(${arg_PACKAGE}_CONSIDERED_CONFIGS)
+        message(STATUS "Vex: ${arg_PACKAGE} older than ${arg_VERSION} found (${${arg_PACKAGE}_CONSIDERED_VERSIONS}), "
+            "using the pinned download.")
     endif()
 endfunction()
 
@@ -100,20 +115,26 @@ function(_vex_resolve_agility)
     if(TARGET VexDeps::agility)
         return()
     endif()
+    set(min_version 1.618.4)
     set(root "${VEX_AGILITY_SDK_ROOT}")
     if(NOT root OR DEFINED VEX_DEPS_BUNDLE_ROOT)
         _vex_download(agility root
-            "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.618.4"
+            "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/${min_version}"
             e2049bccbc506a49e3f495c07ee1f97b05a1b833cf8b3db1cf93da56baf2ec53
             DOWNLOAD_NAME agility.zip
         )
     endif()
 
-    # The SDK version exported by the executable (D3D12SDKVersion) is the minor version of the package.
-    file(STRINGS "${root}/Microsoft.Direct3D.D3D12.nuspec" version REGEX "<version>")
-    string(REGEX REPLACE ".*<version>[0-9]+\\.([0-9]+)\\..*" "\\1" version "${version}")
-    if(NOT version MATCHES "^[0-9]+$")
+    file(STRINGS "${root}/Microsoft.Direct3D.D3D12.nuspec" package_version REGEX "<version>")
+    string(REGEX REPLACE ".*<version>([0-9.]+)</version>.*" "\\1" package_version "${package_version}")
+    if(NOT package_version MATCHES "^[0-9]+\\.([0-9]+)\\.")
         message(FATAL_ERROR "Unable to read the D3D12 Agility SDK version from ${root}")
+    endif()
+    # The SDK version exported by the executable (D3D12SDKVersion) is the minor version of the package.
+    set(version ${CMAKE_MATCH_1})
+    if(package_version VERSION_LESS min_version)
+        message(FATAL_ERROR "The D3D12 Agility SDK in ${root} is ${package_version}, "
+            "Vex requires at least ${min_version}.")
     endif()
 
     set(bin_dir "build/native/bin/x64")
@@ -132,13 +153,14 @@ function(_vex_resolve_pix)
     if(TARGET VexDeps::pix)
         return()
     endif()
-    _vex_find_dependency(pix PACKAGE winpixevent HEADER WinPixEventRuntime/pix3.h
+    set(version 1.0.240308001)
+    _vex_find_dependency(pix PACKAGE winpixevent VERSION ${version} HEADER WinPixEventRuntime/pix3.h
         TARGETS Microsoft::WinPixEventRuntime)
     if(TARGET VexDeps::pix)
         return()
     endif()
     _vex_download(pix root
-        "https://www.nuget.org/api/v2/package/WinPixEventRuntime/1.0.240308001"
+        "https://www.nuget.org/api/v2/package/WinPixEventRuntime/${version}"
         726acc93d6968e2146261a1e415521747d50ad69894c2b42b5d0d4c29fd66ec4
         DOWNLOAD_NAME pix.zip
     )
@@ -152,9 +174,11 @@ function(_vex_resolve_dxc)
     if(TARGET VexDeps::dxc)
         return()
     endif()
-    set(release "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.9.2602")
+    set(version 1.9.2602)
+    set(release "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v${version}")
     if(WIN32)
-        _vex_find_dependency(dxc PACKAGE directx-dxc HEADER dxcapi.h TARGETS Microsoft::DirectXShaderCompiler)
+        _vex_find_dependency(dxc PACKAGE directx-dxc VERSION ${version} HEADER dxcapi.h
+            TARGETS Microsoft::DirectXShaderCompiler)
         if(NOT TARGET VexDeps::dxc)
             _vex_download(dxc root "${release}/dxc_2026_02_20.zip"
                 a1e89031421cf3c1fca6627766ab3020ca4f962ac7e2caa7fab2b33a8436151e)
@@ -163,7 +187,8 @@ function(_vex_resolve_dxc)
             _vex_bundle(dxc "${root}" inc bin/x64/dxcompiler.dll lib/x64/dxcompiler.lib)
         endif()
     elseif(LINUX)
-        _vex_find_dependency(dxc PACKAGE directx-dxc HEADER dxc/dxcapi.h TARGETS Microsoft::DirectXShaderCompiler)
+        _vex_find_dependency(dxc PACKAGE directx-dxc VERSION ${version} HEADER dxc/dxcapi.h
+            TARGETS Microsoft::DirectXShaderCompiler)
         if(NOT TARGET VexDeps::dxc)
             _vex_download(dxc root "${release}/linux_dxc_2026_02_20.x86_64.tar.gz"
                 a1d3e3b5e1c5685b3eb27d5e8890e41d87df45def05112a2d6f1a63a931f7d60)
@@ -217,13 +242,14 @@ function(_vex_resolve_spirv_reflect)
     if(TARGET VexDeps::spirv_reflect)
         return()
     endif()
-    _vex_find_dependency(spirv_reflect PACKAGE unofficial-spirv-reflect HEADER spirv_reflect.h
+    set(version 1.4.321.0)
+    _vex_find_dependency(spirv_reflect PACKAGE unofficial-spirv-reflect VERSION ${version} HEADER spirv_reflect.h
         TARGETS unofficial::spirv-reflect unofficial::spirv-reflect::spirv-reflect PATH_SUFFIXES spirv-reflect)
     if(TARGET VexDeps::spirv_reflect OR DEFINED VEX_DEPS_BUNDLE_ROOT)
         return()
     endif()
     _vex_download(spirv_reflect root
-        "https://github.com/KhronosGroup/SPIRV-Reflect/archive/refs/tags/vulkan-sdk-1.4.321.0.tar.gz"
+        "https://github.com/KhronosGroup/SPIRV-Reflect/archive/refs/tags/vulkan-sdk-${version}.tar.gz"
         254ed36128e7abe8fb12ef804319d0790e059093c116e9fe55d4003880515f85
         SOURCE_SUBDIR "<invalid path>" # this forces FetchContent to pull but not configure the dependency
     )
