@@ -2,7 +2,8 @@
 #
 # Used in two places:
 #  - Vex's own build: each dependency is looked up with find_package first (unless VEX_FIND_DEPENDENCIES is OFF),
-#    and a pinned release is downloaded as a fallback. Downloaded copies are installed alongside Vex.
+#    and a pinned release is downloaded as a fallback (unless VEX_DOWNLOAD_DEPENDENCIES is OFF, which fails instead).
+#    Downloaded copies are installed alongside Vex.
 #  - VexConfig.cmake (VEX_DEPS_BUNDLE_ROOT is defined): each dependency is found again, or taken from the copy
 #    installed alongside Vex.
 
@@ -17,6 +18,7 @@ endif()
 # targets exposes HEADER under the spelling used by Vex's sources. Otherwise the caller falls back to the download.
 function(_vex_find_dependency name)
     cmake_parse_arguments(PARSE_ARGV 1 arg "" "PACKAGE;VERSION;HEADER" "TARGETS;PATH_SUFFIXES")
+    set(_vex_${name}_package ${arg_PACKAGE} PARENT_SCOPE)
     if(DEFINED VEX_DEPS_BUNDLE_ROOT)
         if(NOT DEFINED VEX_DEP_${name}_BUNDLED OR VEX_DEP_${name}_BUNDLED)
             return()
@@ -59,10 +61,10 @@ function(_vex_find_dependency name)
     if(DEFINED VEX_DEPS_BUNDLE_ROOT)
         message(FATAL_ERROR "Vex was built against the '${arg_PACKAGE}' package, which could not be found.")
     elseif(${arg_PACKAGE}_FOUND)
-        message(STATUS "Vex: found ${arg_PACKAGE} but it does not provide <${arg_HEADER}>, using the pinned download.")
+        message(STATUS "Vex: found ${arg_PACKAGE} but it does not provide <${arg_HEADER}>, it is not used.")
     elseif(${arg_PACKAGE}_CONSIDERED_CONFIGS)
         message(STATUS "Vex: ${arg_PACKAGE} older than ${arg_VERSION} found (${${arg_PACKAGE}_CONSIDERED_VERSIONS}), "
-            "using the pinned download.")
+            "it is not used.")
     endif()
 endfunction()
 
@@ -71,6 +73,16 @@ function(_vex_download name out_root url sha256)
     if(DEFINED VEX_DEPS_BUNDLE_ROOT)
         set(${out_root} "${VEX_DEPS_BUNDLE_ROOT}/${name}" PARENT_SCOPE)
         return()
+    endif()
+    if(NOT VEX_DOWNLOAD_DEPENDENCIES)
+        # _vex_<name>_package is set by the caller's _vex_find_dependency.
+        if(_vex_${name}_package)
+            set(missing "a suitable '${_vex_${name}_package}' package")
+        else()
+            set(missing "${name}")
+        endif()
+        message(FATAL_ERROR "Vex: VEX_DOWNLOAD_DEPENDENCIES is OFF and ${missing} was not found. "
+            "Make it findable (eg: through CMAKE_PREFIX_PATH), or turn VEX_DOWNLOAD_DEPENDENCIES back on.")
     endif()
     include(FetchContent)
     message(STATUS "Vex: fetching ${name}...")
@@ -117,6 +129,10 @@ function(_vex_resolve_agility)
     endif()
     set(min_version 1.618.4)
     set(root "${VEX_AGILITY_SDK_ROOT}")
+    if(NOT root AND NOT VEX_DOWNLOAD_DEPENDENCIES AND NOT DEFINED VEX_DEPS_BUNDLE_ROOT)
+        message(FATAL_ERROR "Vex: VEX_DOWNLOAD_DEPENDENCIES is OFF, set VEX_AGILITY_SDK_ROOT to an extracted "
+            "Microsoft.Direct3D.D3D12 NuGet package (${min_version} or later).")
+    endif()
     if(NOT root OR DEFINED VEX_DEPS_BUNDLE_ROOT)
         _vex_download(agility root
             "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/${min_version}"

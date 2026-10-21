@@ -35,6 +35,10 @@ option(VEX_ENABLE_DXC "Enables the possibility to use the DXC shader compiler ba
 option(VEX_ENABLE_SLANG "Enables the possibility to use the Slang shader compiler backend." ${VEX_ENABLE_SLANG_DEFAULT})
 
 option(VEX_FIND_DEPENDENCIES "Use installed copies of Vex's dependencies (find_package) when available, instead of always downloading the pinned ones." ON)
+option(VEX_DOWNLOAD_DEPENDENCIES "Download the pinned version of Vex's dependencies which are not found, instead of failing to configure." ON)
+if(NOT VEX_FIND_DEPENDENCIES AND NOT VEX_DOWNLOAD_DEPENDENCIES)
+    message(FATAL_ERROR "VEX_FIND_DEPENDENCIES and VEX_DOWNLOAD_DEPENDENCIES are both OFF, Vex has no way to get its dependencies.")
+endif()
 set(VEX_AGILITY_SDK_ROOT "" CACHE PATH "Extracted Microsoft.Direct3D.D3D12 NuGet package to use, downloaded when empty.")
 
 # Side-note regarding CMake modules support, if you wish to use "import std;" in your project, you must set the CMAKE_EXPERIMENTAL_CXX_IMPORT_STD variable to the value indicated here:
@@ -78,12 +82,17 @@ set(VEX_ENABLE_VULKAN ${VEX_ENABLE_VULKAN} CACHE INTERNAL "Vulkan backend enable
 # =========================================
 include(FetchContent)
 
-# magic_enum is always fetched and shipped with Vex.
+# magic_enum is always built from source and shipped with Vex, FETCHCONTENT_SOURCE_DIR_MAGIC_ENUM can provide a checkout.
+set(VEX_MAGIC_ENUM_COMMIT b233b96e49d371bad00300f59b5ba581100b8745) # The specific commit we require (C++20 module support).
+if(NOT VEX_DOWNLOAD_DEPENDENCIES AND NOT FETCHCONTENT_SOURCE_DIR_MAGIC_ENUM)
+    message(FATAL_ERROR "VEX_DOWNLOAD_DEPENDENCIES is OFF, set FETCHCONTENT_SOURCE_DIR_MAGIC_ENUM to a checkout of "
+        "magic_enum at commit ${VEX_MAGIC_ENUM_COMMIT}.")
+endif()
 message(STATUS "Fetching magic_enum...")
 FetchContent_Declare(
     magic_enum
     GIT_REPOSITORY https://github.com/Neargye/magic_enum.git
-    GIT_TAG b233b96e49d371bad00300f59b5ba581100b8745 # Use hash to select the specific commit we require (C++20 module support).
+    GIT_TAG ${VEX_MAGIC_ENUM_COMMIT}
 )
 FetchContent_MakeAvailable(magic_enum)
 
