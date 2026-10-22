@@ -55,10 +55,7 @@ void VkGraphicsPipelineState::Compile(const ShaderView& vertexShader,
     std::optional<std::string> pixelShaderEntryPoint{ pixelShader ? std::optional{ pixelShader->entryPoint }
                                                                   : std::nullopt };
 
-    // TODO: replace by inline vector
-    std::vector<::vk::PipelineShaderStageCreateInfo> stages;
-    stages.reserve(2);
-
+    InlineVector<::vk::PipelineShaderStageCreateInfo, 2> stages;
     stages.push_back(::vk::PipelineShaderStageCreateInfo{ .stage = ::vk::ShaderStageFlagBits::eVertex,
                                                           .module = *vsShaderModule,
                                                           .pName = vertexShaderEntryPoint.c_str() });
@@ -121,13 +118,11 @@ void VkGraphicsPipelineState::Compile(const ShaderView& meshShader,
     std::optional<std::string> pixelShaderEntryPoint{ pixelShader != nullptr ? std::optional{ pixelShader->entryPoint }
                                                                              : std::nullopt };
 
-    // TODO: replace by inline vector
-    std::vector stages{
+    InlineVector<::vk::PipelineShaderStageCreateInfo, 3> stages{
         ::vk::PipelineShaderStageCreateInfo{ .stage = ::vk::ShaderStageFlagBits::eMeshEXT,
                                              .module = *msShaderModule,
                                              .pName = meshShaderEntryPoint.c_str() },
     };
-    stages.reserve(3);
 
     if (pixelShader != nullptr)
     {
