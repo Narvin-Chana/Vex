@@ -86,7 +86,6 @@ enum class CompareOp : u8
     NotEqual,
     GreaterEqual,
     Always,
-    None = 99,
 };
 
 // See this for an explanation of each operation:
@@ -108,7 +107,7 @@ struct DepthStencilState
 {
     bool depthTestEnabled = false;
     bool depthWriteEnabled = false;
-    CompareOp depthCompareOp = CompareOp::None;
+    CompareOp depthCompareOp = CompareOp::Never;
     bool depthBoundsTestEnabled = false; // Vulkan only
     bool stencilTestEnabled = false;
     struct StencilOpState

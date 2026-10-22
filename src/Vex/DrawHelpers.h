@@ -9,7 +9,18 @@ namespace vex
 struct DrawDesc
 {
     ShaderView vertexShader;
-    ShaderView pixelShader;
+    std::optional<ShaderView> pixelShader;
+    InputAssembly inputAssembly;
+    RasterizerState rasterizerState;
+    DepthStencilState depthStencilState;
+    ColorBlendState colorBlendState;
+};
+
+struct DispatchMeshDesc
+{
+    std::optional<ShaderView> amplificationShader;
+    ShaderView meshShader;
+    std::optional<ShaderView> pixelShader;
     InputAssembly inputAssembly;
     RasterizerState rasterizerState;
     DepthStencilState depthStencilState;
