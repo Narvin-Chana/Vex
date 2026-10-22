@@ -18,13 +18,13 @@ namespace vex
 struct RHIBLASGeometryDesc
 {
     // For Triangles:
-    std::optional<RHIBufferBinding> vertexBufferBinding;
-    std::optional<RHIBufferBinding> indexBufferBinding;
-    std::optional<RHIBufferBinding> transformBufferBinding;
+    std::optional<RHIBufferView> vertexBufferView;
+    std::optional<RHIIndexBufferView> indexBufferView;
+    std::optional<RHIBufferView> transformBufferView;
 
     // For AABBs:
     // Buffer containing D3D12_RAYTRACING_AABB or VkAabbPositionsKHR
-    std::optional<RHIBufferBinding> aabbBufferBinding;
+    std::optional<RHIBufferView> aabbBufferView;
 
     Flags<ASGeometry> flags = ASGeometry::None;
 };
@@ -39,7 +39,7 @@ struct RHIBLASBuildDesc
 // RHI version of TLASBuildDesc
 struct RHITLASBuildDesc
 {
-    std::optional<RHIBufferBinding> instancesBinding;
+    std::optional<RHIBufferView> instancesView;
     // Description of each individual instance in the TLAS.
     Span<const TLASInstanceDesc> instances;
     // Per-instance BLAS to map each TLAS instance to.
@@ -59,7 +59,7 @@ struct RHIAccelerationStructureBuildInfo
 class RHIAccelerationStructureBase
 {
 public:
-    RHIAccelerationStructureBase(const AccelerationStructureDesc& desc)
+    explicit RHIAccelerationStructureBase(const AccelerationStructureDesc& desc)
         : desc(desc)
     {
     }
@@ -98,7 +98,7 @@ public:
 protected:
     AccelerationStructureDesc desc;
     MaybeUninitialized<RHIBuffer> accelerationStructure;
-    RHIAccelerationStructureBuildInfo prebuildInfo;
+    RHIAccelerationStructureBuildInfo prebuildInfo{};
 };
 
 } // namespace vex

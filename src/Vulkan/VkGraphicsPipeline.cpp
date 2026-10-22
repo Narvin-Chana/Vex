@@ -56,11 +56,6 @@ VEX_VK_END_ENUM_MAPPING
     };
 }
 
-void ValidateGraphicsPipeline(const GraphicsPSOKey& key)
-{
-    // TODO: add validation nothing obvious comes to mind for the moment
-}
-
 } // namespace GraphicsPiplineUtils
 
 } // namespace vex::vk

@@ -1,5 +1,6 @@
 #include <array>
-// This include order has to be used to not have ODR violation when using the vex module, this is due to a  bug in the MSVC implementation.
+// This include order has to be used to not have ODR violation when using the vex module, this is due to a  bug in the
+// MSVC implementation.
 
 #include "HelloRayTracing.h"
 
@@ -66,8 +67,8 @@ HelloRayTracing::HelloRayTracing()
 
     ctx.BuildBLAS(triangleBLAS,
                   { .geometry = { vex::BLASGeometryDesc{
-                        .vertexBufferBinding = vex::BufferBinding::CreateStructuredBuffer(vertexBuffer, sizeof(Vertex)),
-                        .indexBufferBinding = vex::BufferBinding::CreateStructuredBuffer(indexBuffer, sizeof(vex::u32)),
+                        .vertexBufferBinding = vex::BufferBinding::CreateStructured(vertexBuffer, sizeof(Vertex)),
+                        .indexBufferBinding = vex::IndexBufferBinding::Create<vex::u32>(indexBuffer),
                         .transform = std::nullopt,
                         .flags = vex::ASGeometry::Opaque,
                     } } });
