@@ -16,8 +16,8 @@ struct Vertex
 static constexpr vex::u32 VertexCount = 8;
 static constexpr vex::u32 IndexCount = 36;
 
-static const std::filesystem::path HLSLShaderPath = ExamplesDir / "hello_mesh_cube" / "HelloCubeShader.hlsl";
-static const std::filesystem::path SlangShaderPath = ExamplesDir / "hello_mesh_cube" / "HelloCubeShader.slang";
+static const std::filesystem::path HLSLShaderPath = ExamplesDir / "hello_mesh_cube" / "HelloMeshCubeShader.hlsl";
+static const std::filesystem::path SlangShaderPath = ExamplesDir / "hello_mesh_cube" / "HelloMeshCubeShader.slang";
 
 static const vex::ShaderKey HLSLAmplificationShaderKey{
     .filepath = HLSLShaderPath.string(),
