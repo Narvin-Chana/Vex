@@ -31,37 +31,37 @@ struct WStringView
 template <typename T, typename Alloc, typename CharT>
 struct std::formatter<std::vector<T, Alloc>, CharT>
 {
-    std::formatter<T, CharT> ElementFormatter;
+    std::formatter<T, CharT> elementFormatter;
 
     template <typename ParseContext>
-    constexpr auto parse(ParseContext& Ctx)
+    constexpr auto parse(ParseContext& ctx)
     {
         // The spec after ':' applies to each element
-        return ElementFormatter.parse(Ctx);
+        return elementFormatter.parse(ctx);
     }
 
     template <typename FormatContext>
-    auto format(const std::vector<T, Alloc>& Vec, FormatContext& Ctx) const
+    auto format(const std::vector<T, Alloc>& vec, FormatContext& ctx) const
     {
-        auto Out = Ctx.out();
-        *Out++ = CharT('[');
+        auto out = ctx.out();
+        *out++ = CharT('[');
 
-        bool bFirst = true;
-        for (const T& Elem : Vec)
+        bool isFirst = true;
+        for (const T& elem : vec)
         {
-            if (!bFirst)
+            if (!isFirst)
             {
-                *Out++ = CharT(',');
-                *Out++ = CharT(' ');
+                *out++ = CharT(',');
+                *out++ = CharT(' ');
             }
-            bFirst = false;
+            isFirst = false;
 
-            Ctx.advance_to(Out);
-            Out = ElementFormatter.format(Elem, Ctx);
+            ctx.advance_to(out);
+            out = elementFormatter.format(elem, ctx);
         }
 
-        *Out++ = CharT(']');
-        return Out;
+        *out++ = CharT(']');
+        return out;
     }
 };
 #endif
