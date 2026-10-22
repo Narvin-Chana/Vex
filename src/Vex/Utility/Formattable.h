@@ -25,4 +25,45 @@ struct WStringView
 
 } // namespace vex
 
+#if defined(__cpp_lib_format_ranges) && __cpp_lib_format_ranges >= 202207L
+// The library formats ranges (std::vector, std::array, ...) itself
+#else
+template <typename T, typename Alloc, typename CharT>
+struct std::formatter<std::vector<T, Alloc>, CharT>
+{
+    std::formatter<T, CharT> ElementFormatter;
+
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext& Ctx)
+    {
+        // The spec after ':' applies to each element
+        return ElementFormatter.parse(Ctx);
+    }
+
+    template <typename FormatContext>
+    auto format(const std::vector<T, Alloc>& Vec, FormatContext& Ctx) const
+    {
+        auto Out = Ctx.out();
+        *Out++ = CharT('[');
+
+        bool bFirst = true;
+        for (const T& Elem : Vec)
+        {
+            if (!bFirst)
+            {
+                *Out++ = CharT(',');
+                *Out++ = CharT(' ');
+            }
+            bFirst = false;
+
+            Ctx.advance_to(Out);
+            Out = ElementFormatter.format(Elem, Ctx);
+        }
+
+        *Out++ = CharT(']');
+        return Out;
+    }
+};
+#endif
+
 VEX_FORMATTABLE(vex::WStringView, "{}", vex::PlatformUtil::WStringToString(obj.str));

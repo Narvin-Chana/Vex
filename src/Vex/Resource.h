@@ -33,7 +33,7 @@ struct BindlessHandle : Handle32<BindlessHandle>
 {
 };
 
-inline constexpr BindlessHandle GInvalidBindlessHandle;
+inline constexpr BindlessHandle GInvalidBindlessHandle{};
 
 class MappedMemory
 {
