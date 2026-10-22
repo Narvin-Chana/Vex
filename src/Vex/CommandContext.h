@@ -250,7 +250,7 @@ private:
     void EnqueueGlobalBarrier(const RHIGlobalBarrier& globalBarrier);
 
     void InferResourceBarriers(RHIBarrierSync syncStage, Span<const ResourceBinding> resources);
-    void TransitionDrawResources(const RHIDrawResources& drawResources, const DepthStencilState& depthStencilState);
+    void BarrierDrawResources(const RHIDrawResources& drawResources, const DepthStencilState& depthStencilState);
 
     // Creates a temporary staging buffer that will be destroyed once the command context is done executing.
     // Buffer creation invalidates pointers to existing RHI buffers.

@@ -69,10 +69,11 @@ void VkGraphicsPipelineState::Compile(const ShaderView& vertexShader,
                                                               .pName = pixelShaderEntryPoint->c_str() });
     }
 
-    std::vector dynamicStates = { ::vk::DynamicState::eViewportWithCount,
-                                  ::vk::DynamicState::eScissorWithCount,
-                                  ::vk::DynamicState::ePrimitiveTopology,
-                                  ::vk::DynamicState::ePrimitiveRestartEnable };
+    static constexpr std::array dynamicStates = {
+        ::vk::DynamicState::eViewportWithCount,
+        ::vk::DynamicState::eScissorWithCount,
+        ::vk::DynamicState::ePrimitiveTopology,
+        ::vk::DynamicState::ePrimitiveRestartEnable };
 
     CreateGraphicsPipeline(resourceLayout, stages, dynamicStates);
 }
@@ -142,7 +143,7 @@ void VkGraphicsPipelineState::Compile(const ShaderView& meshShader,
                                                               .pName = amplificationShaderEntryPoint->c_str() });
     }
 
-    std::vector dynamicStates = { ::vk::DynamicState::eViewportWithCount, ::vk::DynamicState::eScissorWithCount };
+    static constexpr std::array dynamicStates = { ::vk::DynamicState::eViewportWithCount, ::vk::DynamicState::eScissorWithCount };
 
     CreateGraphicsPipeline(resourceLayout, stages, dynamicStates);
 }

@@ -67,7 +67,6 @@ HelloCubeApplication::HelloCubeApplication()
         graphics->CreateBuffer(vex::BufferDesc::CreateIndexBufferDesc("Index Buffer", sizeof(vex::u32) * IndexCount));
 
     {
-        // Immediate submission means the commands are instantly submitted upon destruction.
         vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
 
         // clang-format off

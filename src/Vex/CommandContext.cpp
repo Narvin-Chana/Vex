@@ -1386,7 +1386,8 @@ void CommandContext::InferResourceBarriers(RHIBarrierSync syncStage, Span<const 
             rb.binding);
     }
 }
-void CommandContext::TransitionDrawResources(const RHIDrawResources& drawResources,
+
+void CommandContext::BarrierDrawResources(const RHIDrawResources& drawResources,
                                              const DepthStencilState& depthStencilState)
 {
     for (const auto& [binding, _] : drawResources.renderTargets)
@@ -1452,7 +1453,7 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(DrawDesc desc,
     RHIDrawResources drawResources =
         ResourceBindingUtils::CollectRHIDrawResources(*graphics, drawBindings.renderTargets, drawBindings.depthStencil);
 
-    TransitionDrawResources(drawResources, desc.depthStencilState);
+    BarrierDrawResources(drawResources, desc.depthStencilState);
 
     auto renderTargetState = CommandContext_Internal::CreateRenderTargetStateFromBindings(drawResources);
 
@@ -1462,11 +1463,6 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(DrawDesc desc,
     RHIResourceLayout& resourceLayout = graphics->psCache->resourceLayout.value();
     resourceLayout.SetLayoutResources(constants);
     cmdList->SetLayout(resourceLayout);
-
-    EnqueueGlobalBarrier({ .srcSync = RHIBarrierSync::AllCommands,
-                           .dstSync = RHIBarrierSync::AllGraphics,
-                           .srcAccess = RHIBarrierAccess::MemoryWrite,
-                           .dstAccess = RHIBarrierAccess::VertexInputRead });
 
     std::unique_ptr<RHIGraphicsPipelineState> oldPSO;
     RHIGraphicsPipelineState* pipelineState =
@@ -1506,7 +1502,7 @@ std::optional<RHIDrawResources> CommandContext::PrepareDispatchMeshCall(Dispatch
     RHIDrawResources drawResources =
         ResourceBindingUtils::CollectRHIDrawResources(*graphics, drawBindings.renderTargets, drawBindings.depthStencil);
 
-    TransitionDrawResources(drawResources, desc.depthStencilState);
+    BarrierDrawResources(drawResources, desc.depthStencilState);
 
     auto renderTargetState = CommandContext_Internal::CreateRenderTargetStateFromBindings(drawResources);
 

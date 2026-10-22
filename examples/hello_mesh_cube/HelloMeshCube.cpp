@@ -16,34 +16,37 @@ struct Vertex
 static constexpr vex::u32 VertexCount = 8;
 static constexpr vex::u32 IndexCount = 36;
 
+static const std::filesystem::path HLSLShaderPath = ExamplesDir / "hello_mesh_cube" / "HelloCubeShader.hlsl";
+static const std::filesystem::path SlangShaderPath = ExamplesDir / "hello_mesh_cube" / "HelloCubeShader.slang";
+
 static const vex::ShaderKey HLSLAmplificationShaderKey{
-    .filepath = (ExamplesDir / "hello_mesh_cube" / "HelloCubeShader.hlsl").string(),
+    .filepath = HLSLShaderPath.string(),
     .entryPoint = "ASMain",
     .type = vex::ShaderType::AmplificationShader,
 };
 static const vex::ShaderKey HLSLMeshShaderKey{
-    .filepath = (ExamplesDir / "hello_mesh_cube" / "HelloCubeShader.hlsl").string(),
+    .filepath = HLSLShaderPath.string(),
     .entryPoint = "MSMain",
     .type = vex::ShaderType::MeshShader,
 };
 static const vex::ShaderKey HLSLPixelShaderKey{
-    .filepath = (ExamplesDir / "hello_mesh_cube" / "HelloCubeShader.hlsl").string(),
+    .filepath = HLSLShaderPath.string(),
     .entryPoint = "PSMain",
     .type = vex::ShaderType::PixelShader,
 };
 
 static const vex::ShaderKey SlangAmplificationShaderKey{
-    .filepath = (ExamplesDir / "hello_mesh_cube" / "HelloCubeShader.slang").string(),
+    .filepath = SlangShaderPath.string(),
     .entryPoint = "ASMain",
     .type = vex::ShaderType::AmplificationShader,
 };
 static const vex::ShaderKey SlangMeshShaderKey{
-    .filepath = (ExamplesDir / "hello_mesh_cube" / "HelloCubeShader.slang").string(),
+    .filepath = SlangShaderPath.string(),
     .entryPoint = "MSMain",
     .type = vex::ShaderType::MeshShader,
 };
 static const vex::ShaderKey SlangPixelShaderKey{
-    .filepath = (ExamplesDir / "hello_mesh_cube" / "HelloCubeShader.slang").string(),
+    .filepath = SlangShaderPath.string(),
     .entryPoint = "PSMain",
     .type = vex::ShaderType::PixelShader,
 };
@@ -78,7 +81,6 @@ HelloCubeApplication::HelloCubeApplication()
         vex::BufferDesc::CreateIndexBufferDesc("Index Buffer", sizeof(vex::u32) * IndexCount, true));
 
     {
-        // Immediate submission means the commands are instantly submitted upon destruction.
         vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
 
         // clang-format off
