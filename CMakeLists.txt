@@ -258,6 +258,7 @@ install(FILES
     "cmake/VexRuntime.cmake"
     DESTINATION "${VEX_INSTALL_CMAKEDIR}"
 )
+install(DIRECTORY "cmake/dependencies" DESTINATION "${VEX_INSTALL_CMAKEDIR}")
 
 # =========================================
 # DEVELOPMENT (examples, tests, tools)
