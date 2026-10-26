@@ -4,10 +4,10 @@
 
 class GLFWwindow;
 
-class HelloCubeApplication : public ExampleApplication
+class HelloMeshCubeApplication : public ExampleApplication
 {
 public:
-    HelloCubeApplication();
+    HelloMeshCubeApplication();
     void Run();
 
 protected:

@@ -1400,17 +1400,25 @@ void CommandContext::BarrierDrawResources(const RHIDrawResources& drawResources,
     }
     if (drawResources.depthStencil.has_value())
     {
-        // Start with the most restrictive access.
         RHIBarrierAccess depthAccess;
-        if (!depthStencilState.depthWriteEnabled)
+        if (!depthStencilState.depthWriteEnabled && depthStencilState.depthTestEnabled)
         {
             depthAccess = RHIBarrierAccess::DepthStencilRead;
         }
-        else
+        else if (depthStencilState.depthWriteEnabled && !depthStencilState.depthTestEnabled)
         {
-            // We always use readwrite because of vulkans loading requirements
+            depthAccess = RHIBarrierAccess::DepthStencilWrite;
+        }
+        else if (depthStencilState.depthWriteEnabled && depthStencilState.depthTestEnabled)
+        {
             depthAccess = RHIBarrierAccess::DepthStencilReadWrite;
         }
+        else
+        {
+            VEX_ASSERT(false);
+            std::unreachable();
+        }
+
         const RHITextureLayout depthLayout = depthStencilState.depthWriteEnabled ? RHITextureLayout::DepthStencilWrite
                                                                                  : RHITextureLayout::DepthStencilRead;
 
