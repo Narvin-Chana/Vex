@@ -160,8 +160,9 @@ void ValidateTextureBinding(const TextureBinding& binding, Flags<TextureUsage> v
     }
 }
 
-void ValidateDrawResource(const DrawResourceBinding& binding)
+void ValidateDrawResource(const DrawResourceBinding& binding, bool hasPixelShader)
 {
+    VEX_CHECK(!hasPixelShader && binding.renderTargets.empty(), "Invalid draw resources: When the pixel shader is absent, no render targets should be provided");
     VEX_CHECK(binding.renderTargets.size() <= GMaxSimultaneousRenderTargetCount,
               "Cannot bind more than 8 render targets simultaneously.");
     for (const auto& rt : binding.renderTargets)

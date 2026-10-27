@@ -1454,7 +1454,7 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(DrawDesc desc,
                                                                 const ConstantBinding constants,
                                                                 Span<const ResourceBinding> trackedResources)
 {
-    BindingUtil::ValidateDrawResource(drawBindings);
+    BindingUtil::ValidateDrawResource(drawBindings, desc.pixelShader.has_value());
     InferResourceBarriers(RHIBarrierSync::AllGraphics, trackedResources);
 
     // Transition RTs/DepthStencil
@@ -1504,6 +1504,7 @@ std::optional<RHIDrawResources> CommandContext::PrepareDispatchMeshCall(Dispatch
                                                                         ConstantBinding constants,
                                                                         Span<const ResourceBinding> trackedResources)
 {
+    BindingUtil::ValidateDrawResource(drawBindings, desc.pixelShader.has_value());
     InferResourceBarriers(RHIBarrierSync::AllGraphics, trackedResources);
 
     // Transition RTs/DepthStencil

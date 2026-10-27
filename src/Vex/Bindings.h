@@ -194,7 +194,7 @@ namespace BindingUtil
 
 void ValidateBufferBinding(const BufferBinding& binding, Flags<BufferUsage> validBufferUsageFlags);
 void ValidateTextureBinding(const TextureBinding& binding, Flags<TextureUsage> validTextureUsageFlags);
-void ValidateDrawResource(const DrawResourceBinding& binding);
+void ValidateDrawResource(const DrawResourceBinding& binding, bool hasPixelShader);
 
 } // namespace BindingUtil
 
