@@ -9,6 +9,7 @@ namespace vex
 struct DrawDesc
 {
     ShaderView vertexShader;
+    // If not provided the pixel pass is omitted. Could be used for a depth only pass
     std::optional<ShaderView> pixelShader;
     InputAssembly inputAssembly;
     RasterizerState rasterizerState;
@@ -20,6 +21,7 @@ struct DispatchMeshDesc
 {
     std::optional<ShaderView> amplificationShader;
     ShaderView meshShader;
+    // If not provided the pixel pass is omitted. Could be used for a depth only pass
     std::optional<ShaderView> pixelShader;
     InputAssembly inputAssembly;
     RasterizerState rasterizerState;

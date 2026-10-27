@@ -37,7 +37,7 @@ static const vex::ShaderKey SlangPixelShaderKey{
     .type = vex::ShaderType::PixelShader,
 };
 
-HelloMeshCubeApplication::HelloMeshCubeApplication()
+HelloCubeApplication::HelloCubeApplication()
     : ExampleApplication("HelloCubeApplication")
 {
     graphics = std::make_unique<vex::Graphics>(vex::GraphicsCreateDesc{
@@ -144,7 +144,7 @@ HelloMeshCubeApplication::HelloMeshCubeApplication()
     }
 }
 
-void HelloMeshCubeApplication::Run()
+void HelloCubeApplication::Run()
 {
     while (!glfwWindowShouldClose(window))
     {
@@ -242,7 +242,7 @@ void HelloMeshCubeApplication::Run()
     }
 }
 
-void HelloMeshCubeApplication::OnResize(GLFWwindow* window, int width, int height)
+void HelloCubeApplication::OnResize(GLFWwindow* window, int width, int height)
 {
     if (width == 0 || height == 0)
     {
@@ -266,6 +266,6 @@ void HelloMeshCubeApplication::OnResize(GLFWwindow* window, int width, int heigh
 
 int main()
 {
-    HelloMeshCubeApplication application;
+    HelloCubeApplication application;
     application.Run();
 }

@@ -525,6 +525,16 @@ void VkCommandList::Dispatch(const std::array<u32, 3>& groupCount)
 
 void VkCommandList::DispatchMesh(const std::array<u32, 3>& groupCount)
 {
+    if (!cachedViewport || !cachedScissor)
+    {
+        VEX_LOG(Fatal, "SetScissor and SetViewport need to be called before Draw is ever called");
+    }
+
+    if (!isRendering)
+    {
+        VEX_LOG(Fatal, "You need to call BeginRendering before calling any draw commands");
+    }
+
     commandBuffer->setViewportWithCount(1, &*cachedViewport);
     commandBuffer->setScissorWithCount(1, &*cachedScissor);
     commandBuffer->drawMeshTasksEXT(groupCount[0], groupCount[1], groupCount[2]);
