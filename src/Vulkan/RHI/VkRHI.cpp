@@ -135,15 +135,14 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
         ValidateAndAddExtension(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
 
         // Platform-specific surface extensions
-#if defined(_WIN32)
+#if defined(VK_USE_PLATFORM_WIN32_KHR)
         ValidateAndAddExtension(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-#elif defined(__linux__)
+#endif
 #if defined(VK_USE_PLATFORM_XLIB_KHR)
         ValidateAndAddExtension(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
 #endif
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
         ValidateAndAddExtension(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
-#endif
 #endif
     }
 
@@ -153,43 +152,37 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
         ValidateAndAddExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     }
 
-    ::vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo;
-    if (enableGPUDebugLayer)
-    {
-        // Enable custom message callback.
-        using Severity = ::vk::DebugUtilsMessageSeverityFlagBitsEXT;
-        using MessageType = ::vk::DebugUtilsMessageTypeFlagBitsEXT;
-        debugCreateInfo.messageSeverity = Severity::eVerbose | Severity::eInfo | Severity::eWarning | Severity::eError;
-        debugCreateInfo.messageType = MessageType::eGeneral | MessageType::eValidation | MessageType::ePerformance;
-        debugCreateInfo.pfnUserCallback = debugCallback;
-    }
-
-    ::vk::ValidationFeaturesEXT validationFeatures;
-    static constexpr std::array enables = {
+    static constexpr std::array enabledValidationFeature = {
         ::vk::ValidationFeatureEnableEXT::eGpuAssisted,
         ::vk::ValidationFeatureEnableEXT::eSynchronizationValidation,
     };
-    if (enableGPUBasedValidation)
-    {
-        validationFeatures.setEnabledValidationFeatures(enables);
-    }
-    validationFeatures.pNext = &debugCreateInfo;
 
-    ::vk::InstanceCreateInfo instanceCI{
-        .pNext = &validationFeatures,
-        .pApplicationInfo = &appInfo,
-        .enabledLayerCount = static_cast<u32>(layers.size()),
-        .ppEnabledLayerNames = layers.data(),
-        .enabledExtensionCount = static_cast<u32>(extensions.size()),
-        .ppEnabledExtensionNames = extensions.data(),
+    ::vk::StructureChain instanceCreateInfoChain{
+        ::vk::InstanceCreateInfo{
+            .pApplicationInfo = &appInfo,
+            .enabledLayerCount = static_cast<u32>(layers.size()),
+            .ppEnabledLayerNames = layers.data(),
+            .enabledExtensionCount = static_cast<u32>(extensions.size()),
+            .ppEnabledExtensionNames = extensions.data(),
+        },
+        ::vk::ValidationFeaturesEXT{
+            .enabledValidationFeatureCount = enabledValidationFeature.size(),
+            .pEnabledValidationFeatures = enabledValidationFeature.data(),
+        }
     };
 
-    instance = VEX_VK_CHECK <<= ::vk::createInstanceUnique(instanceCI);
+    if (!enableGPUBasedValidation)
+    {
+        instanceCreateInfoChain.unlink<::vk::ValidationFeaturesEXT>();
+    }
+
+    instance = VEX_VK_CHECK <<= ::vk::createInstanceUnique(instanceCreateInfoChain.get<::vk::InstanceCreateInfo>());
+    GDispatcherLifetime.SetInstance(*instance);
 
     VEX_LOG(Info, "Created VK instance with layers:");
-    for (auto validationLayer : layers)
+    for (auto layer : layers)
     {
-        VEX_LOG(Info, "\t{}", validationLayer);
+        VEX_LOG(Info, "\t{}", layer);
     }
 
     VEX_LOG(Info, "Created VK instance with extensions:");
@@ -197,10 +190,15 @@ VkRHI::VkRHI(const PlatformWindowHandle& windowHandle, bool enableGPUDebugLayer,
     {
         VEX_LOG(Info, "\t{}", instanceExtension);
     }
-    GDispatcherLifetime.SetInstance(*instance);
 
     if (enableGPUDebugLayer)
     {
+        ::vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo;
+        using VkSeverity = ::vk::DebugUtilsMessageSeverityFlagBitsEXT;
+        using VkMessageType = ::vk::DebugUtilsMessageTypeFlagBitsEXT;
+        debugCreateInfo.messageSeverity = VkSeverity::eVerbose | VkSeverity::eInfo | VkSeverity::eWarning | VkSeverity::eError;
+        debugCreateInfo.messageType = VkMessageType::eGeneral | VkMessageType::eValidation | VkMessageType::ePerformance;
+        debugCreateInfo.pfnUserCallback = debugCallback;
         debugUtilsMessenger = VEX_VK_CHECK <<= instance->createDebugUtilsMessengerEXTUnique(debugCreateInfo);
     }
 
@@ -352,105 +350,118 @@ void VkRHI::Init()
     ValidateAndAddExtension(VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME);
     ValidateAndAddExtension(VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
 
-    std::optional<::vk::PhysicalDeviceAccelerationStructureFeaturesKHR> featuresAccelerationStructure;
-    std::optional<::vk::PhysicalDeviceRayTracingPipelineFeaturesKHR> featuresRayTracingPipeline;
-    std::optional<::vk::PhysicalDeviceRayQueryFeaturesKHR> featuresRayQuery;
     if (GPhysicalDevice->IsFeatureSupported(Feature::RayTracing))
     {
         ValidateAndAddExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
         ValidateAndAddExtension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
         ValidateAndAddExtension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
         ValidateAndAddExtension(VK_KHR_RAY_QUERY_EXTENSION_NAME);
-
-        featuresRayTracingPipeline = { .rayTracingPipeline = true };
-
-        featuresRayQuery = { .pNext = &*featuresRayTracingPipeline, .rayQuery = true };
-
-        featuresAccelerationStructure = {
-            .pNext = &*featuresRayQuery,
-            .accelerationStructure = true,
-            .descriptorBindingAccelerationStructureUpdateAfterBind = true,
-        };
     }
 
-    ::vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR featuresUnifiedImageLayouts;
-    featuresUnifiedImageLayouts.pNext = featuresAccelerationStructure ? &featuresAccelerationStructure : nullptr;
-    featuresUnifiedImageLayouts.unifiedImageLayouts = true;
-
-    // Allows for mutable descriptors
-    ::vk::PhysicalDeviceMutableDescriptorTypeFeaturesEXT featuresMutableDescriptors;
-    featuresMutableDescriptors.pNext = &featuresUnifiedImageLayouts;
-    featuresMutableDescriptors.mutableDescriptorType = true;
-
-    // Allows for the use of SV_Barycentrics in shaders.
-    ::vk::PhysicalDeviceFragmentShaderBarycentricFeaturesKHR featuresFragmentShaderBarycentric;
-    featuresFragmentShaderBarycentric.pNext = &featuresMutableDescriptors;
-    featuresFragmentShaderBarycentric.fragmentShaderBarycentric = true;
-
-    ::vk::PhysicalDeviceCustomBorderColorFeaturesEXT featuresCustomBorderColor;
-    featuresCustomBorderColor.pNext = &featuresFragmentShaderBarycentric;
-    featuresCustomBorderColor.customBorderColors = true;
-    featuresCustomBorderColor.customBorderColorWithoutFormat = true;
-
-    // Allows for using derivatives in compute shaders.
-    ::vk::PhysicalDeviceComputeShaderDerivativesFeaturesKHR featuresComputeShaderDerivatives;
-    featuresComputeShaderDerivatives.pNext = &featuresCustomBorderColor;
-    featuresComputeShaderDerivatives.computeDerivativeGroupQuads = true;
-    featuresComputeShaderDerivatives.computeDerivativeGroupLinear = false;
-
-    // Allows for null descriptors, robust access makes out of bounds accesses in shaders deterministic (return 0).
-    // This better matches dx12 behavior.
-    ::vk::PhysicalDeviceRobustness2FeaturesKHR featuresRobustness;
-    featuresRobustness.pNext = &featuresComputeShaderDerivatives;
-    featuresRobustness.robustBufferAccess2 = true;
-    featuresRobustness.robustImageAccess2 = true;
-    featuresRobustness.nullDescriptor = true;
-
-    ::vk::PhysicalDeviceVulkan13Features features13;
-    features13.pNext = &featuresRobustness;
-    features13.synchronization2 = true;
-    features13.dynamicRendering = true;
-    // Allows for the use of "discard" in shaders.
-    features13.shaderDemoteToHelperInvocation = true;
-
-    ::vk::PhysicalDeviceVulkan12Features features12;
-    features12.pNext = &features13;
-    features12.timelineSemaphore = true;
-    features12.descriptorIndexing = true;
-    features12.runtimeDescriptorArray = true;
-    features12.shaderSampledImageArrayNonUniformIndexing = true;
-    features12.descriptorBindingPartiallyBound = true;
-    features12.descriptorBindingUniformBufferUpdateAfterBind = true;
-    features12.descriptorBindingStorageBufferUpdateAfterBind = true;
-    features12.descriptorBindingSampledImageUpdateAfterBind = true;
-    features12.descriptorBindingStorageImageUpdateAfterBind = true;
-    features12.bufferDeviceAddress = true;
-    features12.vulkanMemoryModel = true;
-    features12.vulkanMemoryModelDeviceScope = true;
-    features12.storageBuffer8BitAccess = true;
-    features12.scalarBlockLayout = true;
-    features12.separateDepthStencilLayouts = true;
-
-    ::vk::PhysicalDeviceVulkan11Features features11;
-    features11.pNext = &features12;
-    // Compatibility built-in shader variables for DX12: BaseInstance, BaseVertex and DrawIndex.
-    // Required for certain HLSL/Slang SV_ intrinsics to work.
-    features11.shaderDrawParameters = true;
-    features11.storageBuffer16BitAccess = true;
+    if (GPhysicalDevice->IsFeatureSupported(Feature::MeshShader))
+    {
+        ValidateAndAddExtension(VK_EXT_MESH_SHADER_EXTENSION_NAME);
+    }
 
     auto physDeviceFeatures = physDevice.getFeatures();
     // Geometry shader being enabled forces SV_PrimitiveID to also be enabled!
     // Without this, the semantic doesn't work in pixel shaders.
     physDeviceFeatures.geometryShader = true;
 
-    ::vk::DeviceCreateInfo deviceCreateInfo{ .pNext = &features11,
-                                             .queueCreateInfoCount = static_cast<u32>(queueCreateInfos.size()),
-                                             .pQueueCreateInfos = queueCreateInfos.data(),
-                                             .enabledExtensionCount = static_cast<u32>(extensions.size()),
-                                             .ppEnabledExtensionNames = extensions.data(),
-                                             .pEnabledFeatures = &physDeviceFeatures };
+    ::vk::StructureChain deviceCreateInfoChain{
+        ::vk::DeviceCreateInfo{
+             .queueCreateInfoCount = static_cast<u32>(queueCreateInfos.size()),
+             .pQueueCreateInfos = queueCreateInfos.data(),
+             .enabledExtensionCount = static_cast<u32>(extensions.size()),
+             .ppEnabledExtensionNames = extensions.data(),
+             .pEnabledFeatures = &physDeviceFeatures
+        },
+        ::vk::PhysicalDeviceVulkan11Features {
+            // Compatibility built-in shader variables for DX12: BaseInstance, BaseVertex and DrawIndex.
+            // Required for certain HLSL/Slang SV_ intrinsics to work.
+            .storageBuffer16BitAccess = true,
+            .shaderDrawParameters = true,
+        },
+        ::vk::PhysicalDeviceVulkan12Features{
+            .storageBuffer8BitAccess = true,
+            .descriptorIndexing = true,
+            .shaderSampledImageArrayNonUniformIndexing = true,
+            .descriptorBindingUniformBufferUpdateAfterBind = true,
+            .descriptorBindingSampledImageUpdateAfterBind = true,
+            .descriptorBindingStorageImageUpdateAfterBind = true,
+            .descriptorBindingStorageBufferUpdateAfterBind = true,
+            .descriptorBindingPartiallyBound = true,
+            .runtimeDescriptorArray = true,
+            .scalarBlockLayout = true,
+            .separateDepthStencilLayouts = true,
+            .timelineSemaphore = true,
+            .bufferDeviceAddress = true,
+            .vulkanMemoryModel = true,
+            .vulkanMemoryModelDeviceScope = true,
+        },
+        ::vk::PhysicalDeviceVulkan13Features {
+            // Allows for the use of "discard" in shaders.
+            .shaderDemoteToHelperInvocation = true,
+            .synchronization2 = true,
+            .dynamicRendering = true,
+        },
+        // Allows for null descriptors, robust access makes out of bounds accesses in shaders deterministic (return 0).
+        // This better matches dx12 behavior.
+        ::vk::PhysicalDeviceRobustness2FeaturesKHR{
+            .robustBufferAccess2 = true,
+            .robustImageAccess2 = true,
+            .nullDescriptor = true,
+        },
+        // Allows for using derivatives in compute shaders.
+        ::vk::PhysicalDeviceComputeShaderDerivativesFeaturesKHR{
+            .computeDerivativeGroupQuads = true,
+            .computeDerivativeGroupLinear = false,
+        },
+        ::vk::PhysicalDeviceCustomBorderColorFeaturesEXT{
+            .customBorderColors = true,
+            .customBorderColorWithoutFormat = true,
+        },
+        // Allows for the use of SV_Barycentrics in shaders.
+        ::vk::PhysicalDeviceFragmentShaderBarycentricFeaturesKHR{
+            .fragmentShaderBarycentric = true,
+        },
+        // Allows for mutable descriptors
+        ::vk::PhysicalDeviceMutableDescriptorTypeFeaturesEXT{
+            .mutableDescriptorType = true,
+        },
+        ::vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR{
+            .unifiedImageLayouts = true,
+        },
+        ::vk::PhysicalDeviceMeshShaderFeaturesEXT{
+            .taskShader = true,
+            .meshShader = true,
+            .meshShaderQueries = true,
+        },
+        ::vk::PhysicalDeviceAccelerationStructureFeaturesKHR{
+            .accelerationStructure = true,
+            .descriptorBindingAccelerationStructureUpdateAfterBind = true,
+        },
+        ::vk::PhysicalDeviceRayTracingPipelineFeaturesKHR{
+            .rayTracingPipeline = true
+        },
+        ::vk::PhysicalDeviceRayQueryFeaturesKHR{
+            .rayQuery = true
+        }
+    };
 
-    device = VEX_VK_CHECK <<= physDevice.createDeviceUnique(deviceCreateInfo);
+    if (!GPhysicalDevice->IsFeatureSupported(Feature::RayTracing))
+    {
+        deviceCreateInfoChain.unlink<::vk::PhysicalDeviceRayTracingPipelineFeaturesKHR>();
+        deviceCreateInfoChain.unlink<::vk::PhysicalDeviceRayQueryFeaturesKHR>();
+        deviceCreateInfoChain.unlink<::vk::PhysicalDeviceAccelerationStructureFeaturesKHR>();
+    }
+
+    if (!GPhysicalDevice->IsFeatureSupported(Feature::MeshShader))
+    {
+        deviceCreateInfoChain.unlink<::vk::PhysicalDeviceMeshShaderFeaturesEXT>();
+    }
+
+    device = VEX_VK_CHECK <<= physDevice.createDeviceUnique(deviceCreateInfoChain.get<::vk::DeviceCreateInfo>());
     GDispatcherLifetime.SetDevice(*device);
 
     VEX_LOG(Info, "Created VK device with extensions:");

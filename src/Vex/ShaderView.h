@@ -14,6 +14,8 @@ enum class ShaderType : u8
 {
     // Graphics Pipeline Shaders
     VertexShader,
+    AmplificationShader,
+    MeshShader,
     PixelShader,
     // Compute Pipeline Shaders
     ComputeShader,
