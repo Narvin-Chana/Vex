@@ -1496,6 +1496,11 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(DrawDesc desc,
         cachedInputAssembly = desc.inputAssembly;
     }
 
+    EnqueueGlobalBarrier({ .srcSync = RHIBarrierSync::AllCommands,
+                           .dstSync = RHIBarrierSync::AllGraphics,
+                           .srcAccess = RHIBarrierAccess::MemoryWrite,
+                           .dstAccess = RHIBarrierAccess::VertexInputRead });
+
     return drawResources;
 }
 
