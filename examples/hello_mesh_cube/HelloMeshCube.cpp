@@ -52,7 +52,7 @@ static const vex::ShaderKey SlangPixelShaderKey{
 };
 
 HelloMeshCubeApplication::HelloMeshCubeApplication()
-    : ExampleApplication("HelloCubeApplication")
+    : ExampleApplication("HelloMeshCubeApplication")
 {
     graphics = std::make_unique<vex::Graphics>(vex::GraphicsCreateDesc{
         .platformWindow = { .windowHandle = GetPlatformWindowHandle(), .width = DefaultWidth, .height = DefaultHeight },
