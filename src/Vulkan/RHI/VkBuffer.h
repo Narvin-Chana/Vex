@@ -25,7 +25,7 @@ public:
 
     void AllocateBindlessHandle(RHIDescriptorPool& descriptorPool,
                                 BindlessHandle handle,
-                                const BufferViewDesc& desc) override;
+                                const BufferViewDesc& viewDesc) override;
     ::vk::Buffer GetNativeBuffer();
     ::vk::DeviceAddress GetDeviceAddress() const;
 

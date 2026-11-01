@@ -19,6 +19,5 @@ VEX_VK_DECLARE_ENUM_MAPPING(PolygonMode, PolygonMode, ::vk::PolygonMode, VkPolyg
 VEX_VK_DECLARE_ENUM_MAPPING_FLAGS(CullMode, CullMode, ::vk::CullMode, VkCullMode);
 
 ::vk::StencilOpState StencilOpStateToVkStencilOpState(DepthStencilState::StencilOpState op);
-void ValidateGraphicsPipeline(const GraphicsPSOKey& graphicsPipelineKey);
 
 } // namespace vex::vk::GraphicsPiplineUtils

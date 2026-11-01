@@ -1,7 +1,5 @@
 #include "VexTest.h"
 
-#include <cctype>
-#include <fstream>
 #include <sstream>
 #include <string>
 
