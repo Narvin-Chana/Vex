@@ -79,22 +79,22 @@ jobs:
     - name: Install Clang 22
       if: matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'clang'
       run: |
-        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-        
+        # apt-key was removed in apt 3.x; store the key in a keyring and reference it via signed-by.
+        sudo mkdir -p /etc/apt/keyrings
+        wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/keyrings/llvm.asc > /dev/null
+
         UBUNTU_CODENAME=$(lsb_release -cs)
-        sudo bash -c "cat > /etc/apt/sources.list.d/llvm-20.list << EOF
-        deb http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-20 main
-        deb-src http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-20 main
-        EOF"
-        
+        echo "deb [signed-by=/etc/apt/keyrings/llvm.asc] http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-22 main" \
+          | sudo tee /etc/apt/sources.list.d/llvm-22.list
+
         sudo apt-get update
-        sudo apt-get install -y clang-20 libc++-20-dev libc++abi-20-dev
-        
-        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-20 100
-        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-20 100
-        sudo update-alternatives --set clang /usr/bin/clang-20
-        sudo update-alternatives --set clang++ /usr/bin/clang++-20
-    
+        sudo apt-get install -y clang-22 libc++-22-dev libc++abi-22-dev
+
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-22 100
+        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-22 100
+        sudo update-alternatives --set clang /usr/bin/clang-22
+        sudo update-alternatives --set clang++ /usr/bin/clang++-22
+
         clang --version
         clang++ --version
 
