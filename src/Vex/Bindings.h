@@ -80,7 +80,7 @@ struct BufferBinding
     // Note for the byteSize field:
     //  - When using (RW)ByteAddressBuffer usage the range must be a multiple of 16 bytes
     BufferRegion region;
-    // Optional: Stride of the buffer in bytes, required when using (RW)StructuredBuffer usage.
+    // Stride of the buffer in bytes, required to be non-zero when using (RW)StructuredBuffer usage.
     u32 strideByteSize = 0;
 
     // firstElement and elementCount represent strideByteSize multiples on the buffer

@@ -228,9 +228,6 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureViewDesc& view, R
     }
 
     ::vk::ImageViewUsageCreateInfo viewUsageInfo{ .usage = GetImageUsageFromView(view) };
-    // If creating an sRGB view, it can't have storage usage.
-    VEX_ASSERT(!view.isSRGB || !(viewUsageInfo.usage & ::vk::ImageUsageFlagBits::eStorage),
-               "An sRGB view cannot have storage usage (aka UAV usage).");
 
     const ::vk::ImageViewCreateInfo viewCreate{
         .pNext = &viewUsageInfo, 
@@ -279,10 +276,6 @@ BindlessHandle VkTexture::GetOrCreateBindlessView(const TextureViewDesc& view, R
         aspectFlags |= ::vk::ImageAspectFlagBits::eDepth;
     if (subresourceAspects & TextureAspect::Stencil)
         aspectFlags |= ::vk::ImageAspectFlagBits::eStencil;
-
-    // If creating an sRGB view, it can't have storage usage.
-    VEX_ASSERT(!view.isSRGB || !(viewUsageInfo.usage & ::vk::ImageUsageFlagBits::eStorage),
-               "An sRGB view cannot have storage usage (aka UAV usage).");
 
     const ::vk::ImageViewCreateInfo viewCreate{ 
         .pNext = &viewUsageInfo, 
