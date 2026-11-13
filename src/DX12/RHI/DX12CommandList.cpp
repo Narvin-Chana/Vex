@@ -3,6 +3,7 @@
 #include <optional>
 
 #include <Vex/Logger.h>
+#include <Vex/PhysicalDevice.h>
 #include <Vex/Texture.h>
 #include <Vex/Utility/Algorithms.h>
 #include <Vex/Utility/ByteUtils.h>
@@ -233,8 +234,32 @@ void DX12CommandList::SetInputAssembly(InputAssembly inputAssembly)
     commandList->IASetPrimitiveTopology(GraphicsPipeline::GetDX12PrimitiveTopologyFromInputAssembly(inputAssembly));
 }
 
+void DX12CommandList::SetBlendConstants(std::array<float, 4> colorBlendConstants)
+{
+    commandList->OMSetBlendFactor(colorBlendConstants.data());
+}
+
+void DX12CommandList::SetStencilReference(u8 frontStencilReference, u8 backStencilReference)
+{
+    if (frontStencilReference == backStencilReference)
+    {
+        commandList->OMSetStencilRef(frontStencilReference);
+        return;
+    }
+
+    VEX_CHECK(GPhysicalDevice->SupportsIndependentFrontAndBackStencilRef(),
+              "Your GPU does not support independent front and back stencil references, both references must be "
+              "equal.");
+    commandList->OMSetFrontAndBackStencilRef(frontStencilReference, backStencilReference);
+}
+
+void DX12CommandList::SetDepthBounds(float minDepthBounds, float maxDepthBounds)
+{
+    commandList->OMSetDepthBounds(minDepthBounds, maxDepthBounds);
+}
+
 RHITextureState DX12CommandList::GetClearTextureBarrierState(const TextureDesc& desc,
-                                                             Span<const TextureClearRect> clearRects)
+                                                             [[maybe_unused]] Span<const TextureClearRect> clearRects)
 {
     const bool isDS = desc.usage & TextureUsage::DepthStencil;
     return {

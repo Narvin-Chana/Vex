@@ -41,6 +41,10 @@ bool DX12PhysicalDevice::IsFeatureSupported(Feature feature) const
         rayTracingSupported &= featureSupport.HighestShaderModel() >= D3D_SHADER_MODEL_6_3;
         return rayTracingSupported;
     }
+    case Feature::DepthBounds:
+        return featureSupport.DepthBoundsTestSupported();
+    case Feature::LogicOp:
+        return featureSupport.OutputMergerLogicOp();
     default:
         VEX_LOG(Fatal, "Unable to determine feature support for {}", feature);
         return false;
@@ -103,6 +107,16 @@ GPUDeviceType DX12PhysicalDevice::GetDeviceType() const
 bool DX12PhysicalDevice::SupportsTightAlignment() const
 {
     return featureSupport.TightAlignmentSupportTier() > D3D12_TIGHT_ALIGNMENT_TIER_NOT_SUPPORTED;
+}
+
+bool DX12PhysicalDevice::SupportsIndependentFrontAndBackStencilRef() const
+{
+    return featureSupport.IndependentFrontAndBackStencilRefMaskSupported();
+}
+
+bool DX12PhysicalDevice::SupportsAlphaBlendFactor() const
+{
+    return featureSupport.AlphaBlendFactorSupported();
 }
 
 bool DX12PhysicalDevice::SupportsMinimalRequirements() const

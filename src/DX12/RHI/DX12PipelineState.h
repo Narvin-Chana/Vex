@@ -25,6 +25,7 @@ public:
         VEX_HASH_COMBINE(seed, key.meshShader);
         VEX_HASH_COMBINE(seed, key.amplificationShader);
         VEX_HASH_COMBINE(seed, key.inputAssembly);
+        VEX_HASH_COMBINE(seed, key.restartIndexFormat);
         VEX_HASH_COMBINE(seed, key.rasterizerState);
         VEX_HASH_COMBINE(seed, key.depthStencilState);
         VEX_HASH_COMBINE(seed, key.colorBlendState);
@@ -44,13 +45,12 @@ public:
 
     virtual std::unique_ptr<RHIGraphicsPipelineState> Cleanup() override;
 
-    // Verifies that the key does not contain fields with non-default values for features which DX12 does not support.
-    // Clears the unused fields which allows for changes to these fields to not impact the hash of the structure.
-    static void ClearUnsupportedKeyFields(Key& key);
-
     ComPtr<ID3D12PipelineState> graphicsPSO;
 
 private:
+    CD3DX12_PIPELINE_STATE_STREAM6 CreatePipelineStateStream(RHIResourceLayout& resourceLayout) const;
+    void CreatePipelineState(CD3DX12_PIPELINE_STATE_STREAM6& stream, RHIResourceLayout& resourceLayout);
+
     ComPtr<DX12Device> device;
 };
 

@@ -189,6 +189,28 @@ void VkCommandList::SetInputAssembly(InputAssembly inputAssembly)
     commandBuffer->setPrimitiveTopology(GraphicsPiplineUtils::InputTopologyToVkTopology(inputAssembly.topology));
 }
 
+void VkCommandList::SetBlendConstants(std::array<float, 4> colorBlendConstants)
+{
+    commandBuffer->setBlendConstants(colorBlendConstants.data());
+}
+
+void VkCommandList::SetStencilReference(u8 frontStencilReference, u8 backStencilReference)
+{
+    if (frontStencilReference == backStencilReference)
+    {
+        commandBuffer->setStencilReference(::vk::StencilFaceFlagBits::eFrontAndBack, frontStencilReference);
+        return;
+    }
+
+    commandBuffer->setStencilReference(::vk::StencilFaceFlagBits::eFront, frontStencilReference);
+    commandBuffer->setStencilReference(::vk::StencilFaceFlagBits::eBack, backStencilReference);
+}
+
+void VkCommandList::SetDepthBounds(float minDepthBounds, float maxDepthBounds)
+{
+    commandBuffer->setDepthBounds(minDepthBounds, maxDepthBounds);
+}
+
 RHITextureState VkCommandList::GetClearTextureBarrierState(const TextureDesc& desc,
                                                            Span<const TextureClearRect> clearRects)
 {

@@ -263,7 +263,8 @@ private:
     std::optional<RHIDrawResources> PrepareDrawCall(DrawDesc desc,
                                                     const DrawResourceBinding& drawBindings,
                                                     ConstantBinding constants,
-                                                    Span<const ResourceBinding> trackedResources);
+                                                    Span<const ResourceBinding> trackedResources,
+                                                    std::optional<IndexFormat> indexFormat = std::nullopt);
 
     std::optional<RHIDrawResources> PrepareDispatchMeshCall(DispatchMeshDesc desc,
                                                             const DrawResourceBinding& drawBindings,

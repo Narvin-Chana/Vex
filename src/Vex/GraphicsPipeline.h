@@ -1,7 +1,6 @@
 #pragma once
 
 #include <array>
-#include <vector>
 
 #include <Vex/Containers/InlineVector.h>
 #include <Vex/Formats.h>
@@ -14,7 +13,6 @@ namespace vex
 
 enum class IndexFormat : u8
 {
-    // TODO(https://trello.com/c/Hqp2C5DI): Add U16 index format support.
     U16 = 16,
     U32 = 32,
 };
@@ -31,7 +29,7 @@ enum class InputTopology : u8
 struct InputAssembly
 {
     InputTopology topology = InputTopology::TriangleList;
-    bool primitiveRestartEnabled = false; // Vulkan only
+    bool primitiveRestartEnabled = false;
 
     constexpr bool operator==(const InputAssembly& other) const = default;
 };
@@ -46,14 +44,7 @@ enum class CullMode : u8
 enum class PolygonMode : u8
 {
     Fill,
-    Line,  // Vulkan only
-    Point, // Vulkan only
-};
-
-enum class FillMode : u8
-{
-    Wireframe,
-    Solid,
+    Line,
 };
 
 enum class Winding : u8
@@ -64,8 +55,7 @@ enum class Winding : u8
 
 struct RasterizerState
 {
-    bool rasterizerDiscardEnabled = false;
-    bool depthClampEnabled = false; // Vulkan only
+    bool depthClampEnabled = false;
     PolygonMode polygonMode = PolygonMode::Fill;
     CullMode cullMode = CullMode::Back;
     Winding winding = Winding::CounterClockwise;
@@ -73,7 +63,6 @@ struct RasterizerState
     float depthBiasConstantFactor = 0;
     float depthBiasClamp = 0;
     float depthBiasSlopeFactor = 0;
-    float lineWidth = 0; // Vulkan only
 
     constexpr bool operator==(const RasterizerState& other) const = default;
 };
@@ -114,8 +103,8 @@ struct DepthStencilState
 {
     bool depthTestEnabled = false;
     bool depthWriteEnabled = false;
-    CompareOp depthCompareOp = CompareOp::Never;
-    bool depthBoundsTestEnabled = false; // Vulkan only
+    CompareOp depthCompareOp = CompareOp::Always;
+    bool depthBoundsTestEnabled = false;
     bool stencilTestEnabled = false;
     struct StencilOpState
     {
@@ -123,23 +112,19 @@ struct DepthStencilState
         StencilOp passOp = StencilOp::Keep;
         StencilOp depthFailOp = StencilOp::Keep;
         CompareOp compareOp = CompareOp::Always;
-        u32 readMask = 0;  // Only u8 in DX12
-        u32 writeMask = 0; // Only u8 in DX12
-        u32 reference = 0; // Vulkan only
+        u8 readMask = 0xFF;
+        u8 writeMask = 0xFF;
 
         constexpr bool operator==(const StencilOpState& other) const = default;
     };
     StencilOpState front;
     StencilOpState back;
-    float minDepthBounds = 0; // Vulkan only
-    float maxDepthBounds = 0; // Vulkan only
 
     constexpr bool operator==(const DepthStencilState& other) const = default;
 };
 
 // See the following link for an explanation of each step:
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkLogicOp.html#_description
-// This is a Vulkan-only concept.
 enum class LogicOp : u8
 {
     Clear,
@@ -214,12 +199,12 @@ VEX_ENUM_FLAG_BITS(ColorWriteMask);
 
 // clang-format on
 
-static constexpr u32 GMaxSimultaneousRenderTargetCount = 8;
+inline constexpr u32 GMaxSimultaneousRenderTargetCount = 8;
 
 struct ColorBlendState
 {
-    bool logicOpEnabled = false;      // Vulkan only
-    LogicOp logicOp = LogicOp::Clear; // Vulkan only
+    bool logicOpEnabled = false;
+    LogicOp logicOp = LogicOp::Clear;
 
     struct ColorBlendAttachment
     {
@@ -237,7 +222,6 @@ struct ColorBlendState
 
     // One blend attachment per render target.
     InlineVector<ColorBlendAttachment, GMaxSimultaneousRenderTargetCount> attachments;
-    std::array<float, 4> blendConstants{};
 
     constexpr bool operator==(const ColorBlendState& other) const = default;
 };
@@ -246,7 +230,7 @@ struct RenderTargetState
 {
     struct ColorFormat
     {
-        TextureFormat format;
+        TextureFormat format = TextureFormat::UNKNOWN;
         bool isSRGB = false;
 
         constexpr bool operator==(const ColorFormat& other) const = default;
@@ -257,16 +241,31 @@ struct RenderTargetState
     constexpr bool operator==(const RenderTargetState& other) const = default;
 };
 
+// Contains state that is dynamic on all supported APIs and which can be changed without a PSO recompilation.
+struct DynamicState
+{
+    // Color blend constants
+    std::array<float, 4> blendConstants{ 1, 1, 1, 1 };
+
+    u8 frontStencilReference = 0;
+    u8 backStencilReference = 0;
+
+    float minDepthBounds = 0;
+    float maxDepthBounds = 1;
+
+    constexpr bool operator==(const DynamicState& other) const = default;
+};
+
 } // namespace vex
 
 // clang-format off
 
 VEX_MAKE_HASHABLE(vex::InputAssembly,
     VEX_HASH_COMBINE(seed, obj.topology);
+    VEX_HASH_COMBINE(seed, obj.primitiveRestartEnabled);
 );
 
 VEX_MAKE_HASHABLE(vex::RasterizerState,
-    VEX_HASH_COMBINE(seed, obj.rasterizerDiscardEnabled);
     VEX_HASH_COMBINE(seed, obj.depthClampEnabled);
     VEX_HASH_COMBINE(seed, obj.polygonMode);
     VEX_HASH_COMBINE(seed, obj.cullMode);
@@ -275,7 +274,6 @@ VEX_MAKE_HASHABLE(vex::RasterizerState,
     VEX_HASH_COMBINE(seed, obj.depthBiasConstantFactor);
     VEX_HASH_COMBINE(seed, obj.depthBiasClamp);
     VEX_HASH_COMBINE(seed, obj.depthBiasSlopeFactor);
-    VEX_HASH_COMBINE(seed, obj.lineWidth);
 );
 
 VEX_MAKE_HASHABLE(vex::DepthStencilState::StencilOpState,
@@ -285,7 +283,6 @@ VEX_MAKE_HASHABLE(vex::DepthStencilState::StencilOpState,
     VEX_HASH_COMBINE(seed, obj.compareOp);
     VEX_HASH_COMBINE(seed, obj.readMask);
     VEX_HASH_COMBINE(seed, obj.writeMask);
-    VEX_HASH_COMBINE(seed, obj.reference);
 );
 
 VEX_MAKE_HASHABLE(vex::DepthStencilState,
@@ -293,10 +290,9 @@ VEX_MAKE_HASHABLE(vex::DepthStencilState,
     VEX_HASH_COMBINE(seed, obj.depthWriteEnabled);
     VEX_HASH_COMBINE(seed, obj.depthCompareOp);
     VEX_HASH_COMBINE(seed, obj.depthBoundsTestEnabled);
+    VEX_HASH_COMBINE(seed, obj.stencilTestEnabled);
     VEX_HASH_COMBINE(seed, obj.front);
     VEX_HASH_COMBINE(seed, obj.back);
-    VEX_HASH_COMBINE(seed, obj.minDepthBounds);
-    VEX_HASH_COMBINE(seed, obj.maxDepthBounds);
 );
 
 VEX_MAKE_HASHABLE(vex::ColorBlendState::ColorBlendAttachment,
@@ -314,7 +310,6 @@ VEX_MAKE_HASHABLE(vex::ColorBlendState,
     VEX_HASH_COMBINE(seed, obj.logicOpEnabled);
     VEX_HASH_COMBINE(seed, obj.logicOp);
     VEX_HASH_COMBINE_CONTAINER(seed, obj.attachments);
-    VEX_HASH_COMBINE_CONTAINER(seed, obj.blendConstants);
 );
 
 VEX_MAKE_HASHABLE(vex::RenderTargetState::ColorFormat,
@@ -325,6 +320,14 @@ VEX_MAKE_HASHABLE(vex::RenderTargetState::ColorFormat,
 VEX_MAKE_HASHABLE(vex::RenderTargetState,
     VEX_HASH_COMBINE_CONTAINER(seed, obj.colorFormats);
     VEX_HASH_COMBINE(seed, obj.depthStencilFormat);
+);
+
+VEX_MAKE_HASHABLE(vex::DynamicState,
+    VEX_HASH_COMBINE_CONTAINER(seed, obj.blendConstants);
+    VEX_HASH_COMBINE(seed, obj.frontStencilReference);
+    VEX_HASH_COMBINE(seed, obj.backStencilReference);
+    VEX_HASH_COMBINE(seed, obj.minDepthBounds);
+    VEX_HASH_COMBINE(seed, obj.maxDepthBounds);
 );
 
 // clang-format on

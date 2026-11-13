@@ -54,6 +54,9 @@ public:
     virtual void SetLayout(RHIResourceLayout& layout) = 0;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) = 0;
     virtual void SetInputAssembly(InputAssembly inputAssembly) = 0;
+    virtual void SetBlendConstants(std::array<float, 4> colorBlendConstants) = 0;
+    virtual void SetStencilReference(u8 frontStencilReference, u8 backStencilReference) = 0;
+    virtual void SetDepthBounds(float minDepthBounds, float maxDepthBounds) = 0;
 
     virtual RHITextureState GetClearTextureBarrierState(const TextureDesc& desc,
                                                         Span<const TextureClearRect> clearRects) = 0;
