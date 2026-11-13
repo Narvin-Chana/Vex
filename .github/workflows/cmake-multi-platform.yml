@@ -153,7 +153,6 @@ jobs:
         choco install ninja
 
     - name: Configure CMake
-      if: matrix.cpp_library != 'libc++'
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -G Ninja
@@ -164,23 +163,8 @@ jobs:
         -DVEX_BUILD_EXAMPLES=ON
         -DVEX_BUILD_TESTS=ON
         -DVEX_ENABLE_SLANG=ON
-        ${{ matrix.graphics_api == 'directx12' && '-DVEX_GRAPHICS_BACKEND=DX12' || '' }}
-        ${{ matrix.graphics_api == 'vulkan' && '-DVEX_GRAPHICS_BACKEND=VULKAN' || '' }}
-        -S ${{ github.workspace }}
-
-    - name: Configure CMake
-      if: matrix.cpp_library == 'libc++'
-      run: >
-        cmake -B ${{ steps.strings.outputs.build-output-dir }}
-        -G Ninja
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -DVULKAN_SDK=${{ env.VULKAN_SDK }}
-        -DVEX_BUILD_EXAMPLES=ON
-        -DVEX_BUILD_TESTS=ON
-        -DVEX_ENABLE_SLANG=ON
-        -DCMAKE_CXX_FLAGS='-stdlib=libc++'
+        -DCMAKE_CXX_SCAN_FOR_MODULES=OFF
+        ${{ matrix.cpp_library == 'libc++' && '-DCMAKE_CXX_FLAGS=-stdlib=libc++' || '' }}
         ${{ matrix.graphics_api == 'directx12' && '-DVEX_GRAPHICS_BACKEND=DX12' || '' }}
         ${{ matrix.graphics_api == 'vulkan' && '-DVEX_GRAPHICS_BACKEND=VULKAN' || '' }}
         -S ${{ github.workspace }}
