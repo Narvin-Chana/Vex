@@ -206,7 +206,8 @@ CD3DX12_PIPELINE_STATE_STREAM6 DX12GraphicsPipelineState::CreatePipelineStateStr
                                                                    : D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFFFFFF;
     }
 
-    const std::array<DXGI_FORMAT, 8> rtvFormats = GetRTVFormatsFromRenderTargetState(key.renderTargetState);
+    const std::array<DXGI_FORMAT, GMaxSimultaneousRenderTargetCount> rtvFormats =
+        GetRTVFormatsFromRenderTargetState(key.renderTargetState);
     // SRGB formats for depth stencil makes no sense.
     static constexpr bool AllowSRGBFormat = false;
 
@@ -218,13 +219,13 @@ CD3DX12_PIPELINE_STATE_STREAM6 DX12GraphicsPipelineState::CreatePipelineStateStr
     stream.DepthStencilState = GetDX12DepthStencilStateFromDepthStencilState(key.depthStencilState);
     stream.DSVFormat = TextureFormatToDXGI(key.renderTargetState.depthStencilFormat, AllowSRGBFormat);
     stream.RasterizerState = GetDX12RasterizerStateFromRasterizerState(key.rasterizerState);
-    stream.RTVFormats = CD3DX12_RT_FORMAT_ARRAY(rtvFormats.data(),
-                                                GetNumRenderTargetsFromRenderTargetState(key.renderTargetState));
+    stream.RTVFormats =
+        CD3DX12_RT_FORMAT_ARRAY(rtvFormats.data(), GetNumRenderTargetsFromRenderTargetState(key.renderTargetState));
     return stream;
 }
 
 void DX12GraphicsPipelineState::CreatePipelineState(CD3DX12_PIPELINE_STATE_STREAM6& stream,
-                                                    RHIResourceLayout& resourceLayout)
+                                                    const RHIResourceLayout& resourceLayout)
 {
     const D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
         .SizeInBytes = sizeof(stream),

@@ -49,7 +49,7 @@ public:
 
 private:
     CD3DX12_PIPELINE_STATE_STREAM6 CreatePipelineStateStream(RHIResourceLayout& resourceLayout) const;
-    void CreatePipelineState(CD3DX12_PIPELINE_STATE_STREAM6& stream, RHIResourceLayout& resourceLayout);
+    void CreatePipelineState(CD3DX12_PIPELINE_STATE_STREAM6& stream, const RHIResourceLayout& resourceLayout);
 
     ComPtr<DX12Device> device;
 };
