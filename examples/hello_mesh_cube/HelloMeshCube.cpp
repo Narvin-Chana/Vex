@@ -167,11 +167,6 @@ void HelloMeshCubeApplication::Run()
             slangDrawDesc.amplificationShader = shaderCompiler.GetShaderView(SlangAmplificationShaderKey);
             slangDrawDesc.meshShader = shaderCompiler.GetShaderView(SlangMeshShaderKey);
 
-            // ...and resources.
-            vex::BufferBinding indexBufferBinding{
-                .buffer = indexBuffer,
-                .strideByteSize = static_cast<vex::u32>(sizeof(vex::u32)),
-            };
             vex::DepthStencilBinding depthStencilBinding{ .texture = depthTexture };
 
             // Setup our rendering pass.

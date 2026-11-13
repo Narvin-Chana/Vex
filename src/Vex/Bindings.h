@@ -160,15 +160,7 @@ template <class T>
 IndexBufferBinding IndexBufferBinding::Create(const Buffer& buffer, u64 firstElement, std::optional<u64> elementCount)
 {
     static_assert(sizeof(T) == sizeof(u16) || sizeof(T) == sizeof(u32), "Type must be a supported index type.");
-    return {
-        .buffer = buffer,
-        .region =
-            BufferRegion{
-                .byteOffset = firstElement * sizeof(T),
-                .byteSize = elementCount ? *elementCount * sizeof(T) : GBufferWholeSize,
-            },
-        .format = static_cast<IndexFormat>(sizeof(T) * 8),
-    };
+    return Create(buffer, static_cast<IndexFormat>(sizeof(T) * 8), firstElement, elementCount);
 }
 
 struct TextureBinding
@@ -280,7 +272,7 @@ struct DrawIndexedResourceBinding
     // Which textures to render to.
     Span<const RenderTargetBinding> renderTargets;
     // Depth(-stencil) buffer to use for depth testing (optional).
-    DepthStencilBinding* depthStencil = nullptr;
+    const DepthStencilBinding* depthStencil = nullptr;
     // Index buffer used for DrawIndexed.
     IndexBufferBinding indexBuffer;
 };

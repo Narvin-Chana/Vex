@@ -70,6 +70,7 @@ struct BufferViewDesc
         default:
             break;
         }
+        VEX_ASSERT(strideByteSize != 0);
         return strideByteSize;
     }
 

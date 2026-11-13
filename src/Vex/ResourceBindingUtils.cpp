@@ -38,6 +38,27 @@ RHIBufferView ResourceBindingUtils::GetRHIBufferView(Graphics& graphics, const B
     };
 }
 
+RHIBufferView ResourceBindingUtils::GetRHIBufferView(Graphics& graphics,
+                                                     const AccelerationStructure& accelerationStructure)
+{
+    RHIAccelerationStructure& as = graphics.GetRHIAccelerationStructure(accelerationStructure.handle);
+    RHIBuffer& buffer = as.GetRHIBuffer();
+    return RHIBufferView{
+        .buffer = buffer,
+        .view =
+            BufferViewDesc{
+                .usage = BufferBindingUsage::Invalid,
+                .region =
+                    BufferRegion{
+                        .byteOffset = 0,
+                        .byteSize = buffer.GetDesc().byteSize,
+                    },
+                .strideByteSize = 0,
+                .isAccelerationStructure = true,
+            },
+    };
+}
+
 RHIIndexBufferView ResourceBindingUtils::GetRHIIndexBufferView(Graphics& graphics,
                                                                const IndexBufferBinding& indexBufferBinding)
 {

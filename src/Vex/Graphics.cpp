@@ -391,9 +391,10 @@ BindlessHandle Graphics::GetBindlessHandle(const BufferBinding& bindlessResource
 
 BindlessHandle Graphics::GetBindlessHandle(const AccelerationStructure& accelerationStructure)
 {
-    return GetRHIAccelerationStructure(accelerationStructure.handle)
-        .GetRHIBuffer()
-        .GetOrCreateBindlessView({ .isAccelerationStructure = true }, *descriptorPool);
+    // (No specific validation required for acceleration structures)
+
+    const auto [buffer, view] = ResourceBindingUtils::GetRHIBufferView(*this, accelerationStructure);
+    return buffer->GetOrCreateBindlessView(view, *descriptorPool);
 }
 
 void Graphics::GetBindlessHandles(Span<const ResourceBinding> bindlessResources, Span<BindlessHandle> out)

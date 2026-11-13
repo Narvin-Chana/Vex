@@ -15,6 +15,7 @@ struct ResourceBindingUtils
 {
     static RHITextureView GetRHITextureView(Graphics& graphics, const TextureBinding& textureBinding);
     static RHIBufferView GetRHIBufferView(Graphics& graphics, const BufferBinding& bufferBinding);
+    static RHIBufferView GetRHIBufferView(Graphics& graphics, const AccelerationStructure& accelerationStructure);
     static RHIIndexBufferView GetRHIIndexBufferView(Graphics& graphics, const IndexBufferBinding& indexBufferBinding);
 
     // Collects draw resources from a set of render targets and an optional depth stencil.

@@ -122,7 +122,7 @@ void ValidateBufferBinding(const BufferBinding& binding, Flags<BufferUsage> vali
                   "ByteAddressBuffer offsets must be a multiple of {} bytes (elements are {} bytes wide)",
                   buffer.desc.name,
                   ByteAddressBufferOffsetMultiple,
-                  ByteAddressBufferOffsetMultiple);
+                  binding.region.byteOffset);
 
         VEX_CHECK(binding.region.byteSize == GBufferWholeSize ||
                       binding.region.byteSize % ByteAddressBufferOffsetMultiple == 0,
@@ -130,7 +130,7 @@ void ValidateBufferBinding(const BufferBinding& binding, Flags<BufferUsage> vali
                   "ByteAddressBuffer range must be a multiple of {} bytes (elements are {} bytes wide)",
                   buffer.desc.name,
                   ByteAddressBufferOffsetMultiple,
-                  ByteAddressBufferOffsetMultiple);
+                  binding.region.byteSize);
     }
 }
 
@@ -240,11 +240,13 @@ void ValidateDepthStencilBinding(const DepthStencilBinding& binding)
 
 void ValidateDrawResourceBindings(const DrawResourceBinding& binding, bool hasPixelShader)
 {
-    VEX_CHECK(hasPixelShader || (!hasPixelShader && binding.renderTargets.empty()),
+    VEX_CHECK(hasPixelShader || binding.renderTargets.empty(),
               "Invalid draw resources: When the pixel shader is absent, no render targets should be provided");
     VEX_CHECK(binding.renderTargets.size() <= GMaxSimultaneousRenderTargetCount,
-              "Invalid draw resource bindings: Cannot bind more than 8 render targets simultaneously. You attempted to "
+              "Invalid draw resource bindings: Cannot bind more than {} render targets "
+              "simultaneously. You attempted to "
               "bind {} render targets.",
+              GMaxSimultaneousRenderTargetCount,
               binding.renderTargets.size());
 
     // Every bound texture and depth-stencil must have the same sliceCount (this is considered as a multi-render target

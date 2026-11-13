@@ -38,9 +38,6 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
     if (desc.usage & BufferUsage::AccelerationStructure)
     {
         bufferDesc.Flags |= D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE;
-        VEX_ASSERT(bufferDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-                   "Acceleration Structure buffer usage flag also requires the ShaderReadWrite flag!");
-
         // RT acceleration structures have a higher alignment requirement, for some reason GetResourceAllocationInfo3,
         // does not return the correct alignment.
         forcedAlignment = std::max<u64>(forcedAlignment, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
@@ -48,9 +45,6 @@ DX12Buffer::DX12Buffer(ComPtr<DX12Device>& device, RHIAllocator& allocator, cons
 
     if (desc.usage & BufferUsage::Scratch)
     {
-        VEX_ASSERT(bufferDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-                   "Scratch buffer usage flag also requires the ShaderReadWrite flag!");
-
         // RT scratch buffers have a higher alignment requirement, for some reason GetResourceAllocationInfo3,
         // does not return the correct alignment.
         forcedAlignment = std::max<u64>(forcedAlignment, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
