@@ -137,7 +137,7 @@ function(vex_setup_runtime TARGET)
             "${VEX_ROOT_DIR}/src/DX12/DX12AgilitySDK.cpp"
         )
 
-        message(STATUS "D3D12 Agility SDK ${DX_AGILITY_SDK_VERSION} will be deployed with ${TARGET}")
+        message(STATUS "D3D12 Agility SDK ${AGILITY_VERSION} will be deployed with ${TARGET}")
     endif()
 
     # Copy Vex shader files (skip if shaders are embedded in the Vex binary)

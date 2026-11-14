@@ -69,7 +69,11 @@ void VkGraphicsPipelineState::Compile(const ShaderView& vertexShader,
         ::vk::DynamicState::eViewportWithCount,
         ::vk::DynamicState::eScissorWithCount,
         ::vk::DynamicState::ePrimitiveTopology,
-        ::vk::DynamicState::ePrimitiveRestartEnable };
+        ::vk::DynamicState::ePrimitiveRestartEnable,
+        ::vk::DynamicState::eBlendConstants,
+        ::vk::DynamicState::eStencilReference,
+        ::vk::DynamicState::eDepthBounds,
+    };
 
     CreateGraphicsPipeline(resourceLayout, stages, dynamicStates);
 }
@@ -137,7 +141,13 @@ void VkGraphicsPipelineState::Compile(const ShaderView& meshShader,
                                                               .pName = amplificationShaderEntryPoint->c_str() });
     }
 
-    static constexpr std::array dynamicStates = { ::vk::DynamicState::eViewportWithCount, ::vk::DynamicState::eScissorWithCount };
+    static constexpr std::array dynamicStates = {
+        ::vk::DynamicState::eViewportWithCount,
+        ::vk::DynamicState::eScissorWithCount,
+        ::vk::DynamicState::eBlendConstants,
+        ::vk::DynamicState::eStencilReference,
+        ::vk::DynamicState::eDepthBounds,
+    };
 
     CreateGraphicsPipeline(resourceLayout, stages, dynamicStates);
 }
@@ -165,7 +175,6 @@ void VkGraphicsPipelineState::CreateGraphicsPipeline(RHIResourceLayout& resource
 
     ::vk::PipelineRasterizationStateCreateInfo rasterCI{
         .depthClampEnable = key.rasterizerState.depthClampEnabled,
-        .rasterizerDiscardEnable = key.rasterizerState.rasterizerDiscardEnabled,
         .polygonMode = GraphicsPiplineUtils::PolygonModeToVkPolygonMode(key.rasterizerState.polygonMode),
         .cullMode = GraphicsPiplineUtils::CullModeToVkCullMode(key.rasterizerState.cullMode),
         .frontFace = GraphicsPiplineUtils::WindingToVkFrontFace(key.rasterizerState.winding),
@@ -173,7 +182,8 @@ void VkGraphicsPipelineState::CreateGraphicsPipeline(RHIResourceLayout& resource
         .depthBiasConstantFactor = key.rasterizerState.depthBiasConstantFactor,
         .depthBiasClamp = key.rasterizerState.depthBiasClamp,
         .depthBiasSlopeFactor = key.rasterizerState.depthBiasSlopeFactor,
-        .lineWidth = key.rasterizerState.lineWidth,
+        // Wide lines are not supported in DX12, so we always use the default width.
+        .lineWidth = 1.0f,
     };
 
     ::vk::PipelineMultisampleStateCreateInfo multisamplingStateCI{
@@ -193,8 +203,7 @@ void VkGraphicsPipelineState::CreateGraphicsPipeline(RHIResourceLayout& resource
         .stencilTestEnable = key.depthStencilState.stencilTestEnabled,
         .front = GraphicsPiplineUtils::StencilOpStateToVkStencilOpState(key.depthStencilState.front),
         .back = GraphicsPiplineUtils::StencilOpStateToVkStencilOpState(key.depthStencilState.back),
-        .minDepthBounds = key.depthStencilState.minDepthBounds,
-        .maxDepthBounds = key.depthStencilState.maxDepthBounds,
+        // Depth bounds are dynamic state (see RHICommandList::SetDepthBounds).
     };
 
     std::vector<::vk::PipelineColorBlendAttachmentState> colorAttachments(key.colorBlendState.attachments.size());
@@ -220,7 +229,7 @@ void VkGraphicsPipelineState::CreateGraphicsPipeline(RHIResourceLayout& resource
         .logicOp = static_cast<::vk::LogicOp>(key.colorBlendState.logicOp),
         .attachmentCount = static_cast<u32>(colorAttachments.size()),
         .pAttachments = colorAttachments.data(),
-        .blendConstants = key.colorBlendState.blendConstants,
+        // Blend constants are dynamic state (see RHICommandList::SetBlendConstants).
     };
 
     std::vector<::vk::Format> attachmentFormats;

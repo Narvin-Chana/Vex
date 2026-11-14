@@ -133,7 +133,6 @@ void HelloMeshCubeApplication::Run()
             // Make the cube spin over time.
             const double currentTime = glfwGetTime();
 
-            // Scoped command context will submit commands automatically upon destruction.
             vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
 
             ctx.SetScissor(0, 0, width, height);

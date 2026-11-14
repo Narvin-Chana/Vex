@@ -155,85 +155,31 @@ void DX12GraphicsPipelineState::Compile(const ShaderView& vertexShader,
                                         const ShaderView* pixelShader,
                                         RHIResourceLayout& resourceLayout)
 {
-    using namespace GraphicsPipeline;
-
-    const auto vsBlob = vertexShader.bytecode;
-    const auto psBlob = pixelShader ? pixelShader->bytecode : Span<const byte>{};
-    D3D12_INPUT_LAYOUT_DESC layoutDesc{
-        // Vex does not support input layouts, use bindless to decode vertices instead.
-    };
-    std::array<DXGI_FORMAT, 8> rtvFormats = GetRTVFormatsFromRenderTargetState(key.renderTargetState);
-
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC desc{
-        .pRootSignature = resourceLayout.GetRootSignature().Get(),
-        .VS = CD3DX12_SHADER_BYTECODE(vsBlob.data(), vsBlob.size()),
-        .PS = pixelShader ? CD3DX12_SHADER_BYTECODE(psBlob.data(), psBlob.size()) : CD3DX12_SHADER_BYTECODE{},
-        .BlendState = GetDX12BlendStateFromColorBlendState(key.colorBlendState),
-        .SampleMask = UINT_MAX, // Vex does not support MSAA.
-        .RasterizerState = GetDX12RasterizerStateFromRasterizerState(key.rasterizerState),
-        .DepthStencilState = GetDX12DepthStencilStateFromDepthStencilState(key.depthStencilState),
-        .InputLayout = layoutDesc,
-        .PrimitiveTopologyType = GetDX12PrimitiveTopologyTypeFromInputAssembly(key.inputAssembly),
-        .NumRenderTargets = GetNumRenderTargetsFromRenderTargetState(key.renderTargetState),
-        .SampleDesc = { .Count = 1 },
-        .NodeMask = 0,
-        .Flags = D3D12_PIPELINE_STATE_FLAG_NONE,
-    };
-
-    std::copy_n(rtvFormats.data(), 8, desc.RTVFormats);
-    // SRGB formats for depth stencil makes no sense.
-    static constexpr bool AllowSRGBFormat = false;
-    desc.DSVFormat = TextureFormatToDXGI(key.renderTargetState.depthStencilFormat, AllowSRGBFormat);
-
-    chk << device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&graphicsPSO));
-
-    // Update versions for staleness purposes.
-    rootSignatureVersion = resourceLayout.version;
-
-#if !VEX_SHIPPING
-    chk << graphicsPSO->SetName(PlatformUtil::StringToWString(name).c_str());
-#endif
+    CD3DX12_PIPELINE_STATE_STREAM6 stream = CreatePipelineStateStream(resourceLayout);
+    stream.VS = CD3DX12_SHADER_BYTECODE(vertexShader.bytecode.data(), vertexShader.bytecode.size());
+    if (pixelShader)
+    {
+        stream.PS = CD3DX12_SHADER_BYTECODE(pixelShader->bytecode.data(), pixelShader->bytecode.size());
+    }
+    CreatePipelineState(stream, resourceLayout);
 }
+
 void DX12GraphicsPipelineState::Compile(const ShaderView& meshShader,
                                         const ShaderView* amplificationShader,
                                         const ShaderView* pixelShader,
                                         RHIResourceLayout& resourceLayout)
 {
-    using namespace GraphicsPipeline;
-
-    const auto msBlob = meshShader.bytecode;
-    const auto asBlob = amplificationShader ? amplificationShader->bytecode : Span<const byte>{};
-    const auto psBlob = pixelShader ? pixelShader->bytecode : Span<const byte>{};
-
-    D3DX12_MESH_SHADER_PIPELINE_STATE_DESC desc{
-        .pRootSignature = resourceLayout.GetRootSignature().Get(),
-        .AS = amplificationShader ? CD3DX12_SHADER_BYTECODE(asBlob.data(), asBlob.size()) : CD3DX12_SHADER_BYTECODE{},
-        .MS = CD3DX12_SHADER_BYTECODE(msBlob.data(), msBlob.size()),
-        .PS = pixelShader ? CD3DX12_SHADER_BYTECODE(psBlob.data(), psBlob.size()) : CD3DX12_SHADER_BYTECODE{},
-        .BlendState = GetDX12BlendStateFromColorBlendState(key.colorBlendState),
-        .SampleMask = UINT_MAX, // Vex does not support MSAA.
-        .RasterizerState = GetDX12RasterizerStateFromRasterizerState(key.rasterizerState),
-        .DepthStencilState = GetDX12DepthStencilStateFromDepthStencilState(key.depthStencilState),
-        .PrimitiveTopologyType = GetDX12PrimitiveTopologyTypeFromInputAssembly(key.inputAssembly),
-        .NumRenderTargets = GetNumRenderTargetsFromRenderTargetState(key.renderTargetState),
-        .SampleDesc = { .Count = 1 },
-        .NodeMask = 0,
-        .Flags = D3D12_PIPELINE_STATE_FLAG_NONE,
-    };
-
-    std::array<DXGI_FORMAT, 8> rtvFormats = GetRTVFormatsFromRenderTargetState(key.renderTargetState);
-    std::copy_n(rtvFormats.data(), 8, desc.RTVFormats);
-    // SRGB formats for depth stencil makes no sense.
-    static constexpr bool AllowSRGBFormat = false;
-    desc.DSVFormat = TextureFormatToDXGI(key.renderTargetState.depthStencilFormat, AllowSRGBFormat);
-
-    CD3DX12_PIPELINE_MESH_STATE_STREAM psoStream{ desc };
-
-    D3D12_PIPELINE_STATE_STREAM_DESC streamDesc = {};
-    streamDesc.SizeInBytes = sizeof(psoStream);
-    streamDesc.pPipelineStateSubobjectStream = &psoStream;
-
-    chk << device->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&graphicsPSO));
+    CD3DX12_PIPELINE_STATE_STREAM6 stream = CreatePipelineStateStream(resourceLayout);
+    stream.MS = CD3DX12_SHADER_BYTECODE(meshShader.bytecode.data(), meshShader.bytecode.size());
+    if (amplificationShader)
+    {
+        stream.AS = CD3DX12_SHADER_BYTECODE(amplificationShader->bytecode.data(), amplificationShader->bytecode.size());
+    }
+    if (pixelShader)
+    {
+        stream.PS = CD3DX12_SHADER_BYTECODE(pixelShader->bytecode.data(), pixelShader->bytecode.size());
+    }
+    CreatePipelineState(stream, resourceLayout);
 }
 
 std::unique_ptr<RHIGraphicsPipelineState> DX12GraphicsPipelineState::Cleanup()
@@ -248,20 +194,51 @@ std::unique_ptr<RHIGraphicsPipelineState> DX12GraphicsPipelineState::Cleanup()
     return cleanupPSO;
 }
 
-void DX12GraphicsPipelineState::ClearUnsupportedKeyFields(Key& key)
+CD3DX12_PIPELINE_STATE_STREAM6 DX12GraphicsPipelineState::CreatePipelineStateStream(
+    RHIResourceLayout& resourceLayout) const
 {
-    // Unsupported fields are forced to default in order to keep the key's hash consistent.
-    key.inputAssembly.primitiveRestartEnabled = true;
-    key.rasterizerState.depthClampEnabled = true;
-    key.rasterizerState.polygonMode = PolygonMode::Line;
-    key.rasterizerState.polygonMode = PolygonMode::Point;
-    key.rasterizerState.lineWidth = 0;
-    key.depthStencilState.front.reference = 0;
-    key.depthStencilState.back.reference = 0;
-    key.depthStencilState.minDepthBounds = 0;
-    key.depthStencilState.maxDepthBounds = 0;
-    key.colorBlendState.logicOpEnabled = true;
-    key.colorBlendState.logicOp = LogicOp::Clear;
+    using namespace GraphicsPipeline;
+
+    D3D12_INDEX_BUFFER_STRIP_CUT_VALUE stripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
+    if (key.inputAssembly.primitiveRestartEnabled)
+    {
+        stripCutValue = key.restartIndexFormat == IndexFormat::U16 ? D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF
+                                                                   : D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFFFFFF;
+    }
+
+    const std::array<DXGI_FORMAT, GMaxSimultaneousRenderTargetCount> rtvFormats =
+        GetRTVFormatsFromRenderTargetState(key.renderTargetState);
+    // SRGB formats for depth stencil makes no sense.
+    static constexpr bool AllowSRGBFormat = false;
+
+    CD3DX12_PIPELINE_STATE_STREAM6 stream;
+    stream.pRootSignature = resourceLayout.GetRootSignature().Get();
+    stream.IBStripCutValue = stripCutValue;
+    stream.PrimitiveTopologyType = GetDX12PrimitiveTopologyTypeFromInputAssembly(key.inputAssembly);
+    stream.BlendState = GetDX12BlendStateFromColorBlendState(key.colorBlendState);
+    stream.DepthStencilState = GetDX12DepthStencilStateFromDepthStencilState(key.depthStencilState);
+    stream.DSVFormat = TextureFormatToDXGI(key.renderTargetState.depthStencilFormat, AllowSRGBFormat);
+    stream.RasterizerState = GetDX12RasterizerStateFromRasterizerState(key.rasterizerState);
+    stream.RTVFormats =
+        CD3DX12_RT_FORMAT_ARRAY(rtvFormats.data(), GetNumRenderTargetsFromRenderTargetState(key.renderTargetState));
+    return stream;
+}
+
+void DX12GraphicsPipelineState::CreatePipelineState(CD3DX12_PIPELINE_STATE_STREAM6& stream,
+                                                    const RHIResourceLayout& resourceLayout)
+{
+    const D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
+        .SizeInBytes = sizeof(stream),
+        .pPipelineStateSubobjectStream = &stream,
+    };
+    chk << device->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&graphicsPSO));
+
+    // Update versions for staleness purposes.
+    rootSignatureVersion = resourceLayout.version;
+
+#if !VEX_SHIPPING
+    chk << graphicsPSO->SetName(PlatformUtil::StringToWString(name).c_str());
+#endif
 }
 
 DX12ComputePipelineState::DX12ComputePipelineState(const ComPtr<DX12Device>& device, std::string name, const Key& key)

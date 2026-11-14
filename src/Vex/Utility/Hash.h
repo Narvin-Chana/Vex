@@ -19,6 +19,11 @@ constexpr auto PurifyHashValue(const T& obj)
         // For enums, convert to underlying type
         return std::to_underlying(obj);
     }
+    else if constexpr (std::is_floating_point_v<T>)
+    {
+        // -0.0 and 0.0 compare equal, so they must hash equally.
+        return obj == T{} ? T{} : obj;
+    }
     else
     {
         // For primitive types and other hashable types

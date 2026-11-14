@@ -14,14 +14,6 @@
 namespace vex
 {
 
-class CommandContext;
-
-enum class ResourceLifetime : u8
-{
-    Static,  // Lives for many frames.
-    Dynamic, // Is valid only for the current frame.
-};
-
 enum class ResourceMemoryLocality : u8
 {
     GPUOnly,

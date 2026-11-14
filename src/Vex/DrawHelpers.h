@@ -15,6 +15,7 @@ struct DrawDesc
     RasterizerState rasterizerState;
     DepthStencilState depthStencilState;
     ColorBlendState colorBlendState;
+    DynamicState dynamicState;
 };
 
 struct DispatchMeshDesc
@@ -27,6 +28,7 @@ struct DispatchMeshDesc
     RasterizerState rasterizerState;
     DepthStencilState depthStencilState;
     ColorBlendState colorBlendState;
+    DynamicState dynamicState;
 };
 
 } // namespace vex

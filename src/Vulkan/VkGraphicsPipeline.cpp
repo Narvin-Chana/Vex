@@ -37,14 +37,13 @@ VEX_VK_END_ENUM_MAPPING
 VEX_VK_BEGIN_ENUM_MAPPING(PolygonMode, PolygonMode, ::vk::PolygonMode, VkPolygonMode)
     VEX_VK_ENUM_MAPPING_ENTRY(Fill, eFill)
     VEX_VK_ENUM_MAPPING_ENTRY(Line, eLine)
-    VEX_VK_ENUM_MAPPING_ENTRY(Point, ePoint)
 VEX_VK_END_ENUM_MAPPING
 
 // clang-format on
 
 ::vk::StencilOpState StencilOpStateToVkStencilOpState(DepthStencilState::StencilOpState op)
 {
-    const auto& [failOp, passOp, depthFailOp, compareOp, readMask, writeMask, ref] = op;
+    const auto& [failOp, passOp, depthFailOp, compareOp, readMask, writeMask] = op;
     return ::vk::StencilOpState{
         .failOp = static_cast<::vk::StencilOp>(failOp),
         .passOp = static_cast<::vk::StencilOp>(passOp),
@@ -52,7 +51,7 @@ VEX_VK_END_ENUM_MAPPING
         .compareOp = static_cast<::vk::CompareOp>(compareOp),
         .compareMask = readMask,
         .writeMask = writeMask,
-        .reference = ref,
+        // Stencil reference is dynamic state (see RHICommandList::SetStencilReference).
     };
 }
 

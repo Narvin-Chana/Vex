@@ -27,6 +27,9 @@ public:
     virtual void SetLayout(RHIResourceLayout& layout) override;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) override;
     virtual void SetInputAssembly(InputAssembly inputAssembly) override;
+    virtual void SetBlendConstants(std::array<float, 4> colorBlendConstants) override;
+    virtual void SetStencilReference(u8 frontStencilReference, u8 backStencilReference) override;
+    virtual void SetDepthBounds(float minDepthBounds, float maxDepthBounds) override;
 
     virtual RHITextureState GetClearTextureBarrierState(const TextureDesc& desc,
                                                         Span<const TextureClearRect> clearRects) override;
