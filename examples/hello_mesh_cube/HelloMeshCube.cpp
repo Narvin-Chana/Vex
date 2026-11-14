@@ -52,7 +52,7 @@ static const vex::ShaderKey SlangPixelShaderKey{
 };
 
 HelloMeshCubeApplication::HelloMeshCubeApplication()
-    : ExampleApplication("HelloCubeApplication")
+    : ExampleApplication("HelloMeshCubeApplication")
 {
     graphics = std::make_unique<vex::Graphics>(vex::GraphicsCreateDesc{
         .platformWindow = { .windowHandle = GetPlatformWindowHandle(), .width = DefaultWidth, .height = DefaultHeight },
@@ -167,21 +167,17 @@ void HelloMeshCubeApplication::Run()
             slangDrawDesc.amplificationShader = shaderCompiler.GetShaderView(SlangAmplificationShaderKey);
             slangDrawDesc.meshShader = shaderCompiler.GetShaderView(SlangMeshShaderKey);
 
-            // ...and resources.
-            vex::BufferBinding indexBufferBinding{
-                .buffer = indexBuffer,
-                .strideByteSize = static_cast<vex::u32>(sizeof(vex::u32)),
-            };
+            vex::DepthStencilBinding depthStencilBinding{ .texture = depthTexture };
 
             // Setup our rendering pass.
-            std::array renderTargets = { vex::TextureBinding{
+            std::array renderTargets = { vex::RenderTargetBinding{
                 .texture = graphics->GetCurrentPresentTexture(),
             } };
 
             vex::BindlessHandle vertexBufferHandle =
-                graphics->GetBindlessHandle(vex::BufferBinding::CreateStructuredBuffer(vertexBuffer, sizeof(Vertex)));
+                graphics->GetBindlessHandle(vex::BufferBinding::CreateStructured<Vertex>(vertexBuffer));
             vex::BindlessHandle indexBufferHandle =
-                graphics->GetBindlessHandle(vex::BufferBinding::CreateStructuredBuffer(indexBuffer, sizeof(vex::u32)));
+                graphics->GetBindlessHandle(vex::BufferBinding::CreateStructured<vex::u32>(indexBuffer));
 
             struct UniformData
             {
@@ -199,7 +195,7 @@ void HelloMeshCubeApplication::Run()
                 ctx.DispatchMesh(hlslDrawDesc,
                                  {
                                      .renderTargets = renderTargets,
-                                     .depthStencil = vex::TextureBinding(depthTexture),
+                                     .depthStencil = &depthStencilBinding,
                                  },
                                  { 2, 1, 1 },
                                  vex::ConstantBinding(data),
@@ -210,7 +206,7 @@ void HelloMeshCubeApplication::Run()
                 ctx.DispatchMesh(slangDrawDesc,
                                  {
                                      .renderTargets = renderTargets,
-                                     .depthStencil = vex::TextureBinding(depthTexture),
+                                     .depthStencil = &depthStencilBinding,
                                  },
                                  { 2, 1, 1 },
                                  vex::ConstantBinding(data),

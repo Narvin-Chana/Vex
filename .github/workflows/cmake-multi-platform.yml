@@ -79,22 +79,22 @@ jobs:
     - name: Install Clang 22
       if: matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'clang'
       run: |
-        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-        
+        # apt-key was removed in apt 3.x; store the key in a keyring and reference it via signed-by.
+        sudo mkdir -p /etc/apt/keyrings
+        wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/keyrings/llvm.asc > /dev/null
+
         UBUNTU_CODENAME=$(lsb_release -cs)
-        sudo bash -c "cat > /etc/apt/sources.list.d/llvm-20.list << EOF
-        deb http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-20 main
-        deb-src http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-20 main
-        EOF"
-        
+        echo "deb [signed-by=/etc/apt/keyrings/llvm.asc] http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-22 main" \
+          | sudo tee /etc/apt/sources.list.d/llvm-22.list
+
         sudo apt-get update
-        sudo apt-get install -y clang-20 libc++-20-dev libc++abi-20-dev
-        
-        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-20 100
-        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-20 100
-        sudo update-alternatives --set clang /usr/bin/clang-20
-        sudo update-alternatives --set clang++ /usr/bin/clang++-20
-    
+        sudo apt-get install -y clang-22 libc++-22-dev libc++abi-22-dev
+
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-22 100
+        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-22 100
+        sudo update-alternatives --set clang /usr/bin/clang-22
+        sudo update-alternatives --set clang++ /usr/bin/clang++-22
+
         clang --version
         clang++ --version
 
@@ -153,7 +153,6 @@ jobs:
         choco install ninja
 
     - name: Configure CMake
-      if: matrix.cpp_library != 'libc++'
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -G Ninja
@@ -164,23 +163,8 @@ jobs:
         -DVEX_BUILD_EXAMPLES=ON
         -DVEX_BUILD_TESTS=ON
         -DVEX_ENABLE_SLANG=ON
-        ${{ matrix.graphics_api == 'directx12' && '-DVEX_GRAPHICS_BACKEND=DX12' || '' }}
-        ${{ matrix.graphics_api == 'vulkan' && '-DVEX_GRAPHICS_BACKEND=VULKAN' || '' }}
-        -S ${{ github.workspace }}
-
-    - name: Configure CMake
-      if: matrix.cpp_library == 'libc++'
-      run: >
-        cmake -B ${{ steps.strings.outputs.build-output-dir }}
-        -G Ninja
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -DVULKAN_SDK=${{ env.VULKAN_SDK }}
-        -DVEX_BUILD_EXAMPLES=ON
-        -DVEX_BUILD_TESTS=ON
-        -DVEX_ENABLE_SLANG=ON
-        -DCMAKE_CXX_FLAGS='-stdlib=libc++'
+        -DCMAKE_CXX_SCAN_FOR_MODULES=OFF
+        ${{ matrix.cpp_library == 'libc++' && '-DCMAKE_CXX_FLAGS=-stdlib=libc++' || '' }}
         ${{ matrix.graphics_api == 'directx12' && '-DVEX_GRAPHICS_BACKEND=DX12' || '' }}
         ${{ matrix.graphics_api == 'vulkan' && '-DVEX_GRAPHICS_BACKEND=VULKAN' || '' }}
         -S ${{ github.workspace }}

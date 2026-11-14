@@ -4,11 +4,11 @@
 #include <Vex/Texture.h>
 
 #include <RHI/RHIBarrier.h>
+#include <RHI/RHIBindings.h>
 #include <RHI/RHIFwd.h>
 
 namespace vex
 {
-struct RHITextureBinding;
 
 class RHITextureBase
 {
@@ -22,8 +22,7 @@ public:
     RHITextureBase& operator=(RHITextureBase&&) = default;
     ~RHITextureBase() = default;
 
-    virtual BindlessHandle GetOrCreateBindlessView(const TextureBinding& binding,
-                                                   RHIDescriptorPool& descriptorPool) = 0;
+    virtual BindlessHandle GetOrCreateBindlessView(const TextureViewDesc& view, RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeBindlessHandles(RHIDescriptorPool& descriptorPool) = 0;
     virtual void FreeAllocation(RHIAllocator& allocator) = 0;
 
@@ -38,7 +37,7 @@ public:
     }
 
 protected:
-    TextureDesc desc;
+    TextureDesc desc{};
     RHIAllocator* allocator{};
     Allocation allocation;
 };

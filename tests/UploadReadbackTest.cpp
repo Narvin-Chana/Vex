@@ -416,7 +416,7 @@ TEST_P(BufferUploadReadbackTests, BufferUploadAndFullReadback)
 
     float readback[N];
     auto readbackFloatCount = params.readbackRegion.byteSize / sizeof(float);
-    auto readbackFloatOffset = (params.readbackRegion.offset - params.uploadRegion.offset) / sizeof(float);
+    auto readbackFloatOffset = (params.readbackRegion.byteOffset - params.uploadRegion.byteOffset) / sizeof(float);
     readbackContext.ReadData(std::as_writable_bytes(std::span{ readback, readbackFloatCount }));
 
     for (int i = 0; i < readbackFloatCount; ++i)
@@ -437,18 +437,18 @@ INSTANTIATE_PER_QUEUE_TEST_SUITE_P(
         BufferUploadReadbackTestParams{ .readbackRegion = { .byteSize = sizeof(float) * 50 } },
         // Upload full buffer and read the last 50 floats
         BufferUploadReadbackTestParams{
-            .readbackRegion = { .offset = sizeof(float) * 50, .byteSize = sizeof(float) * 50 } },
+            .readbackRegion = { .byteOffset = sizeof(float) * 50, .byteSize = sizeof(float) * 50 } },
         // Upload only first 50 floats and read only the first 50 floats
         BufferUploadReadbackTestParams{ .uploadRegion = { .byteSize = sizeof(float) * 50 },
                                         .readbackRegion = { .byteSize = sizeof(float) * 50 } },
         // Upload only last 50 floats and read only the last 50 floats
         BufferUploadReadbackTestParams{
-            .uploadRegion = { .offset = sizeof(float) * 50, .byteSize = sizeof(float) * 50 },
-            .readbackRegion = { .offset = sizeof(float) * 50, .byteSize = sizeof(float) * 50 } },
+            .uploadRegion = { .byteOffset = sizeof(float) * 50, .byteSize = sizeof(float) * 50 },
+            .readbackRegion = { .byteOffset = sizeof(float) * 50, .byteSize = sizeof(float) * 50 } },
         // upload 50 floats from the 23rd float and readback 10 floats from the 32nd
         BufferUploadReadbackTestParams{
-            .uploadRegion = { .offset = sizeof(float) * 23, .byteSize = sizeof(float) * 50 },
-            .readbackRegion = { .offset = sizeof(float) * 32, .byteSize = sizeof(float) * 10 } }));
+            .uploadRegion = { .byteOffset = sizeof(float) * 23, .byteSize = sizeof(float) * 50 },
+            .readbackRegion = { .byteOffset = sizeof(float) * 32, .byteSize = sizeof(float) * 10 } }));
 
 struct ScalarBlockLayoutTests : public VexTestParam<ShaderCompilerBackend>
 {

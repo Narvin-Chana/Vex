@@ -20,20 +20,15 @@ bool RHIBufferBase::IsMappable() const
            desc.memoryLocality == ResourceMemoryLocality::CPUWrite;
 }
 
-BindlessHandle RHIBufferBase::GetOrCreateBindlessView(const BufferBinding& binding, RHIDescriptorPool& descriptorPool)
+BindlessHandle RHIBufferBase::GetOrCreateBindlessView(const BufferViewDesc& view, RHIDescriptorPool& descriptorPool)
 {
-    const BufferViewDesc bufferView = GetViewDescFromBinding(binding);
-    if (viewCache.contains(bufferView))
+    auto [it, inserted] = viewCache.try_emplace(view);
+    if (inserted)
     {
-        return viewCache[bufferView];
+        it->second = descriptorPool.AllocateStaticDescriptor(DescriptorType::Resource);
+        AllocateBindlessHandle(descriptorPool, it->second, view);
     }
-
-    const BindlessHandle handle = descriptorPool.AllocateStaticDescriptor(DescriptorType::Resource);
-
-    AllocateBindlessHandle(descriptorPool, handle, bufferView);
-
-    viewCache[bufferView] = handle;
-    return handle;
+    return it->second;
 }
 
 void RHIBufferBase::FreeBindlessHandles(RHIDescriptorPool& descriptorPool)
@@ -51,60 +46,11 @@ RHIBufferBase::RHIBufferBase(RHIAllocator& allocator, const BufferDesc& desc)
 {
 }
 
-BufferViewDesc RHIBufferBase::GetViewDescFromBinding(const BufferBinding& binding)
-{
-    const u64 offset = binding.offsetByteSize.value_or(0);
-    return BufferViewDesc{
-        .usage = binding.usage,
-        .strideByteSize = binding.strideByteSize.value_or(0),
-        .offsetByteSize = offset,
-        .rangeByteSize = binding.rangeByteSize.value_or(desc.byteSize - offset),
-        .isAccelerationStructure =
-            (desc.usage & BufferUsage::AccelerationStructure) == BufferUsage::AccelerationStructure,
-    };
-}
-
 void RHIBufferBase::FreeAllocation(RHIAllocator& allocator)
 {
 #if VEX_USE_CUSTOM_RESOURCE_ALLOCATOR
     allocator.FreeResource(allocation);
 #endif
-}
-
-u32 BufferViewDesc::GetElementStride() const
-{
-    switch (usage)
-    {
-    case BufferBindingUsage::StructuredBuffer:
-    case BufferBindingUsage::RWStructuredBuffer:
-        return strideByteSize;
-    case BufferBindingUsage::ByteAddressBuffer:
-    case BufferBindingUsage::RWByteAddressBuffer:
-        return 4;
-    default:
-        break;
-    }
-    return 0;
-}
-
-u64 BufferViewDesc::GetFirstElement() const
-{
-    if (usage == BufferBindingUsage::UniformBuffer)
-    {
-        return 0;
-    }
-
-    return offsetByteSize / GetElementStride();
-}
-
-u64 BufferViewDesc::GetElementCount() const
-{
-    if (usage == BufferBindingUsage::UniformBuffer)
-    {
-        return 1;
-    }
-
-    return rangeByteSize / GetElementStride();
 }
 
 } // namespace vex

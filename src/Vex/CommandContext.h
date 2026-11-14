@@ -56,7 +56,7 @@ public:
 
     // Clears a texture, by default will use the texture's ClearColor and clear the entire texture.
     void ClearTexture(const Texture& texture,
-                      std::optional<TextureClearValue> textureClearValue = std::nullopt,
+                      const std::optional<TextureClearValue>& textureClearValue = std::nullopt,
                       const TextureSubresource& subresource = {},
                       Span<const TextureClearRect> clearRects = {});
 
@@ -109,7 +109,7 @@ public:
                    Span<const ResourceBinding> trackedResources,
                    const TraceRaysDesc& rayTracingArgs);
 
-    // Fills in all lower resolution mips with downsampled version of the source mip.
+    // Fills in mipCount lower resolution mips with downsampled version of the start mip.
     void GenerateMips(const TextureBinding& textureBinding);
 
     // ---------------------------------------------------------------------------------------------------------------
@@ -199,8 +199,7 @@ public:
 
     // Useful for calling native API draws when wanting to render to a specific Render Target. Allows the passed in
     // lambda to be executed in a draw scope.
-    void ExecuteInDrawContext(Span<const TextureBinding> renderTargets,
-                              std::optional<TextureBinding> depthStencil,
+    void ExecuteInDrawContext(const DrawResourceBinding& drawBindings,
                               Span<const ResourceBinding> trackedResources,
                               const std::function<void()>& callback);
 
@@ -236,7 +235,7 @@ public:
 
     // Returns the RHI command list associated with this context allowing for access to the native
     // CommandList/CommandContext (you should avoid using this unless you know what you are doing).
-    RHICommandList& GetRHICommandList();
+    RHICommandList& GetRHICommandList() const;
 
 private:
     TextureStateMap& GetOrFetchTextureState(TextureHandle handle);
@@ -250,16 +249,15 @@ private:
     void EnqueueGlobalBarrier(const RHIGlobalBarrier& globalBarrier);
 
     void InferResourceBarriers(RHIBarrierSync syncStage, Span<const ResourceBinding> resources);
-    void BarrierDrawResources(const RHIDrawResources& drawResources, const DepthStencilState& depthStencilState);
+    void BarrierDrawResources(const DrawResourceBinding& drawBindings,
+                              const DepthStencilState* depthStencilState = nullptr);
 
     // Creates a temporary staging buffer that will be destroyed once the command context is done executing.
-    // Buffer creation invalidates pointers to existing RHI buffers.
     Buffer CreateTemporaryStagingBuffer(const std::string& name,
                                         u64 byteSize,
                                         Flags<BufferUsage> additionalUsages = BufferUsage::None);
 
     // Creates a temporary buffer that will be destroyed once the command context is done executing.
-    // Buffer creation invalidates pointers to existing RHI buffers.
     Buffer CreateTemporaryBuffer(const BufferDesc& desc);
 
     std::optional<RHIDrawResources> PrepareDrawCall(DrawDesc desc,
@@ -274,7 +272,7 @@ private:
 
     void CheckViewportAndScissor() const;
 
-    void SetIndexBuffer(const BufferBinding& indexBuffer) const;
+    void SetIndexBuffer(const IndexBufferBinding& indexBuffer) const;
 
     NonNullPtr<Graphics> graphics;
     NonNullPtr<RHICommandList> cmdList;
