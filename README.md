@@ -105,8 +105,8 @@ Packages which do not report their version are not used. A project using an inst
 dependencies when calling `find_package(Vex)`. All of this is controlled by the standard CMake variables:
 
 - `FETCHCONTENT_TRY_FIND_PACKAGE_MODE=NEVER`: never look for installed packages, always use the pinned versions.
-- `CMAKE_REQUIRE_FIND_PACKAGE_<Package>=ON` (eg: `CMAKE_REQUIRE_FIND_PACKAGE_slang`): fail instead of downloading
-  when the package is not found.
+- `CMAKE_REQUIRE_FIND_PACKAGE_<name>=ON`, with the FetchContent name (eg: `CMAKE_REQUIRE_FIND_PACKAGE_dxc`): fail
+  instead of downloading when the package is not found.
 - `FETCHCONTENT_SOURCE_DIR_<NAME>` (eg: `FETCHCONTENT_SOURCE_DIR_D3D12_AGILITY_SDK`): use a local copy (an extracted
   release, NuGet package or checkout) instead of downloading it.
 - `FETCHCONTENT_FULLY_DISCONNECTED=ON`: never download or update anything, once the dependencies have been populated.
