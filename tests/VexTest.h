@@ -2,6 +2,7 @@
 
 #include "RenderDoc.h"
 
+#include <algorithm>
 #include <array>
 #include <filesystem>
 
