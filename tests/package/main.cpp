@@ -1,4 +1,7 @@
 #include <array>
+#include <optional>
+#include <print>
+#include <string>
 
 #include <Vex.h>
 
@@ -10,15 +13,19 @@ int main()
 
     vex::ShaderCompiler shaderCompiler;
 
+    const vex::ShaderKey shaderKey{
+        .filepath = SHADER_PATH,
+        .entryPoint = "CSMain",
+        .type = vex::ShaderType::ComputeShader,
+    };
+    if (std::optional<std::string> error = shaderCompiler.CompileShaderFromFilepath(shaderKey))
+    {
+        std::println("Compilation of {} failed: {}", shaderKey.GetDebugName(), *error);
+        return 1;
+    }
+
     vex::CommandContext ctx = graphics.CreateCommandContext(vex::QueueType::Compute);
-    ctx.Dispatch(shaderCompiler.GetShaderView(vex::ShaderKey{
-                     .filepath = SHADER_PATH,
-                     .entryPoint = "CSMain",
-                     .type = vex::ShaderType::ComputeShader,
-                 }),
-                 {},
-                 {},
-                 std::array{ 1u, 1u, 1u });
+    ctx.Dispatch(shaderCompiler.GetShaderView(shaderKey), {}, {}, std::array{ 1u, 1u, 1u });
     graphics.Submit(ctx);
 
     return 0;
