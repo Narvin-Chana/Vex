@@ -153,7 +153,6 @@ void HelloCubeApplication::Run()
             // Make the cube spin over time.
             const double currentTime = glfwGetTime();
 
-            // Scoped command context will submit commands automatically upon destruction.
             vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
 
             // Fill in all mips using the first one, the underlying texture is encoded in SRGB so be sure to do an

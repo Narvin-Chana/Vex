@@ -138,7 +138,7 @@ function(setup_dx12_backend TARGET)
     add_header_only_dependency(${TARGET} DirectXAgilitySDK "${DX_AGILITY_SDK_SOURCE_DIR}" "include" "directx")
 
     target_compile_definitions(${TARGET} PRIVATE 
-        DIRECTX_AGILITY_SDK_VERSION=${DX_AGILITY_SDK_VERSION}
+        DIRECTX_AGILITY_SDK_VERSION=${DX_AGILITY_VERSION}
         D3D12_AGILITY_SDK_ENABLED
     )
 

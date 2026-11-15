@@ -32,6 +32,8 @@ public:
     virtual GPUDeviceType GetDeviceType() const override;
 
     bool SupportsTightAlignment() const;
+    bool SupportsIndependentFrontAndBackStencilRef() const;
+    bool SupportsAlphaBlendFactor() const;
     bool SupportsMinimalRequirements() const override;
 
     static FeatureLevel ConvertDX12FeatureLevelToFeatureLevel(D3D_FEATURE_LEVEL featureLevel);

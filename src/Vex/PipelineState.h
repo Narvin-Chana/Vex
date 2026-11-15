@@ -30,7 +30,9 @@ struct PSOUtil
 
 struct GraphicsPSOKey
 {
-    GraphicsPSOKey(const DrawDesc& drawDesc, const RenderTargetState& renderTargetState);
+    GraphicsPSOKey(const DrawDesc& drawDesc,
+                   const RenderTargetState& renderTargetState,
+                   std::optional<IndexFormat> indexFormat);
     GraphicsPSOKey(const DispatchMeshDesc& drawDesc, const RenderTargetState& renderTargetState);
 
     SHA1HashDigest vertexShader;
@@ -38,6 +40,8 @@ struct GraphicsPSOKey
     SHA1HashDigest amplificationShader;
     SHA1HashDigest pixelShader;
     InputAssembly inputAssembly;
+    // Index format used for primitive restart, DX12 bakes the strip cut value into the PSO.
+    IndexFormat restartIndexFormat = IndexFormat::U32;
     RasterizerState rasterizerState;
     DepthStencilState depthStencilState;
     ColorBlendState colorBlendState;

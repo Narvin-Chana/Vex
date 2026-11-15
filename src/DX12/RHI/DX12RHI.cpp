@@ -153,10 +153,7 @@ RHICommandPool DX12RHI::CreateCommandPool()
 
 RHIGraphicsPipelineState DX12RHI::CreateGraphicsPipelineState(std::string name, const GraphicsPSOKey& key)
 {
-    GraphicsPSOKey keyCopy = key;
-    // Will clear out unsupported fields/validate that the user is not expecting invalid features.
-    DX12GraphicsPipelineState::ClearUnsupportedKeyFields(keyCopy);
-    return { device, std::move(name), keyCopy };
+    return { device, std::move(name), key };
 }
 
 RHIComputePipelineState DX12RHI::CreateComputePipelineState(std::string name, const ComputePSOKey& key)

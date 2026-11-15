@@ -1,5 +1,8 @@
 #include "DX12GraphicsPipeline.h"
 
+#include <Vex/Logger.h>
+#include <Vex/PhysicalDevice.h>
+
 #include <DX12/DX12Formats.h>
 
 namespace vex::dx12
@@ -47,9 +50,11 @@ D3D12_BLEND GetDX12BlendFromBlendFactor(BlendFactor blendFactor)
     case BlendFactor::OneMinusConstantColor:
         return D3D12_BLEND_INV_BLEND_FACTOR;
     case BlendFactor::ConstantAlpha:
-        return D3D12_BLEND_BLEND_FACTOR; // DX12 doesn't separate color/alpha constants
+        VEX_CHECK(GPhysicalDevice->SupportsAlphaBlendFactor(), "Your GPU does not support alpha blend factors.");
+        return D3D12_BLEND_ALPHA_FACTOR;
     case BlendFactor::OneMinusConstantAlpha:
-        return D3D12_BLEND_INV_BLEND_FACTOR;
+        VEX_CHECK(GPhysicalDevice->SupportsAlphaBlendFactor(), "Your GPU does not support alpha blend factors.");
+        return D3D12_BLEND_INV_ALPHA_FACTOR;
     case BlendFactor::SrcAlphaSaturate:
         return D3D12_BLEND_SRC_ALPHA_SAT;
     case BlendFactor::Src1Color:
@@ -70,9 +75,50 @@ D3D12_BLEND_OP GetDX12BlendOpFromBlendOp(BlendOp blendOp)
     return static_cast<D3D12_BLEND_OP>(static_cast<int>(blendOp) + 1);
 }
 
-CD3DX12_RASTERIZER_DESC GetDX12RasterizerStateFromRasterizerState(const RasterizerState& rasterizerState)
+D3D12_LOGIC_OP GetDX12LogicOpFromLogicOp(LogicOp logicOp)
 {
-    CD3DX12_RASTERIZER_DESC desc(D3D12_DEFAULT);
+    switch (logicOp)
+    {
+    case LogicOp::Clear:
+        return D3D12_LOGIC_OP_CLEAR;
+    case LogicOp::And:
+        return D3D12_LOGIC_OP_AND;
+    case LogicOp::AndReverse:
+        return D3D12_LOGIC_OP_AND_REVERSE;
+    case LogicOp::Copy:
+        return D3D12_LOGIC_OP_COPY;
+    case LogicOp::AndInverted:
+        return D3D12_LOGIC_OP_AND_INVERTED;
+    case LogicOp::NoOp:
+        return D3D12_LOGIC_OP_NOOP;
+    case LogicOp::Xor:
+        return D3D12_LOGIC_OP_XOR;
+    case LogicOp::Or:
+        return D3D12_LOGIC_OP_OR;
+    case LogicOp::Nor:
+        return D3D12_LOGIC_OP_NOR;
+    case LogicOp::Equivalent:
+        return D3D12_LOGIC_OP_EQUIV;
+    case LogicOp::Invert:
+        return D3D12_LOGIC_OP_INVERT;
+    case LogicOp::OrReverse:
+        return D3D12_LOGIC_OP_OR_REVERSE;
+    case LogicOp::CopyInverted:
+        return D3D12_LOGIC_OP_COPY_INVERTED;
+    case LogicOp::OrInverted:
+        return D3D12_LOGIC_OP_OR_INVERTED;
+    case LogicOp::Nand:
+        return D3D12_LOGIC_OP_NAND;
+    case LogicOp::Set:
+        return D3D12_LOGIC_OP_SET;
+    default:
+        return D3D12_LOGIC_OP_NOOP;
+    }
+}
+
+CD3DX12_RASTERIZER_DESC2 GetDX12RasterizerStateFromRasterizerState(const RasterizerState& rasterizerState)
+{
+    CD3DX12_RASTERIZER_DESC2 desc(D3D12_DEFAULT);
 
     // Convert fill mode
     if (rasterizerState.polygonMode == PolygonMode::Line)
@@ -102,12 +148,10 @@ CD3DX12_RASTERIZER_DESC GetDX12RasterizerStateFromRasterizerState(const Rasteriz
     desc.FrontCounterClockwise = (rasterizerState.winding == Winding::CounterClockwise);
 
     // Depth bias
-    desc.DepthBias = rasterizerState.depthBiasEnabled ? static_cast<INT>(rasterizerState.depthBiasConstantFactor) : 0;
+    desc.DepthBias = rasterizerState.depthBiasEnabled ? rasterizerState.depthBiasConstantFactor : 0;
     desc.DepthBiasClamp = rasterizerState.depthBiasEnabled ? rasterizerState.depthBiasClamp : 0;
     desc.SlopeScaledDepthBias = rasterizerState.depthBiasEnabled ? rasterizerState.depthBiasSlopeFactor : 0;
     desc.DepthClipEnable = !rasterizerState.depthClampEnabled; // Inverted logic
-
-    // Note: DX12 doesn't have direct equivalents for rasterizerDiscardEnabled and lineWidth, we ignore them.
 
     return desc;
 }
@@ -116,14 +160,22 @@ CD3DX12_BLEND_DESC GetDX12BlendStateFromColorBlendState(const ColorBlendState& b
 {
     CD3DX12_BLEND_DESC desc(D3D12_DEFAULT);
 
-    // DX12 doesn't support logic operations in the same way as Vulkan, we ignore them.
+    // DX12 logic operations only use RenderTarget[0] and require blending to be disabled.
+    desc.IndependentBlendEnable = !blendState.logicOpEnabled;
+    desc.RenderTarget[0].LogicOpEnable = blendState.logicOpEnabled;
+    desc.RenderTarget[0].LogicOp = GetDX12LogicOpFromLogicOp(blendState.logicOp);
 
-    for (u32 i = 0; i < std::min<u32>(static_cast<u32>(blendState.attachments.size()), 8); ++i)
+    for (u32 i = 0;
+         i < std::min<u32>(static_cast<u32>(blendState.attachments.size()), GMaxSimultaneousRenderTargetCount);
+         ++i)
     {
         const auto& attachment = blendState.attachments[i];
         auto& renderTarget = desc.RenderTarget[i];
 
-        renderTarget.BlendEnable = attachment.blendEnabled;
+        VEX_CHECK(!blendState.logicOpEnabled || attachment.colorWriteMask == blendState.attachments[0].colorWriteMask,
+                  "Logic operations require all render targets to use the same color write mask.");
+
+        renderTarget.BlendEnable = attachment.blendEnabled && !blendState.logicOpEnabled;
         renderTarget.SrcBlend = GetDX12BlendFromBlendFactor(attachment.srcColorBlendFactor);
         renderTarget.DestBlend = GetDX12BlendFromBlendFactor(attachment.dstColorBlendFactor);
         renderTarget.BlendOp = GetDX12BlendOpFromBlendOp(attachment.colorBlendOp);
@@ -143,40 +195,41 @@ CD3DX12_BLEND_DESC GetDX12BlendStateFromColorBlendState(const ColorBlendState& b
             renderTarget.RenderTargetWriteMask |= D3D12_COLOR_WRITE_ENABLE_ALPHA;
     }
 
-    // Note: DX12 doesn't have blend constants in the same way, we set them when binding the PSO.
+    // Note: Blend constants are dynamic state (see RHICommandList::SetBlendConstants).
 
     return desc;
 }
 
-D3D12_DEPTH_STENCIL_DESC GetDX12DepthStencilStateFromDepthStencilState(const DepthStencilState& depthStencilState)
+CD3DX12_DEPTH_STENCIL_DESC2 GetDX12DepthStencilStateFromDepthStencilState(const DepthStencilState& depthStencilState)
 {
-    D3D12_DEPTH_STENCIL_DESC desc = {};
+    const DepthStencilState::StencilOpState& front = depthStencilState.front;
+    const DepthStencilState::StencilOpState& back = depthStencilState.back;
+    VEX_CHECK(GPhysicalDevice->SupportsIndependentFrontAndBackStencilRef() ||
+                  (front.readMask == back.readMask && front.writeMask == back.writeMask),
+              "Your GPU does not support independent front and back stencil masks, both masks must be equal.");
 
-    desc.DepthEnable = depthStencilState.depthTestEnabled;
-    desc.DepthWriteMask =
-        depthStencilState.depthWriteEnabled ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
-    desc.DepthFunc = GetDX12ComparisonFuncFromCompareOp(depthStencilState.depthCompareOp);
+    static constexpr auto ToDX12StencilOpDesc = [](const DepthStencilState::StencilOpState& op)
+    {
+        return D3D12_DEPTH_STENCILOP_DESC1{
+            .StencilFailOp = GetDX12StencilOpFromStencilOp(op.failOp),
+            .StencilDepthFailOp = GetDX12StencilOpFromStencilOp(op.depthFailOp),
+            .StencilPassOp = GetDX12StencilOpFromStencilOp(op.passOp),
+            .StencilFunc = GetDX12ComparisonFuncFromCompareOp(op.compareOp),
+            .StencilReadMask = op.readMask,
+            .StencilWriteMask = op.writeMask,
+        };
+    };
 
-    // Stencil test
-    desc.StencilEnable = depthStencilState.stencilTestEnabled;
-    desc.StencilReadMask = static_cast<UINT8>(depthStencilState.front.readMask);
-    desc.StencilWriteMask = static_cast<UINT8>(depthStencilState.front.writeMask);
-
-    // Front face stencil
-    desc.FrontFace.StencilFailOp = GetDX12StencilOpFromStencilOp(depthStencilState.front.failOp);
-    desc.FrontFace.StencilDepthFailOp = GetDX12StencilOpFromStencilOp(depthStencilState.front.depthFailOp);
-    desc.FrontFace.StencilPassOp = GetDX12StencilOpFromStencilOp(depthStencilState.front.passOp);
-    desc.FrontFace.StencilFunc = GetDX12ComparisonFuncFromCompareOp(depthStencilState.front.compareOp);
-
-    // Back face stencil
-    desc.BackFace.StencilFailOp = GetDX12StencilOpFromStencilOp(depthStencilState.back.failOp);
-    desc.BackFace.StencilDepthFailOp = GetDX12StencilOpFromStencilOp(depthStencilState.back.depthFailOp);
-    desc.BackFace.StencilPassOp = GetDX12StencilOpFromStencilOp(depthStencilState.back.passOp);
-    desc.BackFace.StencilFunc = GetDX12ComparisonFuncFromCompareOp(depthStencilState.back.compareOp);
-
-    // Note: DX12 doesn't support depth bounds testing or per-face stencil masks/references, we ignore them.
-
-    return desc;
+    return CD3DX12_DEPTH_STENCIL_DESC2(D3D12_DEPTH_STENCIL_DESC2{
+        .DepthEnable = depthStencilState.depthTestEnabled,
+        .DepthWriteMask =
+            depthStencilState.depthWriteEnabled ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO,
+        .DepthFunc = GetDX12ComparisonFuncFromCompareOp(depthStencilState.depthCompareOp),
+        .StencilEnable = depthStencilState.stencilTestEnabled,
+        .FrontFace = ToDX12StencilOpDesc(front),
+        .BackFace = ToDX12StencilOpDesc(back),
+        .DepthBoundsTestEnable = depthStencilState.depthBoundsTestEnabled,
+    });
 }
 
 D3D12_PRIMITIVE_TOPOLOGY GetDX12PrimitiveTopologyFromInputAssembly(const InputAssembly& inputAssembly)
