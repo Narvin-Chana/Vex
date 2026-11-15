@@ -1,3 +1,7 @@
+# Slang shader compiler, provides slang::slang.
+#
+# An installed slang package (at least SLANG_VERSION) is used when found, otherwise the pinned release is downloaded.
+# See the "Dependencies" section of the README for the CMake variables controlling this.
 include(FetchContent)
 
 if(NOT VEX_ENABLE_SHADER_COMPILER OR NOT VEX_ENABLE_SLANG)
@@ -6,109 +10,57 @@ if(NOT VEX_ENABLE_SHADER_COMPILER OR NOT VEX_ENABLE_SLANG)
     return()
 endif()
 
-set(SLANG_VERSION "2026.18")
-set(SLANG_NAME slang_${SLANG_VERSION})
-
-# Choose URLs based on platform
+set(SLANG_VERSION 2026.18)
+set(SLANG_RELEASE_URL "https://github.com/shader-slang/slang/releases/download/v${SLANG_VERSION}/slang-${SLANG_VERSION}")
 if(WIN32)
-    set(SLANG_RELEASE_URL "https://github.com/shader-slang/slang/releases/download/v${SLANG_VERSION}/slang-${SLANG_VERSION}-windows-x86_64.zip")
+    set(SLANG_URL "${SLANG_RELEASE_URL}-windows-x86_64.zip")
+    set(SLANG_SHA256 6ffa4827b519fd0a85b38407049d87ab0c1f045fe2289cb1e6831f965169f8a1)
 elseif(LINUX)
-    set(SLANG_RELEASE_URL "https://github.com/shader-slang/slang/releases/download/v${SLANG_VERSION}/slang-${SLANG_VERSION}-linux-x86_64.tar.gz")
+    set(SLANG_URL "${SLANG_RELEASE_URL}-linux-x86_64.tar.gz")
+    set(SLANG_SHA256 03acde8d19ad17f7b94312078ed945bed554a220feff084898a1bc94a9c998f5)
 else()
     message(FATAL_ERROR "Unsupported platform for Slang binaries")
 endif()
 
-message(STATUS "Fetching Slang...")
-FetchContent_Declare(
-    ${SLANG_NAME}
-    URL ${SLANG_RELEASE_URL}
+FetchContent_Declare(slang
+    URL "${SLANG_URL}"
+    URL_HASH SHA256=${SLANG_SHA256}
+    FIND_PACKAGE_ARGS ${SLANG_VERSION} CONFIG GLOBAL
 )
-FetchContent_MakeAvailable(${SLANG_NAME})
+FetchContent_MakeAvailable(slang)
 
-set(SLANG_SOURCE_DIR ${slang_${SLANG_VERSION}_SOURCE_DIR})
-set(SLANG_INCLUDE_DIR "${SLANG_SOURCE_DIR}/include")
-
-# Create imported target for slang
-if(WIN32)
-    set(SLANG_STATIC_LIBS
-        "${SLANG_SOURCE_DIR}/lib/gfx.lib"
-        "${SLANG_SOURCE_DIR}/lib/slang-rt.lib"
-        "${SLANG_SOURCE_DIR}/lib/slang.lib"
-    )
-    set(SLANG_RUNTIME_LIBS
-        "${SLANG_SOURCE_DIR}/bin/gfx.dll"
-        "${SLANG_SOURCE_DIR}/bin/slang-glsl-module.dll"
-        "${SLANG_SOURCE_DIR}/bin/slang-glslang.dll"
-        "${SLANG_SOURCE_DIR}/bin/slang-llvm.dll"
-        "${SLANG_SOURCE_DIR}/bin/slang-rt.dll"
-        "${SLANG_SOURCE_DIR}/bin/slang.dll"
-        "${SLANG_SOURCE_DIR}/bin/slang-compiler.dll"
-    )
-elseif(LINUX)
-    set(DXC_STATIC_LIB "")
-    set(SLANG_RUNTIME_LIBS
-        "${SLANG_SOURCE_DIR}/lib/libgfx.so"
-        "${SLANG_SOURCE_DIR}/lib/libslang-glsl-module-${SLANG_VERSION}.so"
-        "${SLANG_SOURCE_DIR}/lib/libslang-glslang-${SLANG_VERSION}.so"
-        "${SLANG_SOURCE_DIR}/lib/libslang-llvm.so"
-        "${SLANG_SOURCE_DIR}/lib/libslang-rt.so"
-        "${SLANG_SOURCE_DIR}/lib/libslang.so"
-    )
+# Not found as a package: the release was downloaded instead, and it ships its own CMake package. Every find_package()
+# call first looks in CMAKE_FIND_PACKAGE_REDIRECTS_DIR, where FetchContent lets projects provide config files for the
+# content they populate: make find_package(slang) load the downloaded package.
+if(NOT TARGET slang::slang)
+    if(WIN32)
+        set(SLANG_CONFIG_DIR "${slang_SOURCE_DIR}/cmake")
+    else()
+        set(SLANG_CONFIG_DIR "${slang_SOURCE_DIR}/lib/cmake/slang")
+    endif()
+    foreach(SLANG_CONFIG_FILE slangConfig slangConfigVersion)
+        string(REPLACE "slangConfig" "slang-config" SLANG_REDIRECT_FILE ${SLANG_CONFIG_FILE})
+        file(WRITE "${CMAKE_FIND_PACKAGE_REDIRECTS_DIR}/${SLANG_REDIRECT_FILE}.cmake"
+            "include(\"${SLANG_CONFIG_DIR}/${SLANG_CONFIG_FILE}.cmake\")\n")
+    endforeach()
+    find_package(slang ${SLANG_VERSION} REQUIRED GLOBAL)
 endif()
 
-if(NOT TARGET ${SLANG_NAME})
-    add_library(${SLANG_NAME} INTERFACE IMPORTED GLOBAL)
-    set_target_properties(${SLANG_NAME} PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES "${SLANG_INCLUDE_DIR}"
-    )
-    
-    if(WIN32)
-        set_target_properties(${SLANG_NAME} PROPERTIES
-            INTERFACE_LINK_LIBRARIES "${SLANG_STATIC_LIBS}"
-        )
-    elseif(LINUX)
-        set_target_properties(${SLANG_NAME} PROPERTIES
-            INTERFACE_LINK_LIBRARIES "${SLANG_RUNTIME_LIBS}"
-        )
-    endif()
+# Slang loads these modules at runtime, they are not link dependencies so vex_setup_runtime copies them explicitly.
+# Elsewhere, they are found next to the Slang shared library.
+if(WIN32)
+    foreach(SLANG_MODULE slang::slang-glslang slang::slang-glsl-module slang::slang-llvm)
+        if(TARGET ${SLANG_MODULE})
+            set_property(GLOBAL APPEND PROPERTY VEX_RUNTIME_FILES "$<TARGET_FILE:${SLANG_MODULE}>")
+        endif()
+    endforeach()
 endif()
 
 function(build_with_slang target)
-    target_link_libraries(${target} PUBLIC ${SLANG_NAME})
-
-    if(LINUX)
-        set_target_properties(${target} PROPERTIES
-            INSTALL_RPATH "${SLANG_SOURCE_DIR}/lib"
-            BUILD_WITH_INSTALL_RPATH TRUE
-        )
-    endif()
-
-    message(STATUS "Statically linked with Slang: ${SLANG_STATIC_LIBS}")
-    
-    add_header_only_dependency(${target} ${SLANG_NAME} "${SLANG_SOURCE_DIR}" "${SLANG_HEADERS_INCLUDE_NAME}" "slang")
-
+    # Public: Slang's headers are part of Vex's ShaderCompiler headers.
+    target_link_libraries(${target} PUBLIC slang::slang)
     target_sources(${target} PRIVATE
         "src/ShaderCompiler/Compiler/Slang/SlangCompiler.h"
         "src/ShaderCompiler/Compiler/Slang/SlangCompiler.cpp"
-    )
-    
-    target_compile_definitions(${target} PUBLIC VEX_SLANG=1)
-
-    vex_add_files_to_target_property(${target} "VEX_RUNTIME_DLLS" ${SLANG_RUNTIME_LIBS})
-endfunction()
-
-function(link_with_slang target)
-    message(STATUS "Linked ${target} with Slang.")
-    if(WIN32)
-        add_custom_command(TARGET ${target} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${SLANG_SHARED_LIBS}
-        $<TARGET_FILE_DIR:${target}>)
-    endif()
-    # Copies the Vex helper shader file to the target's working directory.
-    add_custom_command(TARGET ${target} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${VEX_ROOT_DIR}/shaders/Vex.slang"
-            "$<TARGET_FILE_DIR:${target}>/Vex.slang"
     )
 endfunction()

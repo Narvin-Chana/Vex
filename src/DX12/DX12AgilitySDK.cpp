@@ -1,4 +1,4 @@
-#include "DX12Headers.h"
+#include <DX12/DX12Headers.h>
 
 // This file is included in the client application (via CMake's vex_setup_runtime function).
 // This must be the case as DX12 is loaded dynamically at startup which only parses definitions from the main

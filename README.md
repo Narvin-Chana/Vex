@@ -41,7 +41,7 @@ subject to risk.
 - Clang 20.1.8
 - GCC 14
 
-**CMake**: 3.28+
+**CMake**: 4.2.2+
 
 **Git** (for using CMake's FetchContent)
 
@@ -76,11 +76,40 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Vex)
 
 # Later on once your target executable has been created:
-target_link_libraries(YourTarget PRIVATE Vex)
+target_link_libraries(YourTarget PRIVATE Vex::Vex)
 vex_setup_runtime(YourTarget)
 ```
 
 `vex_setup_runtime` must be called to correctly setup the runtime dependencies of Vex.
+
+Vex can also be installed (`cmake --install`) and consumed with `find_package(Vex REQUIRED)`, which provides the same
+`Vex::Vex` target and `vex_setup_runtime` function.
+
+### Dependencies
+
+Vex's dependencies are declared with CMake's
+[FetchContent](https://cmake.org/cmake/help/latest/module/FetchContent.html). An installed package is used when
+`find_package` finds one that is at least the version Vex pins, otherwise the pinned version is downloaded:
+
+| Dependency          | Package (eg: from vcpkg)              | FetchContent name   | Notes                                          |
+|---------------------|---------------------------------------|---------------------|------------------------------------------------|
+| DXC                 | `directx-dxc` 1.9.2602+               | `dxc`               |                                                |
+| Slang               | `slang` 2026.18+                      | `slang`             |                                                |
+| WinPixEventRuntime  | `winpixevent` 1.0.240308001+          | `winpixevent`       | DX12 only.                                     |
+| SPIRV-Reflect       | `unofficial-spirv-reflect` 1.4.321.0+ | `spirv_reflect`     | Vulkan only, compiled into Vex when downloaded. |
+| D3D12 Agility SDK   | -                                     | `d3d12_agility_sdk` | DX12 only, always the `Microsoft.Direct3D.D3D12` NuGet package (1.618.4+). |
+| magic_enum          | -                                     | `magic_enum`        | Always built from source, installed with Vex.  |
+| Vulkan SDK          | `Vulkan` 1.4.321+                     | -                   | Vulkan only, must be installed.                |
+
+Packages which do not report their version are not used. A project using an installed Vex finds or downloads the same
+dependencies when calling `find_package(Vex)`. All of this is controlled by the standard CMake variables:
+
+- `FETCHCONTENT_TRY_FIND_PACKAGE_MODE=NEVER`: never look for installed packages, always use the pinned versions.
+- `CMAKE_REQUIRE_FIND_PACKAGE_<Package>=ON` (eg: `CMAKE_REQUIRE_FIND_PACKAGE_slang`): fail instead of downloading
+  when the package is not found.
+- `FETCHCONTENT_SOURCE_DIR_<NAME>` (eg: `FETCHCONTENT_SOURCE_DIR_D3D12_AGILITY_SDK`): use a local copy (an extracted
+  release, NuGet package or checkout) instead of downloading it.
+- `FETCHCONTENT_FULLY_DISCONNECTED=ON`: never download or update anything, once the dependencies have been populated.
 
 Vex provides several configuration options that can be set when configuring the project with CMake:
 

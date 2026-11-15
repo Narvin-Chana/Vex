@@ -12,6 +12,7 @@ FetchContent_Declare(
     glfw
     GIT_REPOSITORY https://github.com/glfw/glfw.git
     GIT_TAG 3.4
+    FIND_PACKAGE_ARGS 3.4 NAMES glfw3
 )
 
 if (LINUX)
@@ -19,9 +20,6 @@ if (LINUX)
     set(GLFW_BUILD_X11 ON)
 endif()
 FetchContent_MakeAvailable(glfw)
-if (LINUX)
-    target_compile_definitions(glfw PUBLIC GLFW_EXPOSE_NATIVE_WAYLAND)
-endif()
 
 # STB Image
 message(STATUS "Fetching stb...")
@@ -64,6 +62,10 @@ target_include_directories(imguiLib PUBLIC
 
 # Link ImGui with its dependencies
 target_link_libraries(imguiLib PUBLIC glfw Vex)
+if (LINUX)
+    # glfw may be an installed (imported) package, so the examples request the native Wayland API themselves.
+    target_compile_definitions(imguiLib INTERFACE GLFW_EXPOSE_NATIVE_WAYLAND)
+endif()
 
 message(STATUS "Fetching RenderDoc...")
 FetchContent_Declare(
@@ -78,7 +80,6 @@ set(RENDER_DOC_SOURCE_DIR ${render_doc_SOURCE_DIR})
 
 set(EXAMPLES_COMMON_LIBS Vex imguiLib glfw)
 
-include(VexDX12)
 set(WINDOWS_ONLY_EXAMPLES "pix_events")
 set(DX12_ONLY_EXAMPLES "pix_events")
 
@@ -119,18 +120,17 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
         vex_setup_runtime(${EXAMPLE_NAME})
 
         if(EXAMPLE_NAME STREQUAL "pix_events")
-            setup_pix_3(${EXAMPLE_NAME})
+            target_link_libraries(${EXAMPLE_NAME} PRIVATE Microsoft::WinPixEventRuntime)
         endif()
 
         if(EXAMPLE_NAME STREQUAL "render_doc")
-            add_header_only_dependency(${EXAMPLE_NAME} render_doc "${RENDER_DOC_SOURCE_DIR}" "renderdoc/api/app" "")
+            target_include_directories(${EXAMPLE_NAME} PRIVATE "${RENDER_DOC_SOURCE_DIR}/renderdoc/api/app")
         endif()
 
         # Link the example
         target_link_libraries(${EXAMPLE_NAME} PRIVATE ${EXAMPLES_COMMON_LIBS})
         target_include_directories(${EXAMPLE_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${EXAMPLE_DIR}" "${CMAKE_SOURCE_DIR}/src")
-
-        add_header_only_dependency(${EXAMPLE_NAME} stb "${stb_SOURCE_DIR}" "" "stb")
+        target_include_directories(${EXAMPLE_NAME} PRIVATE "${stb_SOURCE_DIR}")
     endif()
   endif()
 endforeach()

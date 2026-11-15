@@ -4,6 +4,7 @@ FetchContent_Declare(
         GTest
         GIT_REPOSITORY https://github.com/google/googletest.git
         GIT_TAG v1.17.0
+        FIND_PACKAGE_ARGS 1.17.0 NAMES GTest
 )
 FetchContent_MakeAvailable(GTest)
 
@@ -40,7 +41,7 @@ target_link_libraries(vex_tests PRIVATE
     Vex
 )
 
-add_header_only_dependency(vex_tests render_doc "${render_doc_SOURCE_DIR}" "renderdoc/api/app" "")
+target_include_directories(vex_tests PRIVATE "${render_doc_SOURCE_DIR}/renderdoc/api/app")
 
 vex_setup_runtime(vex_tests)
 

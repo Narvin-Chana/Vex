@@ -2,31 +2,40 @@
 
 include(CMakeFindDependencyMacro)
 
-# Propagate the backend configuration
-set(VEX_ENABLE_DX12 @VEX_ENABLE_DX12)
-set(VEX_ENABLE_VULKAN @VEX_ENABLE_VULKAN)
-set(VEX_ENABLE_SLANG @VEX_ENABLE_SLANG)
+# Configuration Vex was built with.
+set(VEX_ENABLE_DX12 @VEX_ENABLE_DX12@)
+set(VEX_ENABLE_VULKAN @VEX_ENABLE_VULKAN@)
+set(VEX_ENABLE_SHADER_COMPILER @VEX_ENABLE_SHADER_COMPILER@)
+set(VEX_ENABLE_DXC @VEX_ENABLE_DXC@)
+set(VEX_ENABLE_SLANG @VEX_ENABLE_SLANG@)
 set(VEX_USE_EMBEDDED_SHADERS @VEX_USE_EMBEDDED_SHADERS@)
 
-# Store vex's root dir for shader/runtime file access
-set(VEX_ROOT_DIR "@PACKAGE_CMAKE_INSTALL_PREFIX@/include")
+# Shaders and sources deployed by vex_setup_runtime.
+set(VEX_ROOT_DIR "${PACKAGE_PREFIX_DIR}/share/Vex")
 
-find_dependency(magic_enum REQUIRED)
-if (VEX_ENABLE_VULKAN)
-	find_dependency(Vulkan REQUIRED)
+# Vex's dependencies. magic_enum is installed alongside Vex, the others are found or downloaded the same way Vex's own
+# build did it, by running the same scripts (see the "Dependencies" section of Vex's README).
+find_dependency(magic_enum)
+if(VEX_ENABLE_DX12)
+    include("${CMAKE_CURRENT_LIST_DIR}/VexDX12.cmake")
 endif()
+if(VEX_ENABLE_VULKAN)
+    find_dependency(Vulkan @VULKAN_MIN_VERSION@)
+    # Otherwise SPIRV-Reflect was compiled into Vex.
+    if(@VEX_SPIRV_REFLECT_FROM_PACKAGE@)
+        find_dependency(unofficial-spirv-reflect)
+    endif()
+endif()
+include("${CMAKE_CURRENT_LIST_DIR}/VexDXC.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/VexSlang.cmake")
 
 include("${CMAKE_CURRENT_LIST_DIR}/VexTargets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/VexHelpers.cmake")
 
 check_required_components(Vex)
 
-# To use Vex in another project using CMake's FetchContent:
-# FetchContent_Declare(
-#   Vex
-#   ...
-# )
-# FetchContent_MakeAvailable(Vex)
+# To use an installed Vex in another project:
+# find_package(Vex REQUIRED)
 # ...
 # # Later on once your target executable has been created:
 # target_link_libraries(YourTarget PRIVATE Vex::Vex)

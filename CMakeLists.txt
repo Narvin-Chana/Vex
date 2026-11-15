@@ -118,15 +118,20 @@ message(STATUS "Selected graphics backend: ${VEX_SELECTED_BACKEND}")
 # =========================================
 # DEPENDENCIES FETCHING
 # =========================================
-# Dependencies fetching uses the FetchContent module
+# Dependencies are declared with FetchContent, which looks for an installed package first when FIND_PACKAGE_ARGS is
+# given (see the "Dependencies" section of the README). The graphics backend and shader compiler dependencies are
+# declared in their respective cmake/Vex*.cmake files.
 include(FetchContent)
 
-# Fetch magic_enum dependency
-message(STATUS "Fetching magic_enum...")
+# magic_enum is always built from source (its C++20 module is compiled into Vex) and installed alongside Vex.
+# OVERRIDE_FIND_PACKAGE makes any find_package(magic_enum) in the build use this copy.
+set(MAGIC_ENUM_OPT_INSTALL ON)
+set(MAGIC_ENUM_OPT_INSTALL_PACKAGE_XML OFF)
 FetchContent_Declare(
     magic_enum
     GIT_REPOSITORY https://github.com/Neargye/magic_enum.git
     GIT_TAG b233b96e49d371bad00300f59b5ba581100b8745 # Use hash to select the specific commit we require (C++20 module support).
+    OVERRIDE_FIND_PACKAGE
 )
 FetchContent_MakeAvailable(magic_enum)
 # =========================================
@@ -301,6 +306,10 @@ if(VEX_INTERNAL_USE_MODULES)
 endif()
 
 set_target_properties(Vex PROPERTIES CXX_SCAN_FOR_MODULES ${VEX_INTERNAL_USE_MODULES})
+# Also needed by projects using an installed Vex: its exported module requires a C++ standard.
+target_compile_features(Vex PUBLIC cxx_std_23)
+# Same name as the installed target, for projects which add Vex with FetchContent or add_subdirectory.
+add_library(Vex::Vex ALIAS Vex)
 
 target_include_directories(Vex PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
@@ -328,8 +337,7 @@ build_with_dxc(Vex)
 # Static linking with Slang.
 build_with_slang(Vex)
 
-# Static linking to magic_enum
-add_header_only_dependency(Vex magic_enum "${magic_enum_SOURCE_DIR}" "include" "magic_enum")
+target_link_libraries(Vex PUBLIC magic_enum::magic_enum)
 
 # =========================================
 # DEFINES
@@ -366,46 +374,24 @@ target_compile_definitions(Vex PUBLIC VEX_SLANG=$<BOOL:${VEX_ENABLE_SLANG}>)
 # =========================================
 # INSTALLATION
 # =========================================
-message(STATUS "Installing Vex...")
-# Gets the list of registered header dependencies (previous sections)
-get_property(HEADER_DEPS_TO_INSTALL GLOBAL PROPERTY HEADER_DEPS_TO_INSTALL)
-
 # Installation rules
 if(VEX_INTERNAL_USE_MODULES)
-    install(TARGETS Vex ${HEADER_DEPS_TO_INSTALL}
-            EXPORT VexTargets
-            ARCHIVE DESTINATION lib
-            LIBRARY DESTINATION lib
-            RUNTIME DESTINATION bin
-            FILE_SET CXX_MODULES DESTINATION modules
-    )
-else()
-    install(TARGETS Vex ${HEADER_DEPS_TO_INSTALL}
-            EXPORT VexTargets
-            ARCHIVE DESTINATION lib
-            LIBRARY DESTINATION lib
-            RUNTIME DESTINATION bin
-    )
+    set(VEX_INSTALL_MODULES FILE_SET CXX_MODULES DESTINATION modules)
 endif()
+install(TARGETS Vex
+        EXPORT VexTargets
+        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION lib
+        RUNTIME DESTINATION bin
+        ${VEX_INSTALL_MODULES}
+)
 
 # Install Vex headers
-install(DIRECTORY src/ DESTINATION include FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY src/ DESTINATION include FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
 
-# Install the headers of our dependencies
-get_property(HEADER_DIRS_TO_INSTALL GLOBAL PROPERTY HEADER_DIRS_TO_INSTALL)
-list(LENGTH HEADER_DIRS_TO_INSTALL NUM_ITEMS)
-math(EXPR NUM_PAIRS "${NUM_ITEMS} / 2")
-foreach(INDEX RANGE ${NUM_PAIRS})
-    if(INDEX LESS ${NUM_PAIRS})
-        math(EXPR SRC_INDEX "${INDEX} * 2")
-        math(EXPR DST_INDEX "${SRC_INDEX} + 1")
-        list(GET HEADER_DIRS_TO_INSTALL ${SRC_INDEX} SRC_DIR)
-        list(GET HEADER_DIRS_TO_INSTALL ${DST_INDEX} DST_DIR)
-        if(EXISTS "${SRC_DIR}")
-            install(DIRECTORY "${SRC_DIR}/" DESTINATION "${DST_DIR}" FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
-        endif()
-    endif()
-endforeach()
+# Files used by vex_setup_runtime, VexConfig.cmake points VEX_ROOT_DIR at this directory.
+install(DIRECTORY shaders DESTINATION share/Vex)
+install(FILES src/DX12/DX12AgilitySDK.cpp DESTINATION share/Vex/src/DX12)
 
 # Add the examples projects.
 if(VEX_BUILD_EXAMPLES)
@@ -430,6 +416,11 @@ install(EXPORT VexTargets
 )
 
 # Config file for find_package()
+if(TARGET unofficial::spirv-reflect)
+    set(VEX_SPIRV_REFLECT_FROM_PACKAGE ON)
+else()
+    set(VEX_SPIRV_REFLECT_FROM_PACKAGE OFF)
+endif()
 write_basic_package_version_file(
     "${CMAKE_CURRENT_BINARY_DIR}/VexConfigVersion.cmake"
     VERSION ${PROJECT_VERSION}
@@ -441,15 +432,13 @@ configure_package_config_file(
     INSTALL_DESTINATION lib/cmake/Vex
 )
 
-configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/VexHelpers.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/VexHelpers.cmake"
-    COPYONLY
-)
-
+# The dependency scripts are run again by VexConfig.cmake, to find or download the same dependencies.
 install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/VexConfig.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/VexConfigVersion.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/VexHelpers.cmake"
+    cmake/VexHelpers.cmake
+    cmake/VexDX12.cmake
+    cmake/VexDXC.cmake
+    cmake/VexSlang.cmake
     DESTINATION lib/cmake/Vex
 )

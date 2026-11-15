@@ -1,26 +1,28 @@
 # VexVulkan.cmake - Vulkan backend configuration
+#
+# Dependencies, see the "Dependencies" section of the README for the CMake variables controlling them:
+#  - The Vulkan SDK (Vulkan::Vulkan), which must be installed.
+#  - SPIRV-Reflect, provides unofficial::spirv-reflect (the target name of vcpkg's spirv-reflect port). An installed
+#    unofficial-spirv-reflect package (at least SPIRV_REFLECT_VERSION) is used when found, otherwise the pinned
+#    release is downloaded and its single source file is compiled into Vex.
+include(FetchContent)
+
+# 1.4.321 is the minimum version required due to the use of VK_KHR_unified_image_layouts which was added in that version.
+# If you change this version, you should also update the version used in "cmake-multi-platform.yml".
+set(VULKAN_MIN_VERSION 1.4.321)
+find_package(Vulkan ${VULKAN_MIN_VERSION} REQUIRED)
+
+set(SPIRV_REFLECT_VERSION 1.4.321.0)
+FetchContent_Declare(spirv_reflect
+    URL "https://github.com/KhronosGroup/SPIRV-Reflect/archive/refs/tags/vulkan-sdk-${SPIRV_REFLECT_VERSION}.tar.gz"
+    URL_HASH SHA256=254ed36128e7abe8fb12ef804319d0790e059093c116e9fe55d4003880515f85
+    SOURCE_SUBDIR "<invalid path>" # SPIRV-Reflect is meant to be embedded, only its sources are needed.
+    FIND_PACKAGE_ARGS ${SPIRV_REFLECT_VERSION} NAMES unofficial-spirv-reflect CONFIG GLOBAL
+)
+FetchContent_MakeAvailable(spirv_reflect)
 
 function(setup_vulkan_backend TARGET)
     message(STATUS "Setting up Vulkan backend...")
-
-    # Fetch VulkanSDK dependency (includes Vulkan-HPP).
-    # If you change this version, you should also update the version used in "cmake-multi-platform.yml".
-    # 1.4.321 is the minimum version required due to the use of VK_KHR_unified_image_layouts which was added in that version.
-    find_package(Vulkan 1.4.321 REQUIRED)
-
-    # Fetch SPIRV-Reflect dependency
-    message(STATUS "Fetching SPIRV-Reflect...")
-    FetchContent_Declare(
-            spirv_reflect
-            SOURCE_SUBDIR "<invalid path>" # this forces FetchContent to pull but not configure the dependency
-            GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Reflect.git
-            GIT_TAG vulkan-sdk-1.4.321.0
-            GIT_SUBMODULES "" # This avoids pulling in this repo's submodules (eg: GTest)
-    )
-    FetchContent_MakeAvailable(spirv_reflect)
-
-    add_library(vex-spirv-reflect OBJECT
-        ${spirv_reflect_SOURCE_DIR}/spirv_reflect.c)
 
     # Vulkan source files
     set(VEX_VULKAN_SOURCES
@@ -79,15 +81,14 @@ function(setup_vulkan_backend TARGET)
     # Add Vulkan sources to target
     target_sources(${TARGET} PRIVATE ${VEX_VULKAN_SOURCES})
 
-    # Link Vulkan libraries
-    target_link_libraries(${TARGET} PUBLIC Vulkan::Vulkan vex-spirv-reflect)
-
-    target_include_directories(${TARGET} PUBLIC
-        $<BUILD_INTERFACE:${spirv_reflect_SOURCE_DIR}>
-        $<INSTALL_INTERFACE:>
-    )
-
-    set_property(GLOBAL APPEND PROPERTY HEADER_DEPS_TO_INSTALL vex-spirv-reflect)
+    target_link_libraries(${TARGET} PUBLIC Vulkan::Vulkan)
+    if(TARGET unofficial::spirv-reflect)
+        target_link_libraries(${TARGET} PRIVATE unofficial::spirv-reflect)
+    else()
+        # Not found as a package: the downloaded source file is compiled into Vex, consumers of Vex don't need it.
+        target_sources(${TARGET} PRIVATE "${spirv_reflect_SOURCE_DIR}/spirv_reflect.c")
+        target_include_directories(${TARGET} PRIVATE "$<BUILD_INTERFACE:${spirv_reflect_SOURCE_DIR}>")
+    endif()
 
     message(STATUS "Vulkan backend configured successfully")
 endfunction()

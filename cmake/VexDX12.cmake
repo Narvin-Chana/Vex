@@ -1,78 +1,66 @@
 # VexDX12.cmake - DX12 backend configuration
-include(VexHelpers)
+#
+# Dependencies, see the "Dependencies" section of the README for the CMake variables controlling them:
+#  - WinPixEventRuntime, provides Microsoft::WinPixEventRuntime (the target name of vcpkg's winpixevent port). An
+#    installed winpixevent package (at least PIX_VERSION) is used when found, otherwise the NuGet package is downloaded.
+#  - The D3D12 Agility SDK, provides D3D12AgilitySDK. It is taken from the Microsoft.Direct3D.D3D12 NuGet package,
+#    either downloaded or pointed to by FETCHCONTENT_SOURCE_DIR_D3D12_AGILITY_SDK.
+include(FetchContent)
 
-function(setup_pix_3 TARGET)
-    # =========================================
-    # PIX Events Runtime
-    # =========================================
+set(PIX_VERSION 1.0.240308001)
+FetchContent_Declare(winpixevent
+    URL "https://www.nuget.org/api/v2/package/WinPixEventRuntime/${PIX_VERSION}"
+    URL_HASH SHA256=726acc93d6968e2146261a1e415521747d50ad69894c2b42b5d0d4c29fd66ec4
+    DOWNLOAD_NAME WinPixEventRuntime.zip
+    FIND_PACKAGE_ARGS ${PIX_VERSION} CONFIG GLOBAL
+)
 
-    set(PIX_EVENTS_DIR "${FETCHCONTENT_BASE_DIR}/PixEvents")
-    if (NOT EXISTS "${PIX_EVENTS_DIR}/bin")
-        download_and_decompress_archive(
-                "https://www.nuget.org/api/v2/package/WinPixEventRuntime/1.0.240308001"
-                "${PIX_EVENTS_DIR}"
-        )
+set(D3D12_AGILITY_SDK_MIN_VERSION 1.618.4)
+FetchContent_Declare(d3d12_agility_sdk
+    URL "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/${D3D12_AGILITY_SDK_MIN_VERSION}"
+    URL_HASH SHA256=e2049bccbc506a49e3f495c07ee1f97b05a1b833cf8b3db1cf93da56baf2ec53
+    DOWNLOAD_NAME Microsoft.Direct3D.D3D12.zip
+)
+FetchContent_MakeAvailable(winpixevent d3d12_agility_sdk)
+
+# Not found as a package: the NuGet package was downloaded instead.
+if(NOT TARGET Microsoft::WinPixEventRuntime)
+    add_library(Microsoft::WinPixEventRuntime SHARED IMPORTED GLOBAL)
+    set_target_properties(Microsoft::WinPixEventRuntime PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${winpixevent_SOURCE_DIR}/Include"
+        IMPORTED_LOCATION "${winpixevent_SOURCE_DIR}/bin/x64/WinPixEventRuntime.dll"
+        IMPORTED_IMPLIB "${winpixevent_SOURCE_DIR}/bin/x64/WinPixEventRuntime.lib"
+    )
+endif()
+
+if(NOT TARGET D3D12AgilitySDK)
+    # The version exported by the executable (D3D12SDKVersion) is the minor version of the NuGet package.
+    file(STRINGS "${d3d12_agility_sdk_SOURCE_DIR}/Microsoft.Direct3D.D3D12.nuspec" D3D12_AGILITY_SDK_VERSION
+        REGEX "<version>")
+    if(NOT D3D12_AGILITY_SDK_VERSION MATCHES "<version>([0-9]+\\.([0-9]+)\\.[0-9.]+)</version>")
+        message(FATAL_ERROR "Unable to read the D3D12 Agility SDK version from ${d3d12_agility_sdk_SOURCE_DIR}")
+    endif()
+    if(CMAKE_MATCH_1 VERSION_LESS D3D12_AGILITY_SDK_MIN_VERSION)
+        message(FATAL_ERROR "The D3D12 Agility SDK in ${d3d12_agility_sdk_SOURCE_DIR} is ${CMAKE_MATCH_1}, "
+            "Vex requires at least ${D3D12_AGILITY_SDK_MIN_VERSION}.")
     endif()
 
-    set(PIX_INCLUDE_DIR "${PIX_EVENTS_DIR}/include")
-    set(PIX_STATIC_LIB "${PIX_EVENTS_DIR}/bin/x64/WinPixEventRuntime.lib")
-    set(PIX_RUNTIME_DLL "${PIX_EVENTS_DIR}/bin/x64/WinPixEventRuntime.dll")
-
-    # Create PIX imported target
-    if(NOT TARGET WinPixEventRuntime::WinPixEventRuntime)
-        add_library(WinPixEventRuntime::WinPixEventRuntime SHARED IMPORTED GLOBAL)
-        set_target_properties(WinPixEventRuntime::WinPixEventRuntime PROPERTIES
-                INTERFACE_INCLUDE_DIRECTORIES "${PIX_INCLUDE_DIR}"
-                IMPORTED_IMPLIB "${PIX_STATIC_LIB}"
-                IMPORTED_LOCATION "${PIX_RUNTIME_DLL}"
-        )
-    endif()
-
-    target_link_libraries(${TARGET} PRIVATE WinPixEventRuntime::WinPixEventRuntime)
-
-    # Register PIX runtime DLL
-    vex_add_files_to_target_property(${TARGET} "VEX_RUNTIME_DLLS" "${PIX_RUNTIME_DLL}")
-endfunction()
+    set(D3D12_AGILITY_SDK_BIN_DIR "${d3d12_agility_sdk_SOURCE_DIR}/build/native/bin/x64")
+    add_library(D3D12AgilitySDK INTERFACE IMPORTED GLOBAL)
+    set_target_properties(D3D12AgilitySDK PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${d3d12_agility_sdk_SOURCE_DIR}/build/native/include"
+    )
+    # Read by vex_setup_runtime: the DLLs have to be deployed to a D3D12/ folder next to the executable, which also
+    # has to export the SDK version.
+    set_property(GLOBAL PROPERTY VEX_D3D12_AGILITY_SDK_VERSION ${CMAKE_MATCH_2})
+    set_property(GLOBAL PROPERTY VEX_D3D12_AGILITY_SDK_DLLS
+        "${D3D12_AGILITY_SDK_BIN_DIR}/D3D12Core.dll"
+        "${D3D12_AGILITY_SDK_BIN_DIR}/d3d12SDKLayers.dll"
+    )
+endif()
 
 function(setup_dx12_backend TARGET)
     message(STATUS "Setting up DirectX 12 backend...")
-
-    setup_pix_3(${TARGET})
-    
-    # =========================================
-    # DirectX 12 Agility SDK
-    # =========================================
-
-    # Fetch DX12 Agility SDK
-    set(DX_AGILITY_VERSION "618")
-    set(FULL_DX_AGILITY_VERSION "1.${DX_AGILITY_VERSION}.4")
-    set(AGILITY_SDK_DIR "${FETCHCONTENT_BASE_DIR}/DirectX-AgilitySDK-${FULL_DX_AGILITY_VERSION}")
-
-    # Download the NuGet package if not already downloaded
-    if(NOT EXISTS "${AGILITY_SDK_DIR}/build")
-        message(STATUS "Downloading DX12 Agility SDK ${FULL_DX_AGILITY_VERSION}...")
-        download_and_decompress_archive(
-            "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/${FULL_DX_AGILITY_VERSION}"
-            "${AGILITY_SDK_DIR}"
-        )
-        message(STATUS "DirectX Agility SDK extracted to: ${AGILITY_SDK_DIR}")
-    endif()
-
-    set(DX_AGILITY_SDK_SOURCE_DIR "${AGILITY_SDK_DIR}/build/native")
-    set(DX_AGILITY_INCLUDE_DIR "${DX_AGILITY_SDK_SOURCE_DIR}/include")
-    set(DX_AGILITY_BIN_DIR "${DX_AGILITY_SDK_SOURCE_DIR}/bin/x64")
-
-    set(DX_AGILITY_RUNTIME_DLLS
-        "${DX_AGILITY_BIN_DIR}/D3D12Core.dll"
-        "${DX_AGILITY_BIN_DIR}/d3d12SDKLayers.dll"
-    )
-
-    if(NOT EXISTS "${DX_AGILITY_BIN_DIR}/D3D12Core.dll")
-        message(FATAL_ERROR "Missing D3D12Core.dll in Agility SDK directory: ${DX_AGILITY_BIN_DIR}")
-    endif()
-
-    # Store version for downstream use
-    set_property(TARGET Vex PROPERTY DIRECTX_AGILITY_SDK_VERSION ${DX_AGILITY_VERSION})
 
     # =========================================
     # Vex DX12 Sources
@@ -131,19 +119,14 @@ function(setup_dx12_backend TARGET)
     )
     target_sources(${TARGET} PRIVATE ${VEX_DX12_SOURCES})
 
-    # Link DX12 libraries
-    target_link_libraries(${TARGET} PUBLIC d3d12.lib dxgi.lib dxguid.lib)
+    # The Agility SDK's headers are included by Vex's DX12 headers.
+    target_link_libraries(${TARGET} PUBLIC D3D12AgilitySDK d3d12 dxgi dxguid PRIVATE Microsoft::WinPixEventRuntime)
 
-    # DirectX Agility SDK headers
-    add_header_only_dependency(${TARGET} DirectXAgilitySDK "${DX_AGILITY_SDK_SOURCE_DIR}" "include" "directx")
-
-    target_compile_definitions(${TARGET} PRIVATE 
-        DIRECTX_AGILITY_SDK_VERSION=${DX_AGILITY_SDK_VERSION}
+    get_property(AGILITY_SDK_VERSION GLOBAL PROPERTY VEX_D3D12_AGILITY_SDK_VERSION)
+    target_compile_definitions(${TARGET} PRIVATE
+        DIRECTX_AGILITY_SDK_VERSION=${AGILITY_SDK_VERSION}
         D3D12_AGILITY_SDK_ENABLED
     )
-
-    # Register D3D12 Agility SDK DLLs (these need special D3D12/ subdirectory)
-    vex_add_files_to_target_property(${TARGET} "VEX_D3D12_AGILITY_DLLS" ${DX_AGILITY_RUNTIME_DLLS})
 
     message(STATUS "DirectX 12 backend configured successfully")
 endfunction()

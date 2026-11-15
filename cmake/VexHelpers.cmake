@@ -1,176 +1,61 @@
-# Set of helpers for Vex's CMake files
+# Set of helpers for Vex's CMake files, installed alongside Vex for projects using it.
 
-# Function to create and link header-only libraries
-function(add_header_only_dependency TARGET DEP_NAME SOURCE_DIR INCLUDE_PATH INSTALL_PATH)
-    if(NOT EXISTS "${SOURCE_DIR}")
-        message(STATUS WARNING " Source directory does not exist: ${DEP_NAME} ${SOURCE_DIR}")
-        return()
-    endif()
-
-    set(FULL_INCLUDE_PATH "${SOURCE_DIR}/${INCLUDE_PATH}")
-    
-    # Debug: Check if include path exists
-    if(NOT EXISTS "${FULL_INCLUDE_PATH}")
-        message(STATUS WARNING " Include path does not exist: ${FULL_INCLUDE_PATH}")
-        return()
-    endif()
-
-    # Find all header files
-    file(GLOB_RECURSE HEADER_FILES 
-        "${FULL_INCLUDE_PATH}/*.h"
-        "${FULL_INCLUDE_PATH}/*.hpp"
-        "${FULL_INCLUDE_PATH}/*.hxx"
-        "${FULL_INCLUDE_PATH}/*.inl"
-    )
-    
-    if(HEADER_FILES)
-        message(STATUS "Found header files:")
-        foreach(HEADER ${HEADER_FILES})
-            # Show relative path from the include directory
-            file(RELATIVE_PATH REL_PATH "${FULL_INCLUDE_PATH}" "${HEADER}")
-            message(STATUS "  - ${REL_PATH}")
-        endforeach()
-    else()
-        message(WARNING "No header files found in: ${FULL_INCLUDE_PATH}")
-    endif()
-
-    # Create interface library for the headers
-    add_library(${TARGET}_${DEP_NAME}_headers INTERFACE)
-    
-    # Set include directories
-    target_include_directories(${TARGET}_${DEP_NAME}_headers INTERFACE
-        $<BUILD_INTERFACE:${SOURCE_DIR}/${INCLUDE_PATH}>
-        $<INSTALL_INTERFACE:include/${INSTALL_PATH}>
-    )
-    
-    # Link to main target
-    target_link_libraries(${TARGET} PUBLIC ${TARGET}_${DEP_NAME}_headers)
-    
-    # Add to the list of targets to install
-    set_property(GLOBAL APPEND PROPERTY HEADER_DEPS_TO_INSTALL ${TARGET}_${DEP_NAME}_headers)
-    
-    # Register header install path for later
-    set_property(GLOBAL APPEND PROPERTY HEADER_DIRS_TO_INSTALL 
-                "${SOURCE_DIR}/${INCLUDE_PATH}" "include/${INSTALL_PATH}")
-endfunction()
-
-function(download_and_decompress_archive ARCHIVE_URL ARCHIVE_DEST_DIR)
-    set(NUGET_DOWNLOAD_DIR "${CMAKE_BINARY_DIR}/temp.zip")
-
-    file(DOWNLOAD
-        "${ARCHIVE_URL}"
-        "${NUGET_DOWNLOAD_DIR}"
-    )
-
-    file(ARCHIVE_EXTRACT
-        INPUT "${NUGET_DOWNLOAD_DIR}"
-        DESTINATION "${ARCHIVE_DEST_DIR}"
-    )
-
-    file(REMOVE "${NUGET_DOWNLOAD_DIR}")
-endfunction()
-
+# Deploys everything an executable using Vex needs next to it at runtime:
+#  - the DLLs of Vex's dependencies (DXC, Slang, WinPixEventRuntime...) and the modules Slang loads at runtime,
+#  - the D3D12 Agility SDK (DLLs in a D3D12/ subdirectory, and the SDK version exported by the executable),
+#  - Vex's helper shaders, unless they are embedded in Vex.
+# On Linux, shared libraries are instead found through the RPATH CMake gives the executable.
 function(vex_setup_runtime TARGET)
     if(NOT TARGET ${TARGET})
         message(FATAL_ERROR "vex_setup_runtime: Target ${TARGET} does not exist")
-        return()
     endif()
-    
     get_target_property(TARGET_TYPE ${TARGET} TYPE)
     if(NOT TARGET_TYPE STREQUAL "EXECUTABLE")
         message(FATAL_ERROR "vex_setup_runtime: ${TARGET} is not an executable")
-        return()
     endif()
 
-    message(STATUS "Setting up Vex runtime dependencies for ${TARGET}...")
+    set(OUTPUT_DIR "$<TARGET_FILE_DIR:${TARGET}>")
 
-    # Get the list of runtime DLLs stored on Vex
-    get_target_property(VEX_DLLS Vex VEX_RUNTIME_DLLS)
-    if(VEX_DLLS)
-        foreach(DLL_PATH ${VEX_DLLS})
-            get_filename_component(DLL_NAME ${DLL_PATH} NAME)
-            message(STATUS "  - Found ${DLL_PATH}")
-            add_custom_command(TARGET ${TARGET} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                    "${DLL_PATH}"
-                    "$<TARGET_FILE_DIR:${TARGET}>/${DLL_NAME}"
-                COMMENT "Copying Vex runtime dll \"${DLL_NAME}\" to ${TARGET}"
-            )
-        endforeach()
-    else()
-        message(STATUS "No runtime DLLs found for Vex...")
-    endif()
+    # Shared libraries the executable links to, directly or through Vex (always empty outside of Windows).
+    set(LINKED_DLLS "$<TARGET_RUNTIME_DLLS:${TARGET}>")
+    add_custom_command(TARGET ${TARGET} POST_BUILD
+        COMMAND "$<$<BOOL:${LINKED_DLLS}>:${CMAKE_COMMAND};-E;copy_if_different;${LINKED_DLLS};${OUTPUT_DIR}>"
+        COMMAND_EXPAND_LISTS
+        COMMENT "Copying Vex runtime dlls to ${TARGET}"
+    )
 
-    # D3D12 Agility SDK DLLs need to be inserted into the D3D12/ subdirectory.
-    get_target_property(D3D12_AGILITY_DLLS Vex VEX_D3D12_AGILITY_DLLS)
-    if(D3D12_AGILITY_DLLS)
-        # Create D3D12 subdirectory
-        add_custom_command(TARGET ${TARGET} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory 
-                "$<TARGET_FILE_DIR:${TARGET}>/D3D12"
-        )
-        
-        # Copy each Agility SDK DLL to the D3D12/ subdirectory
-        foreach(DLL_PATH ${D3D12_AGILITY_DLLS})
-            get_filename_component(DLL_NAME ${DLL_PATH} NAME)
-            add_custom_command(TARGET ${TARGET} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                    "${DLL_PATH}"
-                    "$<TARGET_FILE_DIR:${TARGET}>/D3D12/${DLL_NAME}"
-                COMMENT "Copying Agility SDK: ${DLL_NAME}"
-            )
-        endforeach()
-        
-        # Add the Agility SDK version define to the target
-        get_target_property(AGILITY_VERSION Vex DIRECTX_AGILITY_SDK_VERSION)
-        if(NOT AGILITY_VERSION)
-            message(FATAL_ERROR "Unable to obtain the DIRECTX_AGILITY_SDK_VERSION") 
-        endif()
-
-        target_compile_definitions(${TARGET} PRIVATE 
-            DIRECTX_AGILITY_SDK_VERSION=${AGILITY_VERSION}
-            D3D12_AGILITY_SDK_ENABLED
-        )
-            
-        # Add the DX12AgilitySDK.cpp source if not already added
-        target_sources(${TARGET} PRIVATE
-            "${VEX_ROOT_DIR}/src/DX12/DX12AgilitySDK.cpp"
-        )
-
-        message(STATUS "D3D12 Agility SDK ${DX_AGILITY_SDK_VERSION} will be deployed with ${TARGET}")
-    endif()
-
-    # Copy Vex shader files (skip if shaders are embedded in the Vex binary)
-    if(NOT VEX_USE_EMBEDDED_SHADERS AND DEFINED VEX_ROOT_DIR AND EXISTS "${VEX_ROOT_DIR}/shaders")
+    # Files which are loaded at runtime without being linked to.
+    get_property(RUNTIME_FILES GLOBAL PROPERTY VEX_RUNTIME_FILES)
+    if(NOT VEX_USE_EMBEDDED_SHADERS)
         file(GLOB VEX_SHADER_FILES
             "${VEX_ROOT_DIR}/shaders/*.hlsl"
             "${VEX_ROOT_DIR}/shaders/*.hlsli"
             "${VEX_ROOT_DIR}/shaders/*.slang"
         )
-        
-        if(VEX_SHADER_FILES)
-            message(STATUS "Copying Vex shader files to ${TARGET}:")
-            foreach(SHADER_FILE ${VEX_SHADER_FILES})
-                message(STATUS "  - Found shader ${SHADER_FILE}") 
-                get_filename_component(FILE_NAME ${SHADER_FILE} NAME)
-                add_custom_command(TARGET ${TARGET} POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                        "${SHADER_FILE}"
-                        "$<TARGET_FILE_DIR:${TARGET}>/${FILE_NAME}"
-                    COMMENT "Copying Vex shader: ${FILE_NAME}"
-                )
-            endforeach()
-        endif()
+        list(APPEND RUNTIME_FILES ${VEX_SHADER_FILES})
     endif()
-endfunction()
-
-function(vex_add_files_to_target_property target PROPERTY_NAME)
-    get_target_property(EXISTING_FILES ${target} ${PROPERTY_NAME})
-    if (NOT EXISTING_FILES)
-        set(EXISTING_FILES "")
+    list(REMOVE_DUPLICATES RUNTIME_FILES)
+    if(RUNTIME_FILES)
+        add_custom_command(TARGET ${TARGET} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${RUNTIME_FILES} "${OUTPUT_DIR}"
+            COMMENT "Copying Vex runtime files to ${TARGET}"
+        )
     endif()
 
-    list(APPEND EXISTING_FILES ${ARGN})
-
-    set_target_properties(${target} PROPERTIES ${PROPERTY_NAME} "${EXISTING_FILES}")
+    # DX12 is loaded dynamically at startup and only looks at the main executable for the Agility SDK version and
+    # path, which is why DX12AgilitySDK.cpp is compiled into it.
+    get_property(AGILITY_SDK_DLLS GLOBAL PROPERTY VEX_D3D12_AGILITY_SDK_DLLS)
+    if(AGILITY_SDK_DLLS)
+        get_property(AGILITY_SDK_VERSION GLOBAL PROPERTY VEX_D3D12_AGILITY_SDK_VERSION)
+        add_custom_command(TARGET ${TARGET} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${OUTPUT_DIR}/D3D12"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${AGILITY_SDK_DLLS} "${OUTPUT_DIR}/D3D12"
+            COMMENT "Copying the D3D12 Agility SDK to ${TARGET}"
+        )
+        target_sources(${TARGET} PRIVATE "${VEX_ROOT_DIR}/src/DX12/DX12AgilitySDK.cpp")
+        target_compile_definitions(${TARGET} PRIVATE
+            DIRECTX_AGILITY_SDK_VERSION=${AGILITY_SDK_VERSION}
+            D3D12_AGILITY_SDK_ENABLED
+        )
+    endif()
 endfunction()
