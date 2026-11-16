@@ -8,7 +8,8 @@
 
 #include <renderdoc_app.h>
 
-#if VEX_MODULES
+// Importing in a header can cause mangling issues in GCC when mixed with textual Vex includes.
+#if VEX_MODULES && !(__GNUC__ && !__clang__)
 import Vex;
 #else
 #include <Vex.h>

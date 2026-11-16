@@ -1,3 +1,36 @@
+// GCC can't mix a textual Xlib.h with the Xlib declarations already inside the Vex module, so the native GLFW headers are
+// included before anything that imports Vex, and the X11 macros that collide with Vex identifiers are removed afterwards.
+#include <cmath>
+#include <filesystem>
+#include <functional>
+#include <optional>
+#include <span>
+#include <string_view>
+#include <unordered_map>
+#include <utility>
+#include <variant>
+#include <vector>
+
+#include <GLFW/glfw3.h>
+
+#if defined(_WIN32)
+#define GLFW_EXPOSE_NATIVE_WIN32
+#elif defined(__linux__)
+#define GLFW_EXPOSE_NATIVE_X11
+#define GLFW_EXPOSE_NATIVE_WAYLAND
+#endif
+#include <GLFW/glfw3native.h>
+
+#if defined(__linux__)
+#undef Always
+#undef Bool
+#undef False
+#undef None
+#undef Status
+#undef Success
+#undef True
+#endif
+
 #include "ExampleApplication.h"
 
 #include <GLFWIncludes.h>
@@ -150,16 +183,21 @@ vex::PlatformWindowHandle ExampleApplication::GetPlatformWindowHandle() const
         .window = glfwGetWin32Window(window) } };
 #elif defined(__linux__)
 
+    // Ask GLFW which backend it picked instead of probing: the native getters of an inactive backend raise errors.
     vex::PlatformWindowHandle platformWindow;
-    if (auto x11Window = glfwGetX11Window(window))
+    switch (glfwGetPlatform())
     {
-        platformWindow = { vex::PlatformWindowHandle::X11Handle{ .window = x11Window,
+    case GLFW_PLATFORM_X11:
+        platformWindow = { vex::PlatformWindowHandle::X11Handle{ .window = glfwGetX11Window(window),
                                                                  .display = glfwGetX11Display() } };
-    }
-    else if (auto waylandWindow = glfwGetWaylandWindow(window))
-    {
-        platformWindow = { vex::PlatformWindowHandle::WaylandHandle{ .window = waylandWindow,
+        break;
+    case GLFW_PLATFORM_WAYLAND:
+        platformWindow = { vex::PlatformWindowHandle::WaylandHandle{ .window = glfwGetWaylandWindow(window),
                                                                      .display = glfwGetWaylandDisplay() } };
+        break;
+    default:
+        VEX_LOG(vex::Fatal, "Unsupported GLFW platform, only X11 and Wayland are supported on Linux.");
+        break;
     }
 #endif
 

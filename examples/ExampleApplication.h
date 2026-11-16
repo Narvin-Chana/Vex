@@ -1,14 +1,18 @@
 #pragma once
 
+#include <cmath>
 #include <filesystem>
 #include <functional>
+#include <span>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <variant>
 
 #include <ExamplePaths.h>
 
-#if VEX_MODULES
+// Importing in a header can cause mangling issues in GCC when mixed with textual Vex includes.
+#if VEX_MODULES && !(__GNUC__ && !__clang__)
 import Vex;
 #else
 #include <Vex.h>
