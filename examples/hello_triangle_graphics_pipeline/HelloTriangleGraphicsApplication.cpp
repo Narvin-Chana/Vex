@@ -3,7 +3,7 @@
 #include <cmath>
 #include <span>
 
-#include <GLFWIncludes.h>
+#include <GLFW/glfw3.h>
 
 HelloTriangleGraphicsApplication::HelloTriangleGraphicsApplication()
     : ExampleApplication("HelloTriangleGraphicsApplication")

@@ -1,30 +1,8 @@
-// GCC can't mix a textual Xlib.h with the Xlib declarations already inside the Vex module, so the native GLFW headers
-// are included before anything that imports Vex, and the X11 macros that collide with Vex identifiers are removed
-// afterwards.
-#include <cmath>
-#include <functional>
-
-#include <GLFW/glfw3.h>
-
-#if defined(_WIN32)
-#define GLFW_EXPOSE_NATIVE_WIN32
-#elif defined(__linux__)
-#define GLFW_EXPOSE_NATIVE_X11
-#define GLFW_EXPOSE_NATIVE_WAYLAND
-#endif
-#include <GLFW/glfw3native.h>
-
-#if defined(__linux__)
-#undef Always
-#undef Bool
-#undef False
-#undef None
-#undef Status
-#undef Success
-#undef True
-#endif
-
+// GLFWIncludes.h must come before ExampleApplication.h (which imports Vex), see GLFWIncludes.h.
+// clang-format off
+#include <GLFWIncludes.h>
 #include "ExampleApplication.h"
+// clang-format on
 
 ExampleApplication::ExampleApplication(std::string_view windowName,
                                        int defaultWidth,
