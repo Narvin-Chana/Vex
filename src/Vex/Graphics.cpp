@@ -141,7 +141,7 @@ Graphics::~Graphics()
     GEnableGPUScopedEvents = false;
 }
 
-void Graphics::Present()
+void Graphics::Present(Span<const SyncToken> dependencies)
 {
     if (!desc.useSwapChain)
     {
@@ -226,7 +226,7 @@ void Graphics::Present()
         cmdList->EmitBarriers({}, { backBufferBarrier, presentTextureBarrier }, {});
         cmdList->Close();
 
-        presentTokens[currentFrameIndex] = swapChain->Present(currentFrameIndex, rhi, cmdList);
+        presentTokens[currentFrameIndex] = swapChain->Present(currentFrameIndex, rhi, cmdList, dependencies);
         commandPool->OnCommandListsSubmitted({ &cmdList, 1 }, { &presentTokens[currentFrameIndex], 1 });
 
         // Certain swapchains reset the state of the backbuffer to Undefined after presenting.

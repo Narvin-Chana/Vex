@@ -238,16 +238,24 @@ std::optional<RHITexture> VkSwapChain::AcquireBackBuffer(u8 frameIndex)
     return RHITexture{ ctx, std::move(desc), backbufferImages[currentBackbufferId] };
 }
 
-SyncToken VkSwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandList> commandList)
+SyncToken VkSwapChain::Present(u8 frameIndex,
+                               RHI& rhi,
+                               NonNullPtr<RHICommandList> commandList,
+                               Span<const SyncToken> dependencies)
 {
     ::vk::CommandBufferSubmitInfo cmdBufferSubmitInfo{ .commandBuffer = commandList->GetNativeCommandList() };
 
     // Before rendering the graphics queue, we must wait for acquireImage to be done.
     // This equates to waiting on the backbufferAcquisition binary semaphore of this backbuffer.
-    ::vk::SemaphoreSubmitInfo acquireWaitInfo = {
+    std::vector<::vk::SemaphoreSubmitInfo> waitSemaphores{ {
         .semaphore = *backbufferAcquisition[frameIndex],
         .stageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-    };
+    } };
+    // Also wait for work on other queues which wrote to the present texture.
+    for (const SyncToken& dependency : dependencies)
+    {
+        rhi.AddDependencyWait(waitSemaphores, dependency);
+    }
 
     // Signal the present binary semaphore (we only want to present once rendering work is done).
     ::vk::SemaphoreSubmitInfo presentSignalInfo = {
@@ -255,10 +263,8 @@ SyncToken VkSwapChain::Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandLis
         .stageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput,
     };
 
-    SyncToken syncToken = rhi.SubmitToQueue(commandList->GetQueue(),
-                                            { &cmdBufferSubmitInfo, 1 },
-                                            { &acquireWaitInfo, 1 },
-                                            { presentSignalInfo });
+    SyncToken syncToken =
+        rhi.SubmitToQueue(commandList->GetQueue(), { &cmdBufferSubmitInfo, 1 }, waitSemaphores, { presentSignalInfo });
 
     // Present now that we've submitted the present copy work.
     ::vk::PresentInfoKHR presentInfo = {
