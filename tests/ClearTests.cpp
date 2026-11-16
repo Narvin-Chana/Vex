@@ -1,7 +1,5 @@
 ﻿#include "VexTest.h"
 
-#include <algorithm>
-
 namespace vex
 {
 struct ClearTest : VexTest

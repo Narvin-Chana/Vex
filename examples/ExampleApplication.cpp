@@ -1,15 +1,8 @@
-// GCC can't mix a textual Xlib.h with the Xlib declarations already inside the Vex module, so the native GLFW headers are
-// included before anything that imports Vex, and the X11 macros that collide with Vex identifiers are removed afterwards.
+// GCC can't mix a textual Xlib.h with the Xlib declarations already inside the Vex module, so the native GLFW headers
+// are included before anything that imports Vex, and the X11 macros that collide with Vex identifiers are removed
+// afterwards.
 #include <cmath>
-#include <filesystem>
 #include <functional>
-#include <optional>
-#include <span>
-#include <string_view>
-#include <unordered_map>
-#include <utility>
-#include <variant>
-#include <vector>
 
 #include <GLFW/glfw3.h>
 
@@ -32,8 +25,6 @@
 #endif
 
 #include "ExampleApplication.h"
-
-#include <GLFWIncludes.h>
 
 ExampleApplication::ExampleApplication(std::string_view windowName,
                                        int defaultWidth,

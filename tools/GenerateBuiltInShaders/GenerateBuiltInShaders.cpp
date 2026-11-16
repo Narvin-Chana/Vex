@@ -7,8 +7,9 @@
 import Vex;
 import magic_enum;
 #else
-#include <Vex.h>
 #include <magic_enum/magic_enum.hpp>
+
+#include <Vex.h>
 #endif
 using namespace vex;
 
