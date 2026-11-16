@@ -51,7 +51,8 @@ D3D12_BARRIER_SYNC RHIBarrierSyncToDX12(RHIBarrierSync barrierSync)
     case BuildAccelerationStructure:
         return D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
     case AllGraphics:
-        return D3D12_BARRIER_SYNC_ALL_SHADING;
+        // DRAW includes index input, all shading, depth-stencil and render target stages, like VK_PIPELINE_STAGE_ALL_GRAPHICS.
+        return D3D12_BARRIER_SYNC_DRAW;
     case AllCommands:
         return D3D12_BARRIER_SYNC_ALL;
     default:

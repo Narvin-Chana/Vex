@@ -87,6 +87,20 @@ static std::vector<BufferTextureCopyDesc> GetBufferTextureCopyDescFromTextureReg
     return copyDescs;
 }
 
+// Access with which an operation at syncStage reads buffers.
+static RHIBarrierAccess GetBufferReadAccess(RHIBarrierSync syncStage)
+{
+    switch (syncStage)
+    {
+    case RHIBarrierSync::Copy:
+        return RHIBarrierAccess::CopySource;
+    case RHIBarrierSync::BuildAccelerationStructure:
+        return RHIBarrierAccess::ShaderRead;
+    default:
+        return RHIBarrierAccess::MemoryRead;
+    }
+}
+
 static RenderTargetState CreateRenderTargetState(const RHIDrawResources& rhiDrawRes)
 {
     RenderTargetState rtState;
@@ -590,20 +604,8 @@ void CommandContext::Copy(const Buffer& source, const Buffer& destination)
 
     BufferUtil::ValidateSimpleBufferCopy(source.desc, destination.desc);
 
-    // Makes sure writes to the source are done.
-    EnqueueGlobalBarrier({
-        .srcSync = RHIBarrierSync::AllCommands,
-        .dstSync = RHIBarrierSync::Copy,
-        .srcAccess = RHIBarrierAccess::MemoryWrite,
-        .dstAccess = RHIBarrierAccess::CopySource,
-    });
-    // Makes sure reads of the destination are done.
-    EnqueueGlobalBarrier({
-        .srcSync = RHIBarrierSync::AllCommands,
-        .dstSync = RHIBarrierSync::Copy,
-        .srcAccess = RHIBarrierAccess::MemoryRead,
-        .dstAccess = RHIBarrierAccess::CopyDest,
-    });
+    // Waits on previous writes to the source and previous accesses to the destination.
+    SynchronizeBufferAccesses(RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest);
     FlushBarriers();
 
     RHIBuffer& sourceRHI = graphics->GetRHIBuffer(source.handle);
@@ -615,20 +617,8 @@ void CommandContext::Copy(const Buffer& source, const Buffer& destination, const
 {
     BufferUtil::ValidateBufferCopyDesc(source.desc, destination.desc, bufferCopyDesc);
 
-    // Makes sure writes to the source are done.
-    EnqueueGlobalBarrier({
-        .srcSync = RHIBarrierSync::AllCommands,
-        .dstSync = RHIBarrierSync::Copy,
-        .srcAccess = RHIBarrierAccess::MemoryWrite,
-        .dstAccess = RHIBarrierAccess::CopySource,
-    });
-    // Makes sure reads of the destination are done.
-    EnqueueGlobalBarrier({
-        .srcSync = RHIBarrierSync::AllCommands,
-        .dstSync = RHIBarrierSync::Copy,
-        .srcAccess = RHIBarrierAccess::MemoryRead,
-        .dstAccess = RHIBarrierAccess::CopyDest,
-    });
+    // Waits on previous writes to the source and previous accesses to the destination.
+    SynchronizeBufferAccesses(RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest);
     FlushBarriers();
 
     RHIBuffer& sourceRHI = graphics->GetRHIBuffer(source.handle);
@@ -638,13 +628,8 @@ void CommandContext::Copy(const Buffer& source, const Buffer& destination, const
 
 void CommandContext::Copy(const Buffer& source, const Texture& destination)
 {
-    // Makes sure writes to the source buffer are done.
-    EnqueueGlobalBarrier({
-        .srcSync = RHIBarrierSync::AllCommands,
-        .dstSync = RHIBarrierSync::Copy,
-        .srcAccess = RHIBarrierAccess::MemoryWrite,
-        .dstAccess = RHIBarrierAccess::CopySource,
-    });
+    // Waits on previous writes to the source buffer.
+    SynchronizeBufferAccesses(RHIBarrierSync::Copy);
     // Makes sure that reads of the dst texture are finished.
     EnqueueTextureBarrier(destination,
                           TextureSubresource{},
@@ -670,13 +655,8 @@ void CommandContext::Copy(const Buffer& source, const Texture& destination, Span
         TextureCopyUtil::ValidateBufferTextureCopyDesc(source.desc, destination.desc, copyDesc);
     }
 
-    // Makes sure writes to the source buffer are done.
-    EnqueueGlobalBarrier({
-        .srcSync = RHIBarrierSync::AllCommands,
-        .dstSync = RHIBarrierSync::Copy,
-        .srcAccess = RHIBarrierAccess::MemoryWrite,
-        .dstAccess = RHIBarrierAccess::CopySource,
-    });
+    // Waits on previous writes to the source buffer.
+    SynchronizeBufferAccesses(RHIBarrierSync::Copy);
     for (const auto& cd : copyDescs)
     {
         // Makes sure that reads of the dest texture subresources are finished.
@@ -721,13 +701,8 @@ void CommandContext::Copy(const Texture& source,
                               RHITextureLayout::CopySource);
     }
 
-    // Make sure that reads of the dest buffer are finished.
-    EnqueueGlobalBarrier({
-        .srcSync = RHIBarrierSync::AllCommands,
-        .dstSync = RHIBarrierSync::Copy,
-        .srcAccess = RHIBarrierAccess::MemoryRead,
-        .dstAccess = RHIBarrierAccess::CopyDest,
-    });
+    // Waits on previous accesses to the destination buffer.
+    SynchronizeBufferAccesses(RHIBarrierSync::Copy, RHIBarrierAccess::CopyDest);
     FlushBarriers();
 
     RHITexture& sourceRHI = graphics->GetRHITexture(source.handle);
@@ -927,14 +902,6 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
             mappedMemory.WriteData(std::as_bytes(std::span<std::array<float, 3 * 4>>(transformsToUpload)));
         }
 
-        // Ensure that vertex/index buffers have had time to be written-to correctly.
-        EnqueueGlobalBarrier({
-            .srcSync = RHIBarrierSync::AllCommands,
-            .dstSync = RHIBarrierSync::BuildAccelerationStructure,
-            .srcAccess = RHIBarrierAccess::MemoryWrite,
-            .dstAccess = RHIBarrierAccess::ShaderRead,
-        });
-
         u32 transformIndex = 0;
         for (const BLASGeometryDesc& blasGeometry : desc.geometry)
         {
@@ -1007,14 +974,6 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
             mappedMemory.WriteData(std::as_bytes(std::span(aabbsToUpload)));
         }
 
-        // Ensure that AABB upload is finished.
-        EnqueueGlobalBarrier(RHIGlobalBarrier{
-            .srcSync = RHIBarrierSync::AllCommands,
-            .dstSync = RHIBarrierSync::BuildAccelerationStructure,
-            .srcAccess = RHIBarrierAccess::MemoryWrite,
-            .dstAccess = RHIBarrierAccess::ShaderRead,
-        });
-
         u32 aabbIndex = 0;
         for (const BLASGeometryDesc& blasGeometry : desc.geometry)
         {
@@ -1046,6 +1005,7 @@ void CommandContext::BuildBLAS(const AccelerationStructure& accelerationStructur
     };
     Buffer scratchBuffer = CreateTemporaryBuffer(scratchBufferDesc);
 
+    SynchronizeBufferAccesses(RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::AccelerationStructureWrite);
     FlushBarriers();
     cmdList->BuildBLAS(graphics->GetRHIAccelerationStructure(accelerationStructure.handle),
                        graphics->GetRHIBuffer(scratchBuffer.handle));
@@ -1066,13 +1026,6 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
     {
         perInstanceBLAS.push_back(graphics->GetRHIAccelerationStructure(tlasInstanceDesc.blas.handle));
     }
-
-    EnqueueGlobalBarrier(RHIGlobalBarrier{
-        .srcSync = RHIBarrierSync::BuildAccelerationStructure,
-        .dstSync = RHIBarrierSync::BuildAccelerationStructure,
-        .srcAccess = RHIBarrierAccess::AccelerationStructureWrite,
-        .dstAccess = RHIBarrierAccess::AccelerationStructureRead,
-    });
 
     RHITLASBuildDesc rhiTLASDesc{
         .instances = desc.instances,
@@ -1099,10 +1052,7 @@ void CommandContext::BuildTLAS(const AccelerationStructure& accelerationStructur
         .usage = BufferUsage::Scratch,
     });
 
-    EnqueueGlobalBarrier({ .srcSync = RHIBarrierSync::Copy,
-                           .dstSync = RHIBarrierSync::BuildAccelerationStructure,
-                           .srcAccess = RHIBarrierAccess::CopyDest,
-                           .dstAccess = RHIBarrierAccess::MemoryRead });
+    SynchronizeBufferAccesses(RHIBarrierSync::BuildAccelerationStructure, RHIBarrierAccess::AccelerationStructureWrite);
 
     FlushBarriers();
     cmdList->BuildTLAS(accelStruct,
@@ -1284,38 +1234,17 @@ void CommandContext::EnqueueGlobalBarrier(const RHIGlobalBarrier& globalBarrier)
 
 void CommandContext::InferResourceBarriers(RHIBarrierSync syncStage, Span<const ResourceBinding> resources)
 {
+    bool writesBuffers = false;
+    bool readsAccelerationStructures = false;
     for (const auto& rb : resources)
     {
         std::visit(
-            Visitor{ [this, syncStage](const BufferBinding& bufferBinding)
+            Visitor{ [&writesBuffers](const BufferBinding& bufferBinding)
                      {
                          using enum BufferBindingUsage;
-                         RHIBarrierAccess dstAccess{};
-                         switch (bufferBinding.usage)
-                         {
-                         case UniformBuffer:
-                             dstAccess = RHIBarrierAccess::UniformRead;
-                             break;
-                         case StructuredBuffer:
-                         case ByteAddressBuffer:
-                             dstAccess = RHIBarrierAccess::ShaderRead;
-                             break;
-                         case RWStructuredBuffer:
-                         case RWByteAddressBuffer:
-                             dstAccess = RHIBarrierAccess::ShaderReadWrite;
-                             break;
-                         default:
-                             VEX_LOG(Fatal, "Invalid usage for buffer binding {}...", bufferBinding.buffer.desc.name);
-                             std::unreachable();
-                         }
-
-                         // In Vex buffers just use global barriers.
-                         EnqueueGlobalBarrier(RHIGlobalBarrier{
-                             .srcSync = RHIBarrierSync::AllCommands,
-                             .dstSync = syncStage,
-                             .srcAccess = RHIBarrierAccess::MemoryWrite,
-                             .dstAccess = dstAccess,
-                         });
+                         // Buffer reads need no tracking, only writes have to be synchronized.
+                         writesBuffers |= bufferBinding.usage == RWStructuredBuffer ||
+                                          bufferBinding.usage == RWByteAddressBuffer;
                      },
                      [this, syncStage](const TextureBinding& texBinding)
                      {
@@ -1339,18 +1268,57 @@ void CommandContext::InferResourceBarriers(RHIBarrierSync syncStage, Span<const 
 
                          EnqueueTextureBarrier(texBinding.texture, texBinding.subresource, syncStage, access, layout);
                      },
-                     [this, syncStage](const AccelerationStructureBinding& asBinding)
-                     {
-                         // All ASBindings use AccelerationStructureRead.
-                         EnqueueGlobalBarrier(RHIGlobalBarrier{
-                             .srcSync = RHIBarrierSync::AllCommands,
-                             .dstSync = syncStage,
-                             .srcAccess = RHIBarrierAccess::MemoryWrite,
-                             .dstAccess = RHIBarrierAccess::AccelerationStructureRead,
-                         });
-                     } },
+                     [&readsAccelerationStructures](const AccelerationStructureBinding&)
+                     { readsAccelerationStructures = true; } },
             rb.binding);
     }
+
+    SynchronizeBufferAccesses(syncStage,
+                              writesBuffers ? RHIBarrierAccess::ShaderReadWrite : RHIBarrierAccess::NoAccess,
+                              readsAccelerationStructures);
+}
+
+void CommandContext::SynchronizeBufferAccesses(RHIBarrierSync syncStage,
+                                               RHIBarrierAccess writeAccess,
+                                               bool readsAccelerationStructures)
+{
+    const bool isWrite = writeAccess != RHIBarrierAccess::NoAccess;
+
+    // Only reads after a tracked write, or tracked writes after any previous work, depend on previous accesses.
+    if (hasPendingBufferWrites || (isWrite && hasExecutedSinceBufferBarrier))
+    {
+        EnqueueGlobalBarrier({
+            .srcSync = RHIBarrierSync::AllCommands,
+            .dstSync = syncStage,
+            .srcAccess = RHIBarrierAccess::MemoryWrite,
+            .dstAccess = CommandContext_Internal::GetBufferReadAccess(syncStage),
+        });
+        // Builds (TLAS reading BLAS) and ray tracing read acceleration structures written by previous builds.
+        if (readsAccelerationStructures || syncStage == RHIBarrierSync::BuildAccelerationStructure ||
+            syncStage == RHIBarrierSync::RayTracing)
+        {
+            EnqueueGlobalBarrier({
+                .srcSync = RHIBarrierSync::AllCommands,
+                .dstSync = syncStage,
+                .srcAccess = RHIBarrierAccess::AccelerationStructureWrite,
+                .dstAccess = RHIBarrierAccess::AccelerationStructureRead,
+            });
+        }
+        if (isWrite)
+        {
+            EnqueueGlobalBarrier({
+                .srcSync = RHIBarrierSync::AllCommands,
+                .dstSync = syncStage,
+                .srcAccess = RHIBarrierAccess::MemoryRead,
+                .dstAccess = writeAccess,
+            });
+        }
+        hasPendingBufferWrites = false;
+        hasExecutedSinceBufferBarrier = false;
+    }
+
+    hasExecutedSinceBufferBarrier = true;
+    hasPendingBufferWrites |= isWrite;
 }
 
 Buffer CommandContext::CreateTemporaryStagingBuffer(const std::string& name,
@@ -1424,11 +1392,6 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(DrawDesc desc,
         cmdList->SetDepthBounds(desc.dynamicState.minDepthBounds, desc.dynamicState.maxDepthBounds);
     }
 
-    EnqueueGlobalBarrier({ .srcSync = RHIBarrierSync::AllCommands,
-                           .dstSync = RHIBarrierSync::AllGraphics,
-                           .srcAccess = RHIBarrierAccess::MemoryWrite,
-                           .dstAccess = RHIBarrierAccess::VertexInputRead });
-
     return drawResources;
 }
 
@@ -1451,11 +1414,6 @@ std::optional<RHIDrawResources> CommandContext::PrepareDispatchMeshCall(Dispatch
     RHIResourceLayout& resourceLayout = graphics->psCache->resourceLayout.value();
     resourceLayout.SetLayoutResources(constants);
     cmdList->SetLayout(resourceLayout);
-
-    EnqueueGlobalBarrier({ .srcSync = RHIBarrierSync::AllCommands,
-                           .dstSync = RHIBarrierSync::AllGraphics,
-                           .srcAccess = RHIBarrierAccess::MemoryWrite,
-                           .dstAccess = RHIBarrierAccess::VertexInputRead });
 
     std::unique_ptr<RHIGraphicsPipelineState> oldPSO;
     RHIGraphicsPipelineState* pipelineState =

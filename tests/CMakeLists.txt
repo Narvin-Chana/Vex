@@ -23,6 +23,7 @@ add_executable(vex_tests
 	"RenderDoc.h"
 	"RenderDoc.cpp"
 	"SynchronizationTest.cpp"
+	"BufferSynchronizationTest.cpp"
 	"UploadReadbackTest.cpp"
     "MipGenerationTest.cpp"
     "EmbeddedShaderTest.cpp"

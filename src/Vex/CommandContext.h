@@ -226,6 +226,11 @@ public:
     // ---------------------------------------------------------------------------------------------------------------
     // Manual synchronization is typically unnecessary as long as you use the "tracked resources" provided by
     // Draw/Dispatch/TraceRays. In the cases it is necessary we still expose it here.
+    //
+    // Specifically for buffers and acceleration structures, if they are being accessed without being tracked they are assumed to only be reads.
+    // Writes must be passed in as tracked resources. Vex then only emits a barrier when an operation depends on previous work in this context:
+    // reading after a tracked write, or doing a tracked write after any previous work.
+    // Untracked writes must be synchronized manually with a call to Barrier.
 
     void Barrier(const Buffer& buffer, RHIBarrierAccess access);
     void Barrier(const Texture& texture, RHIBarrierAccess access, const TextureSubresource& subresource = {});
@@ -249,6 +254,11 @@ private:
     void EnqueueGlobalBarrier(const RHIGlobalBarrier& globalBarrier);
 
     void InferResourceBarriers(RHIBarrierSync syncStage, Span<const ResourceBinding> resources);
+    // Enqueues a global barrier if an operation at syncStage depends on previous buffer accesses, then records it.
+    // writeAccess is NoAccess for operations which only read buffers.
+    void SynchronizeBufferAccesses(RHIBarrierSync syncStage,
+                                   RHIBarrierAccess writeAccess = RHIBarrierAccess::NoAccess,
+                                   bool readsAccelerationStructures = false);
     void BarrierDrawResources(const DrawResourceBinding& drawBindings,
                               const DepthStencilState* depthStencilState = nullptr);
 
@@ -300,6 +310,10 @@ private:
     std::vector<RHIBufferBarrier> pendingBufferBarriers;
     std::vector<RHITextureBarrier> pendingTextureBarriers;
     std::vector<RHIGlobalBarrier> pendingGlobalBarriers;
+
+    // Buffer accesses since the last buffer barrier, see SynchronizeBufferAccesses.
+    bool hasPendingBufferWrites = false;
+    bool hasExecutedSinceBufferBarrier = false;
 
     bool hasInitializedViewport = false;
     bool hasInitializedScissor = false;

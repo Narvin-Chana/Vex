@@ -1,5 +1,7 @@
 #include "DX12RHI.h"
 
+#include <algorithm>
+
 #include <Vex/Logger.h>
 #include <Vex/PhysicalDevice.h>
 #include <Vex/Platform/PlatformWindow.h>
@@ -246,6 +248,13 @@ std::vector<SyncToken> DX12RHI::Submit(Span<const NonNullPtr<RHICommandList>> co
         commandListsPerQueue[cmdList->GetQueue()].push_back(cmdList);
     }
 
+    // Only the highest awaited value per signaling queue matters.
+    std::array<u64, QueueTypes::Count> dependencyValues{};
+    for (const SyncToken& dependency : dependencies)
+    {
+        dependencyValues[dependency.queueType] = std::max(dependencyValues[dependency.queueType], dependency.value);
+    }
+
     std::vector<SyncToken> syncTokens;
     syncTokens.reserve(QueueTypes::Count);
 
@@ -256,6 +265,16 @@ std::vector<SyncToken> DX12RHI::Submit(Span<const NonNullPtr<RHICommandList>> co
         {
             continue;
         }
+
+        for (u32 signalingQueue = 0; signalingQueue < QueueTypes::Count; ++signalingQueue)
+        {
+            if (signalingQueue != i && dependencyValues[signalingQueue] != 0)
+            {
+                WaitForTokenOnGPU(static_cast<QueueType>(i),
+                                  { static_cast<QueueType>(signalingQueue), dependencyValues[signalingQueue] });
+            }
+        }
+
         queues[i]->ExecuteCommandLists(rawCmdLists.size(), rawCmdLists.data());
 
         // Signal N, and increment the queue fence.
