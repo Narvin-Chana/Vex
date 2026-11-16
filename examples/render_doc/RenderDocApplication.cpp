@@ -26,7 +26,7 @@ void RenderDocApplication::Run()
 
     while (!glfwWindowShouldClose(window))
     {
-        glfwPollEvents();
+        PollEvents();
 
         if (!hasCaptured)
         {
@@ -41,14 +41,14 @@ void RenderDocApplication::Run()
     }
 }
 
-void RenderDocApplication::OnResize(GLFWwindow* window, int width, int height)
+void RenderDocApplication::OnResize(int width, int height)
 {
     if (width == 0 || height == 0)
     {
         return;
     }
 
-    ExampleApplication::OnResize(window, width, height);
+    ExampleApplication::OnResize(width, height);
 }
 
 int main()

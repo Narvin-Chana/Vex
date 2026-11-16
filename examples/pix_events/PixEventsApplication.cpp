@@ -30,7 +30,7 @@ void PixEventsApplication::Run()
 
     while (!glfwWindowShouldClose(window))
     {
-        glfwPollEvents();
+        PollEvents();
 
         if (!hasCaptured)
         {
@@ -45,14 +45,14 @@ void PixEventsApplication::Run()
     }
 }
 
-void PixEventsApplication::OnResize(GLFWwindow* window, int width, int height)
+void PixEventsApplication::OnResize(int width, int height)
 {
     if (width == 0 || height == 0)
     {
         return;
     }
 
-    ExampleApplication::OnResize(window, width, height);
+    ExampleApplication::OnResize(width, height);
 }
 
 int main()
