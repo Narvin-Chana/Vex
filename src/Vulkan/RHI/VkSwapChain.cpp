@@ -298,7 +298,7 @@ void VkSwapChain::InitSwapchainResource(u32 inWidth, u32 inHeight)
         .imageArrayLayers = 1,
         .imageUsage = ::vk::ImageUsageFlagBits::eColorAttachment | ::vk::ImageUsageFlagBits::eTransferDst |
                       ::vk::ImageUsageFlagBits::eTransferSrc,
-        .imageSharingMode = needsConcurrent ? ::vk::SharingMode::eExclusive : ::vk::SharingMode::eConcurrent,
+        .imageSharingMode = needsConcurrent ? ::vk::SharingMode::eConcurrent : ::vk::SharingMode::eExclusive,
         .queueFamilyIndexCount = needsConcurrent ? static_cast<u32>(ctx->queueFamilyIndices.size()) : 0,
         .pQueueFamilyIndices = needsConcurrent ? ctx->queueFamilyIndices.data() : nullptr,
         .preTransform = supportDetails.capabilities.currentTransform,
