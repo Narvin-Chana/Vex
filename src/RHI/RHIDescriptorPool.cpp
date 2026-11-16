@@ -29,6 +29,7 @@ BindlessHandle RHIDescriptorPoolBase::AllocateStaticDescriptor(DescriptorType de
 
 void RHIDescriptorPoolBase::FreeStaticDescriptor(DescriptorType descriptorType, BindlessHandle handle)
 {
+    VEX_ASSERT(IsValid(descriptorType, handle));
     auto& [generations, handles] = descriptorType == DescriptorType::Resource ? allocator : samplerAllocator;
     const u32 index = handle.GetIndex();
     generations[index]++;
@@ -39,7 +40,8 @@ void RHIDescriptorPoolBase::FreeStaticDescriptor(DescriptorType descriptorType, 
 
 bool RHIDescriptorPoolBase::IsValid(DescriptorType descriptorType, BindlessHandle handle) const
 {
-    return handle.GetGeneration() ==
-           (descriptorType == DescriptorType::Resource ? allocator : samplerAllocator).generations[handle.GetIndex()];
+    return handle.IsValid() &&
+           handle.GetGeneration() == (descriptorType == DescriptorType::Resource ? allocator : samplerAllocator)
+                                         .generations[handle.GetIndex()];
 }
 } // namespace vex

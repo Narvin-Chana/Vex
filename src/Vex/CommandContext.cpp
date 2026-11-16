@@ -1129,6 +1129,10 @@ void CommandContext::ExecuteInDrawContext(const DrawResourceBinding& drawBinding
     // Reset cached states as the callback could have changed the pipeline.
     cachedGraphicsPSO = {};
     cachedInputAssembly = {};
+    if (cmdList->GetQueue() != QueueType::Copy)
+    {
+        cmdList->SetDescriptorPool(*graphics->descriptorPool, graphics->psCache->resourceLayout.value());
+    }
 }
 
 QueryHandle CommandContext::BeginTimestampQuery()

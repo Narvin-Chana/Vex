@@ -146,7 +146,8 @@ public:
         for (HandleT handle : elements)
         {
             IndexT idx = handle.GetIndex();
-            VEX_ASSERT(values[idx].has_value(), "Error: trying to free an element which does not exist.");
+            VEX_ASSERT(IsValid(handle) && values[idx].has_value(),
+                       "Error: trying to free an element which does not exist.");
             values[idx].reset();
             ++generations[idx];
             indices.push_back(idx);
@@ -158,7 +159,8 @@ public:
     void FreeElement(HandleT handle)
     {
         IndexT idx = handle.GetIndex();
-        VEX_ASSERT(values[idx].has_value(), "Error: trying to free an element which does not exist.");
+        VEX_ASSERT(IsValid(handle) && values[idx].has_value(),
+                   "Error: trying to free an element which does not exist.");
         values[idx].reset();
         ++generations[idx];
         allocator.Deallocate(idx);
@@ -168,9 +170,10 @@ public:
     MaybeUninitialized<T> ExtractElement(HandleT handle)
     {
         IndexT idx = handle.GetIndex();
+        VEX_ASSERT(IsValid(handle) && values[idx].has_value(),
+                   "Error: trying to extract an element which does not exist.");
         ++generations[idx];
         allocator.Deallocate(idx);
-        VEX_ASSERT(values[idx].has_value(), "Error: trying to extract an element which does not exist.");
         return std::exchange(values[idx], std::nullopt);
     }
 
