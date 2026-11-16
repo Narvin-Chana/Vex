@@ -11,8 +11,7 @@
 
 #include <ExamplePaths.h>
 
-// Importing in a header can cause mangling issues in GCC when mixed with textual Vex includes.
-#if VEX_MODULES && !(__GNUC__ && !__clang__)
+#if VEX_MODULES && !defined(VEX_EXAMPLE_TEXTUAL_VEX)
 import Vex;
 #else
 #include <Vex.h>
