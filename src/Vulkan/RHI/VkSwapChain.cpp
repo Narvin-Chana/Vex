@@ -260,7 +260,7 @@ SyncToken VkSwapChain::Present(u8 frameIndex,
     // Signal the present binary semaphore (we only want to present once rendering work is done).
     ::vk::SemaphoreSubmitInfo presentSignalInfo = {
         .semaphore = *presentSemaphore[currentBackbufferId],
-        .stageMask = ::vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+        .stageMask = ::vk::PipelineStageFlagBits2::eAllCommands,
     };
 
     SyncToken syncToken =
