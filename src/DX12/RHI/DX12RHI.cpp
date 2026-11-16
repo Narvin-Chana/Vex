@@ -240,10 +240,17 @@ std::vector<SyncToken> DX12RHI::Submit(Span<const NonNullPtr<RHICommandList>> co
     // Submit command lists
     std::array<std::vector<ID3D12CommandList*>, QueueTypes::Count> rawCommandListsPerQueue;
     std::array<std::vector<NonNullPtr<RHICommandList>>, QueueTypes::Count> commandListsPerQueue;
-    for (NonNullPtr<RHICommandList> cmdList : commandLists)
+    for (NonNullPtr cmdList : commandLists)
     {
         rawCommandListsPerQueue[cmdList->GetQueue()].push_back(cmdList->GetNativeCommandList().Get());
         commandListsPerQueue[cmdList->GetQueue()].push_back(cmdList);
+    }
+
+    // Only the highest value per queue matters.
+    std::array<u64, QueueTypes::Count> dependencyValues{};
+    for (const SyncToken& dep : dependencies)
+    {
+        dependencyValues[dep.queueType] = std::max(dependencyValues[dep.queueType], dep.value);
     }
 
     std::vector<SyncToken> syncTokens;
@@ -255,6 +262,17 @@ std::vector<SyncToken> DX12RHI::Submit(Span<const NonNullPtr<RHICommandList>> co
         if (rawCmdLists.empty())
         {
             continue;
+        }
+
+        // Insert the gpu waits so that the dependencies are done before this command list starts.
+        for (u32 signalingQueue = 0; signalingQueue < QueueTypes::Count; ++signalingQueue)
+        {
+            if (signalingQueue != i && dependencyValues[signalingQueue] != 0)
+            {
+                WaitForTokenOnGPU(static_cast<QueueType>(i),
+                                  SyncToken{ .queueType = static_cast<QueueType>(signalingQueue),
+                                             .value = dependencyValues[signalingQueue] });
+            }
         }
         queues[i]->ExecuteCommandLists(rawCmdLists.size(), rawCmdLists.data());
 
