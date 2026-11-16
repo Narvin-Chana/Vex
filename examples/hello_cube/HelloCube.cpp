@@ -148,7 +148,7 @@ void HelloCubeApplication::Run()
 {
     while (!glfwWindowShouldClose(window))
     {
-        glfwPollEvents();
+        PollEvents();
         {
             // Make the cube spin over time.
             const double currentTime = glfwGetTime();
@@ -242,7 +242,7 @@ void HelloCubeApplication::Run()
     }
 }
 
-void HelloCubeApplication::OnResize(GLFWwindow* window, int width, int height)
+void HelloCubeApplication::OnResize(int width, int height)
 {
     if (width == 0 || height == 0)
     {
@@ -251,7 +251,7 @@ void HelloCubeApplication::OnResize(GLFWwindow* window, int width, int height)
 
     graphics->DestroyTexture(depthTexture);
 
-    ExampleApplication::OnResize(window, width, height);
+    ExampleApplication::OnResize(width, height);
 
     depthTexture = graphics->CreateTexture({
         .name = "Depth Texture",

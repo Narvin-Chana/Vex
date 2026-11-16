@@ -32,7 +32,7 @@ ExampleApplication::ExampleApplication(std::string_view windowName,
                               [](GLFWwindow* w, int width, int height)
                               {
                                   auto* self = static_cast<ExampleApplication*>(glfwGetWindowUserPointer(w));
-                                  self->OnResize(w, width, height);
+                                  self->pendingResize = { width, height };
                               });
 
     glfwSetKeyCallback(window,
@@ -68,7 +68,28 @@ void ExampleApplication::HandleKeyInput(int key, int scancode, int action, int m
     }
 }
 
-void ExampleApplication::OnResize(GLFWwindow* window, int newWidth, int newHeight)
+void ExampleApplication::PollEvents()
+{
+    glfwPollEvents();
+
+    if (!pendingResize.has_value())
+    {
+        return;
+    }
+
+    const auto [newWidth, newHeight] = *pendingResize;
+    pendingResize.reset();
+
+    // Minimized windows report a 0x0 size
+    if (newWidth == 0 || newHeight == 0 || (newWidth == width && newHeight == height))
+    {
+        return;
+    }
+
+    OnResize(newWidth, newHeight);
+}
+
+void ExampleApplication::OnResize(int newWidth, int newHeight)
 {
     width = newWidth;
     height = newHeight;
