@@ -248,6 +248,10 @@ private:
                                RHITextureLayout dstLayout);
     void EnqueueGlobalBarrier(const RHIGlobalBarrier& globalBarrier);
 
+    void SynchronizeBufferAccesses(RHIBarrierSync syncStage,
+                                   RHIBarrierAccess writeAccess = RHIBarrierAccess::NoAccess,
+                                   bool readsAccelerationStructure = false);
+
     void InferResourceBarriers(RHIBarrierSync syncStage, Span<const ResourceBinding> resources);
     void BarrierDrawResources(const DrawResourceBinding& drawBindings,
                               const DepthStencilState* depthStencilState = nullptr);
@@ -303,6 +307,8 @@ private:
     std::vector<RHIBufferBarrier> pendingBufferBarriers;
     std::vector<RHITextureBarrier> pendingTextureBarriers;
     std::vector<RHIGlobalBarrier> pendingGlobalBarriers;
+
+    bool hasPendingBufferWrites = false;
 
     bool hasInitializedViewport = false;
     bool hasInitializedScissor = false;
