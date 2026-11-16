@@ -285,10 +285,15 @@ std::expected<SHA1HashDigest, std::string> DXCCompiler::GetShaderCodeHash(
                 return code;
             })
         .transform(
-            [](const std::string& code) -> SHA1HashDigest
+            [&shader](const std::string& code) -> SHA1HashDigest
             {
                 SHA1 sha1;
                 sha1.update(code);
+                // Preprocessed code is shared by all entry points of a file, the hash must also identify the compiled
+                // shader otherwise we get invalid collisions. This happened in a test where we had two different entry
+                // points of the same shader type in a single file. The PSO used was always the first one.
+                sha1.update(shader.GetKey().entryPoint);
+                sha1.update(std::to_string(std::to_underlying(shader.GetKey().type)));
                 return { sha1.final() };
             });
 }
@@ -299,7 +304,7 @@ std::expected<ShaderCompilationResult, std::string> DXCCompiler::CompileShaderFr
     const ShaderEnvironment& environment,
     const ShaderCompilerSettings& compilerSettings)
 {
-    DxcBuffer shaderSourceBuffer = {};
+    DxcBuffer shaderSourceBuffer;
     shaderSourceBuffer.Ptr = shaderSourceBlob->GetBufferPointer();
     shaderSourceBuffer.Size = shaderSourceBlob->GetBufferSize();
     // Assume BOM says UTF8 or UTF16 or this is ANSI text.
