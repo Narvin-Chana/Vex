@@ -11,6 +11,7 @@
 
 // MSVC dictates that in order to avoid multiple inclusions with their module implementation, you should include the STL
 // FIRST then import your module.
+#include <cmath>
 #include <functional>
 #include <optional>
 

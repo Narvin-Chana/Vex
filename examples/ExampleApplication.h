@@ -1,14 +1,17 @@
 #pragma once
 
+#include <cmath>
 #include <filesystem>
 #include <functional>
+#include <span>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <variant>
 
 #include <ExamplePaths.h>
 
-#if VEX_MODULES
+#if VEX_MODULES && !defined(VEX_EXAMPLE_TEXTUAL_VEX)
 import Vex;
 #else
 #include <Vex.h>

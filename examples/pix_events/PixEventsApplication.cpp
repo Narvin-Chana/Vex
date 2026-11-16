@@ -4,7 +4,7 @@
 #define VEX_MODULES 0
 #include "PixEventsApplication.h"
 
-#include <GLFWIncludes.h>
+#include <GLFW/glfw3.h>
 #include <VexPixEvents.h>
 
 PixEventsApplication::PixEventsApplication()

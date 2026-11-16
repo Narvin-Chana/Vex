@@ -1,5 +1,11 @@
 ﻿#pragma once
 
+// This header includes Vex textually, which GCC can't mix with `import Vex` (it fails to mangle some STL operators).
+// Make the example headers include Vex textually as well.
+#if defined(__GNUC__) && !defined(__clang__)
+#define VEX_EXAMPLE_TEXTUAL_VEX
+#endif
+
 #include <Vex.h>
 #include <Vex/RHIImpl/RHICommandList.h>
 #include <Vex/RHIImpl/RHITexture.h>
