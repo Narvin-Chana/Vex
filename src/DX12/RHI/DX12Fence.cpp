@@ -6,28 +6,37 @@
 
 namespace vex::dx12
 {
-// I have no idea why, but if I store the handle in each fence class, we eventually crash due to the handle being marked
-// invalid by WinAPI (possibly due to not being able to wait on multiple different handles right after each-other when
-// we're iterating on fences?). My current solution is to just create the handle as static... this somehow works
-// perfectly...
-static HANDLE GEventHandle = nullptr;
 
 DX12Fence::DX12Fence(ComPtr<DX12Device>& device)
+    : eventHandle(CreateEvent(nullptr, FALSE, FALSE, nullptr))
 {
     chk << device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
-    if (GEventHandle == nullptr)
-    {
-        GEventHandle = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-    }
 }
 
 DX12Fence::~DX12Fence()
 {
-    if (GEventHandle != nullptr)
+    if (eventHandle != nullptr)
     {
-        CloseHandle(GEventHandle);
-        GEventHandle = nullptr;
+        CloseHandle(eventHandle);
     }
+}
+
+DX12Fence::DX12Fence(DX12Fence&& other)
+    : RHIFenceBase(other)
+    , fence(std::move(other.fence))
+    , eventHandle(std::exchange(other.eventHandle, nullptr))
+{
+}
+
+DX12Fence& DX12Fence::operator=(DX12Fence&& other)
+{
+    if (this != &other)
+    {
+        RHIFenceBase::operator=(other);
+        fence = std::move(other.fence);
+        std::swap(eventHandle, other.eventHandle);
+    }
+    return *this;
 }
 
 u64 DX12Fence::GetValue() const
@@ -39,8 +48,8 @@ void DX12Fence::WaitOnCPU(u64 value) const
 {
     if (GetValue() < value)
     {
-        chk << fence->SetEventOnCompletion(value, GEventHandle);
-        WaitForSingleObjectEx(GEventHandle, INFINITE, false);
+        chk << fence->SetEventOnCompletion(value, eventHandle);
+        WaitForSingleObjectEx(eventHandle, INFINITE, false);
     }
 }
 
