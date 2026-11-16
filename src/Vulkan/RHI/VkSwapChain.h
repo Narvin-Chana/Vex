@@ -45,7 +45,8 @@ public:
     virtual std::optional<RHITexture> AcquireBackBuffer(u8 frameIndex) override;
     virtual SyncToken Present(u8 frameIndex,
                               RHI& rhi,
-                              NonNullPtr<RHICommandList> commandList) override;
+                              NonNullPtr<RHICommandList> commandList,
+                              Span<const SyncToken> dependencies) override;
 
 private:
     void InitSwapchainResource(u32 width, u32 height);
