@@ -1,5 +1,6 @@
 #include "Graphics.h"
 
+#include <algorithm>
 #include <array>
 #include <functional>
 #include <utility>
@@ -450,6 +451,13 @@ std::vector<SyncToken> Graphics::Submit(Span<CommandContext> commandContexts, Sp
     std::vector<CleanupVariant> phaseTemporaryResources;
     for (auto& ctx : commandContexts)
     {
+        const auto ctxToken = std::ranges::find(tokens, ctx.GetQueue(), &SyncToken::queueType);
+        VEX_ASSERT(ctxToken != tokens.end(), "Missing submission token for the command context's queue.");
+        for (const ReadbackSubmissionToken& readbackToken : ctx.readbackSubmissionTokens)
+        {
+            *readbackToken = *ctxToken;
+        }
+
         for (const Buffer& buffer : ctx.temporaryBuffers)
         {
             if (!buffer.handle.IsValid())
