@@ -47,7 +47,7 @@ void HDRApplication::Run()
 {
     while (!glfwWindowShouldClose(window))
     {
-        glfwPollEvents();
+        PollEvents();
 
         {
             vex::u32 texWidth = hdrTexture.desc.width * 0.75f;
@@ -172,14 +172,14 @@ void HDRApplication::HandleKeyInput(int key, int scancode, int action, int mods)
     ExampleApplication::HandleKeyInput(key, scancode, action, mods);
 }
 
-void HDRApplication::OnResize(GLFWwindow* window, int width, int height)
+void HDRApplication::OnResize(int width, int height)
 {
     if (width == 0 || height == 0)
     {
         return;
     }
 
-    ExampleApplication::OnResize(window, width, height);
+    ExampleApplication::OnResize(width, height);
 }
 
 int main()

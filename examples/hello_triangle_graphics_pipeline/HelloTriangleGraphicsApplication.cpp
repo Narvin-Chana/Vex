@@ -35,7 +35,7 @@ void HelloTriangleGraphicsApplication::Run()
 {
     while (!glfwWindowShouldClose(window))
     {
-        glfwPollEvents();
+        PollEvents();
 
         // Command context is used to record commands to be executed by the GPU.
         vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
@@ -132,7 +132,7 @@ void HelloTriangleGraphicsApplication::Run()
     }
 }
 
-void HelloTriangleGraphicsApplication::OnResize(GLFWwindow* window, int width, int height)
+void HelloTriangleGraphicsApplication::OnResize(int width, int height)
 {
     if (width == 0 || height == 0)
     {
@@ -141,7 +141,7 @@ void HelloTriangleGraphicsApplication::OnResize(GLFWwindow* window, int width, i
 
     graphics->DestroyTexture(workingTexture);
 
-    ExampleApplication::OnResize(window, width, height);
+    ExampleApplication::OnResize(width, height);
 
     workingTexture =
         graphics->CreateTexture({ .name = "Working Texture",

@@ -73,7 +73,8 @@ public:
     // Presents the current presentTexture to the swapchain. Will stall if the GPU's next backbuffer is not yet ready
     // (depends on your FrameBuffering). If you use an HDR swapchain, this will apply HDR conversions, if necessary,
     // before copying the present texture to the swapChain.
-    void Present();
+    // Pass in the tokens of work done on other queues which wrote to the present texture (eg: async compute).
+    void Present(Span<const SyncToken> dependencies = {});
 
     // Create a CommandContext in which GPU commands can be recorded. The command context must later on be submitted to
     // the GPU by calling vex::Graphics::Submit().

@@ -42,7 +42,7 @@ void HelloTriangleApplication::Run()
 {
     while (!glfwWindowShouldClose(window))
     {
-        glfwPollEvents();
+        PollEvents();
 
         const double currentTime = glfwGetTime();
 
@@ -166,7 +166,7 @@ void HelloTriangleApplication::Run()
     }
 }
 
-void HelloTriangleApplication::OnResize(GLFWwindow* window, int newWidth, int newHeight)
+void HelloTriangleApplication::OnResize(int newWidth, int newHeight)
 {
     if (newWidth == 0 || newHeight == 0)
     {
@@ -175,7 +175,7 @@ void HelloTriangleApplication::OnResize(GLFWwindow* window, int newWidth, int ne
 
     graphics->DestroyTexture(workingTexture);
 
-    ExampleApplication::OnResize(window, newWidth, newHeight);
+    ExampleApplication::OnResize(newWidth, newHeight);
 
     workingTexture =
         graphics->CreateTexture({ .name = "Working Texture",

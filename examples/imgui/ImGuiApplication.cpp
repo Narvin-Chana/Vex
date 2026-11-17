@@ -47,7 +47,7 @@ void ImGuiApplication::Run()
 {
     while (!glfwWindowShouldClose(window))
     {
-        glfwPollEvents();
+        PollEvents();
 
         vex::Texture presentTexture = graphics->GetCurrentPresentTexture();
 
@@ -103,7 +103,7 @@ void ImGuiApplication::RenderImGui()
     graphics->Submit(ctx);
 }
 
-void ImGuiApplication::OnResize(GLFWwindow* window, int width, int height)
+void ImGuiApplication::OnResize(int width, int height)
 {
     if (width == 0 || height == 0)
     {
@@ -112,7 +112,7 @@ void ImGuiApplication::OnResize(GLFWwindow* window, int width, int height)
 
     graphics->DestroyTexture(lastFrameTexture);
 
-    ExampleApplication::OnResize(window, width, height);
+    ExampleApplication::OnResize(width, height);
 
     lastFrameTexture = graphics->CreateTexture(
         vex::TextureDesc::CreateTexture2DDesc("PrevFrame", vex::TextureFormat::BGRA8_UNORM, width, height));
