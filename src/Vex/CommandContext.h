@@ -287,6 +287,9 @@ private:
     std::vector<AccelerationStructure> temporaryAccelerationStructures;
     std::vector<CleanupVariant> temporaryResources;
 
+    // Tokens of the readbacks enqueued in this context, set once the context is submitted.
+    std::vector<ReadbackSubmissionToken> readbackSubmissionTokens;
+
     // Used to avoid resetting the same state multiple times which can be costly on certain hardware.
     // In general draws and dispatches are recommended to be grouped by PSO, so this caching can be very efficient
     // versus binding everything each time.
