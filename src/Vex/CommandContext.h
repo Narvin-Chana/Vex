@@ -287,7 +287,7 @@ private:
     std::vector<AccelerationStructure> temporaryAccelerationStructures;
     std::vector<CleanupVariant> temporaryResources;
 
-    // Tokens of the readbacks enqueued in this context, set once the context is submitted.
+    // Tokens of the readbacks enqueued by this command context. We update them once the command list is submitted.
     std::vector<ReadbackSubmissionToken> readbackSubmissionTokens;
 
     // Used to avoid resetting the same state multiple times which can be costly on certain hardware.

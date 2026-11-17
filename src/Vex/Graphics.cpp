@@ -424,6 +424,11 @@ SyncToken Graphics::Submit(CommandContext& ctx, Span<const SyncToken> dependenci
 
 std::vector<SyncToken> Graphics::Submit(Span<CommandContext> commandContexts, Span<const SyncToken> dependencies)
 {
+    for (const SyncToken& dependency : dependencies)
+    {
+        VEX_CHECK(dependency.IsValid(), "Submit dependencies must be valid sync tokens.");
+    }
+
     // Process any pending textures.
     std::optional<SyncToken> pendingInitializationToken = FlushPendingInitializations();
 
@@ -505,6 +510,7 @@ std::vector<SyncToken> Graphics::Submit(Span<CommandContext> commandContexts, Sp
 
 bool Graphics::IsTokenComplete(const SyncToken& token) const
 {
+    VEX_CHECK(token.IsValid(), "Cannot check the completion of an invalid sync token.");
     return rhi.IsTokenComplete(token);
 }
 
@@ -512,7 +518,7 @@ bool Graphics::AreTokensComplete(Span<const SyncToken> tokens) const
 {
     for (const auto& token : tokens)
     {
-        if (!rhi.IsTokenComplete(token))
+        if (!IsTokenComplete(token))
         {
             return false;
         }
@@ -522,6 +528,7 @@ bool Graphics::AreTokensComplete(Span<const SyncToken> tokens) const
 
 void Graphics::WaitForTokenOnCPU(const SyncToken& syncToken)
 {
+    VEX_CHECK(syncToken.IsValid(), "Cannot wait on an invalid sync token.");
     rhi.WaitForTokenOnCPU(syncToken);
 
     Cleanup();
