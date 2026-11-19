@@ -70,8 +70,9 @@ static std::expected<NonNullPtr<slang::IModule>, std::string> LoadModule(const S
     {
         if (diagnostics)
         {
-            return std::unexpected(
-                std::format("Unable to loadModule: {}", static_cast<const char*>(diagnostics->getBufferPointer())));
+            return std::unexpected(std::format("Unable to loadModule ({}): {}",
+                                               filepath.string(),
+                                               static_cast<const char*>(diagnostics->getBufferPointer())));
         }
         return std::unexpected("Unable to loadModule, unknown error.");
     }
@@ -79,7 +80,8 @@ static std::expected<NonNullPtr<slang::IModule>, std::string> LoadModule(const S
     if (diagnostics)
     {
         VEX_LOG(Warning,
-                "Warning compiling shader(LoadModule): {}",
+                "Warning compiling shader(LoadModule): {}, {}",
+                filepath.string(),
                 static_cast<const char*>(diagnostics->getBufferPointer()));
     }
 
