@@ -158,12 +158,7 @@ void ValidateTextureBinding(const TextureBinding& binding, Flags<TextureUsage> v
               "Invalid binding for resource \"{}\": The specified texture cannot be bound for this type of "
               "operation. Check the usage flags of your resource at creation.",
               texture.desc.name);
-
-    VEX_CHECK(binding.usage != TextureBindingUsage::None,
-              "Invalid binding for resource \"{}\": The binding's usage must be set to something and therefore not "
-              "be invalid",
-              texture.desc.name);
-
+    
     TextureUtil::ValidateSubresource(texture.desc, binding.subresource);
 
     if (binding.isSRGB)
