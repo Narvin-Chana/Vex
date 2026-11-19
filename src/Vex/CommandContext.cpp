@@ -1344,7 +1344,6 @@ void CommandContext::InferResourceBarriers(RHIBarrierSync syncStage, Span<const 
                              break;
                          default:
                              VEX_LOG(Fatal, "Invalid usage for texture binding {}...", texBinding.texture.desc.name);
-                             std::unreachable();
                          }
 
                          EnqueueTextureBarrier(texBinding.texture, texBinding.subresource, syncStage, access, layout);
