@@ -200,6 +200,7 @@ add_library(Vex STATIC
     "src/Vex/Utility/Functional/move_only_function.h"
     "src/Vex/Utility/MoveOnlyFunction.h"
     "src/Vex/Utility/MagicEnum.h"
+    "src/Vex/Utility/UniqueResource.h"
     # Vex Platform
     "src/Vex/Platform/PlatformWindow.h"
     # Vex Containers
