@@ -47,7 +47,6 @@ VEX_ENUM_FLAG_BITS(TextureUsage);
 
 enum class TextureBindingUsage : u8
 {
-    None = 0,
     // Equivalent to SRV in DX12, used as Texture<type> in shaders.
     ShaderRead = std::to_underlying(TextureUsage::ShaderRead),
     // Equivalent to UAV in DX12, used as RWTexture<type> in shaders.
@@ -338,7 +337,9 @@ struct TextureUtil
                                  const TextureDesc& dstDesc,
                                  const TextureCopyDesc& copyDesc);
     static void ValidateCompatibleTextureDescs(const TextureDesc& srcDesc, const TextureDesc& dstDesc);
-    static void ValidateTextureClear(const TextureDesc& desc, const TextureSubresource& subresource, Span<const TextureClearRect> clearRects);
+    static void ValidateTextureClear(const TextureDesc& desc,
+                                     const TextureSubresource& subresource,
+                                     Span<const TextureClearRect> clearRects);
 };
 
 } // namespace vex

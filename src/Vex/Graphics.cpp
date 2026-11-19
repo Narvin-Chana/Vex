@@ -1,5 +1,6 @@
 #include "Graphics.h"
 
+#include <algorithm>
 #include <array>
 #include <functional>
 #include <utility>
@@ -423,6 +424,11 @@ SyncToken Graphics::Submit(CommandContext& ctx, Span<const SyncToken> dependenci
 
 std::vector<SyncToken> Graphics::Submit(Span<CommandContext> commandContexts, Span<const SyncToken> dependencies)
 {
+    for (const SyncToken& dependency : dependencies)
+    {
+        VEX_CHECK(dependency.IsValid(), "Submit dependencies must be valid sync tokens.");
+    }
+
     // Process any pending textures.
     std::optional<SyncToken> pendingInitializationToken = FlushPendingInitializations();
 
@@ -450,6 +456,13 @@ std::vector<SyncToken> Graphics::Submit(Span<CommandContext> commandContexts, Sp
     std::vector<CleanupVariant> phaseTemporaryResources;
     for (auto& ctx : commandContexts)
     {
+        const auto ctxToken = std::ranges::find(tokens, ctx.GetQueue(), &SyncToken::queueType);
+        VEX_ASSERT(ctxToken != tokens.end(), "Missing submission token for the command context's queue.");
+        for (const ReadbackSubmissionToken& readbackToken : ctx.readbackSubmissionTokens)
+        {
+            *readbackToken = *ctxToken;
+        }
+
         for (const Buffer& buffer : ctx.temporaryBuffers)
         {
             if (!buffer.handle.IsValid())
@@ -497,6 +510,7 @@ std::vector<SyncToken> Graphics::Submit(Span<CommandContext> commandContexts, Sp
 
 bool Graphics::IsTokenComplete(const SyncToken& token) const
 {
+    VEX_CHECK(token.IsValid(), "Cannot check the completion of an invalid sync token.");
     return rhi.IsTokenComplete(token);
 }
 
@@ -504,7 +518,7 @@ bool Graphics::AreTokensComplete(Span<const SyncToken> tokens) const
 {
     for (const auto& token : tokens)
     {
-        if (!rhi.IsTokenComplete(token))
+        if (!IsTokenComplete(token))
         {
             return false;
         }
@@ -514,6 +528,7 @@ bool Graphics::AreTokensComplete(Span<const SyncToken> tokens) const
 
 void Graphics::WaitForTokenOnCPU(const SyncToken& syncToken)
 {
+    VEX_CHECK(syncToken.IsValid(), "Cannot wait on an invalid sync token.");
     rhi.WaitForTokenOnCPU(syncToken);
 
     Cleanup();

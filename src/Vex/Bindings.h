@@ -168,7 +168,7 @@ struct TextureBinding
     // The texture to bind.
     Texture texture;
     // The usage of the texture.
-    TextureBindingUsage usage = TextureBindingUsage::None;
+    TextureBindingUsage usage = TextureBindingUsage::ShaderRead;
     // Determines if the texture should be sampled as an SRGB format (will NOT work with ShaderReadWrite usage).
     bool isSRGB = false;
     // Subresource of the texture, defaults to all mips and all slices (so the entirety of the resource).
