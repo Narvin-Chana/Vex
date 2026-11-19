@@ -13,6 +13,7 @@
 #include <Vex/TextureSampler.h>
 #include <Vex/Utility/ByteUtils.h>
 #include <Vex/Utility/NonNullPtr.h>
+#include <Vex/Utility/UniqueResource.h>
 #include <VexMacros.h>
 
 #if VEX_SHADER_COMPILER
