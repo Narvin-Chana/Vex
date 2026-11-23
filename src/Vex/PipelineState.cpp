@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include <Vex/Logger.h>
+#include <Vex/PhysicalDevice.h>
 #include <Vex/RayTracing.h>
 #include <Vex/ShaderView.h>
 #include <VexMacros.h>
@@ -143,10 +144,14 @@ std::string PSOUtil::GetRayTracingPSOName(const RayTracingShaderCollection& shad
     return FinalizeName(std::move(name), keyHash);
 }
 
-GraphicsPSOKey::GraphicsPSOKey(const DrawDesc& drawDesc, const RenderTargetState& renderTargetState)
+GraphicsPSOKey::GraphicsPSOKey(const DrawDesc& drawDesc,
+                               const RenderTargetState& renderTargetState,
+                               std::optional<IndexFormat> indexFormat)
     : vertexShader(drawDesc.vertexShader.hash)
     , pixelShader(drawDesc.pixelShader ? drawDesc.pixelShader->hash : SHA1HashDigest{})
     , inputAssembly(drawDesc.inputAssembly)
+    , restartIndexFormat(drawDesc.inputAssembly.primitiveRestartEnabled ? indexFormat.value_or(IndexFormat::U32)
+                                                                        : IndexFormat::U32)
     , rasterizerState(drawDesc.rasterizerState)
     , depthStencilState(drawDesc.depthStencilState)
     , colorBlendState(drawDesc.colorBlendState)
@@ -162,6 +167,13 @@ GraphicsPSOKey::GraphicsPSOKey(const DrawDesc& drawDesc, const RenderTargetState
     VEX_CHECK(!drawDesc.pixelShader || drawDesc.pixelShader->type == ShaderType::PixelShader,
               "Invalid ShaderType for pixel shader: {}",
               drawDesc.pixelShader->type);
+    VEX_CHECK(!inputAssembly.primitiveRestartEnabled || inputAssembly.topology == InputTopology::TriangleStrip ||
+                  inputAssembly.topology == InputTopology::LineStrip,
+              "Primitive restart is only supported with strip topologies.");
+    VEX_CHECK(!depthStencilState.depthBoundsTestEnabled || GPhysicalDevice->IsFeatureSupported(Feature::DepthBounds),
+              "Your GPU does not support depth bounds testing.");
+    VEX_CHECK(!colorBlendState.logicOpEnabled || GPhysicalDevice->IsFeatureSupported(Feature::LogicOp),
+              "Your GPU does not support logic operations.");
 }
 
 GraphicsPSOKey::GraphicsPSOKey(const DispatchMeshDesc& drawDesc, const RenderTargetState& renderTargetState)
@@ -189,6 +201,10 @@ GraphicsPSOKey::GraphicsPSOKey(const DispatchMeshDesc& drawDesc, const RenderTar
     VEX_CHECK(!drawDesc.pixelShader || drawDesc.pixelShader->type == ShaderType::PixelShader,
               "Invalid ShaderType for pixel shader: {}",
               drawDesc.pixelShader->type);
+    VEX_CHECK(!depthStencilState.depthBoundsTestEnabled || GPhysicalDevice->IsFeatureSupported(Feature::DepthBounds),
+              "Your GPU does not support depth bounds testing.");
+    VEX_CHECK(!colorBlendState.logicOpEnabled || GPhysicalDevice->IsFeatureSupported(Feature::LogicOp),
+              "Your GPU does not support logic operations.");
 }
 
 ComputePSOKey::ComputePSOKey(const ShaderView& computeShader)

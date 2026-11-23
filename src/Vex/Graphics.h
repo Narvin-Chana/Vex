@@ -80,16 +80,14 @@ public:
     [[nodiscard]] CommandContext CreateCommandContext(QueueType queueType);
 
     // Creates a new texture with the specified description.
-    [[nodiscard]] Texture CreateTexture(const TextureDesc& textureDesc,
-                                        ResourceLifetime lifetime = ResourceLifetime::Static);
+    [[nodiscard]] Texture CreateTexture(const TextureDesc& textureDesc);
 
     // Destroys a texture, the handle passed in must be the one obtained from calling CreateTexture earlier.
     // Once destroyed, the handle passed in is invalid and should no longer be used.
     void DestroyTexture(const Texture& texture);
 
     // Creates a new buffer with the specified description.
-    [[nodiscard]] Buffer CreateBuffer(const BufferDesc& bufferDesc,
-                                      ResourceLifetime lifetime = ResourceLifetime::Static);
+    [[nodiscard]] Buffer CreateBuffer(const BufferDesc& bufferDesc);
 
     // Destroys a buffer, the handle passed in must be the one obtained from calling CreateBuffer earlier.
     // Once destroyed, the handle passed in is invalid and should no longer be used.

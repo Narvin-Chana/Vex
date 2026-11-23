@@ -265,7 +265,7 @@ CommandContext Graphics::CreateCommandContext(QueueType queueType)
     return CommandContext{ *this, commandPool->GetOrCreateCommandList(queueType), *queryPool };
 }
 
-Texture Graphics::CreateTexture(const TextureDesc& textureDesc, ResourceLifetime lifetime)
+Texture Graphics::CreateTexture(const TextureDesc& textureDesc)
 {
     TextureUtil::ValidateTextureDescription(textureDesc);
     TextureDesc texDesc = textureDesc;
@@ -274,15 +274,6 @@ Texture Graphics::CreateTexture(const TextureDesc& textureDesc, ResourceLifetime
     {
         texDesc.mips =
             ByteUtil::ComputeMipCount(std::make_tuple(textureDesc.width, textureDesc.height, textureDesc.GetDepth()));
-    }
-
-    if (lifetime == ResourceLifetime::Dynamic)
-    {
-        // TODO(https://trello.com/c/K2jgp9ax): handle dynamic resources, includes specifying that the resource when
-        // bound should use dynamic bindless indices and self-cleanup of the RHITexture should occur after the current
-        // frame ends, would be used for transient resources inside our memory allocation strategy (avoids constant
-        // reallocations).
-        VEX_NOT_YET_IMPLEMENTED();
     }
 
     Texture texture{
@@ -299,24 +290,14 @@ void Graphics::DestroyTexture(const Texture& texture)
     {
         return;
     }
-    // TODO(https://trello.com/c/lEZ7PhTc): MostRecentSyncToken is error prone.
     EnqueueCPUWork([&, rhiTexture = *textureRegistry.ExtractElement(texture.handle)]() mutable
                    { CleanupResource(std::move(rhiTexture), *descriptorPool, *allocator); },
                    rhi.GetMostRecentSyncTokenPerQueue());
 }
 
-Buffer Graphics::CreateBuffer(const BufferDesc& bufferDesc, ResourceLifetime lifetime)
+Buffer Graphics::CreateBuffer(const BufferDesc& bufferDesc)
 {
     BufferUtil::ValidateBufferDesc(bufferDesc);
-
-    if (lifetime == ResourceLifetime::Dynamic)
-    {
-        // TODO(https://trello.com/c/K2jgp9ax): handle dynamic resources, includes specifying that the resource when
-        // bound should use dynamic bindless indices and self-cleanup of the RHITexture should occur after the current
-        // frame ends, would be used for transient resources inside our memory allocation strategy (avoids constant
-        // reallocations).
-        VEX_NOT_YET_IMPLEMENTED();
-    }
 
     return Buffer{ .handle = bufferRegistry.AllocateElement(
                        std::make_unique<RHIBuffer>(rhi.CreateBuffer(*allocator, bufferDesc))),
@@ -329,7 +310,6 @@ void Graphics::DestroyBuffer(const Buffer& buffer)
     {
         return;
     }
-    // TODO(https://trello.com/c/lEZ7PhTc): MostRecentSyncToken is error prone.
     EnqueueCPUWork([&, rhiBuffer = *bufferRegistry.ExtractElement(buffer.handle)]() mutable
                    { CleanupResource(std::move(rhiBuffer), *descriptorPool, *allocator); },
                    rhi.GetMostRecentSyncTokenPerQueue());
@@ -352,7 +332,6 @@ void Graphics::DestroyAccelerationStructure(const AccelerationStructure& acceler
     {
         return;
     }
-    // TODO(https://trello.com/c/lEZ7PhTc): MostRecentSyncToken is error prone.
     EnqueueCPUWork([&, rhiAS = *accelerationStructureRegistry.ExtractElement(accelerationStructure.handle)]() mutable
                    { CleanupResource(std::move(rhiAS), *descriptorPool, *allocator); },
                    rhi.GetMostRecentSyncTokenPerQueue());

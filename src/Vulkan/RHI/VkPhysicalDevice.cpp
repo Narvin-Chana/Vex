@@ -69,6 +69,10 @@ bool VkPhysicalDevice::IsFeatureSupported(Feature feature) const
         return meshShaderFeatures.meshShader && meshShaderFeatures.taskShader;
     case Feature::RayTracing:
         return rayTracingFeatures.rayTracingPipeline;
+    case Feature::DepthBounds:
+        return deviceFeatures.depthBounds;
+    case Feature::LogicOp:
+        return deviceFeatures.logicOp;
     default:
         VEX_LOG(Fatal, "Unable to determine feature support for {}", feature);
         return false;

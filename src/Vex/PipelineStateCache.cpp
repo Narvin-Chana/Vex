@@ -20,6 +20,7 @@ PipelineStateCache::~PipelineStateCache() = default;
 RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
     const DrawDesc& drawDesc,
     const RenderTargetState& renderTargetState,
+    std::optional<IndexFormat> indexFormat,
     std::unique_ptr<RHIGraphicsPipelineState>& oldPSO)
 {
     if ((drawDesc.pixelShader && drawDesc.pixelShader->IsErrored()) || drawDesc.vertexShader.IsErrored())
@@ -27,7 +28,7 @@ RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
         return nullptr;
     }
 
-    GraphicsPSOKey key{ drawDesc, renderTargetState };
+    GraphicsPSOKey key{ drawDesc, renderTargetState, indexFormat };
     auto it = graphicsPSCache.find(key);
     if (it == graphicsPSCache.end())
     {

@@ -23,6 +23,7 @@ public:
 
     RHIGraphicsPipelineState* GetGraphicsPipelineState(const DrawDesc& drawDesc,
                                                        const RenderTargetState& renderTargetState,
+                                                       std::optional<IndexFormat> indexFormat,
                                                        std::unique_ptr<RHIGraphicsPipelineState>& oldPSO);
     RHIGraphicsPipelineState* GetGraphicsPipelineState(const DispatchMeshDesc& drawDesc,
                                                        const RenderTargetState& renderTargetState,

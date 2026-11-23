@@ -57,6 +57,7 @@ using vex::DispatchMeshDesc;
 using vex::DrawDesc;
 using vex::DrawIndexedResourceBinding;
 using vex::DrawResourceBinding;
+using vex::DynamicState;
 using vex::FilterMode;
 using vex::FrameBuffering;
 using vex::FreeList;

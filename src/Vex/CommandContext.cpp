@@ -211,7 +211,8 @@ void CommandContext::DrawIndexed(const DrawDesc& drawDesc,
 
     DrawResourceBinding bindings = { .renderTargets = drawBindings.renderTargets,
                                      .depthStencil = drawBindings.depthStencil };
-    auto drawResources = PrepareDrawCall(drawDesc, bindings, constants, trackedResources);
+    auto drawResources =
+        PrepareDrawCall(drawDesc, bindings, constants, trackedResources, drawBindings.indexBuffer.format);
     FlushBarriers();
     if (!drawResources.has_value())
     {
@@ -1128,6 +1129,10 @@ void CommandContext::ExecuteInDrawContext(const DrawResourceBinding& drawBinding
     // Reset cached states as the callback could have changed the pipeline.
     cachedGraphicsPSO = {};
     cachedInputAssembly = {};
+    if (cmdList->GetQueue() != QueueType::Copy)
+    {
+        cmdList->SetDescriptorPool(*graphics->descriptorPool, graphics->psCache->resourceLayout.value());
+    }
 }
 
 QueryHandle CommandContext::BeginTimestampQuery()
@@ -1374,7 +1379,8 @@ Buffer CommandContext::CreateTemporaryBuffer(const BufferDesc& desc)
 std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(DrawDesc desc,
                                                                 const DrawResourceBinding& drawBindings,
                                                                 const ConstantBinding constants,
-                                                                Span<const ResourceBinding> trackedResources)
+                                                                Span<const ResourceBinding> trackedResources,
+                                                                std::optional<IndexFormat> indexFormat)
 {
     BindingUtil::ValidateDrawResourceBindings(drawBindings, desc.pixelShader.has_value());
     InferResourceBarriers(RHIBarrierSync::AllGraphics, trackedResources);
@@ -1393,7 +1399,7 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(DrawDesc desc,
 
     std::unique_ptr<RHIGraphicsPipelineState> oldPSO;
     RHIGraphicsPipelineState* pipelineState =
-        graphics->psCache->GetGraphicsPipelineState(desc, renderTargetState, oldPSO);
+        graphics->psCache->GetGraphicsPipelineState(desc, renderTargetState, indexFormat, oldPSO);
     if (oldPSO)
     {
         temporaryResources.emplace_back(std::move(oldPSO));
@@ -1413,6 +1419,13 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(DrawDesc desc,
     {
         cmdList->SetInputAssembly(desc.inputAssembly);
         cachedInputAssembly = desc.inputAssembly;
+    }
+
+    cmdList->SetBlendConstants(desc.dynamicState.blendConstants);
+    cmdList->SetStencilReference(desc.dynamicState.frontStencilReference, desc.dynamicState.backStencilReference);
+    if (desc.depthStencilState.depthBoundsTestEnabled)
+    {
+        cmdList->SetDepthBounds(desc.dynamicState.minDepthBounds, desc.dynamicState.maxDepthBounds);
     }
 
     EnqueueGlobalBarrier({ .srcSync = RHIBarrierSync::AllCommands,
@@ -1464,6 +1477,13 @@ std::optional<RHIDrawResources> CommandContext::PrepareDispatchMeshCall(Dispatch
     {
         cmdList->SetPipelineState(*pipelineState);
         cachedGraphicsPSO = pipelineState;
+    }
+
+    cmdList->SetBlendConstants(desc.dynamicState.blendConstants);
+    cmdList->SetStencilReference(desc.dynamicState.frontStencilReference, desc.dynamicState.backStencilReference);
+    if (desc.depthStencilState.depthBoundsTestEnabled)
+    {
+        cmdList->SetDepthBounds(desc.dynamicState.minDepthBounds, desc.dynamicState.maxDepthBounds);
     }
 
     return drawResources;
