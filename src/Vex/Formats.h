@@ -77,21 +77,19 @@ enum class TextureFormat : u8
     BC7_UNORM,
 };
 
-namespace FormatUtil
+struct FormatUtil
 {
+    static u32 GetPlaneCount(TextureFormat format);
 
-u32 GetPlaneCount(TextureFormat format);
-
-bool HasSRGBEquivalent(TextureFormat format);
-bool IsDepthOrDepthStencilFormat(TextureFormat format);
-bool IsDepthOnlyFormat(TextureFormat format);
-bool IsDepthAndStencilFormat(TextureFormat format);
-std::string_view GetHLSLType(TextureFormat format);
-u8 GetNumChannels(TextureFormat format);
-bool IsBlockCompressed(TextureFormat format);
-bool SupportsMipGeneration(TextureFormat format);
-
-}; // namespace FormatUtil
+    static bool HasSRGBEquivalent(TextureFormat format);
+    static bool IsDepthOrDepthStencilFormat(TextureFormat format);
+    static bool IsDepthOnlyFormat(TextureFormat format);
+    static bool IsDepthAndStencilFormat(TextureFormat format);
+    static std::string_view GetHLSLType(TextureFormat format);
+    static u8 GetNumChannels(TextureFormat format);
+    static bool IsBlockCompressed(TextureFormat format);
+    static bool SupportsMipGeneration(TextureFormat format);
+};
 
 } // namespace vex
 
