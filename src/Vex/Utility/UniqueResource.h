@@ -7,6 +7,7 @@ namespace vex
 {
 
 template <class T, void (Graphics::*DestroyFn)(const T&)>
+    requires(std::is_same_v<T, AccelerationStructure> || std::is_same_v<T, Buffer> || std::is_same_v<T, Texture>)
 class UniqueResource
 {
 public:
