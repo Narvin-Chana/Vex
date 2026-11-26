@@ -6,7 +6,7 @@
 
 #include <span>
 
-#include <GLFWIncludes.h>
+#include <GLFW/glfw3.h>
 
 HelloRayTracing::HelloRayTracing()
     : ExampleApplication("HelloRayTracing")

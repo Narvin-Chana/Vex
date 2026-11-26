@@ -2,8 +2,12 @@
 
 #include "RenderDoc.h"
 
+#include <algorithm>
 #include <array>
 #include <filesystem>
+#include <fstream>
+#include <random>
+#include <sstream>
 
 #include <gtest/gtest.h>
 

@@ -1,5 +1,7 @@
 ﻿#include "VexTest.h"
 
+#include <algorithm>
+
 using namespace vex;
 
 struct BufferBindingTestData
@@ -66,10 +68,12 @@ TEST_P(BufferBindingTest, CustomBindingOffset)
                                                     testData.elementCount);
         break;
     case BufferBindingUsage::ByteAddressBuffer:
-        binding = BufferBinding::CreateByteAddress(dataBuffer, testData.firstElement.value_or(0), testData.elementCount);
+        binding =
+            BufferBinding::CreateByteAddress(dataBuffer, testData.firstElement.value_or(0), testData.elementCount);
         break;
     case BufferBindingUsage::RWByteAddressBuffer:
-        binding = BufferBinding::CreateRWByteAddress(dataBuffer, testData.firstElement.value_or(0), testData.elementCount);
+        binding =
+            BufferBinding::CreateRWByteAddress(dataBuffer, testData.firstElement.value_or(0), testData.elementCount);
         break;
     default:
         ADD_FAILURE() << "Unsupported buffer binding usage!";

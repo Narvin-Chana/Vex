@@ -1,8 +1,9 @@
 #include "HelloTriangleApplication.h"
 
+#include <cmath>
 #include <span>
 
-#include <GLFWIncludes.h>
+#include <GLFW/glfw3.h>
 
 HelloTriangleApplication::HelloTriangleApplication()
     : ExampleApplication("HelloTriangleApplication")

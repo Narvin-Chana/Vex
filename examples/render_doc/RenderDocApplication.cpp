@@ -1,6 +1,6 @@
 #include "RenderDocApplication.h"
 
-#include <GLFWIncludes.h>
+#include <GLFW/glfw3.h>
 #include <VexRenderDoc.h>
 
 RenderDocApplication::RenderDocApplication()

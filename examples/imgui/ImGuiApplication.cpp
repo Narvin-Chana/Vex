@@ -5,7 +5,7 @@
 // come first.
 #include "ImGuiApplication.h"
 
-#include <GLFWIncludes.h>
+#include <GLFW/glfw3.h>
 #include <imgui_impl_glfw.h>
 
 ImGuiApplication::ImGuiApplication()
