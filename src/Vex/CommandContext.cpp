@@ -787,7 +787,9 @@ BufferReadbackContext CommandContext::EnqueueDataReadback(const Buffer& srcBuffe
         Copy(srcBuffer, stagingBuffer, BufferCopyDesc{ region.byteOffset, 0, region.GetByteSize(srcBuffer.desc) });
     }
 
-    return { stagingBuffer, *graphics };
+    return { stagingBuffer,
+             *graphics,
+             readbackSubmissionTokens.emplace_back(std::make_shared<SyncToken>(GInvalidSyncToken)) };
 }
 
 void CommandContext::EnqueueDataUpload(const Texture& texture,
@@ -863,7 +865,11 @@ TextureReadbackContext CommandContext::EnqueueDataReadback(const Texture& srcTex
              CommandContext_Internal::GetBufferTextureCopyDescFromTextureRegions(srcTexture.desc, textureRegions));
     }
 
-    return { stagingBuffer, textureRegions, srcTexture.desc, *graphics };
+    return { stagingBuffer,
+             textureRegions,
+             srcTexture.desc,
+             *graphics,
+             readbackSubmissionTokens.emplace_back(std::make_shared<SyncToken>(GInvalidSyncToken)) };
 }
 
 TextureReadbackContext CommandContext::EnqueueDataReadback(const Texture& srcTexture,
@@ -1338,7 +1344,6 @@ void CommandContext::InferResourceBarriers(RHIBarrierSync syncStage, Span<const 
                              break;
                          default:
                              VEX_LOG(Fatal, "Invalid usage for texture binding {}...", texBinding.texture.desc.name);
-                             std::unreachable();
                          }
 
                          EnqueueTextureBarrier(texBinding.texture, texBinding.subresource, syncStage, access, layout);

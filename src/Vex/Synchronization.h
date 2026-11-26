@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Vex/Utility/Hash.h>
 #include <Vex/QueueType.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/Hash.h>
 
 namespace vex
 {
@@ -12,8 +12,15 @@ struct SyncToken
     QueueType queueType = QueueType::Graphics;
     u64 value = 0;
 
+    constexpr bool IsValid() const
+    {
+        return queueType != QueueTypes::Invalid && value != std::numeric_limits<u64>::max();
+    }
+
     constexpr bool operator==(const SyncToken& other) const = default;
 };
+
+inline constexpr SyncToken GInvalidSyncToken{ .queueType = QueueType::Invalid };
 
 inline constexpr std::array GInfiniteSyncTokens{
     SyncToken{ .queueType = QueueType::Copy, .value = std::numeric_limits<u64>::max() },
