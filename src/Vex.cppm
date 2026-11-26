@@ -59,6 +59,7 @@ using vex::DrawIndexedResourceBinding;
 using vex::DrawResourceBinding;
 using vex::DynamicState;
 using vex::FilterMode;
+using vex::FormatUtil;
 using vex::FrameBuffering;
 using vex::FreeList;
 using vex::GInvalidASHandle;
