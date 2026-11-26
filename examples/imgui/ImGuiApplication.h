@@ -15,5 +15,5 @@ protected:
     static constexpr auto FrameBuffering = vex::FrameBuffering::Triple;
     static constexpr auto SwapchainFormat = vex::TextureFormat::BGRA8_UNORM;
 
-    virtual void OnResize(GLFWwindow* window, int width, int height) override;
+    virtual void OnResize(int width, int height) override;
 };

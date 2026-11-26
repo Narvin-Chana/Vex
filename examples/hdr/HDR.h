@@ -13,7 +13,7 @@ public:
     virtual void HandleKeyInput(int key, int scancode, int action, int mods) override;
 
 protected:
-    virtual void OnResize(GLFWwindow* window, int width, int height) override;
+    virtual void OnResize(int width, int height) override;
 
 private:
     vex::Texture hdrTexture;

@@ -12,8 +12,14 @@ namespace vex::dx12
 class DX12Fence final : public RHIFenceBase
 {
 public:
-    DX12Fence(ComPtr<DX12Device>& device);
+    explicit DX12Fence(ComPtr<DX12Device>& device);
     ~DX12Fence();
+
+    DX12Fence(const DX12Fence&) = delete;
+    DX12Fence& operator=(const DX12Fence&) = delete;
+
+    DX12Fence(DX12Fence&& other);
+    DX12Fence& operator=(DX12Fence&& other);
 
     virtual u64 GetValue() const override;
     // Blocks CPU until the GPU signals the requested fence value.
@@ -21,6 +27,9 @@ public:
     virtual void SignalOnCPU(u64 value) override;
 
     ComPtr<ID3D12Fence1> fence;
+
+private:
+    HANDLE eventHandle = nullptr;
 };
 
 } // namespace vex::dx12

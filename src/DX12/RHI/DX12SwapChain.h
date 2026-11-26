@@ -35,7 +35,10 @@ public:
     virtual ColorSpace GetValidColorSpace(ColorSpace preferredColorSpace) const override;
 
     virtual std::optional<RHITexture> AcquireBackBuffer(u8 frameIndex) override;
-    virtual SyncToken Present(u8 frameIndex, RHI& rhi, NonNullPtr<RHICommandList> commandList) override;
+    virtual SyncToken Present(u8 frameIndex,
+                              RHI& rhi,
+                              NonNullPtr<RHICommandList> commandList,
+                              Span<const SyncToken> dependencies) override;
 
 private:
     DXGI_FORMAT GetDXGIFormat() const;

@@ -149,7 +149,7 @@ void HelloRayTracing::Run()
 {
     while (!glfwWindowShouldClose(window))
     {
-        glfwPollEvents();
+        PollEvents();
 
         {
             vex::CommandContext ctx = graphics->CreateCommandContext(vex::QueueType::Graphics);
@@ -202,7 +202,7 @@ void HelloRayTracing::Run()
     }
 }
 
-void HelloRayTracing::OnResize(GLFWwindow* window, int newWidth, int newHeight)
+void HelloRayTracing::OnResize(int newWidth, int newHeight)
 {
     if (newWidth == 0 || newHeight == 0)
     {
@@ -211,7 +211,7 @@ void HelloRayTracing::OnResize(GLFWwindow* window, int newWidth, int newHeight)
 
     graphics->DestroyTexture(workingTexture);
 
-    ExampleApplication::OnResize(window, newWidth, newHeight);
+    ExampleApplication::OnResize(newWidth, newHeight);
 
     workingTexture = graphics->CreateTexture({
         .name = "Working Texture",
