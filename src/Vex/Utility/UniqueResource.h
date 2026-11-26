@@ -6,8 +6,10 @@
 namespace vex
 {
 
-template <class T, void (Graphics::*DestroyFn)(const T&)>
-    requires(std::is_same_v<T, AccelerationStructure> || std::is_same_v<T, Buffer> || std::is_same_v<T, Texture>)
+template <class T>
+concept VexResource = std::same_as<T, AccelerationStructure> or std::same_as<T, Buffer> or std::same_as<T, Texture>;
+
+template <VexResource T, void (Graphics::*DestroyFn)(const T&)>
 class UniqueResource
 {
 public:
