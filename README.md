@@ -38,10 +38,10 @@ Any C++23 compatible compiler should suffice. We guarantee support for the follo
 subject to risk.
 
 - MSVC 19.50.35717
-- Clang 20.1.8
-- GCC 14
+- Clang 22.1.8
+- GCC 15
 
-**CMake**: 3.28+
+**CMake**: 4.2.2+
 
 **Git** (for using CMake's FetchContent)
 
