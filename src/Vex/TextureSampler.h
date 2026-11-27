@@ -8,6 +8,8 @@ namespace vex
 {
 
 inline constexpr u32 GMaxBindlessSamplerCount = 2048;
+// Technically dx12 allows for more, but we keep the minimum of all supported graphics APIs for simplicity's sake.
+inline constexpr u32 GMaxStaticSamplerCount = 1024;
 
 enum class FilterMode : u8
 {

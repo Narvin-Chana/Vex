@@ -23,5 +23,10 @@ inline constexpr u8 Count = 3;
 
 using QueueType = QueueTypes::Value;
 
-} // namespace vex
+enum class CommandListBindPoint : u8
+{
+    Graphics,
+    Compute,
+};
 
+} // namespace vex

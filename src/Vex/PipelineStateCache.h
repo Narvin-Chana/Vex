@@ -24,16 +24,16 @@ public:
     RHIGraphicsPipelineState* GetGraphicsPipelineState(const DrawDesc& drawDesc,
                                                        const RenderTargetState& renderTargetState,
                                                        std::optional<IndexFormat> indexFormat,
-                                                       std::unique_ptr<RHIGraphicsPipelineState>& oldPSO);
+                                                       std::vector<RHIDeferredRelease>& deferredReleases);
     RHIGraphicsPipelineState* GetGraphicsPipelineState(const DispatchMeshDesc& drawDesc,
                                                        const RenderTargetState& renderTargetState,
-                                                       std::unique_ptr<RHIGraphicsPipelineState>& oldPSO);
+                                                       std::vector<RHIDeferredRelease>& deferredReleases);
     RHIComputePipelineState* GetComputePipelineState(const ShaderView& computeShader,
-                                                     std::unique_ptr<RHIComputePipelineState>& oldPSO);
+                                                     std::vector<RHIDeferredRelease>& deferredReleases);
     RHIRayTracingPipelineState* GetRayTracingPipelineState(const RayTracingShaderCollection& shaderCollection,
                                                            RHIAllocator& allocator,
-                                                           std::unique_ptr<RHIRayTracingPipelineState>& oldPSO,
-                                                           std::vector<MaybeUninitialized<RHIBuffer>>& oldBuffers);
+                                                           std::vector<RHIDeferredRelease>& deferredReleases,
+                                                           RHIRayTracingPipelineState::ShaderTableBuffers& oldBuffers);
 
     MaybeUninitialized<RHIResourceLayout> resourceLayout;
 

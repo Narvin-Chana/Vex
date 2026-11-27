@@ -43,7 +43,7 @@ public:
                          const ShaderView* pixelShader,
                          RHIResourceLayout& resourceLayout) override;
 
-    virtual std::unique_ptr<RHIGraphicsPipelineState> Cleanup() override;
+    virtual void Cleanup(std::vector<RHIDeferredRelease>& deferredReleases) override;
 
     void CreateGraphicsPipeline(RHIResourceLayout& resourceLayout,
                                 std::span<const ::vk::PipelineShaderStageCreateInfo> stages,
@@ -63,7 +63,7 @@ public:
     VkComputePipelineState(VkComputePipelineState&&) = default;
     VkComputePipelineState& operator=(VkComputePipelineState&&) = default;
     virtual void Compile(const ShaderView& computeShader, RHIResourceLayout& resourceLayout) override;
-    virtual std::unique_ptr<RHIComputePipelineState> Cleanup() override;
+    virtual void Cleanup(std::vector<RHIDeferredRelease>& deferredReleases) override;
 
     ::vk::UniquePipeline computePipeline;
 
@@ -78,10 +78,10 @@ public:
     VkRayTracingPipelineState(std::string name, const Key& key, NonNullPtr<VkGPUContext> ctx, ::vk::PipelineCache psoCache);
     VkRayTracingPipelineState(VkRayTracingPipelineState&&) = default;
     VkRayTracingPipelineState& operator=(VkRayTracingPipelineState&&) = default;
-    virtual std::vector<MaybeUninitialized<RHIBuffer>> Compile(const RayTracingShaderCollection& shaderCollection,
-                                                               RHIResourceLayout& resourceLayout,
-                                                               RHIAllocator& allocator) override;
-    virtual std::unique_ptr<RHIRayTracingPipelineState> Cleanup() override;
+    virtual ShaderTableBuffers Compile(const RayTracingShaderCollection& shaderCollection,
+                                       RHIResourceLayout& resourceLayout,
+                                       RHIAllocator& allocator) override;
+    virtual void Cleanup(std::vector<RHIDeferredRelease>& deferredReleases) override;
 
     ::vk::UniquePipeline rtPipeline;
 

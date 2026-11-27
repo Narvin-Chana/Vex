@@ -22,6 +22,7 @@ class VkScopedGPUEvent;
 class VkAccelerationStructure;
 class VkFeatureChecker;
 class VkPhysicalDevice;
+class VkDeferredRelease;
 
 } // namespace vex::vk
 
@@ -51,5 +52,6 @@ using RHITimestampQueryPool = vk::VkTimestampQueryPool;
 using RHIAccelerationStructure = vk::VkAccelerationStructure;
 using RHIFeatureChecker = vk::VkFeatureChecker;
 using RHIPhysicalDevice = vk::VkPhysicalDevice;
+using RHIDeferredRelease = vk::VkDeferredRelease;
 
 } // namespace vex

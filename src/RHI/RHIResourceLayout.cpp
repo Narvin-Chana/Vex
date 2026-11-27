@@ -1,42 +1,24 @@
 #include "RHIResourceLayout.h"
 
-#include <Vex/Bindings.h>
 #include <Vex/Logger.h>
-#include <Vex/PhysicalDevice.h>
-#include <Vex/RHIImpl/RHIPhysicalDevice.h>
+#include <VexMacros.h>
 
 namespace vex
 {
 
-RHIResourceLayoutBase::RHIResourceLayoutBase()
-    : maxLocalConstantsByteSize(GPhysicalDevice->GetMaxLocalConstantsByteSize())
-{
-    localConstantsData.reserve(maxLocalConstantsByteSize);
-}
+RHIResourceLayoutBase::RHIResourceLayoutBase() = default;
 
-void RHIResourceLayoutBase::SetLayoutResources(const ConstantBinding& constants)
+void RHIResourceLayoutBase::SetStaticSamplers(Span<const StaticTextureSampler> newSamplers,
+                                              std::vector<RHIDeferredRelease>& deferredReleases)
 {
-    if (constants.IsValid())
-    {
-        if (constants.data.size_bytes() > maxLocalConstantsByteSize)
-        {
-            VEX_LOG(Fatal,
-                    "Cannot pass in more bytes as local constants versus what your platform allows. You passed in {} "
-                    "bytes, your graphics API allows for {} bytes.",
-                    constants.data.size_bytes(),
-                    maxLocalConstantsByteSize);
-            return;
-        }
+    VEX_CHECK(newSamplers.size() <= GMaxStaticSamplerCount,
+              "Cannot set {} static samplers, the maximum is {}.",
+              newSamplers.size(),
+              GMaxStaticSamplerCount);
 
-        localConstantsData.resize(constants.data.size_bytes());
-        std::memcpy(localConstantsData.data(), constants.data.data(), constants.data.size_bytes());
-    }
-}
-
-void RHIResourceLayoutBase::SetStaticSamplers(Span<const StaticTextureSampler> newSamplers)
-{
+    Cleanup(deferredReleases);
     staticSamplers = { newSamplers.begin(), newSamplers.end() };
-    isDirty = true;
+    Rebuild();
 }
 
 Span<const StaticTextureSampler> RHIResourceLayoutBase::GetStaticSamplers() const
@@ -44,9 +26,10 @@ Span<const StaticTextureSampler> RHIResourceLayoutBase::GetStaticSamplers() cons
     return staticSamplers;
 }
 
-Span<const byte> RHIResourceLayoutBase::GetLocalConstantsData() const
+void RHIResourceLayoutBase::Rebuild()
 {
-    return localConstantsData;
+    Compile();
+    ++version;
 }
 
 } // namespace vex

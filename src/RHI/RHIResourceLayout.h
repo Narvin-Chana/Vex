@@ -6,9 +6,10 @@
 #include <Vex/TextureSampler.h>
 #include <Vex/Types.h>
 
+#include <RHI/RHIFwd.h>
+
 namespace vex
 {
-struct ConstantBinding;
 
 class RHIResourceLayoutBase
 {
@@ -17,22 +18,17 @@ public:
     RHIResourceLayoutBase(RHIResourceLayoutBase&&) = default;
     RHIResourceLayoutBase& operator=(RHIResourceLayoutBase&&) = default;
 
-    void SetLayoutResources(const ConstantBinding& constants);
-
-    void SetStaticSamplers(Span<const StaticTextureSampler> newSamplers);
+    void SetStaticSamplers(Span<const StaticTextureSampler> newSamplers,
+                           std::vector<RHIDeferredRelease>& deferredReleases);
     Span<const StaticTextureSampler> GetStaticSamplers() const;
-
-    Span<const byte> GetLocalConstantsData() const;
 
     u32 version = 0;
 
 protected:
-    bool isDirty = true;
+    virtual void Cleanup(std::vector<RHIDeferredRelease>& deferredReleases) = 0;
+    virtual void Compile() = 0;
 
-    u32 maxLocalConstantsByteSize;
-
-    // Constant data remains always allocated, avoiding reallocations on successive draw calls.
-    std::vector<byte> localConstantsData;
+    void Rebuild();
 
     std::vector<StaticTextureSampler> staticSamplers;
 };

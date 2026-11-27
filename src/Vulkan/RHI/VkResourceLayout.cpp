@@ -4,6 +4,7 @@
 #include <VexMacros.h>
 #include <Vex/RHIImpl/RHIBuffer.h>
 
+#include <Vulkan/RHI/VkDeferredRelease.h>
 #include <Vulkan/RHI/VkDescriptorPool.h>
 #include <Vulkan/VkErrorHandler.h>
 #include <Vulkan/VkGPUContext.h>
@@ -16,29 +17,47 @@ VkResourceLayout::VkResourceLayout(NonNullPtr<VkGPUContext> ctx, NonNullPtr<VkDe
     : ctx{ ctx }
     , descriptorPool{ descriptorPool }
 {
-    std::array<::vk::DescriptorType, MaxSamplerCount> descriptorTypes{};
-    std::fill_n(descriptorTypes.begin(), staticSamplers.size(), ::vk::DescriptorType::eSampler);
-    samplerSet = VkDescriptorSet(ctx, *descriptorPool->descriptorPool, descriptorTypes);
+    Rebuild();
 }
 
-::vk::PipelineLayout VkResourceLayout::GetPipelineLayout()
+::vk::PipelineLayout VkResourceLayout::GetPipelineLayout() const
 {
-    if (isDirty)
-    {
-        pipelineLayout = CreateLayout();
-        isDirty = false;
-    }
     return *pipelineLayout;
 }
 
-::vk::DescriptorSet VkResourceLayout::GetStaticSamplerDescriptorSet()
+::vk::DescriptorSet VkResourceLayout::GetStaticSamplerDescriptorSet() const
 {
-    if (isDirty)
-    {
-        pipelineLayout = CreateLayout();
-        isDirty = false;
-    }
     return *samplerSet->descriptorSet;
+}
+
+void VkResourceLayout::Cleanup(std::vector<RHIDeferredRelease>& deferredReleases)
+{
+    if (pipelineLayout)
+    {
+        deferredReleases.emplace_back(std::move(pipelineLayout));
+    }
+
+    for (::vk::UniqueSampler& vkSampler : vkSamplers)
+    {
+        deferredReleases.emplace_back(std::move(vkSampler));
+    }
+    vkSamplers.clear();
+
+    if (samplerSet)
+    {
+        deferredReleases.emplace_back(std::move(samplerSet->descriptorSet));
+        deferredReleases.emplace_back(std::move(samplerSet->descriptorLayout));
+        samplerSet.reset();
+    }
+}
+
+void VkResourceLayout::Compile()
+{
+    std::array<::vk::DescriptorType, GMaxStaticSamplerCount> descriptorTypes{};
+    std::fill_n(descriptorTypes.begin(), staticSamplers.size(), ::vk::DescriptorType::eSampler);
+    samplerSet = VkDescriptorSet(ctx, *descriptorPool->descriptorPool, descriptorTypes);
+
+    pipelineLayout = CreateLayout();
 }
 
 ::vk::ShaderStageFlags VkResourceLayout::GetPushConstantStageFlags()
@@ -79,8 +98,6 @@ VkResourceLayout::VkResourceLayout(NonNullPtr<VkGPUContext> ctx, NonNullPtr<VkDe
     }
 
     samplerSet->UpdateDescriptors(0, descriptorImageInfos);
-
-    version++;
 
     return vkPipelineLayout;
 }

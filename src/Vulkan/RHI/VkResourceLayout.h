@@ -18,12 +18,15 @@ class VkResourceLayout final : public RHIResourceLayoutBase
 public:
     VkResourceLayout(NonNullPtr<VkGPUContext> ctx, NonNullPtr<VkDescriptorPool> descriptorPool);
 
-    ::vk::PipelineLayout GetPipelineLayout();
-    ::vk::DescriptorSet GetStaticSamplerDescriptorSet();
+    ::vk::PipelineLayout GetPipelineLayout() const;
+    ::vk::DescriptorSet GetStaticSamplerDescriptorSet() const;
 
     static ::vk::ShaderStageFlags GetPushConstantStageFlags();
 
 private:
+    virtual void Cleanup(std::vector<RHIDeferredRelease>& deferredReleases) override;
+    virtual void Compile() override;
+
     ::vk::UniquePipelineLayout CreateLayout();
     MaybeUninitialized<VkDescriptorSet> samplerSet;
     std::vector<::vk::UniqueSampler> vkSamplers;

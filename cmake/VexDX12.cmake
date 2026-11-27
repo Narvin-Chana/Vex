@@ -112,6 +112,7 @@ function(setup_dx12_backend TARGET)
         "src/DX12/RHI/DX12AccelerationStructure.cpp"
         "src/DX12/RHI/DX12PhysicalDevice.h"
         "src/DX12/RHI/DX12PhysicalDevice.cpp"
+        "src/DX12/RHI/DX12DeferredRelease.h"
         # DX12 API
         "src/DX12/DX12DescriptorHeap.h"
         "src/DX12/DX12Headers.h"

@@ -126,6 +126,7 @@ void DX12CommandList::Open()
 {
     chk << commandAllocator->Reset();
     chk << commandList->Reset(commandAllocator.Get(), nullptr);
+    InvalidatePipelineState();
 
     RHICommandListBase::Open();
 }
@@ -163,59 +164,91 @@ void DX12CommandList::SetScissor(i32 x, i32 y, u32 width, u32 height)
 
 void DX12CommandList::SetPipelineState(const RHIGraphicsPipelineState& graphicsPipelineState)
 {
-    commandList->SetPipelineState(graphicsPipelineState.graphicsPSO.Get());
+    ID3D12PipelineState* pipelineState = graphicsPipelineState.graphicsPSO.Get();
+    if (pipelineState == boundPipelineState)
+    {
+        return;
+    }
+    commandList->SetPipelineState(pipelineState);
+    boundPipelineState = pipelineState;
 }
 
 void DX12CommandList::SetPipelineState(const RHIComputePipelineState& computePipelineState)
 {
-    commandList->SetPipelineState(computePipelineState.computePSO.Get());
+    ID3D12PipelineState* pipelineState = computePipelineState.computePSO.Get();
+    if (pipelineState == boundPipelineState)
+    {
+        return;
+    }
+    commandList->SetPipelineState(pipelineState);
+    boundPipelineState = pipelineState;
 }
 
 void DX12CommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTracingPipelineState)
 {
-    commandList->SetPipelineState1(rayTracingPipelineState.stateObject.Get());
+    ID3D12StateObject* stateObject = rayTracingPipelineState.stateObject.Get();
+    if (stateObject == boundPipelineState)
+    {
+        return;
+    }
+    commandList->SetPipelineState1(stateObject);
+    boundPipelineState = stateObject;
 }
 
-void DX12CommandList::SetLayout(RHIResourceLayout& layout)
+void DX12CommandList::InvalidatePipelineState()
 {
-    ID3D12RootSignature* globalRootSignature = layout.GetRootSignature().Get();
+    boundPipelineState = nullptr;
+}
+
+void DX12CommandList::SetLayout(CommandListBindPoint bindPoint, RHIResourceLayout& layout)
+{
+    VEX_CHECK(SupportsBindPoint(bindPoint),
+              "Must use a valid bind point, command list of type {} does not support bind point {}.",
+              type,
+              bindPoint);
 
     // Set root signature.
-    switch (type)
+    ID3D12RootSignature* globalRootSignature = layout.GetRootSignature().Get();
+    switch (bindPoint)
     {
-    case QueueType::Graphics:
+    case CommandListBindPoint::Graphics:
         commandList->SetGraphicsRootSignature(globalRootSignature);
-    case QueueType::Compute:
+        break;
+    case CommandListBindPoint::Compute:
         commandList->SetComputeRootSignature(globalRootSignature);
-    case QueueType::Copy:
+        break;
     default:
         break;
     }
+}
 
-    Span<const byte> localConstantsData = layout.GetLocalConstantsData();
-    if (localConstantsData.empty())
+void DX12CommandList::SetConstants(CommandListBindPoint bindPoint, Span<const byte> constants)
+{
+    VEX_CHECK(SupportsBindPoint(bindPoint),
+              "Must use a valid bind point, command list of type {} does not support bind point {}.",
+              type,
+              bindPoint);
+
+    if (constants.empty())
     {
         return;
     }
 
-    switch (type)
+    // Set local constants (in first slot of root signature).
+    switch (bindPoint)
     {
-    case QueueType::Graphics:
-        // Set local constants (in first slot of root signature).
+    case CommandListBindPoint::Graphics:
         commandList->SetGraphicsRoot32BitConstants(
             0,
-            static_cast<u32>(ByteUtil::DivRoundUp(localConstantsData.size(), sizeof(u32))),
-            localConstantsData.data(),
+            static_cast<u32>(ByteUtil::DivRoundUp(constants.size(), sizeof(u32))),
+            constants.data(),
             0);
-    case QueueType::Compute:
-        // Set local constants (in first slot of root signature).
-        commandList->SetComputeRoot32BitConstants(
-            0,
-            static_cast<u32>(ByteUtil::DivRoundUp(localConstantsData.size(), sizeof(u32))),
-            localConstantsData.data(),
-            0);
-    case QueueType::Copy:
-    default:
+        break;
+    case CommandListBindPoint::Compute:
+        commandList->SetComputeRoot32BitConstants(0,
+                                                  static_cast<u32>(ByteUtil::DivRoundUp(constants.size(), sizeof(u32))),
+                                                  constants.data(),
+                                                  0);
         break;
     }
 }

@@ -178,6 +178,7 @@ add_library(Vex STATIC
     "src/Vex/RHIImpl/RHIAllocator.h"
     "src/Vex/RHIImpl/RHITimestampQueryPool.h"
     "src/Vex/RHIImpl/RHIAccelerationStructure.h"
+    "src/Vex/RHIImpl/RHIDeferredRelease.h"
     "src/Vex/RHIImpl/RHIPhysicalDevice.h"
     # Vex Utilities
     "src/Vex/Utility/Concepts.h"

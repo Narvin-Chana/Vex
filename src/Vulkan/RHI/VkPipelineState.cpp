@@ -8,6 +8,7 @@
 
 #include <Vulkan/RHI/VkAccelerationStructure.h>
 #include <Vulkan/RHI/VkBuffer.h>
+#include <Vulkan/RHI/VkDeferredRelease.h>
 #include <Vulkan/RHI/VkResourceLayout.h>
 #include <Vulkan/VkDebug.h>
 #include <Vulkan/VkErrorHandler.h>
@@ -152,15 +153,12 @@ void VkGraphicsPipelineState::Compile(const ShaderView& meshShader,
     CreateGraphicsPipeline(resourceLayout, stages, dynamicStates);
 }
 
-std::unique_ptr<RHIGraphicsPipelineState> VkGraphicsPipelineState::Cleanup()
+void VkGraphicsPipelineState::Cleanup(std::vector<RHIDeferredRelease>& deferredReleases)
 {
-    if (!graphicsPipeline)
+    if (graphicsPipeline)
     {
-        return nullptr;
+        deferredReleases.emplace_back(std::move(graphicsPipeline));
     }
-    auto cleanupPSO = std::make_unique<VkGraphicsPipelineState>(name, key, device, psoCache);
-    std::swap(cleanupPSO->graphicsPipeline, graphicsPipeline);
-    return cleanupPSO;
 }
 void VkGraphicsPipelineState::CreateGraphicsPipeline(RHIResourceLayout& resourceLayout,
                                                      std::span<const ::vk::PipelineShaderStageCreateInfo> stages,
@@ -323,15 +321,12 @@ void VkComputePipelineState::Compile(const ShaderView& computeShader, RHIResourc
     SetDebugName(device, *computePipeline, name.c_str());
 }
 
-std::unique_ptr<RHIComputePipelineState> VkComputePipelineState::Cleanup()
+void VkComputePipelineState::Cleanup(std::vector<RHIDeferredRelease>& deferredReleases)
 {
-    if (!computePipeline)
+    if (computePipeline)
     {
-        return nullptr;
+        deferredReleases.emplace_back(std::move(computePipeline));
     }
-    auto cleanupPSO = std::make_unique<VkComputePipelineState>(name, key, device, psoCache);
-    std::swap(cleanupPSO->computePipeline, computePipeline);
-    return cleanupPSO;
 }
 
 VkRayTracingPipelineState::VkRayTracingPipelineState(std::string name,
@@ -344,7 +339,7 @@ VkRayTracingPipelineState::VkRayTracingPipelineState(std::string name,
 {
 }
 
-std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
+VkRayTracingPipelineState::ShaderTableBuffers VkRayTracingPipelineState::Compile(
     const RayTracingShaderCollection& shaderCollection, RHIResourceLayout& resourceLayout, RHIAllocator& allocator)
 {
     auto CreateShaderModule = [&](const ShaderView& s)
@@ -487,7 +482,7 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
         }
     }
 
-    std::vector<MaybeUninitialized<RHIBuffer>> oldBuffers;
+    ShaderTableBuffers oldBuffers;
     if (rayGenTable)
     {
         oldBuffers.push_back(std::move(rayGenTable->shaderTableBuffer));
@@ -529,20 +524,13 @@ std::vector<MaybeUninitialized<RHIBuffer>> VkRayTracingPipelineState::Compile(
     return oldBuffers;
 }
 
-std::unique_ptr<RHIRayTracingPipelineState> VkRayTracingPipelineState::Cleanup()
+void VkRayTracingPipelineState::Cleanup(std::vector<RHIDeferredRelease>& deferredReleases)
 {
-    if (!rtPipeline && !groupHitTable && !rayCallableTable && !rayGenTable && !rayMissTable)
+    // Shader tables are kept, Compile() returns their buffers so that their allocations are correctly freed.
+    if (rtPipeline)
     {
-        return nullptr;
+        deferredReleases.emplace_back(std::move(rtPipeline));
     }
-
-    auto cleanupPSO = std::make_unique<VkRayTracingPipelineState>(name, key, ctx, psoCache);
-    std::swap(cleanupPSO->rtPipeline, rtPipeline);
-    std::swap(cleanupPSO->groupHitTable, groupHitTable);
-    std::swap(cleanupPSO->rayCallableTable, rayCallableTable);
-    std::swap(cleanupPSO->rayGenTable, rayGenTable);
-    std::swap(cleanupPSO->rayMissTable, rayMissTable);
-    return cleanupPSO;
 }
 
 } // namespace vex::vk

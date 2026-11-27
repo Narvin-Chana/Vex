@@ -2,6 +2,7 @@
 
 #include <Vex/GraphicsPipeline.h>
 #include <Vex/Logger.h>
+#include <Vex/PhysicalDevice.h>
 #include <Vex/Utility/Formattable.h>
 #include <VexMacros.h>
 
@@ -158,7 +159,7 @@ void ValidateTextureBinding(const TextureBinding& binding, Flags<TextureUsage> v
               "Invalid binding for resource \"{}\": The specified texture cannot be bound for this type of "
               "operation. Check the usage flags of your resource at creation.",
               texture.desc.name);
-    
+
     TextureUtil::ValidateSubresource(texture.desc, binding.subresource);
 
     if (binding.isSRGB)
@@ -274,6 +275,20 @@ void ValidateDrawResourceBindings(const DrawResourceBinding& binding, bool hasPi
 }
 
 } // namespace BindingUtil
+
+Span<const byte> ConstantBinding::GetData() const
+{
+    if (u32 maxLocalConstantsByteSize = GPhysicalDevice->GetMaxLocalConstantsByteSize();
+        data.size_bytes() > maxLocalConstantsByteSize)
+    {
+        VEX_LOG(Fatal,
+                "Cannot pass in more bytes as local constants versus what your platform allows. You passed in {} "
+                "bytes, your graphics API allows for {} bytes.",
+                data.size_bytes(),
+                maxLocalConstantsByteSize);
+    }
+    return data;
+}
 
 BufferBinding BufferBinding::CreateStructured(const Buffer& buffer,
                                               u32 strideByteSize,

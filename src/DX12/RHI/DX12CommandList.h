@@ -23,8 +23,10 @@ public:
     virtual void SetPipelineState(const RHIGraphicsPipelineState& graphicsPipelineState) override;
     virtual void SetPipelineState(const RHIComputePipelineState& computePipelineState) override;
     virtual void SetPipelineState(const RHIRayTracingPipelineState& rayTracingPipelineState) override;
+    virtual void InvalidatePipelineState() override;
 
-    virtual void SetLayout(RHIResourceLayout& layout) override;
+    virtual void SetLayout(CommandListBindPoint bindPoint, RHIResourceLayout& layout) override;
+    virtual void SetConstants(CommandListBindPoint bindPoint, Span<const byte> constants) override;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) override;
     virtual void SetInputAssembly(InputAssembly inputAssembly) override;
     virtual void SetBlendConstants(std::array<float, 4> colorBlendConstants) override;
@@ -91,6 +93,9 @@ private:
 
     // Underlying memory of the command list.
     ComPtr<ID3D12CommandAllocator> commandAllocator;
+
+    // DX12 command lists have a single pipeline state slot shared by graphics, compute and ray tracing pipelines.
+    ID3D12DeviceChild* boundPipelineState = nullptr;
 
     // Avoid re-allocating vectors on each barrier emit, instead we keep vectors here and clear/reserve.
     std::vector<D3D12_BUFFER_BARRIER> scratchBufferBarriers;
