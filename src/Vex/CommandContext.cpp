@@ -5,7 +5,6 @@
 #include <functional>
 #include <iterator>
 #include <ranges>
-#include <version>
 
 #include <Vex/AccelerationStructure.h>
 #include <Vex/DrawHelpers.h>
@@ -117,10 +116,7 @@ CommandContext::CommandContext(NonNullPtr<Graphics> graphics,
 {
     cmdList->Open();
     cmdList->SetTimestampQueryPool(queryPool);
-    if (cmdList->GetQueue() != QueueType::Copy)
-    {
-        cmdList->SetDescriptorPool(*graphics->descriptorPool, graphics->psCache->resourceLayout.value());
-    }
+    SetDescriptorPool();
 }
 
 CommandContext::~CommandContext()
@@ -257,9 +253,8 @@ void CommandContext::Dispatch(const ShaderView& computeShader,
     FlushBarriers();
 
     // Setup the layout for our pass (must be done before PSO handling).
-    RHIResourceLayout& resourceLayout = *graphics->psCache->resourceLayout;
-    cmdList->SetLayout(RHICommandListBindPoint::Compute, resourceLayout);
-    cmdList->SetConstants(RHICommandListBindPoint::Compute, constants.GetData());
+    SetResourceLayout(CommandListBindPoint::Compute);
+    SetConstants(CommandListBindPoint::Compute, constants);
 
     // Register shader and get Pipeline if exists (if not we create it).
     RHIComputePipelineState* pipelineState =
@@ -269,11 +264,7 @@ void CommandContext::Dispatch(const ShaderView& computeShader,
         return;
     }
 
-    if (!cachedComputePSO || pipelineState != cachedComputePSO)
-    {
-        cmdList->SetPipelineState(*pipelineState);
-        cachedComputePSO = pipelineState;
-    }
+    cmdList->SetPipelineState(*pipelineState);
 
     // Validate dispatch (vs platform/api constraints)
     // graphics->ValidateDispatch(groupCount);
@@ -317,9 +308,8 @@ void CommandContext::TraceRays(const RayTracingShaderCollection& rayTracingShade
     FlushBarriers();
 
     // Setup the layout for our pass (must be done before PSO handling).
-    RHIResourceLayout& resourceLayout = graphics->psCache->resourceLayout.value();
-    cmdList->SetLayout(RHICommandListBindPoint::Compute, resourceLayout);
-    cmdList->SetConstants(RHICommandListBindPoint::Compute, constants.GetData());
+    SetResourceLayout(CommandListBindPoint::Compute);
+    SetConstants(CommandListBindPoint::Compute, constants);
 
     RHIRayTracingPipelineState::ShaderTableBuffers oldSBTs;
 
@@ -340,11 +330,7 @@ void CommandContext::TraceRays(const RayTracingShaderCollection& rayTracingShade
         return;
     }
 
-    if (!cachedRayTracingPSO || pipelineState != cachedRayTracingPSO)
-    {
-        cmdList->SetPipelineState(*pipelineState);
-        cachedRayTracingPSO = pipelineState;
-    }
+    cmdList->SetPipelineState(*pipelineState);
 
     // Validate ray trace (vs platform/api constraints)
     // graphics->ValidateTraceRays(widthHeightDepth);
@@ -1127,12 +1113,9 @@ void CommandContext::ExecuteInDrawContext(const DrawResourceBinding& drawBinding
     cmdList->EndRendering();
 
     // Reset cached states as the callback could have changed the pipeline.
-    cachedGraphicsPSO = {};
+    cmdList->InvalidatePipelineState();
     cachedInputAssembly = {};
-    if (cmdList->GetQueue() != QueueType::Copy)
-    {
-        cmdList->SetDescriptorPool(*graphics->descriptorPool, graphics->psCache->resourceLayout.value());
-    }
+    SetDescriptorPool();
 }
 
 QueryHandle CommandContext::BeginTimestampQuery()
@@ -1392,9 +1375,8 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(DrawDesc desc,
     RenderTargetState renderTargetState = CommandContext_Internal::CreateRenderTargetState(drawResources);
 
     // Setup the layout for our pass (must be done before PSO handling).
-    RHIResourceLayout& resourceLayout = graphics->psCache->resourceLayout.value();
-    cmdList->SetLayout(RHICommandListBindPoint::Graphics, resourceLayout);
-    cmdList->SetConstants(RHICommandListBindPoint::Graphics, constants.GetData());
+    SetResourceLayout(CommandListBindPoint::Graphics);
+    SetConstants(CommandListBindPoint::Graphics, constants);
 
     RHIGraphicsPipelineState* pipelineState =
         graphics->psCache->GetGraphicsPipelineState(desc, renderTargetState, indexFormat, deferredReleases);
@@ -1403,11 +1385,7 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(DrawDesc desc,
         return std::nullopt;
     }
 
-    if (!cachedGraphicsPSO || cachedGraphicsPSO != pipelineState)
-    {
-        cmdList->SetPipelineState(*pipelineState);
-        cachedGraphicsPSO = pipelineState;
-    }
+    cmdList->SetPipelineState(*pipelineState);
 
     if (!cachedInputAssembly || desc.inputAssembly != cachedInputAssembly)
     {
@@ -1446,9 +1424,8 @@ std::optional<RHIDrawResources> CommandContext::PrepareDispatchMeshCall(Dispatch
     RenderTargetState renderTargetState = CommandContext_Internal::CreateRenderTargetState(drawResources);
 
     // Setup the layout for our pass (must be done before PSO handling).
-    RHIResourceLayout& resourceLayout = graphics->psCache->resourceLayout.value();
-    cmdList->SetLayout(RHICommandListBindPoint::Graphics, resourceLayout);
-    cmdList->SetConstants(RHICommandListBindPoint::Graphics, constants.GetData());
+    SetResourceLayout(CommandListBindPoint::Graphics);
+    SetConstants(CommandListBindPoint::Graphics, constants);
 
     EnqueueGlobalBarrier({ .srcSync = RHIBarrierSync::AllCommands,
                            .dstSync = RHIBarrierSync::AllGraphics,
@@ -1462,11 +1439,7 @@ std::optional<RHIDrawResources> CommandContext::PrepareDispatchMeshCall(Dispatch
         return std::nullopt;
     }
 
-    if (!cachedGraphicsPSO || cachedGraphicsPSO != pipelineState)
-    {
-        cmdList->SetPipelineState(*pipelineState);
-        cachedGraphicsPSO = pipelineState;
-    }
+    cmdList->SetPipelineState(*pipelineState);
 
     cmdList->SetBlendConstants(desc.dynamicState.blendConstants);
     cmdList->SetStencilReference(desc.dynamicState.frontStencilReference, desc.dynamicState.backStencilReference);
@@ -1533,6 +1506,45 @@ void CommandContext::SetIndexBuffer(const IndexBufferBinding& indexBuffer) const
 {
     RHIIndexBufferView view = ResourceBindingUtils::GetRHIIndexBufferView(*graphics, indexBuffer);
     cmdList->SetIndexBuffer(view);
+}
+
+void CommandContext::SetDescriptorPool()
+{
+    if (cmdList->GetQueue() == QueueTypes::Copy)
+    {
+        return;
+    }
+    cmdList->SetDescriptorPool(*graphics->descriptorPool, *graphics->psCache->resourceLayout);
+    // Reset the cached layout, since we changed descriptor pool.
+    cachedLayoutVersions = {};
+}
+
+void CommandContext::SetResourceLayout(CommandListBindPoint bindPoint)
+{
+    RHIResourceLayout& resourceLayout = *graphics->psCache->resourceLayout;
+    if (std::optional<u32>& boundVersion = cachedLayoutVersions[std::to_underlying(bindPoint)];
+        boundVersion != resourceLayout.version)
+    {
+        cmdList->SetLayout(bindPoint, resourceLayout);
+        boundVersion = resourceLayout.version;
+    }
+}
+
+void CommandContext::SetConstants(CommandListBindPoint bindPoint, const ConstantBinding& constants) const
+{
+    const Span<const byte> data = constants.GetData();
+    if (data.size_bytes() % sizeof(u32) == 0)
+    {
+        cmdList->SetConstants(bindPoint, data);
+        return;
+    }
+
+    // Graphics APIs set local constants in 4 byte units, so we pad the data with zeros up to the next multiple of 4.
+    std::array<byte, MaxTheoreticalLocalConstantsByteSize> paddedData{};
+    std::memcpy(paddedData.data(), data.data(), data.size_bytes());
+    cmdList->SetConstants(
+        bindPoint,
+        Span<const byte>{ paddedData.data(), ByteUtil::AlignUp<u64>(data.size_bytes(), sizeof(u32)) });
 }
 
 } // namespace vex

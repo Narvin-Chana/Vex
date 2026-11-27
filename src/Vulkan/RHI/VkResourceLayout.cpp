@@ -53,7 +53,7 @@ void VkResourceLayout::Cleanup(std::vector<RHIDeferredRelease>& deferredReleases
 
 void VkResourceLayout::Compile()
 {
-    std::array<::vk::DescriptorType, MaxSamplerCount> descriptorTypes{};
+    std::array<::vk::DescriptorType, GMaxStaticSamplerCount> descriptorTypes{};
     std::fill_n(descriptorTypes.begin(), staticSamplers.size(), ::vk::DescriptorType::eSampler);
     samplerSet = VkDescriptorSet(ctx, *descriptorPool->descriptorPool, descriptorTypes);
 

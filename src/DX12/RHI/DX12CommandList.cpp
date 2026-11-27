@@ -126,6 +126,7 @@ void DX12CommandList::Open()
 {
     chk << commandAllocator->Reset();
     chk << commandList->Reset(commandAllocator.Get(), nullptr);
+    InvalidatePipelineState();
 
     RHICommandListBase::Open();
 }
@@ -163,20 +164,43 @@ void DX12CommandList::SetScissor(i32 x, i32 y, u32 width, u32 height)
 
 void DX12CommandList::SetPipelineState(const RHIGraphicsPipelineState& graphicsPipelineState)
 {
-    commandList->SetPipelineState(graphicsPipelineState.graphicsPSO.Get());
+    ID3D12PipelineState* pipelineState = graphicsPipelineState.graphicsPSO.Get();
+    if (pipelineState == boundPipelineState)
+    {
+        return;
+    }
+    commandList->SetPipelineState(pipelineState);
+    boundPipelineState = pipelineState;
 }
 
 void DX12CommandList::SetPipelineState(const RHIComputePipelineState& computePipelineState)
 {
-    commandList->SetPipelineState(computePipelineState.computePSO.Get());
+    ID3D12PipelineState* pipelineState = computePipelineState.computePSO.Get();
+    if (pipelineState == boundPipelineState)
+    {
+        return;
+    }
+    commandList->SetPipelineState(pipelineState);
+    boundPipelineState = pipelineState;
 }
 
 void DX12CommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTracingPipelineState)
 {
-    commandList->SetPipelineState1(rayTracingPipelineState.stateObject.Get());
+    ID3D12StateObject* stateObject = rayTracingPipelineState.stateObject.Get();
+    if (stateObject == boundPipelineState)
+    {
+        return;
+    }
+    commandList->SetPipelineState1(stateObject);
+    boundPipelineState = stateObject;
 }
 
-void DX12CommandList::SetLayout(RHICommandListBindPoint bindPoint, RHIResourceLayout& layout)
+void DX12CommandList::InvalidatePipelineState()
+{
+    boundPipelineState = nullptr;
+}
+
+void DX12CommandList::SetLayout(CommandListBindPoint bindPoint, RHIResourceLayout& layout)
 {
     VEX_CHECK(SupportsBindPoint(bindPoint),
               "Must use a valid bind point, command list of type {} does not support bind point {}.",
@@ -187,10 +211,10 @@ void DX12CommandList::SetLayout(RHICommandListBindPoint bindPoint, RHIResourceLa
     ID3D12RootSignature* globalRootSignature = layout.GetRootSignature().Get();
     switch (bindPoint)
     {
-    case RHICommandListBindPoint::Graphics:
+    case CommandListBindPoint::Graphics:
         commandList->SetGraphicsRootSignature(globalRootSignature);
         break;
-    case RHICommandListBindPoint::Compute:
+    case CommandListBindPoint::Compute:
         commandList->SetComputeRootSignature(globalRootSignature);
         break;
     default:
@@ -198,7 +222,7 @@ void DX12CommandList::SetLayout(RHICommandListBindPoint bindPoint, RHIResourceLa
     }
 }
 
-void DX12CommandList::SetConstants(RHICommandListBindPoint bindPoint, Span<const byte> constants)
+void DX12CommandList::SetConstants(CommandListBindPoint bindPoint, Span<const byte> constants)
 {
     VEX_CHECK(SupportsBindPoint(bindPoint),
               "Must use a valid bind point, command list of type {} does not support bind point {}.",
@@ -213,14 +237,14 @@ void DX12CommandList::SetConstants(RHICommandListBindPoint bindPoint, Span<const
     // Set local constants (in first slot of root signature).
     switch (bindPoint)
     {
-    case RHICommandListBindPoint::Graphics:
+    case CommandListBindPoint::Graphics:
         commandList->SetGraphicsRoot32BitConstants(
             0,
             static_cast<u32>(ByteUtil::DivRoundUp(constants.size(), sizeof(u32))),
             constants.data(),
             0);
         break;
-    case RHICommandListBindPoint::Compute:
+    case CommandListBindPoint::Compute:
         commandList->SetComputeRoot32BitConstants(0,
                                                   static_cast<u32>(ByteUtil::DivRoundUp(constants.size(), sizeof(u32))),
                                                   constants.data(),

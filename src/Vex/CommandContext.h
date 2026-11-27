@@ -7,6 +7,7 @@
 
 #include <Vex/BuildAccelerationStructure.h>
 #include <Vex/Containers/Span.h>
+#include <Vex/QueueType.h>
 #include <Vex/ResourceCleanup.h>
 #include <Vex/ResourceCopy.h>
 #include <Vex/ResourceReadbackContext.h>
@@ -14,6 +15,7 @@
 #include <Vex/ShaderView.h>
 #include <Vex/TextureStateMap.h>
 #include <Vex/Types.h>
+#include <Vex/Utility/MagicEnum.h>
 #include <Vex/Utility/NonNullPtr.h>
 
 #include <RHI/RHIBarrier.h>
@@ -275,6 +277,10 @@ private:
 
     void SetIndexBuffer(const IndexBufferBinding& indexBuffer) const;
 
+    void SetDescriptorPool();
+    void SetResourceLayout(CommandListBindPoint bindPoint);
+    void SetConstants(CommandListBindPoint bindPoint, const ConstantBinding& constants) const;
+
     NonNullPtr<Graphics> graphics;
     NonNullPtr<RHICommandList> cmdList;
     std::unordered_map<TextureHandle, TextureStateMap> textureStates;
@@ -294,10 +300,9 @@ private:
     // Used to avoid resetting the same state multiple times which can be costly on certain hardware.
     // In general draws and dispatches are recommended to be grouped by PSO, so this caching can be very efficient
     // versus binding everything each time.
-    RHIGraphicsPipelineState* cachedGraphicsPSO = nullptr;
-    RHIComputePipelineState* cachedComputePSO = nullptr;
-    RHIRayTracingPipelineState* cachedRayTracingPSO = nullptr;
+    // Pipeline states are cached by the RHI command list, as the binding rules differ per graphics API.
     std::optional<InputAssembly> cachedInputAssembly;
+    std::array<std::optional<u32>, magic_enum::enum_count<CommandListBindPoint>()> cachedLayoutVersions;
 
     // Pending barriers, which are emitted only when the user performs a GPU operation (ie. draw call, dispatch, ...) or
     // submits the command context.

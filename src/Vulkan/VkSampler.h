@@ -9,8 +9,6 @@
 namespace vex::vk
 {
 
-inline constexpr u32 MaxSamplerCount = 1024;
-
 // clang-format off
 
 inline VEX_VK_BEGIN_ENUM_MAPPING(AddressMode, AddressMode, ::vk::SamplerAddressMode, VkSamplerAddressMode)

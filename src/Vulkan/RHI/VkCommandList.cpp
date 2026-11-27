@@ -82,6 +82,7 @@ void VkCommandList::Open()
 
     constexpr ::vk::CommandBufferBeginInfo beginInfo{};
     VEX_VK_CHECK << commandBuffer->begin(beginInfo);
+    InvalidatePipelineState();
 
     RHICommandListBase::Open();
 }
@@ -119,25 +120,50 @@ void VkCommandList::SetScissor(i32 x, i32 y, u32 width, u32 height)
 
 void VkCommandList::SetPipelineState(const RHIGraphicsPipelineState& graphicsPipelineState)
 {
-    commandBuffer->bindPipeline(::vk::PipelineBindPoint::eGraphics, *graphicsPipelineState.graphicsPipeline);
+    const ::vk::Pipeline pipeline = *graphicsPipelineState.graphicsPipeline;
+    if (pipeline == boundGraphicsPipeline)
+    {
+        return;
+    }
+    commandBuffer->bindPipeline(::vk::PipelineBindPoint::eGraphics, pipeline);
+    boundGraphicsPipeline = pipeline;
 }
 
 void VkCommandList::SetPipelineState(const RHIComputePipelineState& computePipelineState)
 {
-    commandBuffer->bindPipeline(::vk::PipelineBindPoint::eCompute, *computePipelineState.computePipeline);
+    const ::vk::Pipeline pipeline = *computePipelineState.computePipeline;
+    if (pipeline == boundComputePipeline)
+    {
+        return;
+    }
+    commandBuffer->bindPipeline(::vk::PipelineBindPoint::eCompute, pipeline);
+    boundComputePipeline = pipeline;
 }
 
 void VkCommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTracingPipelineState)
 {
-    commandBuffer->bindPipeline(::vk::PipelineBindPoint::eRayTracingKHR, *rayTracingPipelineState.rtPipeline);
+    const ::vk::Pipeline pipeline = *rayTracingPipelineState.rtPipeline;
+    if (pipeline == boundRayTracingPipeline)
+    {
+        return;
+    }
+    commandBuffer->bindPipeline(::vk::PipelineBindPoint::eRayTracingKHR, pipeline);
+    boundRayTracingPipeline = pipeline;
 }
 
-void VkCommandList::SetLayout([[maybe_unused]] RHICommandListBindPoint bindPoint, RHIResourceLayout& layout)
+void VkCommandList::InvalidatePipelineState()
+{
+    boundGraphicsPipeline = nullptr;
+    boundComputePipeline = nullptr;
+    boundRayTracingPipeline = nullptr;
+}
+
+void VkCommandList::SetLayout([[maybe_unused]] CommandListBindPoint bindPoint, RHIResourceLayout& layout)
 {
     currentPipelineLayout = layout.GetPipelineLayout();
 }
 
-void VkCommandList::SetConstants([[maybe_unused]] RHICommandListBindPoint bindPoint, Span<const byte> constants)
+void VkCommandList::SetConstants([[maybe_unused]] CommandListBindPoint bindPoint, Span<const byte> constants)
 {
     VEX_CHECK(currentPipelineLayout.has_value(), "Must call SetLayout before set constants.");
     if (constants.empty())

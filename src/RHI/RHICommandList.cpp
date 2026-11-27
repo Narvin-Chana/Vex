@@ -82,7 +82,7 @@ void RHICommandListBase::UpdateTimestampQueryTokens(SyncToken token)
     queries.clear();
 }
 
-bool RHICommandListBase::SupportsBindPoint(RHICommandListBindPoint bindPoint) const
+bool RHICommandListBase::SupportsBindPoint(CommandListBindPoint bindPoint) const
 {
     switch (type)
     {
@@ -92,7 +92,7 @@ bool RHICommandListBase::SupportsBindPoint(RHICommandListBindPoint bindPoint) co
     }
     case QueueType::Compute:
     {
-        return bindPoint == RHICommandListBindPoint::Compute;
+        return bindPoint == CommandListBindPoint::Compute;
     }
     default:
     {

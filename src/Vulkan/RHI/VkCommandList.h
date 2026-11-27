@@ -34,9 +34,10 @@ public:
     virtual void SetPipelineState(const RHIGraphicsPipelineState& graphicsPipelineState) override;
     virtual void SetPipelineState(const RHIComputePipelineState& computePipelineState) override;
     virtual void SetPipelineState(const RHIRayTracingPipelineState& rayTracingPipelineState) override;
+    virtual void InvalidatePipelineState() override;
 
-    virtual void SetLayout(RHICommandListBindPoint bindPoint, RHIResourceLayout& layout) override;
-    virtual void SetConstants(RHICommandListBindPoint bindPoint, Span<const byte> constants) override;
+    virtual void SetLayout(CommandListBindPoint bindPoint, RHIResourceLayout& layout) override;
+    virtual void SetConstants(CommandListBindPoint bindPoint, Span<const byte> constants) override;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) override;
     virtual void SetInputAssembly(InputAssembly inputAssembly) override;
     virtual void SetBlendConstants(std::array<float, 4> colorBlendConstants) override;
@@ -108,6 +109,11 @@ private:
     std::vector<::vk::ImageMemoryBarrier2> scratchImageBarriers;
 
     std::optional<::vk::PipelineLayout> currentPipelineLayout{};
+
+    // Vulkan keeps one bound pipeline per bind point.
+    ::vk::Pipeline boundGraphicsPipeline;
+    ::vk::Pipeline boundComputePipeline;
+    ::vk::Pipeline boundRayTracingPipeline;
 
     friend class VkRHI;
 };
