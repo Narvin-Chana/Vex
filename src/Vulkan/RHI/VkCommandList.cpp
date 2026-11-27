@@ -132,19 +132,23 @@ void VkCommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTracin
     commandBuffer->bindPipeline(::vk::PipelineBindPoint::eRayTracingKHR, *rayTracingPipelineState.rtPipeline);
 }
 
-void VkCommandList::SetLayout(RHIResourceLayout& layout)
+void VkCommandList::SetLayout([[maybe_unused]] RHICommandListBindPoint bindPoint, RHIResourceLayout& layout)
 {
-    Span<const byte> localConstantsData = layout.GetLocalConstantsData();
-    if (localConstantsData.empty())
+    currentPipelineLayout = layout.GetPipelineLayout();
+}
+
+void VkCommandList::SetConstants([[maybe_unused]] RHICommandListBindPoint bindPoint, Span<const byte> constants)
+{
+    VEX_CHECK(currentPipelineLayout.has_value(), "Must call SetLayout before set constants.");
+    if (constants.empty())
     {
         return;
     }
-
-    commandBuffer->pushConstants(layout.GetPipelineLayout(),
+    commandBuffer->pushConstants(*currentPipelineLayout,
                                  RHIResourceLayout::GetPushConstantStageFlags(),
                                  0,
-                                 localConstantsData.size(),
-                                 localConstantsData.data());
+                                 constants.size(),
+                                 constants.data());
 }
 
 void VkCommandList::SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout)

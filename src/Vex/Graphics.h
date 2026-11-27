@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <expected>
 #include <functional>
 #include <memory>
@@ -188,6 +189,11 @@ public:
 private:
     void EnqueueCPUWork(CPUCallback&& callback, Span<const SyncToken> tokens);
     void ExecuteCPUWork();
+    template <class... Ts>
+    void DeferDestruction(Ts&&... objects)
+    {
+        EnqueueCPUWork([... held = std::forward<Ts>(objects)]() mutable {}, rhi.GetMostRecentSyncTokenPerQueue());
+    }
 
     std::optional<SyncToken> FlushPendingInitializations();
     void PrepareCommandContextForSubmission(CommandContext& ctx);
@@ -200,6 +206,8 @@ private:
     RHIAccelerationStructure& GetRHIAccelerationStructure(AccelerationStructureHandle asHandle);
 
     void RecreatePresentTextures();
+
+    std::atomic_uint32_t openCommandContextCount;
 
     // Index of the current frame, possible values depends on buffering:
     //  {0} if single buffering
@@ -266,7 +274,6 @@ struct RHIAccessor
     explicit RHIAccessor(Graphics& graphics);
 
     RHI& GetRHI() const;
-
 
     RHIDescriptorPool& GetDescriptorPool() const;
     RHITexture& GetTexture(const Texture& texture) const;

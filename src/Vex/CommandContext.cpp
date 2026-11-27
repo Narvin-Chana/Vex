@@ -3,6 +3,9 @@
 #include <algorithm>
 #include <array>
 #include <functional>
+#include <iterator>
+#include <ranges>
+#include <version>
 
 #include <Vex/AccelerationStructure.h>
 #include <Vex/DrawHelpers.h>
@@ -255,16 +258,12 @@ void CommandContext::Dispatch(const ShaderView& computeShader,
 
     // Setup the layout for our pass (must be done before PSO handling).
     RHIResourceLayout& resourceLayout = *graphics->psCache->resourceLayout;
-    resourceLayout.SetLayoutResources(constants);
-    cmdList->SetLayout(resourceLayout);
+    cmdList->SetLayout(RHICommandListBindPoint::Compute, resourceLayout);
+    cmdList->SetConstants(RHICommandListBindPoint::Compute, constants.GetData());
 
-    std::unique_ptr<RHIComputePipelineState> oldPSO;
-    // Register shader and get Pipeline if exists (if not create it).
-    RHIComputePipelineState* pipelineState = graphics->psCache->GetComputePipelineState(computeShader, oldPSO);
-    if (oldPSO)
-    {
-        temporaryResources.emplace_back(std::move(oldPSO));
-    }
+    // Register shader and get Pipeline if exists (if not we create it).
+    RHIComputePipelineState* pipelineState =
+        graphics->psCache->GetComputePipelineState(computeShader, deferredReleases);
     if (!pipelineState)
     {
         return;
@@ -319,28 +318,23 @@ void CommandContext::TraceRays(const RayTracingShaderCollection& rayTracingShade
 
     // Setup the layout for our pass (must be done before PSO handling).
     RHIResourceLayout& resourceLayout = graphics->psCache->resourceLayout.value();
-    resourceLayout.SetLayoutResources(constants);
-    cmdList->SetLayout(resourceLayout);
+    cmdList->SetLayout(RHICommandListBindPoint::Compute, resourceLayout);
+    cmdList->SetConstants(RHICommandListBindPoint::Compute, constants.GetData());
 
-    std::unique_ptr<RHIRayTracingPipelineState> oldPSO;
-    std::vector<MaybeUninitialized<RHIBuffer>> oldSBTs;
+    RHIRayTracingPipelineState::ShaderTableBuffers oldSBTs;
 
     RHIRayTracingPipelineState* pipelineState =
         graphics->psCache->GetRayTracingPipelineState(rayTracingShaderCollection,
                                                       *graphics->allocator,
-                                                      oldPSO,
+                                                      deferredReleases,
                                                       oldSBTs);
-    if (oldPSO)
-    {
-        temporaryResources.emplace_back(std::move(oldPSO));
-    }
-    if (!oldSBTs.empty())
-    {
-        for (auto& resource : oldSBTs)
-        {
-            temporaryResources.emplace_back(std::move(resource));
-        }
-    }
+#if __cpp_lib_containers_ranges >= 202202L && __cpp_lib_ranges_as_rvalue >= 202207L
+    temporaryResources.append_range(oldSBTs | std::views::as_rvalue);
+#else
+    temporaryResources.insert(temporaryResources.end(),
+                              std::make_move_iterator(oldSBTs.begin()),
+                              std::make_move_iterator(oldSBTs.end()));
+#endif
     if (!pipelineState)
     {
         return;
@@ -778,7 +772,7 @@ BufferReadbackContext CommandContext::EnqueueDataReadback(const Buffer& srcBuffe
         BufferDesc::CreateReadbackBufferDesc(srcBuffer.desc.name + "_readback", region.GetByteSize(srcBuffer.desc));
     Buffer stagingBuffer = graphics->CreateBuffer(readbackBufferDesc);
 
-    if (srcBuffer.desc.byteSize == GBufferWholeSize)
+    if (srcBuffer.desc.byteSize == region.GetByteSize(srcBuffer.desc))
     {
         Copy(srcBuffer, stagingBuffer);
     }
@@ -1399,16 +1393,11 @@ std::optional<RHIDrawResources> CommandContext::PrepareDrawCall(DrawDesc desc,
 
     // Setup the layout for our pass (must be done before PSO handling).
     RHIResourceLayout& resourceLayout = graphics->psCache->resourceLayout.value();
-    resourceLayout.SetLayoutResources(constants);
-    cmdList->SetLayout(resourceLayout);
+    cmdList->SetLayout(RHICommandListBindPoint::Graphics, resourceLayout);
+    cmdList->SetConstants(RHICommandListBindPoint::Graphics, constants.GetData());
 
-    std::unique_ptr<RHIGraphicsPipelineState> oldPSO;
     RHIGraphicsPipelineState* pipelineState =
-        graphics->psCache->GetGraphicsPipelineState(desc, renderTargetState, indexFormat, oldPSO);
-    if (oldPSO)
-    {
-        temporaryResources.emplace_back(std::move(oldPSO));
-    }
+        graphics->psCache->GetGraphicsPipelineState(desc, renderTargetState, indexFormat, deferredReleases);
     if (!pipelineState)
     {
         return std::nullopt;
@@ -1458,21 +1447,16 @@ std::optional<RHIDrawResources> CommandContext::PrepareDispatchMeshCall(Dispatch
 
     // Setup the layout for our pass (must be done before PSO handling).
     RHIResourceLayout& resourceLayout = graphics->psCache->resourceLayout.value();
-    resourceLayout.SetLayoutResources(constants);
-    cmdList->SetLayout(resourceLayout);
+    cmdList->SetLayout(RHICommandListBindPoint::Graphics, resourceLayout);
+    cmdList->SetConstants(RHICommandListBindPoint::Graphics, constants.GetData());
 
     EnqueueGlobalBarrier({ .srcSync = RHIBarrierSync::AllCommands,
                            .dstSync = RHIBarrierSync::AllGraphics,
                            .srcAccess = RHIBarrierAccess::MemoryWrite,
                            .dstAccess = RHIBarrierAccess::VertexInputRead });
 
-    std::unique_ptr<RHIGraphicsPipelineState> oldPSO;
     RHIGraphicsPipelineState* pipelineState =
-        graphics->psCache->GetGraphicsPipelineState(desc, renderTargetState, oldPSO);
-    if (oldPSO)
-    {
-        temporaryResources.emplace_back(std::move(oldPSO));
-    }
+        graphics->psCache->GetGraphicsPipelineState(desc, renderTargetState, deferredReleases);
     if (!pipelineState)
     {
         return std::nullopt;

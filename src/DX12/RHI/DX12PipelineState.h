@@ -43,7 +43,7 @@ public:
                          const ShaderView* pixelShader,
                          RHIResourceLayout& resourceLayout) override;
 
-    virtual std::unique_ptr<RHIGraphicsPipelineState> Cleanup() override;
+    virtual void Cleanup(std::vector<RHIDeferredRelease>& deferredReleases) override;
 
     ComPtr<ID3D12PipelineState> graphicsPSO;
 
@@ -60,7 +60,7 @@ public:
     DX12ComputePipelineState(const ComPtr<DX12Device>& device, std::string name, const Key& key);
 
     virtual void Compile(const ShaderView& computeShader, RHIResourceLayout& resourceLayout) override;
-    virtual std::unique_ptr<RHIComputePipelineState> Cleanup() override;
+    virtual void Cleanup(std::vector<RHIDeferredRelease>& deferredReleases) override;
 
     ComPtr<ID3D12PipelineState> computePSO;
 
@@ -73,10 +73,10 @@ class DX12RayTracingPipelineState final : public RHIRayTracingPipelineStateBase
 public:
     DX12RayTracingPipelineState(const ComPtr<DX12Device>& device, std::string name, const Key& key);
 
-    virtual std::vector<MaybeUninitialized<RHIBuffer>> Compile(const RayTracingShaderCollection& shaderCollection,
-                                                               RHIResourceLayout& resourceLayout,
-                                                               RHIAllocator& allocator) override;
-    virtual std::unique_ptr<RHIRayTracingPipelineState> Cleanup() override;
+    virtual ShaderTableBuffers Compile(const RayTracingShaderCollection& shaderCollection,
+                                       RHIResourceLayout& resourceLayout,
+                                       RHIAllocator& allocator) override;
+    virtual void Cleanup(std::vector<RHIDeferredRelease>& deferredReleases) override;
 
     void PrepareDispatchRays(D3D12_DISPATCH_RAYS_DESC& dispatchRaysDesc, const TraceRaysDesc& rayTracingArgs) const;
 
@@ -84,7 +84,7 @@ public:
 
 private:
     void GenerateIdentifiers(const RayTracingShaderCollection& shaderCollection);
-    std::vector<MaybeUninitialized<RHIBuffer>> CreateShaderTables(RHIAllocator& allocator);
+    ShaderTableBuffers CreateShaderTables(RHIAllocator& allocator);
 
     ComPtr<DX12Device> device;
 

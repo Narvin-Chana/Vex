@@ -16,10 +16,11 @@ public:
     DX12ResourceLayout(DX12ResourceLayout&&) = default;
     DX12ResourceLayout& operator=(DX12ResourceLayout&&) = default;
 
-    ComPtr<ID3D12RootSignature>& GetRootSignature();
+    const ComPtr<ID3D12RootSignature>& GetRootSignature() const;
 
 private:
-    void CompileRootSignature();
+    virtual void Cleanup(std::vector<RHIDeferredRelease>& deferredReleases) override;
+    virtual void Compile() override;
 
     ComPtr<DX12Device> device;
     ComPtr<ID3D12RootSignature> rootSignature;

@@ -32,6 +32,12 @@ enum class RHICommandListState : u8
     Submitted  // Submitted to GPU, waiting for completion.
 };
 
+enum class RHICommandListBindPoint : u8
+{
+    Graphics,
+    Compute,
+};
+
 class RHICommandListBase
 {
 public:
@@ -51,7 +57,8 @@ public:
     virtual void SetPipelineState(const RHIComputePipelineState& computePipelineState) = 0;
     virtual void SetPipelineState(const RHIRayTracingPipelineState& rayTracingPipelineState) = 0;
 
-    virtual void SetLayout(RHIResourceLayout& layout) = 0;
+    virtual void SetLayout(RHICommandListBindPoint bindPoint, RHIResourceLayout& layout) = 0;
+    virtual void SetConstants(RHICommandListBindPoint bindPoint, Span<const byte> constants) = 0;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) = 0;
     virtual void SetInputAssembly(InputAssembly inputAssembly) = 0;
     virtual void SetBlendConstants(std::array<float, 4> colorBlendConstants) = 0;
@@ -153,6 +160,8 @@ public:
     {
         queryPool = inQueryPool;
     }
+
+    [[nodiscard]] bool SupportsBindPoint(RHICommandListBindPoint bindPoint) const;
 
 protected:
     QueueType type;

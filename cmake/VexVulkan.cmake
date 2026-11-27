@@ -38,6 +38,7 @@ function(setup_vulkan_backend TARGET)
         "src/Vulkan/RHI/VkPipelineState.cpp"
         "src/Vulkan/RHI/VkResourceLayout.h"
         "src/Vulkan/RHI/VkResourceLayout.cpp"
+        "src/Vulkan/RHI/VkDeferredRelease.h"
         "src/Vulkan/RHI/VkDescriptorPool.h"
         "src/Vulkan/RHI/VkDescriptorPool.cpp"
         "src/Vulkan/RHI/VkDescriptorSet.h"

@@ -1,9 +1,9 @@
 #pragma once
 
-#include <memory>
 #include <utility>
 #include <vector>
 
+#include <Vex/Containers/InlineVector.h>
 #include <Vex/PipelineState.h>
 #include <Vex/ShaderView.h>
 #include <Vex/Types.h>
@@ -25,7 +25,7 @@ public:
     {
     }
 
-    virtual std::unique_ptr<RHIGraphicsPipelineState> Cleanup() = 0;
+    virtual void Cleanup(std::vector<RHIDeferredRelease>& deferredReleases) = 0;
 
     virtual void Compile(const ShaderView& vertexShader,
                          const ShaderView* pixelShader,
@@ -52,7 +52,7 @@ public:
     {
     }
     virtual void Compile(const ShaderView& computeShader, RHIResourceLayout& resourceLayout) = 0;
-    virtual std::unique_ptr<RHIComputePipelineState> Cleanup() = 0;
+    virtual void Cleanup(std::vector<RHIDeferredRelease>& deferredReleases) = 0;
 
     std::string name;
     Key key;
@@ -63,16 +63,18 @@ class RHIRayTracingPipelineStateBase
 {
 public:
     using Key = RayTracingPSOKey;
+    // One buffer per shader table type: ray generation, miss, hit group and callable.
+    using ShaderTableBuffers = InlineVector<MaybeUninitialized<RHIBuffer>, 4>;
 
     explicit RHIRayTracingPipelineStateBase(std::string name, Key key)
         : name{ std::move(name) }
         , key{ std::move(key) }
     {
     }
-    virtual std::vector<MaybeUninitialized<RHIBuffer>> Compile(const RayTracingShaderCollection& shaderCollection,
-                                                               RHIResourceLayout& resourceLayout,
-                                                               RHIAllocator& allocator) = 0;
-    virtual std::unique_ptr<RHIRayTracingPipelineState> Cleanup() = 0;
+    virtual ShaderTableBuffers Compile(const RayTracingShaderCollection& shaderCollection,
+                                       RHIResourceLayout& resourceLayout,
+                                       RHIAllocator& allocator) = 0;
+    virtual void Cleanup(std::vector<RHIDeferredRelease>& deferredReleases) = 0;
 
     std::string name;
     Key key;

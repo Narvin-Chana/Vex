@@ -64,6 +64,8 @@ struct ConstantBinding
         return !data.empty();
     }
 
+    Span<const byte> GetData() const;
+
     Span<const byte> data;
 };
 

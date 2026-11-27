@@ -176,46 +176,55 @@ void DX12CommandList::SetPipelineState(const RHIRayTracingPipelineState& rayTrac
     commandList->SetPipelineState1(rayTracingPipelineState.stateObject.Get());
 }
 
-void DX12CommandList::SetLayout(RHIResourceLayout& layout)
+void DX12CommandList::SetLayout(RHICommandListBindPoint bindPoint, RHIResourceLayout& layout)
 {
-    ID3D12RootSignature* globalRootSignature = layout.GetRootSignature().Get();
+    VEX_CHECK(SupportsBindPoint(bindPoint),
+              "Must use a valid bind point, command list of type {} does not support bind point {}.",
+              type,
+              bindPoint);
 
     // Set root signature.
-    switch (type)
+    ID3D12RootSignature* globalRootSignature = layout.GetRootSignature().Get();
+    switch (bindPoint)
     {
-    case QueueType::Graphics:
+    case RHICommandListBindPoint::Graphics:
         commandList->SetGraphicsRootSignature(globalRootSignature);
-    case QueueType::Compute:
+        break;
+    case RHICommandListBindPoint::Compute:
         commandList->SetComputeRootSignature(globalRootSignature);
-    case QueueType::Copy:
+        break;
     default:
         break;
     }
+}
 
-    Span<const byte> localConstantsData = layout.GetLocalConstantsData();
-    if (localConstantsData.empty())
+void DX12CommandList::SetConstants(RHICommandListBindPoint bindPoint, Span<const byte> constants)
+{
+    VEX_CHECK(SupportsBindPoint(bindPoint),
+              "Must use a valid bind point, command list of type {} does not support bind point {}.",
+              type,
+              bindPoint);
+
+    if (constants.empty())
     {
         return;
     }
 
-    switch (type)
+    // Set local constants (in first slot of root signature).
+    switch (bindPoint)
     {
-    case QueueType::Graphics:
-        // Set local constants (in first slot of root signature).
+    case RHICommandListBindPoint::Graphics:
         commandList->SetGraphicsRoot32BitConstants(
             0,
-            static_cast<u32>(ByteUtil::DivRoundUp(localConstantsData.size(), sizeof(u32))),
-            localConstantsData.data(),
+            static_cast<u32>(ByteUtil::DivRoundUp(constants.size(), sizeof(u32))),
+            constants.data(),
             0);
-    case QueueType::Compute:
-        // Set local constants (in first slot of root signature).
-        commandList->SetComputeRoot32BitConstants(
-            0,
-            static_cast<u32>(ByteUtil::DivRoundUp(localConstantsData.size(), sizeof(u32))),
-            localConstantsData.data(),
-            0);
-    case QueueType::Copy:
-    default:
+        break;
+    case RHICommandListBindPoint::Compute:
+        commandList->SetComputeRoot32BitConstants(0,
+                                                  static_cast<u32>(ByteUtil::DivRoundUp(constants.size(), sizeof(u32))),
+                                                  constants.data(),
+                                                  0);
         break;
     }
 }

@@ -24,7 +24,8 @@ public:
     virtual void SetPipelineState(const RHIComputePipelineState& computePipelineState) override;
     virtual void SetPipelineState(const RHIRayTracingPipelineState& rayTracingPipelineState) override;
 
-    virtual void SetLayout(RHIResourceLayout& layout) override;
+    virtual void SetLayout(RHICommandListBindPoint bindPoint, RHIResourceLayout& layout) override;
+    virtual void SetConstants(RHICommandListBindPoint bindPoint, Span<const byte> constants) override;
     virtual void SetDescriptorPool(RHIDescriptorPool& descriptorPool, RHIResourceLayout& resourceLayout) override;
     virtual void SetInputAssembly(InputAssembly inputAssembly) override;
     virtual void SetBlendConstants(std::array<float, 4> colorBlendConstants) override;

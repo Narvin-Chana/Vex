@@ -12,6 +12,7 @@
 #include <DX12/DX12Formats.h>
 #include <DX12/DX12GraphicsPipeline.h>
 #include <DX12/HRChecker.h>
+#include <DX12/RHI/DX12DeferredRelease.h>
 
 namespace vex::dx12
 {
@@ -182,16 +183,12 @@ void DX12GraphicsPipelineState::Compile(const ShaderView& meshShader,
     CreatePipelineState(stream, resourceLayout);
 }
 
-std::unique_ptr<RHIGraphicsPipelineState> DX12GraphicsPipelineState::Cleanup()
+void DX12GraphicsPipelineState::Cleanup(std::vector<RHIDeferredRelease>& deferredReleases)
 {
-    if (!graphicsPSO)
+    if (graphicsPSO)
     {
-        return nullptr;
+        deferredReleases.emplace_back(std::move(graphicsPSO));
     }
-    // Simple swap and move
-    auto cleanupPSO = std::make_unique<DX12GraphicsPipelineState>(device, name, key);
-    std::swap(cleanupPSO->graphicsPSO, graphicsPSO);
-    return cleanupPSO;
 }
 
 CD3DX12_PIPELINE_STATE_STREAM6 DX12GraphicsPipelineState::CreatePipelineStateStream(
@@ -266,16 +263,12 @@ void DX12ComputePipelineState::Compile(const ShaderView& computeShader, RHIResou
 #endif
 }
 
-std::unique_ptr<RHIComputePipelineState> DX12ComputePipelineState::Cleanup()
+void DX12ComputePipelineState::Cleanup(std::vector<RHIDeferredRelease>& deferredReleases)
 {
-    if (!computePSO)
+    if (computePSO)
     {
-        return nullptr;
+        deferredReleases.emplace_back(std::move(computePSO));
     }
-    // Simple swap and move
-    auto cleanupPSO = std::make_unique<DX12ComputePipelineState>(device, name, key);
-    std::swap(cleanupPSO->computePSO, computePSO);
-    return cleanupPSO;
 }
 
 DX12RayTracingPipelineState::DX12RayTracingPipelineState(const ComPtr<DX12Device>& device,
@@ -286,7 +279,7 @@ DX12RayTracingPipelineState::DX12RayTracingPipelineState(const ComPtr<DX12Device
 {
 }
 
-std::vector<MaybeUninitialized<RHIBuffer>> DX12RayTracingPipelineState::Compile(
+DX12RayTracingPipelineState::ShaderTableBuffers DX12RayTracingPipelineState::Compile(
     const RayTracingShaderCollection& shaderCollection, RHIResourceLayout& resourceLayout, RHIAllocator& allocator)
 {
     CD3DX12_STATE_OBJECT_DESC raytracingPipeline{ D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE };
@@ -408,7 +401,7 @@ std::vector<MaybeUninitialized<RHIBuffer>> DX12RayTracingPipelineState::Compile(
 
     GenerateIdentifiers(shaderCollection);
 
-    std::vector<MaybeUninitialized<RHIBuffer>> oldShaderTables = CreateShaderTables(allocator);
+    ShaderTableBuffers oldShaderTables = CreateShaderTables(allocator);
 
     rootSignatureVersion = resourceLayout.version;
 
@@ -419,26 +412,13 @@ std::vector<MaybeUninitialized<RHIBuffer>> DX12RayTracingPipelineState::Compile(
     return oldShaderTables;
 }
 
-std::unique_ptr<RHIRayTracingPipelineState> DX12RayTracingPipelineState::Cleanup()
+void DX12RayTracingPipelineState::Cleanup(std::vector<RHIDeferredRelease>& deferredReleases)
 {
-    if (!(stateObject || rayGenerationShaderTable || rayMissShaderTable || hitGroupShaderTable ||
-          rayCallableShaderTable))
+    // Shader tables are kept, Compile() returns their buffers so that their allocations are correctly freed.
+    if (stateObject)
     {
-        // We have nothing to clean up!
-        return nullptr;
+        deferredReleases.emplace_back(std::move(stateObject));
     }
-
-    // Simple swap and move
-    auto cleanupPSO = std::make_unique<DX12RayTracingPipelineState>(device, name, key);
-    // State object
-    std::swap(cleanupPSO->stateObject, stateObject);
-    // Shader tables
-    std::swap(cleanupPSO->rayGenerationShaderTable, rayGenerationShaderTable);
-    std::swap(cleanupPSO->rayMissShaderTable, rayMissShaderTable);
-    std::swap(cleanupPSO->hitGroupShaderTable, hitGroupShaderTable);
-    std::swap(cleanupPSO->rayCallableShaderTable, rayCallableShaderTable);
-
-    return cleanupPSO;
 }
 
 void DX12RayTracingPipelineState::PrepareDispatchRays(D3D12_DISPATCH_RAYS_DESC& dispatchRaysDesc,
@@ -504,9 +484,10 @@ void DX12RayTracingPipelineState::GenerateIdentifiers(const RayTracingShaderColl
     }
 }
 
-std::vector<MaybeUninitialized<RHIBuffer>> DX12RayTracingPipelineState::CreateShaderTables(RHIAllocator& allocator)
+DX12RayTracingPipelineState::ShaderTableBuffers DX12RayTracingPipelineState::CreateShaderTables(
+    RHIAllocator& allocator)
 {
-    std::vector<MaybeUninitialized<RHIBuffer>> oldBuffers;
+    ShaderTableBuffers oldBuffers;
     if (rayGenerationShaderTable.has_value())
     {
         oldBuffers.push_back(std::move(rayGenerationShaderTable->buffer));

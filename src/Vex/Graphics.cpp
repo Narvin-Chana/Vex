@@ -263,6 +263,7 @@ void Graphics::Present()
 
 CommandContext Graphics::CreateCommandContext(QueueType queueType)
 {
+    ++openCommandContextCount;
     return CommandContext{ *this, commandPool->GetOrCreateCommandList(queueType), *queryPool };
 }
 
@@ -412,7 +413,10 @@ BindlessHandle Graphics::GetBindlessSampler(const BindlessTextureSampler& sample
 
 void Graphics::SetStaticSamplers(Span<const StaticTextureSampler> staticSamplers)
 {
-    psCache->resourceLayout->SetStaticSamplers(staticSamplers);
+    VEX_CHECK(openCommandContextCount == 0, "SetStaticSamplers must be called while no CommandContext is open.");
+    std::vector<RHIDeferredRelease> deferredReleases;
+    psCache->resourceLayout->SetStaticSamplers(staticSamplers, deferredReleases);
+    DeferDestruction(std::move(deferredReleases));
 }
 
 SyncToken Graphics::Submit(CommandContext& ctx, Span<const SyncToken> dependencies)
@@ -484,6 +488,10 @@ std::vector<SyncToken> Graphics::Submit(Span<CommandContext> commandContexts, Sp
         for (CleanupVariant& resource : ctx.temporaryResources)
         {
             phaseTemporaryResources.push_back(std::move(resource));
+        }
+        for (RHIDeferredRelease& deferredRelease : ctx.deferredReleases)
+        {
+            phaseTemporaryResources.push_back(std::move(deferredRelease));
         }
     }
 
@@ -705,6 +713,7 @@ std::optional<SyncToken> Graphics::FlushPendingInitializations()
 
     ctx.FlushBarriers();
     ctx.cmdList->Close();
+    --openCommandContextCount;
 
     pendingInitializations.clear();
 
@@ -746,6 +755,7 @@ void Graphics::PrepareCommandContextForSubmission(CommandContext& ctx)
 
     // We want to close a command list asap, to allow for driver optimizations.
     ctx.cmdList->Close();
+    --openCommandContextCount;
 }
 
 void Graphics::Cleanup()

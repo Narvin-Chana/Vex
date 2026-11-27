@@ -286,6 +286,7 @@ private:
     std::vector<Texture> temporaryTextures;
     std::vector<AccelerationStructure> temporaryAccelerationStructures;
     std::vector<CleanupVariant> temporaryResources;
+    std::vector<RHIDeferredRelease> deferredReleases;
 
     // Tokens of the readbacks enqueued by this command context. We update them once the command list is submitted.
     std::vector<ReadbackSubmissionToken> readbackSubmissionTokens;

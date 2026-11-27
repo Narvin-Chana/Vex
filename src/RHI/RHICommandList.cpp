@@ -82,4 +82,23 @@ void RHICommandListBase::UpdateTimestampQueryTokens(SyncToken token)
     queries.clear();
 }
 
+bool RHICommandListBase::SupportsBindPoint(RHICommandListBindPoint bindPoint) const
+{
+    switch (type)
+    {
+    case QueueTypes::Graphics:
+    {
+        return true;
+    }
+    case QueueType::Compute:
+    {
+        return bindPoint == RHICommandListBindPoint::Compute;
+    }
+    default:
+    {
+        return false;
+    }
+    }
+}
+
 } // namespace vex

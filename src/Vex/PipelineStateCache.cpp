@@ -21,7 +21,7 @@ RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
     const DrawDesc& drawDesc,
     const RenderTargetState& renderTargetState,
     std::optional<IndexFormat> indexFormat,
-    std::unique_ptr<RHIGraphicsPipelineState>& oldPSO)
+    std::vector<RHIDeferredRelease>& deferredReleases)
 {
     if ((drawDesc.pixelShader && drawDesc.pixelShader->IsErrored()) || drawDesc.vertexShader.IsErrored())
     {
@@ -43,7 +43,7 @@ RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
     if (pipelineStateStale)
     {
         // Avoid PSO being destroyed while frame is in flight.
-        oldPSO = ps.Cleanup();
+        ps.Cleanup(deferredReleases);
         ps.Compile(drawDesc.vertexShader, drawDesc.pixelShader ? &*drawDesc.pixelShader : nullptr, *resourceLayout);
     }
 
@@ -53,7 +53,7 @@ RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
 RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
     const DispatchMeshDesc& drawDesc,
     const RenderTargetState& renderTargetState,
-    std::unique_ptr<RHIGraphicsPipelineState>& oldPSO)
+    std::vector<RHIDeferredRelease>& deferredReleases)
 {
     if (drawDesc.meshShader.IsErrored() ||
         (drawDesc.amplificationShader && drawDesc.amplificationShader->IsErrored()) ||
@@ -77,7 +77,7 @@ RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
     if (pipelineStateStale)
     {
         // Avoid PSO being destroyed while frame is in flight.
-        oldPSO = ps.Cleanup();
+        ps.Cleanup(deferredReleases);
         ps.Compile(drawDesc.meshShader,
                    drawDesc.amplificationShader ? &*drawDesc.amplificationShader : nullptr,
                    drawDesc.pixelShader ? &*drawDesc.pixelShader : nullptr,
@@ -88,7 +88,7 @@ RHIGraphicsPipelineState* PipelineStateCache::GetGraphicsPipelineState(
 }
 
 RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const ShaderView& computeShader,
-                                                                     std::unique_ptr<RHIComputePipelineState>& oldPSO)
+                                                                     std::vector<RHIDeferredRelease>& deferredReleases)
 {
     if (computeShader.IsErrored())
     {
@@ -110,7 +110,7 @@ RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const Shade
     if (pipelineStateStale)
     {
         // Avoids PSO being destroyed while frame is in flight.
-        oldPSO = ps.Cleanup();
+        ps.Cleanup(deferredReleases);
         ps.Compile(computeShader, *resourceLayout);
     }
 
@@ -120,8 +120,8 @@ RHIComputePipelineState* PipelineStateCache::GetComputePipelineState(const Shade
 RHIRayTracingPipelineState* PipelineStateCache::GetRayTracingPipelineState(
     const RayTracingShaderCollection& shaderCollection,
     RHIAllocator& allocator,
-    std::unique_ptr<RHIRayTracingPipelineState>& oldPSO,
-    std::vector<MaybeUninitialized<RHIBuffer>>& oldBuffers)
+    std::vector<RHIDeferredRelease>& deferredReleases,
+    RHIRayTracingPipelineState::ShaderTableBuffers& oldBuffers)
 {
     if (std::ranges::any_of(shaderCollection.rayGenerationShaders,
                             [](const ShaderView& view) { return view.IsErrored(); }) ||
@@ -156,7 +156,7 @@ RHIRayTracingPipelineState* PipelineStateCache::GetRayTracingPipelineState(
     if (pipelineStateStale)
     {
         // Avoids PSO being destroyed while frame is in flight.
-        oldPSO = ps.Cleanup();
+        ps.Cleanup(deferredReleases);
         oldBuffers = ps.Compile(shaderCollection, *resourceLayout, allocator);
     }
 

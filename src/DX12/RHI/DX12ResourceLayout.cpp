@@ -8,6 +8,7 @@
 
 #include <DX12/DX12Sampler.h>
 #include <DX12/HRChecker.h>
+#include <DX12/RHI/DX12DeferredRelease.h>
 
 namespace vex::dx12
 {
@@ -15,22 +16,25 @@ namespace vex::dx12
 DX12ResourceLayout::DX12ResourceLayout(ComPtr<DX12Device>& device)
     : device(device)
 {
+    Rebuild();
 }
 
 DX12ResourceLayout::~DX12ResourceLayout() = default;
 
-ComPtr<ID3D12RootSignature>& DX12ResourceLayout::GetRootSignature()
+const ComPtr<ID3D12RootSignature>& DX12ResourceLayout::GetRootSignature() const
 {
-    if (isDirty)
-    {
-        CompileRootSignature();
-        isDirty = false;
-    }
-
     return rootSignature;
 }
 
-void DX12ResourceLayout::CompileRootSignature()
+void DX12ResourceLayout::Cleanup(std::vector<RHIDeferredRelease>& deferredReleases)
+{
+    if (rootSignature)
+    {
+        deferredReleases.emplace_back(std::move(rootSignature));
+    }
+}
+
+void DX12ResourceLayout::Compile()
 {
     const u32 rootSignatureDWORDCount = GPhysicalDevice->GetMaxLocalConstantsByteSize() / sizeof(DWORD);
 
@@ -72,8 +76,6 @@ void DX12ResourceLayout::CompileRootSignature()
                                        signature->GetBufferPointer(),
                                        signature->GetBufferSize(),
                                        IID_PPV_ARGS(&rootSignature));
-
-    version++;
 }
 
 } // namespace vex::dx12
